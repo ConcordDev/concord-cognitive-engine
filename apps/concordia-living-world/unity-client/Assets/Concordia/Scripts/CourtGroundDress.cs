@@ -887,6 +887,7 @@ namespace Concordia
             var sh = Shader.Find("Universal Render Pipeline/Unlit");
             if (!sh) sh = Shader.Find("Sprites/Default");
             if (!sh) sh = Shader.Find("Universal Render Pipeline/Lit");
+            if (!sh) return null; // dedicated-server build: no shaders, nothing renders
             var m = new Material(sh);
             ForceTransparentAlpha(m);
             var tex = RadialWaterTex();
@@ -904,6 +905,9 @@ namespace Concordia
             var sh = Shader.Find("Universal Render Pipeline/Unlit");
             if (!sh) sh = Shader.Find("Sprites/Default");
             if (!sh) sh = Shader.Find("Universal Render Pipeline/Lit");
+            // Dedicated-server builds strip shaders; the headless world host
+            // renders nothing, so no material is the right answer, not a throw.
+            if (!sh) return null;
             var m = new Material(sh);
             ForceTransparentAlpha(m);
             var tex = RadialDampTex();
@@ -1099,6 +1103,7 @@ namespace Concordia
         {
             var sh = Shader.Find("Sprites/Default");
             if (!sh) sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (!sh) return null; // dedicated-server build: no shaders, nothing renders
             var m = new Material(sh);
             var tex = BuildRadialAlphaTex(256, 0.16f, 0.26f, tint);
             if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);

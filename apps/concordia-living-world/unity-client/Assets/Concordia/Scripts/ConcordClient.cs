@@ -28,12 +28,24 @@ namespace Concordia
         bool _jsOpen;
         readonly Dictionary<string, TaskCompletionSource<string>> _dialogueWait =
             new Dictionary<string, TaskCompletionSource<string>>();
+        readonly Dictionary<string, TaskCompletionSource<string>> _lensWait =
+            new Dictionary<string, TaskCompletionSource<string>>();
         public bool Connected =>
 #if UNITY_WEBGL && !UNITY_EDITOR
             _jsOpen;
 #else
             _ws != null && _ws.State == WebSocketState.Open;
 #endif
+        /// <summary>Socket open AND the server has accepted our auth (sent `hello`).</summary>
+        public bool Ready => Connected && _authed;
+        // The gateway requires `auth` to be the first frame; anything sent
+        // between socket-open and `hello` (a voice join, a host register, the
+        // lean-play scene requests) got the socket closed with 4401
+        // auth_required — found by proxying the headless host 2026-09-27,
+        // where it reconnected every 8 s forever. Sends wait here until hello.
+        volatile bool _authed;
+        readonly List<string> _preAuth = new List<string>();
+        const int MaxPreAuth = 128;
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
@@ -54,6 +66,8 @@ namespace Concordia
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
         public string WorldId => worldId;
+        /// <summary>The authenticated account id ("" until the gateway says hello).</summary>
+        public string UserId => _userId;
 
         void Awake()
         {
@@ -132,6 +146,26 @@ namespace Concordia
                 if (key == "CONCORD_AUTH_TOKEN" && !string.IsNullOrEmpty(val)) bearerToken = val;
             }
             kitchenUrl = "";
+#else
+            // Standalone (e.g. the headless world host on a server): take the
+            // gateway, token and world from the environment or command line, the
+            // same way the browser build takes them from its page.
+            string Arg(string name)
+            {
+                try
+                {
+                    foreach (var a in System.Environment.GetCommandLineArgs())
+                        if (a.StartsWith("-" + name + "=")) return a.Substring(name.Length + 2);
+                }
+                catch { }
+                return null;
+            }
+            var envGw = Arg("concordGateway") ?? System.Environment.GetEnvironmentVariable("CONCORD_GATEWAY_URL");
+            var envTok = Arg("concordToken") ?? System.Environment.GetEnvironmentVariable("CONCORD_AUTH_TOKEN");
+            var envWorld = Arg("concordWorld") ?? System.Environment.GetEnvironmentVariable("CONCORD_WORLD_ID");
+            if (!string.IsNullOrEmpty(envGw)) { gatewayUrl = envGw; kitchenUrl = ""; }
+            if (!string.IsNullOrEmpty(envTok)) bearerToken = envTok;
+            if (!string.IsNullOrEmpty(envWorld)) worldId = envWorld;
 #endif
         }
 
@@ -169,6 +203,8 @@ namespace Concordia
                 try
                 {
                     _ws?.Dispose();
+                    _authed = false;
+                    lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
                     last = null;
@@ -213,6 +249,8 @@ namespace Concordia
                 try
                 {
                     _ws?.Dispose();
+                    _authed = false;
+                    lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
                     await AfterOpen();
@@ -230,6 +268,8 @@ namespace Concordia
 
         public void OnWsOpen(string unused)
         {
+            _authed = false;
+            lock (_preAuth) _preAuth.Clear();
             _jsOpen = true;
             _ = AfterOpen();
         }
@@ -301,6 +341,8 @@ namespace Concordia
 
         void MarkDisconnected()
         {
+            _authed = false;
+            lock (_preAuth) _preAuth.Clear();
             LastReason = "no_gateway";
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
             HudLine = "";
@@ -323,6 +365,12 @@ namespace Concordia
             {
                 var uid = JsonString(text, "userId");
                 if (!string.IsNullOrEmpty(uid)) _userId = uid;
+                if (!_authed) { _authed = true; _ = FlushPreAuth(); }
+                return;
+            }
+            if (evt == "auth:error")
+            {
+                Debug.LogWarning("[ConcordClient] auth refused: " + text);
                 return;
             }
             if (evt == "kingdom:data")
@@ -479,6 +527,13 @@ namespace Concordia
             }
             if (evt == "lens:result")
             {
+                // A LensRunAwait caller gets its own reply by requestId.
+                var lensReq = JsonString(text, "requestId");
+                if (!string.IsNullOrEmpty(lensReq) && _lensWait.TryGetValue(lensReq, out var lensTcs))
+                {
+                    lensTcs.TrySetResult(text);
+                    return;
+                }
                 RunMain(() => ApplyLensResult(text));
                 return;
             }
@@ -942,6 +997,57 @@ namespace Concordia
         /// Optional gateway dialogue line for the talk panel. Empty string is honest failure
         /// (no_gateway, timeout, or ok:false) — never a fabricated voice.
         /// </summary>
+        /// <summary>
+        /// Run a lens macro and await ITS reply (matched by requestId, which the
+        /// gateway echoes). Returns the raw result JSON, or "" on timeout /
+        /// disconnect — callers treat "" as "unknown", never as a success.
+        /// </summary>
+        public async Task<string> LensRunAwait(string domain, string name, string inputJson = "{}", int timeoutMs = 8000)
+        {
+            if (!Connected) return "";
+            var id = Guid.NewGuid().ToString("N");
+            var wait = new TaskCompletionSource<string>();
+            _lensWait[id] = wait;
+            try
+            {
+                var body = "{\"domain\":\"" + Escape(domain)
+                    + "\",\"name\":\"" + Escape(name)
+                    + "\",\"requestId\":\"" + Escape(id)
+                    + "\",\"input\":" + (string.IsNullOrEmpty(inputJson) ? "{}" : inputJson) + "}";
+                await SendEvt("lens:run", body);
+                var done = await Task.WhenAny(wait.Task, Task.Delay(timeoutMs, _cts.Token));
+                return done == wait.Task ? wait.Task.Result : "";
+            }
+            catch
+            {
+                return "";
+            }
+            finally
+            {
+                _lensWait.Remove(id);
+            }
+        }
+
+        /// <summary>The account's saved Concordia character, or null if none / unreachable.</summary>
+        public async Task<Appearance> LoadAccountCharacter(int timeoutMs = 5000)
+        {
+            var json = await LensRunAwait("appearance", "load_game_character", "{}", timeoutMs);
+            if (string.IsNullOrEmpty(json) || JsonFlagFalse(json, "ok")) return null;
+            // JsonObject would scan past a null value into a LATER object — check first.
+            if (System.Text.RegularExpressions.Regex.IsMatch(json, "\"character\"\\s*:\\s*null")) return null;
+            var obj = JsonObject(json, "character");
+            if (string.IsNullOrEmpty(obj) || obj == "null") return null;
+            try { return JsonUtility.FromJson<Appearance>(obj); }
+            catch { return null; }
+        }
+
+        /// <summary>Save the character to the account (fire-and-forget; the local cache is separate).</summary>
+        public Task SaveAccountCharacter(Appearance look)
+        {
+            if (look == null) return Task.CompletedTask;
+            return LensRun("appearance", "save_game_character", "{\"character\":" + JsonUtility.ToJson(look) + "}");
+        }
+
         public async Task<string> AskTwoB(string npcId, string npcName, string line, string text)
         {
             if (!Connected) return "";
@@ -1855,10 +1961,34 @@ if (JsonFlagFalse(json, "ok"))
                 "{\"kind\":\"" + Escape(kind) + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
+        /// <summary>Send a gateway event with a prebuilt JSON payload (world host protocol).</summary>
+        public Task SendRaw(string evt, string dataJson) => Connected ? SendEvt(evt, dataJson) : Task.CompletedTask;
+
         async Task SendEvt(string evt, string dataJson)
         {
             if (!Connected) return;
             var json = "{\"evt\":\"" + evt + "\",\"data\":" + dataJson + "}";
+            if (evt != "auth" && !_authed)
+            {
+                lock (_preAuth) { if (_preAuth.Count < MaxPreAuth) _preAuth.Add(json); }
+                return;
+            }
+            await SendRawJson(json);
+        }
+
+        async Task FlushPreAuth()
+        {
+            string[] queued;
+            lock (_preAuth) { queued = _preAuth.ToArray(); _preAuth.Clear(); }
+            foreach (var json in queued)
+            {
+                if (!Connected) return;
+                await SendRawJson(json);
+            }
+        }
+
+        async Task SendRawJson(string json)
+        {
 #if UNITY_WEBGL && !UNITY_EDITOR
             ConcordWsSend(json);
             await Task.CompletedTask;
@@ -1872,16 +2002,32 @@ if (JsonFlagFalse(json, "ok"))
         async Task ReceiveLoop()
         {
             var buf = new byte[1 << 16];
-            while (_ws != null && _ws.State == WebSocketState.Open)
+            var msg = new System.IO.MemoryStream();
+            var ws = _ws;
+            try
             {
-                var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
-                if (result.MessageType == WebSocketMessageType.Close) break;
-                var text = Encoding.UTF8.GetString(buf, 0, result.Count);
-                TryParseEvt(text, out var evt);
-                HandleFrame(evt, text);
-                OnEvent?.Invoke(evt, text);
+                while (ws != null && ws.State == WebSocketState.Open)
+                {
+                    var result = await ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
+                    if (result.MessageType == WebSocketMessageType.Close) break;
+                    // A message larger than the buffer arrives in pieces; parse
+                    // only the whole thing (a full world:manifest can exceed 64 KB).
+                    msg.Write(buf, 0, result.Count);
+                    if (!result.EndOfMessage) continue;
+                    var text = Encoding.UTF8.GetString(msg.GetBuffer(), 0, (int)msg.Length);
+                    msg.SetLength(0);
+                    TryParseEvt(text, out var evt);
+                    try
+                    {
+                        HandleFrame(evt, text);
+                        OnEvent?.Invoke(evt, text);
+                    }
+                    catch (Exception e) { Debug.LogWarning("[ConcordClient] handler for " + evt + ": " + e.Message); }
+                }
             }
-            MarkDisconnected();
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogWarning("[ConcordClient] receive: " + e.Message); }
+            if (ws == _ws) MarkDisconnected();
         }
 #endif
 

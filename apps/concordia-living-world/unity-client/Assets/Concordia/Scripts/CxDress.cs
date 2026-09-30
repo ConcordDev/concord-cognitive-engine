@@ -110,9 +110,8 @@ namespace Concordia
 
         public static GameObject SpawnPrefab(string assetPath, Transform parent, Vector3 position, float yaw, string name)
         {
-#if UNITY_EDITOR
             if (string.IsNullOrEmpty(assetPath)) return null;
-            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+            var prefab = BuildAssets.Load<GameObject>(assetPath);
             if (!prefab) return null;
             var go = Object.Instantiate(prefab, parent);
             go.name = string.IsNullOrEmpty(name) ? prefab.name : name;
@@ -120,9 +119,6 @@ namespace Concordia
             go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             Debug.Log("[Concordia] CX prefab spawned path=" + assetPath + " name=" + go.name);
             return go;
-#else
-            return null;
-#endif
         }
 
         static bool TryApplyHeroPlate(ModularPerson person, Appearance look, bool steelLive)
@@ -229,15 +225,13 @@ namespace Concordia
             var key = folder + "/" + plate;
             if (_plateMaterials.TryGetValue(key, out var cached) && cached) return cached;
 
-#if UNITY_EDITOR
-            var authored = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            var authored = BuildAssets.Load<Material>(
                 "Assets/Concordia/Generated/Materials/" + folder + "/" + plate + ".mat");
             if (authored)
             {
                 _plateMaterials[key] = authored;
                 return authored;
             }
-#endif
 
             var texture = Tex(folder + "/" + plate + ".jpg");
             if (!texture) return null;

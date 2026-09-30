@@ -159,10 +159,15 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
       // already-resolved IP regardless of what the hostname string says —
       // so a URL-string loopback check can't see it (a test server bound to
       // 127.0.0.1 but addressed by a fake external-looking hostname to prove
-      // the pin bypasses real DNS, e.g. ssrf-guard-pinned-ip.test.js). Trust
-      // the guard that already ran rather than re-deriving safety from the
-      // URL text here.
-      if (init && init.dispatcher) return realFetch.call(this, input, init);
+      // the pin bypasses real DNS, e.g. ssrf-guard-pinned-ip.test.js). So
+      // decide on the PINNED IP, not the URL text: loopback pins pass, and
+      // anything else is external. (Trusting every dispatcher let real calls
+      // through — the World Bank client fetched live GDP data under "no-egress".)
+      if (init && init.dispatcher) {
+        const pinned = String(init.dispatcher.__concordPinnedIp || "");
+        if (/^(127\.|::1$|::ffff:127\.)/.test(pinned)) return realFetch.call(this, input, init);
+        return Promise.reject(new Error(`external fetch blocked under test (no-egress, pinned ${pinned || "unknown"})`));
+      }
       let url = "";
       try {
         url = typeof input === "string" ? input

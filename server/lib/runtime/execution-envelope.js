@@ -19,6 +19,7 @@
 import { randomUUID } from "node:crypto";
 import { getCapabilityDescriptor, checkCapabilityHealth } from "./capability-registry.js";
 import { publish } from "./event-bus.js";
+import { isOperator } from "./operator-gate.js";
 
 /**
  * @typedef {object} ExecutionRequest
@@ -78,7 +79,23 @@ export async function runCapability(request) {
   try {
     let raw;
     const lensActions = globalThis.__concordLensActions;
-    if (lensActions instanceof Map && lensActions.has(capability)) {
+    if (descriptor.implementation === "mcp") {
+      // Organ capabilities are Python MCP servers on the operator's machine,
+      // not macros: they previously passed the health check here and then
+      // threw "macro not found" in runMacro. Dispatch them through the
+      // governed AuthGate path (authority gates + verification + audit) —
+      // and only for the operator, same as the other private sister systems.
+      if (!isOperator(ctx)) return fail("operator_only");
+      const { dispatchMCP } = await import("../auth-gate/dispatch.js");
+      const tool = descriptor.mcp_tool_name || capability.replace(/\./g, "_");
+      const gated = await dispatchMCP(tool, input, {
+        actor: ctx.actor, db: ctx.db, STATE: ctx.STATE,
+        trace_id: requestId, why: request.intent ? { intent: request.intent } : undefined,
+      });
+      raw = gated && gated.ok === false
+        ? { ok: false, reason: gated.reason_code || gated.error || gated.decision || "auth_gate_denied", decision: gated.decision }
+        : (gated?.result ?? gated);
+    } else if (lensActions instanceof Map && lensActions.has(capability)) {
       const handler = lensActions.get(capability);
       const artifact = { id: null, domain, type: "domain_action", data: input, meta: {} };
       raw = await handler(ctx, artifact, input);

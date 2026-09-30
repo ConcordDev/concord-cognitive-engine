@@ -12,6 +12,7 @@
  * parent uses — they only execute if the module advertises `scope: 'world'`.
  */
 
+import "../lib/ollama-request-guard-install.js"; // brain requests: pinned num_ctx + thread cap (worker has its own fetch)
 import { parentPort, workerData, threadId } from "node:worker_threads";
 import { PARENT_TO_CHILD, CHILD_TO_PARENT } from "../lib/world-shard-protocol.js";
 

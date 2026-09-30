@@ -49,7 +49,9 @@ export async function runPredictResearchCycle() {
     return { ok: false, reason: "query_failed", error: err?.message };
   }
 
-  const ctx = { db, actor: { userId: "system" } };
+  // Trusted server-side heartbeat: role/internal mark it as such for the
+  // operator-only predict domain (lib/runtime/operator-gate.js).
+  const ctx = { db, actor: { userId: "system", role: "system", internal: true } };
   const results = [];
   for (const modelId of modelIds) {
     try {

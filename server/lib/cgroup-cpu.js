@@ -44,28 +44,58 @@ let _cached = null;
  * non-cgroup-limited environment where os.cpus() is already correct).
  * Cached — a process's cgroup cpuset doesn't change at runtime.
  */
+/** Count CPUs in a cpuset list like "0-3,8,10-11". Returns 0 when unparseable. */
+function countCpuset(spec) {
+  let count = 0;
+  for (const part of String(spec || "").split(",")) {
+    const m = part.trim().match(/^(\d+)(?:-(\d+))?$/);
+    if (!m) continue;
+    const lo = Number(m[1]);
+    const hi = m[2] != null ? Number(m[2]) : lo;
+    if (Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo) count += (hi - lo + 1);
+  }
+  return count;
+}
+
+/**
+ * Pure core of getRealCpuCount. A container can be limited two ways and
+ * RunPod uses the second: a cpuset (Cpus_allowed_list) and/or a CFS quota
+ * (cgroup v2 `cpu.max`, e.g. "680000 100000" = 6.8 CPUs over a 128-thread
+ * host's full cpuset). The usable count is the smallest of every signal
+ * present. (2026-09-27: a quota-only pod reported 128 here, so ONNX and the
+ * worker pools sized themselves for 128 cores inside 6.8.)
+ * @param {{cpusetSpec?:string|null, cpuMax?:string|null, availableParallelism?:number|null, hostCpus:number}} s
+ */
+export function computeCpuCount({ cpusetSpec = null, cpuMax = null, availableParallelism = null, hostCpus }) {
+  const limits = [];
+  const set = countCpuset(cpusetSpec);
+  if (set > 0) limits.push(set);
+  const m = String(cpuMax || "").trim().match(/^(\d+)\s+(\d+)$/); // "max 100000" = unlimited
+  if (m && Number(m[2]) > 0) limits.push(Math.max(1, Math.ceil(Number(m[1]) / Number(m[2]))));
+  if (Number.isInteger(availableParallelism) && availableParallelism > 0) limits.push(availableParallelism);
+  return Math.max(1, limits.length ? Math.min(...limits) : hostCpus);
+}
+
+function readOr(path) {
+  try { return fs.readFileSync(path, "utf8"); } catch { return null; }
+}
+
 export function getRealCpuCount() {
   if (_cached != null) return _cached;
-  try {
-    const status = fs.readFileSync("/proc/self/status", "utf8");
+  let cpusetSpec = null;
+  const status = readOr("/proc/self/status");
+  if (status) {
     const line = status.split("\n").find((l) => l.toLowerCase().startsWith("cpus_allowed_list:"));
-    const spec = line?.split(/:\s*/)[1]?.trim();
-    if (spec) {
-      let count = 0;
-      for (const part of spec.split(",")) {
-        const m = part.match(/^(\d+)(?:-(\d+))?$/);
-        if (!m) continue;
-        const lo = Number(m[1]);
-        const hi = m[2] != null ? Number(m[2]) : lo;
-        if (Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo) count += (hi - lo + 1);
-      }
-      if (count > 0) {
-        _cached = count;
-        return _cached;
-      }
-    }
-  } catch { /* /proc/self/status unavailable — not Linux, or sandboxed */ }
-  _cached = Math.max(1, os.cpus().length);
+    cpusetSpec = line?.split(/:\s*/)[1]?.trim() || null;
+  }
+  let ap = null;
+  try { ap = typeof os.availableParallelism === "function" ? os.availableParallelism() : null; } catch { /* old node */ }
+  _cached = computeCpuCount({
+    cpusetSpec,
+    cpuMax: readOr("/sys/fs/cgroup/cpu.max"),
+    availableParallelism: ap,
+    hostCpus: Math.max(1, os.cpus().length),
+  });
   return _cached;
 }
 

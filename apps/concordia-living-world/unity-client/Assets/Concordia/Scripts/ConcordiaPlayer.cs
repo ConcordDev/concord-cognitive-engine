@@ -276,7 +276,9 @@ namespace Concordia
             {
                 _moveSentAt = Time.time + 0.08f;
                 var client = ConcordClient.Live;
-                if (client && client.Connected)
+                // The headless world host is not a player — it must never appear in
+                // everyone's city:positions.
+                if (client && client.Connected && !ConcordiaHost.WorldHostMode)
                     _ = client.SendMove(transform.position.x, transform.position.y, transform.position.z, client.WorldId);
             }
 

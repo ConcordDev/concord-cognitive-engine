@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  regexLiteralEnd,
   stripComments,
   collectLiveServerEvents,
   collectDirectSubscriptions,
@@ -156,6 +157,45 @@ test("collectLiveServerEvents resolves emitWorldEvent({ event: '…' }) object-l
   } finally {
     rmDir(serverDir);
   }
+});
+
+test("regex literals: a quote inside a regex does not flip string parity (a helper after it still resolves, a comment-only name still does not)", () => {
+  const serverDir = makeTempDir("client-event-contract-regex-literal-");
+  try {
+    writeFile(
+      serverDir,
+      "lib/regex-parity.js",
+      [
+        "const PATTERNS = [",
+        "  /act\\s+as\\s+(if|though)\\s+you\\s+(have\\s+no|don't\\s+have)/i,",
+        "];",
+        "function emitToRegion(regionId, event, payload) {",
+        "  // one gateway's hiccup must not starve the other",
+        "  io.to('region:' + regionId).emit(event, payload);",
+        "}",
+        "export function go() {",
+        "  emitToRegion('r1', 'region:ping', {});",
+        "  // emitToRegion('r1', 'region:only-in-a-comment', {});",
+        "  const ratio = total / count / 2;",
+        "}",
+      ].join("\n"),
+    );
+    const live = collectLiveServerEvents(serverDir);
+    assert.ok(live.has("region:ping"), "a helper declared after a regex containing a quote must still resolve");
+    assert.ok(!live.has("region:only-in-a-comment"), "a comment-only call must still be stripped");
+  } finally {
+    rmDir(serverDir);
+  }
+});
+
+test("regexLiteralEnd: regex after an operator, division after an operand", () => {
+  const re = "x = /don't/g;";
+  assert.equal(regexLiteralEnd(re, 4, re, 4), 12);
+  const div = "a / b / c";
+  assert.equal(regexLiteralEnd(div, 2, div, 2), -1);
+  const ret = "return /[/]x/.test(s)";
+  assert.equal(regexLiteralEnd(ret, 7, ret, 7), 13);
+  assert.equal(stripComments("const r = /'/; // gone\nkeep('x');"), "const r = /'/; \nkeep('x');");
 });
 
 test("collectLiveServerEvents recognizes a _tickRssDomain-indirect event ('retail:update') as LIVE against the real server/ tree", () => {

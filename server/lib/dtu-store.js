@@ -14,6 +14,7 @@
 
 import logger from '../logger.js';
 import crypto from 'node:crypto';
+import { compressedByteLength } from './dtu-at-rest.js';
 import { detectKind } from './dtu-attachment.js';
 import { enrichDtuOnWrite } from './dtu-cognitive-schema.js';
 
@@ -207,7 +208,8 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       const now = new Date().toISOString();
       const bodyJson = JSON.stringify(dtu.body || dtu.content || dtu);
       const content_hash = crypto.createHash("sha256").update(bodyJson).digest("hex");
-      const compressed_size = Buffer.byteLength(bodyJson, "utf8");
+      // Real gzip size of the body (was the raw length, mislabeled).
+      const compressed_size = compressedByteLength(bodyJson);
       // Coerce every bind arg to its expected scalar type so a stray object
       // (e.g. dtu.source mutated to an object mid-pipeline) doesn't crash
       // the native better-sqlite3 bind. This is the smoking-gun fix for the

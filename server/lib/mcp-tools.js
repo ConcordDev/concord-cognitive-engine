@@ -2090,6 +2090,8 @@ async function dtuRetrievalEval(db, args = {}) {
  * Each wrapper spawns the organ's Python entrypoint and forwards the call.
  * ======================================================================== */
 
+export async function _organCallForTest(...a) { return organCall(...a); }
+
 async function organCall(organPath, toolName, args, organLabel) {
   const { spawn } = await import("node:child_process");
   const path = await import("node:path");
@@ -2148,6 +2150,13 @@ async function organCall(organPath, toolName, args, organLabel) {
       proc.on("error", (e) => {
         resolve({ ok: false, error: organLabel + " spawn failed: " + e.message });
       });
+      // If the organ script is missing or exits before reading (any box that
+      // isn't the owner's Mac — the ORGANS paths below are local), the write
+      // hits a closed pipe and EPIPE arrives as an async stream 'error'. The
+      // try/catch can't see it, and with no listener it crashed the whole
+      // backend (seen on the GPU pod 2026-09-27). The close handler above
+      // already resolves an honest { ok:false }.
+      proc.stdin.on("error", () => { /* organ exited early; close handler reports it */ });
       proc.stdin.write(init + "\n" + callMsg + "\n");
       proc.stdin.end();
     } catch (e) {

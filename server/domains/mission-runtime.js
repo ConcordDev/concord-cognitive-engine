@@ -30,7 +30,11 @@ import { computeDilaCapabilityIndex } from "../lib/runtime/dila-capability-index
 import { listConfig } from "../lib/runtime/runtime-config.js";
 import { listCapabilities, forgeCapabilityFromNeed } from "../lib/capability-forge/index.js";
 import { causalMemoryOverview } from "../lib/runtime/causal-memory.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 
+// Each capability name MUST equal a real `register(domain, name)` below —
+// checkCapabilityHealth resolves the name literally. (Four were registered
+// under names no handler used, so they reported unreachable.)
 const CAPABILITY_DESCRIPTORS = [
   { capability: "mission.create", owner: "mission-runtime", risk: "write", description: "Create a durable multi-step organ mission.", dependencies: ["db", "dispatchMCP"] },
   { capability: "mission.list", owner: "mission-runtime", risk: "read", description: "List mission tasks.", dependencies: ["db"] },
@@ -40,10 +44,10 @@ const CAPABILITY_DESCRIPTORS = [
   { capability: "mission.abandon", owner: "mission-runtime", risk: "write", description: "Abandon a mission (terminal).", dependencies: ["db"] },
   { capability: "mission.overview", owner: "mission-runtime", risk: "read", description: "Mission runtime health + counts.", dependencies: ["db"] },
   { capability: "mission.plan", owner: "mission-runtime", risk: "read", description: "Plan mission steps from a goal (deterministic or LLM).", dependencies: ["db"] },
-  { capability: "runtime.supervisor", owner: "mission-runtime", risk: "read", description: "Aggregate runtime subsystem health.", dependencies: ["db", "dispatchMCP"] },
-  { capability: "runtime.benchmark", owner: "mission-runtime", risk: "write", description: "Run DilaBench scenarios.", dependencies: ["db", "dispatchMCP"] },
-  { capability: "dila.mission_kickoff", owner: "dila-mission", risk: "write", description: "Kick off a Dila-owned mission with agent loop.", dependencies: ["db", "dispatchMCP"] },
-  { capability: "runtime.workspace_audit", owner: "mission-runtime", risk: "read", description: "Audit workspace keys and data sources.", dependencies: ["db"] },
+  { capability: "mission.supervisor", owner: "mission-runtime", risk: "read", description: "Aggregate runtime subsystem health.", dependencies: ["db", "dispatchMCP"] },
+  { capability: "mission.benchmark", owner: "mission-runtime", risk: "write", description: "Run DilaBench scenarios.", dependencies: ["db", "dispatchMCP"] },
+  { capability: "dila.kickoff_mission", owner: "mission-runtime", risk: "write", description: "Kick off a Dila-owned mission with agent loop.", dependencies: ["db", "dispatchMCP"] },
+  { capability: "dila.workspace_audit", owner: "mission-runtime", risk: "read", description: "Audit workspace keys and data sources.", dependencies: ["db"] },
   { capability: "dila.mission_control", owner: "mission-runtime", risk: "read", description: "Mission control plane aggregate.", dependencies: ["db"] },
   { capability: "dila.capability_index", owner: "mission-runtime", risk: "read", description: "Dila capability index (20 dimensions).", dependencies: ["db"] },
   { capability: "dila.runtime_config", owner: "mission-runtime", risk: "read", description: "Ouroboros-promoted runtime config KV.", dependencies: ["db"] },
@@ -56,7 +60,9 @@ async function getDispatch() {
   return mod.dispatchMCP;
 }
 
-export default function registerMissionRuntimeMacros(register) {
+export default function registerMissionRuntimeMacros(rawRegistrar) {
+  // Operator-only: private sister-system state (lib/runtime/operator-gate.js).
+  const register = operatorOnlyRegistrar(rawRegistrar);
   register("mission", "create", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
@@ -157,7 +163,10 @@ export default function registerMissionRuntimeMacros(register) {
     if (!db || !input?.goal) return { ok: false, reason: "missing_goal" };
     const dispatchMCP = await getDispatch();
     const { runCodingLoopIteration } = await import("../lib/coding-loop.js");
-    return runCodingLoopIteration({ db, goal: input.goal, dispatchMCP, repoRoot: input.repoRoot });
+    const { allowedRepoRoot } = await import("../lib/runtime/repo-graph.js");
+    const repoRoot = allowedRepoRoot(input.repoRoot);
+    if (!repoRoot) return { ok: false, reason: "repo_root_not_allowed" };
+    return runCodingLoopIteration({ db, goal: input.goal, dispatchMCP, repoRoot });
   }, { note: "Run one coding-loop iteration (index → search → verify)." });
 
   register("mission", "spawn_marathon", async (ctx, input = {}) => {

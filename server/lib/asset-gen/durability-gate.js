@@ -23,38 +23,15 @@
 // caller-overridable precisely because it should be calibrated per
 // material system before any result is relied on.
 //
-// ── 🔴 The fea-solver.js zero-stiffness bug this module guards against ──
-// server/lib/simulation/fea-solver.js#buildStiffnessMatrix assigns EVERY
-// member's bending stiffness to exactly ONE transverse DOF pair, chosen
-// purely from `Math.abs(lz) < 0.001`: members with |lz|<0.001 get bending
-// on (uy,rz); everything else gets it on (ux,ry). For a member whose
-// direction is (near-)PURELY along global Y (ly≈±1, lx≈0, lz≈0), this
-// mislabels the member's own AXIAL direction (uy) as its transverse
-// bending direction — so the member's genuine transverse directions (ux,
-// uz) receive ZERO stiffness contribution from it. If nothing else braces
-// those DOFs, solveSystem's Gaussian elimination hits a near-zero pivot
-// and its `if (Math.abs(pivot) < 1e-12) continue;` (fea-solver.js) SILENTLY
-// skips that row, leaving the displacement at exactly 0 — reading as
-// "infinitely rigid" with NO error surfaced anywhere. Verified empirically
-// (not just from the design pass): a vertical (Y-axis) cantilever loaded
-// transversely in X returns `dx:0` with `ok:true`, while the identical
-// cantilever built along X (loaded transversely in Y) returns the exact
-// textbook PL³/3EI. This is exactly the kind of silent zero the
-// "compute-don't-guess" doctrine exists to catch — `assertSupportedOrientation`
-// below is the guard, and checkDurabilityGate calls it before EVERY
-// runFEA call in this module.
-//
-// (This solver has a broader, related simplification — since only ONE
-// transverse DOF pair is ever assigned per member, EVERY member is only
-// rigorously modeled for loading in ONE of its two true transverse
-// directions, not both, and diagonal members' bending is not resolved
-// into a proper local frame at all. This module does not attempt to fix
-// that broader limitation — out of scope, and fea-solver.js is
-// unchanged-by-mandate — but flags it here for the next reader. The
-// specific, verified, silently-wrong-with-no-error case this module
-// guards against is the Y-axis one described above, which is also the
-// most consequential in practice: a vertical column is an extremely
-// common real structural member.)
+// ── Member-geometry precondition ──
+// This module used to refuse every member lying along global Y, because
+// fea-solver.js assigned bending stiffness to a fixed global DOF pair and so
+// silently returned zero deflection for a transversely-loaded column. That
+// solver bug was fixed on 2026-09-27 (a proper 12-DOF frame element with an
+// orientation transform — tests/fea-frame-element.test.js), so columns and
+// inclined members are now solved correctly and are no longer refused here.
+// `assertSupportedOrientation` keeps only the genuine precondition: every
+// member must reference existing nodes and have non-zero length.
 
 import { runFEA } from '../simulation/fea-solver.js';
 import { getMaterial } from './mass-properties.js';
@@ -69,7 +46,6 @@ import {
 } from '../simulation/degradation-kinetics.js';
 
 const MPA_TO_PA = 1e6;
-const ORIENTATION_EPS = 1e-3; // matches fea-solver.js's own `Math.abs(lz) < 0.001` branch threshold exactly
 
 export const DEFAULT_SAMPLE_YEARS = Object.freeze([0, 5, 10, 25, 50]);
 export const DEFAULT_KNOCKDOWN_LAW_ID = 'linear-damage-fraction-lemaitre-chaboche';
@@ -99,13 +75,9 @@ function directionCosines(nodes, member) {
 }
 
 /**
- * Guard against fea-solver.js's silent zero-stiffness bug (see file
- * header). Flags any member whose direction is (near-)purely along
- * global Y — the specific, verified, silently-wrong case — and any
- * member with a dangling node reference or zero length (which
- * fea-solver.js's own nodeIndex()/memberCosines() would throw on, so this
- * surfaces that as an honest pre-check failure instead of an uncaught
- * exception mid-solve).
+ * Member-geometry precondition (name kept for callers): every member must
+ * reference existing nodes and have non-zero length — fea-solver.js would
+ * otherwise throw mid-solve. Orientation is no longer restricted (see header).
  * @param {Array} nodes [{id,x,y,z}]
  * @param {Array} members [{id,nodeI,nodeJ,...}]
  * @returns {{ok:boolean, reason?:string, memberIds?:string[]}}
@@ -113,18 +85,10 @@ function directionCosines(nodes, member) {
 export function assertSupportedOrientation(nodes, members) {
   const badIds = [];
   for (const m of members) {
-    const dc = directionCosines(nodes, m);
-    if (!dc) {
-      badIds.push(String(m.id));
-      continue;
-    }
-    const { lx, lz } = dc;
-    if (Math.abs(lz) < ORIENTATION_EPS && Math.abs(lx) < ORIENTATION_EPS) {
-      badIds.push(String(m.id));
-    }
+    if (!directionCosines(nodes, m)) badIds.push(String(m.id));
   }
   return badIds.length > 0
-    ? { ok: false, reason: 'unsupported_member_orientation', memberIds: badIds }
+    ? { ok: false, reason: 'invalid_member_geometry', memberIds: badIds }
     : { ok: true };
 }
 

@@ -1,0 +1,289 @@
+{
+ "note": "Expected values are textbook/definition results, hand-checked — not router output.",
+ "eval": [
+  {
+   "id": "arith",
+   "q": "What is 1234 * 5678?",
+   "expect": [
+    7006652
+   ]
+  },
+  {
+   "id": "percent",
+   "q": "What is 15% of 240?",
+   "expect": [
+    36
+   ]
+  },
+  {
+   "id": "integral",
+   "q": "What is the integral of x^2 with respect to x?",
+   "expectText": [
+    "x^3 / 3",
+    "x^3/3"
+   ]
+  },
+  {
+   "id": "derivative",
+   "q": "What is the derivative of x^3 + 2x?",
+   "expectText": [
+    "3x^2 + 2"
+   ]
+  },
+  {
+   "id": "kg-lb",
+   "q": "Convert 100 kg to pounds.",
+   "expect": [
+    220.46
+   ]
+  },
+  {
+   "id": "f-c",
+   "q": "Convert 72 degrees Fahrenheit to Celsius.",
+   "expect": [
+    22.22
+   ]
+  },
+  {
+   "id": "buckling",
+   "q": "What is the Euler buckling load of a pinned-pinned steel column 12 ft long with E = 29,000,000 psi and I = 82.8 in^4?",
+   "expect": [
+    1142.9,
+    1142886
+   ]
+  },
+  {
+   "id": "vdrop",
+   "q": "What is the voltage drop for 20 A over 75 ft of 12 AWG copper wire on a 120 V single-phase circuit?",
+   "expect": [
+    5.79
+   ]
+  },
+  {
+   "id": "pipe",
+   "q": "What pipe diameter do I need for 50 gpm at a velocity of 5 ft/s?",
+   "expect": [
+    2.02
+   ]
+  },
+  {
+   "id": "pump",
+   "q": "What brake horsepower does a pump need for 50 gpm at 80 ft of head with 70% efficiency?",
+   "expect": [
+    1.443,
+    1.44
+   ]
+  },
+  {
+   "id": "heatloss",
+   "q": "What is the heat loss through a 400 sq ft wall with R-13 insulation and a 30 F temperature difference?",
+   "expect": [
+    923
+   ]
+  },
+  {
+   "id": "beam-simple",
+   "q": "A simply supported steel beam 20 ft long carries a 1000 lb point load at midspan. E = 29,000,000 psi, I = 200 in^4. What is the maximum deflection?",
+   "expect": [
+    0.04966,
+    0.0497
+   ]
+  },
+  {
+   "id": "beam-cant",
+   "q": "A cantilever beam 10 ft long has a 1000 lb tip load, E = 29,000,000 psi, I = 100 in^4. What is the tip deflection?",
+   "expect": [
+    0.1986,
+    0.199
+   ]
+  },
+  {
+   "id": "ohm",
+   "q": "What current flows through a 4 ohm resistor with 12 V across it?",
+   "expect": [
+    3
+   ]
+  },
+  {
+   "id": "ke",
+   "q": "What is the kinetic energy of a 2 kg mass moving at 3 m/s?",
+   "expect": [
+    9
+   ]
+  },
+  {
+   "id": "stdev",
+   "q": "What is the population standard deviation of 2, 4, 4, 4, 5, 5, 7, 9?",
+   "expect": [
+    2
+   ]
+  },
+  {
+   "id": "molar",
+   "q": "What is the molar mass of H2SO4?",
+   "expect": [
+    98.07,
+    98.08,
+    98.079
+   ]
+  },
+  {
+   "id": "interest",
+   "q": "What is $1000 compounded annually at 5% for 10 years?",
+   "expect": [
+    1628.89
+   ]
+  },
+  {
+   "id": "circle",
+   "q": "What is the area of a circle with radius 3?",
+   "expect": [
+    28.27
+   ]
+  },
+  {
+   "id": "sqrt2pi",
+   "q": "What is sqrt(2) times pi?",
+   "expect": [
+    4.443,
+    4.4429
+   ]
+  }
+ ],
+ "heldout": [
+  {
+   "id": "h-arith",
+   "q": "calculate 987 * 654",
+   "expect": [
+    645498
+   ]
+  },
+  {
+   "id": "h-percent",
+   "q": "what's 7.5% of $1,200?",
+   "expect": [
+    90
+   ]
+  },
+  {
+   "id": "h-deriv",
+   "q": "what is the derivative of 5x^2 - 3x + 7",
+   "expectText": [
+    "10x - 3"
+   ]
+  },
+  {
+   "id": "h-integ",
+   "q": "integrate 3x^2",
+   "expectText": [
+    "x^3"
+   ]
+  },
+  {
+   "id": "h-conv-len",
+   "q": "how many feet in 3 meters",
+   "expect": [
+    9.8425
+   ]
+  },
+  {
+   "id": "h-conv-temp",
+   "q": "convert 100 C to F",
+   "expect": [
+    212
+   ]
+  },
+  {
+   "id": "h-buck",
+   "q": "Euler buckling load for a fixed-fixed steel column 20 ft long with I = 150 in^4?",
+   "expect": [
+    2981,
+    2981.45
+   ]
+  },
+  {
+   "id": "h-vdrop",
+   "q": "Voltage drop on 10 AWG copper, 30 amps, 100 feet, 240 volts single phase?",
+   "expect": [
+    7.26
+   ]
+  },
+  {
+   "id": "h-pump",
+   "q": "Pump brake horsepower for 200 gpm and 50 ft of head at 75% efficiency?",
+   "expect": [
+    3.367,
+    3.37
+   ]
+  },
+  {
+   "id": "h-pipe",
+   "q": "What pipe size for 100 gpm at 6 ft/s?",
+   "expect": [
+    2.61
+   ]
+  },
+  {
+   "id": "h-heat",
+   "q": "heat loss through 250 sq ft of wall, R-19, 40 degree temperature difference",
+   "expect": [
+    526.3
+   ]
+  },
+  {
+   "id": "h-ohm",
+   "q": "what resistance draws 2 amps from a 9 volt battery?",
+   "expect": [
+    4.5
+   ]
+  },
+  {
+   "id": "h-ke",
+   "q": "kinetic energy of a 1500 kg car at 20 m/s",
+   "expect": [
+    300000
+   ]
+  },
+  {
+   "id": "h-mean",
+   "q": "what is the average of 10, 20, 30, 45",
+   "expect": [
+    26.25
+   ]
+  },
+  {
+   "id": "h-molar",
+   "q": "molar mass of C6H12O6",
+   "expect": [
+    180.156,
+    180.16
+   ]
+  },
+  {
+   "id": "h-circle",
+   "q": "circumference of a circle with diameter 10",
+   "expect": [
+    31.4159,
+    31.42
+   ]
+  }
+ ],
+ "negatives": [
+  "Why do engineers limit beam deflection to L/360?",
+  "What is 2024 known for in AI?",
+  "I scored 12 * 4 points in the game last night, nice right?",
+  "Tell me about the history of the circle in art",
+  "My pump broke, what brands are reliable?",
+  "How does voltage drop affect LED lighting?",
+  "What is the mean of life?",
+  "Explain compound interest simply",
+  "I weigh 180 pounds, is that healthy for 6 ft?",
+  "Meet me at 3 in room 204",
+  "What is the derivative of success? lol",
+  "Convert my notes into a summary",
+  "How many people live in 2 cities like Boston",
+  "What does R-13 insulation mean?",
+  "Is 15% a good tip?",
+  "what is the average rent in New York"
+ ]
+}

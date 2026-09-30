@@ -504,13 +504,15 @@ export async function tickMission({ db, missionId, dispatchMCP, STATE = null }) 
   let gateResult;
   if (INTERNAL_RUNTIME_TOOLS.has(step.tool)) {
     if (step.tool === "repo_graph_index") {
-      const { indexRepo } = await import("./runtime/repo-graph.js");
-      const idx = await indexRepo(db, step.args?.repoRoot);
+      const { indexRepo, allowedRepoRoot } = await import("./runtime/repo-graph.js");
+      const allowedRoot = allowedRepoRoot(step.args?.repoRoot);
+      const idx = allowedRoot ? await indexRepo(db, allowedRoot) : { ok: false, reason: "repo_root_not_allowed" };
       try {
         const { indexAstLayer } = await import("./runtime/repo-graph-ast.js");
         const { readdirSync } = await import("node:fs");
         const { join } = await import("node:path");
-        const root = idx.repoRoot || process.cwd();
+        const root = allowedRoot;
+        if (!root) throw new Error("repo_root_not_allowed"); // skip the AST pass too
         const files = [];
         for (const sub of ["server", "concord-frontend"]) {
           try {

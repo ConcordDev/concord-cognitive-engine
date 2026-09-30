@@ -26,6 +26,7 @@ const SECRET_KEY_RE = /^(auth|authorization|api[_-]?key|access[_-]?token|refresh
  * @param {string} [overrides.trading]
  * @param {string} [overrides.zuko]
  * @param {string} [overrides.cyberRange]
+ * @param {string} [overrides.polymarket]
  * @param {string} [overrides.repoRoot]
  */
 export function resolveSisterHomes(overrides = {}) {
@@ -40,6 +41,9 @@ export function resolveSisterHomes(overrides = {}) {
     cyberRange: overrides.cyberRange
       ?? process.env.CONCORD_CYBER_RANGE_HOME
       ?? path.join(homedir, ".hermes", "dila-tools", "cyber-range"),
+    polymarket: overrides.polymarket
+      ?? process.env.CONCORD_POLYMARKET_HOME
+      ?? path.join(homedir, ".polymarket"),
     repoRoot: overrides.repoRoot
       ?? process.env.CONCORD_REPO_ROOT
       ?? DEFAULT_REPO_ROOT,

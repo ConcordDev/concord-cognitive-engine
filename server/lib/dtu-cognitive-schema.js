@@ -3,12 +3,31 @@
 // Cognitive enrichment layer on DTUs: causal graph, outcomes, applicability,
 // invalidation, and usage history. Backed by dtu_cognitive_meta (mig 440).
 
+// Per-db caches. Every DTU write goes through enrichDtuOnWrite, and a CPU
+// profile of the CI load test (2026-09-30) put ~6s of main-thread time in a
+// sqlite_master lookup + fresh prepare per call. Only a positive "table
+// exists" is cached, so a table a later migration creates is still found.
+const _tableReady = new WeakMap();
+const _stmts = new WeakMap();
+
 function tableReady(db) {
+  if (!db) return false;
+  if (_tableReady.get(db)) return true;
   try {
-    return !!db?.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtu_cognitive_meta'`).get();
+    const ok = !!db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtu_cognitive_meta'`).get();
+    if (ok) _tableReady.set(db, true);
+    return ok;
   } catch {
     return false;
   }
+}
+
+function stmt(db, sql) {
+  let m = _stmts.get(db);
+  if (!m) { m = new Map(); _stmts.set(db, m); }
+  let st = m.get(sql);
+  if (!st) { st = db.prepare(sql); m.set(sql, st); }
+  return st;
 }
 
 function parseJson(val, fallback) {
@@ -30,7 +49,7 @@ function nowIso() {
 export function getCognitiveMeta(db, dtuId) {
   if (!db || !dtuId || !tableReady(db)) return null;
   try {
-    const row = db.prepare(`SELECT * FROM dtu_cognitive_meta WHERE dtu_id = ?`).get(dtuId);
+    const row = stmt(db, `SELECT * FROM dtu_cognitive_meta WHERE dtu_id = ?`).get(dtuId);
     if (!row) return null;
     return {
       dtuId: row.dtu_id,
@@ -76,7 +95,7 @@ export function upsertCognitiveMeta(db, dtuId, patch = {}) {
   };
 
   try {
-    db.prepare(`
+    stmt(db, `
       INSERT INTO dtu_cognitive_meta (
         dtu_id, causal_parents_json, causal_children_json, outcomes_json,
         applicability_json, invalidation_json, usage_history_json, confidence, updated_at

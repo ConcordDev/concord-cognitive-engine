@@ -46,6 +46,22 @@ export const BUDGET_RATIOS = Object.freeze({
   responseSpace: 0.25,    // User message + generation space
 });
 
+/**
+ * Absolute ceiling on the DTU context block, on top of the 50% ratio.
+ * The ratio alone scales with the context window: at the conscious brain's
+ * 32K window it handed retrieval ~16K tokens and retrieval always filled it
+ * (MEGA "background depth" summaries last), so "hey what's up" shipped a
+ * 16.6K-token system prompt. Prefill of that took 23-49 s per turn on a
+ * 24 GB GPU slice (measured 2026-09-27) and dominated every chat latency.
+ * The window stays large for long conversations; only the knowledge block
+ * is capped. Priority order is unchanged, so the most relevant DTUs still
+ * win the space. Override with CONCORD_DTU_CONTEXT_MAX_TOKENS.
+ */
+export function dtuContextCapTokens(env = process.env) {
+  const n = Number(env.CONCORD_DTU_CONTEXT_MAX_TOKENS);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3000;
+}
+
 // ── DTU Formatting ───────────────────────────────────────────────────────────
 
 /**
@@ -162,7 +178,7 @@ export function assembleWithTokenBudget(opts) {
   const budgets = {
     systemPrompt: Math.floor(contextWindow * BUDGET_RATIOS.systemPrompt),
     conversationSummary: Math.floor(contextWindow * BUDGET_RATIOS.conversationSummary),
-    dtuContext: Math.floor(contextWindow * BUDGET_RATIOS.dtuContext),
+    dtuContext: Math.min(Math.floor(contextWindow * BUDGET_RATIOS.dtuContext), dtuContextCapTokens()),
     responseSpace: Math.floor(contextWindow * BUDGET_RATIOS.responseSpace),
   };
 
@@ -285,7 +301,7 @@ export function computeBudgetBreakdown(contextWindow) {
     budgets: {
       systemPrompt: Math.floor(cw * BUDGET_RATIOS.systemPrompt),
       conversationSummary: Math.floor(cw * BUDGET_RATIOS.conversationSummary),
-      dtuContext: Math.floor(cw * BUDGET_RATIOS.dtuContext),
+      dtuContext: Math.min(Math.floor(cw * BUDGET_RATIOS.dtuContext), dtuContextCapTokens()),
       responseSpace: Math.floor(cw * BUDGET_RATIOS.responseSpace),
     },
     ratios: { ...BUDGET_RATIOS },

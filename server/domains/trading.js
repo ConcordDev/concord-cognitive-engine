@@ -12,6 +12,7 @@ import {
 } from "../lib/runtime/trading-observe.js";
 import { observeZuko } from "../lib/runtime/zuko-observe.js";
 import { resolveSisterHomes } from "../lib/runtime/sister-homes.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 
 const CAPABILITY_DESCRIPTORS = [
   { capability: "trading.status", owner: "trading", risk: "read", description: "Presence + lock state of Dila AutoTrader and Zuko books.", dependencies: [] },
@@ -37,7 +38,9 @@ function homesFrom(p) {
   return resolveSisterHomes();
 }
 
-export default function registerTrading(registerLensAction) {
+export default function registerTrading(rawRegistrar) {
+  // Operator-only: private sister-system state (lib/runtime/operator-gate.js).
+  const registerLensAction = operatorOnlyRegistrar(rawRegistrar);
   registerLensAction("trading", "status", (ctx, artifact, params) => {
     const homes = homesFrom(payloadOf(artifact, params));
     const dila = observeDilaTrading({ homes });

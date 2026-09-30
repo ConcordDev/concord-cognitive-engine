@@ -108,6 +108,12 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
+            // Other players' avatars — players only. The headless host renders
+            // nothing; at 100 players it was spending ~100% CPU building bodies
+            // no one could see (measured on the pod 2026-09-27).
+            if (!ConcordiaHost.WorldHostMode) RemotePlayers.Install(kernel);
+            if (ConcordiaHost.WorldHostMode) WorldHostPublisher.Install(kernel); // this process runs the world for everyone
+            else WorldHostClient.Install(kernel); // render the host's world when one is live
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -182,6 +188,8 @@ namespace Concordia
             if (q != null) QuestLog.Offer(q, WorldId.Hub);
         }
 
+bool _needsCharacterCreator;
+
 System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera chase, ConcordClient kernel)
         {
             var stagePath = System.IO.Path.Combine(Application.dataPath, "Concordia/Generated/runtime-stage.txt");
@@ -210,6 +218,39 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             }
             // Let guest/gate CX settle — AttachHero same frame as last guest was the cliff.
             for (int i = 0; i < 20; i++) yield return null;
+
+            // Your character lives on your Concord account: load it before the hero
+            // is built so you appear as yourself on any device. Bounded wait — a
+            // slow or offline server falls back to the local cache, never blocks entry.
+            bool accountHasCharacter = false;
+            if (kernel != null)
+            {
+                var connectTask = kernel.Connected ? null : kernel.EnsureConnected();
+                float connectBy = Time.realtimeSinceStartup + 4f;
+                while (connectTask != null && !connectTask.IsCompleted && Time.realtimeSinceStartup < connectBy) yield return null;
+                if (kernel.Connected)
+                {
+                    var loadTask = kernel.LoadAccountCharacter(5000);
+                    float loadBy = Time.realtimeSinceStartup + 6f;
+                    while (!loadTask.IsCompleted && Time.realtimeSinceStartup < loadBy) yield return null;
+                    if (loadTask.IsCompleted && !loadTask.IsFaulted && loadTask.Result != null)
+                    {
+                        look = loadTask.Result;
+                        accountHasCharacter = true;
+                        AppearanceStore.Save(look); // refresh the local cache from the account
+                        Debug.Log("[Concordia] loaded account character: " + look.displayName);
+                    }
+                }
+            }
+            _needsCharacterCreator = !accountHasCharacter && !AppearanceStore.HasSaved;
+            // A character made on this device before accounts held them: adopt it
+            // onto the account instead of making the player create it again.
+            if (!accountHasCharacter && AppearanceStore.HasSaved && kernel != null && kernel.Connected)
+            {
+                var local = AppearanceStore.Load();
+                _ = kernel.SaveAccountCharacter(local);
+                look = local;
+            }
 
             var lean = _player ? _player.transform.Find("LeanHero") : null;
             if (lean) Destroy(lean.gameObject);
@@ -249,6 +290,18 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             }
             // Spread kit/gear work off the bind frame.
             for (int i = 0; i < 12; i++) yield return null;
+
+            // First visit on this account: make your own character before you play.
+            if (_needsCharacterCreator && !ConcordiaHost.WorldHostMode && _player && _player.person != null && !CharacterCreator.IsOpen)
+            {
+                Debug.Log("[Concordia] no character on this account yet — opening the character creator");
+                CharacterCreator.Open(_player.person, _player, chase, () =>
+                {
+                    ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
+                    OfferFoundingDay();
+                });
+                _needsCharacterCreator = false;
+            }
 
             Debug.Log("[Concordia] LeanPlay: GameplayCoreBridge.Install (locomotion-light)");
             try

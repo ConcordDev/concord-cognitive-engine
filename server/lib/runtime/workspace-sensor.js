@@ -18,14 +18,24 @@ function tablesReady(db) {
   }
 }
 
-async function gitState(repoRoot) {
+// Every executive mission step samples git. Uncached that was three `git`
+// processes per step — `git status` walking the whole tree, untracked asset
+// folders included — seen at ~300% CPU on a 6.8-CPU box (2026-09-27). One
+// result per repo is shared for GIT_STATE_TTL_MS, and concurrent callers
+// share the in-flight probe. A step still sees commits/branch switches within
+// the TTL.
+const GIT_STATE_TTL_MS = Number(process.env.CONCORD_GIT_STATE_TTL_MS) || 10_000;
+const _gitCache = new Map(); // repoRoot → { at, value, pending }
+
+async function probeGit(repoRoot) {
   try {
-    const { stdout: branch } = await execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: repoRoot });
-    const { stdout: commit } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repoRoot });
-    const { stdout: status } = await execFileAsync("git", ["status", "--porcelain"], { cwd: repoRoot });
+    // One process: the commit, then (--abbrev-ref applies to what follows) the branch.
+    const { stdout: head } = await execFileAsync("git", ["rev-parse", "HEAD", "--abbrev-ref", "HEAD"], { cwd: repoRoot });
+    const [commit, branch] = head.trim().split("\n");
+    const { stdout: status } = await execFileAsync("git", ["status", "--porcelain"], { cwd: repoRoot, maxBuffer: 16 * 1024 * 1024 });
     return {
-      branch: branch.trim(),
-      commitHash: commit.trim(),
+      branch: (branch || "").trim() || null,
+      commitHash: (commit || "").trim() || null,
       dirty: status.trim().length > 0,
       dirtyFiles: status.trim().split("\n").filter(Boolean).length,
     };
@@ -33,6 +43,22 @@ async function gitState(repoRoot) {
     return { branch: null, commitHash: null, dirty: false, dirtyFiles: 0 };
   }
 }
+
+async function gitState(repoRoot, now = Date.now()) {
+  const hit = _gitCache.get(repoRoot);
+  if (hit?.value && now - hit.at < GIT_STATE_TTL_MS) return hit.value;
+  if (hit?.pending) return hit.pending;
+  const pending = probeGit(repoRoot).then((value) => {
+    _gitCache.set(repoRoot, { at: Date.now(), value, pending: null });
+    return value;
+  });
+  _gitCache.set(repoRoot, { at: hit?.at || 0, value: hit?.value || null, pending });
+  return pending;
+}
+
+/** @internal tests */
+export function _resetGitStateCache() { _gitCache.clear(); }
+export { gitState as _gitStateForTest };
 
 async function hashFile(filePath) {
   try {

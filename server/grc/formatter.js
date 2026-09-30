@@ -235,10 +235,25 @@ function inferQuestion(payload, dtuRefs) {
  * Returns the system prompt that forces LLM output into GRC shape.
  * Feed this to any of the Ollama brains (conscious/subconscious/utility).
  */
+// Anchors name what the answer may cite — a handful, not the whole focus set.
+// Uncapped, a chat turn passed ~700 titles here (41.7K chars, ~11K tokens,
+// measured 2026-09-27), which dominated prefill time on every turn. The list
+// arrives relevance-ordered, so the first MAX_ANCHORS are the ones that matter.
+const MAX_ANCHORS = 12;
+const MAX_ANCHOR_CHARS = 90;
+
+export function formatAnchors(dtus) {
+  if (!Array.isArray(dtus) || dtus.length === 0) return "DTUs: [general-context]";
+  const shown = dtus.slice(0, MAX_ANCHORS).map((t) => {
+    const s = String(t ?? "").replace(/\s+/g, " ").trim();
+    return s.length > MAX_ANCHOR_CHARS ? s.slice(0, MAX_ANCHOR_CHARS - 1) + "…" : s;
+  }).filter(Boolean);
+  const more = dtus.length - MAX_ANCHORS;
+  return `DTUs: [${shown.join(", ")}${more > 0 ? `, +${more} more in the lattice` : ""}]`;
+}
+
 export function getGRCSystemPrompt(contextAnchors = {}) {
-  const anchorStr = contextAnchors.dtus?.length
-    ? `DTUs: [${contextAnchors.dtus.join(", ")}]`
-    : "DTUs: [general-context]";
+  const anchorStr = formatAnchors(contextAnchors.dtus);
 
   return TASK_PROMPTS.grcFormatter({ anchorStr });
 }

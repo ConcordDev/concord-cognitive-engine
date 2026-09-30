@@ -77,6 +77,7 @@ describe("1 — Full repo world model graphs", () => {
   it("indexes dependency, migration, route, and test edges", async () => {
     const db = setupDb();
     const root = mkdtempSync(join(tmpdir(), "dila-repo-"));
+    process.env.CONCORD_REPO_GRAPH_ROOTS = [process.env.CONCORD_REPO_GRAPH_ROOTS, root].filter(Boolean).join(":");
     mkdirSync(join(root, "server/lib/runtime"), { recursive: true });
     mkdirSync(join(root, "server/migrations"), { recursive: true });
     mkdirSync(join(root, "server/tests"), { recursive: true });
@@ -106,6 +107,7 @@ describe("1 — Full repo world model graphs", () => {
   it("ensureRepoIndexFresh refreshes stale index", async () => {
     const db = setupDb();
     const root = mkdtempSync(join(tmpdir(), "dila-stale-"));
+    process.env.CONCORD_REPO_GRAPH_ROOTS = [process.env.CONCORD_REPO_GRAPH_ROOTS, root].filter(Boolean).join(":");
     mkdirSync(join(root, "server/lib"), { recursive: true });
     writeFileSync(join(root, "server/lib/a.js"), `export const a = 1;\n`);
 
@@ -123,6 +125,7 @@ describe("1 — Full repo world model graphs", () => {
   it("world model snapshot includes full graph layers", async () => {
     const db = setupDb();
     const root = mkdtempSync(join(tmpdir(), "dila-wm-"));
+    process.env.CONCORD_REPO_GRAPH_ROOTS = [process.env.CONCORD_REPO_GRAPH_ROOTS, root].filter(Boolean).join(":");
     mkdirSync(join(root, "server/lib"), { recursive: true });
     writeFileSync(join(root, "server/lib/x.js"), `export const x = 1;\n`);
     process.env.CONCORD_REPO_GRAPH_MAX_FILES = "10";

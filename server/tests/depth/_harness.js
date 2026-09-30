@@ -20,6 +20,16 @@ import { after } from "node:test";
 
 let _t = null;
 let _afterHookRegistered = false;
+// Teardown is registered HERE, at module scope (the importing file's root),
+// not inside load(). load() is almost always called from a before() hook, and
+// an after() registered from inside a hook attaches to the first TEST, not the
+// file — so the teardown (and its 200ms force-exit watchdog) ran after test 1
+// and killed the process during any later test slower than 200ms. Every
+// result after that — failures included — vanished while the run still
+// reported pass/exit 0. Reproduced 2026-09-27: [fast, 500ms, assert 1===2]
+// reported "tests 1 / pass 1 / fail 0". The body is still set up in load().
+let _teardown = null;
+after(async () => { if (_teardown) await _teardown(); });
 // Set ONLY when this harness minted its own throwaway DB_PATH below. A caller
 // that supplied DB_PATH (e.g. `npm run test:depth:raw`, which deliberately
 // shares one across files) owns that file and we must never delete it.
@@ -119,7 +129,7 @@ export async function load() {
     // disproportionate to the problem now that the sweep+watchdog above
     // makes the actual failure-masking bug moot. Left as a known, traced,
     // low-priority follow-up rather than a production-code change.
-    after(async () => {
+    _teardown = async () => {
       try { await _t?.terminateAllWorkersForTest?.(); } catch { /* best-effort teardown */ }
       try { _t?.clearActiveTimersForTest?.(); } catch { /* best-effort teardown */ }
       try {
@@ -158,7 +168,7 @@ export async function load() {
       }
       const watchdog = setTimeout(() => { process.exit(process.exitCode ?? 0); }, 200);
       watchdog.unref();
-    });
+    };
   }
   if (!_t) {
     process.env.NODE_ENV = process.env.NODE_ENV || "test";

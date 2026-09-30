@@ -11,6 +11,7 @@ import {
   formatDTUBlock,
   assembleWithTokenBudget,
   computeBudgetBreakdown,
+  dtuContextCapTokens,
 } from '../lib/token-budget-assembler.js';
 
 // ── estimateTokens tests ────────────────────────────────────────────────────
@@ -298,10 +299,26 @@ describe('computeBudgetBreakdown', () => {
     assert.strictEqual(result.ratios.dtuContext, 0.50);
   });
 
-  it('budgets sum approximately to context window', () => {
-    const result = computeBudgetBreakdown(32768);
+  it('budgets sum approximately to context window below the DTU cap', () => {
+    const result = computeBudgetBreakdown(4096);
     const sum = Object.values(result.budgets).reduce((a, b) => a + b, 0);
     // Allow small rounding error from Math.floor
-    assert.ok(Math.abs(sum - 32768) < 4, `Budget sum ${sum} should be close to 32768`);
+    assert.ok(Math.abs(sum - 4096) < 4, `Budget sum ${sum} should be close to 4096`);
+  });
+
+  it('caps the DTU block absolutely, so a big window does not mean a big prompt', () => {
+    // 2026-09-27: at 32K the 50% ratio gave retrieval ~16K tokens and a
+    // greeting shipped a 16.6K-token system prompt (23-49 s of prefill).
+    const big = computeBudgetBreakdown(32768);
+    assert.strictEqual(big.budgets.dtuContext, dtuContextCapTokens());
+    assert.ok(big.budgets.dtuContext < Math.floor(32768 * 0.5));
+    const sum = Object.values(big.budgets).reduce((a, b) => a + b, 0);
+    assert.ok(sum <= 32768);
+    assert.strictEqual(dtuContextCapTokens({}), 3000);
+    assert.strictEqual(dtuContextCapTokens({ CONCORD_DTU_CONTEXT_MAX_TOKENS: '8000' }), 8000);
+    assert.strictEqual(dtuContextCapTokens({ CONCORD_DTU_CONTEXT_MAX_TOKENS: 'junk' }), 3000);
+    const dtus = Array.from({ length: 200 }, (_, i) => ({ id: 'd' + i, title: 'Mega Summary ' + i, tier: 'mega', human: { summary: 'x'.repeat(800) } }));
+    const r = assembleWithTokenBudget({ contextWindow: 32768, systemPromptBase: 'sys', workingSetDtus: dtus, userMessage: 'hey' });
+    assert.ok(Math.ceil(r.dtuContextBlock.length / 3.8) <= dtuContextCapTokens() + 50, `DTU block ~${Math.ceil(r.dtuContextBlock.length / 3.8)} tok`);
   });
 });

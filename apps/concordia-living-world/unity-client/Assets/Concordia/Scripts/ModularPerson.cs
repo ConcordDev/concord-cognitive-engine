@@ -33,6 +33,14 @@ namespace Concordia // FORCE_REFRESH_0024
         bool _grounded = true;
         FightStyle _style = FightStyle.MuayThai;
         bool _built;
+        // Player builds import human models lazily (HubKit.TryGet misses on the
+        // first call and imports in the background), so a person built before its
+        // model landed would stay bodiless forever. Remember the request and retry.
+        bool _wantBody, _wantHero;
+        string _wantPrefab;
+        float _nextBodyTry;
+        int _bodyTries, _bodyPick = -1;
+        static bool _warnedNoBody;
         bool _authored;
         bool _biped;
         bool _clipsFit;
@@ -184,13 +192,21 @@ namespace Concordia // FORCE_REFRESH_0024
         public void Build(bool hero, string preferredPrefabPath)
         {
             if (_built) return;
+            _wantBody = true; _wantHero = hero; _wantPrefab = preferredPrefabPath;
+            if (_bodyPick < 0) _bodyPick = Mathf.Abs(_bodySeq++);
             _built = true;
             if (TryBindAuthored(hero, preferredPrefabPath)) return;
 
-            // No primitive people. A missing imported human stays invisible and is
-            // reported once instead of degrading the world into training dummies.
+            // No primitive people. A missing imported human stays invisible (and is
+            // reported once) instead of degrading the world into training dummies;
+            // LateUpdate retries while a lazily-imported model may still be loading.
             _built = false;
-            Debug.LogWarning("Concordia ModularPerson has no usable imported human asset; visual body omitted.");
+            _nextBodyTry = Time.unscaledTime + 1f;
+            if (!_warnedNoBody)
+            {
+                _warnedNoBody = true;
+                Debug.LogWarning("Concordia ModularPerson has no usable imported human asset yet; visual body omitted (retrying while models import).");
+            }
         }
 
         bool TryBindAuthored(bool hero, string preferredPrefabPath)
@@ -378,10 +394,9 @@ namespace Concordia // FORCE_REFRESH_0024
 static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         {
             GameObject go = null;
-#if UNITY_EDITOR
             if (!string.IsNullOrEmpty(preferredPrefabPath))
             {
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(preferredPrefabPath);
+                go = BuildAssets.Load<GameObject>(preferredPrefabPath);
                 if (go)
                 {
                     _lastPrefabPath = preferredPrefabPath;
@@ -406,7 +421,7 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
                     });
             foreach (var path in cxPaths)
             {
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                go = BuildAssets.Load<GameObject>(path);
                 if (!go) continue;
                 _lastPrefabPath = path;
                 return go;
@@ -424,12 +439,12 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             for (int i = 0; i < adult.Length; i++)
             {
                 var p = adult[(start + i) % adult.Length];
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                go = BuildAssets.Load<GameObject>(p);
                 if (!go) continue;
                 _lastPrefabPath = p;
                 return go;
             }
-#endif
+            // Last resort: a FreePacks stem (editor index, or a key recorded for builds).
             var stems = new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Female_Adult_04" };
             for (int i = 0; i < stems.Length; i++)
             {
@@ -531,7 +546,7 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             {
                 var p = AssetDatabase.GUIDToAssetPath(guid);
                 var fn = System.IO.Path.GetFileName(p).ToLowerInvariant();
-                var t = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+                var t = BuildAssets.Load<Texture2D>(p);
                 if (!t) continue;
                 if (fn.Contains("opacity")) opac = t;
                 else if (fn.Contains("head") && fn.Contains("normal") && !fn.Contains("wrinkle")) headN = t;
@@ -616,29 +631,25 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             // real Idle/Walk/Run/Sprint/JumpStart clips on a Humanoid avatar. SoldierLocomotion
             // and the rest are pre-slice leftovers kept only as a last-resort fallback.
             var c = Resources.Load<RuntimeAnimatorController>("Concordia/ConcordiaLocomotion");
-#if UNITY_EDITOR
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Anim/ConcordiaLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Resources/Concordia/ConcordiaLocomotion.controller");
-#endif
             if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
-#if UNITY_EDITOR
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Anim/SoldierLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/SourceFiles/StarterAssets/ThirdPersonController/Character/Animations/StarterAssetsThirdPerson.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Kevin Iglesias/Human Animations/Unity Demo Scenes/Human Basic Motions/AnimatorControllers/HumanBasicMotionsScene.controller");
-#endif
             if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/KenneyLocomotion");
             return c;
         }
@@ -917,16 +928,22 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         {
             var t = Resources.Load<Texture2D>("Concordia/Person/" + stem);
             if (t) return t;
-#if UNITY_EDITOR
-            t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Resources/Concordia/Person/" + stem + ".png");
-            if (!t) t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Models/living/kenney-person/" + stem + ".png");
-#endif
+            t = BuildAssets.Load<Texture2D>("Assets/Concordia/Resources/Concordia/Person/" + stem + ".png");
+            if (!t) t = BuildAssets.Load<Texture2D>("Assets/Concordia/Models/living/kenney-person/" + stem + ".png");
             return t;
         }
 
         void LateUpdate()
         {
-            if (!_built) return;
+            if (!_built)
+            {
+                if (_wantBody && _bodyTries < 30 && Time.unscaledTime >= _nextBodyTry)
+                {
+                    _bodyTries++;
+                    Build(_wantHero, _wantPrefab);
+                }
+                return;
+            }
             if (_authored && _plantFrames < 24)
             {
                 StripGiantAndFallback(_plantFrames >= 20);
@@ -1609,8 +1626,7 @@ void StripGiantAndFallback(bool allowFallback = true)
 
 static GameObject MakeSword()
         {
-#if UNITY_EDITOR
-            var baked = AssetDatabase.LoadAssetAtPath<GameObject>(
+            var baked = BuildAssets.Load<GameObject>(
                 "Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab");
             if (baked)
             {
@@ -1619,7 +1635,6 @@ static GameObject MakeSword()
                 foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 return held;
             }
-#endif
             var fromCx = CxDress.HeldWeapon("longsword");
             if (fromCx) return fromCx;
             var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");

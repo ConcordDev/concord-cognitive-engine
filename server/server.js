@@ -80,6 +80,7 @@ import * as presenceIdle from "./lib/presence-idle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
+import * as _worldHost from "./lib/world-host.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 // Wave-4 gap-closure (privacy row) — shared recorder also used by the
 // `privacy.recordAccess` macro (server/domains/privacy.js); see the call
@@ -1879,6 +1880,15 @@ function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
+// Every brain request: num_ctx pinned per model (so ollama loads each model
+// once instead of reloading on every caller's different window) and, opt-in,
+// OLLAMA_NUM_THREAD / BRAIN_<NAME>_NUM_THREAD capping llama.cpp's threads to
+// the container's CPU quota. See lib/ollama-request-guard.js.
+try {
+  const _org = installOllamaRequestGuard(BRAIN_CONFIG);
+  console.log(`[ollama-request-guard] num_ctx ${[..._org.ctx].map(([m, n]) => `${m}=${n}`).join(" ") || "off"}; threads ${[..._org.threads].map(([o, n]) => `${o}=${n}`).join(" ") || "uncapped"}`);
+} catch (_e) { console.warn("[ollama-request-guard] not installed:", _e?.message); }
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
@@ -1892,6 +1902,11 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 // this after every real completion attempt so the ops-telemetry dashboard
 // (aggregateInferenceCosts) reflects real usage instead of sitting empty.
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
+import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
+import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
+import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
+import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -6949,13 +6964,26 @@ function createRefreshToken(userId) {
   return jwt.sign({ userId, jti, family, type: "refresh", iat: Math.floor(Date.now() / 1000) }, EFFECTIVE_JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES });
 }
 
+// jsonwebtoken 9 turns a string secret into a key on EVERY verify, trying
+// crypto.createPublicKey() first (which throws for an HMAC secret) — profiled
+// 2026-09-27 at ~190 ms per busy second, since both the rate-limit key and
+// auth verify each request. Build the HMAC key once.
+let _jwtVerifyKey = null;
+function _jwtKey() {
+  if (_jwtVerifyKey === null) {
+    try { _jwtVerifyKey = crypto.createSecretKey(Buffer.from(String(EFFECTIVE_JWT_SECRET))); }
+    catch { _jwtVerifyKey = EFFECTIVE_JWT_SECRET; }
+  }
+  return _jwtVerifyKey;
+}
+
 function verifyToken(token) {
   if (!jwt) return null;
   try {
     // Pin algorithms — without this, jsonwebtoken would accept any
     // algorithm listed in the token header, including `none`. Our
     // tokens are signed with HS256.
-    const decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET, {
+    const decoded = jwt.verify(token, _jwtKey(), {
       algorithms: ["HS256"],
     });
     // ---- Token Revocation Check (Tier 1: Auth Hardening) ----
@@ -7369,14 +7397,18 @@ _unrefInTest(setInterval(() => {
 // the process) has to wait behind another's entire hash before the loop can
 // serve anything else. Same pattern already used correctly elsewhere in this
 // codebase -- see forge-template-generator.js's `await auth.hashPassword`.
+// 2026-09-27: the same bcryptjs now runs on a worker thread
+// (lib/password-hash-pool.js) — the ≤100ms slices above still cost ~300ms of
+// main-thread CPU per login, which a signup burst turns into an overloaded
+// request loop. Identical hashes; in-thread fallback if a worker is unavailable.
 async function hashPassword(password) {
   if (!bcrypt) return null;
-  return bcrypt.hash(password, BCRYPT_ROUNDS);
+  return hashPasswordOffThread(password, BCRYPT_ROUNDS);
 }
 
 async function verifyPassword(password, hash) {
   if (!bcrypt) return false;
-  return bcrypt.compare(password, hash);
+  return verifyPasswordOffThread(password, hash);
 }
 
 function generateApiKey() {
@@ -10086,6 +10118,13 @@ function emitToWorld(worldId, event, payload) {
 // client — see docs/GODOT_PROTOCOL.md §4 "play_effect").
 globalThis._concordEmitToWorld = emitToWorld;
 
+// Tick-rate telemetry is not history: a synchronous event_timeline_log INSERT
+// per city:positions chunk (10 Hz × chunks) was a DB write per message on the
+// event loop. These still broadcast; they just aren't persisted to the timeline.
+// emergent:activity is already persisted by emergent/feed.js into
+// emergent_activity_feed; logging it here too stored every row twice (10M+).
+const _TIMELINE_SKIP_EVENTS = new Set(["ping", "pong", "city:positions", "world:clock", "world:entities", "npc:positions", "emergent:activity"]);
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "", worldId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -10112,7 +10151,7 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
   // history. Best-effort; failures silently swallow so emit path stays
   // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
   try {
-    if (_timelineRecordFn && !event.startsWith("_") && event !== "ping" && event !== "pong") {
+    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event)) {
       const tdb = STATE?.db || globalThis._concordDB;
       if (tdb) {
         _timelineRecordFn(tdb, event, payload || {}, {
@@ -17617,6 +17656,8 @@ function makeInternalCtx(source = "system") {
 }
 
 // ---- DTU Archive System (Consolidation Pipeline) ----
+// Archived rows are stored gzip-compressed (lib/dtu-at-rest.js).
+import { packDtuData, unpackDtuData } from "./lib/dtu-at-rest.js";
 // Rehydration LRU cache for archived DTUs
 const _rehydrationCache = new Map();
 
@@ -17628,7 +17669,7 @@ function archiveDTUToDisk(dtu) {
       const stmt = db.prepare(
         `INSERT OR REPLACE INTO archived_dtus (id, data, tier, consolidated_into, archived_at) VALUES (?, ?, ?, ?, ?)`
       );
-      stmt.run(dtu.id, JSON.stringify(dtu), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
+      stmt.run(dtu.id, packDtuData(JSON.stringify(dtu)), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
       
     }
   } catch (e) { structuredLog("error", "archive_dtu_to_disk_failed", { id: dtu?.id, error: String(e) }); }
@@ -17645,7 +17686,7 @@ function rehydrateDTU(dtuId) {
     if (db) {
       const row = db.prepare('SELECT data FROM archived_dtus WHERE id = ?').get(dtuId);
       if (row) {
-        const dtu = JSON.parse(row.data);
+        const dtu = JSON.parse(unpackDtuData(row.data));
         // Update rehydration counter
         db.prepare('UPDATE archived_dtus SET rehydrated_count = rehydrated_count + 1, last_rehydrated_at = ? WHERE id = ?').run(new Date().toISOString(), dtuId);
         // Cache for subsequent reads
@@ -18781,11 +18822,36 @@ async function initLocalEmbeddings() {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };
     }
-    EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    // ONNX sizes its intra-op pool from the HOST's physical cores; inside a
+    // CPU-quota container (RunPod: 6.8 CPUs on a 128-thread host) that was
+    // 64 spinning threads starving the event loop. Cap it to this process's
+    // real allowance, and leave room for the main thread.
+    let _onnxThreads = 2;
+    try {
+      const { getRealCpuCount } = await import("./lib/cgroup-cpu.js");
+      _onnxThreads = Math.max(1, Math.min(Number(process.env.CONCORD_EMBED_THREADS) || 4, getRealCpuCount() - 1));
+    } catch { /* keep 2 */ }
+    // Run the model in a worker thread: onnxruntime-node's run() is synchronous
+    // native code, so in-process every embedding held the event loop ~1s on a
+    // small box (see workers/embedding-worker.js). In-process stays only as a
+    // logged fallback if the worker can't start.
+    try {
+      const { startEmbeddingWorker } = await import("./lib/embedding-worker-client.js");
+      const embedWorker = await startEmbeddingWorker({ model: "Xenova/all-MiniLM-L6-v2", threads: _onnxThreads });
+      EMBEDDINGS.worker = embedWorker;
+      EMBEDDINGS.model = async (text) => ({ data: await embedWorker.embed(text) });
+      EMBEDDINGS.inWorker = true;
+    } catch (workerErr) {
+      structuredLog("warn", "embeddings_worker_unavailable", { error: String(workerErr?.message || workerErr), fallback: "in_process" });
+      EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+        session_options: { intraOpNumThreads: _onnxThreads, interOpNumThreads: 1 },
+      });
+      EMBEDDINGS.inWorker = false;
+    }
     EMBEDDINGS.backend = "xenova";
     EMBEDDINGS.enabled = true;
     EMBEDDINGS.dim = 384;
-    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2" });
+    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2", inWorker: EMBEDDINGS.inWorker });
     return { ok: true, backend: "xenova" };
   } catch (e) {
     structuredLog("error", "embeddings_load_failed", { error: e.message });
@@ -26144,7 +26210,7 @@ function _dtuScopeKey(d) {
   return `${scope}|${world}`;
 }
 
-register("dtu", "cluster", (ctx, input) => {
+register("dtu", "cluster", async (ctx, input) => {
   try {
   // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
   // scope+world+visibility partition, never across. This is the hard boundary that stops
@@ -26167,23 +26233,37 @@ register("dtu", "cluster", (ctx, input) => {
     partitions.get(key).push(d);
   }
 
+  // Profiled 2026-09-27 (pod, ~2.2K DTUs): this pass held the event loop for
+  // 0.8-0.97 s per run — the stalls the lag detector blamed on presence —
+  // because it re-tokenized `b` inside the inner loop (n²/2 simpleTokens
+  // calls) and jaccard() built two fresh Sets per pair. Tokenize each DTU
+  // once, compare the cached Sets, and yield to the event loop between rows
+  // so players' moves and requests are served while it runs. Same clusters.
+  let _sinceYield = 0;
   for (const [, partItems] of partitions) {
+    const toks = partItems.map((d) => new Set(simpleTokens(d.title + " " + (d.tags||[]).join(" "))));
     for (let i=0;i<partItems.length;i++){
       const a = partItems[i];
       if (used.has(a.id)) continue;
-      const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
+      const A = toks[i];
       const cluster = [a];
       used.add(a.id);
       for (let j=i+1;j<partItems.length;j++){
         const b = partItems[j];
         if (used.has(b.id)) continue;
-        const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
-        if (jaccard(aTok, bTok) >= threshold) {
+        const B = toks[j];
+        let inter = 0;
+        for (const t of A) if (B.has(t)) inter++;
+        const union = A.size + B.size - inter;
+        const sim = (A.size === 0 && B.size === 0) ? 1 : (union ? inter / union : 0);
+        if (sim >= threshold) {
           cluster.push(b);
           used.add(b.id);
         }
       }
       clusters.push(cluster);
+      _sinceYield += partItems.length - i;
+      if (_sinceYield > 20000) { _sinceYield = 0; await new Promise((r) => { setImmediate(r); }); }
     }
   }
 
@@ -26764,7 +26844,9 @@ ISO: ${t.nowISO}`;
   return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"time" } };
 }
 
-if (_isWeatherQuery(prompt)) {
+// A fully specified computation (e.g. "heat loss … 30 F temperature difference")
+// is never a weather question — let the compute router take it.
+if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
   const loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
   try {
@@ -27674,6 +27756,17 @@ let localReply = formatCrispResponse({
     clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
   });
 
+  // Operator-only prompt segments (lib/runtime/operator-gate.js): the V6 observe
+  // contract names private organs and trading/secret denials, and the Runtime
+  // tools describe the operator's own systems. Injected for every user, a small
+  // model recited them to a public member verbatim (2026-09-27 chat QA run) and
+  // the extra contract format made it answer in raw JSON instead of calling
+  // run_compute. Members get only the tools they can actually use.
+  const _chatIsOperator = _isOperatorActor(ctx);
+  const _operatorToolLines = _chatIsOperator ? `- list_capabilities: List Concord Runtime capabilities (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional"}
+- invoke_capability: Run one Runtime capability through the governed envelope. Params: {"capability": "zuko.status", "input": {}}. Say plainly when a result is operator_only; never invent data.
+` : "";
+  const _operatorV6Block = _chatIsOperator ? `V6 JSON contract (also accepted): emit one JSON object with keys intent, confidence, evidence, action, status, f0, tool, args. Observe tools: web_search, concord.verify, concord.math, brain_status, dila_status, lens_list, expert_mode.answer, dtu_search. f0=DENY for Coinbase/place_order/secrets/launchctl/second trader — the executor refuses those. If the user challenges a claim ("I don't buy that", "check it"), you MUST call an observe organ.` : "";
   // Tool descriptions injected into the system prompt when tools are enabled
   const _toolSystemPrompt = _toolsAvailable ? `
 
@@ -27691,7 +27784,7 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
-
+${_operatorToolLines}
 Rules for tool use:
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
@@ -27700,7 +27793,7 @@ Rules for tool use:
 - After the tool call marker, continue your response naturally. You will receive the tool results and can then give a final answer.
 - Do NOT fabricate tool results or calculations.
 
-V6 JSON contract (also accepted): emit one JSON object with keys intent, confidence, evidence, action, status, f0, tool, args. Observe tools: web_search, concord.verify, concord.math, brain_status, dila_status, lens_list, expert_mode.answer, dtu_search. f0=DENY for Coinbase/place_order/secrets/launchctl/second trader — the executor refuses those. If the user challenges a claim ("I don't buy that", "check it"), you MUST call an observe organ.` : "";
+${_operatorV6Block}` : "";
 
   // Context-sensitive lens action hints (appended to tool prompt at system prompt build sites)
   const _DOMAIN_KW = {
@@ -27730,6 +27823,18 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
   let _isChallengePrompt = null;
   let _challengeFallbackCall = null;
   let _lastBrainMessage = null;
+  // Set when a deterministic engine answered the question outright (e.g. a
+  // written beam-deflection problem); enforced after the brain replies.
+  let _deterministicAnswer = null;
+  // Compute-don't-guess on ANY model (lib/chat/compute-router.js): a fully
+  // specified computational question (arithmetic, calculus, units, beam /
+  // column / electrical / hydraulic / HVAC, stats, chemistry, finance…) is
+  // answered by Concord's engines up front. The brain is then skipped entirely
+  // — a self-hosted small model is never asked to re-derive (and garble) it.
+  try {
+    const _routed = _routeComputeQuestion(prompt);
+    if (_routed) _deterministicAnswer = { value: _routed.value, text: _composeRoutedReply(_routed), route: _routed.route };
+  } catch { /* never block chat on a compute failure */ }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
     _parseObserveCalls = _v6.parseObserveCalls;
@@ -27800,7 +27905,18 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
           return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
         }
         case "run_compute": {
-          const { key: computeKey = "", input: computeInput = {} } = call.params;
+          // Normalize model-invented shapes ("multiply", {expression}) onto the
+          // deterministic evaluator — lib/chat-compute-normalize.js.
+          const _norm = _normalizeComputeCall(call.params.key, call.params.input);
+          if (_norm.expression) {
+            try {
+              const { evaluate: _symEval } = await import("./lib/compute/symbolic-math.js");
+              return { tool: call.tool, ok: true, key: "symbolic.evaluate", expression: _norm.expression, result: _symEval(_norm.expression) };
+            } catch (_ee) {
+              return { tool: call.tool, ok: false, error: `Compute error: ${_ee?.message}` };
+            }
+          }
+          const { key: computeKey = "", input: computeInput = {} } = _norm;
           if (!computeKey || !computeKey.includes(".")) {
             return { tool: call.tool, ok: false, error: `run_compute requires key like "chemistry.molecularAnalysis". Got: ${computeKey}` };
           }
@@ -27852,6 +27968,13 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
           }
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
+        }
+        case "list_capabilities":
+        case "invoke_capability": {
+          // Concord Runtime — one implementation, shared with the agent loop
+          // (lib/chat-agent.js executeToolCall): registry + envelope + gate.
+          const { executeToolCall: _runtimeTool } = await import("./lib/chat-agent.js");
+          return _runtimeTool(ctx, runMacro, LENS_ACTIONS, call);
         }
         default: {
           if (typeof _executeObserveOrgan === "function") {
@@ -27971,7 +28094,9 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
-  if (llm && ctx.llm.enabled) {
+  if (_deterministicAnswer) {
+    finalReply = _deterministicAnswer.text;
+  } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
     const _llmTemp = clamp(
       0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
@@ -28023,12 +28148,17 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
     // capability actually keyword-matches; pure-chat queries pass through
     // untouched. See server/lib/chat-compute-preflight.js for the policy.
     let _computeGroundTruth = null;
-    try {
-      _computeGroundTruth = await runChatComputePreflight(prompt, {
-        domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
-        ctx,
-      });
-    } catch (_e) { /* never block chat on a compute failure */ }
+    if (_deterministicAnswer) {
+      _computeGroundTruth = { groundTruthBlock: `[GROUND TRUTH from real compute engines — these values are authoritative, never contradict them]\n- physics.beamDeflection: ${_deterministicAnswer.text}`, capabilities: [{ key: "physics.beamDeflection" }], results: [] };
+    }
+    if (!_computeGroundTruth) {
+      try {
+        _computeGroundTruth = await runChatComputePreflight(prompt, {
+          domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
+          ctx,
+        });
+      } catch (_e) { /* never block chat on a compute failure */ }
+    }
 
     // RQ3 — deterministic-engine intent routing (compute-don't-guess), additive
     // only: fires ONLY when the keyword-scored preflight above found nothing,
@@ -28233,6 +28363,12 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
         const _fb = { tool: "web_search", params: { query: String(prompt || "").slice(0, 400) }, f0: "ALLOW", raw: "challenge-fallback" };
         _toolCalls.push(_fb);
       }
+      // Compute-don't-guess: a plain arithmetic question the model answered
+      // WITHOUT a tool gets computed here, and the answer is grounded on it.
+      if (_toolCalls.length === 0) {
+        const _arith = _arithmeticQuestion(prompt);
+        if (_arith) _toolCalls.push({ tool: "run_compute", params: { key: "symbolic.evaluate", input: { expression: _arith } }, f0: "ALLOW", raw: "arithmetic-fallback" });
+      }
       if (_toolCalls.length > 0) {
         ctx.log("chat_tools", "Tool calls detected in brain response", { count: _toolCalls.length, tools: _toolCalls.map(c => c.tool) });
 
@@ -28240,9 +28376,28 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
         const _toolResults = await _executeToolCalls(_toolCalls);
         _toolCallsExecuted = _toolResults;
 
-        // Strip tool call markers from the initial response
-        const _cleanedInitialReply = _stripToolCalls(finalReply);
+        // Pure arithmetic: every call was a successful deterministic evaluate —
+        // answer with the engine's number directly instead of asking the model
+        // to restate it (a small model garbles or re-guesses it).
+        // Every tool failed on a question that is plainly arithmetic (e.g. the
+        // model sent run_compute with no key): compute it deterministically.
+        if (!_toolResults.some((r) => r.ok)) {
+          const _rescue = _arithmeticQuestion(prompt);
+          if (_rescue) {
+            const _res = await _executeToolCall({ tool: "run_compute", params: { key: "symbolic.evaluate", input: { expression: _rescue } } });
+            if (_res?.ok) { _toolResults.length = 0; _toolResults.push(_res); }
+          }
+        }
+        const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
+        // Strip tool call markers from the initial response
+        // A JSON-only first reply (bare tool object, often with a GUESSED
+        // "answer" beside it) must not be fed back — it anchors the follow-up.
+        const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
+
+        if (_arithOnly) {
+          finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else {
         // Build follow-up messages with tool results
         const _toolResultsText = _formatToolResults(_toolResults);
         const _followUpMessages = [
@@ -28304,6 +28459,7 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
             .join("\n\n");
           ctx.log("chat_tools", "Follow-up brain call threw, using inline results", { error: String(_fuErr?.message || _fuErr) });
         }
+        } // end non-arithmetic follow-up
       }
     } catch (_toolErr) {
       // Tool execution is supplementary — never block the chat path
@@ -28311,6 +28467,61 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
     }
   }
   // ===== END TOOL CALL EXECUTION LOOP =====
+
+  // V6 JSON-contract leak guard (2026-09-27, found by a new-user chat QA run):
+  // the system prompt lets the brain answer in the V6 JSON contract. When it
+  // emits that object with NO tool (action:"none"), nothing runs and the raw
+  // `{"intent":…,"confidence":…}` used to be shown to the user as the answer.
+  // Never render the contract: use a prose field if it carries one, else ask
+  // once for a plain answer, else say honestly that no answer was produced.
+  if (llmUsed && finalReply) {
+    const _v6Only = _v6ContractOnly(finalReply) || _jsonOnlyReply(finalReply);
+    if (_v6Only) {
+      const _prose = ["answer", "response", "reply", "text", "message", "content"]
+        .map((k) => _v6Only[k]).find((v) => typeof v === "string" && v.trim());
+      if (_prose) {
+        finalReply = _prose.trim();
+      } else {
+        let _plain = null;
+        try {
+          const _pAc = new AbortController();
+          const _pTimeout = setTimeout(() => _pAc.abort(), 60000);
+          const _pRes = await fetch(`${brainUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: brainModel,
+              messages: [
+                { role: "system", content: composeSystemPrompt("conscious", { mode, currentLens, worldId: input?.worldId || null, extra: "Answer the user directly in plain conversational language. Do NOT output JSON or tool markers." }).system },
+                { role: "user", content: String(prompt || "") },
+              ],
+              stream: false,
+              think: false,
+              options: { temperature: 0.4, num_predict: 600 },
+            }),
+            signal: _pAc.signal,
+          }).finally(() => clearTimeout(_pTimeout));
+          const _pJson = await _pRes.json().catch(() => ({}));
+          const _txt = String(_pJson?.message?.content || "").trim();
+          if (_pRes.ok && _txt && !_v6ContractOnly(_txt)) _plain = _stripToolCalls(_txt);
+        } catch { /* fall through to the honest line */ }
+        finalReply = _plain || "I couldn't put together an answer for that one — could you rephrase or ask again?";
+        ctx.log("chat_tools", "V6 contract reply replaced", { recovered: !!_plain, intent: String(_v6Only.intent || "").slice(0, 40) });
+      }
+    }
+  }
+
+  // Deterministic answer enforcement: if an engine answered outright and the
+  // brain's reply doesn't carry that number (4 significant figures), the
+  // engine's answer is the reply — a model's re-derivation is never trusted
+  // over the engine for a fully-specified problem.
+  if (_deterministicAnswer && typeof finalReply === "string") {
+    const _dv = _deterministicAnswer.value;
+    const _carries = typeof _dv === "number"
+      ? [String(Number(_dv.toPrecision(4))), String(Number(_dv.toPrecision(3)))].some((v) => finalReply.replace(/,(?=\d{3})/g, "").includes(v))
+      : finalReply.includes(String(_dv));
+    if (!_carries) finalReply = _deterministicAnswer.text;
+  }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
   if (!llmUsed && localReply && finalReply === localReply) {
@@ -30448,6 +30659,24 @@ registerHeartbeat("event-timeline-prune", {
       return _timelinePrune(ctxDb || db);
     } catch (err) {
       structuredLog("warn", "event_timeline_prune_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Same never-pruned defect on the two biggest activity logs
+// (emergent_activity_feed, inference_spans): archive to data/archive/*.jsonl.gz
+// then delete past the retention window (default 14 days). Work per run is
+// capped inside pruneRetainedLogs so the tick stays short.
+registerHeartbeat("activity-log-retention", {
+  frequency: 240,
+  scope: "global",
+  handler: async ({ db: ctxDb } = {}) => {
+    try {
+      const { pruneRetainedLogs } = await import("./lib/log-retention.js");
+      return pruneRetainedLogs(ctxDb || db, { archiveRoot: path.join(DATA_DIR, "archive") });
+    } catch (err) {
+      structuredLog("warn", "activity_log_retention_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
     }
   },
@@ -47015,11 +47244,20 @@ try {
   mountMcpServer({
     app,
     runMacro: runMcpTool,
-    ctxFor: (extra) => ({
-      db: STATE?.db || globalThis._concordDB,
-      actor: extra?.authInfo?.actor || null,
-      state: STATE,
-    }),
+    ctxFor: (extra) => {
+      const _mcpDb = STATE?.db || globalThis._concordDB;
+      // The OAuth token carries only the user id; resolve the real role from
+      // users so role-gated handlers (lib/runtime/operator-gate.js) see the
+      // operator as the operator and everyone else as who they are.
+      let actor = extra?.authInfo?.actor || null;
+      if (actor?.userId && !actor.role && _mcpDb) {
+        try {
+          const row = _mcpDb.prepare("SELECT role FROM users WHERE id = ?").get(actor.userId);
+          if (row?.role) actor = { ...actor, role: String(row.role) };
+        } catch { /* role stays unset → treated as non-operator */ }
+      }
+      return { db: _mcpDb, actor, state: STATE };
+    },
   });
   structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
   // NOTE: the reachability self-check below fires AFTER `domainModules.forEach`
@@ -58106,6 +58344,11 @@ async function pollFeeds() {
           continue;
         }
 
+        // Yield between items: each one below is a dedup query plus a full
+        // DTU write, and a feed of ~50 items processed back to back held the
+        // event loop ~1s at a time in the CI load profile (2026-09-30).
+        await new Promise((r) => { setImmediate(r); });
+
         // Slow path: ask the DB. This is the line that fixes the 13x
         // re-ingestion — every prior DTU whose data contained this link
         // is a duplicate, regardless of how many times the process has
@@ -59068,8 +59311,10 @@ app.get("/api/runtime/memory-graph", requireRole("owner", "admin", "sovereign", 
 });
 
 app.post("/api/runtime/repo-graph/index", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
-  const { indexRepo } = await import("./lib/runtime/repo-graph.js");
-  res.json(await indexRepo(db, req.body?.repoRoot));
+  const { indexRepo, allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.body?.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
+  res.json(await indexRepo(db, root));
 }));
 
 app.get("/api/runtime/repo-graph/overview", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
@@ -59154,11 +59399,14 @@ app.get("/api/runtime/marathon-links", requireRole("owner", "admin", "sovereign"
 app.post("/api/runtime/coding-loop/iterate", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
   const { runCodingLoopIteration } = await import("./lib/coding-loop.js");
   const { dispatchMCP } = await import("./lib/auth-gate/dispatch.js");
+  const { allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.body?.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
   res.json(await runCodingLoopIteration({
     db,
     goal: req.body?.goal,
     dispatchMCP,
-    repoRoot: req.body?.repoRoot,
+    repoRoot: root,
   }));
 }));
 
@@ -59273,8 +59521,10 @@ app.post("/api/runtime/dila/soak", requireRole("owner", "admin", "sovereign", "f
 }));
 
 app.get("/api/runtime/repo-graph/full", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
-  const { buildFullRepoGraph } = await import("./lib/runtime/repo-graph.js");
-  res.json(buildFullRepoGraph(db, req.query.repoRoot));
+  const { buildFullRepoGraph, allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.query.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
+  res.json(buildFullRepoGraph(db, root));
 }));
 
 app.post("/api/runtime/dila/workspace-audit", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
@@ -73612,11 +73862,78 @@ async function _dispatchGodotCombatDodge(userId, data) {
 // lib/godot-move-rate.js so the contract is unit-testable without a live WS.
 const _godotMoveRateGate = makeGodotMoveRateGate();
 
+// Fan a shared-world host event out to everyone in that world's room, on both
+// gateways (Unity + Godot share the room grammar).
+function _worldHostEmit(worldId, evt, payload) {
+  const room = _worldHost.worldRoom(worldId);
+  try { _unityGatewayEmitter?.emitToRoom(room, evt, payload); } catch { /* survive */ }
+  try { _godotGatewayEmitter?.emitToRoom(room, evt, payload); } catch { /* survive */ }
+}
+
+// A host socket closed: release its worlds and tell players to fall back to
+// their local simulation instead of freezing on the last snapshot.
+function _onGodotClientClose(client) {
+  for (const worldId of _worldHost.releaseClient(client)) {
+    structuredLog("info", "world_host_released", { worldId });
+    _worldHostEmit(worldId, "world:host-offline", { worldId });
+  }
+  // Same teardown the socket.io path does (_sweepSocketState). Without it a
+  // Unity/Godot player's presence outlived their connection by up to the
+  // 10-min stale sweep — others saw a frozen ghost — and on return their first
+  // move was judged against where they LEFT: spawning elsewhere read as a
+  // teleport, every move was rejected, and the anti-cheat (whose violation
+  // count also survived) dropped them in ~1 s (reproduced on the pod
+  // 2026-09-27). Removing the entry makes their next move a fresh baseline.
+  const uid = client?.userId;
+  if (uid) {
+    try { cityPresence.removeUser(uid); } catch { /* survive */ }
+    try { _clearAntiCheatUser(uid); } catch { /* survive */ }
+  }
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
+  // A player in the World lens talks almost only over this socket. Count
+  // authenticated gameplay traffic as real activity — otherwise the idle gate
+  // (lib/presence-idle.js, fed by HTTP middleware) decides nobody is online and
+  // pauses the city:positions broadcast, so players stop seeing each other.
+  if (userId) { try { _markActivity({ authed: true }); } catch { /* best-effort */ } }
   // Unity /unity-ws uses the same gateway; envelopes are unity:<godot-evt>.
   if (typeof evt === "string" && evt.startsWith("unity:")) evt = evt.slice(6);
   switch (evt) {
+    // ── Shared-world host (lib/world-host.js) ──────────────────────────────
+    case "host:register": {
+      const worldId = String(data?.worldId || "");
+      let role = "user";
+      try { role = String(STATE?.db?.prepare("SELECT role FROM users WHERE id = ?").get(userId)?.role || "user"); } catch { /* user */ }
+      const r = _worldHost.registerHost(client, { userId, role }, worldId);
+      _godotGatewaySend(client, "host:register:ack", { ...r, worldId });
+      if (r.ok) {
+        structuredLog("info", "world_host_registered", { worldId, userId, replaced: r.replaced });
+        _worldHostEmit(worldId, "world:host-online", { worldId });
+      }
+      return;
+    }
+    case "host:manifest": {
+      const worldId = String(data?.worldId || "");
+      const r = _worldHost.acceptManifest(client, worldId, data?.entities, { append: data?.append === true });
+      if (!r.ok) { _godotGatewaySend(client, "host:error", { reason: r.reason, evt }); return; }
+      _worldHostEmit(worldId, "world:manifest", { worldId, append: data?.append === true, entities: r.chunk });
+      return;
+    }
+    case "host:snapshot": {
+      const worldId = String(data?.worldId || "");
+      const r = _worldHost.acceptSnapshot(client, worldId, data?.entities);
+      if (!r.ok) { if (r.reason !== "throttled") _godotGatewaySend(client, "host:error", { reason: r.reason, evt }); return; }
+      _worldHostEmit(worldId, "world:entities", r.snapshot);
+      return;
+    }
+    case "world:manifest:request": {
+      const worldId = String(data?.worldId || "");
+      const m = _worldHost.manifestFor(worldId);
+      _godotGatewaySend(client, "world:manifest", m ? { worldId, append: false, entities: m.entities, hostLive: true } : { worldId, append: false, entities: [], hostLive: false });
+      return;
+    }
     case "player:move": {
       // ~30Hz cap — byte-identical intent to socket.io's `_moveRateState`.
       // Must run BEFORE applyPlayerMove so a flood never touches presence.
@@ -73816,6 +74133,7 @@ if (server) {
       runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
+      onClientClose: _onGodotClientClose,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
     _godotGatewayEmitter = createGatewayEmitter(godotGatewayHandle);
@@ -73842,6 +74160,7 @@ if (server) {
       runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
+      onClientClose: _onGodotClientClose,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
     // Realtime fan-out for Unity, mirroring the Godot mount above. Without
@@ -85265,8 +85584,22 @@ async function runBackup() {
       const gzipPath = `${backupDir}/concord.db.gz`;
       if (_db && typeof _db.backup === "function") {
         const snapPath = `${backupDir}/.concord.db.snapshot`;
+        // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
+        // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
+        // to; and copying 100 pages per step, SQLite restarts the backup
+        // whenever another connection writes (two backends share this DB),
+        // so it spun for hours holding a partial multi-GB file. Refuse
+        // honestly when there's no room, and copy in one step so concurrent
+        // writes can't restart it.
+        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
+        let freeBytes = Infinity;
+        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
+        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
+        if (freeBytes < needBytes) {
+          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
+        }
         try {
-          await _db.backup(snapPath);
+          await _db.backup(snapPath, { progress: () => 0x7fffffff });
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),
@@ -88206,6 +88539,7 @@ export async function __terminateAllWorkersForTest() {
     terminateMacroPoolForTest(),
     terminateHeartbeatPoolForTest(),
     terminateCognitiveWorkerForTest(),
+    terminatePasswordWorkers(),
   ]);
 }
 

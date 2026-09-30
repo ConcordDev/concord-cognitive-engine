@@ -175,7 +175,7 @@ Adoption numbers (reproduced 2026-07-18, `concord-frontend/`):
 | …carrying generic scaffold (`AutoActionStrip`/`UniversalActions`/`ManifestActionBar`) | **222** | `grep -rlE "AutoActionStrip\|UniversalActions\|ManifestActionBar" app/lenses/*/page.tsx` |
 | …carrying `RecentMineCard` | **202** | `grep -rl RecentMineCard app/lenses/*/page.tsx` |
 | …with ≥1 arbitrary `text-[Npx]` size | **175** | `grep -rlE "text-\[[0-9]+px\]" app/lenses/*/page.tsx` |
-| total arbitrary `text-[Npx]` occurrences | **1802** | `grep -rhoE "text-\[[0-9]+px\]" concord-frontend/app/lenses/*/page.tsx \| wc -l` |
+| total arbitrary `text-[Npx]` occurrences in lens `page.tsx` | **448** (was 1,802 at audit time — the 2026-09-10 de-stack moved screens into `components/<lens>/`, so this dropped by relocation, not cleanup: page.tsx + components together hold ~22,900) | `grep -rhoE "text-\[[0-9]+px\]" concord-frontend/app/lenses/*/page.tsx \| wc -l` |
 | …with `sr-only` "polish sentinel" divs | **109** | `grep -rliE sentinel app/lenses/*/page.tsx` |
 
 ### The grade is gamed (critical honesty finding)

@@ -71,14 +71,12 @@ namespace Concordia
             if (!animator.runtimeAnimatorController)
             {
                 var ctrl = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
-#if UNITY_EDITOR
                 if (!ctrl)
-                    ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    ctrl = BuildAssets.Load<RuntimeAnimatorController>(
                         "Assets/Concordia/Anim/SoldierLocomotion.controller");
                 if (!ctrl)
-                    ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    ctrl = BuildAssets.Load<RuntimeAnimatorController>(
                         "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller");
-#endif
                 if (ctrl) animator.runtimeAnimatorController = ctrl;
             }
             rightHand = FindBone(body, "mixamorig:RightHand", "RightHand");

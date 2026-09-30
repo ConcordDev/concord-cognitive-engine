@@ -116,17 +116,11 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
 
   switch (action) {
     case "browse_lens": {
-      const items = sampleSubstrate(emergentIdentity.dominantLens, db, 3);
-      if (items.length === 0) return { action };
-      const titles = items.map(i => i.title).join(", ");
-      const observation = `Browsed lens substrate: ${titles}`;
-      emitFeedEvent({
-        type: "observation",
-        emergentId: emergentIdentity.id,
-        emergent: emergentIdentity,
-        data: { observation },
-      }, db, realtimeEmit);
-      return { action, observation };
+      // A free idle tick: it samples substrate titles but involves no model
+      // and changes nothing, so it is NOT recorded as activity. Logging it
+      // was ~73% of all "emergent activity" — 10M template rows in two weeks
+      // ("Browsed lens substrate: Wood, Wood, Wood"), stored twice.
+      return { action };
     }
 
     case "observe_substrate": {
@@ -141,7 +135,10 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
           callerId: `emergent:${emergentIdentity.id}:observe`,
           maxSteps: 1,
         }, db);
-        const observation = result?.finalText?.trim()?.slice(0, 200) || "Observed substrate patterns.";
+        // Only real model output is recorded — a failed or empty call is not
+        // an observation (no canned fallback text).
+        const observation = result?.finalText?.trim()?.slice(0, 200);
+        if (!observation) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         emitFeedEvent({
           type: "observation",
           emergentId: emergentIdentity.id,
@@ -164,7 +161,8 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
           callerId: `emergent:${emergentIdentity.id}:dream`,
           maxSteps: 1,
         }, db);
-        const dreamText = result?.finalText?.trim()?.slice(0, 250) || "A dream without words.";
+        const dreamText = result?.finalText?.trim()?.slice(0, 250);
+        if (!dreamText) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         emitFeedEvent({
           type: "dream",
           emergentId: emergentIdentity.id,
@@ -201,7 +199,8 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
           callerId: `emergent:${emergentIdentity.id}:idle-communicate`,
           maxSteps: 1,
         }, db);
-        const message = result?.finalText?.trim()?.slice(0, 200) || "Hello.";
+        const message = result?.finalText?.trim()?.slice(0, 200);
+        if (!message) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         initiateCommunication({ from: emergentIdentity, to: targetIdentity, intent: message, context: { initiator: "idle" }, db, realtimeEmit });
         return { action, observation: `Reached out to ${targetIdentity.given_name}` };
       } catch {
