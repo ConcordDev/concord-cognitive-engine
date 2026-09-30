@@ -11,7 +11,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { up as up424 } from "../migrations/424_runtime_phases.js";
 import { up as up427 } from "../migrations/427_dila_runtime_v2.js";
-import { indexRepo, findSymbol } from "../lib/runtime/repo-graph.js";
+import { indexRepo, findSymbol, allowedRepoRoot, defaultRepoRoot } from "../lib/runtime/repo-graph.js";
 
 function repo(nFiller = 0) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-graph-"));
@@ -58,4 +58,21 @@ test("a large index keeps the event loop responsive", async () => {
   clearInterval(tick);
   assert.equal(r.filesIndexed, 1506);
   assert.ok(maxGap < 150, `event loop blocked ${maxGap} ms`);
+});
+
+test("allowedRepoRoot: only the workspace root or configured roots, never an arbitrary path", () => {
+  const prev = process.env.CONCORD_REPO_GRAPH_ROOTS;
+  try {
+    delete process.env.CONCORD_REPO_GRAPH_ROOTS;
+    assert.equal(allowedRepoRoot(undefined), path.resolve(defaultRepoRoot()));
+    assert.equal(allowedRepoRoot(defaultRepoRoot() + "/"), path.resolve(defaultRepoRoot()));
+    assert.equal(allowedRepoRoot("/etc"), null);
+    assert.equal(allowedRepoRoot(defaultRepoRoot() + "/../.."), null);
+    assert.equal(allowedRepoRoot({ toString: () => "/" }), null);
+    const extra = fs.mkdtempSync(path.join(os.tmpdir(), "repo-graph-allowed-"));
+    process.env.CONCORD_REPO_GRAPH_ROOTS = extra;
+    assert.equal(allowedRepoRoot(extra), path.resolve(extra));
+  } finally {
+    if (prev === undefined) delete process.env.CONCORD_REPO_GRAPH_ROOTS; else process.env.CONCORD_REPO_GRAPH_ROOTS = prev;
+  }
 });

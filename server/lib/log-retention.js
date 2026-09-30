@@ -1,3 +1,9 @@
+// @sync-fs-ok: archive writes must be on disk before the rows are deleted, and
+// each run is capped at maxBatches x batchSize rows per ~hourly heartbeat. An
+// async rewrite (fs/promises + zlib.gzip) measurably stalled the governor tick
+// in a CI-like local run (1 tick then only skipped ticks for 150s); the sync
+// version ticks normally. Kept sync on purpose.
+//
 // Retention for append-only activity logs that grew without bound.
 //
 // emergent_activity_feed (~780k rows/day) and inference_spans had no pruning

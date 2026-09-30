@@ -59292,8 +59292,10 @@ app.get("/api/runtime/memory-graph", requireRole("owner", "admin", "sovereign", 
 });
 
 app.post("/api/runtime/repo-graph/index", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
-  const { indexRepo } = await import("./lib/runtime/repo-graph.js");
-  res.json(await indexRepo(db, req.body?.repoRoot));
+  const { indexRepo, allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.body?.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
+  res.json(await indexRepo(db, root));
 }));
 
 app.get("/api/runtime/repo-graph/overview", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
@@ -59497,8 +59499,10 @@ app.post("/api/runtime/dila/soak", requireRole("owner", "admin", "sovereign", "f
 }));
 
 app.get("/api/runtime/repo-graph/full", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
-  const { buildFullRepoGraph } = await import("./lib/runtime/repo-graph.js");
-  res.json(buildFullRepoGraph(db, req.query.repoRoot));
+  const { buildFullRepoGraph, allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.query.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
+  res.json(buildFullRepoGraph(db, root));
 }));
 
 app.post("/api/runtime/dila/workspace-audit", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {

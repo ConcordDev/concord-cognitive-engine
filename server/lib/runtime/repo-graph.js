@@ -5,7 +5,7 @@
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import { readdirSync } from "node:fs";
-import { join, relative, extname } from "node:path";
+import { join, relative, extname, resolve } from "node:path";
 
 const DEFAULT_ROOTS = ["server", "concord-frontend"];
 const MAX_FILES = Number(process.env.CONCORD_REPO_GRAPH_MAX_FILES) || 2000;
@@ -14,6 +14,26 @@ const IMPORT_RE = /import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]/g;
 const EXPORT_RE = /export\s+(?:default\s+)?(?:function|class|const|let|var)\s+(\w+)/g;
 const ROUTE_RE = /(?:app|router)\.(get|post|put|delete|patch)\(\s*['"]([^'"]+)['"]/g;
 const MIGRATION_RE = /(\d{3})_[\w-]+\.js$/;
+
+/** The workspace this server runs from (repo root, not server/). */
+export function defaultRepoRoot() {
+  return process.cwd().replace(/\/server$/, "") || process.cwd();
+}
+
+/**
+ * Roots a request may ask to index: the workspace root plus any listed in
+ * CONCORD_REPO_GRAPH_ROOTS (":"-separated). Returns the matching allowlist
+ * entry — never the caller's string — or null. Omitted → the workspace root.
+ * Use at every boundary where repoRoot comes from outside (HTTP, missions).
+ */
+export function allowedRepoRoot(requested) {
+  const allowed = [defaultRepoRoot(), ...String(process.env.CONCORD_REPO_GRAPH_ROOTS || "").split(":").filter(Boolean)]
+    .map((r) => resolve(r));
+  if (requested == null || requested === "") return allowed[0];
+  if (typeof requested !== "string") return null;
+  const want = resolve(requested);
+  return allowed.find((r) => r === want) || null;
+}
 
 function edgesTableReady(db) {
   try {
@@ -160,7 +180,7 @@ const TEST_FILE_RE = /\.test\.(js|ts)$/;
  */
 export async function indexRepo(db, repoRoot, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
-  const root = repoRoot || process.cwd().replace(/\/server$/, "") || process.cwd();
+  const root = repoRoot || defaultRepoRoot();
   let files = [];
   for (const sub of DEFAULT_ROOTS) {
     await walkDir(join(root, sub), files);
