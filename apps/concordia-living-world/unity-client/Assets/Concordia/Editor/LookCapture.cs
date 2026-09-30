@@ -75,9 +75,11 @@ namespace Concordia.Editor
                 WorldClock.Hour = PinnedHour;
                 HubLook.ApplyHour(WorldClock.World, PinnedHour);
                 _hourPinnedAt = EditorApplication.timeSinceStartup;
+                StartPerf();
                 return;
             }
-            if (EditorApplication.timeSinceStartup - _hourPinnedAt < 3.0) return;
+            SamplePerf();
+            if (EditorApplication.timeSinceStartup - _hourPinnedAt < 5.0) return;
             WorldClock.Hour = PinnedHour;
             HubLook.ApplyHour(WorldClock.World, PinnedHour);
             SessionState.SetBool(PendingKey, false);
@@ -109,6 +111,9 @@ namespace Concordia.Editor
             }
             File.WriteAllText(Path.Combine(dir, "settings.txt"),
                 $"colorSpace={PlayerSettings.colorSpace}\nhour={WorldClock.Hour}\nworldReady={WorldReady()}\nwaitedSeconds={EditorApplication.timeSinceStartup - _playStarted:F0}\nshots={shots}\ncamera-pose={poseUsed}\ncamera={(cam ? cam.name : "none")}\ntime={System.DateTime.Now:O}\n");
+            try { File.WriteAllText(Path.Combine(dir, "perf.txt"), PerfReport(cam)); }
+            catch (System.Exception e) { File.WriteAllText(Path.Combine(dir, "perf.txt"), "perf failed: " + e); }
+            StopPerf();
             try { File.WriteAllText(Path.Combine(dir, "scene-dump.txt"), DumpScene(cam)); }
             catch (System.Exception e) { File.WriteAllText(Path.Combine(dir, "scene-dump.txt"), "dump failed: " + e); }
             Debug.Log($"[LookCapture] {shots} shots -> {dir}");
@@ -160,6 +165,178 @@ namespace Concordia.Editor
             rows.Sort((a, b) => a.d.CompareTo(b.d));
             sb.AppendLine($"renderers within 40m: {rows.Count}");
             foreach (var row in rows.Take(160)) sb.AppendLine(row.line);
+            return sb.ToString();
+        }
+
+        // ---- Perf probe: Unity's own counters over the settle window ----
+        static readonly (Unity.Profiling.ProfilerCategory cat, string name, bool ns)[] PerfStats =
+        {
+            (Unity.Profiling.ProfilerCategory.Internal, "Main Thread", true),
+            (Unity.Profiling.ProfilerCategory.Internal, "Render Thread", true),
+            (Unity.Profiling.ProfilerCategory.Render, "Draw Calls Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "Batches Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "SetPass Calls Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "Triangles Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "Vertices Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "Shadow Casters Count", false),
+            (Unity.Profiling.ProfilerCategory.Render, "Visible Skinned Meshes Count", false),
+            (Unity.Profiling.ProfilerCategory.Memory, "GC Allocated In Frame", false),
+            // Where main-thread time goes (marker elapsed time per frame)
+            (Unity.Profiling.ProfilerCategory.Internal, "EditorLoop", true),
+            (Unity.Profiling.ProfilerCategory.Internal, "PlayerLoop", true),
+            (Unity.Profiling.ProfilerCategory.Scripts, "Update.ScriptRunBehaviourUpdate", true),
+            (Unity.Profiling.ProfilerCategory.Scripts, "PreLateUpdate.ScriptRunBehaviourLateUpdate", true),
+            (Unity.Profiling.ProfilerCategory.Scripts, "Update.ScriptRunDelayedDynamicFrameRate", true),
+            (Unity.Profiling.ProfilerCategory.Scripts, "FixedUpdate.ScriptRunBehaviourFixedUpdate", true),
+            (Unity.Profiling.ProfilerCategory.Physics, "FixedUpdate.PhysicsFixedUpdate", true),
+            (Unity.Profiling.ProfilerCategory.Render, "PostLateUpdate.FinishFrameRendering", true),
+            (Unity.Profiling.ProfilerCategory.Render, "PostLateUpdate.UpdateAllSkinnedMeshes", true),
+            (Unity.Profiling.ProfilerCategory.Render, "Gfx.WaitForPresentOnGfxThread", true),
+            (Unity.Profiling.ProfilerCategory.Memory, "GC.Collect", true),
+            (Unity.Profiling.ProfilerCategory.Animation, "PreLateUpdate.DirectorUpdateAnimationBegin", true),
+            (Unity.Profiling.ProfilerCategory.Animation, "PreLateUpdate.DirectorUpdateAnimationEnd", true),
+        };
+        static Unity.Profiling.ProfilerRecorder[] _recs;
+        static double[] _sum, _max;
+        static int _samples;
+
+        static void StartPerf()
+        {
+            UnityEditorInternal.ProfilerDriver.ClearAllFrames();
+            UnityEditorInternal.ProfilerDriver.enabled = true;
+            UnityEngine.Profiling.Profiler.enabled = true;
+            _recs = new Unity.Profiling.ProfilerRecorder[PerfStats.Length];
+            _sum = new double[PerfStats.Length]; _max = new double[PerfStats.Length]; _samples = 0;
+            for (int i = 0; i < PerfStats.Length; i++)
+                _recs[i] = Unity.Profiling.ProfilerRecorder.StartNew(PerfStats[i].cat, PerfStats[i].name);
+        }
+
+        static void SamplePerf()
+        {
+            if (_recs == null) return;
+            _samples++;
+            for (int i = 0; i < _recs.Length; i++)
+            {
+                if (!_recs[i].Valid) continue;
+                double v = _recs[i].LastValue;
+                if (PerfStats[i].ns) v /= 1e6; // ns -> ms
+                _sum[i] += v; if (v > _max[i]) _max[i] = v;
+            }
+        }
+
+        static void StopPerf()
+        {
+            UnityEditorInternal.ProfilerDriver.enabled = false;
+            if (_recs == null) return;
+            foreach (var r in _recs) r.Dispose();
+            _recs = null;
+        }
+
+        static string PerfReport(Camera cam)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"samples={_samples} (editor frames over the settle window)");
+            for (int i = 0; i < PerfStats.Length; i++)
+            {
+                bool ok = _recs != null && _recs[i].Valid;
+                sb.AppendLine(ok ? $"{PerfStats[i].name,-30} avg={_sum[i] / System.Math.Max(1, _samples),12:F1}  max={_max[i],12:F1}{(PerfStats[i].ns ? " ms" : "")}"
+                                 : $"{PerfStats[i].name,-30} (unavailable)");
+            }
+
+            sb.AppendLine(HierarchyReport());
+
+            // Pipeline + features
+            var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            if (urp)
+                sb.AppendLine($"URP: renderScale={urp.renderScale} msaa={urp.msaaSampleCount} hdr={urp.supportsHDR} shadowDistance={urp.shadowDistance} cascades={urp.shadowCascadeCount} mainShadowRes={urp.mainLightShadowmapResolution} addLights={urp.maxAdditionalLightsCount} addShadowRes={urp.additionalLightsShadowmapResolution} softShadows={urp.supportsSoftShadows} depthTex={urp.supportsCameraDepthTexture} opaqueTex={urp.supportsCameraOpaqueTexture}");
+            var rendererData = urp ? typeof(UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset)
+                .GetField("m_RendererDataList", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(urp) as UnityEngine.Rendering.Universal.ScriptableRendererData[] : null;
+            if (rendererData != null)
+                foreach (var rd in rendererData)
+                    if (rd) foreach (var f in rd.rendererFeatures)
+                            if (f) sb.AppendLine($"renderer feature: {f.name} ({f.GetType().Name}) active={f.isActive}");
+
+            // Lights and probes
+            int shadowLights = 0, lights = 0;
+            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            {
+                if (!l.isActiveAndEnabled) continue;
+                lights++;
+                if (l.shadows != LightShadows.None) { shadowLights++; sb.AppendLine($"shadow light: {HierPath(l.transform)} type={l.type} shadows={l.shadows} range={l.range:F0}"); }
+            }
+            sb.AppendLine($"active lights={lights} shadow-casting={shadowLights}");
+            foreach (var p in Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None))
+                if (p.isActiveAndEnabled) sb.AppendLine($"reflection probe: {HierPath(p.transform)} mode={p.mode} refresh={p.refreshMode} res={p.resolution}");
+
+            // Heaviest renderers visible to the capture camera
+            var rows = new System.Collections.Generic.List<(long tris, string line)>();
+            long visibleTris = 0; int visible = 0;
+            var planes = cam ? GeometryUtility.CalculateFrustumPlanes(cam) : null;
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                var mf = r.GetComponent<MeshFilter>(); // Unity null, not C# null: no ?.
+                Mesh mesh = r is SkinnedMeshRenderer smr ? smr.sharedMesh : (mf ? mf.sharedMesh : null);
+                if (!mesh) continue;
+                long tris = 0;
+                for (int sm = 0; sm < mesh.subMeshCount; sm++) tris += (long)mesh.GetIndexCount(sm) / 3;
+                bool inView = planes != null && GeometryUtility.TestPlanesAABB(planes, r.bounds);
+                if (inView) { visibleTris += tris; visible++; }
+                rows.Add((tris, $"{tris,9} tris  view={(inView ? "Y" : "n")} shadows={r.shadowCastingMode}  {HierPath(r.transform)}  mesh={mesh.name}"));
+            }
+            rows.Sort((a, b) => b.tris.CompareTo(a.tris));
+            sb.AppendLine($"renderers in camera frustum={visible}  their triangles={visibleTris:N0}  (all active renderers={rows.Count})");
+            foreach (var row in rows.Take(30)) sb.AppendLine(row.line);
+            return sb.ToString();
+        }
+
+        /// The profiler's own call hierarchy for the most expensive recorded
+        /// frame: every sample over 2 ms, down to depth 8, so a heavy coroutine
+        /// or system shows up by name.
+        static string HierarchyReport()
+        {
+            var sb = new System.Text.StringBuilder();
+            int first = UnityEditorInternal.ProfilerDriver.firstFrameIndex;
+            int last = UnityEditorInternal.ProfilerDriver.lastFrameIndex;
+            if (last < 0) return "profiler: no frames recorded";
+            int worst = last; float worstMs = -1f;
+            for (int f = System.Math.Max(first, last - 20); f <= last; f++)
+            {
+                using (var v = UnityEditorInternal.ProfilerDriver.GetHierarchyFrameDataView(f, 0,
+                           UnityEditor.Profiling.HierarchyFrameDataView.ViewModes.MergeSamplesWithTheSameName,
+                           UnityEditor.Profiling.HierarchyFrameDataView.columnTotalTime, false))
+                {
+                    if (v == null || !v.valid) continue;
+                    if (v.frameTimeMs > worstMs) { worstMs = v.frameTimeMs; worst = f; }
+                }
+            }
+            sb.AppendLine($"profiler hierarchy — worst of recorded frames: #{worst}, {worstMs:F1} ms (samples >= 2 ms, depth <= 8)");
+            using (var view = UnityEditorInternal.ProfilerDriver.GetHierarchyFrameDataView(worst, 0,
+                       UnityEditor.Profiling.HierarchyFrameDataView.ViewModes.MergeSamplesWithTheSameName,
+                       UnityEditor.Profiling.HierarchyFrameDataView.columnTotalTime, false))
+            {
+                if (view == null || !view.valid) return sb.Append("profiler: frame view invalid").ToString();
+                var children = new System.Collections.Generic.List<int>();
+                void Walk(int id, int depth)
+                {
+                    if (depth > 8) return;
+                    children.Clear();
+                    view.GetItemChildren(id, children);
+                    var kids = new System.Collections.Generic.List<int>(children);
+                    kids.Sort((a, b) => view.GetItemColumnDataAsFloat(b, UnityEditor.Profiling.HierarchyFrameDataView.columnTotalTime)
+                        .CompareTo(view.GetItemColumnDataAsFloat(a, UnityEditor.Profiling.HierarchyFrameDataView.columnTotalTime)));
+                    foreach (var c in kids)
+                    {
+                        float total = view.GetItemColumnDataAsFloat(c, UnityEditor.Profiling.HierarchyFrameDataView.columnTotalTime);
+                        if (total < 2f) continue;
+                        float self = view.GetItemColumnDataAsFloat(c, UnityEditor.Profiling.HierarchyFrameDataView.columnSelfTime);
+                        string gc = view.GetItemColumnData(c, UnityEditor.Profiling.HierarchyFrameDataView.columnGcMemory);
+                        sb.AppendLine($"{new string(' ', depth * 2)}{total,8:F1} ms total  {self,8:F1} self  gc={gc}  {view.GetItemName(c)}");
+                        Walk(c, depth + 1);
+                    }
+                }
+                Walk(view.GetRootItemID(), 0);
+            }
             return sb.ToString();
         }
 
