@@ -36,6 +36,7 @@ export function registerBrainModeRoutes(app, deps) {
       }
       db.prepare('UPDATE users SET brain_mode = ?, brain_mode_set_at = ? WHERE id = ?')
         .run(mode, Date.now(), userId);
+      globalThis.__concordBustUserCache?.(userId);
       logger.log('info', 'brain_mode_changed', { userId, mode });
       res.json({ ok: true, mode });
     } catch (err) {

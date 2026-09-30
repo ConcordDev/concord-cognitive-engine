@@ -1081,4 +1081,22 @@ export const EXTENDED_FEATURES = {
     ],
     featureCount: 4, economicIntegrations: [], emergentAccess: false, botAccess: false, usbIntegration: false,
   },
+
+  // Concord Predict — probabilistic prediction/forecasting engine over the
+  // PredictionTicket substrate (migration 418, server/domains/predict.js).
+  // Backend-only as of this pass; no lens page mounted yet.
+  predict: {
+    lensId: "predict",
+    lensNumber: 129,
+    category: "AI_EXT",
+    features: [
+      f("prediction_tickets", "Prediction Tickets", "Immutable forecast + frozen feature snapshot, resolved outcome recorded separately", "creation", []),
+      f("calibration_report", "Calibration Report", "Brier score, Brier skill score, log-loss, reliability curve, ECE/MCE with sample size on every stat", "infrastructure", ["dtu"]),
+      f("monte_carlo_convergence", "Monte Carlo Convergence", "Seeded Monte Carlo estimator with escalating-sample-count convergence detection", "infrastructure", []),
+      f("historical_analog_search", "Historical Analog Search", "Real-price-history analog search with an explicit non-causality caveat", "infrastructure", []),
+      f("market_compare", "Market Compare", "Edge + expected value versus a supplied market probability and cost structure", "infrastructure", []),
+      f("walk_forward_validation", "Walk-Forward Validation", "Chronological, no-lookahead replay of resolved tickets with regime split + multiple-comparison correction", "infrastructure", ["dtu"]),
+    ],
+    featureCount: 6, economicIntegrations: [], emergentAccess: false, botAccess: false, usbIntegration: false,
+  },
 };

@@ -81,7 +81,13 @@ describe("marketplace SQL-shadow hydration — raw INSERT INTO dtus victims", ()
     const now = new Date().toISOString();
     const body = {
       title: "Riverside Watchtower",
-      meta: { type: "blueprint", kind: "building", archetype: "tower" },
+      // `license.scopes` includes `marketplace_sale` — real building-publish
+      // grants this on every minted blueprint (fixed alongside this test,
+      // same gap `mintForgeAppAsDtu` already had fixed: a raw-SQL DTU with
+      // no `.license` defaults to `["private"]` via `dtuEnsureLicense`,
+      // which `marketplace.list`'s `dtuAssertScope(dtu, "marketplace_sale")`
+      // gate then refuses with `license_scope_denied`).
+      meta: { type: "blueprint", kind: "building", archetype: "tower", license: { scopes: ["private", "marketplace_sale"] } },
       human: { summary: "Riverside Watchtower — an authored tower building." },
     };
     seedUser(db, sellerId);

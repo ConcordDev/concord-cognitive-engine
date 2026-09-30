@@ -83,6 +83,15 @@ async function fetchConfig(): Promise<ClientConfig> {
   if (_inflight) return _inflight;
   _inflight = (async () => {
     try {
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const guestPublic =
+        path === '/' || path === '/explore' || path.startsWith('/explore/') ||
+        path === '/login' || path === '/register' || path === '/signup' || path.startsWith('/legal/');
+      if (guestPublic) {
+        _cached = CLIENT_CONFIG_DEFAULTS;
+        for (const cb of _subscribers) cb(_cached);
+        return _cached;
+      }
       const j = await fetch('/api/config/client', { credentials: 'include' }).then((r) => r.json());
       _cached = j?.ok ? deepMerge(CLIENT_CONFIG_DEFAULTS, j.config) : CLIENT_CONFIG_DEFAULTS;
     } catch {

@@ -39,7 +39,7 @@ export default function registerWikipediaSearchMacros(register) {
   // ─────────────────────────────────────────────────────────────────────
   const wikiSearch = async (_ctx, input = {}) => {
     const q = String(input.query || "").trim();
-    if (!q) return { ok: false, reason: "missing_query" };
+    if (!q) return { ok: false, error: "missing_query", reason: "missing_query" };
     if (q.length > 200) return { ok: false, reason: "query_too_long" };
     const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
     const lang = String(input.lang || "en").toLowerCase().slice(0, 8);
@@ -107,8 +107,8 @@ export default function registerWikipediaSearchMacros(register) {
   // ─────────────────────────────────────────────────────────────────────
   const wikiSummary = async (_ctx, input = {}) => {
     const title = String(input.title || "").trim();
-    if (!title) return { ok: false, reason: "missing_title" };
-    if (title.length > 200) return { ok: false, reason: "title_too_long" };
+    if (!title) return { ok: false, error: "missing_title", reason: "missing_title" };
+    if (title.length > 200) return { ok: false, error: "title_too_long", reason: "title_too_long" };
     const lang = String(input.lang || "en").toLowerCase().slice(0, 8);
     try {
       const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;

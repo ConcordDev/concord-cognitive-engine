@@ -382,6 +382,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "physics.kinematicsSimAdvanced",
+      "name": "kinematicsSimAdvanced"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "physics.kineticsSim",
       "name": "kineticsSim"
     },
@@ -488,6 +501,19 @@
       ],
       "macro_id": "physics.orbitalMechanics",
       "name": "orbitalMechanics"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.orbitalMechanicsAdvanced",
+      "name": "orbitalMechanicsAdvanced"
     },
     {
       "_derived": true,
@@ -901,9 +927,22 @@
       ],
       "macro_id": "physics.waveInterference",
       "name": "waveInterference"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.waveInterferenceAdvanced",
+      "name": "waveInterferenceAdvanced"
     }
   ],
   "domain": "physics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 49
 }

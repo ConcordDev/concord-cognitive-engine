@@ -23,6 +23,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reason.evaluate_answer",
+      "name": "evaluate_answer"
+    },
+    {
+      "_derived": true,
+      "domain": "reason",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reason.prove",
       "name": "prove"
     },
@@ -42,5 +55,5 @@
   ],
   "domain": "reason",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 4
 }

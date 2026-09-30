@@ -23,6 +23,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agent_marathon.digest",
+      "name": "digest"
+    },
+    {
+      "_derived": true,
+      "domain": "agent_marathon",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agent_marathon.get",
       "name": "get"
     },
@@ -62,6 +75,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agent_marathon.revoke",
+      "name": "revoke"
+    },
+    {
+      "_derived": true,
+      "domain": "agent_marathon",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agent_marathon.start",
       "name": "start"
     },
@@ -81,5 +107,5 @@
   ],
   "domain": "agent_marathon",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 8
 }

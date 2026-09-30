@@ -1,0 +1,101 @@
+[
+  {
+    "id": "frontier_mara_01_call",
+    "title": "The Council Room — Carry a Letter",
+    "description": "Councillor Mara Pin writes letters. Some get read. Carry one to Elder Mira Lattice in the hub.",
+    "giver_npc_id": "councillor_mara_pin",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mara1_visit",
+        "type": "reach_location",
+        "target": "frontier_council_room",
+        "required_count": 1,
+        "description": "Visit Mara during her writing hours."
+      },
+      {
+        "id": "obj_mara1_collect",
+        "type": "interact",
+        "target": "mara_third_pencil_pile",
+        "required_count": 1,
+        "description": "Take the letter from the third pencil's pile."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "frontier_mara_02_deliver"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_side"
+    ]
+  },
+  {
+    "id": "frontier_mara_02_deliver",
+    "title": "The Assembly Hall — Hand to Mira",
+    "description": "Deliver the letter to Elder Mira Lattice in person. Do not read it. Do not leave with an aide.",
+    "giver_npc_id": "councillor_mara_pin",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mara2_carry",
+        "type": "deliver",
+        "target": "mara_letter_to_mira",
+        "required_count": 1,
+        "description": "Hand it to Mira herself."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "frontier_mara_03_return"
+    ],
+    "prerequisites": [
+      "frontier_mara_01_call"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_side"
+    ]
+  },
+  {
+    "id": "frontier_mara_03_return",
+    "title": "The Frontier — Return with Reply",
+    "description": "Mira writes back. Bring the reply to Mara.",
+    "giver_npc_id": "elder_mira_lattice",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mara3_return",
+        "type": "deliver",
+        "target": "mira_letter_to_mara",
+        "required_count": 1,
+        "description": "Return to Mara with Mira's reply."
+      }
+    ],
+    "rewards": {
+      "xp": 600,
+      "items": [
+        "frontier_courier_seal"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "frontier_mara_02_deliver"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_side"
+    ]
+  }
+]

@@ -1,0 +1,419 @@
+{
+  "batch": "B25_creatures_dawn",
+  "cycle": 2,
+  "world_ids": [
+    "Superhero"
+  ],
+  "count": 8,
+  "spawn_weight": 0,
+  "mini_boss": "mon_dawn_gap_lion",
+  "notes": "Cycle 2 fill. First eight rows stay in batches/B25_creatures_dawn.json. Gap Lion stays the only mini-boss. These eight are unseated.",
+  "entries": [
+    {
+      "id": "faun_dawn_pier_duck",
+      "display_name": "Pier Duck",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "waterline",
+        "ambient",
+        "pier"
+      ],
+      "triangle_budget": 3800,
+      "aura_prompt": "One low pier duck, body a flat loaf, bill one square paddle held forward, marble-gray feathers with dawn-gold dust on the chest, wings closed, standing on a stone edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low pier duck, body a flat loaf, bill one square paddle held forward, marble-gray feathers with dawn-gold dust on the chest, wings closed, standing on a stone edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Low loaf plus a square bill paddle. Separate from the Ark Heron vertical spear, the Rain Gull hooked bill, and the Plane Dove square tail flag.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Arterial pier. Stands on the stone. No swim clip.",
+      "scale_vs_player": "0.38 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_dawn_pier_duck/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 3800,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero arterial pier, on the stone, off the water",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bird.idle",
+          "bird.hop",
+          "bird.perch"
+        ],
+        "softenter_adjacent": false,
+        "spawner": "ambient catalog, unseated",
+        "swim": false
+      }
+    },
+    {
+      "id": "faun_dawn_canopy_moth",
+      "display_name": "Canopy Moth",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "insect",
+        "ambient",
+        "clinic"
+      ],
+      "triangle_budget": 2400,
+      "aura_prompt": "One clinic moth, wings closed into one flat square of two equal panels, marble dust on the square, no glow, no eye light, perched under a canopy edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One clinic moth, wings closed into one flat square of two equal panels, marble dust on the square, no glow, no eye light, perched under a canopy edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Closed square of two equal panels. Separate from the lattice moth's unequal wings and from the olive lizard's body diamond.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Clinic canopy, off the mercy ring. No lantern. No emissive eye.",
+      "scale_vs_player": "0.22 m closed",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_dawn_canopy_moth/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 2400,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero clinic canopy, off the mercy ring",
+        "rig": "creature_insect",
+        "anim_controller": "creature_insect",
+        "clips": [
+          "insect.hover"
+        ],
+        "softenter_adjacent": false,
+        "spawner": "ambient catalog, unseated",
+        "wing_bind": "closed square, equal panels, no emissive"
+      }
+    },
+    {
+      "id": "faun_dawn_gutter_sparrow",
+      "display_name": "Gutter Sparrow",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "ambient",
+        "roof"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One small sparrow, oval body, one vertical tail pin taller than the body, pale marble chest, dark wing tips, perched on a low square. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small sparrow, oval body, one vertical tail pin taller than the body, pale marble chest, dark wing tips, perched on a low square. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Oval plus a vertical tail pin. Separate from the Cable Sparrow short tail and from the Plane Dove square flag.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Low-rent roof square. Not the mercy ring.",
+      "scale_vs_player": "0.16 m body, pin to 0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_dawn_gutter_sparrow/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero low-rent square, terr_dawn_lowrent_pad",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bird.idle",
+          "bird.hop",
+          "bird.flap",
+          "bird.perch"
+        ],
+        "softenter_adjacent": false,
+        "spawner": "ambient catalog, unseated",
+        "tail_bone": "one vertical pin"
+      }
+    },
+    {
+      "id": "faun_dawn_apron_cat",
+      "display_name": "Apron Cat",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "urban",
+        "apron"
+      ],
+      "triangle_budget": 4200,
+      "aura_prompt": "One low civic cat, body a flat rectangle, ears folded flat, tail a short vertical stub, marble-gray coat with one dawn-gold dust stripe, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low civic cat, body a flat rectangle, ears folded flat, tail a short vertical stub, marble-gray coat with one dawn-gold dust stripe, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Low rectangle and a stub tail. Separate from the Market Mouser question-mark tail, the Pad Marten horizontal bar, and the Dawn Jackal brow wedge.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Spire apron, outside the hall first frame.",
+      "scale_vs_player": "0.28 m shoulder",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_dawn_apron_cat/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 4200,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero spire apron, outside arch_hero_dawn_spire_hall first frame",
+        "parent_landmark": "arch_hero_dawn_spire_hall",
+        "rig": "creature_feline",
+        "anim_controller": "creature_feline",
+        "clips": [
+          "quad.idle",
+          "quad.walk",
+          "quad.alert"
+        ],
+        "softenter_adjacent": false,
+        "spawner": "ambient catalog, unseated",
+        "ears": "folded flat",
+        "tail_bone": "short vertical stub",
+        "stalk_speed_max": 0.35
+      }
+    },
+    {
+      "id": "faun_dawn_lip_swift",
+      "display_name": "Lip Swift",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "ambient",
+        "roof"
+      ],
+      "triangle_budget": 3000,
+      "aura_prompt": "One perched swift, wings longer than the body and crossed behind into one chevron, dark tips, pale marble belly, feet on a stone lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One perched swift, wings longer than the body and crossed behind into one chevron, dark tips, pale marble belly, feet on a stone lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One chevron. Separate from the Aegis Kestrel anchor stoop and from the Plane Dove square tail flag.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Launch lip. Not Kane's fin. Campus air stays empty.",
+      "scale_vs_player": "0.34 m folded",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_dawn_lip_swift/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 3000,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero launch lip, off Kane's fin, not campus air",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bird.idle",
+          "bird.hop",
+          "bird.perch",
+          "bird.flap",
+          "bird.land"
+        ],
+        "softenter_adjacent": false,
+        "spawner": "ambient catalog, unseated",
+        "wing_bind": "chevron when perched"
+      }
+    },
+    {
+      "id": "mon_dawn_stoop_palm",
+      "display_name": "Stoop Palm",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "humanoid",
+        "street",
+        "karate"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short civic vest, one open palm held flat at the chest and stopped, other arm down, empty hands, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short civic vest, one open palm held flat at the chest and stopped, other arm down, empty hands, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Short vest and one flat palm. Separate from the alley finisher's raised fist, the arterial kicker's leg bar, and the pad grappler's arm ring.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Clinic stoop. The palm stops. Empty hands.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_dawn_stoop_palm/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero clinic stoop, off the mercy ring",
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross",
+          "Hit_Chest",
+          "Death01"
+        ],
+        "bind_pose": "palm stopped at the chest",
+        "softenter_adjacent": false,
+        "spawner": "street catalog, unseated",
+        "face": "Concordia",
+        "body": "CX"
+      }
+    },
+    {
+      "id": "mon_dawn_pier_bar",
+      "display_name": "Pier Bar",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "humanoid",
+        "street",
+        "karate"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, one cloth bar across the shoulders, arms hanging empty, short civic jacket, standing on a stone edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, one cloth bar across the shoulders, arms hanging empty, short civic jacket, standing on a stone edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Horizontal shoulder bar with arms down. Separate from the pad grappler's chest ring and from a held crook.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Arterial pier. The bar is cloth. Empty hands. The launch hook stays a separate tool.",
+      "scale_vs_player": "1.82 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_dawn_pier_bar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero arterial pier",
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross",
+          "Hit_Chest",
+          "Death01"
+        ],
+        "bind_pose": "shoulder bar, arms down",
+        "softenter_adjacent": false,
+        "spawner": "street catalog, unseated",
+        "face": "Concordia",
+        "body": "CX"
+      }
+    },
+    {
+      "id": "mon_dawn_spire_column",
+      "display_name": "Spire Column",
+      "batch": "B25_creatures_dawn",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "humanoid",
+        "street",
+        "karate"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, narrow coat to the ankle, one arm straight up and stopped short, open empty hand, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, narrow coat to the ankle, one arm straight up and stopped short, open empty hand, standing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Narrow column and one vertical arm. Separate from the Mercy Sentinel tripod and from the alley finisher's knee coat.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#4a5870"
+      ],
+      "lore_blurb": "Spire apron, outside the hall first frame. Not the unplaced spire floor. The arm is not a beam.",
+      "scale_vs_player": "1.88 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_dawn_spire_column/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "spawn_weight": 0,
+        "plaza_heart": false,
+        "geography_hook": "Superhero spire apron, outside arch_hero_dawn_spire_hall, not the unplaced spire floor",
+        "parent_landmark": "arch_hero_dawn_spire_hall",
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross",
+          "Hit_Chest",
+          "Death01"
+        ],
+        "bind_pose": "arm vertical, stopped short",
+        "softenter_adjacent": false,
+        "spawner": "street catalog, unseated",
+        "face": "Concordia",
+        "body": "CX"
+      }
+    }
+  ]
+}

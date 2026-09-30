@@ -201,9 +201,22 @@
       ],
       "macro_id": "repair.resolve_escalation",
       "name": "resolve_escalation"
+    },
+    {
+      "_derived": true,
+      "domain": "repair",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "repair.run_now",
+      "name": "run_now"
     }
   ],
   "domain": "repair",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 5
 }

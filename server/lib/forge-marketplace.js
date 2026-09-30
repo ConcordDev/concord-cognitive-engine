@@ -60,6 +60,15 @@ export async function mintForgeAppAsDtu(db, opts) {
     summary: summary || null,
     source_size: sourceCode.length,
     source_sha1: crypto.createHash("sha1").update(String(sourceCode)).digest("hex").slice(0, 16),
+    // A forge app exists to be listed on the marketplace (this whole module
+    // is "wrap Forge's output in a DTU ... can be listed at user-set
+    // prices" per the header above) — grant that scope at mint time. Read
+    // back by lib/dtu-shadow-hydrate.js's hydrateDtuRow (merges this into
+    // the hydrated DTU's top-level `license`) since this module writes a
+    // raw SQL row, not through the dtu.create macro that would otherwise
+    // set one. Without this, marketplace.list's dtuAssertScope(dtu,
+    // "marketplace_sale") gate (added ea3dc18ba) refuses every forge app.
+    license: { scopes: ["private", "marketplace_sale"] },
     // NPC-authored attribution. The NPC id is the in-world actor; the
     // mentor id (defaulted to the wallet owner when omitted) is the
     // player whose teaching produced the NPC's skill, and who therefore

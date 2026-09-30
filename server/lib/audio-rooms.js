@@ -25,10 +25,11 @@ export function createRoom(db, { roomId, hostUserId, title, description = null, 
 }
 
 export function getRoom(db, roomId) {
-  if (!db || !roomId) return { ok: false };
+  if (!db) return { ok: false, error: "no_db" };
+  if (!roomId) return { ok: false, error: "roomId_required" };
   const row = db.prepare(`SELECT * FROM audio_rooms WHERE id = ?`).get(roomId);
-  if (!row) return { ok: false, reason: 'not_found' };
-  return { ok: true, room: shapeRoom(db, row) };
+  if (!row) return { ok: false, error: "not_found", reason: "not_found" };
+  return { ok: true, result: shapeRoom(db, row), room: shapeRoom(db, row) };
 }
 
 export function listActiveRooms(db, { limit = 50 } = {}) {

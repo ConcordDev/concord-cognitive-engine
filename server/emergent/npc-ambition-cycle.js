@@ -32,16 +32,24 @@ export async function runNpcAmbitionCycle(STATE) {
   let questsAccepted = 0;
   let confidenceBumps = 0;
 
-  // 1. Ambition moves.
-  for (const npc of ambitious) {
-    const move = pickAmbitionMove(npc, db);
-    if (!move) continue;
-    recordAmbitionMove(db, {
-      npcId: npc.id, moveKind: move.kind, targetKind: move.target_kind, targetId: move.target_id,
-      worldId: npc.current_world_id || npc.world_id, outcome: 'queued',
-    });
-    movesPicked++;
-  }
+  // 1. Ambition moves. Batched into ONE transaction instead of one commit
+  // per queued move (up to 200, per the LIMIT above) — real production
+  // finding, 2026-08-23 (see lib/npc-simulator.js#_flushPendingPersists for
+  // the full measured rationale). recordAmbitionMove's own write is a
+  // single INSERT with no cross-row dependency, so batching changes only
+  // WHEN the commit lands, not what gets written.
+  const recordMoves = db.transaction((npcs) => {
+    for (const npc of npcs) {
+      const move = pickAmbitionMove(npc, db);
+      if (!move) continue;
+      recordAmbitionMove(db, {
+        npcId: npc.id, moveKind: move.kind, targetKind: move.target_kind, targetId: move.target_id,
+        worldId: npc.current_world_id || npc.world_id, outcome: 'queued',
+      });
+      movesPicked++;
+    }
+  });
+  recordMoves(ambitious);
 
   // 2. Distribute open lattice-born quests to ambitious idle NPCs.
   const openQuests = listOpenAcceptable(db, 30);
@@ -60,10 +68,17 @@ export async function runNpcAmbitionCycle(STATE) {
       SELECT npc_id FROM npc_active_quests
        WHERE status = 'completed' AND accepted_at > unixepoch() - 3600
     `).all();
-    for (const r of recentDone) {
-      db.prepare(`UPDATE world_npcs SET ambition_score = MIN(1.0, ambition_score + 0.05) WHERE id = ?`).run(r.npc_id);
-      confidenceBumps++;
-    }
+    // Batched — see the moves-loop comment above for why (same fix, same
+    // reason: this SELECT has no LIMIT and confidenceBumps was previously
+    // one commit per row).
+    const bumpStmt = db.prepare(`UPDATE world_npcs SET ambition_score = MIN(1.0, ambition_score + 0.05) WHERE id = ?`);
+    const applyBumps = db.transaction((rows) => {
+      for (const r of rows) {
+        bumpStmt.run(r.npc_id);
+        confidenceBumps++;
+      }
+    });
+    applyBumps(recentDone);
   } catch { /* table may not exist */ }
 
   return { ok: true, movesPicked, questsAccepted, confidenceBumps };

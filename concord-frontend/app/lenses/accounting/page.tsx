@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -12,7 +11,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Calculator, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -22,7 +21,6 @@ import IndicatorChart, { type IndicatorPayload } from '@/components/lens/Indicat
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 import { BooksSection } from '@/components/accounting/BooksSection';
 import type { BooksNav } from '@/components/accounting/BooksShell';
-import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
 import { CategoryRulesPanel } from '@/components/accounting/CategoryRulesPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -69,7 +67,6 @@ export default function AccountingLensPage() {
   });
 
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
   const [booksNav, setBooksNav] = useState<BooksNav>('dashboard');
 
   // Lens-scoped keyboard commands — each one drives a real state change
@@ -81,6 +78,7 @@ export default function AccountingLensPage() {
       { id: 'nav-invoices',  keys: 'i', description: 'Invoices', category: 'navigation', action: () => setBooksNav('invoices') },
       { id: 'nav-bills',     keys: 'x', description: 'Bills', category: 'navigation', action: () => setBooksNav('bills') },
       { id: 'nav-reports',   keys: 'p', description: 'P&L report', category: 'navigation', action: () => setBooksNav('pl') },
+      { id: 'nav-actions',   keys: 'a', description: 'CFO bench', category: 'navigation', action: () => setBooksNav('actions') },
       { id: 'open-workbench', keys: 'w', description: 'Open workbench', category: 'actions', action: () => setWorkbenchOpen(true) },
     ],
     { lensId: 'accounting' }
@@ -156,31 +154,11 @@ export default function AccountingLensPage() {
           sheet / AR-aging power-user flows over the same real backend. */}
       <AccountingWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
-      <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowActionPanel(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>More actions</span>
-          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showActionPanel && (
-          <div className="mt-3">
-            <PipingProvider>
-              <AccountingActionPanel />
-            </PipingProvider>
-          </div>
-        )}
-      </section>
       <PipingProvider>
         <section className="mt-6 max-w-7xl mx-auto px-4">
           <CategoryRulesPanel />
         </section>
-      </PipingProvider>
-
-      <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
-      <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </PipingProvider>      <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

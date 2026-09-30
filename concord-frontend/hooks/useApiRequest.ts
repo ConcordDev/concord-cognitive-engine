@@ -6,7 +6,7 @@
  * Retries 2x on 5xx + network errors. Returns loading/error/data state.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface UseApiRequestOptions<T> {
   /** The fetch URL (or function that returns one) */
@@ -66,6 +66,8 @@ export function useApiRequest<T = unknown>(options: UseApiRequestOptions<T>): Us
   const abortRef = useRef<AbortController | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
+  const fetchOptionsKey = JSON.stringify(fetchOptions);
+  const stableFetchOptions = useMemo(() => fetchOptions, [fetchOptionsKey]);
   onSuccessRef.current = onSuccess;
   onErrorRef.current = onError;
 
@@ -95,12 +97,12 @@ export function useApiRequest<T = unknown>(options: UseApiRequestOptions<T>): Us
 
       try {
         const res = await fetch(urlStr, {
-          ...fetchOptions,
+          ...stableFetchOptions,
           signal: controller.signal,
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            ...fetchOptions?.headers,
+            ...stableFetchOptions?.headers,
           },
         });
 
@@ -162,7 +164,7 @@ export function useApiRequest<T = unknown>(options: UseApiRequestOptions<T>): Us
       onErrorRef.current?.(lastError);
     }
     setLoading(false);
-  }, [url, JSON.stringify(fetchOptions), timeoutMs, maxRetries, backoffMs]);
+  }, [url, stableFetchOptions, timeoutMs, maxRetries, backoffMs]);
 
   useEffect(() => {
     if (autoRun) {

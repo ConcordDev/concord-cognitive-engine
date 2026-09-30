@@ -45,7 +45,8 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
     window.setTimeout(() => setNote(null), 5000);
   };
 
-  const acceptedCount = pact.beneficiaries.filter((b) => b.accepted).length;
+  const beneficiaries = pact.beneficiaries || [];
+  const acceptedCount = beneficiaries.filter((b) => b.accepted).length;
 
   return (
     <li className={`rounded-lg border p-3 text-xs ${STATUS_TONE[pact.status]}`}>
@@ -62,7 +63,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
       </div>
 
       <ul className="mt-2 space-y-1">
-        {pact.beneficiaries.map((b) => (
+        {beneficiaries.map((b) => (
           <li key={b.userId} className="flex items-center justify-between gap-2 text-[11px]">
             <span className="flex items-center gap-1 text-zinc-200">
               <Users className="h-3 w-3 text-zinc-400" />
@@ -95,7 +96,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
         {pact.renewCount > 0 && <span>renewed ×{pact.renewCount}</span>}
         {pact.requireHandshake && (
           <span>
-            handshake {acceptedCount}/{pact.beneficiaries.length}
+            handshake {acceptedCount}/{beneficiaries.length}
           </span>
         )}
         {pact.nextPremiumDueAt != null && pact.status === 'active' && (

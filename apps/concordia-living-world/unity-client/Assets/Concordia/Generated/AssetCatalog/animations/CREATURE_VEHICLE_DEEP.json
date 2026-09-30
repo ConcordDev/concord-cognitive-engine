@@ -1,0 +1,426 @@
+{
+  "schema": "concordia-anim-deep/1.0",
+  "slice": "A19_anim_creature_rigs",
+  "batch": "B21_anim_deep",
+  "mesh": false,
+  "generate": false,
+  "pistol_policy": "unbound",
+  "rifle": "forbidden",
+  "mixamo_on_creature": false,
+  "controllers": {
+    "creature": {
+      "name": "CreatureGraph",
+      "not": "ConcordiaLocomotion",
+      "animator": "optional",
+      "params": [
+        "Speed",
+        "Alert",
+        "Airborne",
+        "Action",
+        "Phase"
+      ],
+      "phase": "distance traveled, frozen when the sim pauses",
+      "reduced_motion": "bind pose, amplitude 0",
+      "layers": 1
+    },
+    "vehicle": {
+      "name": "VehicleRoll",
+      "animator": false,
+      "params": [
+        "v",
+        "brake",
+        "bump",
+        "door",
+        "sail"
+      ],
+      "wheel": "omega = v / r, axle pivot, albedo has no baked spin",
+      "occupant": "none",
+      "driver_clip": "unbound"
+    }
+  },
+  "procedural": {
+    "quad_walk_offsets": [
+      0,
+      0.5,
+      0.25,
+      0.75
+    ],
+    "quad_trot_pairs": [
+      [
+        0,
+        0.5
+      ],
+      [
+        0.5,
+        0
+      ]
+    ],
+    "spine_yaw_rad": 0.08,
+    "gallop_speed_min": 0.85,
+    "led_speed_max": 0.45,
+    "feline_stalk_speed_max": 0.35,
+    "feline_crouch_scale": 0.85,
+    "bird_flap_hz": [
+      2,
+      4
+    ],
+    "bird_flap_deg": 35,
+    "wing_fold_ground_deg": 0,
+    "dive_pitch_deg": -40,
+    "serpent_amp": "small",
+    "eel_amp": "small",
+    "amphib_paddle_deg": 25,
+    "hover_bob_m": 0.06,
+    "construct_sway": "slow",
+    "crawler_shell_pitch_deg": 4,
+    "sail_luff_deg": 8,
+    "brake_pitch_deg": 3,
+    "brake_damp_s": 0.4,
+    "bump_cobble_m": 0.04,
+    "bump_road_m": 0.02,
+    "bump_sky_m": 0.015,
+    "hitch_sway_deg": 2
+  },
+  "graphs": {
+    "quad": "four-beat walk, diagonal trot, gallop only above 0.85 and never while led",
+    "feline": "quad bones, low spine, tail curl, stalk under 0.35",
+    "prey": "ear twitch, crouch pebble, bolt folds ears",
+    "bird": "bob, hop, flap, land, perch; flock shares one phase",
+    "flyer_cat": "quad on the ground with wings folded; flap and tuck in the air; dive is a cross",
+    "harpy": "wing bones are the arms, legs are bird; no CX clip",
+    "serpent": "spine wave, one hood bone, strike compresses the S, no legs",
+    "eel": "spine wave, lump stays, no hood",
+    "amphib": "land is a sliding loaf; water uses the paddle bones",
+    "sprawl": "belly down or short-leg skitter, body shape held",
+    "insect": "two wing bones, figure-eight, no leg cycle",
+    "critter": "body still or stub step; long parts trail",
+    "crab": "sidle, one claw, stump stays a stump",
+    "grub": "curl and inch, no legs",
+    "polyped": "six pillar legs, shell pitch at most 4 degrees",
+    "hover": "disc bob, no legs, no propeller bones",
+    "quad_disc": "quad on the body; disc spins only while Airborne",
+    "construct": "two-beat, gap stays open, hit is one swing",
+    "tripod": "three legs at 120 degrees",
+    "hang": "rings turn in place, no walk",
+    "drift": "core bob, three shards on a fixed radius",
+    "slab": "two-beat, one long arm is the strike",
+    "kiln": "two-beat, skirt static, eye is the tell, no flame tongue",
+    "wraith": "cowl bob, no foot phase",
+    "humanoid_cx": "ConcordiaLocomotion only"
+  },
+  "boss_tell": [
+    "mon_dawn_gap_lion",
+    "mon_crucible_gap_bracket",
+    "mon_sunder_griffin",
+    "hyb_dustgriffin",
+    "hyb_cursebeak",
+    "mon_tunya_harpy",
+    "hyb_markharpy",
+    "mon_boss_held_curse",
+    "mon_boss_unfinished",
+    "mon_boss_census",
+    "mon_boss_unender",
+    "mon_boss_compound_mark",
+    "mon_dawn_mercy_sentinel",
+    "mon_frontier_domebreaker"
+  ],
+  "bind": {
+    "quad": [
+      "faun_pinewood_stag",
+      "faun_blackroot_elk",
+      "faun_wardwood_boar",
+      "faun_terrace_goat",
+      "faun_wagon_horse",
+      "faun_wind_pronghorn",
+      "hyb_veilstag",
+      "faun_sunder_wolf",
+      "faun_ash_wolf",
+      "faun_dust_wolf",
+      "faun_veil_hound",
+      "faun_dock_hound",
+      "faun_mark_hound",
+      "faun_dawn_arterial_hound",
+      "faun_dawn_pad_marten",
+      "faun_grid_stray",
+      "mon_tunya_reapjackal",
+      "mon_coast_billhound",
+      "hyb_nullhound",
+      "hyb_ribwolf",
+      "hyb_dawnjackal",
+      "hyb_ashfang",
+      "mon_dawn_gap_lion",
+      "mon_frontier_domebreaker"
+    ],
+    "feline": [
+      "faun_court_cat",
+      "faun_dawn_apron_cat"
+    ],
+    "prey": [
+      "faun_saltroad_hare",
+      "faun_pollen_hare",
+      "faun_crucible_fault_hare",
+      "faun_sodium_rat"
+    ],
+    "bird": [
+      "faun_court_pigeon",
+      "faun_cursefold_owl",
+      "faun_ark_heron",
+      "faun_catalogue_crow",
+      "faun_rain_gull",
+      "faun_cable_sparrow",
+      "faun_aegis_kestrel",
+      "faun_grove_finch",
+      "faun_dawn_plane_dove",
+      "faun_sere_scrub_finch",
+      "faun_ruins_vault_bat",
+      "faun_dawn_pier_duck",
+      "faun_dawn_gutter_sparrow",
+      "faun_dawn_lip_swift",
+      "faun_crucible_shard_lark"
+    ],
+    "flyer_cat": [
+      "mon_sunder_griffin",
+      "hyb_dustgriffin",
+      "hyb_cursebeak"
+    ],
+    "harpy": [
+      "mon_tunya_harpy",
+      "hyb_markharpy"
+    ],
+    "serpent": [
+      "mon_sunder_basilisk",
+      "mon_boss_held_curse",
+      "hyb_pollenwyrm",
+      "hyb_latticebasilisk"
+    ],
+    "eel": [
+      "faun_sere_drowned_eel",
+      "hyb_saltwyrm"
+    ],
+    "amphib": [
+      "faun_nil_sealie"
+    ],
+    "sprawl": [
+      "faun_rib_lizard",
+      "faun_dawn_olive_lizard",
+      "faun_crucible_seam_skink",
+      "faun_crucible_quartz_newt",
+      "faun_ruins_cinder_newt",
+      "faun_sere_lip_newt",
+      "faun_crucible_road_toad",
+      "faun_crucible_lichen_snail"
+    ],
+    "insect": [
+      "faun_lantern_moth",
+      "faun_lattice_moth",
+      "faun_dawn_canopy_moth"
+    ],
+    "critter": [
+      "faun_smog_roach",
+      "faun_crucible_comma_mite",
+      "faun_ruins_staple_beetle",
+      "faun_crucible_fold_pillbug",
+      "faun_crucible_fault_cricket"
+    ],
+    "crab": [
+      "faun_sere_tar_crab"
+    ],
+    "grub": [
+      "faun_ruins_ash_grub"
+    ],
+    "polyped": [
+      "mon_ruins_crawler"
+    ],
+    "hover": [
+      "mon_grid_drone"
+    ],
+    "quad_disc": [
+      "hyb_billdrone"
+    ],
+    "construct": [
+      "mon_crucible_rib_frame",
+      "mon_crucible_vent_jack",
+      "mon_crucible_gap_bracket",
+      "mon_grid_sentinel",
+      "mon_grid_construct",
+      "hyb_censusconstruct",
+      "mon_crucible_fold_clamp",
+      "mon_crucible_anchor_shard",
+      "mon_crucible_fault_sled"
+    ],
+    "tripod": [
+      "mon_dawn_mercy_sentinel",
+      "mon_boss_unender"
+    ],
+    "hang": [
+      "mon_boss_census"
+    ],
+    "drift": [
+      "mon_crucible_drift"
+    ],
+    "slab": [
+      "mon_boss_unfinished"
+    ],
+    "kiln": [
+      "mon_boss_compound_mark"
+    ],
+    "wraith": [
+      "mon_ruins_wraith",
+      "hyb_mercywraith"
+    ],
+    "humanoid_cx": [
+      "mon_dawn_alley_finisher",
+      "mon_dawn_arterial_kicker",
+      "mon_dawn_pad_grappler",
+      "mon_road_watcher",
+      "mon_dawn_stoop_palm",
+      "mon_dawn_pier_bar",
+      "mon_dawn_spire_column"
+    ]
+  },
+  "led": {
+    "faun_wagon_horse": {
+      "speed_max": 0.45,
+      "gallop": false,
+      "rider": false,
+      "halter": "veh_horse_halter",
+      "bit": false
+    },
+    "faun_wind_pronghorn": {
+      "bridle": false,
+      "rider": false
+    }
+  },
+  "holds": {
+    "faun_ruins_vault_bat": "bird plus bat.hang; feet lock to a rib",
+    "hyb_billdrone": "disc bone still on the ground",
+    "mon_grid_drone": "lens pulse is the tell; two short antennae; no propeller",
+    "veh_cyber_drone_sled": "runner; the fauna disc does not drive this plank",
+    "mon_sunder_griffin": "grounded read stays a big cat",
+    "hyb_dustgriffin": "canvas is a material on the wings",
+    "hyb_latticebasilisk": "quartz ribs stay open",
+    "mon_boss_held_curse": "crest is the only vertical; no wing bones",
+    "mon_boss_unender": "ring gap stays open",
+    "mon_crucible_drift": "three shards; extra shards are VFX",
+    "mon_boss_compound_mark": "eye emissive only; no flame tongue",
+    "mon_dawn_mercy_sentinel": "halo is a brass loop; barrel arm is the swing",
+    "faun_dawn_pier_duck": "stands on the pier; no swim clip",
+    "faun_dawn_canopy_moth": "closed square of equal panels; no emissive eye",
+    "faun_dawn_gutter_sparrow": "vertical tail pin",
+    "faun_dawn_apron_cat": "ears flat; stub tail; stalk speed capped",
+    "faun_dawn_lip_swift": "chevron when perched; not the kestrel kite"
+  },
+  "vehicles": {
+    "wheel": {
+      "states": [
+        "veh.parked",
+        "veh.roll",
+        "veh.brake",
+        "veh.bump"
+      ],
+      "ids": {
+        "prop_wagon": 0.42,
+        "veh_spare_iron_wheel": 0.42,
+        "veh_hub_handcart": 0.28,
+        "veh_frontier_handcart": 0.34,
+        "veh_link_hub_barrow": 0.22,
+        "veh_wharf_cart": 0.32,
+        "veh_cyber_skybridge_cart": 0.22,
+        "veh_crime_dock_loader": 0.16,
+        "veh_grid_rail_dolly": 0.18,
+        "veh_cyber_rail_shoe": 0.18,
+        "veh_crime_pallet_jack": 0.05,
+        "veh_pinewood_log_bogie": 0.26
+      }
+    },
+    "runner": {
+      "states": [
+        "veh.parked",
+        "veh.bump"
+      ],
+      "omega": false,
+      "ids": [
+        "veh_cyber_drone_sled",
+        "veh_ix_wharf_skid",
+        "veh_hub_salt_skid",
+        "veh_water_keg_cradle",
+        "veh_frontier_travois",
+        "veh_link_step_skid"
+      ]
+    },
+    "hitch": {
+      "states": [
+        "veh.hitch_idle"
+      ],
+      "ids": [
+        "veh_tack_draft_collar",
+        "veh_hitch_rope",
+        "veh_lead_rope",
+        "veh_wagon_pin",
+        "veh_trace_hook",
+        "veh_horse_halter",
+        "veh_feed_bag",
+        "veh_wagon_tongue",
+        "veh_singletree"
+      ]
+    },
+    "sail": {
+      "states": [
+        "veh.sail_luff"
+      ],
+      "ids": [
+        "veh_frontier_wind_sail"
+      ],
+      "amp_deg": 8
+    },
+    "carry": {
+      "states": [
+        "veh.parked"
+      ],
+      "human": "Walk_Loop",
+      "ids": [
+        "veh_pack_frame"
+      ]
+    },
+    "lock": {
+      "forces": "veh.parked",
+      "ids": [
+        "veh_link_halt_chock",
+        "veh_crime_wharf_chock",
+        "veh_link_stop_bar"
+      ]
+    },
+    "still": {
+      "states": [
+        "veh.parked"
+      ],
+      "ids": [
+        "veh_cyber_blank_slate",
+        "veh_frontier_road_chest",
+        "veh_wagon_canvas"
+      ]
+    },
+    "door": {
+      "states": [
+        "veh.door"
+      ],
+      "range_deg": [
+        0,
+        90
+      ],
+      "ids": [
+        "veh_wagon_tailgate"
+      ]
+    },
+    "brake": {
+      "states": [
+        "veh.brake"
+      ],
+      "applies_to": "prop_wagon",
+      "self": "veh.parked",
+      "ids": [
+        "veh_wagon_brake_shoe"
+      ]
+    }
+  }
+}

@@ -1,0 +1,411 @@
+{
+  "schema": "concordia-world-forge-transport/1.0",
+  "slice_id": "W05_transport_graph_spec",
+  "phase": "G4",
+  "phase_note": "G4a mobility only. Territory, capitals, and faction borders are later slices.",
+  "batch": "WF4_roads",
+  "title": "Transportation geography: natural routes and human roads, bridges, and ports, with a cost model over MAP_MASTER gates and roads",
+  "consumes": [
+    {
+      "schema": "concordia-world-forge-biome-resource/1.0",
+      "slice_id": "W04_biome_resource_spec",
+      "path": "world-forge/W04_biome_resource_spec/SPEC.json",
+      "reads": ["biome.class", "channel_carry", "suitability_cap", "stamp_cells"]
+    },
+    {
+      "schema": "concordia-world-forge-hydrology/1.0",
+      "slice_id": "W03_hydrology_spec",
+      "path": "world-forge/W03_hydrology_spec/SPEC.json",
+      "reads": ["water.kind", "crossings_for_mobility", "pass_id", "coasts"]
+    },
+    {
+      "schema": "concordia-world-forge-continental/1.0",
+      "slice_id": "W02_continental_spec",
+      "path": "world-forge/W02_continental_spec/SPEC.json",
+      "reads": ["slope class", "sea_mask", "built_relief"]
+    },
+    {
+      "schema": "concordia-world-forge-field/1.0",
+      "slice_id": "W01_world_field_schema",
+      "path": "world-forge/W01_world_field_schema/SPEC.json",
+      "reads": ["slope class breaks"]
+    },
+    {
+      "schema": "concordia-world-forge-canon-graph/1.0",
+      "slice_id": "W00_world_forge_canon_graph",
+      "path": "world-forge/W00_world_forge_canon_graph/SPEC.json",
+      "reads": ["trade_graph", "walk_model_kmh", "trade_nodes", "constraints"]
+    }
+  ],
+  "authority_docs": [
+    "lookfeel/MAP_MASTER.json",
+    "lookfeel/GATE_AND_ROAD_TABLE.md",
+    "lookfeel/geography/GEOGRAPHY_INDEX.json",
+    "WORLD_FORGE_GEO_CIV_AUDIT.md",
+    "world-forge/GEO_CIV_AUDIT.md"
+  ],
+  "honesty": "Atlas travel_minutes are copied from MAP_MASTER links through W00 trade_graph. They are not recomputed from slope or from a second speed class. sea_crime_sere stays 96 minutes (15 km/h over 24.0 km) even though W03 tags that water open_exodus at 12 km/h. The 2 km grid is not allocated. Mobility is not a W01 field channel. Present metres and Hub canon metres are different clocks. Design-intent multipliers are marked. Flower Law is 42 horizontal metres. world_id Fantasy is the Sundering. Sere has no Link gate. The Crucible-Grid seam stays unfinished.",
+  "pipeline": [
+    "elevation",
+    "hydrology",
+    "climate",
+    "biome",
+    "resources",
+    "mobility",
+    "suitability",
+    "civ",
+    "pop",
+    "economy",
+    "growth",
+    "infra",
+    "physicalization"
+  ],
+  "writes_channels": [],
+  "writes": "transport_cost_graph",
+  "graph_not_a_field_channel": true,
+  "does_not_write": [
+    "elevation",
+    "slope",
+    "geology",
+    "drainage",
+    "water",
+    "temperature",
+    "rainfall",
+    "humidity",
+    "biome",
+    "soil",
+    "resource",
+    "fertility"
+  ],
+  "grid": {
+    "frame": "continental_veil_datum",
+    "cell_km": 2,
+    "note": "Same contract as G1-G3. This slice does not allocate it and does not emit a per-cell cost.",
+    "materialized": false
+  },
+  "clocks": {
+    "plaque_minutes": 2,
+    "atlas": "travel_minutes on edges. Kilometres only where W00 already stored a distance.",
+    "present_metres_per_km": 0.55,
+    "present_ring_m": 220,
+    "hub_canon_metres": {
+      "flower_law": 42,
+      "ring_of_doors": 34,
+      "wall": 56,
+      "pinewood": { "x_m": 62, "z_m": -28 },
+      "arena_steel": { "x_m": 0, "z_m": 18, "radius_m": 8 }
+    }
+  },
+  "walk_model_kmh": {
+    "road": 5,
+    "walker": 3.5,
+    "coastal_sea": 15,
+    "river_barge": 20,
+    "open_exodus": 12,
+    "waystone_scramble": 3,
+    "link_plaque_minutes": 2,
+    "source": "MAP_MASTER authority.walk_model and W00 walk_model_kmh"
+  },
+  "cost_model": {
+    "atlas_edge": {
+      "weight_minutes": "travel_minutes",
+      "slope_mult": 1,
+      "surface_mult": 1,
+      "recompute": false
+    },
+    "unpublished_ground_when_a_grid_exists": {
+      "formula": "weight_minutes = distance_km / (mode_kmh / (slope_mult * surface_mult)) * 60",
+      "applies_now": false,
+      "reason": "grid.materialized is false"
+    },
+    "parallel_modes": "Minimum of legal modes. A gate is not added to the Crown Road under it.",
+    "blocked_encoding": "weight_minutes null and blocked true. No sentinel minute count.",
+    "slope_mult_design_intent": {
+      "near_level": 1.0,
+      "gentle": 1.15,
+      "moderate": 1.45,
+      "steep": 2.4,
+      "cliff": null
+    },
+    "steep_wheeled": "blocked",
+    "cliff_rule": "impassable unless named_crossings lists a pass on that region",
+    "surface_design_intent": [
+      { "id": "saturated_canopy", "region_id": "tunya_nil", "mode_kmh": 3.5, "surface_mult": 1.6, "wheeled": false, "timber_road": false, "veto": "no_clearcut" },
+      { "id": "ice_foot", "region_id": "tunya_aekon", "mode_kmh": 3, "surface_mult": 1, "wheeled": false, "barge": false },
+      { "id": "seasonal_dry", "rule": "kind none keeps walker 3.5 and opens no barge", "examples": ["ruins_rib_channel", "frontier_former_water"] },
+      { "id": "hub_plaza_local", "frame": "hub_canon_metres", "uses_km_formula": false }
+    ]
+  },
+  "seam_policy": {
+    "pair": ["Crucible", "Cyber"],
+    "pathfinder_edge": "seam_crucible_cyber",
+    "retained_unused_edge": "march_crucible_cyber",
+    "reason": "A paved 1033-minute choice would finish the Eighth Refusal seam.",
+    "finished": false,
+    "pass_id": "pass_crucible_road_end",
+    "mobility_may_finish": false
+  },
+  "strait_clock": {
+    "edge": "sea_crime_sere",
+    "travel_minutes": 96,
+    "water_gap_km": 24.0,
+    "implied_kmh_from_minutes": 15,
+    "w03_mode_tag": "open_exodus",
+    "w03_speed_kmh_not_applied": 12,
+    "do_not_retime_to_minutes": 120,
+    "link_gate": false,
+    "waystone_edge": "waystone_crime_sere",
+    "waystone_minutes": 480,
+    "waystone_kmh": 3
+  },
+  "crown_road_note": {
+    "edges": 8,
+    "minutes": 4800,
+    "distance_km": 400,
+    "metro_km": 40,
+    "metro_minutes_inside_the_same_edge": 480,
+    "approaches_outer_km_design_intent": 80,
+    "split_into_new_edges": false,
+    "channel": null,
+    "leaves_region": "hub_approaches",
+    "does_not_cross": "hub_plaza",
+    "egress_id": "egress_hub_crown"
+  },
+  "edges": [
+    { "id": "gate_hub_cyber", "from": "Hub", "to": "Cyber", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_cyber", "link_gate": true, "finished": true },
+    { "id": "road_hub_cyber", "from": "Hub", "to": "Cyber", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_cyber", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_ruins", "from": "Hub", "to": "Ruins", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_ruins", "link_gate": true, "finished": true },
+    { "id": "road_hub_ruins", "from": "Hub", "to": "Ruins", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_ruins", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_fantasy", "from": "Hub", "to": "Fantasy", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_fantasy", "link_gate": true, "display_far_side": "The Sundering", "finished": true },
+    { "id": "road_hub_fantasy", "from": "Hub", "to": "Fantasy", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_fantasy", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_tunya", "from": "Hub", "to": "Tunya", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_tunya", "link_gate": true, "finished": true },
+    { "id": "road_hub_tunya", "from": "Hub", "to": "Tunya", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_tunya", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_frontier", "from": "Hub", "to": "Frontier", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_frontier", "link_gate": true, "finished": true },
+    { "id": "road_hub_frontier", "from": "Hub", "to": "Frontier", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_frontier", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_crime", "from": "Hub", "to": "Crime", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_crime", "link_gate": true, "finished": true },
+    { "id": "road_hub_crime", "from": "Hub", "to": "Crime", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_crime", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_superhero", "from": "Hub", "to": "Superhero", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_superhero", "link_gate": true, "finished": true },
+    { "id": "road_hub_superhero", "from": "Hub", "to": "Superhero", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_superhero", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "gate_hub_crucible", "from": "Hub", "to": "Crucible", "kind": "gate", "travel_minutes": 2, "distance_km": null, "speed_kmh": null, "pathfinder_use": true, "mode": "plaque", "parallel_to": "road_hub_crucible", "link_gate": true, "finished": true },
+    { "id": "road_hub_crucible", "from": "Hub", "to": "Crucible", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "pathfinder_use": true, "mode": "crown_road", "parallel_to": "gate_hub_crucible", "nodes": ["edge_crown_roads"], "finished": true },
+    { "id": "march_cyber_ruins", "from": "Cyber", "to": "Ruins", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": true, "mode": "ring_march", "nodes": ["edge_ring_march"], "finished": true },
+    { "id": "march_ruins_fantasy", "from": "Ruins", "to": "Fantasy", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": true, "mode": "ring_march", "nodes": ["edge_ring_march"], "finished": true },
+    { "id": "march_fantasy_tunya", "from": "Fantasy", "to": "Tunya", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": true, "mode": "ring_march", "nodes": ["edge_ring_march"], "finished": true },
+    { "id": "walk_tunya_frontier", "from": "Tunya", "to": "Frontier", "kind": "walker", "travel_minutes": 1476, "open_km": 86.1, "speed_kmh": 3.5, "pathfinder_use": true, "mode": "walker", "nodes": ["edge_walker"], "finished": true },
+    { "id": "walk_frontier_crime", "from": "Frontier", "to": "Crime", "kind": "walker", "travel_minutes": 1476, "open_km": 86.1, "speed_kmh": 3.5, "pathfinder_use": true, "mode": "walker", "nodes": ["edge_walker"], "finished": true },
+    { "id": "march_crime_superhero", "from": "Crime", "to": "Superhero", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": true, "mode": "ring_march", "parallel_to": "sea_crime_superhero", "nodes": ["edge_ring_march"], "finished": true },
+    { "id": "march_superhero_crucible", "from": "Superhero", "to": "Crucible", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": true, "mode": "ring_march", "nodes": ["edge_ring_march"], "finished": true },
+    { "id": "march_crucible_cyber", "from": "Crucible", "to": "Cyber", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "speed_kmh": 5, "pathfinder_use": false, "mode": "ring_march_template", "reason": "closed_road_would_finish_the_seam", "nodes": ["edge_ring_march"], "finished": false },
+    { "id": "sea_tunya_fantasy", "from": "Tunya", "to": "Fantasy", "kind": "sea", "travel_minutes": 344, "open_km": 86.1, "speed_kmh": 15, "sea": "inner_veil", "pathfinder_use": true, "mode": "coastal_sea", "nodes": ["edge_tunya_veil", "edge_sunder_veil"], "finished": true },
+    { "id": "sea_crime_superhero", "from": "Crime", "to": "Superhero", "kind": "sea", "travel_minutes": 258, "open_km": 86.1, "speed_kmh": 20, "sea": "inner_veil", "speed_class": "river_barge", "pathfinder_use": true, "mode": "river_barge", "inherits_body": "crime_working_river", "nodes": ["edge_crime_dawn_lane"], "excluded_regions": ["dawn_kane", "dawn_arterials"], "finished": true },
+    { "id": "sea_crime_sere", "from": "Crime", "to": "Sere", "kind": "sea", "travel_minutes": 96, "center_distance_km": 214.0, "water_gap_km": 24.0, "implied_kmh_from_minutes": 15, "speed_class_tag_from_w03": "open_exodus", "w03_speed_kmh_not_applied": 12, "sea": "exodus_ocean", "pathfinder_use": true, "mode": "strait_boat", "link_gate": false, "nodes": ["edge_crime_sere_strait"], "finished": true },
+    { "id": "sea_superhero_sere", "from": "Superhero", "to": "Sere", "kind": "sea", "travel_minutes": 219, "water_gap_km": 54.8, "implied_kmh_from_minutes": 15, "sea": "exodus_ocean", "pathfinder_use": true, "mode": "coastal_sea", "link_gate": false, "nodes": ["edge_dawn_sere"], "dawn_governs_sere": false, "finished": true },
+    { "id": "sea_frontier_sere", "from": "Frontier", "to": "Sere", "kind": "sea", "travel_minutes": 1645, "water_gap_km": 329.0, "speed_kmh": 12, "sea": "exodus_ocean", "pathfinder_use": true, "mode": "open_exodus", "link_gate": false, "nodes": ["edge_frontier_sere"], "finished": true },
+    { "id": "waystone_crime_sere", "from": "Crime", "to": "Sere", "kind": "weak", "travel_minutes": 480, "speed_kmh": 3, "implied_gap_km": 24.0, "pathfinder_use": true, "mode": "waystone_scramble", "link_gate": false, "nodes": ["node_sere_waystone"], "finished": true },
+    { "id": "seam_crucible_cyber", "from": "Crucible", "to": "Cyber", "kind": "weak", "travel_minutes": 1476, "open_km_inherited_from": "march_crucible_cyber", "open_km": 86.1, "speed_kmh": 3.5, "pathfinder_use": true, "mode": "unfinished_seam", "finished": false, "nodes": ["edge_crucible_cyber_seam"] }
+  ],
+  "named_crossings": [
+    {
+      "id": "pass_sunder_salt",
+      "kind": "dry_track",
+      "world_id": "Fantasy",
+      "regions": ["sunder_salt_toll"],
+      "source_channel": "sunder_salt_track",
+      "water_kind": "none",
+      "mode": "walker",
+      "speed_kmh": 3.5,
+      "spans_river": false,
+      "becomes_road": false,
+      "polyline": null
+    },
+    {
+      "id": "pass_frontier_drift",
+      "kind": "bridge_site",
+      "world_id": "Frontier",
+      "regions": ["frontier_hitch", "frontier_drift"],
+      "source_channel": "frontier_former_water",
+      "spans_river": false,
+      "paths_follow_river": false,
+      "built": "site_only",
+      "attaches_to_walker_marches": false,
+      "polyline": null
+    },
+    {
+      "id": "pass_crucible_road_end",
+      "kind": "road_end",
+      "world_id": "Crucible",
+      "regions": ["crucible_lattice"],
+      "channel": null,
+      "pass_gains_stream": false,
+      "mobility_may_finish": false,
+      "sheet_realizes": false,
+      "polyline": null
+    },
+    {
+      "id": "cross_tunya_masond",
+      "kind": "foot_crossing",
+      "world_id": "Tunya",
+      "regions": ["tunya_masond"],
+      "body_id": "tunya_masond_river",
+      "water_kind": "river",
+      "reason": "Realized river, count 1. Not minted from channel_carry wet.",
+      "speed_kmh": 3.5,
+      "surface_mult": 1.8,
+      "surface_mult_authority": "design_intent",
+      "becomes_road": false,
+      "becomes_bridge": false,
+      "polyline": null
+    }
+  ],
+  "carry_does_not_create_a_crossing": [
+    "hub_civic_drain",
+    "sunder_short_run",
+    "sunder_shelf_fall",
+    "tunya_nil_basin",
+    "ruins_rib_channel",
+    "frontier_former_water",
+    "crime_gutters",
+    "crucible_sheet"
+  ],
+  "ports": [
+    {
+      "id": "port_fluxom_lock",
+      "node": "node_fluxom",
+      "body_id": "tunya_fluxom_lock",
+      "edges": ["sea_tunya_fantasy"],
+      "adds_city": false,
+      "local_claim_not_this": "Fluxom Gate (62, 18) m"
+    },
+    {
+      "id": "port_crime_wharf",
+      "node": "node_wharf",
+      "body_id": "crime_working_river",
+      "edges": ["sea_crime_superhero", "sea_crime_sere", "waystone_crime_sere"],
+      "adds_city": false,
+      "strait_is_not_the_river": true
+    },
+    {
+      "id": "port_cyber_wharf_march",
+      "node": "edge_cyber_crime",
+      "body_id": "cyber_wharf_meet",
+      "edges": [],
+      "adds_city": false,
+      "adds_port_city": false,
+      "promotes_to_cyber_crime_chord": false
+    },
+    {
+      "id": "port_sere_marks",
+      "nodes": ["node_sere_pier", "node_sere_waystone", "node_sere_delta"],
+      "stamp_cells": false,
+      "adds_city": false,
+      "link_gate": false
+    },
+    {
+      "id": "dawn_exodus_leg",
+      "edges": ["sea_superhero_sere"],
+      "coast_gap_km": 54.8,
+      "adds_city": false
+    }
+  ],
+  "excluded_promotions": [
+    { "id": "edge_cyber_crime", "stays": "trade node on cyber_wharf_march", "not": "a MAP_MASTER link" },
+    { "id": "node_bronx_arterials", "stays": "Present-metre streets", "not": "a kilometre edge" },
+    { "id": "node_fold_road", "stays": "trade node", "not": "a crown road" },
+    { "id": "node_pinewood", "stays": "canon metres (62, -28)", "not": "a ninth spoke" },
+    { "id": "cyber_skybridge", "stays": "W02 built relief inside cyber_stacks", "not": "an atlas edge" },
+    { "id": "ark_exodus", "stays": "lore", "not": "a span or a spoke" }
+  ],
+  "present_route_lookup": [
+    { "world_geography_id": "route/cyber/sovereign-ruins", "atlas_edge_ids": ["march_cyber_ruins"], "clock": "present_metres" },
+    { "world_geography_id": "route/sovereign-ruins/fantasy", "atlas_edge_ids": ["march_ruins_fantasy"], "clock": "present_metres" },
+    { "world_geography_id": "route/fantasy/tunya", "atlas_edge_ids": ["march_fantasy_tunya", "sea_tunya_fantasy"], "clock": "present_metres" },
+    { "world_geography_id": "route/tunya/concord-link-frontier", "atlas_edge_ids": ["walk_tunya_frontier"], "clock": "present_metres" },
+    { "world_geography_id": "route/concord-link-frontier/crime", "atlas_edge_ids": ["walk_frontier_crime"], "clock": "present_metres" },
+    { "world_geography_id": "route/crime/superhero", "atlas_edge_ids": ["march_crime_superhero", "sea_crime_superhero"], "clock": "present_metres" },
+    { "world_geography_id": "route/superhero/lattice-crucible", "atlas_edge_ids": ["march_superhero_crucible"], "clock": "present_metres" },
+    { "world_geography_id": "route/lattice-crucible/cyber", "atlas_edge_ids": ["seam_crucible_cyber"], "atlas_row_retained_unused": "march_crucible_cyber", "clock": "present_metres", "do_not_delete_polyline": true },
+    { "world_geography_id": "route/crime/sere", "atlas_edge_ids": ["sea_crime_sere", "waystone_crime_sere"], "link_gate": false, "clock": "present_metres" }
+  ],
+  "hub_spokes_have_no_world_geography_route": true,
+  "local_regional_roads": {
+    "kind": "regional-road",
+    "width_present": 3.2,
+    "clock": "present_metres",
+    "reprice_with_crown_kmh": false
+  },
+  "tariff": {
+    "owner": "WorldGeography and CrossRing.RingTariff",
+    "ring": 0.05,
+    "disputed_in_existing_code": 0.12,
+    "written_by_this_slice": false
+  },
+  "integration": [
+    {
+      "path": "server/lib/world-terrain.js",
+      "symbols_today": ["renderedElevationAt", "hashSeed", "generatePoughkeepsieHeightmap"],
+      "design_target": ["continentalElevationAt"],
+      "do_not": "Pathfind on the Poughkeepsie grid or retune seed 0xc0ffee."
+    },
+    {
+      "path": "server/lib/terrain-water.js",
+      "symbols_today": ["solveFlowStep", "setWater", "tickWaterFlow"],
+      "do_not": "Treat a carry label as a ford, wet the plaza, or use the strait as crime_working_river."
+    },
+    {
+      "path": "server/lib/procgen-settlements.js",
+      "symbols_today": ["spawnSettlementForRegion"],
+      "do_not": "Spawn a town from a port node, node_sere_delta, or a cheap minute count."
+    },
+    {
+      "path": "server/lib/embodied/faction-strategy.js",
+      "symbols_today": ["pickMove", "applyMove"],
+      "domain": "server/domains/faction-strategy.js",
+      "cycle": "server/emergent/faction-strategy-cycle.js",
+      "field_extends": "A move may name an edge id in this graph.",
+      "do_not": "Set seam_crucible_cyber.finished true or mint a kingdom on a road. Hub territories stay empty."
+    },
+    {
+      "path": "Assets/Concordia/Scripts/WorldGeography.cs",
+      "symbol": "WorldGeography.Routes",
+      "do_not": "Move waypoints, delete route/lattice-crucible/cyber, or turn route/crime/sere into a gate."
+    },
+    {
+      "path": "Assets/Concordia/Scripts/MegaworldMap.cs",
+      "symbol": "HasLinkGate",
+      "do_not": "Return true for Sere."
+    },
+    {
+      "path": "Assets/Concordia/Scripts/WorldGate.cs",
+      "symbol": "Canon.Gates",
+      "do_not": "Add a ninth plaque."
+    }
+  ],
+  "outputs_for_suitability": {
+    "reads": ["weight_minutes", "pathfinder_use", "blocked", "touches_edge", "touches_pass", "adds_city"],
+    "may_not": "Treat a low minute count as a city. Ignore suitability_cap on tunya_nil. Add a city on a port record."
+  },
+  "outputs_for_infra": {
+    "may_build_on": "an edge id or named_crossings id in this file",
+    "may_not": "Dijkstra a new Crown spoke, span Ark Exodus, or pave the seam into march_crucible_cyber."
+  },
+  "not_yet": [
+    "No cost raster, NavMesh, spline, or road mesh.",
+    "No edit to world-terrain.js, terrain-water.js, procgen-settlements.js, faction-strategy.js, WorldGeography.cs, MegaworldMap.cs, or WorldGate.cs.",
+    "No new MAP_MASTER link and no retiming of published minutes.",
+    "No ninth gate, no Sere arch, no Cyber-Crime chord, no paved seam.",
+    "No cells on Sere or on other G1 skip regions.",
+    "No meshes, no images, no PROMPTS_INDEX rows.",
+    "No retune of Flower Law or of batches B21-B31."
+  ],
+  "counts": {
+    "edges": 31,
+    "gates": 8,
+    "crown_roads": 8,
+    "ring_road_marches": 6,
+    "walker_paths": 2,
+    "sea_edges": 5,
+    "weak_edges": 2,
+    "named_crossings": 4,
+    "pathfinder_excluded": ["march_crucible_cyber"]
+  }
+}

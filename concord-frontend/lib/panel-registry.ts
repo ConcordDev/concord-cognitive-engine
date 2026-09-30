@@ -300,6 +300,19 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     load: lazyNamed(() => import('@/components/conkay/ConKayProjectPanel'), 'ConKayProjectPanel'),
   },
 
+  'conkay.feature-tree': {
+    id: 'conkay.feature-tree', label: 'Feature Tree', scope: 'global',
+    keywords: ['conkay', 'feature', 'tree', 'occ', 'cad', 'solidworks', 'brep'],
+    description: 'OCC feature-tree authoring UI — list/add/undo/rebuild (not SolidWorks UI parity)',
+    load: lazyNamed(() => import('@/components/conkay/panels/FeatureTreePanel'), 'FeatureTreePanel'),
+  },
+  'conkay.erp-bom': {
+    id: 'conkay.erp-bom', label: 'ERP BOM', scope: 'global',
+    keywords: ['conkay', 'bom', 'erp', 'part number', 'csv', 'rollup', 'vendor'],
+    description: 'ERP-shaped BOM export LIVE — part numbers, mass/volume, vendor stubs, CSV+JSON (not SAP/Oracle)',
+    load: lazyNamed(() => import('@/components/conkay/panels/ErpBomPanel'), 'ErpBomPanel'),
+  },
+
   // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4/A3) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
   // (honest, not a crash), so cockpit callers may reference future ids ahead

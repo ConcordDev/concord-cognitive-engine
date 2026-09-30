@@ -1,13 +1,10 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
@@ -57,9 +54,7 @@ export default function SettingsPage() {
 
   return (
     <LensShell lensId="settings" asMain={false}>
-      <FirstRunTour lensId="settings" />
-      <ManifestActionBar />
-      <DepthBadge lensId="settings" size="sm" className="ml-2" />
+      <FirstRunTour lensId="settings" />      <DepthBadge lensId="settings" size="sm" className="ml-2" />
       <LensVerticalHero lensId="settings" className="mx-6 mt-4" />
       <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-4">Settings</h1>
@@ -125,11 +120,7 @@ export default function SettingsPage() {
             </div>
           </section>
         )}
-      </main>
-
-      <RecentMineCard domain="settings" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="settings" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </main>      <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

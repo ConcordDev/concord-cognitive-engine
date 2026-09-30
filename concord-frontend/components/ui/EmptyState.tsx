@@ -79,6 +79,14 @@ export interface EmptyStateProps {
   className?: string;
   /** Accessible label for the containing region. Default "Empty state". */
   ariaLabel?: string;
+  /**
+   * ARIA role for the container. Default "region" (a genuinely-empty state
+   * is not an error and shouldn't interrupt a screen reader). Callers
+   * rendering an actual failure (e.g. the `ErrorState` preset below) should
+   * pass "alert" so assistive tech announces it the same way `role="alert"`
+   * error banners elsewhere in the app already do.
+   */
+  role?: 'region' | 'alert';
 }
 
 export function EmptyState({
@@ -90,13 +98,15 @@ export function EmptyState({
   compact = false,
   className,
   ariaLabel = 'Empty state',
+  role = 'region',
 }: EmptyStateProps) {
   const resolvedIcon = icon === null ? null : (icon ?? <Inbox className="h-5 w-5" aria-hidden="true" />);
 
   return (
     <div
-      role="region"
-      aria-label={ariaLabel}
+      role={role}
+      aria-label={role === 'alert' ? undefined : ariaLabel}
+      aria-live={role === 'alert' ? 'assertive' : undefined}
       className={cn(
         'flex flex-col items-center justify-center text-center',
         compact ? 'py-6 px-4' : 'py-12 px-6',

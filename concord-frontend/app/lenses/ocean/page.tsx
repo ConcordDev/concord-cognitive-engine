@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -18,7 +16,6 @@ import { SpotLog } from '@/components/ocean/SpotLog';
 import { LiveMarinePanel } from '@/components/ocean/LiveMarinePanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { TideActionStack } from '@/components/ocean/TideActionStack';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -80,9 +77,7 @@ export default function OceanLensPage() {
 
   return (
     <LensShell lensId="ocean" asMain={false}>
-      <FirstRunTour lensId="ocean" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ocean" size="sm" className="ml-2" />
+      <FirstRunTour lensId="ocean" />      <DepthBadge lensId="ocean" size="sm" className="ml-2" />
       <div data-lens-theme="ocean" className={cn(ds.pageContainer, 'space-y-4')}>
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -186,10 +181,7 @@ export default function OceanLensPage() {
         <WikipediaSearchPanel domain="ocean" title="Wikipedia · oceanography" />
       </div>
 
-      <a href="#ocean-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ocean content</a>
-      <RecentMineCard domain="ocean" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="ocean" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="ocean" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#ocean-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ocean content</a>      <CrossLensRecentsPanel lensId="ocean" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

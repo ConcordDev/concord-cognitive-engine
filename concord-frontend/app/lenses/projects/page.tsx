@@ -1,8 +1,6 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -10,7 +8,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProjectsSection } from '@/components/projects/ProjectsSection';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { FolderKanban, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
@@ -26,9 +23,7 @@ export default function ProjectsLensPage() {
 
   return (
     <LensShell lensId="projects" asMain={false}>
-      <FirstRunTour lensId="projects" />
-      <ManifestActionBar />
-      <DepthBadge lensId="projects" size="sm" className="ml-2" />
+      <FirstRunTour lensId="projects" />      <DepthBadge lensId="projects" size="sm" className="ml-2" />
       <LensVerticalHero lensId="projects" className="mx-6 mt-4" />
     <div data-lens-theme="projects" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
@@ -62,10 +57,7 @@ export default function ProjectsLensPage() {
     </div>
 
       <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
-          <SessionRail lensId="projects" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="projects" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="projects" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="projects" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <SessionRail lensId="projects" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="projects" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

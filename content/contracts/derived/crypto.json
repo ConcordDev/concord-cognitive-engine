@@ -504,6 +504,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "crypto.paillierAggregate",
+      "name": "paillierAggregate"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.paillierContribute",
+      "name": "paillierContribute"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.paillierKeygen",
+      "name": "paillierKeygen"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.paillierMultiplyCiphertexts",
+      "name": "paillierMultiplyCiphertexts"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.paillierSessionStatus",
+      "name": "paillierSessionStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "crypto.pin",
       "name": "pin"
     },
@@ -1108,5 +1173,5 @@
   ],
   "domain": "crypto",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 85
+  "macroCount": 90
 }

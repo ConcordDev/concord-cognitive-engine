@@ -1,0 +1,2104 @@
+{
+  "schema": "concordia-world-forge-settlement-layout/1.0",
+  "slice_id": "W08_settlement_layout",
+  "phase": "G5",
+  "phase_note": "G5 spatial hierarchy only. Population headcount, prices, parcel counts, pavement, and meshes stay later. physicalize stays false.",
+  "batch": "WF5_layouts",
+  "title": "Settlement layout grammar: districts and internal roads on named W06 regions. Not an NPC sprinkle and not a mesh pass.",
+  "consumes": [
+    {
+      "schema": "concordia-world-forge-territory/1.0",
+      "slice_id": "W07_civ_territory_physical",
+      "reads": [
+        "site_id",
+        "kind",
+        "faction_id",
+        "region_id",
+        "physicalize",
+        "adds_city",
+        "kingdom"
+      ]
+    },
+    {
+      "schema": "concordia-world-forge-suitability/1.0",
+      "slice_id": "W06_settlement_suitability",
+      "reads": [
+        "tier",
+        "cannot_found",
+        "parent_region_id",
+        "type_hint",
+        "stamp_cells",
+        "ordinal"
+      ]
+    },
+    {
+      "schema": "concordia-world-forge-transport/1.0",
+      "slice_id": "W05_transport_graph_spec",
+      "reads": [
+        "edge id",
+        "finished",
+        "pass id",
+        "port node",
+        "node id"
+      ]
+    },
+    {
+      "schema": "concordia-world-forge-hydrology/1.0",
+      "slice_id": "W03_hydrology_spec",
+      "reads": [
+        "water body id",
+        "kind"
+      ]
+    },
+    {
+      "schema": "concordia-world-forge-canon-graph/1.0",
+      "slice_id": "W00_world_forge_canon_graph",
+      "reads": [
+        "flower_law_42m",
+        "fantasy_is_sundering",
+        "no_vinewood",
+        "no_hub_kingdom"
+      ]
+    }
+  ],
+  "writes": "settlement_layout_table",
+  "writes_channels": [],
+  "grid_materialized": false,
+  "kingdoms_minted": 0,
+  "physicalize": false,
+  "population_assigned": false,
+  "parcel_count": null,
+  "pipeline": [
+    "Elevation",
+    "Hydrology",
+    "Climate",
+    "Biome",
+    "Resources",
+    "Mobility",
+    "Suitability",
+    "Civ",
+    "Pop",
+    "Economy",
+    "Growth",
+    "Infra",
+    "Physicalization"
+  ],
+  "pipeline_note": "This slice authors the slots Pop, Economy, Growth, and Infra write into. It does not run those stages. Mesh physicalization is G6.",
+  "uses": [
+    "residential",
+    "commercial",
+    "industrial",
+    "agricultural",
+    "government",
+    "defense",
+    "water"
+  ],
+  "district_caps": {
+    "city": 6,
+    "town": 4,
+    "village": 3,
+    "hamlet": 1
+  },
+  "road_classes": [
+    "ring",
+    "spine",
+    "lane",
+    "wharf",
+    "terrace",
+    "built_relief",
+    "unfinished"
+  ],
+  "counts": {
+    "w06_regions": 44,
+    "layouts": 28,
+    "role_sketches": 8,
+    "folded_regions": 1,
+    "refused_regions": 7,
+    "districts_on_layouts": 57,
+    "districts_on_roles": 7,
+    "roads": 20,
+    "agricultural_districts": 1,
+    "use_counts_including_roles": {
+      "residential": 11,
+      "commercial": 16,
+      "industrial": 7,
+      "agricultural": 1,
+      "government": 15,
+      "defense": 8,
+      "water": 6
+    },
+    "hub_map_districts_named": 8
+  },
+  "algorithm": [
+    "Copy W06 region_id, world_id, tier, cannot_found, stamp_cells, parent_region_id. Do not rescore.",
+    "If cannot_found and the region is not hub_doors, emit no layout.",
+    "Fold hub_doors into layout_hub_court as dist_hub_doors. Do not emit a second Hub city.",
+    "If stamp_cells is false and cannot_found is false, emit a role sketch with coordinates null and roads empty.",
+    "Assign uses from the closed seven. Stop at the tier cap.",
+    "Agricultural use only where a W07 farm site exists. That is farm_masond_landings only.",
+    "Water use only for a named walkable body that is already a river, lock, harbor march, or working river. Civic drain, ice, drowned founding, the 24 km strait, and the Dawn shore do not qualify.",
+    "Industrial mine yards only where a W07 mine exists. Salvage, lattice works, and the Sere shift are industrial without a new mine.",
+    "A spine or wharf cites an existing W05 id. It does not add an edge and it does not set finished.",
+    "Class unfinished stays paved false. seam_crucible_cyber stays finished false.",
+    "controlled_districts absent from unity_district_id fields stay in not_layout. They are claim-plane names.",
+    "Leave population and parcel_count null. Leave physicalize false."
+  ],
+  "layouts": [
+    {
+      "layout_id": "layout_hub_court",
+      "world_id": "Hub",
+      "region_id": "hub_plaza",
+      "tier": "city",
+      "district_cap": 6,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_hub_inner_court",
+          "region_id": "hub_plaza",
+          "use": "government",
+          "function": "court",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Inner Court",
+          "unity_district_id": "council_chamber",
+          "flower_law": true,
+          "frame": "hub_canon_metres"
+        },
+        {
+          "district_id": "dist_hub_assembly",
+          "region_id": "hub_plaza",
+          "use": "government",
+          "function": "assembly_archive",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Assembly and Archive",
+          "unity_district_id": "archive_quarter",
+          "flower_law": true,
+          "frame": "hub_canon_metres",
+          "notes": [
+            "One district. Archive is not a second city."
+          ]
+        },
+        {
+          "district_id": "dist_hub_market",
+          "region_id": "hub_plaza",
+          "use": "commercial",
+          "function": "import_market",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Market awnings",
+          "unity_district_id": "market_district",
+          "flower_law": true,
+          "frame": "hub_canon_metres",
+          "site_ids": [],
+          "food": "import_only"
+        },
+        {
+          "district_id": "dist_hub_doors",
+          "region_id": "hub_doors",
+          "use": "government",
+          "function": "link_ring",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Ring of Doors",
+          "folded_from": "hub_doors",
+          "parent_region_id": "hub_plaza",
+          "flower_law": true,
+          "radius_m": 34,
+          "frame": "hub_canon_metres",
+          "attaches_gates": [
+            "gate_hub_cyber",
+            "gate_hub_ruins",
+            "gate_hub_fantasy",
+            "gate_hub_tunya",
+            "gate_hub_frontier",
+            "gate_hub_crime",
+            "gate_hub_superhero",
+            "gate_hub_crucible"
+          ],
+          "notes": [
+            "city_district of hub_plaza. Not a second layout. Eight plaques. No ninth."
+          ]
+        },
+        {
+          "district_id": "dist_hub_arena",
+          "region_id": "hub_plaza",
+          "use": "defense",
+          "function": "arena_exception",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Arena sand",
+          "frame": "hub_canon_metres",
+          "point_m": {
+            "x_m": 0,
+            "z_m": 18
+          },
+          "radius_m": 8,
+          "flower_law": true,
+          "notes": [
+            "Steel is live inside 8 m. The disk is still Flower Law. This is not the city wall."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_hub_flower_ring",
+          "layout_id": "layout_hub_court",
+          "class": "ring",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "frame": "hub_canon_metres",
+          "radius_m": 42,
+          "flower_law": true,
+          "cites_edge": null,
+          "notes": [
+            "Horizontal disk. Not a W05 edge. Not a faction border."
+          ]
+        },
+        {
+          "road_id": "road_hub_door_ring",
+          "layout_id": "layout_hub_court",
+          "class": "ring",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "frame": "hub_canon_metres",
+          "radius_m": 34,
+          "flower_law": true,
+          "cites_edge": null,
+          "attaches_gates": [
+            "gate_hub_cyber",
+            "gate_hub_ruins",
+            "gate_hub_fantasy",
+            "gate_hub_tunya",
+            "gate_hub_frontier",
+            "gate_hub_crime",
+            "gate_hub_superhero",
+            "gate_hub_crucible"
+          ],
+          "notes": [
+            "Plaques stay 2 minutes. The ring does not become 400 km."
+          ]
+        }
+      ],
+      "faction_id": "concordant_assembly",
+      "site_ids": [
+        "cap_hub_court"
+      ],
+      "frame": "hub_canon_metres",
+      "flower_law_m": 42,
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "water"
+      ],
+      "notes": [
+        "Civic drain is not a water district.",
+        "Territories(Hub) stays empty.",
+        "Import food. No tree scatter on the plaza."
+      ]
+    },
+    {
+      "layout_id": "layout_hub_wall",
+      "world_id": "Hub",
+      "region_id": "hub_wall",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_hub_warden",
+          "region_id": "hub_wall",
+          "use": "defense",
+          "function": "wall",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Warden wall",
+          "unity_district_id": "warden_ring_wall",
+          "flower_law": false,
+          "radius_m": 56,
+          "frame": "hub_canon_metres"
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_hub_wall_band",
+          "layout_id": "layout_hub_wall",
+          "class": "ring",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "frame": "hub_canon_metres",
+          "radius_m": 56,
+          "flower_law": false,
+          "cites_edge": null,
+          "notes": [
+            "Defense ring. Not a realm outline."
+          ]
+        }
+      ],
+      "faction_id": "concordant_assembly",
+      "frame": "hub_canon_metres",
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ]
+    },
+    {
+      "layout_id": "layout_hub_pinewood",
+      "world_id": "Hub",
+      "region_id": "hub_pinewood",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_hub_pinewood",
+          "region_id": "hub_pinewood",
+          "use": "commercial",
+          "function": "milepost",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Pinewood salt road",
+          "letter_only": "Pinewood Crossing",
+          "flower_law": false,
+          "frame": "hub_canon_metres",
+          "point_m": {
+            "x_m": 62,
+            "z_m": -28
+          }
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_hub_pinewood_lane",
+          "layout_id": "layout_hub_pinewood",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "frame": "hub_canon_metres",
+          "cites_node": "node_pinewood",
+          "cites_edge": null,
+          "point_m": {
+            "x_m": 62,
+            "z_m": -28
+          },
+          "notes": [
+            "Not a ninth spoke."
+          ]
+        }
+      ],
+      "frame": "hub_canon_metres",
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "water"
+      ]
+    },
+    {
+      "layout_id": "layout_hub_approaches",
+      "world_id": "Hub",
+      "region_id": "hub_approaches",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_hub_three_refusals",
+          "region_id": "hub_approaches",
+          "use": "commercial",
+          "function": "tavern",
+          "parcel_count": null,
+          "physicalize": false,
+          "map_name": "Three Refusals approach",
+          "flower_law": false,
+          "frame": "hub_canon_metres",
+          "point_m": {
+            "x_m": -48,
+            "z_m": -58
+          },
+          "notes": [
+            "Rumor mill. Not a ninth gate."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_hub_approach_mouth",
+          "layout_id": "layout_hub_approaches",
+          "class": "spine",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_node": "edge_crown_roads",
+          "cites_edge": null,
+          "notes": [
+            "The eight Crown Roads already leave here. This mouth does not add a road id.",
+            "Ordinal road_verge forbids a city."
+          ]
+        }
+      ],
+      "frame": "hub_canon_metres",
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "government"
+      ],
+      "notes": [
+        "Village cap holds. Transport does not promote the verge."
+      ]
+    },
+    {
+      "layout_id": "layout_cyber_stacks",
+      "world_id": "Cyber",
+      "region_id": "cyber_stacks",
+      "tier": "city",
+      "district_cap": 6,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_cyber_heart",
+          "region_id": "cyber_stacks",
+          "use": "government",
+          "function": "borough_heart",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_cyber_hab",
+          "region_id": "cyber_stacks",
+          "use": "residential",
+          "function": "stack_housing",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_cyber_exchange",
+          "region_id": "cyber_stacks",
+          "use": "commercial",
+          "function": "exchange",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_cyber_salvage",
+          "region_id": "cyber_stacks",
+          "use": "industrial",
+          "function": "cable_salvage",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Built salvage. Not a W07 mine. cyber_cable_salvage stays a note."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_cyber_skybridge",
+          "layout_id": "layout_cyber_stacks",
+          "class": "built_relief",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_note": "cyber_skybridge",
+          "notes": [
+            "W02 built relief inside cyber_stacks. Not an atlas edge."
+          ]
+        }
+      ],
+      "faction_id": "zero_collective",
+      "site_ids": [
+        "cap_cyber_stacks"
+      ],
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ],
+      "notes": [
+        "No pastoral river. Alley drain is not a water district.",
+        "Sky-bridges are not a realm outline."
+      ]
+    },
+    {
+      "layout_id": "layout_cyber_under",
+      "world_id": "Cyber",
+      "region_id": "cyber_under",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_cyber_service",
+          "region_id": "cyber_under",
+          "use": "industrial",
+          "function": "service",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Service level. Not hell."
+          ]
+        }
+      ],
+      "roads": [],
+      "faction_id": "zero_collective",
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ]
+    },
+    {
+      "layout_id": "layout_cyber_wharf",
+      "world_id": "Cyber",
+      "region_id": "cyber_wharf_march",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_cyber_march_water",
+          "region_id": "cyber_wharf_march",
+          "use": "water",
+          "function": "harbor_march",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "port_cyber_march"
+          ],
+          "water_body": "cyber_wharf_meet"
+        },
+        {
+          "district_id": "dist_cyber_march_trade",
+          "region_id": "cyber_wharf_march",
+          "use": "commercial",
+          "function": "march_trade",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_cyber_wharf",
+          "layout_id": "layout_cyber_wharf",
+          "class": "wharf",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_port": "port_cyber_wharf_march",
+          "forbids": [
+            "edge_cyber_crime_as_chord"
+          ],
+          "notes": [
+            "Harbor is the march. Not a chord to the Iron Coast. adds_city stays false."
+          ]
+        }
+      ],
+      "faction_id": "zero_collective",
+      "site_ids": [
+        "port_cyber_march"
+      ],
+      "adds_city": false,
+      "forbidden_uses": [
+        "agricultural"
+      ]
+    },
+    {
+      "layout_id": "layout_ruins_forum",
+      "world_id": "Ruins",
+      "region_id": "ruins_forum",
+      "tier": "town",
+      "district_cap": 4,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_ruins_catalogue",
+          "region_id": "ruins_forum",
+          "use": "government",
+          "function": "archive",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Catalogue, not a conquest capital."
+          ]
+        },
+        {
+          "district_id": "dist_ruins_quiet_trade",
+          "region_id": "ruins_forum",
+          "use": "commercial",
+          "function": "quiet_trade",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_ruins_lodging",
+          "region_id": "ruins_forum",
+          "use": "residential",
+          "function": "archive_lodging",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_ruins_forum_lane",
+          "layout_id": "layout_ruins_forum",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "touches_edges": [
+            "march_cyber_ruins",
+            "march_ruins_fantasy"
+          ],
+          "notes": [
+            "Touches the marches. Does not own their kilometres. One spout. No lake."
+          ]
+        }
+      ],
+      "faction_id": "ruins_archivists",
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "water"
+      ],
+      "notes": [
+        "ruins_cold_iron is archive iron, not a mine district."
+      ]
+    },
+    {
+      "layout_id": "layout_ruins_rib",
+      "world_id": "Ruins",
+      "region_id": "ruins_rib",
+      "tier": "hamlet",
+      "district_cap": 1,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_ruins_rib",
+          "region_id": "ruins_rib",
+          "use": "residential",
+          "function": "rib_shelter",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Channel kind stays none."
+          ]
+        }
+      ],
+      "roads": [],
+      "forbidden_uses": [
+        "water",
+        "industrial",
+        "agricultural"
+      ]
+    },
+    {
+      "layout_id": "layout_ruins_unfinished",
+      "world_id": "Ruins",
+      "region_id": "ruins_unfinished",
+      "tier": "hamlet",
+      "district_cap": 1,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_ruins_empty_road",
+          "region_id": "ruins_unfinished",
+          "use": "commercial",
+          "function": "empty_road",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "A stall on an empty road. Not a town."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_ruins_empty",
+          "layout_id": "layout_ruins_unfinished",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "notes": [
+            "No new march."
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "layout_sunder_wildwood",
+      "world_id": "Fantasy",
+      "region_id": "sunder_wildwood",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_sunder_shrine",
+          "region_id": "sunder_wildwood",
+          "use": "government",
+          "function": "oak_shrine",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_sunder_grove",
+          "region_id": "sunder_wildwood",
+          "use": "residential",
+          "function": "grove_homes",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [],
+      "faction_id": "wildwood_circle",
+      "display_far_side": "The Sundering",
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "water"
+      ],
+      "notes": [
+        "Grove food is not a farm site. No lake country.",
+        "wildwood_circle controlled_districts stay claim-plane names."
+      ]
+    },
+    {
+      "layout_id": "layout_sunder_fold",
+      "world_id": "Fantasy",
+      "region_id": "sunder_fold",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_sunder_track",
+          "region_id": "sunder_fold",
+          "use": "residential",
+          "function": "track_shelter",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_sunder_voss_stair",
+          "region_id": "sunder_fold",
+          "use": "defense",
+          "function": "stair_fragment",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "House Voss is a stair. Not a flying castle. Not obsidian_palace."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_sunder_fold",
+          "layout_id": "layout_sunder_fold",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_node": "node_fold_road",
+          "notes": [
+            "Trade node. Not a Crown Road."
+          ]
+        }
+      ],
+      "faction_id": "wildwood_circle",
+      "display_far_side": "The Sundering",
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ]
+    },
+    {
+      "layout_id": "layout_sunder_alpine",
+      "world_id": "Fantasy",
+      "region_id": "sunder_alpine",
+      "tier": "hamlet",
+      "district_cap": 1,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_sunder_alpine",
+          "region_id": "sunder_alpine",
+          "use": "defense",
+          "function": "high_hold",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [],
+      "display_far_side": "The Sundering",
+      "forbidden_uses": [
+        "agricultural",
+        "water",
+        "industrial"
+      ]
+    },
+    {
+      "layout_id": "layout_sunder_salt",
+      "world_id": "Fantasy",
+      "region_id": "sunder_salt_toll",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_sunder_toll",
+          "region_id": "sunder_salt_toll",
+          "use": "commercial",
+          "function": "salt_toll",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_sunder_toll_homes",
+          "region_id": "sunder_salt_toll",
+          "use": "residential",
+          "function": "toll_homes",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_sunder_salt",
+          "layout_id": "layout_sunder_salt",
+          "class": "spine",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_pass": "pass_sunder_salt",
+          "notes": [
+            "Cites the pass. Does not add kilometres."
+          ]
+        }
+      ],
+      "display_far_side": "The Sundering",
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_masond",
+      "world_id": "Tunya",
+      "region_id": "tunya_masond",
+      "tier": "town",
+      "district_cap": 4,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_masond_hold",
+          "region_id": "tunya_masond",
+          "use": "government",
+          "function": "sector_hold",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_masond_landings",
+          "region_id": "tunya_masond",
+          "use": "agricultural",
+          "function": "terrace_landings",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "farm_masond_landings"
+          ],
+          "notes": [
+            "Landings beside the one realized river. Cliff face excluded."
+          ]
+        },
+        {
+          "district_id": "dist_masond_river",
+          "region_id": "tunya_masond",
+          "use": "water",
+          "function": "realized_river",
+          "parcel_count": null,
+          "physicalize": false,
+          "water_body": "tunya_masond_river"
+        },
+        {
+          "district_id": "dist_masond_homes",
+          "region_id": "tunya_masond",
+          "use": "residential",
+          "function": "landing_homes",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_masond_terrace",
+          "layout_id": "layout_tunya_masond",
+          "class": "terrace",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_crossing": "cross_tunya_masond",
+          "notes": [
+            "Terrace road. Not a clearcut. Not a timber haul."
+          ]
+        }
+      ],
+      "faction_id": "masond",
+      "site_ids": [
+        "cap_tunya_masond",
+        "farm_masond_landings"
+      ],
+      "forbidden_uses": [
+        "industrial"
+      ],
+      "notes": [
+        "No country row to promote. The only agricultural district in this slice."
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_asbir",
+      "world_id": "Tunya",
+      "region_id": "tunya_asbir",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_asbir_salt",
+          "region_id": "tunya_asbir",
+          "use": "industrial",
+          "function": "salt_pan",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "mine_asbir_salt"
+          ],
+          "quantity": null
+        },
+        {
+          "district_id": "dist_asbir_shade",
+          "region_id": "tunya_asbir",
+          "use": "residential",
+          "function": "dune_shade",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [],
+      "faction_id": "asbir",
+      "site_ids": [
+        "mine_asbir_salt"
+      ],
+      "forbidden_uses": [
+        "water",
+        "agricultural"
+      ],
+      "notes": [
+        "Wadi stays dry. Village, not a capital. Country circle stays local metres."
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_sangree",
+      "world_id": "Tunya",
+      "region_id": "tunya_sangree",
+      "tier": "town",
+      "district_cap": 4,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_sangree_forge",
+          "region_id": "tunya_sangree",
+          "use": "government",
+          "function": "forge_hold",
+          "parcel_count": null,
+          "physicalize": false,
+          "unity_district_id": "sandrun_forge_quarter",
+          "notes": [
+            "GoldenSlice remains the only crafting forge."
+          ]
+        },
+        {
+          "district_id": "dist_sangree_ore",
+          "region_id": "tunya_sangree",
+          "use": "industrial",
+          "function": "ore_face",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "mine_sangree_ore"
+          ],
+          "quantity": null,
+          "notes": [
+            "One stack face. The forge seat is not a second mine."
+          ]
+        },
+        {
+          "district_id": "dist_sangree_yard_trade",
+          "region_id": "tunya_sangree",
+          "use": "commercial",
+          "function": "yard_trade",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_sangree_yard",
+          "layout_id": "layout_tunya_sangree",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "notes": [
+            "Local yard. Sangree Fire Forge pin stays on the claim plane."
+          ]
+        }
+      ],
+      "faction_id": "sandrun_sanguire",
+      "site_ids": [
+        "cap_tunya_sangree",
+        "mine_sangree_ore"
+      ],
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ],
+      "not_layout_aliases": [
+        "sandrun_arid_capital",
+        "sandrun_volcanic_coast"
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_aekon",
+      "world_id": "Tunya",
+      "region_id": "tunya_aekon",
+      "tier": "hamlet",
+      "district_cap": 1,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_aekon_pocket",
+          "region_id": "tunya_aekon",
+          "use": "defense",
+          "function": "pocket_warmth",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Ice is not a water district. No seat. No mine."
+          ]
+        }
+      ],
+      "roads": [],
+      "faction_id": "aekon",
+      "forbidden_uses": [
+        "water",
+        "industrial",
+        "agricultural"
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_fluxom",
+      "world_id": "Tunya",
+      "region_id": "tunya_fluxom",
+      "tier": "town",
+      "district_cap": 4,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_fluxom_lock",
+          "region_id": "tunya_fluxom",
+          "use": "water",
+          "function": "lock_harbor",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "port_fluxom"
+          ],
+          "notes": [
+            "The lock is the harbor. Not a second city."
+          ]
+        },
+        {
+          "district_id": "dist_fluxom_hold",
+          "region_id": "tunya_fluxom",
+          "use": "government",
+          "function": "harbor_hold",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_fluxom_trade",
+          "region_id": "tunya_fluxom",
+          "use": "commercial",
+          "function": "lock_trade",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_fluxom_lock",
+          "layout_id": "layout_tunya_fluxom",
+          "class": "wharf",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_port": "port_fluxom_lock",
+          "excludes_point_m": {
+            "name": "Fluxom Gate",
+            "x": 62,
+            "z": 18,
+            "frame": "tunya_local_metres"
+          },
+          "notes": [
+            "Fluxom Gate is not this wharf. adds_city stays false."
+          ]
+        }
+      ],
+      "faction_id": "fluxom",
+      "site_ids": [
+        "cap_tunya_fluxom",
+        "port_fluxom"
+      ],
+      "adds_city": false,
+      "forbidden_uses": [
+        "agricultural",
+        "industrial"
+      ]
+    },
+    {
+      "layout_id": "layout_tunya_nil",
+      "world_id": "Tunya",
+      "region_id": "tunya_nil",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_nil_grove",
+          "region_id": "tunya_nil",
+          "use": "government",
+          "function": "listening_grove",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "One district. No housing subdivision."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_nil_foot",
+          "layout_id": "layout_tunya_nil",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_mode": "saturated_canopy",
+          "wheeled": false,
+          "timber_road": false,
+          "notes": [
+            "Foot only. No timber road."
+          ]
+        }
+      ],
+      "faction_id": "nil",
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "commercial"
+      ],
+      "vetoes": [
+        "no_clearcut",
+        "listening_grove"
+      ]
+    },
+    {
+      "layout_id": "layout_frontier_hitch",
+      "world_id": "Frontier",
+      "region_id": "frontier_hitch",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_hitch_post",
+          "region_id": "frontier_hitch",
+          "use": "commercial",
+          "function": "post",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_hitch_beds",
+          "region_id": "frontier_hitch",
+          "use": "residential",
+          "function": "post_beds",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_frontier_hitch",
+          "layout_id": "layout_frontier_hitch",
+          "class": "spine",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_pass": "pass_frontier_drift",
+          "notes": [
+            "Same pass as the cottonwood. Neither layout adds length. No Frontier capital."
+          ]
+        }
+      ],
+      "forbidden_uses": [
+        "agricultural",
+        "industrial",
+        "government"
+      ]
+    },
+    {
+      "layout_id": "layout_frontier_drift",
+      "world_id": "Frontier",
+      "region_id": "frontier_drift",
+      "tier": "hamlet",
+      "district_cap": 1,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_drift_marker",
+          "region_id": "frontier_drift",
+          "use": "commercial",
+          "function": "cottonwood_marker",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Marker on former water. Not a town."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_frontier_drift",
+          "layout_id": "layout_frontier_drift",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_pass": "pass_frontier_drift",
+          "spans_river": false
+        }
+      ],
+      "forbidden_uses": [
+        "water",
+        "agricultural",
+        "residential"
+      ]
+    },
+    {
+      "layout_id": "layout_crime_sodium",
+      "world_id": "Crime",
+      "region_id": "crime_sodium",
+      "tier": "city",
+      "district_cap": 6,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_crime_block",
+          "region_id": "crime_sodium",
+          "use": "government",
+          "function": "block_heart",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_crime_street",
+          "region_id": "crime_sodium",
+          "use": "commercial",
+          "function": "street_trade",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Wing Chun is culture, not a district and not a border."
+          ]
+        },
+        {
+          "district_id": "dist_crime_tenements",
+          "region_id": "crime_sodium",
+          "use": "residential",
+          "function": "tenements",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Tenements are not fields."
+          ]
+        }
+      ],
+      "roads": [],
+      "faction_id": "iron_rose_syndicate",
+      "site_ids": [
+        "cap_crime_sodium"
+      ],
+      "forbidden_uses": [
+        "agricultural",
+        "water",
+        "industrial"
+      ],
+      "notes": [
+        "Rain is climate, not a flood district. No local yield."
+      ]
+    },
+    {
+      "layout_id": "layout_crime_wharf",
+      "world_id": "Crime",
+      "region_id": "crime_wharf",
+      "tier": "town",
+      "district_cap": 4,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_crime_river",
+          "region_id": "crime_wharf",
+          "use": "water",
+          "function": "working_river",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "port_crime_wharf"
+          ],
+          "water_body": "crime_working_river",
+          "notes": [
+            "The 24 km strait is border_crime_sere, not this polygon."
+          ]
+        },
+        {
+          "district_id": "dist_crime_docks",
+          "region_id": "crime_wharf",
+          "use": "commercial",
+          "function": "dock_trade",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_crime_wharf",
+          "layout_id": "layout_crime_wharf",
+          "class": "wharf",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_port": "port_crime_wharf",
+          "forbids": [
+            "sea_crime_sere",
+            "waystone_crime_sere"
+          ],
+          "notes": [
+            "Working river and barge. Not a Link. Not a second capital."
+          ]
+        }
+      ],
+      "faction_id": "iron_rose_syndicate",
+      "site_ids": [
+        "port_crime_wharf"
+      ],
+      "adds_city": false,
+      "forbidden_uses": [
+        "agricultural"
+      ]
+    },
+    {
+      "layout_id": "layout_dawn_kane",
+      "world_id": "Superhero",
+      "region_id": "dawn_kane",
+      "tier": "city",
+      "district_cap": 6,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_dawn_fin",
+          "region_id": "dawn_kane",
+          "use": "government",
+          "function": "skyline_heart",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Kane's fin. No victory statue. luminary_empire is not this seat."
+          ]
+        },
+        {
+          "district_id": "dist_dawn_street",
+          "region_id": "dawn_kane",
+          "use": "commercial",
+          "function": "street_level",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_dawn_towers",
+          "region_id": "dawn_kane",
+          "use": "residential",
+          "function": "tower_homes",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_dawn_watch",
+          "region_id": "dawn_kane",
+          "use": "defense",
+          "function": "task_force",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Watch district. Not a kingdom polygon."
+          ]
+        }
+      ],
+      "roads": [],
+      "faction_id": "superhero_civic_super_taskforce",
+      "site_ids": [
+        "cap_dawn_kane"
+      ],
+      "forbidden_uses": [
+        "agricultural",
+        "water",
+        "industrial"
+      ],
+      "notes": [
+        "Parks are not farms. Dawn shore is not a port. sea_crime_superhero excludes this region."
+      ]
+    },
+    {
+      "layout_id": "layout_dawn_arterials",
+      "world_id": "Superhero",
+      "region_id": "dawn_arterials",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_dawn_arterial",
+          "region_id": "dawn_arterials",
+          "use": "commercial",
+          "function": "present_streets",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Present-metre streets. Not a second Dawn city."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_dawn_streets",
+          "layout_id": "layout_dawn_arterials",
+          "class": "lane",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": null,
+          "cites_node": "node_bronx_arterials",
+          "frame": "present_metres",
+          "notes": [
+            "Not a kilometre edge."
+          ]
+        }
+      ],
+      "faction_id": "superhero_civic_super_taskforce",
+      "forbidden_uses": [
+        "agricultural",
+        "water",
+        "government"
+      ]
+    },
+    {
+      "layout_id": "layout_crucible_lattice",
+      "world_id": "Crucible",
+      "region_id": "crucible_lattice",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_crucible_works",
+          "region_id": "crucible_lattice",
+          "use": "industrial",
+          "function": "lattice_works",
+          "parcel_count": null,
+          "physicalize": false
+        },
+        {
+          "district_id": "dist_crucible_unclosed",
+          "region_id": "crucible_lattice",
+          "use": "government",
+          "function": "unclosed_seat",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Not a closed capital. Not a ninth district."
+          ]
+        }
+      ],
+      "roads": [],
+      "faction_id": "crucible_lattice_engineers",
+      "closed_capital": false,
+      "forbidden_uses": [
+        "agricultural",
+        "water"
+      ],
+      "notes": [
+        "central_crucible and the other faction district names stay off this layout."
+      ]
+    },
+    {
+      "layout_id": "layout_crucible_foundry",
+      "world_id": "Crucible",
+      "region_id": "crucible_foundry",
+      "tier": "village",
+      "district_cap": 3,
+      "physicalize": false,
+      "parcel_count": null,
+      "population": null,
+      "stamp_cells": true,
+      "districts": [
+        {
+          "district_id": "dist_crucible_scrap",
+          "region_id": "crucible_foundry",
+          "use": "industrial",
+          "function": "scrap_yard",
+          "parcel_count": null,
+          "physicalize": false,
+          "site_ids": [
+            "mine_crucible_scrap"
+          ],
+          "quantity": null,
+          "notes": [
+            "Scrap yard at the road's end."
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road_id": "road_crucible_end",
+          "layout_id": "layout_crucible_foundry",
+          "class": "unfinished",
+          "length_km": null,
+          "paved": false,
+          "finished_override": null,
+          "cites_edge": "seam_crucible_cyber",
+          "cites_pass": "pass_crucible_road_end",
+          "finished": false,
+          "notes": [
+            "W06 put pass_crucible_road_end on this region. W05 lists that pass on crucible_lattice. This road cites both ids and changes neither.",
+            "seam_crucible_cyber stays finished false. march_crucible_cyber stays off the pathfinder."
+          ]
+        }
+      ],
+      "faction_id": "crucible_lattice_engineers",
+      "site_ids": [
+        "mine_crucible_scrap"
+      ],
+      "closed_capital": false,
+      "forbidden_uses": [
+        "agricultural",
+        "water",
+        "government"
+      ]
+    }
+  ],
+  "role_sketches": [
+    {
+      "layout_id": "role_sere_old_capital",
+      "world_id": "Sere",
+      "region_id": "sere_old_capital",
+      "tier": "village",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "faction_id": "the_tally_house",
+      "plane": "local_claim_metres",
+      "districts": [
+        {
+          "district_id": "role_sere_repair",
+          "region_id": "sere_old_capital",
+          "use": "government",
+          "function": "repair",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Not a new court. Tally House stays on the claim plane."
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "role_sere_spire",
+      "world_id": "Sere",
+      "region_id": "sere_spire",
+      "tier": "hamlet",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_spire",
+          "region_id": "sere_spire",
+          "use": "government",
+          "function": "stub",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ]
+    },
+    {
+      "layout_id": "role_sere_furnace",
+      "world_id": "Sere",
+      "region_id": "sere_furnace",
+      "tier": "village",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_shift",
+          "region_id": "sere_furnace",
+          "use": "industrial",
+          "function": "shift_crew",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Work crew. Not a capital. Not a W07 mine."
+          ]
+        }
+      ],
+      "forbidden_site_ids": [
+        "sere_furnace_iron",
+        "sere_headframe"
+      ]
+    },
+    {
+      "layout_id": "role_sere_breadlands",
+      "world_id": "Sere",
+      "region_id": "sere_breadlands",
+      "tier": "hamlet",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [],
+      "vetoes": [
+        "exhausted_not_breadbasket"
+      ],
+      "forbidden_retcon": "fertile_heartland",
+      "notes": [
+        "No agricultural district. Stubble is not a farm."
+      ]
+    },
+    {
+      "layout_id": "role_sere_drowned",
+      "world_id": "Sere",
+      "region_id": "sere_drowned",
+      "tier": "hamlet",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_stain",
+          "region_id": "sere_drowned",
+          "use": "water",
+          "function": "tide_stain",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "A stain. Not a harbor. Not port_sere_pier."
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "role_sere_passes",
+      "world_id": "Sere",
+      "region_id": "sere_passes",
+      "tier": "hamlet",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_pass",
+          "region_id": "sere_passes",
+          "use": "defense",
+          "function": "contested_pass",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ]
+    },
+    {
+      "layout_id": "role_sere_haven",
+      "world_id": "Sere",
+      "region_id": "sere_haven",
+      "tier": "village",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_platform",
+          "region_id": "sere_haven",
+          "use": "water",
+          "function": "platform",
+          "parcel_count": null,
+          "physicalize": false,
+          "notes": [
+            "Platform. Resort is forbidden. Not a Link."
+          ]
+        }
+      ],
+      "forbidden": [
+        "resort"
+      ]
+    },
+    {
+      "layout_id": "role_sere_highland",
+      "world_id": "Sere",
+      "region_id": "sere_highland",
+      "tier": "hamlet",
+      "layout_mode": "role_only",
+      "stamp_cells": false,
+      "physicalize": false,
+      "coordinates": null,
+      "roads": [],
+      "population": null,
+      "parcel_count": null,
+      "districts": [
+        {
+          "district_id": "role_sere_highland",
+          "region_id": "sere_highland",
+          "use": "defense",
+          "function": "high_mark",
+          "parcel_count": null,
+          "physicalize": false
+        }
+      ]
+    }
+  ],
+  "refused": [
+    {
+      "region_id": "hub_doors",
+      "reason": "folded_into_layout_hub_court",
+      "layout": false
+    },
+    {
+      "region_id": "ruins_envoy_claim",
+      "reason": "do_not_lift_to_kilometres"
+    },
+    {
+      "region_id": "tunya_fallback",
+      "reason": "no_kilometres"
+    },
+    {
+      "region_id": "tunya_unplaced",
+      "reason": "unplaced"
+    },
+    {
+      "region_id": "frontier_last_dome_unplaced",
+      "reason": "unplaced",
+      "forbidden": [
+        "dome"
+      ]
+    },
+    {
+      "region_id": "dawn_crown_stair_glue",
+      "reason": "glue_not_a_border"
+    },
+    {
+      "region_id": "sere_flooded",
+      "reason": "drowned"
+    },
+    {
+      "region_id": "sere_delta",
+      "reason": "no_new_beauty",
+      "notes": [
+        "node_sere_delta is not a city"
+      ]
+    }
+  ],
+  "not_layout_controlled_districts": [
+    "thornwood_glade",
+    "elder_grove",
+    "bone_orchard",
+    "crimson_quarter",
+    "voss_estate",
+    "masquerade_district",
+    "obsidian_palace",
+    "drake_aerie",
+    "royal_hunting_preserve",
+    "goblin_warband_camp_north",
+    "goblin_warband_camp_south",
+    "raid_corridor_three",
+    "paladin_chapter_house",
+    "lit_veil_seminary",
+    "vampire_crypt_perimeter",
+    "spiremount_university",
+    "arcane_library",
+    "summoning_practicum_yard",
+    "underwarrens_main",
+    "thieves_court",
+    "fence_market",
+    "pantheon_temple_central",
+    "twelve_shrine_path",
+    "high_priestess_quarters",
+    "sandrun_arid_capital",
+    "sandrun_volcanic_coast",
+    "vrellan_capital_city",
+    "vrellan_vessine_ward",
+    "vrellan_southern_farmlands",
+    "central_crucible",
+    "observation_lattice",
+    "temple_of_six_drifts",
+    "drift_pilgrimage_path",
+    "engineering_workshop",
+    "patch_test_arena",
+    "stabilization_grid",
+    "refugee_camp_outer",
+    "field_kitchen_drift_haven",
+    "procgen_assembly_hall",
+    "the_unwriting_yard",
+    "meta_observatory",
+    "recursion_balcony",
+    "task_force_HQ_municipal",
+    "task_force_training_facility",
+    "crimson_spire_lounge",
+    "cartel_safehouses_seven",
+    "college_main_campus",
+    "biokinetics_practicum_yard"
+  ],
+  "hub_map_master_coverage": [
+    "Inner Court",
+    "Assembly and Archive",
+    "Market awnings",
+    "Ring of Doors",
+    "Arena sand",
+    "Warden wall",
+    "Pinewood salt road",
+    "Three Refusals approach"
+  ],
+  "clocks": {
+    "hub_canon_metres": "Flower Law 42, doors 34, wall 56, arena (0, 18) r=8, Pinewood (62, -28), Three Refusals (-48, -58).",
+    "tunya_local_metres": "Fluxom Gate (62, 18) is excluded from road_fluxom_lock.",
+    "present_metres": "road_dawn_streets only.",
+    "plaque_minutes": 2,
+    "do_not": "Convert a plaque, a claim radius, or a Present street into a layout kilometre."
+  },
+  "integration": [
+    {
+      "target": "server/lib/world-terrain.js",
+      "symbols": [
+        "renderedElevationAt",
+        "generatePoughkeepsieHeightmap"
+      ],
+      "today": "Hub/Poughkeepsie heightmap, seed 0xc0ffee.",
+      "names": "Layouts name regions and Hub canon metres. They do not sample this heightmap.",
+      "leave": "Do not retune the seed."
+    },
+    {
+      "target": "server/lib/terrain-water.js",
+      "symbols": [
+        "solveFlowStep",
+        "setWater",
+        "tickWaterFlow"
+      ],
+      "today": "Local 4-neighbour flow.",
+      "names": "Water districts cite body ids. They do not call setWater.",
+      "leave": "Do not wet the plaza. The Masond river stays the one realized Tunya river."
+    },
+    {
+      "target": "server/lib/procgen-settlements.js",
+      "symbols": [
+        "spawnSettlementForRegion"
+      ],
+      "today": "3 to 5 NPCs and a Living Society settlements row. MAX_NPCS_PER_REGION is 5. Heartbeat procgen-settlement-cycle frequency 240.",
+      "names": "A layout_id is not a spawn key. Districts are not NPC homes.",
+      "leave": "Do not raise the NPC cap. Do not found a city from this table. server/domains/procgen-settlements.js stays the read surface."
+    },
+    {
+      "target": "server/lib/embodied/faction-strategy.js",
+      "symbols": [
+        "pickMove",
+        "applyMove"
+      ],
+      "today": "Stance machine. Moves include DECLARE_WAR, RAID, PROCLAIM_EXPANSION.",
+      "names": "A move target may be a layout_id or district_id already in this table.",
+      "leave": "Expansion does not add a district. No ninth Crucible district. No new faction. Hub territories stay empty."
+    },
+    {
+      "target": "Assets/Concordia/Scripts/Settlement/SettlementCompiler.cs",
+      "symbols": [
+        "Compile",
+        "IsHubHeartDistrict"
+      ],
+      "today": "Compiles SettlementDef plots. Hub heart ids are council_chamber, archive_quarter, market_district, warden_ring_wall.",
+      "names": "Those four Unity ids map onto dist_hub_inner_court, dist_hub_assembly, dist_hub_market, dist_hub_warden. sandrun_forge_quarter maps onto dist_sangree_forge.",
+      "leave": "Do not call Compile from this spec. Do not feed not_layout names in as parcels."
+    },
+    {
+      "target": "Assets/Concordia/Scripts/WorldBook.cs",
+      "symbols": [
+        "DistrictsForCountry",
+        "AuthoredHubCities"
+      ],
+      "today": "Country districts copy faction controlled_districts. Hub fallback lists four ids.",
+      "names": "This table is the filter. A controlled_districts string in not_layout is not a layout.",
+      "leave": "Do not delete authored faction files."
+    },
+    {
+      "target": "Assets/Concordia/Scripts/WorldGeography.cs",
+      "symbols": [
+        "BuildSettlements",
+        "SettlementTypeFor"
+      ],
+      "today": "DeterministicOffset places district pins in local metres. PopulationFor clamps 30 to 900.",
+      "names": "Do not read PopulationFor as this layout's census.",
+      "leave": "Do not move offsets into veil kilometres. Do not fill Territories(Hub)."
+    }
+  ],
+  "outputs_for_later_stages": {
+    "population": "May attach a headcount to an existing district_id. May not add a district. May not read populationBaseline or a claim radius. Sere role sketches take no kilometre census.",
+    "economy": "May price a district that cites a W07 site_id, plus dist_hub_market as import food with no local yield. May not open a market on port_sere_pier. May not price breadlands.",
+    "growth": "May set parcel_count only after a headcount exists. This file leaves parcel_count null. Growth may not spend headcount on a new use.",
+    "infrastructure": "May pave a road only when its cites_edge is finished, or when class is ring, lane, terrace, wharf, or built_relief. Class unfinished stays unpaved. No new edge ids.",
+    "g6_mesh": "May mesh a district only after a later stage sets physicalize true. TreeLayer does not scatter the plaza and does not clearcut Nil."
+  },
+  "do_not_build_yet": [
+    "No parcels, street splines, NavMesh, or building meshes.",
+    "No edits to world-terrain.js, terrain-water.js, procgen-settlements.js, faction-strategy.js, SettlementCompiler.cs, WorldBook.cs, or WorldGeography.cs.",
+    "No ninth Link, no settlement id from the W00 place-name veto, no Sere gate, no closed Crucible capital, no Hub kingdom."
+  ]
+}

@@ -11,26 +11,37 @@
 
 export const GATHERING_KINDS = Object.freeze(["wedding", "funeral", "festival"]);
 
-const person = (name, role, id = null) => ({ id, name: String(name), role });
+const person = (name, role, id = null) => ({ id: id || null, name: String(name), role });
+
+/** Accepts a display string or `{ id, name }` from gatherAttendees. */
+function asPeople(list) {
+  return (list || []).map((x) => {
+    if (x && typeof x === "object") {
+      const name = String(x.name || x.id || "");
+      return { id: x.id != null && x.id !== "" ? String(x.id) : null, name };
+    }
+    return { id: null, name: String(x) };
+  }).filter((p) => p.name);
+}
 
 /**
  * Compose a gathering from the live relationship web.
  * @param {object} cfg
  * @param {'wedding'|'funeral'|'festival'} cfg.kind
  * @param {string} cfg.focalName            the celebrant / deceased / host
- * @param {string[]} [cfg.partners]         courtship/marriage partners
- * @param {string[]} [cfg.family]           kin
- * @param {string[]} [cfg.friends]          allies / friendly NPCs
- * @param {string[]} [cfg.grudgeHolders]    those who bear the focal a grudge
+ * @param {string[]|{id?:string,name?:string}[]} [cfg.partners]
+ * @param {string[]|{id?:string,name?:string}[]} [cfg.family]
+ * @param {string[]|{id?:string,name?:string}[]} [cfg.friends]
+ * @param {string[]|{id?:string,name?:string}[]} [cfg.grudgeHolders]
  * @returns {{ kind:string, attendees:object[], beats:string[], triggersGrief:boolean }}
  */
 export function composeGathering(cfg = {}) {
   const kind = GATHERING_KINDS.includes(cfg.kind) ? cfg.kind : "festival";
   const focalName = String(cfg.focalName || "Someone");
-  const partners = (cfg.partners || []).map(String);
-  const family = (cfg.family || []).map(String);
-  const friends = (cfg.friends || []).map(String);
-  const grudgeHolders = (cfg.grudgeHolders || []).map(String);
+  const partners = asPeople(cfg.partners);
+  const family = asPeople(cfg.family);
+  const friends = asPeople(cfg.friends);
+  const grudgeHolders = asPeople(cfg.grudgeHolders);
 
   const attendees = [];
   const beats = [];
@@ -38,30 +49,30 @@ export function composeGathering(cfg = {}) {
 
   if (kind === "wedding") {
     attendees.push(person(focalName, "celebrant"));
-    partners.forEach((p) => attendees.push(person(p, "partner")));
-    family.forEach((f) => attendees.push(person(f, "family")));
-    friends.forEach((f) => attendees.push(person(f, "guest")));
+    partners.forEach((p) => attendees.push(person(p.name, "partner", p.id)));
+    family.forEach((f) => attendees.push(person(f.name, "family", f.id)));
+    friends.forEach((f) => attendees.push(person(f.name, "guest", f.id)));
     beats.push(`${focalName} exchanges vows`, "a toast to the union");
     // one grudge-holder attends for tension (the uninvited rival who came anyway)
     if (grudgeHolders.length) {
-      attendees.push(person(grudgeHolders[0], "uninvited"));
-      beats.push(`${grudgeHolders[0]} watches from the back, unsmiling`);
+      attendees.push(person(grudgeHolders[0].name, "uninvited", grudgeHolders[0].id));
+      beats.push(`${grudgeHolders[0].name} watches from the back, unsmiling`);
     } else {
       beats.push("the hall is warm with celebration");
     }
   } else if (kind === "funeral") {
-    family.forEach((f) => attendees.push(person(f, "bereaved")));
-    partners.forEach((p) => attendees.push(person(p, "bereaved")));
-    friends.forEach((f) => attendees.push(person(f, "mourner")));
+    family.forEach((f) => attendees.push(person(f.name, "bereaved", f.id)));
+    partners.forEach((p) => attendees.push(person(p.name, "bereaved", p.id)));
+    friends.forEach((f) => attendees.push(person(f.name, "mourner", f.id)));
     // rivals come to confirm the death / make peace
-    grudgeHolders.forEach((g) => attendees.push(person(g, "rival")));
+    grudgeHolders.forEach((g) => attendees.push(person(g.name, "rival", g.id)));
     beats.push(`a eulogy for ${focalName}`, "the bereaved lay their tokens");
-    if (grudgeHolders.length) beats.push(`${grudgeHolders[0]} lingers — old grudges outlive the dead`);
+    if (grudgeHolders.length) beats.push(`${grudgeHolders[0].name} lingers — old grudges outlive the dead`);
     triggersGrief = true; // caller fires npc-legacy onNpcDeath / grief path
   } else {
     // festival — a broad community sample (everyone the host knows)
     attendees.push(person(focalName, "host"));
-    [...family, ...friends, ...partners].forEach((n) => attendees.push(person(n, "reveler")));
+    [...family, ...friends, ...partners].forEach((n) => attendees.push(person(n.name, "reveler", n.id)));
     beats.push(`${focalName} opens the festival`, "music and shared food", "the season turns");
   }
 
@@ -115,17 +126,17 @@ export function gatherAttendees(db, cfg = {}) {
           "SELECT related_id, rel_type, strength FROM npc_relationships WHERE npc_id = ?",
         ).all(focalId);
         for (const r of rels) {
-          const nm = _npcName(db, r.related_id);
-          if (r.rel_type === "spouse") partners.push(nm);
-          else if (r.rel_type === "parent" || r.rel_type === "child" || r.rel_type === "sibling") family.push(nm);
-          else if (r.rel_type === "friend" && Number(r.strength ?? 1) >= 0.5) friends.push(nm);
+          const named = { id: r.related_id, name: _npcName(db, r.related_id) };
+          if (r.rel_type === "spouse") partners.push(named);
+          else if (r.rel_type === "parent" || r.rel_type === "child" || r.rel_type === "sibling") family.push(named);
+          else if (r.rel_type === "friend" && Number(r.strength ?? 1) >= 0.5) friends.push(named);
         }
       } catch { /* relationship graph optional */ }
       try {
         const holders = db.prepare(
           "SELECT DISTINCT npc_id FROM npc_grudges WHERE target_kind = 'npc' AND target_id = ? AND resolved_at IS NULL ORDER BY severity DESC LIMIT 5",
         ).all(focalId);
-        for (const h of holders) grudgeHolders.push(_npcName(db, h.npc_id));
+        for (const h of holders) grudgeHolders.push({ id: h.npc_id, name: _npcName(db, h.npc_id) });
       } catch { /* grudges optional */ }
     } else {
       // player focal — resolve username + active courtship partners + grudge-holders
@@ -137,17 +148,27 @@ export function gatherAttendees(db, cfg = {}) {
         const ps = db.prepare(
           "SELECT partner_kind, partner_id, status FROM player_courtship WHERE player_user_id = ? AND status IN ('courting','engaged','married')",
         ).all(focalId);
-        for (const p of ps) partners.push(p.partner_kind === "npc" ? _npcName(db, p.partner_id) : String(p.partner_id));
+        for (const p of ps) {
+          partners.push({
+            id: p.partner_id,
+            name: p.partner_kind === "npc" ? _npcName(db, p.partner_id) : String(p.partner_id),
+          });
+        }
       } catch { /* courtship optional */ }
       try {
         const holders = db.prepare(
           "SELECT DISTINCT npc_id FROM npc_grudges WHERE target_kind = 'player' AND target_id = ? AND resolved_at IS NULL ORDER BY severity DESC LIMIT 5",
         ).all(focalId);
-        for (const h of holders) grudgeHolders.push(_npcName(db, h.npc_id));
+        for (const h of holders) grudgeHolders.push({ id: h.npc_id, name: _npcName(db, h.npc_id) });
       } catch { /* grudges optional */ }
     }
   }
 
   const composed = composeGathering({ kind, focalName, partners, family, friends, grudgeHolders });
+  if (focalId && composed.attendees) {
+    for (const a of composed.attendees) {
+      if ((a.role === "celebrant" || a.role === "host") && !a.id) a.id = focalId;
+    }
+  }
   return { ...composed, focalKind, focalId };
 }

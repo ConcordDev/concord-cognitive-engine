@@ -23,7 +23,7 @@
 # ── ROUTING MODEL ───────────────────────────────────────────────────
 # The FRONTEND (Next.js, :3000) is the root origin — it serves the app
 # and proxies /api/* to the backend via its rewrites. WebSocket traffic
-# (/socket.io, /godot-ws) MUST go straight to the backend (:5050):
+# (/socket.io, /godot-ws, /unity-ws) MUST go straight to the backend (:5050):
 # Next's rewrites proxy HTTP but do NOT forward WebSocket upgrades
 # (observed live: same-origin sockets to :3000 die with "WebSocket is
 # closed before the connection is established").
@@ -44,6 +44,11 @@ ingress:
   # Godot client gateway — raw WebSocket, same reasoning as socket.io.
   - hostname: concord.<YOUR_DOMAIN>
     path: /godot-ws.*
+    service: http://127.0.0.1:5050
+
+  # Unity WebGL gateway — same kernel path as Godot (/unity-ws).
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /unity-ws.*
     service: http://127.0.0.1:5050
 
   # API + health straight to the backend. The frontend's rewrites CAN

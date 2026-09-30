@@ -193,28 +193,65 @@ export function unreachableTools(canResolve) {
  * @param {Function} [args.authMW]   auth middleware to apply
  */
 export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
-  const server = buildMcpServer({ runMacro, ctxFor });
+  // One McpServer Protocol per session. The SDK throws
+  // "Already connected to a transport" if a singleton server.connect()s twice.
+  const sessions = _activeTransports; // sessionId → { transport, server }
+
+  const isInitialize = (body) => {
+    const msg = Array.isArray(body) ? body[0] : body;
+    return !!(msg && typeof msg === "object" && msg.method === "initialize");
+  };
 
   const handler = async (req, res) => {
     try {
-      // Session IDs must be unguessable: a leaked or guessed id would
-      // let an unauthorized client hijack another user's MCP transport.
-      // Use cryptographic randomness instead of Math.random (CodeQL gate).
-      const sessionId = req.headers["mcp-session-id"] || `s_${Date.now()}_${randomBytes(12).toString("hex")}`;
-      // OAuth: validate the Bearer token (if any) and bind the actor to this
-      // session so the tool handler can authorize write/personal tools.
+      const incomingSid = req.headers["mcp-session-id"];
       const auth = validateMcpToken(req.headers.authorization);
-      if (auth) _mcpActors.set(sessionId, auth.actor);
-      let transport = _activeTransports.get(sessionId);
-      if (!transport) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
-        });
-        _activeTransports.set(sessionId, transport);
-        transport.onclose = () => { _activeTransports.delete(sessionId); _mcpActors.delete(sessionId); };
-        await server.connect(transport);
+
+      if (incomingSid && sessions.has(incomingSid)) {
+        const slot = sessions.get(incomingSid);
+        if (auth) _mcpActors.set(incomingSid, auth.actor);
+        await slot.transport.handleRequest(req, res, req.body);
+        return;
       }
-      await transport.handleRequest(req, res, req.body);
+
+      // GET (SSE) and DELETE need an existing session — do not mint a new
+      // Protocol here (that was the singleton-reuse 500).
+      if (req.method === "GET" || req.method === "DELETE") {
+        if (!res.headersSent) {
+          res.status(400).json({ error: "mcp_session_required", message: "Missing or unknown mcp-session-id" });
+        }
+        return;
+      }
+
+      if (!incomingSid && isInitialize(req.body)) {
+        const sessionId = `s_${Date.now()}_${randomBytes(12).toString("hex")}`;
+        if (auth) _mcpActors.set(sessionId, auth.actor);
+        const server = buildMcpServer({ runMacro, ctxFor });
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => sessionId,
+          enableJsonResponse: true,
+          onsessioninitialized: (sid) => {
+            sessions.set(sid, { transport, server });
+          },
+        });
+        transport.onclose = () => {
+          sessions.delete(sessionId);
+          _mcpActors.delete(sessionId);
+          try { server.close?.(); } catch { /* ignore */ }
+        };
+        sessions.set(sessionId, { transport, server });
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+        return;
+      }
+
+      if (!res.headersSent) {
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+          id: null,
+        });
+      }
     } catch (err) {
       if (!res.headersSent) {
         res.status(500).json({ error: "mcp_handler_failed", message: String(err?.message || err) });

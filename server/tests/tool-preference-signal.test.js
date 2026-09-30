@@ -52,9 +52,14 @@ function makeDb() {
 // executeToolCall's web_search / generate_image / expert_mode cases hit —
 // enough surface for a real end-to-end dispatch through chat-agent.js
 // without needing the full server.js MACROS registry.
-async function fakeRunMacro(domain, action) {
-  if (domain === "tools" && action === "web_search") {
-    return { ok: true, summary: "search result" };
+async function fakeRunMacro(domain, action, input) {
+  // web_search was rerouted 2026-09-10 (chat-agent.js#executeToolCall) from
+  // the dead "tools" macro (which only ever returned "session tools opt-in
+  // required") to the real "expert_mode.web_search" macro
+  // (domains/expert-mode.js#L357 — live DuckDuckGo/Wikipedia/Brave search).
+  // Mirror that macro's real return shape here: { ok, query, results, total }.
+  if (domain === "expert_mode" && action === "web_search") {
+    return { ok: true, query: input?.query || "", results: [{ title: "Result", url: "https://example.com", snippet: "search result" }], total: 1 };
   }
   if (domain === "multimodal" && action === "image_generate") {
     return { ok: true, source: "stub", image: "base64data" };

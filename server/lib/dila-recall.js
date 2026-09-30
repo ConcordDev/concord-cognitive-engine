@@ -37,6 +37,8 @@
 // The recall pack shape is the operator-auditable contract Dila's
 // session-start reasoning consumes:
 
+import { filterRecallPackByCognitiveMeta } from "./dtu-cognitive-schema.js";
+
 export const DEFAULT_RECALL_CONFIG = Object.freeze({
   recentLimit: 30,
   skipMemoryKinds: ['working', 'compressed'],
@@ -87,7 +89,7 @@ export function loadRecallPack(db, config = DEFAULT_RECALL_CONFIG, nowMs = Date.
     }
   }
 
-  return {
+  const pack = {
     ok: true,
     config: { ...config },
     recalled_at: new Date(nowMs).toISOString(),
@@ -98,6 +100,8 @@ export function loadRecallPack(db, config = DEFAULT_RECALL_CONFIG, nowMs = Date.
     pinned_count: pinned.length,
     pinned: pinned.slice(0, 20), // hard cap; pinned set should be small
   };
+
+  return filterRecallPackByCognitiveMeta(db, pack);
 }
 
 /**

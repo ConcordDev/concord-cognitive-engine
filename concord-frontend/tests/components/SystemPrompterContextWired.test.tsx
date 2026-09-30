@@ -5,13 +5,13 @@
 // detector.js's reverse-direction pass). The world lens page now publishes
 // a real PlayerContext (nearBuilding/nearNpc/inCombat/inWater), each field
 // read from state the page already tracks for other real purposes (see
-// app/lenses/world/page.tsx's own comment on the new effect). This file
+// components/world/WorldOsSurface.tsx's own comment on the new effect). This file
 // pins two things:
 //   1. SystemPrompter genuinely reacts to the event (component-level render).
 //   2. The world page's dispatch site is real — source-string pin, the same
 //      pattern tests/station-router-wired.test.tsx uses for the sibling
 //      concordia:building-interact wiring, since fully rendering
-//      app/lenses/world/page.tsx needs a live WebGL scene graph jsdom can't
+//      components/world/WorldOsSurface.tsx needs a live WebGL scene graph jsdom can't
 //      provide.
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -22,7 +22,10 @@ import { fileURLToPath } from 'node:url';
 import SystemPrompter from '@/components/world/SystemPrompter';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORLD = path.resolve(__dirname, '..', '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport shell; this wiring lives in components/world/WorldOsSurface.tsx
+// (already referenced by this file's own header comment above).
+const WORLD = path.resolve(__dirname, '..', '..', 'components', 'world', 'WorldOsSurface.tsx');
 
 describe('SystemPrompter — reacts to a real concordia:context-update dispatch', () => {
   afterEach(() => cleanup());

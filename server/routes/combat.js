@@ -26,67 +26,186 @@ import {
   broadcastHit,
   broadcastDeath,
 } from "../lib/combat-netcode.js";
+import {
+  applyAuthoritativeHit,
+  ensureActor,
+  getActor,
+} from "../lib/combat-hp-authority.js";
 
 export default function createCombatRouter({ requireAuth, REALTIME, getUserPosition, getNearbyUserIds, db = null }) {
   const router = Router();
   const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
+
+  // Kitchen/Editor loopback: WS already accepts unity-local-guest when
+  // NODE_ENV !== production. Mirror that for HTTP hit/quest so Editor REST
+  // bind works without a forged JWT. Production still requires real auth.
+  const kitchenGuestOrAuth = (req, res, next) => {
+    if (!req.user) {
+      const h = String(req.headers?.authorization || "");
+      if (process.env.NODE_ENV !== "production" && h === "Bearer unity-local-guest") {
+        req.user = { id: "unity-local-guest", username: "unity-local", role: "member" };
+      }
+    }
+    return auth(req, res, next);
+  };
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
 
   // POST /api/combat/hit
-  router.post("/hit", auth, (req, res) => {
+  // Concordia FULL server-authority: prefer combat-hp-authority (momentum×poise)
+  // so TrainingDummy / offline targets return {ok, hpBefore, hpAfter, damage}.
+  // Presence PvP path remains for peer-to-peer when both actors are in cityPresence.
+  router.post("/hit", kitchenGuestOrAuth, async (req, res) => {
     try {
       const attackerId = _userId(req);
       if (!attackerId) return res.status(401).json({ ok: false, error: "auth_required" });
 
-      const { victimId, damage, isCrit = false, weapon = {}, hitDirection = null } = req.body || {};
-      if (!victimId || typeof damage !== "number") {
-        return res.status(400).json({ ok: false, error: "victimId + damage required" });
+      const body = req.body || {};
+      const victimId = body.victimId || body.targetId || null;
+      const damageHint = typeof body.damage === "number" ? body.damage
+        : typeof body.baseDamage === "number" ? body.baseDamage
+        : null;
+      const isCrit = !!body.isCrit;
+      const weapon = body.weapon || {};
+      const weaponKind = typeof weapon === "string" ? weapon : (weapon?.name || weapon?.kind || "sword");
+      const hitDirection = body.hitDirection || null;
+      const worldId = body.worldId || body.cityId || "concordia-hub";
+
+      if (!victimId) {
+        return res.status(400).json({ ok: false, error: "victimId + damage required", reason: "missing_victim" });
       }
+
+      // Great Refusal — hub neutral zone (same gate as WS combat:attack).
+      try {
+        const { checkHostilityAllowed } = await import("../lib/concordia/neutral-zone.js");
+        const hostility = checkHostilityAllowed(null, String(worldId), attackerId);
+        if (hostility && hostility.allowed === false) {
+          return res.json({
+            ok: true,
+            refused: true,
+            reason: hostility.reason || "neutral_zone_concordia",
+            damage: 0,
+            hpBefore: getActor(victimId)?.hp ?? null,
+            hpAfter: getActor(victimId)?.hp ?? null,
+            authority: "server",
+          });
+        }
+      } catch { /* neutral-zone optional */ }
 
       const attackerPos = getUserPosition?.(attackerId);
-      const victimPos   = getUserPosition?.(victimId);
-      if (!attackerPos || !victimPos) {
-        return res.status(400).json({ ok: false, error: "no_presence_for_combatants" });
+      const victimPos = getUserPosition?.(victimId);
+      const bothPresent = !!(attackerPos && victimPos) && typeof damageHint === "number";
+
+      // Peer PvP with presence: keep netcode validate + broadcast.
+      if (bothPresent) {
+        const v = validateHit({
+          attacker: { id: attackerId, position: attackerPos, cityId: attackerPos.cityId },
+          victim:   { id: victimId,   position: victimPos,   cityId: victimPos.cityId   },
+          weapon: typeof weapon === "object" ? weapon : { name: weaponKind },
+          damage: damageHint,
+          isCrit,
+        });
+        if (!v.ok) return res.status(400).json({ ok: false, refused: true, reason: v.reason, damage: 0 });
+
+        if (db) {
+          try {
+            db.prepare(`
+              INSERT INTO world_events_log (id, city_id, user_id, trigger_id, action, context_json, fired_at)
+              VALUES (lower(hex(randomblob(8))), ?, ?, 'combat:hit', ?, ?, datetime('now'))
+            `).run(
+              attackerPos.cityId,
+              attackerId,
+              String(damageHint),
+              JSON.stringify({ victimId, damage: damageHint, isCrit, weapon: weaponKind }),
+            );
+          } catch { /* optional */ }
+        }
+
+        const r = broadcastHit(REALTIME, getNearbyUserIds, {
+          attacker: { id: attackerId, position: attackerPos, cityId: attackerPos.cityId },
+          victim:   { id: victimId,   position: victimPos,   cityId: victimPos.cityId   },
+          weapon: typeof weapon === "object" ? weapon : { name: weaponKind },
+          damage: damageHint, isCrit, hitDirection,
+        });
+
+        return res.json({
+          ok: true,
+          authority: "combat-netcode",
+          delivered: r.delivered,
+          damage: damageHint,
+          hpBefore: null,
+          hpAfter: null,
+          note: "presence_pvp_broadcast",
+        });
       }
 
-      const v = validateHit({
-        attacker: { id: attackerId, position: attackerPos, cityId: attackerPos.cityId },
-        victim:   { id: victimId,   position: victimPos,   cityId: victimPos.cityId   },
-        weapon,
-        damage,
-        isCrit,
-      });
-      if (!v.ok) return res.status(400).json({ ok: false, reason: v.reason });
+      // Concordia / dummy / offline-presence path — combat-hp-authority is SoT.
+      if (typeof damageHint !== "number") {
+        return res.status(400).json({ ok: false, error: "victimId + damage required", reason: "missing_damage" });
+      }
 
-      // Persist the damage exchange for audit + economy hooks.
+      ensureActor(victimId, { worldId: String(worldId), hp: 80 });
+      const result = applyAuthoritativeHit({
+        attackerId,
+        targetId: victimId,
+        weapon: weaponKind,
+        baseDamage: damageHint,
+        worldId: String(worldId),
+      });
+
+      if (!result.ok) {
+        return res.status(400).json({
+          ok: false,
+          refused: true,
+          reason: result.error || result.reason || "hit_rejected",
+          damage: 0,
+        });
+      }
+
       if (db) {
         try {
           db.prepare(`
             INSERT INTO world_events_log (id, city_id, user_id, trigger_id, action, context_json, fired_at)
             VALUES (lower(hex(randomblob(8))), ?, ?, 'combat:hit', ?, ?, datetime('now'))
           `).run(
-            attackerPos.cityId,
+            String(worldId),
             attackerId,
-            String(damage),
-            JSON.stringify({ victimId, damage, isCrit, weapon: weapon?.name ?? null }),
+            String(result.damage),
+            JSON.stringify({
+              victimId,
+              damage: result.damage,
+              hpBefore: result.hpBefore,
+              hpAfter: result.targetHealth,
+              weapon: weaponKind,
+            }),
           );
-        } catch { /* world_events_log may not exist on older deploys */ }
+        } catch { /* optional */ }
       }
 
-      const r = broadcastHit(REALTIME, getNearbyUserIds, {
-        attacker: { id: attackerId, position: attackerPos, cityId: attackerPos.cityId },
-        victim:   { id: victimId,   position: victimPos,   cityId: victimPos.cityId   },
-        weapon, damage, isCrit, hitDirection,
+      return res.json({
+        ok: true,
+        authority: result.authority || "combat-hp-authority",
+        damage: result.damage,
+        hpBefore: result.hpBefore,
+        hpAfter: result.targetHealth,
+        targetHealth: result.targetHealth,
+        targetMaxHealth: result.targetMaxHealth,
+        targetKilled: !!result.targetKilled,
+        refused: !!result.refused,
+        reason: result.reason || undefined,
+        weapon: result.weapon,
+        targetId: result.targetId,
+        attackerId: result.attackerId,
+        worldId: result.worldId,
+        momentum: result.momentum,
+        severity: result.severity,
       });
-
-      res.json({ ok: true, delivered: r.delivered });
     } catch {
       res.status(500).json({ ok: false, error: "An unexpected error occurred" });
     }
   });
 
   // POST /api/combat/death
-  router.post("/death", auth, (req, res) => {
+  router.post("/death", kitchenGuestOrAuth, (req, res) => {
     try {
       const userId = _userId(req);
       if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
@@ -118,6 +237,43 @@ export default function createCombatRouter({ requireAuth, REALTIME, getUserPosit
     }
   });
 
+  // GET /api/combat/probe — auth-gated server-authority handshake for
+  // Unity/WebGL/Editor. Does not resolve a hit; returns structured OK so
+  // clients can prove the kitchen kernel is reachable + which bind paths
+  // to use next (WS combat:attack or POST /hit / worlds combat/attack).
+  // Offline Editor without this call still stays honest {ok:false, reason:'no_gateway'}.
+  router.get("/probe", kitchenGuestOrAuth, (req, res) => {
+    try {
+      const userId = _userId(req);
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+      const presence = typeof getUserPosition === "function" ? getUserPosition(userId) : null;
+      res.json({
+        ok: true,
+        authority: "server",
+        userId,
+        presence: presence ? { cityId: presence.cityId ?? null, x: presence.x, y: presence.y, z: presence.z } : null,
+        gateways: {
+          godotWs: "/godot-ws",
+          unityWs: "/unity-ws",
+          combatEvt: "combat:attack",
+          combatAck: "combat:attack:ack",
+        },
+        http: {
+          hit: "POST /api/combat/hit",
+          death: "POST /api/combat/death",
+          recent: "GET /api/combat/recent",
+          worldsAttack: "POST /api/worlds/:worldId/combat/attack",
+          questsActive: "GET /api/worlds/:worldId/quests/active",
+          questsInteract: "POST /api/quests/interact",
+        },
+        note: "WS combat:attack preferred when Connected; HTTP POST /api/combat/hit returns authoritative hpBefore/hpAfter; POST /api/quests/interact returns authored branching text. Probe is not a damage event.",
+        ts: new Date().toISOString(),
+      });
+    } catch {
+      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+    }
+  });
+
   // GET /api/combat/recent — combat history feed.
   // Migration 066's damage_events table receives every validated hit
   // (3 dedicated indexes for {world_id, target_id, attacker_id} suggest
@@ -131,7 +287,7 @@ export default function createCombatRouter({ requireAuth, REALTIME, getUserPosit
   //   attackerId — optional
   //   targetId   — optional
   //   limit      — default 50, max 500
-  router.get("/recent", auth, (req, res) => {
+  router.get("/recent", kitchenGuestOrAuth, (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
       const { worldId, attackerId, targetId } = req.query;

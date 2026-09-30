@@ -3,7 +3,10 @@
   "domain": "personas",
   "name": "versions",
   "inputs": {
-    "personaId": { "type": "string", "maxLength": 120 }
+    "personaId": {
+      "type": "string",
+      "maxLength": 120
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -11,7 +14,12 @@
     "output.ok === false || Array.isArray(output.versions)"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": true } }
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    }
   ],
-  "_note": "Live boot reality: the reachable personas.versions is the Z4 roadmap stub — it ignores its input and returns a single { ok:true, versions:[{id:'v1',current:true}], reason:'single_version_only' } so the PersonaDetailPanel renders a one-version history without crashing. The full version-history macro (snapshots prior versions on every revise) lives in the currently-unwired server/domains/personas.js; once wired, versions becomes author/visibility-gated and returns result.versions with a real changelog per revision."
+  "_note": "personas.versions now delegates to the real server/domains/personas.js LENS_ACTION (wired 9370fc2d6 \u2014 the Z4 single-version stub is retired). With no personaId it HONESTLY returns { ok:false, error:'persona_not_found' }; the real macro is author/visibility-gated and returns result.versions with a per-revision changelog. Invariant still holds: output.ok === false || Array.isArray(output.versions)."
 }

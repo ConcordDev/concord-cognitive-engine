@@ -326,3 +326,33 @@ test("conservation across many migrations of varied lengths — invariant always
   assert.equal(final.totalResidents, 90);
   assert.equal(final.inTransit, 0);
 });
+
+test("arriveAtDestination emits npc:migrated with the existing arrival fields", () => {
+  const db = setup();
+  seedWorld(db, "tunya", 1, "tu");
+  const init = initiateMigration(db, {
+    npcId: "tu_npc_0", fromWorld: "tunya", toWorld: "fantasy", reason: "voluntary",
+  });
+  assert.equal(init.ok, true);
+  const seen = [];
+  const prev = globalThis._concordRealtimeEmit;
+  globalThis._concordRealtimeEmit = (event, payload, opts) => seen.push({ event, payload, opts });
+  try {
+    const r = arriveAtDestination(db, init.eventId, {
+      forceTime: Math.floor(Date.now() / 1000) + 100000,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.npcId, "tu_npc_0");
+    assert.equal(r.fromWorld, "tunya");
+    assert.equal(r.toWorld, "fantasy");
+  } finally {
+    globalThis._concordRealtimeEmit = prev;
+  }
+  const evts = seen.filter((s) => s.event === "npc:migrated");
+  assert.ok(evts.length >= 1, "arrival must emit npc:migrated so Unity can present it");
+  assert.equal(evts[0].payload.npcId, "tu_npc_0");
+  assert.equal(evts[0].payload.fromWorld, "tunya");
+  assert.equal(evts[0].payload.toWorld, "fantasy");
+  assert.equal(evts[0].payload.eventId, String(init.eventId));
+  assert.equal(evts[0].opts.worldId, "fantasy");
+});

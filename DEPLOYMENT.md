@@ -1,3 +1,5 @@
+> See [`docs/STACK_REALITY.md`](docs/STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Concord Cognitive Engine -- Deployment Guide
 
 ## Prerequisites
@@ -368,7 +370,7 @@ curl -sf http://localhost:5050/ready || exit 1
 ### High memory usage
 
 - Reduce `MAX_DTUS_IN_MEMORY` (default 10,000)
-- Consolidation runs every 30 ticks (~7.5 minutes) and compresses DTUs at ~33:1 ratio
+- Consolidation is designed for ~30-tick cadence; measured live DHTP compression is ~1.2× (33:1 was a target). Do not claim dense MEGA→HYPER substrate without a fresh metric
 - Check for memory leaks: `pm2 monit` or Docker `stats`
 
 ### Authentication issues

@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.all_prop_kinds",
+      "name": "all_prop_kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.has_verb",
+      "name": "has_verb"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.invoke_verb",
+      "name": "invoke_verb"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.prop_verbs",
+      "name": "prop_verbs"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.recognition_probability",
+      "name": "recognition_probability"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.registries",
+      "name": "registries"
+    },
+    {
+      "_derived": true,
+      "domain": "immersive_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "immersive_sim.roll_recognition",
+      "name": "roll_recognition"
+    }
+  ],
+  "domain": "immersive_sim",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

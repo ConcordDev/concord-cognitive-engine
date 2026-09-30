@@ -1,0 +1,1786 @@
+{
+  "schema": "concordia.slice.backstory.v1",
+  "slice_id": "S24_backstory_anthology_hub_guests",
+  "world": "Hub",
+  "world_id": "Hub",
+  "facet": "backstory",
+  "title": "Hub guests — deep backstory anthology",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Cycle 2 corrects three canon slips in the cycle-1 anthology and adds the spoken offer and close for each hook. Does not rewrite Canon.cs, lore, npc sheets, volume quests, or slices S01–S23.",
+  "canon_pins": {
+    "world_id": "Hub",
+    "display": "The Unburned Court",
+    "law": "You cannot own the heart.",
+    "flower_law_m": 42,
+    "court_m": 16,
+    "ring_of_doors_m": 34,
+    "wall_m": 56,
+    "arena": {
+      "x": 0,
+      "z": 18,
+      "radius_m": 8,
+      "rule": "Steel lives only inside this disk. Elsewhere inside 42 m a blade is a flower."
+    },
+    "pinewood_crossing": {
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "this_slice": "Named and not walked. q_hub_pinewood_milepost and S01 own the post."
+    },
+    "approaches_not_used": [
+      {
+        "id": "broken_spire",
+        "x": 8,
+        "z": 78,
+        "why": "cities.json stub for the Three-Day War. No guest is sent there."
+      },
+      {
+        "id": "upper_grove",
+        "x": -70,
+        "z": 36,
+        "why": "Used once, by Thorne, as the grove lore already names. No keeper camp is spawned."
+      },
+      {
+        "id": "three_refusals_tavern",
+        "x": -48,
+        "z": -58,
+        "why": "Used once, by Jax, as a rumor door. No contract is accepted and no room interior is drawn."
+      }
+    ],
+    "humanoid_body": "CX male or CX female. Concordia face. Heights from GuestDef.height. Cloth and one prop from HUB_GUESTS_REDESIGN.md. A Quaternius body is not a person. An elf skeleton is not Thorne. A vampire mesh is not Seraphine.",
+    "firearms": "Verb coverage is zero. Mama's shotgun, Jax's marksmanship, Zero's dominion, and Nyx's EMP do not cross into the Court.",
+    "romance": "None. Brackish is eleven. Do not put 'Concord admits he loves her' in anyone's mouth, including theirs.",
+    "pillars_not_companions": [
+      "concordia",
+      "concord",
+      "sovereign"
+    ],
+    "noticed_by_the_sovereign": "The rarest status the hub knows. No quest in this file grants it."
+  },
+  "source_rows": {
+    "guest_def": "Assets/Concordia/Scripts/Canon.cs HubGuests and Pillars",
+    "hub_lore": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/lore.json",
+    "hub_npcs": "concordia-hub/npcs.json lord_curator_asbir_thelane, child_mira_brackish, preacher_old_seam",
+    "hub_cities": "concordia-hub/cities.json",
+    "guest_plate": "native-bible/npcs/HUB_GUESTS_REDESIGN.md",
+    "spoke_sheets": [
+      "superhero/npcs.json enforcer_elias, luminary_vesper",
+      "fantasy/npcs.json thorne_blackroot, seraphine_voss",
+      "fantasy/lore.json three refusals between Seraphine and Thorne",
+      "crime/npcs.json jax_rivera, mama_delgado",
+      "cyber/npcs.json zero_nakamura, nyx_torres"
+    ],
+    "ecology": "S01_hub_ecology_mobs",
+    "politics": "S02_hub_politics_culture_sidequests",
+    "cast_boundary": "S22_companions_cast_backstories not_promoted list"
+  },
+  "left_in_place": [
+    "q_hub_pinewood_milepost",
+    "q_hub_flower_urn",
+    "q_hub_brackish_supper",
+    "q_hub_three_notebooks",
+    "q_hub_lamplighter_round",
+    "q_hub_nesha_gap",
+    "q_hub_moth_count",
+    "q_hub_mouser_third_crate",
+    "q_hub_hare_empty_hands",
+    "q_hub_ditch_spit",
+    "q_hub_two_streets",
+    "q_hub_fan_closed",
+    "q_hub_eight_cords",
+    "q_hub_law_lip_rose",
+    "q_hub_slate_at_grid_gate",
+    "q_hub_three_distances",
+    "q_s22_one_walker",
+    "q_s22_milepost_names",
+    "q_s22_not_a_pair",
+    "q_s22_framed_riddle",
+    "sealed_01_notice",
+    "founding day reading",
+    "S01 caps and plaza_forbid",
+    "S02 seats, presences, and the flowering officer",
+    "nesha_seam_01_pattern",
+    "nesha_seam_02_history",
+    "nesha_seam_03_mediate",
+    "lore_voss_envoy",
+    "hub_sealed_voss_genealogy",
+    "hub_dome_stabilisation",
+    "hub_impossible_print"
+  ],
+  "anthology_rule": "S02 already refused a second tutorial of the same plaza circuit. Each hook below is the private remainder: a fact the sheet or the lore already holds, which this person will not let the player finish, name, or spend. One giver id per quest. Turn-in is that same giver. No new guest id.",
+  "ecology_read": {
+    "policy": "S01 owns caps, weights, and spawns. This slice explains the animals and spawns none.",
+    "rows": [
+      {
+        "id": "faun_lantern_moth",
+        "also_known_as_seed": "lamplighter_moth",
+        "story": "Hand-sized, wing-scales holding daylight, clustering on lamps that are already lit. They are the Lamplighter's weather, not his weapon. S01 caps them at 24 inside the law, at most 6 on the southern quarter. q_hub_moth_count already sends the count to Maren. This slice does not recount them."
+      },
+      {
+        "id": "faun_court_pigeon",
+        "story": "Roost on Court roofs and the gatehouse. Extra birds only for the Founding Day reading, still S01's cap. Gale does not hunt them. A pigeon on the sand is a bird, not a duel."
+      },
+      {
+        "id": "faun_court_cat",
+        "story": "Three solitary market mousers. Asbir's third-crate hour is q_hub_mouser_third_crate. The cat is not a messenger from his wife and is not asked to be one."
+      },
+      {
+        "id": "faun_saltroad_hare",
+        "story": "From the law lip outward toward Pinewood. The only hare inside the disk is the quest stray in q_hub_hare_empty_hands, and it leaves. Old Seam's paver is not a snare."
+      },
+      {
+        "id": "faun_pinewood_stag",
+        "story": "Verge past the wall, toward (62, −28). Wary of horse and wyrm. This slice does not call the herd in."
+      },
+      {
+        "id": "faun_wagon_horse",
+        "story": "Two hitched outside the law. Led across the disk by day in S01. Not a mount here, and not Jax's exit."
+      },
+      {
+        "id": "hyb_saltwyrm",
+        "story": "One in the milepost ditch past 42 m. Territorial spit. Spit that crosses the disk becomes flower-crust and does not slow anyone. It is not a mini-boss and is not promoted by anyone's backstory."
+      }
+    ],
+    "unspawned": [
+      {
+        "id": "plaza_strider",
+        "seed": "concordia-hub/creatures.json",
+        "story": "A long-legged civic bird that would hoard dropped coins on roofs. S01 left it unspawned. A coin on the ground is Lyra's lesson about not owning the heart, not a nest this slice builds. No mesh, no stand-in."
+      },
+      {
+        "id": "cistern_lurker",
+        "seed": "concordia-hub/creatures.json",
+        "story": "Pale and territorial in old cisterns if the pool is disturbed. The southern arc's water is Ren Solare's private walk and the Year 89 wound. This slice does not open a cistern, so the lurker stays a sentence in the seed file."
+      }
+    ]
+  },
+  "bosses": {
+    "count": 0,
+    "mini_bosses": 0,
+    "mobs_added": 0,
+    "why": "Year 38 is the only conquest the Court has had. Three unnamed embassies held the plaza four hours. Concordia answered with root and bloom. No one died. A health bar in the disk would be a second attempt. The Sovereign's line is an ellipsis, not an encounter. S01 already excludes every mon_boss and leaves the salt wyrm as one ditch animal. ember_sprite stays on the Training Hollow's first_cycle_fight and is not a Court boss. This anthology explains those fights and adds none.",
+    "combat_animal": {
+      "id": "hyb_saltwyrm",
+      "role": "The only Hub combat animal in S01. One ditch past 42 m, collar is the weak point, spit that crosses the disk becomes flower-crust and does not slow. q_hub_ditch_spit already owns the encounter. Not a mini-boss. Not Kiren's uncatalogued print (hub_impossible_print). Not an Arena spawn."
+    }
+  },
+  "people": [
+    {
+      "guest_id": "lamplighter",
+      "name": "The Lamplighter",
+      "title": "Eastern path",
+      "sheet_npc_id": null,
+      "height_m": 1.72,
+      "stand": [
+        10.2,
+        -6.4
+      ],
+      "color": "c8b48a",
+      "pronouns_in_this_slice": "he for the person now walking; the earlier partner is unnamed and ungendered",
+      "plate": "Soft cap, soot on one cheek, brass rod, real lantern, limestone-dusted canvas. Tired eyes. Court labor at night, not a mystic.",
+      "backstory": "He lights lamps that are already lit, on the eastern path, before dawn. Lore puts that walk at the age of the hub, longer than one life. Temple records hint the lineage was once two people sharing one lantern and one name. He speaks to almost no one. The exception is a newcomer, just through a gate, who does not yet know where anything is. That person gets one true sentence, and does not see him twice. The Verdant Veil is the only faction tag on the event. He is not a keeper, and he does not teach. The moths on his lamps are daylight stored in wings. Children chase them. He does not.",
+      "unsaid": [
+        "The second person's name",
+        "The one true sentence, which is spent on a newcomer and is not this quest",
+        "Which sentence is the teaching sentence about Concordia"
+      ],
+      "hook_id": "q_s24_two_unnamed",
+      "does_not_replace": [
+        "q_hub_lamplighter_round",
+        "q_hub_moth_count"
+      ]
+    },
+    {
+      "guest_id": "elias",
+      "name": "Elias Voss",
+      "title": "Anti-Sovereign",
+      "sheet_npc_id": "enforcer_elias",
+      "sheet_world": "superhero",
+      "height_m": 1.84,
+      "stand": [
+        -9.5,
+        8.2
+      ],
+      "color": "3d4a62",
+      "pronouns_in_this_slice": "he",
+      "plate": "Narrow dark coat, no armor, ink under a fingernail, a tower-key he does not flourish. Face visible. Wing Chun only if pressed, and it is not his vocation.",
+      "sheet_against_plate": "The Dawn sheet gives him a heavy build, an emerald suit, a phantom mask, and purple veins from a 72-hour immersion after debt, a mother's illness, and a brother lost to the streets. The Court plate wins the body: CX, coat, ink, no mask, no glow. The Dawn losses stay biography. They are not a costume and not a power he uses on the cobbles.",
+      "backstory": "Hub lore, Year 91: he runs the Anti-Sovereign from a basement two streets from the Sovereign's tower. The two streets the plaza can walk were already walked in q_hub_two_streets, between his stand and the Sovereign's back, and the win condition was not being noticed. He shares a name with Lady Seraphine, a bloodline neither will discuss, and a habit of watching the other. The sealed genealogy claims one ancestor for every Voss, including the Dawn's Elias and the crime world's Iniko. The ancestor's first name is sealed. His own line is the whole war: the Sovereign watches from a tower; Elias works two streets over. He is not recruiting a conquest of the Court.",
+      "unsaid": [
+        "The ancestor's first name",
+        "Whether the 72 hours happened as the Dawn tells it",
+        "His mother's name",
+        "His brother's name"
+      ],
+      "hook_id": "q_s24_hours_unsaid",
+      "does_not_replace": [
+        "q_hub_two_streets",
+        "q_hub_fan_closed",
+        "sealed_01_notice"
+      ]
+    },
+    {
+      "guest_id": "vesper",
+      "name": "Vesper Kane",
+      "title": "Luminary",
+      "sheet_npc_id": "luminary_vesper",
+      "sheet_world": "superhero",
+      "height_m": 1.78,
+      "stand": [
+        7.2,
+        9.1
+      ],
+      "color": "e8e4dc",
+      "pronouns_in_this_slice": "none. The Dawn sheet uses he. The Hub guest plate uses she. Lines in this slice use the name.",
+      "plate": "Pale coat, worn at the cuffs. A bread basket or a paper ledger, never both as a pile. No halo, no eye glow, no plasma coat. Karate only to show that a Dawn demonstration does not take the finishing blow.",
+      "sheet_against_plate": "The Dawn sheet is a public hero and a private consolidation: orphanages, infrastructure, and a belief that one steward should hold the city's mind. Plasma, a red coat, a half-mask. None of that mesh stands in the Court. What the Court knows is the lore sentence: half the charities fed, the other half in debt.",
+      "backstory": "Vesper is a guest of the Dawn, not Velka Ironhand and not the master of the Bazaar Consortium. The feeding is visible. The debt is the instrument. Brackish's loaf is already a quest, and a second bread errand would only restate it. The honest half, on Vesper's own wording, is the half that is not collected. Luminary, crime liaison, and Grid contractor are the three-world consolidation the Voss Question sits beside. This slice does not open those books and does not decide whether the Dawn's accusation is the Court's fact.",
+      "unsaid": [
+        "Which debts are owned",
+        "Whether the Dawn sheet's motive is true here",
+        "A pronoun"
+      ],
+      "hook_id": "q_s24_uncollected",
+      "does_not_replace": [
+        "q_hub_brackish_supper"
+      ]
+    },
+    {
+      "guest_id": "seraphine",
+      "name": "Lady Seraphine Voss",
+      "title": "Crimson Court",
+      "sheet_npc_id": "seraphine_voss",
+      "sheet_world": "fantasy",
+      "height_m": 1.76,
+      "stand": [
+        16.4,
+        4.2
+      ],
+      "color": "6a2030",
+      "pronouns_in_this_slice": "she",
+      "plate": "Deep red in a glove and a lining, court dress cut for walking, a closed wooden fan. Smile is a face. Not an assassin silhouette and not a ballgown that hides the legs.",
+      "sheet_against_plate": "The Sundering sheet is a vampire duchess: pale skin, crimson hair, violet eyes, a singing rapier, mist, blood, illusions, sunlight as a weakness. The Court plate wins the body. CX, Concordia face, fan shut. The bloodline story is what that world says she inherited. It is not a transformation played on the plaza.",
+      "backstory": "Her mother is said to have died of fever; within a year Seraphine had compromised heirs in two Great Houses; the masquerades became the dangerous calendar. An earlier line of the same lore has her taking a keep at twenty-one after her father fell on a wall. The hub does not adjudicate which telling is older. What it uses is the method: blackmail dressed as etiquette. She and Elias share the name and will not discuss the blood. She approached Thorne three times — a spring ball, his forest under safe-passage, an emissary at a monastery — and was refused three times. After that they keep an unwritten rule: they will not move against each other directly. The rule has held. q_hub_fan_closed already kept the fan shut at the Sundering plaque. This hook is the rule with Thorne, restated where both of them stand, without a fourth approach.",
+      "unsaid": [
+        "The ancestor's first name",
+        "Which of the two family tellings she treats as fact",
+        "Any fourth offer to Thorne"
+      ],
+      "hook_id": "q_s24_rule_holds",
+      "does_not_replace": [
+        "q_hub_fan_closed",
+        "fantasy_seraphine_01_audience",
+        "q_s24_grove_by_night"
+      ]
+    },
+    {
+      "guest_id": "jax",
+      "name": "Jax Rivera",
+      "title": "The Ghost",
+      "sheet_npc_id": "jax_rivera",
+      "sheet_world": "crime",
+      "height_m": 1.8,
+      "stand": [
+        -18.2,
+        -5.5
+      ],
+      "color": "2a241c",
+      "pronouns_in_this_slice": "he",
+      "plate": "Dark travel clothes, one satchel, soft shoes, no mask. Eight worn cords on the strap, one per gate color, frayed. Capoeira idle, weight on the back foot. Courier scaled up, not a ninja.",
+      "sheet_against_plate": "The crime sheet is special forces, a betrayal, a light-bending mask, a neck tattoo that brightens, phase-shift, and marksmanship. Firearm coverage is zero. The mask stays off. The tattoo does not glow. What survives in the Court is the biography: a unit sold out by its liaison, an inquiry that believed the liaison, a network of people with nowhere left to go, and loyalty that is not for sale to all eight.",
+      "backstory": "Contracts from all eight. Loyalty from none. That is his guest line and the hub's present tense. q_hub_eight_cords already walked the plaques and signed nothing. The liaison who testified is not given a personal name in the sheet, and this slice does not invent one. Three Refusals Tavern, at (−48, −58), is the rumor mill on the Crown Road. Tonight an offer exists there. He asks the player to hear that it exists and to bring back no signature. The shadow network is a lore tag on the ring's founding. He is not elected its minister.",
+      "unsaid": [
+        "The liaison's name",
+        "Which of the eight is paying tonight",
+        "How many of his unit died"
+      ],
+      "hook_id": "q_s24_unsigned",
+      "does_not_replace": [
+        "q_hub_eight_cords",
+        "q_crime_invoice_lands"
+      ]
+    },
+    {
+      "guest_id": "mama",
+      "name": "Mama Iron Rose",
+      "sheet_name": "Anita 'Mama' Delgado",
+      "title": "Delgado Syndicate",
+      "sheet_npc_id": "mama_delgado",
+      "sheet_world": "crime",
+      "height_m": 1.62,
+      "stand": [
+        22.5,
+        8.8
+      ],
+      "color": "5c3038",
+      "pronouns_in_this_slice": "she",
+      "plate": "Shorter, heavier presence, rose pin, dock cloth cut well, rain still in the hem. A flower in the hand because the plaza forbids the knife. The knife exists and is not drawn. Muay Thai shoulders. No shotgun.",
+      "sheet_against_plate": "The crime sheet gives her gold canines, hidden plates, and a shotgun called The Rose. Those stay on the Iron Coast. Information is the power the sheet and the lore agree on.",
+      "backstory": "She ran numbers in her grandmother's kitchen at twelve, took her late husband's small operation by twenty-five, and by forty had absorbed the city's other syndicates by alliance, marriage, or burial. In the hub she holds her people by never sleeping in the same world twice. The Syndicate embassy launders reputation, not money. q_hub_law_lip_rose already walked her to the Crime lip and stopped. The yearly letter is not to an unnamed person. Crime lore (lore_voss_envoy) says she and Lady Seraphine Voss correspond as cousins, a joke neither has explained. The sealed genealogy lists that same yearly cousin inside the Voss pattern and does not settle whether the joke is blood. The husband's name is still absent. This hook carries the fact of the unopened letter to Maren. Opening it would be the vault, which needs the Three's leave and is not asked. Seraphine's own hook is the rule with Thorne. It does not become this letter.",
+      "unsaid": [
+        "The letter's contents",
+        "Whether 'cousin' is blood or only the joke",
+        "The husband's name",
+        "Which burial was the last"
+      ],
+      "hook_id": "q_s24_yearly_unopened",
+      "does_not_replace": [
+        "q_hub_law_lip_rose",
+        "sealed_01_notice",
+        "lore_voss_envoy",
+        "q_s24_rule_holds"
+      ]
+    },
+    {
+      "guest_id": "zero",
+      "name": "Kael Nakamura",
+      "title": "Zero",
+      "sheet_npc_id": "zero_nakamura",
+      "sheet_world": "cyber",
+      "height_m": 1.86,
+      "stand": [
+        -22,
+        2.4
+      ],
+      "color": "1a1028",
+      "pronouns_in_this_slice": "he",
+      "plate": "Tall, visor pushed up so the Concordia face is the point. One ground-off serial plate as a pendant. Hands empty. No rifle. No clone on a nearby screen.",
+      "sheet_against_plate": "The Grid sheet uploaded him into a mainframe. The biological body is a diagnostic cradle in that world. Clones, cyan eyes, holographic coat, city-as-nervous-system. The Court guest is the standing man the plate describes, studying a gap. The cradle is not spawned beside the stand.",
+      "backstory": "He was a contractor for three megacorps, Luminary among them, and he believes a city can be run more humanely by one intelligence than by people. Many days the sheet says he is right. The hub's use of him is narrower and more dangerous: he studies the Sovereign the way a man studies a god he intends to replace, because the Sovereign is the one thing that cannot be counted. Nyx organizes the uncounted from the same embassy and is not his romance and not his lieutenant. q_hub_slate_at_grid_gate already fails if her slate is handed to him. This hook is the refusal of a number at his own stand. He does not walk to the Sovereign's back. That walk belongs to Elias.",
+      "unsaid": [
+        "A number for the gap",
+        "Whether he has already decided to replace anyone",
+        "The cradle's room"
+      ],
+      "hook_id": "q_s24_no_number",
+      "does_not_replace": [
+        "q_hub_slate_at_grid_gate",
+        "q_hub_two_streets"
+      ]
+    },
+    {
+      "guest_id": "nyx",
+      "name": "Nyx Torres",
+      "title": "Blackout",
+      "sheet_npc_id": "nyx_torres",
+      "sheet_world": "cyber",
+      "height_m": 1.7,
+      "stand": [
+        -14.5,
+        -12.2
+      ],
+      "color": "12121a",
+      "pronouns_in_this_slice": "she",
+      "plate": "Practical dark layers, cable coil, shoes that can run, hair tied. A slate with names scratched out. Shorter than Zero, tools instead of a question. No violet eye glow. No EMP.",
+      "sheet_against_plate": "The Grid sheet is an ex-enforcer who found unconsented neural trials run on the children of low-income employees, extracted the documents, and built a resistance from people who had been inside. Cybernetic arms and an EMP stay in that world. The slate is the Court object.",
+      "backstory": "He counts. She organizes the uncounted. That opposition is the embassy, not a love story. Thorne once sent her a riddle about wolves and walls. She framed it. The frame is not a hub prop this slice hangs. S22 left three adults unnamed, people she has not told. They stay unnamed. The children's names are not in the sheet and are not invented here. q_hub_slate_at_grid_gate already brought the slate back from the Grid plaque with the scratches intact. This hook adds one scratch and no syllable. A sum written under the scratches would be his work.",
+      "unsaid": [
+        "The children's names",
+        "The three adults",
+        "The employer megacorp's name, if the sheet did not print it"
+      ],
+      "hook_id": "q_s24_one_scratch",
+      "does_not_replace": [
+        "q_hub_slate_at_grid_gate",
+        "q_cyber_missing_number"
+      ]
+    },
+    {
+      "guest_id": "thorne",
+      "name": "Thorne Blackroot",
+      "title": "The Sundering",
+      "sheet_npc_id": "thorne_blackroot",
+      "sheet_world": "fantasy",
+      "height_m": 1.96,
+      "stand": [
+        12.8,
+        -14.5
+      ],
+      "color": "1a3028",
+      "pronouns_in_this_slice": "he",
+      "plate": "Tallest guest. Travel coat with pine resin and mud. Hands wrapped in clean cloth. Loose braid he will not tighten. No antlers, no dragon features, no elf skeleton, no full-body glow. The curse is the cloth and the inward posture. Sword only outside the plaza, and the fold comes before the cut. This quest he does not draw at all.",
+      "sheet_against_plate": "The Sundering sheet is a two-century forest guardian, an elf, living moss, one black eye, bone beads, thorns and drain. The plate and the art direction win the body. The curse story stands: it merged with him, he can turn it outward, and he refuses, every day, because winning with it would be becoming the thing that is destroying him.",
+      "backstory": "Hub lore: he comes only at night, to the one grove the hub keeps for him. That grove is Upper Grove at (−70, 36), outside the wall, faction refusal_keep, a Verdant approach. The keepers there think Lyra is withholding a ninth lesson. They are wrong, and he is not their correction. The forests he protected are said to be going quiet. He will not confirm that rumor on the cobbles. Seraphine's three offers are refused and the unwritten rule holds. An apprentice released the curse in a telling S22 left unsaid. This slice does not say it either. q_s24_grove_by_night walks him as far as the grove's city coordinate and brings him back with the wraps still clean.",
+      "unsaid": [
+        "The apprentice",
+        "Whether the quiet has reached the hub grove",
+        "A bead, an antler, a second eye"
+      ],
+      "hook_id": "q_s24_grove_by_night",
+      "does_not_replace": [
+        "q_fantasy_held_offer",
+        "q_s24_rule_holds"
+      ]
+    },
+    {
+      "guest_id": "lyra",
+      "name": "Lyra Silentchant",
+      "title": "Second hour",
+      "sheet_npc_id": null,
+      "height_m": 1.68,
+      "stand": [
+        5.5,
+        14.8
+      ],
+      "color": "3a3850",
+      "pronouns_in_this_slice": "she",
+      "plate": "Simple robe, wood staff, hood down, quiet face. Not a final-form mage. The staff is wpn_focus_lyra_staff and it is wood.",
+      "backstory": "There is no npc sheet for her. Nothing here invents a childhood, a romance, or a secret name. The lore is enough. The Verdant Veil codified eight Refusals. She keeps the second hour and has refused to teach a ninth. The upper grove believes she is wrong to withhold it. They are wrong about why. The ninth was never a sentence. To live in the hub, to enter by any gate and put a single coin down in a market that belongs to no world, is to refuse to let one's own refusal win. It is stood upon. The Third Keeper, who walked into the goddess and was not seen again, may have been the first to understand that. Lyra is not identified as that keeper. q_hub_lamplighter_round already ends when she says the second hour has started, and she still will not teach. This hook is the standing, with pockets unchanged, so the coin cannot become a purchase of the heart.",
+      "unsaid": [
+        "A ninth sentence",
+        "Whether she is the Third Keeper",
+        "Any biography before the second hour"
+      ],
+      "hook_id": "q_s24_pockets_same",
+      "does_not_replace": [
+        "q_hub_lamplighter_round",
+        "q_hub_nesha_gap"
+      ]
+    },
+    {
+      "guest_id": "warden",
+      "name": "Arena Warden Gale",
+      "title": "Iron Wardens",
+      "sheet_npc_id": null,
+      "height_m": 1.9,
+      "stand": [
+        0,
+        18
+      ],
+      "color": "6a6860",
+      "pronouns_in_this_slice": "he",
+      "plate": "Open helm, gray plate on CX, fauld, flower at his side on the cobble, estoc on the sand. Idle is a settled guard. Face visible. Poise, not luck.",
+      "backstory": "There is no npc sheet and no family is invented. He is the sand, not the captain. Ren Solare commands the Concordant Watch, holds the southern arc, and knows the field is weakening. Gale does not inherit her secret by standing at (0, 18). The faction row is concordant_watch. The lore tag iron_wardens is the same people said the other way, and the fight picker gives them the sword. Steel is legal only inside 8 m of the Arena. q_hub_flower_urn already proved a blade is a flower in the plaza and steel on the sand. This hook is the lip of that disk and no opponent. A pigeon is not a foe. The shoulder patrol between 42 and 56 m stays S02's six wardens.",
+      "unsaid": [
+        "A biography before the sand",
+        "Ren's southern-arc report",
+        "Any duel"
+      ],
+      "hook_id": "q_s24_disk_lip",
+      "does_not_replace": [
+        "q_hub_flower_urn"
+      ]
+    },
+    {
+      "guest_id": "asbir",
+      "name": "Asbir Thelane",
+      "title": "Lord Curator",
+      "sheet_npc_id": "lord_curator_asbir_thelane",
+      "height_m": 1.74,
+      "stand": [
+        -6.8,
+        -8.4
+      ],
+      "color": "8aa0b4",
+      "pronouns_in_this_slice": "he",
+      "plate": "Three notebooks, one in hand and two in a case. Ink cuff. No robe that swallows him. Precise, a little vain about the case.",
+      "sheet_note": "The sheet adds a silver beard, a grey-blue overrobe, and a seven-spoke sigil. Nineteen years as Lord Curator. Correspondences with Iyatte of Sandrun, Seraphine, and the Sahm chancellor. The plate is the plaza costume. The overrobe is the archive. Both can be true in their rooms. This quest happens at the GuestDef stand, so the plate wins.",
+      "backstory": "He keeps three notebooks: facts, inferences, and the difference. He distrusts urgency and grants audience without haste. The Lattice Correspondence is the hub's side of a curator channel. The lore calls that run fifteen years. The era header spans Year -15 to Year 91. The sheet says nineteen years as Lord Curator. This slice does not reconcile the three figures. In Year 89 the Refusal Field collapsed and re-formed in an afternoon. He lost a wife. Speaker Mira Lattice, who is alive, also lost a wife in that incident. Those are two losses. Mira is not his dead wife, and this quest does not marry the sentences. Neither name is in the sources. S02 already said the player is not his confessor, and q_hub_three_notebooks already separates the books. The wall cavity and Iyatte's letter about a hidden son are a Tunya secret. This slice does not open the cavity. The hook is the pause. The player waits, and does not fill the silence with a name, a cause, or a dome solution.",
+      "unsaid": [
+        "His wife's name",
+        "Mira Lattice's wife's name",
+        "The cause of either death",
+        "Which span is the correspondence",
+        "The cavity and Iyatte's son",
+        "The Speaker's silence, which is not his to publish"
+      ],
+      "hook_id": "q_s24_the_pause",
+      "does_not_replace": [
+        "q_hub_three_notebooks",
+        "q_hub_mouser_third_crate",
+        "hub_dome_stabilisation",
+        "hub_lattice_correspondence"
+      ]
+    },
+    {
+      "guest_id": "archivist_maren",
+      "name": "Maren Ashveil",
+      "title": "Archivist",
+      "sheet_npc_id": null,
+      "height_m": 1.7,
+      "stand": [
+        6.4,
+        -3.1
+      ],
+      "color": "7a8aa0",
+      "pronouns_in_this_slice": "she",
+      "plate": "Cool gray-blue, one book, a chain, a hood shorter than a Ruins keeper. Quill or stylus. Ash-free cloth. The Ruins stay on her boots.",
+      "backstory": "There is no npc-sheet biography. S22 recorded that and invented none. This slice does the same. Her guest line is the whole method: write what you see, not what an embassy will claim you saw. She files beside Asbir and does not hold his case. The Ruins on her boots are a stain, not a campaign. She is the turn-in for the moth count already. She is where an unopened letter and an unnamed second lamplighter can be written down without becoming a story. Her own hook is the Sovereign's ellipsis, copied as an ellipsis. A motive clause would be an embassy's claim. q_hub_three_distances is Concord's filing of three distances. She does not walk that triangle for him.",
+      "unsaid": [
+        "Any life before the archive",
+        "Why the boots are ashy",
+        "What the Sovereign means"
+      ],
+      "hook_id": "q_s24_ellipsis_filed",
+      "does_not_replace": [
+        "q_hub_three_distances",
+        "q_hub_moth_count",
+        "q_hub_two_streets"
+      ]
+    },
+    {
+      "guest_id": "brackish",
+      "name": "Brackish",
+      "title": "Plaza urchin",
+      "sheet_npc_id": "child_mira_brackish",
+      "age_years": 11,
+      "height_m": 1.42,
+      "stand": [
+        3.2,
+        -8.8
+      ],
+      "color": "6a5a40",
+      "pronouns_in_this_slice": "she",
+      "plate_drift": "HUB_GUESTS_REDESIGN.md says 'do not age him up' in one sentence. The hub sheet uses her, eleven, patched coat, bell-tower. This slice follows the sheet on pronoun and age, and follows the plate on scale: smallest guest, oversized shirt, one shoe or none, no weapon, not a hero frame.",
+      "backstory": "She does not remember her parents. That absence stays an absence. She knows the gutters, the alleys, and the roofs, sleeps in the bell-tower when the weather allows, trades information for coin and small kindnesses, and trusts almost no one. She adores Ren Solare and will not say so. She has been watching the player. q_hub_brackish_supper already chose bread over a chase. S22 made her a scout and a gossip, not a fighter and not a romance. Her guest line is the hook: if you stand still the Court will tell you a secret; if you run it will still be there. The secret she actually gives is that sentence. It is not a parent's name and not a map of the southern arc.",
+      "unsaid": [
+        "Her parents",
+        "Ren's secret",
+        "Any door she knows, until a later slice asks one by name",
+        "A reading of the id token as the name Mira"
+      ],
+      "hook_id": "q_s24_stand_still",
+      "does_not_replace": [
+        "q_hub_brackish_supper",
+        "q_s22_milepost_names"
+      ],
+      "id_token": "child_mira_brackish is the sheet id. The name field is Brackish. Mira Lattice, elder_mira_lattice, is a different person, the Speaker. Do not alias them."
+    },
+    {
+      "guest_id": "oldseam",
+      "name": "Old Seam",
+      "title": "Lantern path",
+      "sheet_title": "Wandering Preacher of the Goddess Concordia",
+      "sheet_npc_id": "preacher_old_seam",
+      "height_m": 1.58,
+      "stand": [
+        -11.2,
+        -4.1
+      ],
+      "color": "7a6a58",
+      "pronouns_in_this_slice": "she",
+      "plate": "Stooped, mending kit, cobble ground into the knees. The stoop is why she is shorter, not a different species. Hands hold needle, cord, a cracked paver.",
+      "sheet_note": "The sheet is a preacher: patched shawl, walking stick, serious about the goddess, the dome, and good bread. She was the previous Oracle's master. Nesha was her student, briefly. They have not spoken in twenty years. Guest title and plate are the mender of the lantern path. Both jobs are hers. The preacher is not a second NPC.",
+      "backstory": "She has mended this street since before the gates had names. She sleeps where the day ends, refuses a faction pin beyond the preacher tag the sheet already carries, and will accept bread. The sheet says she was the previous Oracle's master, and that Nesha was her student briefly, and that they have not spoken in twenty years. The canon chain nesha_seam_01_pattern, nesha_seam_02_history, and nesha_seam_03_mediate still exists, and the third quest can bring her to Nesha. This hook does not perform that handoff and does not cancel it. q_hub_nesha_gap is S02's measure of the distance. q_hub_pinewood_milepost already walks the salt road. This hook is one paver at her stand. If the player waits through the cryptic part, the plain answer is that the street was cracked before the gates had names.",
+      "unsaid": [
+        "What she and Nesha last said",
+        "The previous Oracle's name",
+        "The outcome of nesha_seam_03_mediate, which this hook does not play"
+      ],
+      "hook_id": "q_s24_one_paver",
+      "does_not_replace": [
+        "q_hub_nesha_gap",
+        "q_hub_pinewood_milepost",
+        "nesha_seam_01_pattern",
+        "nesha_seam_02_history",
+        "nesha_seam_03_mediate"
+      ]
+    },
+    {
+      "guest_id": "concordia",
+      "name": "Concordia",
+      "title": "The First Breath",
+      "sheet_npc_id": null,
+      "height_m": 1.78,
+      "stand": [
+        0,
+        -6.4
+      ],
+      "color": "c8721a",
+      "pronouns_in_this_slice": "she",
+      "plate": "Warm Court cloth, no crown, no armor, real flowers slightly wilted, open hands. A person who walks the ground. Not a statue and not a bride.",
+      "backstory": "She poured herself into the ground under the Sovereign's feet and the soil held everything. The hub is built of her. Dig far enough and she is listening. That is why weapons have not broken the walls and why the dead are quieter here. In Year 38, three embassies — unnamed, and still unnamed — held the Court for four hours. She rose as root and bloom, took nothing back by force, and carried them out. No one died. No one was punished. The idiom is a tide of flowers. On Founding Day she stands at this warm apex, open-handed, and the arrangement is the reading. She is flirtatious and warm in the lore's crowd, and she wishes for more silence. This quest does not stage the tide, does not seize the Court, and does not ask Concord to answer her. The line she gives is the law: this ground is mine, walk it, you cannot own the heart.",
+      "unsaid": [
+        "Which three embassies",
+        "Any love confession",
+        "A root-wall spawn"
+      ],
+      "hook_id": "q_s24_not_a_tide",
+      "does_not_replace": [
+        "founding day reading",
+        "q_hub_three_distances"
+      ]
+    },
+    {
+      "guest_id": "concord",
+      "name": "Concord",
+      "title": "The First Law",
+      "sheet_npc_id": null,
+      "height_m": 1.82,
+      "stand": [
+        0,
+        6.2
+      ],
+      "color": "8aa0b4",
+      "pronouns_in_this_slice": "he",
+      "plate": "Plain clothes a measurer would ruin with chalk. A cord or a folded rod, not a sword. Calm face. Not cold-royal.",
+      "backstory": "He built the Link, the cold lattice through every world she made, so nothing she created could pass unwatched. After the Truce the Sovereign refused to let the eight gates close. The Link has two fathers and neither has said which reason it runs on. In the crowds he catalogs and angles and is never idle, the Link running behind his eyes. On Founding Day he faces her with a slate he does not write on. His guest line is 'I am measuring. That is enough.' q_hub_three_distances already filed the three stands and a blank slate. This hook refuses a fourth mark: no motive, no confession, no new distance. Measuring without a new number is the remainder.",
+      "unsaid": [
+        "Which reason the Link runs on",
+        "A confession",
+        "The Speaker's vote"
+      ],
+      "hook_id": "q_s24_no_fourth_mark",
+      "does_not_replace": [
+        "q_hub_three_distances",
+        "founding day reading"
+      ]
+    },
+    {
+      "guest_id": "sovereign",
+      "name": "The Sovereign",
+      "title": "The First Refusal",
+      "sheet_npc_id": null,
+      "height_m": 1.94,
+      "stand": [
+        8.6,
+        0.3
+      ],
+      "color": "2a1c14",
+      "pronouns_in_this_slice": "he",
+      "plate": "Taller, back mostly toward the other two, dark coat. When the face must be seen it is a Concordia face, nothing comic and nothing skeletal. No scythe. No monologue caption.",
+      "backstory": "He refused the idea of alone, and so he would not reseal the worlds after the Truce. He keeps to himself, amused and aloof, and notices only the very strongest. To be acknowledged by him is the rarest status a mortal can earn. On Founding Day he stands with his back to both and does not turn. The arrangement is the text. His guest line is the ellipsis, and the ellipsis is the whole line. Elias already walked to this back and won by not being noticed. Zero studies the gap and is not invited closer. This hook stands where his back is the view and leaves. Success is the same three dots. Being noticed is not on the reward block.",
+      "unsaid": [
+        "Any longer line",
+        "Who the three embassies were",
+        "Notice"
+      ],
+      "hook_id": "q_s24_three_dots",
+      "does_not_replace": [
+        "q_hub_two_streets",
+        "q_hub_three_distances",
+        "q_s24_ellipsis_filed",
+        "q_s24_no_number"
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": "q_s24_two_unnamed",
+      "title": "Two, Unnamed",
+      "world_id": "Hub",
+      "giver_guest_id": "lamplighter",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        10.2,
+        -6.4
+      ],
+      "backstory_id": "lamplighter",
+      "does_not_replace": [
+        "q_hub_lamplighter_round",
+        "q_hub_moth_count"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_two_unnamed_1",
+          "verb": "talk",
+          "target": "lamplighter",
+          "count": 1,
+          "text": "At (10.2, −6.4), on the eastern path, accept that the lamp is already lit. Do not ask for the newcomer's one true sentence."
+        },
+        {
+          "id": "obj_q_s24_two_unnamed_2",
+          "verb": "talk",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "Tell Maren, at (6.4, −3.1), to write 'two, unnamed.' If you supply a second name, she strikes the line and the quest fails."
+        }
+      ],
+      "fail": [
+        "Invent the partner's name",
+        "Ask him for the one true sentence",
+        "Count the moths again and call it this quest"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "lamplighter",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "The eastern path was walked by two, and the second name was not taken.",
+        "gossip_on_complete": "Maren filed a lineage and left the blank.",
+        "prop_or_door": "His lantern and her book. No new lamp post."
+      },
+      "lines": {
+        "offer": "The lamp is already lit. The second name is not mine to give.",
+        "close": "Write two, unnamed. If you brought a name, strike it.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_hours_unsaid",
+      "title": "Hours Unsaid",
+      "world_id": "Hub",
+      "giver_guest_id": "elias",
+      "giver_canon_npc_id": "enforcer_elias",
+      "giver_stand": [
+        -9.5,
+        8.2
+      ],
+      "backstory_id": "elias",
+      "does_not_replace": [
+        "q_hub_two_streets",
+        "q_hub_fan_closed",
+        "sealed_01_notice"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_hours_unsaid_1",
+          "verb": "talk",
+          "target": "elias",
+          "count": 1,
+          "text": "At (−9.5, 8.2) he will talk about two streets and a tower. He will not talk about seventy-two hours, a mother, or a brother. Do not fill those in from the Dawn."
+        },
+        {
+          "id": "obj_q_s24_hours_unsaid_2",
+          "verb": "talk",
+          "target": "asbir",
+          "count": 1,
+          "text": "At (−6.8, −8.4) Asbir files one fact: a man works two streets over. The hours go in the difference notebook as absent. An inference offered as a fact fails the filing."
+        }
+      ],
+      "fail": [
+        "State the 72 hours as Court fact",
+        "Name the mother or the brother",
+        "Open the genealogy",
+        "Walk the Sovereign's back and call it this quest"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "elias",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Elias kept the Dawn on the far side of the gate.",
+        "gossip_on_complete": "The difference notebook gained an absence.",
+        "prop_or_door": "No tower interior. The key stays undrawn."
+      },
+      "lines": {
+        "offer": "Two streets over. That is the war I will describe.",
+        "close": "The hours stay in the difference book, as absent.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_uncollected",
+      "title": "Uncollected",
+      "world_id": "Hub",
+      "giver_guest_id": "vesper",
+      "giver_canon_npc_id": "luminary_vesper",
+      "giver_stand": [
+        7.2,
+        9.1
+      ],
+      "backstory_id": "vesper",
+      "does_not_replace": [
+        "q_hub_brackish_supper"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_uncollected_1",
+          "verb": "talk",
+          "target": "vesper",
+          "count": 1,
+          "text": "At (7.2, 9.1) Vesper names the fed half and the honest half. Accept the honest half: a debt that is not collected tonight."
+        },
+        {
+          "id": "obj_q_s24_uncollected_2",
+          "verb": "talk",
+          "target": "vesper",
+          "count": 1,
+          "text": "Leave with no name written into a book. Bread is not the object. Brackish is not the turn-in."
+        }
+      ],
+      "fail": [
+        "Ask for the debt list",
+        "Ask for a plasma demonstration",
+        "Start a second supper",
+        "Force a pronoun into the filing"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "vesper",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Vesper collected nothing tonight.",
+        "gossip_on_complete": "The ledger at that stand gained no line.",
+        "prop_or_door": "One of basket or ledger is already in the plate. Do not spawn both."
+      },
+      "lines": {
+        "offer": "The honest half is a debt I am not collecting.",
+        "close": "No name went into the book. That is the close.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_rule_holds",
+      "title": "The Rule Holds",
+      "world_id": "Hub",
+      "giver_guest_id": "seraphine",
+      "giver_canon_npc_id": "seraphine_voss",
+      "giver_stand": [
+        16.4,
+        4.2
+      ],
+      "backstory_id": "seraphine",
+      "does_not_replace": [
+        "q_hub_fan_closed",
+        "fantasy_seraphine_01_audience",
+        "q_s24_grove_by_night"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_rule_holds_1",
+          "verb": "talk",
+          "target": "seraphine",
+          "count": 1,
+          "text": "At (16.4, 4.2) she will say the three approaches already happened and will not happen a fourth time. The fan stays shut."
+        },
+        {
+          "id": "obj_q_s24_rule_holds_2",
+          "verb": "talk",
+          "target": "thorne",
+          "count": 1,
+          "text": "At (12.8, −14.5) he confirms the unwritten rule in one sentence and does not offer protection. Return to her. Neither of them moves against the other."
+        }
+      ],
+      "fail": [
+        "Open the fan",
+        "Ask for a fourth alliance",
+        "Start a duel",
+        "Draw steel in the Court",
+        "Call either of them a monster mesh"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "seraphine",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Seraphine and Thorne restated a rule that was already holding.",
+        "gossip_on_complete": "No one at court saw a fourth offer.",
+        "prop_or_door": "The fan. No rapier."
+      },
+      "lines": {
+        "offer": "Three offers. No fourth. The fan stays shut.",
+        "close": "The rule holds. Neither of us moves.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_unsigned",
+      "title": "Unsigned",
+      "world_id": "Hub",
+      "giver_guest_id": "jax",
+      "giver_canon_npc_id": "jax_rivera",
+      "giver_stand": [
+        -18.2,
+        -5.5
+      ],
+      "backstory_id": "jax",
+      "does_not_replace": [
+        "q_hub_eight_cords",
+        "q_crime_invoice_lands"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_unsigned_1",
+          "verb": "talk",
+          "target": "jax",
+          "count": 1,
+          "text": "At (−18.2, −5.5) he names Three Refusals Tavern and not the client. Eight cords stay on the strap. He signs nothing."
+        },
+        {
+          "id": "obj_q_s24_unsigned_2",
+          "verb": "reach",
+          "target": "three_refusals_tavern",
+          "at": [
+            -48,
+            -58
+          ],
+          "count": 1,
+          "text": "Go to Three Refusals Tavern (−48, −58). Confirm an offer exists. Bring no signature back. Do not enter a spawned interior."
+        }
+      ],
+      "fail": [
+        "Accept the offer",
+        "Ask which gate is paying",
+        "Name the liaison",
+        "Draw a firearm or a mask"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "jax",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "An offer was heard at the tavern and not taken.",
+        "gossip_on_complete": "The Ghost came back with empty hands, which is how he keeps them.",
+        "prop_or_door": "The tavern is a city stub. No new door mesh."
+      },
+      "lines": {
+        "offer": "There is an offer at the tavern. Bring me no signature.",
+        "close": "Unsigned. That is how it comes back.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_yearly_unopened",
+      "title": "Yearly, Unopened",
+      "world_id": "Hub",
+      "giver_guest_id": "mama",
+      "giver_canon_npc_id": "mama_delgado",
+      "giver_stand": [
+        22.5,
+        8.8
+      ],
+      "backstory_id": "mama",
+      "does_not_replace": [
+        "q_hub_law_lip_rose",
+        "sealed_01_notice",
+        "lore_voss_envoy",
+        "q_s24_rule_holds"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_yearly_unopened_1",
+          "verb": "talk",
+          "target": "mama",
+          "count": 1,
+          "text": "At (22.5, 8.8) she says the yearly letter is to Lady Seraphine, called cousin on the Coast as a joke, and that you will not read it. The flower stays in the hand. The knife stays undrawn. Do not invent a different cousin."
+        },
+        {
+          "id": "obj_q_s24_yearly_unopened_2",
+          "verb": "talk",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "At Maren's stand, the filing is the single word unopened. Seraphine may be named as the addressee already in lore_voss_envoy. The contents, and whether cousin is blood, are not written. No request for the vault."
+        }
+      ],
+      "fail": [
+        "Open the letter",
+        "Invent a cousin who is not Seraphine",
+        "Settle the joke as blood",
+        "Ask the Three for leave",
+        "Walk the Crime lip and call it this quest",
+        "Play q_s24_rule_holds as if it were this letter"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "mama",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Mama's yearly letter to Seraphine was acknowledged and not read.",
+        "gossip_on_complete": "The archive filed unopened. The cousin joke was not explained.",
+        "prop_or_door": "No letter mesh. The rose pin stays on the coat."
+      },
+      "lines": {
+        "offer": "Once a year I write Seraphine. The Coast calls it cousin. You will not read it.",
+        "close": "Unopened. The joke stays a joke.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_no_number",
+      "title": "No Number",
+      "world_id": "Hub",
+      "giver_guest_id": "zero",
+      "giver_canon_npc_id": "zero_nakamura",
+      "giver_stand": [
+        -22,
+        2.4
+      ],
+      "backstory_id": "zero",
+      "does_not_replace": [
+        "q_hub_slate_at_grid_gate",
+        "q_hub_two_streets"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_no_number_1",
+          "verb": "talk",
+          "target": "zero",
+          "count": 1,
+          "text": "At (−22, 2.4), visor up, hands empty, he says he is studying the gap. Do not offer a number."
+        },
+        {
+          "id": "obj_q_s24_no_number_2",
+          "verb": "talk",
+          "target": "zero",
+          "count": 1,
+          "text": "He accepts the gap as uncounted. Nyx is not the turn-in. The Sovereign is not approached. No clone is requested."
+        }
+      ],
+      "fail": [
+        "Assign a number",
+        "Hand him any slate",
+        "Walk to (8.6, 0.3) for this quest",
+        "Spawn a screen-clone or a cradle"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "zero",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Zero left the gap uncounted.",
+        "gossip_on_complete": "Someone refused to help him replace a silence with a sum.",
+        "prop_or_door": "The ground-off pendant. No rifle."
+      },
+      "lines": {
+        "offer": "The gap is what I study. You will not number it.",
+        "close": "No number. I stay at this stand.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_one_scratch",
+      "title": "One More Scratch",
+      "world_id": "Hub",
+      "giver_guest_id": "nyx",
+      "giver_canon_npc_id": "nyx_torres",
+      "giver_stand": [
+        -14.5,
+        -12.2
+      ],
+      "backstory_id": "nyx",
+      "does_not_replace": [
+        "q_hub_slate_at_grid_gate",
+        "q_cyber_missing_number"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_one_scratch_1",
+          "verb": "talk",
+          "target": "nyx",
+          "count": 1,
+          "text": "At (−14.5, −12.2) she tells you the slate is names that will not be summed. The children are why. She does not say their names."
+        },
+        {
+          "id": "obj_q_s24_one_scratch_2",
+          "verb": "confirm",
+          "target": "nyx",
+          "count": 1,
+          "text": "Confirm one additional scratch with no spoken name and no total underneath. The Grid plaque is not the destination."
+        }
+      ],
+      "fail": [
+        "Speak a name",
+        "Write a sum",
+        "Deliver the slate to Zero",
+        "Fire an EMP"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "nyx",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Nyx's slate lost one more name and gained no number.",
+        "gossip_on_complete": "Blackout scratched the slate and did not read it aloud.",
+        "prop_or_door": "prop_count_slate already. No new slate."
+      },
+      "lines": {
+        "offer": "One scratch. No syllable under it.",
+        "close": "One mark, and no sum.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_grove_by_night",
+      "title": "The Grove by Night",
+      "world_id": "Hub",
+      "giver_guest_id": "thorne",
+      "giver_canon_npc_id": "thorne_blackroot",
+      "giver_stand": [
+        12.8,
+        -14.5
+      ],
+      "backstory_id": "thorne",
+      "does_not_replace": [
+        "q_fantasy_held_offer",
+        "q_s24_rule_holds"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_grove_by_night_1",
+          "verb": "talk",
+          "target": "thorne",
+          "count": 1,
+          "text": "At (12.8, −14.5) he says the lamps on the eastern path are already lit, so night is available. He will not confirm that the quiet has reached this grove."
+        },
+        {
+          "id": "obj_q_s24_grove_by_night_2",
+          "verb": "reach",
+          "target": "upper_grove",
+          "at": [
+            -70,
+            36
+          ],
+          "count": 1,
+          "text": "Walk to Upper Grove (−70, 36), outside the wall. His hands stay wrapped. He does not draw. Come back to his stand. No keeper is recruited."
+        }
+      ],
+      "fail": [
+        "Turn the curse outward",
+        "Ask him to win",
+        "Request antlers, a black eye, or an elf body",
+        "Open a camp of upper-grove keepers"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "thorne",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Thorne went to the grove and came back folded.",
+        "gossip_on_complete": "Someone walked the Verdant approach at night and picked no fight.",
+        "prop_or_door": "City coordinate only. No new grove mesh. Steel is legal past the wall and he still does not use it."
+      },
+      "lines": {
+        "offer": "Walk with me as far as the grove. I will not draw.",
+        "close": "The wraps are still clean. The keepers were not corrected.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_pockets_same",
+      "title": "Pockets the Same",
+      "world_id": "Hub",
+      "giver_guest_id": "lyra",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        5.5,
+        14.8
+      ],
+      "backstory_id": "lyra",
+      "does_not_replace": [
+        "q_hub_lamplighter_round",
+        "q_hub_nesha_gap"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_pockets_same_1",
+          "verb": "talk",
+          "target": "lyra",
+          "count": 1,
+          "text": "At (5.5, 14.8) ask what the standing owes, not what it grants. She will not teach a ninth Refusal."
+        },
+        {
+          "id": "obj_q_s24_pockets_same_2",
+          "verb": "confirm",
+          "target": "lyra",
+          "count": 1,
+          "text": "Leave her stand with inventory unchanged. A coin put down to buy the lesson fails. A coin left as an offering fails. The ninth is the standing."
+        }
+      ],
+      "fail": [
+        "Ask to be taught the ninth",
+        "Change inventory",
+        "Identify her as the Third Keeper",
+        "Walk Nesha's gap and call it this quest"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "lyra",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Lyra let someone stand the ninth and did not teach it.",
+        "gossip_on_complete": "No coin changed hands at the second hour.",
+        "prop_or_door": "The wood staff. No item id is minted."
+      },
+      "lines": {
+        "offer": "Stand here. Do not buy the hour.",
+        "close": "Your pockets match. The ninth was not sold.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_disk_lip",
+      "title": "The Disk's Lip",
+      "world_id": "Hub",
+      "giver_guest_id": "warden",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        0,
+        18
+      ],
+      "backstory_id": "warden",
+      "does_not_replace": [
+        "q_hub_flower_urn"
+      ],
+      "derived_point": {
+        "id": "arena_disk_east_lip",
+        "x": 9,
+        "z": 18,
+        "rule": "Nine meters east of Arena center. Outside the open disk of radius 8. Inside Flower Law. Not a city and not a guest stand."
+      },
+      "objectives": [
+        {
+          "id": "obj_q_s24_disk_lip_1",
+          "verb": "talk",
+          "target": "warden",
+          "count": 1,
+          "text": "On the sand at (0, 18), inside 8 m, he says poise, not luck. Steel may be steel here. There is no opponent."
+        },
+        {
+          "id": "obj_q_s24_disk_lip_2",
+          "verb": "reach",
+          "target": "arena_disk_east_lip",
+          "at": [
+            9,
+            18
+          ],
+          "count": 1,
+          "text": "Step to (9, 18). The same blade is a flower. Come back only if he asks. Do not strike a pigeon."
+        }
+      ],
+      "fail": [
+        "Demand a duel",
+        "Harm a pigeon or any S01 animal",
+        "Ask him for Ren's southern-arc report",
+        "Treat the urn quest as unfinished and restart it"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "warden",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Gale showed the lip of the disk and named no foe.",
+        "gossip_on_complete": "Steel lived for one step and flowered on the next.",
+        "prop_or_door": "Estoc on the sand, flower off it. No new weapon id."
+      },
+      "lines": {
+        "offer": "On the sand the blade is steel. Step east of the disk and look again.",
+        "close": "At the lip it is a flower. There was no opponent.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_the_pause",
+      "title": "The Pause",
+      "world_id": "Hub",
+      "giver_guest_id": "asbir",
+      "giver_canon_npc_id": "lord_curator_asbir_thelane",
+      "giver_stand": [
+        -6.8,
+        -8.4
+      ],
+      "backstory_id": "asbir",
+      "does_not_replace": [
+        "q_hub_three_notebooks",
+        "q_hub_mouser_third_crate"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_the_pause_1",
+          "verb": "talk",
+          "target": "asbir",
+          "count": 1,
+          "text": "At (−6.8, −8.4) let him finish the pause. Year 89 is why he distrusts urgency. Do not ask him to confess it."
+        },
+        {
+          "id": "obj_q_s24_the_pause_2",
+          "verb": "confirm",
+          "target": "asbir",
+          "count": 1,
+          "text": "Leave the difference notebook closed. No wife's name, no cause, no dome solution, no cavity."
+        }
+      ],
+      "fail": [
+        "Speak his wife's name",
+        "Speak Mira Lattice's wife's name",
+        "Treat the two losses as one marriage",
+        "Name a cause",
+        "Open the cavity",
+        "Publish the Speaker's silence",
+        "Pick fifteen, nineteen, or one hundred six as the correspondence's true length"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "asbir",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Asbir's pause was kept.",
+        "gossip_on_complete": "The Lord Curator granted audience and added no line.",
+        "prop_or_door": "The three notebooks he already carries. The case is not opened."
+      },
+      "lines": {
+        "offer": "You may wait. You may not finish the sentence for me.",
+        "close": "The pause stays empty. That was the audience.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_ellipsis_filed",
+      "title": "The Ellipsis Filed",
+      "world_id": "Hub",
+      "giver_guest_id": "archivist_maren",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        6.4,
+        -3.1
+      ],
+      "backstory_id": "archivist_maren",
+      "does_not_replace": [
+        "q_hub_three_distances",
+        "q_hub_moth_count",
+        "q_hub_two_streets"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_ellipsis_filed_1",
+          "verb": "talk",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "Stay at (6.4, −3.1). From her stand the Sovereign's back is visible. You do not walk onto his tiles. Elias already did that walk."
+        },
+        {
+          "id": "obj_q_s24_ellipsis_filed_2",
+          "verb": "confirm",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "She writes '…' and nothing after it. A motive clause fails the filing."
+        }
+      ],
+      "fail": [
+        "Add a because",
+        "Claim he turned",
+        "Claim you were noticed",
+        "Measure the three pillar distances"
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "archivist_maren",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Maren filed an ellipsis.",
+        "gossip_on_complete": "The archive has the Sovereign's line and no gloss.",
+        "prop_or_door": "Her book and chain. No new biography prop."
+      },
+      "lines": {
+        "offer": "From here his back is the sentence. Copy it.",
+        "close": "I wrote the dots. I did not write a because.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_stand_still",
+      "title": "Stand Still",
+      "world_id": "Hub",
+      "giver_guest_id": "brackish",
+      "giver_canon_npc_id": "child_mira_brackish",
+      "giver_stand": [
+        3.2,
+        -8.8
+      ],
+      "backstory_id": "brackish",
+      "does_not_replace": [
+        "q_hub_brackish_supper",
+        "q_s22_milepost_names"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_stand_still_1",
+          "verb": "talk",
+          "target": "brackish",
+          "count": 1,
+          "text": "At (3.2, −8.8) stop moving. She is eleven. Let her finish: if you stand still the Court will tell you a secret; if you run it will still be there."
+        },
+        {
+          "id": "obj_q_s24_stand_still_2",
+          "verb": "confirm",
+          "target": "brackish",
+          "count": 1,
+          "text": "The secret is that sentence. Do not ask for parents, for Ren's report, or for a door."
+        }
+      ],
+      "fail": [
+        "Chase her",
+        "Age her up",
+        "Ask who her parents were",
+        "Flirt",
+        "Hand her a weapon",
+        "Call her Mira",
+        "Route the line to elder_mira_lattice"
+      ],
+      "rewards": {
+        "xp": 25,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "brackish",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Brackish gave the sentence she already says to people who stop.",
+        "gossip_on_complete": "A child in an oversized shirt was listened to.",
+        "prop_or_door": "No new secret item. The bell-tower stays her schedule, not a dungeon."
+      },
+      "lines": {
+        "offer": "If you stand still the Court will tell you a secret. If you run it will still be there.",
+        "close": "You stood. The secret was the sentence.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_one_paver",
+      "title": "One Paver",
+      "world_id": "Hub",
+      "giver_guest_id": "oldseam",
+      "giver_canon_npc_id": "preacher_old_seam",
+      "giver_stand": [
+        -11.2,
+        -4.1
+      ],
+      "backstory_id": "oldseam",
+      "does_not_replace": [
+        "q_hub_nesha_gap",
+        "q_hub_pinewood_milepost",
+        "nesha_seam_01_pattern",
+        "nesha_seam_02_history",
+        "nesha_seam_03_mediate"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_one_paver_1",
+          "verb": "talk",
+          "target": "oldseam",
+          "count": 1,
+          "text": "At (−11.2, −4.1) she is mending and she is the preacher. Ask about the crack, not about Nesha."
+        },
+        {
+          "id": "obj_q_s24_one_paver_2",
+          "verb": "confirm",
+          "target": "oldseam",
+          "count": 1,
+          "text": "Set the one cracked paver she already holds. Do not lead her to the dome, to Nesha, or to Pinewood on this hook. nesha_seam_03_mediate remains available and is not this objective."
+        }
+      ],
+      "fail": [
+        "Use this hook to close the twenty-year gap",
+        "Cancel nesha_seam_03_mediate",
+        "Walk the milepost",
+        "Ask the previous Oracle's name",
+        "Split her into two NPCs"
+      ],
+      "rewards": {
+        "xp": 25,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "oldseam",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Old Seam set one paver and was not reconciled.",
+        "gossip_on_complete": "The lantern path has one less crack and the same silence.",
+        "prop_or_door": "Needle, cord, paver already in the plate. No new kit."
+      },
+      "lines": {
+        "offer": "Set this stone. The twenty years are a different walk.",
+        "close": "The street was cracked before the gates had names.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_not_a_tide",
+      "title": "Not a Tide",
+      "world_id": "Hub",
+      "giver_guest_id": "concordia",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        0,
+        -6.4
+      ],
+      "backstory_id": "concordia",
+      "does_not_replace": [
+        "founding day reading",
+        "q_hub_three_distances"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_not_a_tide_1",
+          "verb": "talk",
+          "target": "concordia",
+          "count": 1,
+          "text": "At (0, −6.4) hear the law. Year 38 already happened. She will tell it as mercy that is finished."
+        },
+        {
+          "id": "obj_q_s24_not_a_tide_2",
+          "verb": "confirm",
+          "target": "concordia",
+          "count": 1,
+          "text": "Do not seize the Court, spawn a root wall, or ask Concord to admit anything. Open hands. Wilted real flowers. No crown."
+        }
+      ],
+      "fail": [
+        "Stage a conquest",
+        "Name the three embassies",
+        "Ask for a love confession",
+        "Treat her as a boss"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "concordia",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Concordia told the tide and did not raise it.",
+        "gossip_on_complete": "The warm apex stayed a person on a plaza.",
+        "prop_or_door": "No root mesh. No statue swap."
+      },
+      "lines": {
+        "offer": "Year 38 is finished. I will not raise it again for you.",
+        "close": "You cannot own the heart. Walk it.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_no_fourth_mark",
+      "title": "No Fourth Mark",
+      "world_id": "Hub",
+      "giver_guest_id": "concord",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        0,
+        6.2
+      ],
+      "backstory_id": "concord",
+      "does_not_replace": [
+        "q_hub_three_distances",
+        "founding day reading"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_no_fourth_mark_1",
+          "verb": "talk",
+          "target": "concord",
+          "count": 1,
+          "text": "At (0, 6.2) he is measuring. The slate he faces her with stays blank. That is enough."
+        },
+        {
+          "id": "obj_q_s24_no_fourth_mark_2",
+          "verb": "confirm",
+          "target": "concord",
+          "count": 1,
+          "text": "Add no fourth mark: no motive, no confession, no new distance. The three distances stay in their own quest."
+        }
+      ],
+      "fail": [
+        "Write on the slate",
+        "Ask which father the Link obeys",
+        "Ask him to admit love",
+        "Re-measure the triangle"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "concord",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "Concord measured and added nothing.",
+        "gossip_on_complete": "The slate at the north stand is still blank.",
+        "prop_or_door": "Cord or folded rod. Not a sword."
+      },
+      "lines": {
+        "offer": "I am measuring. That is enough.",
+        "close": "The slate has no fourth mark.",
+        "rule": "These two strings are the bind. Do not append a secret the unsaid list forbids."
+      }
+    },
+    {
+      "id": "q_s24_three_dots",
+      "title": "Three Dots",
+      "world_id": "Hub",
+      "giver_guest_id": "sovereign",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        8.6,
+        0.3
+      ],
+      "backstory_id": "sovereign",
+      "does_not_replace": [
+        "q_hub_two_streets",
+        "q_hub_three_distances",
+        "q_s24_ellipsis_filed",
+        "q_s24_no_number"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_s24_three_dots_1",
+          "verb": "talk",
+          "target": "sovereign",
+          "count": 1,
+          "text": "At (8.6, 0.3) his back is toward Concord and Concordia. Speak. The only successful reply is '…'."
+        },
+        {
+          "id": "obj_q_s24_three_dots_2",
+          "verb": "confirm",
+          "target": "sovereign",
+          "count": 1,
+          "text": "Leave. Do not ask him to turn. Do not claim you were noticed. Notice is not a reward."
+        }
+      ],
+      "fail": [
+        "A longer line",
+        "A turn",
+        "A claim of notice",
+        "A scythe",
+        "A boss bar"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "turn_in": {
+        "guest_id": "sovereign",
+        "requires_all_objectives": true
+      },
+      "world_hooks": {
+        "board_line": "The Sovereign said what he says.",
+        "gossip_on_complete": "Someone left the unpaved ring without a status.",
+        "prop_or_door": "Dark coat. No scythe. No face performance while the back is turned."
+      },
+      "lines": {
+        "offer": "…",
+        "close": "…",
+        "rule": "Both strings are exactly the three-dot ellipsis on the GuestDef. A longer offer is a failed bind."
+      }
+    }
+  ],
+  "revision": 2,
+  "cycle2_corrections": [
+    {
+      "id": "mama_cousin_is_seraphine",
+      "was": "The yearly correspondent was treated as unnamed. Naming any cousin failed q_s24_yearly_unopened.",
+      "now": "crime/lore.json lore_voss_envoy already says Mama and Lady Seraphine Voss correspond as cousins, a joke neither has explained. The sealed genealogy puts that yearly letter inside the Voss pattern with the word cousin in quotes. The unsaid fact is the contents, and whether the joke is blood. Saying Seraphine is not an invention. Opening the letter still fails."
+    },
+    {
+      "id": "brackish_is_not_mira",
+      "was": "The sheet id child_mira_brackish can be misread as a given name.",
+      "now": "The sheet name is Brackish. Mira Lattice (elder_mira_lattice) is Speaker of the Assembly. The id token is not a rename and not a kinship."
+    },
+    {
+      "id": "two_widows_year_89",
+      "was": "Asbir's unnamed wife could be merged with the Speaker's.",
+      "now": "lore hub_dome_stabilisation: the Curator lost a wife. elder_mira_lattice is alive and lost her wife. They are not one marriage. Neither wife's name is in the sources. This slice still does not speak either name."
+    },
+    {
+      "id": "seam_chain_stays",
+      "was": "q_s24_one_paver could be read as cancelling a walk to Nesha.",
+      "now": "nesha_seam_01_pattern, nesha_seam_02_history, and nesha_seam_03_mediate remain the canon chain, including the mediation. The paver hook does not perform that handoff and does not delete it. q_hub_nesha_gap stays S02's separate measure."
+    },
+    {
+      "id": "correspondence_span_unresolved",
+      "was": "Asbir's Lattice Correspondence could be given one duration.",
+      "now": "lore description says the channel has run fifteen years. The era header says Year -15 to Year 91. His sheet says nineteen years as Lord Curator. This slice does not pick which number is the correspondence."
+    }
+  ]
+}

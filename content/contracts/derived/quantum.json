@@ -335,6 +335,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "quantum.qecDecodeSingle",
+      "name": "qecDecodeSingle"
+    },
+    {
+      "_derived": true,
+      "domain": "quantum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quantum.qecLatticeInfo",
+      "name": "qecLatticeInfo"
+    },
+    {
+      "_derived": true,
+      "domain": "quantum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quantum.qecRunTrial",
+      "name": "qecRunTrial"
+    },
+    {
+      "_derived": true,
+      "domain": "quantum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quantum.qecSimulateThreshold",
+      "name": "qecSimulateThreshold"
+    },
+    {
+      "_derived": true,
+      "domain": "quantum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "quantum.rate",
       "name": "rate"
     },
@@ -510,5 +562,5 @@
   ],
   "domain": "quantum",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 39
+  "macroCount": 43
 }

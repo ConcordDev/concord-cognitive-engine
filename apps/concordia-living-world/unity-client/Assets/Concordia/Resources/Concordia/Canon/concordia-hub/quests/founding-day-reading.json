@@ -1,0 +1,166 @@
+[
+  {
+    "id": "founding_day_01_gather",
+    "title": "Founding Day — The Unburned Court",
+    "description": "Founding Day. The Concordant Law is read aloud at the Unburned Court, and the three who live in the hub are said to stand where the ring can see them. Archivist Maren wants a witness who is not on any embassy payroll. Come to the Court before the reading starts.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "beginner",
+    "domain": "hub_cosmology",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_fd_reach_court",
+        "type": "reach_location",
+        "target": "unburned_court",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Reach the Unburned Court before the Founding Day reading."
+      },
+      {
+        "id": "obj_fd_talk_maren",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Find Archivist Maren at the Court's eastern arch and take the witness slate."
+      }
+    ],
+    "rewards": { "xp": 60 },
+    "breadcrumbs": [
+      {
+        "id": "bc_fd_gather",
+        "content": "Maren will not look at the three pillars while she hands you the slate. 'Write what you see,' she says. 'Not what the embassies will claim you saw.'",
+        "unlocks_after": "obj_fd_talk_maren",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["founding_day_02_reading"],
+    "prerequisites": [],
+    "tags": ["hub", "founding_day", "three_pillars", "cosmology", "unburned_court"]
+  },
+  {
+    "id": "founding_day_02_reading",
+    "title": "Founding Day — The Reading",
+    "description": "The Lamplighter's successor reads the Concordant Law. Around the ring: Concordia stands open-handed and warm at the apex; Concord faces her with a slate he is not writing on; the Sovereign stands with his back to both of them and does not turn. No one names what that arrangement means. You are here to witness it anyway.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "beginner",
+    "domain": "hub_cosmology",
+    "estimated_time": "20m",
+    "objectives": [
+      {
+        "id": "obj_fd_witness_concordia",
+        "type": "observe",
+        "target": "concordia_first_breath",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Watch Concordia during the reading. She looks past Concord, toward the place the Sovereign will not face."
+      },
+      {
+        "id": "obj_fd_witness_concord",
+        "type": "observe",
+        "target": "concord_first_thought",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Watch Concord. He catalogs the crowd. He does not look at the Sovereign. He looks at her the entire time and calls it duty."
+      },
+      {
+        "id": "obj_fd_witness_sovereign",
+        "type": "observe",
+        "target": "sovereign_first_refusal",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Watch the Sovereign. He does not turn around. If he notices you at all, that is rarer than any title the hub can grant."
+      },
+      {
+        "id": "obj_fd_hear_law",
+        "type": "interact",
+        "target": "concordant_law_reading",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Stay through the full reading of the Concordant Law. The ground under the Court is warm."
+      }
+    ],
+    "rewards": {
+      "xp": 120,
+      "skill_xp": { "concordia_alignment": 25, "lore": 40 },
+      "named_items": [
+        {
+          "id": "founding_day_witness_slate",
+          "name": "Witness Slate — Founding Day",
+          "type": "relic",
+          "quality": "tier_2",
+          "tags": ["hub", "founding_day", "three_pillars", "codex"],
+          "description": "A thin stone slate Maren pressed into your hands. One face holds the Concordant Law in the old hand. The other is blank except for three marks you did not make: a warm spiral, a cold line, and a stroke that turns away. No embassy seal.",
+          "quantity": 1
+        }
+      ]
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fd_triangle",
+        "content": "No speaker says the word love. Concordia laughs once, soft, when the Law names the ground as hers. Concord's jaw tightens at a clause about watching. The Sovereign is already leaving before the last sentence ends. The arrangement is the confession; the reading is only the excuse.",
+        "unlocks_after": "obj_fd_hear_law",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_fd_ninth",
+        "content": "Maren, later: 'The ninth Refusal is not spoken. You stood on it. The Court is her body refusing to let any single no become a tyranny. Write that down if you write anything.'",
+        "unlocks_after": "obj_fd_hear_law",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["founding_day_03_sign"],
+    "prerequisites": ["founding_day_01_gather"],
+    "tags": ["hub", "founding_day", "three_pillars", "cosmology", "triangle"]
+  },
+  {
+    "id": "founding_day_03_sign",
+    "title": "Founding Day — What the Slate Held",
+    "description": "Return the witness slate to Maren at the Archive. She will not ask you to interpret the three. She will ask whether the Sovereign looked at anyone — and she will file your answer under a seal even she cannot open twice.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "beginner",
+    "domain": "hub_cosmology",
+    "estimated_time": "10m",
+    "objectives": [
+      {
+        "id": "obj_fd_return_slate",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Return to Archivist Maren with the witness slate."
+      },
+      {
+        "id": "obj_fd_file_account",
+        "type": "interact",
+        "target": "archive_founding_day_drawer",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "File your account in the Founding Day drawer. The drawer sits beneath a blank nameplate."
+      }
+    ],
+    "rewards": {
+      "xp": 80,
+      "skill_xp": { "lore": 30 },
+      "buffs": [
+        {
+          "id": "witness_of_the_court",
+          "label": "Witness of the Court",
+          "duration_seconds": 0,
+          "effects": { "hub_founding_day_witness": true }
+        }
+      ]
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fd_filed",
+        "content": "Maren copies nothing of what you said about Concord's face. 'He would call it measurement,' she murmurs, and stops herself. The blank nameplate on the drawer is older than the Archive.",
+        "unlocks_after": "obj_fd_file_account",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["founding_day_02_reading"],
+    "tags": ["hub", "founding_day", "three_pillars", "cosmology", "archive"]
+  }
+]

@@ -1,0 +1,2198 @@
+{
+  "schema": "concordia-lookfeel-prompts/1.0",
+  "family": "env",
+  "batch": "B18_lookfeel_env",
+  "count": 70,
+  "clip_note": "aura_prompt is a single-subject concept. The constraint is the first sentence. Feed aura_prompt verbatim. Do not prepend a second framing block.",
+  "entries": [
+    {
+      "id": "env_hub_flower_law_urn",
+      "display_name": "Flower Law Urn",
+      "lore_blurb": "One urn on the plaza. A blade left in it is a flower.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Fat chalice silhouette. One flower mass. No bouquet, no blade shape.",
+      "aura_prompt": "One waist-high limestone urn with a single bronze flower standing in its mouth. Single subject, three-quarter view, centered, entire subject in frame, warm limestone plaza, shallow depth, soft even light, no text, no watermark, 3D game asset concept render. Chipped rim, cobble contact, warm brass lip, soot at the base, Unburned Court. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One waist-high limestone urn with a single bronze flower standing in its mouth. Single subject, three-quarter view, centered, entire subject in frame, warm limestone plaza, shallow depth, soft even light, no text, no watermark, 3D game asset concept render. Chipped rim, cobble contact, warm brass lip, soot at the base, Unburned Court. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_flower_law_urn/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "0.9 m tall beside a 1.8 m player",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_ring_door",
+      "display_name": "Ring of Doors Plaque",
+      "lore_blurb": "The eight plaques live on the 34 m ring. This is one drum, one world.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "gate"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A short cylinder with one circular plaque. Reads as a drum, not a castle gate.",
+      "aura_prompt": "One short limestone gate drum with a single circular brass plaque, no swinging doors. Single subject, three-quarter view, centered, entire subject in frame, warm limestone plaza, shallow depth, soft even light, no text, no watermark, 3D game asset concept render. Weathered quoins, one lantern hook, flower boxes at the foot, Court cobble. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short limestone gate drum with a single circular brass plaque, no swinging doors. Single subject, three-quarter view, centered, entire subject in frame, warm limestone plaza, shallow depth, soft even light, no text, no watermark, 3D game asset concept render. Weathered quoins, one lantern hook, flower boxes at the foot, Court cobble. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_ring_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "canon_gate": "one of Canon.Gates"
+      },
+      "scale_vs_player": "2.4 m drum, player at the plaque",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_pinewood_milepost",
+      "display_name": "Pinewood Milepost",
+      "lore_blurb": "The salt road outside the wall. The only lettering is Pinewood Crossing.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "road"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A single post and a short plank. Antler-wide negative space is empty. Not a town sign.",
+      "aura_prompt": "One timber milepost, the plank reading Pinewood Crossing, salt crust on the wood. Single subject, three-quarter view, centered, entire subject in frame, pine verge at dusk, clear background, soft even light, no text, no watermark, 3D game asset concept render. Pine needles at the foot, worn brass nail, no second sign, no city skyline. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber milepost, the plank reading Pinewood Crossing, salt crust on the wood. Single subject, three-quarter view, centered, entire subject in frame, pine verge at dusk, clear background, soft even light, no text, no watermark, 3D game asset concept render. Pine needles at the foot, worn brass nail, no second sign, no city skyline. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_pinewood_milepost/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "2.2 m post",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_court_cobble",
+      "display_name": "Court Cobble Module",
+      "lore_blurb": "Repeatable ground. CX_Tile_CourtCobble wear, no baked light.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A 4 m square of stones. One drain. Reads as pavement at 100 m as a flat slab.",
+      "aura_prompt": "One 4 metre square of worn limestone cobbles with a single brass drain. Single subject, three-quarter view, centered, entire subject in frame, plain studio ground plane, soft even light, no text, no watermark, 3D game asset concept render. Grit in the joints, flower petal stain, no props, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One 4 metre square of worn limestone cobbles with a single brass drain. Single subject, three-quarter view, centered, entire subject in frame, plain studio ground plane, soft even light, no text, no watermark, 3D game asset concept render. Grit in the joints, flower petal stain, no props, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_court_cobble/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m module",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_arena_arch",
+      "display_name": "Arena Sand Arch",
+      "lore_blurb": "Steel is allowed on the sand. The arch is the mouth of that exception.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "arena"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One thick arch. Sand visible through it. Not a cathedral.",
+      "aura_prompt": "One thick limestone arch framing a flat sand floor, weapon racks empty. Single subject, three-quarter view, centered, entire subject in frame, sand floor, plain sky, soft even light, no text, no watermark, 3D game asset concept render. Scuffed sand, rope stains on the jamb, warm key light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick limestone arch framing a flat sand floor, weapon racks empty. Single subject, three-quarter view, centered, entire subject in frame, sand floor, plain sky, soft even light, no text, no watermark, 3D game asset concept render. Scuffed sand, rope stains on the jamb, warm key light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_arena_arch/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "arch 4 m tall, clear 2.4 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_salt_verge",
+      "display_name": "Salt-Road Verge",
+      "lore_blurb": "The pine road shoulder where the stag herd belongs, outside the law disk.",
+      "taxonomy_tags": [
+        "environment",
+        "terrain_kit"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A low wedge of road and needle duff. One edge. No animals in this mesh.",
+      "aura_prompt": "One wedge of salt-dusted pine road with a needle-duff shoulder. Single subject, three-quarter view, centered, entire subject in frame, clear dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Rut, pale crust, a cut log end, no stag, no sign. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wedge of salt-dusted pine road with a needle-duff shoulder. Single subject, three-quarter view, centered, entire subject in frame, clear dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Rut, pale crust, a cut log end, no stag, no sign. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_salt_verge/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "8 m long ground module",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_hub_lantern_bracket",
+      "display_name": "Court Lantern Bracket",
+      "lore_blurb": "Traversal iron at 2.2 m. One lantern, one hook.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A wall bracket and a box lantern. The lantern is the bright mass.",
+      "aura_prompt": "One iron wall bracket holding a single box lantern of warm glass. Single subject, three-quarter view, centered, entire subject in frame, plain limestone wall studio, soft even light, no text, no watermark, 3D game asset concept render. Soot on the cowl, brass hinge, limestone wall patch behind it. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron wall bracket holding a single box lantern of warm glass. Single subject, three-quarter view, centered, entire subject in frame, plain limestone wall studio, soft even light, no text, no watermark, 3D game asset concept render. Soot on the cowl, brass hinge, limestone wall patch behind it. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_hub_lantern_bracket/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "bracket at 2.2 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "env_sunder_titan_pillar",
+      "display_name": "Titan Pillar",
+      "lore_blurb": "The Sundering's 100 m read. Granite, moss, a thin gold scar.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One column, wider than a door, broken at a slant. Gold is a vein, not plating.",
+      "aura_prompt": "One broken granite pillar, moss on the north face, a thin worn gold vein. Single subject, three-quarter view, centered, entire subject in frame, forest clearing, soft canopy light, soft even light, no text, no watermark, 3D game asset concept render. Bevelled arris, lichen, no statue, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One broken granite pillar, moss on the north face, a thin worn gold vein. Single subject, three-quarter view, centered, entire subject in frame, forest clearing, soft canopy light, soft even light, no text, no watermark, 3D game asset concept render. Bevelled arris, lichen, no statue, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_titan_pillar/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "12 m tall",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_ward_stone",
+      "display_name": "Ward Stone",
+      "lore_blurb": "Hostility turned inward. The stone is a closed crest, not a sword shrine.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A knee-high block with one incised closed crest.",
+      "aura_prompt": "One knee-high granite ward stone with a single closed crest cut into the face. Single subject, three-quarter view, centered, entire subject in frame, forest floor, soft even light, no text, no watermark, 3D game asset concept render. Moss in the cut, rain dark at the base, no weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One knee-high granite ward stone with a single closed crest cut into the face. Single subject, three-quarter view, centered, entire subject in frame, forest floor, soft even light, no text, no watermark, 3D game asset concept render. Moss in the cut, rain dark at the base, no weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_ward_stone/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "0.6 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_fold_lip",
+      "display_name": "Fold Ravine Lip",
+      "lore_blurb": "The fold the basilisk uses. A lip of stone, not the creature.",
+      "taxonomy_tags": [
+        "environment",
+        "terrain_kit"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A curved stone lip over a dark drop. One mass.",
+      "aura_prompt": "One curved granite ravine lip with moss and a dark drop behind it. Single subject, three-quarter view, centered, entire subject in frame, ravine air, clear far side, soft even light, no text, no watermark, 3D game asset concept render. Wet bevel, roots gripping the edge, no serpent. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One curved granite ravine lip with moss and a dark drop behind it. Single subject, three-quarter view, centered, entire subject in frame, ravine air, clear far side, soft even light, no text, no watermark, 3D game asset concept render. Wet bevel, roots gripping the edge, no serpent. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_fold_lip/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "6 m lip",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_wildwood_root_arch",
+      "display_name": "Wildwood Root Arch",
+      "lore_blurb": "Roots as architecture. Thick enough to mantle.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One root arch, trunk-thick, a path through.",
+      "aura_prompt": "One thick tree-root arch over a dirt path, bark worn smooth on the inside. Single subject, three-quarter view, centered, entire subject in frame, ancient forest, soft even light, no text, no watermark, 3D game asset concept render. Gold pollen in one crack only, no door hardware. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick tree-root arch over a dirt path, bark worn smooth on the inside. Single subject, three-quarter view, centered, entire subject in frame, ancient forest, soft even light, no text, no watermark, 3D game asset concept render. Gold pollen in one crack only, no door hardware. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_wildwood_root_arch/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "3.2 m clear",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_salt_toll",
+      "display_name": "Salt Toll Post",
+      "lore_blurb": "The salt toll is a post and a bowl, not a castle gate.",
+      "taxonomy_tags": [
+        "environment",
+        "road"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Post, bowl, short chain. Reads as a toll, not a prison.",
+      "aura_prompt": "One timber toll post with a stone bowl and a short iron chain. Single subject, three-quarter view, centered, entire subject in frame, pine road dusk, soft even light, no text, no watermark, 3D game asset concept render. Salt crust, worn bowl rim, pine road. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber toll post with a stone bowl and a short iron chain. Single subject, three-quarter view, centered, entire subject in frame, pine road dusk, soft even light, no text, no watermark, 3D game asset concept render. Salt crust, worn bowl rim, pine road. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_salt_toll/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "2 m post",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_waterfall_shelf",
+      "display_name": "Waterfall Shelf",
+      "lore_blurb": "A shelf and a sheet of water. The mesh is the rock.",
+      "taxonomy_tags": [
+        "environment",
+        "terrain_kit"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Flat shelf, one drop, white water as a simple sheet.",
+      "aura_prompt": "One granite shelf with a single sheet of falling water off the front edge. Single subject, three-quarter view, centered, entire subject in frame, forest gorge, soft even light, no text, no watermark, 3D game asset concept render. Moss, spray dark, a mantle lip. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One granite shelf with a single sheet of falling water off the front edge. Single subject, three-quarter view, centered, entire subject in frame, forest gorge, soft even light, no text, no watermark, 3D game asset concept render. Moss, spray dark, a mantle lip. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_waterfall_shelf/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "shelf 5 m wide",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_sunder_voss_stair_fragment",
+      "display_name": "Voss Stair Fragment",
+      "lore_blurb": "Four treads of House Voss, gold worn back to stone.",
+      "taxonomy_tags": [
+        "environment",
+        "ruin_fragment"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A short flight, one landing bite. Not a tower.",
+      "aura_prompt": "One short run of four granite treads, gold leaf worn through to stone. Single subject, three-quarter view, centered, entire subject in frame, forest edge, soft even light, no text, no watermark, 3D game asset concept render. Moss in the riser, no marble crown. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short run of four granite treads, gold leaf worn through to stone. Single subject, three-quarter view, centered, entire subject in frame, forest edge, soft even light, no text, no watermark, 3D game asset concept render. Moss in the riser, no marble crown. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sunder_voss_stair_fragment/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m run, 4 m snap",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_tunya_masond_cliff_stair",
+      "display_name": "Masond Cliff Stair",
+      "lore_blurb": "Ark arrival as a cliff stair. Masond has no country_id pin; this is the visual sector.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Switchback cut into a cliff. One bridge bite. Vertical read.",
+      "aura_prompt": "One cliff stair cut into warm limestone, a single timber bridge landing. Single subject, three-quarter view, centered, entire subject in frame, cliff and river daylight, soft even light, no text, no watermark, 3D game asset concept render. Rope wear, river mist, no second kingdom flag. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cliff stair cut into warm limestone, a single timber bridge landing. Single subject, three-quarter view, centered, entire subject in frame, cliff and river daylight, soft even light, no text, no watermark, 3D game asset concept render. Rope wear, river mist, no second kingdom flag. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_masond_cliff_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "stair flight 8 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_asbir_vault_mouth",
+      "display_name": "Asbir Vault Mouth",
+      "lore_blurb": "Buried archive. Shade, salt, a door half in the dune.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A rectangle of dark timber in a dune. One mouth.",
+      "aura_prompt": "One half-buried timber vault mouth in a salt dune, shaded court lip. Single subject, three-quarter view, centered, entire subject in frame, dune daylight, hard sky, soft even light, no text, no watermark, 3D game asset concept render. Sand drift on the threshold, no museum statue. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One half-buried timber vault mouth in a salt dune, shaded court lip. Single subject, three-quarter view, centered, entire subject in frame, dune daylight, hard sky, soft even light, no text, no watermark, 3D game asset concept render. Sand drift on the threshold, no museum statue. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_asbir_vault_mouth/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "door 2.2 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_sangree_stack",
+      "display_name": "Sangree Forge Stack",
+      "lore_blurb": "Blackened stone and one stack. The GoldenSlice forge stays the gameplay forge.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A square stack, soot, a short ore trough.",
+      "aura_prompt": "One blackened stone forge stack with a soot mouth and a short ore trough. Single subject, three-quarter view, centered, entire subject in frame, ash yard, soft even light, no text, no watermark, 3D game asset concept render. Ash crust, copper band, no flame sheet covering the mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One blackened stone forge stack with a soot mouth and a short ore trough. Single subject, three-quarter view, centered, entire subject in frame, ash yard, soft even light, no text, no watermark, 3D game asset concept render. Ash crust, copper band, no flame sheet covering the mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_sangree_stack/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "stack 9 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_aekon_ark_rib",
+      "display_name": "Aekon Ark Rib",
+      "lore_blurb": "Exposed ark bone in blue-white ice. Warm hold light in one opening.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One curved rib of hull metal in ice. A door of warm wood.",
+      "aura_prompt": "One curved ark-hull rib frozen into a glacier, a small warm timber door in the rib. Single subject, three-quarter view, centered, entire subject in frame, glacier daylight, soft even light, no text, no watermark, 3D game asset concept render. Ice crust, rust at bolts, no spell crystal. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One curved ark-hull rib frozen into a glacier, a small warm timber door in the rib. Single subject, three-quarter view, centered, entire subject in frame, glacier daylight, soft even light, no text, no watermark, 3D game asset concept render. Ice crust, rust at bolts, no spell crystal. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_aekon_ark_rib/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "rib 14 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_fluxom_lock",
+      "display_name": "Fluxom Dye Lock",
+      "lore_blurb": "Canal lock. Dye stain, sanitation, refugee wear on the timber.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "harbor"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Two gates and a basin. Dye is a stain, not a magic river.",
+      "aura_prompt": "One timber canal lock with two gates and a dye-stained basin. Single subject, three-quarter view, centered, entire subject in frame, harbor overcast, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, mineral crust, a coil of rope. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber canal lock with two gates and a dye-stained basin. Single subject, three-quarter view, centered, entire subject in frame, harbor overcast, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, mineral crust, a coil of rope. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_fluxom_lock/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "lock 8 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_nil_root",
+      "display_name": "Nil Listening Root",
+      "lore_blurb": "Dense wet canopy reduced to one root buttress. Silence is the empty space.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One buttress, a dark hollow, a single dim lichen lamp.",
+      "aura_prompt": "One massive fig buttress with a dark hollow and a single dim lichen glow. Single subject, three-quarter view, centered, entire subject in frame, dark wet grove, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, hanging root, no village. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One massive fig buttress with a dark hollow and a single dim lichen glow. Single subject, three-quarter view, centered, entire subject in frame, dark wet grove, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, hanging root, no village. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_nil_root/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "buttress 6 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_terrace_lip",
+      "display_name": "Terrace Lip",
+      "lore_blurb": "Fruit is taken from the lip. The tree is not the loot mesh.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A stone lip and a water runnel. Climbable.",
+      "aura_prompt": "One limestone terrace lip with a water runnel and a timber edge. Single subject, three-quarter view, centered, entire subject in frame, terrace sun, soft even light, no text, no watermark, 3D game asset concept render. Soil stain, solar-tile fragment set into the coping, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone terrace lip with a water runnel and a timber edge. Single subject, three-quarter view, centered, entire subject in frame, terrace sun, soft even light, no text, no watermark, 3D game asset concept render. Soil stain, solar-tile fragment set into the coping, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_terrace_lip/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "lip 4 m module",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_tunya_solar_eave",
+      "display_name": "Solar Eave",
+      "lore_blurb": "A panel in the sun can wake a terminal because the sun is not a circuit.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One eave, one tile row, one dark terminal box unpowered in the mesh.",
+      "aura_prompt": "One timber eave with a single row of solar tile and a dark terminal box. Single subject, three-quarter view, centered, entire subject in frame, sunlit wall, soft even light, no text, no watermark, 3D game asset concept render. Dust on the tile, warm wood, no glowing circuit lines. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber eave with a single row of solar tile and a dark terminal box. Single subject, three-quarter view, centered, entire subject in frame, sunlit wall, soft even light, no text, no watermark, 3D game asset concept render. Dust on the tile, warm wood, no glowing circuit lines. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_tunya_solar_eave/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "eave 4 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "env_ruins_catalogue_stele",
+      "display_name": "Catalogue Stele",
+      "lore_blurb": "A page that does not finish. Stone, one unclosed line.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A tall slab, one broken corner, incised lines that stop.",
+      "aura_prompt": "One limestone stele, incised lines stopping before the bottom edge. Single subject, three-quarter view, centered, entire subject in frame, ash forum daylight, soft even light, no text, no watermark, 3D game asset concept render. Ash dust, moss, no skull motif. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone stele, incised lines stopping before the bottom edge. Single subject, three-quarter view, centered, entire subject in frame, ash forum daylight, soft even light, no text, no watermark, 3D game asset concept render. Ash dust, moss, no skull motif. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_catalogue_stele/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "3.5 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_ruins_unfinished_arch",
+      "display_name": "Unfinished Arch",
+      "lore_blurb": "The ending is not final. The arch does not meet.",
+      "taxonomy_tags": [
+        "environment",
+        "ruin_fragment"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Two jambs and a gap. The keystone is absent.",
+      "aura_prompt": "One limestone arch with the keystone missing, jambs still standing. Single subject, three-quarter view, centered, entire subject in frame, ruin street, soft even light, no text, no watermark, 3D game asset concept render. Crack, vine in the joint, ash on the tread. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone arch with the keystone missing, jambs still standing. Single subject, three-quarter view, centered, entire subject in frame, ruin street, soft even light, no text, no watermark, 3D game asset concept render. Crack, vine in the joint, ash on the tread. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_unfinished_arch/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_ruins_rib_bridge",
+      "display_name": "Rib Bridge",
+      "lore_blurb": "Fossil rib as a span. Thick enough to walk.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One bone-colored arch span. Not a skeleton character.",
+      "aura_prompt": "One fossil-bone bridge rib spanning a dry ash channel. Single subject, three-quarter view, centered, entire subject in frame, ash ravine, soft even light, no text, no watermark, 3D game asset concept render. Cold iron pin at each end, cracks, no skull. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One fossil-bone bridge rib spanning a dry ash channel. Single subject, three-quarter view, centered, entire subject in frame, ash ravine, soft even light, no text, no watermark, 3D game asset concept render. Cold iron pin at each end, cracks, no skull. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_rib_bridge/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "span 10 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_ruins_ash_cairn",
+      "display_name": "Ash Cairn",
+      "lore_blurb": "A stack that catalogues a death by not finishing the stack.",
+      "taxonomy_tags": [
+        "environment",
+        "road"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Five stones, the top one missing its seat.",
+      "aura_prompt": "One ash cairn of five stones, the top stone set askew. Single subject, three-quarter view, centered, entire subject in frame, ash plain, soft even light, no text, no watermark, 3D game asset concept render. Dust, a cold iron nail, no grave portrait. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One ash cairn of five stones, the top stone set askew. Single subject, three-quarter view, centered, entire subject in frame, ash plain, soft even light, no text, no watermark, 3D game asset concept render. Dust, a cold iron nail, no grave portrait. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_ash_cairn/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.4 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_ruins_forum_column",
+      "display_name": "Broken Forum Column",
+      "lore_blurb": "Classical drum, cracked, still a column.",
+      "taxonomy_tags": [
+        "environment",
+        "ruin_fragment"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Three drums stacked, one split.",
+      "aura_prompt": "One broken limestone column of three drums, the top drum split. Single subject, three-quarter view, centered, entire subject in frame, forum daylight, soft even light, no text, no watermark, 3D game asset concept render. Fluting worn, moss, no statue torso. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One broken limestone column of three drums, the top drum split. Single subject, three-quarter view, centered, entire subject in frame, forum daylight, soft even light, no text, no watermark, 3D game asset concept render. Fluting worn, moss, no statue torso. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_forum_column/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_ruins_aqueduct_spout",
+      "display_name": "Aqueduct Spout",
+      "lore_blurb": "The city still runs. A spout, a thin real sheet of water.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A stone mouth and a basin. Water is a sheet, not a spell.",
+      "aura_prompt": "One limestone aqueduct spout pouring a thin sheet into a cracked basin. Single subject, three-quarter view, centered, entire subject in frame, ruin street rain, soft even light, no text, no watermark, 3D game asset concept render. Mineral stain, moss lip, working joint. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone aqueduct spout pouring a thin sheet into a cracked basin. Single subject, three-quarter view, centered, entire subject in frame, ruin street rain, soft even light, no text, no watermark, 3D game asset concept render. Mineral stain, moss lip, working joint. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ruins_aqueduct_spout/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "spout at 3 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "env_crime_sodium_lamp",
+      "display_name": "Sodium Lamp",
+      "lore_blurb": "The Coast's night read. One lamp, sodium, not neon.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A pole and a teardrop head. The head is the mass.",
+      "aura_prompt": "One street pole with a single sodium teardrop lamp head. Single subject, three-quarter view, centered, entire subject in frame, night rain street, dark backdrop, soft even light, no text, no watermark, 3D game asset concept render. Rust at the base, stained brick wall behind, wet asphalt oval. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One street pole with a single sodium teardrop lamp head. Single subject, three-quarter view, centered, entire subject in frame, night rain street, dark backdrop, soft even light, no text, no watermark, 3D game asset concept render. Rust at the base, stained brick wall behind, wet asphalt oval. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_sodium_lamp/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "pole 6 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_fire_escape",
+      "display_name": "Fire Escape Bay",
+      "lore_blurb": "Traversal. One bay of stair and a landing.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Zigzag of thick iron. Reads at 100 m as a Z on a wall.",
+      "aura_prompt": "One iron fire-escape bay, stair and a single landing, bolted to brick. Single subject, three-quarter view, centered, entire subject in frame, brick wall studio, soft even light, no text, no watermark, 3D game asset concept render. Rust, a milk crate, peeling paint, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron fire-escape bay, stair and a single landing, bolted to brick. Single subject, three-quarter view, centered, entire subject in frame, brick wall studio, soft even light, no text, no watermark, 3D game asset concept render. Rust, a milk crate, peeling paint, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_fire_escape/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "bay 7 m tall",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_wharf_bollard",
+      "display_name": "Wharf Bollard",
+      "lore_blurb": "The bill's waterfront. One bollard, one rope scar.",
+      "taxonomy_tags": [
+        "environment",
+        "harbor"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A mushroom of iron. Rope groove is the silhouette cut.",
+      "aura_prompt": "One cast-iron wharf bollard with a deep rope groove. Single subject, three-quarter view, centered, entire subject in frame, dock daylight, soft even light, no text, no watermark, 3D game asset concept render. Salt rust, wet timber deck patch, no ship. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cast-iron wharf bollard with a deep rope groove. Single subject, three-quarter view, centered, entire subject in frame, dock daylight, soft even light, no text, no watermark, 3D game asset concept render. Salt rust, wet timber deck patch, no ship. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_wharf_bollard/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.1 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_warehouse_door",
+      "display_name": "Corrugate Warehouse Door",
+      "lore_blurb": "Armored warehouse mouth. One rolling door, half up.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A rectangle of ridges. The opening is a dark slot.",
+      "aura_prompt": "One rusted corrugated rolling door, raised one third, on a brick warehouse bay. Single subject, three-quarter view, centered, entire subject in frame, yard daylight, soft even light, no text, no watermark, 3D game asset concept render. Rebar patch, sodium stain, asphalt apron. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One rusted corrugated rolling door, raised one third, on a brick warehouse bay. Single subject, three-quarter view, centered, entire subject in frame, yard daylight, soft even light, no text, no watermark, 3D game asset concept render. Rebar patch, sodium stain, asphalt apron. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_warehouse_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "bay 4 m wide, 2.2 m clear when open",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_bill_board",
+      "display_name": "Posted Bill",
+      "lore_blurb": "Delay is not cancellation. The board is paper and nail, not a UI panel.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A plank with one nailed sheet. The sheet is blank of readable words.",
+      "aura_prompt": "One timber board with a single nailed paper sheet, the writing weathered out. Single subject, three-quarter view, centered, entire subject in frame, alley daylight, soft even light, no text, no watermark, 3D game asset concept render. Rust nails, rain warp, brick pier. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber board with a single nailed paper sheet, the writing weathered out. Single subject, three-quarter view, centered, entire subject in frame, alley daylight, soft even light, no text, no watermark, 3D game asset concept render. Rust nails, rain warp, brick pier. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_bill_board/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.6 m board",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_overpass_pier",
+      "display_name": "Overpass Pier",
+      "lore_blurb": "Concrete and a bearing. The road above is only a shadow.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One pier, battered, a steel shoe.",
+      "aura_prompt": "One stained concrete overpass pier with a rusted steel bearing shoe. Single subject, three-quarter view, centered, entire subject in frame, yard daylight, soft even light, no text, no watermark, 3D game asset concept render. Drip stains, rebar kiss, no full bridge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stained concrete overpass pier with a rusted steel bearing shoe. Single subject, three-quarter view, centered, entire subject in frame, yard daylight, soft even light, no text, no watermark, 3D game asset concept render. Drip stains, rebar kiss, no full bridge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_overpass_pier/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "pier 8 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_crime_gutter_mouth",
+      "display_name": "Rain Gutter Mouth",
+      "lore_blurb": "Noir water. A mouth in the curb.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A dark oval in a curb. One mass.",
+      "aura_prompt": "One cast-iron curb gutter mouth, wet, with a single steam wisp. Single subject, three-quarter view, centered, entire subject in frame, wet street, soft even light, no text, no watermark, 3D game asset concept render. Asphalt, cigarette stain, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cast-iron curb gutter mouth, wet, with a single steam wisp. Single subject, three-quarter view, centered, entire subject in frame, wet street, soft even light, no text, no watermark, 3D game asset concept render. Asphalt, cigarette stain, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crime_gutter_mouth/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "0.6 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_cyber_neon_banner",
+      "display_name": "Physical Neon Banner",
+      "lore_blurb": "Neon is cloth and tube, soot-stained. Not a hologram.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A hanging rectangle. One cyan tube along the hem.",
+      "aura_prompt": "One hanging cloth banner with a single cyan neon tube sewn into the hem. Single subject, three-quarter view, centered, entire subject in frame, dark alley, no skyline clutter, soft even light, no text, no watermark, 3D game asset concept render. Scratched acrylic rod, soot, cable tie, midnight alley. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One hanging cloth banner with a single cyan neon tube sewn into the hem. Single subject, three-quarter view, centered, entire subject in frame, dark alley, no skyline clutter, soft even light, no text, no watermark, 3D game asset concept render. Scratched acrylic rod, soot, cable tie, midnight alley. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_neon_banner/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "banner 3 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_skybridge_segment",
+      "display_name": "Sky-Bridge Segment",
+      "lore_blurb": "One span of carbon and scratched glass.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A box beam with a walkway. Reads as a bar at 100 m.",
+      "aura_prompt": "One carbon and scratched-glass sky-bridge segment, a single walkway inside. Single subject, three-quarter view, centered, entire subject in frame, plain dusk void, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal bolts, magenta reflection in the glass only, no city. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One carbon and scratched-glass sky-bridge segment, a single walkway inside. Single subject, three-quarter view, centered, entire subject in frame, plain dusk void, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal bolts, magenta reflection in the glass only, no city. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_skybridge_segment/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "span 12 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_service_corridor",
+      "display_name": "Service Corridor Module",
+      "lore_blurb": "Under-District. Pipes, a hatch, wet floor.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A 4 m corridor bite. One thick pipe is the grab.",
+      "aura_prompt": "One service-corridor module, wet floor, a single thick climbable pipe. Single subject, three-quarter view, centered, entire subject in frame, interior practical light, soft even light, no text, no watermark, 3D game asset concept render. Acrylic panel, cyan practical at the far end only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One service-corridor module, wet floor, a single thick climbable pipe. Single subject, three-quarter view, centered, entire subject in frame, interior practical light, soft even light, no text, no watermark, 3D game asset concept render. Acrylic panel, cyan practical at the far end only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_service_corridor/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "corridor 2.4 m wide",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_census_plinth",
+      "display_name": "Census Plinth",
+      "lore_blurb": "Identity is terrain. One number is missing from the ring.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A low plinth, a ring of digits with a gap.",
+      "aura_prompt": "One low gunmetal plinth with a digit ring and a single missing numeral. Single subject, three-quarter view, centered, entire subject in frame, dark plaza, soft even light, no text, no watermark, 3D game asset concept render. Scratched acrylic, one cyan lens, no drone. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low gunmetal plinth with a digit ring and a single missing numeral. Single subject, three-quarter view, centered, entire subject in frame, dark plaza, soft even light, no text, no watermark, 3D game asset concept render. Scratched acrylic, one cyan lens, no drone. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_census_plinth/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "plinth 1.2 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_glitch_frame",
+      "display_name": "Glitch Chapel Frame",
+      "lore_blurb": "A broken layer embedded in real architecture. The frame is physical.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A door frame with one mis-seated acrylic sheet.",
+      "aura_prompt": "One chapel door frame with a mis-seated scratched acrylic sheet bolted through the jamb. Single subject, three-quarter view, centered, entire subject in frame, dark interior, soft even light, no text, no watermark, 3D game asset concept render. Cable scar, soot, no floating UI. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One chapel door frame with a mis-seated scratched acrylic sheet bolted through the jamb. Single subject, three-quarter view, centered, entire subject in frame, dark interior, soft even light, no text, no watermark, 3D game asset concept render. Cable scar, soot, no floating UI. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_glitch_frame/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "frame 2.2 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_under_hatch",
+      "display_name": "Under-District Hatch",
+      "lore_blurb": "A hatch in wet pavement. Maintenance, not a dungeon mouth.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A square hatch, one handle, raised a hand.",
+      "aura_prompt": "One square steel hatch raised a hand's width in wet dark pavement. Single subject, three-quarter view, centered, entire subject in frame, wet night pavement, soft even light, no text, no watermark, 3D game asset concept render. Yellow worn to primer, cyan edge light, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square steel hatch raised a hand's width in wet dark pavement. Single subject, three-quarter view, centered, entire subject in frame, wet night pavement, soft even light, no text, no watermark, 3D game asset concept render. Yellow worn to primer, cyan edge light, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_under_hatch/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.2 m hatch",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_cyber_alley_drain",
+      "display_name": "Wet Alley Drain",
+      "lore_blurb": "Rain on the Grid still obeys a gutter.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A trench and a grate. One cyan reflection.",
+      "aura_prompt": "One alley drain trench with a single bent grate and a cyan reflection. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. Oil, acrylic shard, no hologram. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One alley drain trench with a single bent grate and a cyan reflection. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. Oil, acrylic shard, no hologram. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_cyber_alley_drain/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "trench 3 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "env_frontier_walker_cairn",
+      "display_name": "Walker Cairn",
+      "lore_blurb": "Walker Paths are cairns and a direction, not a dome.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "road"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Three stones and a stick. The stick is the arrow.",
+      "aura_prompt": "One trail cairn of three stones with a single pointing stick. Single subject, three-quarter view, centered, entire subject in frame, open dust daylight, soft even light, no text, no watermark, 3D game asset concept render. Dust, canvas fibre caught on the stick, open sky. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One trail cairn of three stones with a single pointing stick. Single subject, three-quarter view, centered, entire subject in frame, open dust daylight, soft even light, no text, no watermark, 3D game asset concept render. Dust, canvas fibre caught on the stick, open sky. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_walker_cairn/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.2 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_frontier_relay_post",
+      "display_name": "Relay Gate Post",
+      "lore_blurb": "A relay, not a city gate. One post, one lamp, one hook for a message.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Tall timber, a small box, a wind vane.",
+      "aura_prompt": "One timber relay post with a message box and a small wind vane. Single subject, three-quarter view, centered, entire subject in frame, open plain, soft even light, no text, no watermark, 3D game asset concept render. Canvas wrap, dust, no roof. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber relay post with a message box and a small wind vane. Single subject, three-quarter view, centered, entire subject in frame, open plain, soft even light, no text, no watermark, 3D game asset concept render. Canvas wrap, dust, no roof. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_relay_post/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m post",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_frontier_rut_bridge",
+      "display_name": "Wagon Rut Bridge",
+      "lore_blurb": "Hand-built. Two logs and a deck of worn plank.",
+      "taxonomy_tags": [
+        "environment",
+        "road"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A short bridge. The rut continues.",
+      "aura_prompt": "One short log bridge over a dry rut, plank deck worn to the grain. Single subject, three-quarter view, centered, entire subject in frame, grass plain, soft even light, no text, no watermark, 3D game asset concept render. Nail heads, dust, no railing fantasy. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short log bridge over a dry rut, plank deck worn to the grain. Single subject, three-quarter view, centered, entire subject in frame, grass plain, soft even light, no text, no watermark, 3D game asset concept render. Nail heads, dust, no railing fantasy. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_rut_bridge/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "span 4 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_frontier_wind_station",
+      "display_name": "Wind Station",
+      "lore_blurb": "Weather station. A mast and a box. The mast is the silhouette.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One mast, one instrument box, guy wires as thick cables.",
+      "aura_prompt": "One weather mast with a single instrument box and thick guy cables. Single subject, three-quarter view, centered, entire subject in frame, open sky, soft even light, no text, no watermark, 3D game asset concept render. Canvas shade, dust-scoured metal, no dome. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One weather mast with a single instrument box and thick guy cables. Single subject, three-quarter view, centered, entire subject in frame, open sky, soft even light, no text, no watermark, 3D game asset concept render. Canvas shade, dust-scoured metal, no dome. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_wind_station/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "mast 8 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_frontier_canvas_lean",
+      "display_name": "Canvas Lean-to",
+      "lore_blurb": "Shelter that is not a dome. Cloth and two poles.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A triangle of canvas. Poles thicker than a wrist.",
+      "aura_prompt": "One canvas lean-to on two timber poles, cloth patched and dust-stained. Single subject, three-quarter view, centered, entire subject in frame, plain daylight, soft even light, no text, no watermark, 3D game asset concept render. Rope, a crate, open sides. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One canvas lean-to on two timber poles, cloth patched and dust-stained. Single subject, three-quarter view, centered, entire subject in frame, plain daylight, soft even light, no text, no watermark, 3D game asset concept render. Rope, a crate, open sides. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_canvas_lean/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "2.4 m tall",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_frontier_road_door_post",
+      "display_name": "Road-Is-Door Post",
+      "lore_blurb": "The refusal is a post in open ground, not a gatehouse.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One post, one open ring of iron that does not close a door.",
+      "aura_prompt": "One timber post carrying an open iron ring, no gate leaf attached. Single subject, three-quarter view, centered, entire subject in frame, open plain dusk, soft even light, no text, no watermark, 3D game asset concept render. Dust, bolt holes empty, horizon behind. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber post carrying an open iron ring, no gate leaf attached. Single subject, three-quarter view, centered, entire subject in frame, open plain dusk, soft even light, no text, no watermark, 3D game asset concept render. Dust, bolt holes empty, horizon behind. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_frontier_road_door_post/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "2.6 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "env_dawn_roof_pad",
+      "display_name": "Roof Launch Pad",
+      "lore_blurb": "Height is a verb. One pad, one lip.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A circle of pale composite and a raised lip.",
+      "aura_prompt": "One circular roof pad of pale marble-composite with a single raised launch lip. Single subject, three-quarter view, centered, entire subject in frame, rooftop sky, soft even light, no text, no watermark, 3D game asset concept render. Chrome chip, warning stripe worn, dawn light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One circular roof pad of pale marble-composite with a single raised launch lip. Single subject, three-quarter view, centered, entire subject in frame, rooftop sky, soft even light, no text, no watermark, 3D game asset concept render. Chrome chip, warning stripe worn, dawn light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_roof_pad/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "pad 8 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_dawn_mercy_ring",
+      "display_name": "Mercy Plaza Ring",
+      "lore_blurb": "They stand. The ring is a low circle, not a throne.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A low ring in the pavement. One break where a person can walk in.",
+      "aura_prompt": "One low plaza ring of pale stone with a single walking gap. Single subject, three-quarter view, centered, entire subject in frame, plaza dawn, soft even light, no text, no watermark, 3D game asset concept render. Chrome inlay chipped, warm dawn bounce. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low plaza ring of pale stone with a single walking gap. Single subject, three-quarter view, centered, entire subject in frame, plaza dawn, soft even light, no text, no watermark, 3D game asset concept render. Chrome inlay chipped, warm dawn bounce. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_mercy_ring/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "ring 6 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_dawn_arterial_pier",
+      "display_name": "Arterial Pier",
+      "lore_blurb": "Transit mass. One pier of the arterials.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A clean concrete Y. Glass is a panel, not the structure.",
+      "aura_prompt": "One concrete transit pier with a single glass panel and a steel shoe. Single subject, three-quarter view, centered, entire subject in frame, street daylight, soft even light, no text, no watermark, 3D game asset concept render. Graffiti washed to a ghost, warm interior light in the glass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One concrete transit pier with a single glass panel and a steel shoe. Single subject, three-quarter view, centered, entire subject in frame, street daylight, soft even light, no text, no watermark, 3D game asset concept render. Graffiti washed to a ghost, warm interior light in the glass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_arterial_pier/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "pier 10 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_dawn_spandrel",
+      "display_name": "Glass Spandrel",
+      "lore_blurb": "Self-clean glass that has failed once. One panel.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A tall rectangle. The failure is a clean crack.",
+      "aura_prompt": "One tall glass spandrel with a single clean crack and a chrome edge. Single subject, three-quarter view, centered, entire subject in frame, studio sky, soft even light, no text, no watermark, 3D game asset concept render. Dust at the gasket, dawn reflection. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One tall glass spandrel with a single clean crack and a chrome edge. Single subject, three-quarter view, centered, entire subject in frame, studio sky, soft even light, no text, no watermark, 3D game asset concept render. Dust at the gasket, dawn reflection. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_spandrel/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "panel 4 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_dawn_clinic_canopy",
+      "display_name": "Clinic Canopy",
+      "lore_blurb": "Neural clinic as a civic canopy, ordinary, not a lab costume.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A thin roof on two posts. A red cross is absent. A small lamp is the mark.",
+      "aura_prompt": "One slim clinic canopy on two posts with a single warm lamp. Single subject, three-quarter view, centered, entire subject in frame, sidewalk daylight, soft even light, no text, no watermark, 3D game asset concept render. Pale composite, a scuff, no logo type. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One slim clinic canopy on two posts with a single warm lamp. Single subject, three-quarter view, centered, entire subject in frame, sidewalk daylight, soft even light, no text, no watermark, 3D game asset concept render. Pale composite, a scuff, no logo type. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_clinic_canopy/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "canopy 3 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_dawn_kane_fin",
+      "display_name": "Kane Crown Fin",
+      "lore_blurb": "The tower's readable crown, shipped as one fin so the skyline can kitbash.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A vertical fin, thicker at the base, one notch.",
+      "aura_prompt": "One vertical tower fin of pale composite and chrome, a single notch near the top. Single subject, three-quarter view, centered, entire subject in frame, plain sky, soft even light, no text, no watermark, 3D game asset concept render. Chip at the chrome, dawn edge light, no full tower. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One vertical tower fin of pale composite and chrome, a single notch near the top. Single subject, three-quarter view, centered, entire subject in frame, plain sky, soft even light, no text, no watermark, 3D game asset concept render. Chip at the chrome, dawn edge light, no full tower. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_dawn_kane_fin/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "fin 16 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "env_crucible_seam_rock",
+      "display_name": "Unclosed Seam Rock",
+      "lore_blurb": "A rock with a seam that does not meet. Teal is the crack, not a coating.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One boulder. One bright crack that stops.",
+      "aura_prompt": "One basalt boulder with a single teal crack that stops before the edge. Single subject, three-quarter view, centered, entire subject in frame, plain dusk ground, soft even light, no text, no watermark, 3D game asset concept render. Quartz grain, no face, no orbiting shards on this mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt boulder with a single teal crack that stops before the edge. Single subject, three-quarter view, centered, entire subject in frame, plain dusk ground, soft even light, no text, no watermark, 3D game asset concept render. Quartz grain, no face, no orbiting shards on this mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_seam_rock/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "2.5 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_crucible_leaning_stair",
+      "display_name": "Leaning Stair",
+      "lore_blurb": "The stair leans and still lands on the 4 m grid.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A flight that tilts, treads still level enough to read as steps.",
+      "aura_prompt": "One basalt stair leaning to the side, treads still individually level. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Quartz edge, dark oak hand mass, no floating steps. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt stair leaning to the side, treads still individually level. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Quartz edge, dark oak hand mass, no floating steps. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_leaning_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "flight 4 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_crucible_shard_anchor",
+      "display_name": "Orbit Shard Anchor",
+      "lore_blurb": "A socket where a shard would hang. The shard is a separate prop.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A stone yoke with one empty socket.",
+      "aura_prompt": "One basalt yoke with a single empty socket lined in dull quartz. Single subject, three-quarter view, centered, entire subject in frame, plain backdrop, soft even light, no text, no watermark, 3D game asset concept render. Tool marks, no floating gem. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt yoke with a single empty socket lined in dull quartz. Single subject, three-quarter view, centered, entire subject in frame, plain backdrop, soft even light, no text, no watermark, 3D game asset concept render. Tool marks, no floating gem. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_shard_anchor/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1.8 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_crucible_quartz_fault",
+      "display_name": "Quartz Fault",
+      "lore_blurb": "Ground that contradicts itself in one slab: a fault line.",
+      "taxonomy_tags": [
+        "environment",
+        "terrain_kit"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A slab split, one side higher.",
+      "aura_prompt": "One ground slab split by a quartz fault, one side a step higher. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Teal in the crack only, bevelled edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One ground slab split by a quartz fault, one side a step higher. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Teal in the crack only, bevelled edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_quartz_fault/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m module",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_crucible_broken_road",
+      "display_name": "Interrupted Road",
+      "lore_blurb": "The road stops in clean air and resumes as a separate piece. This mesh is the stopped end.",
+      "taxonomy_tags": [
+        "environment",
+        "road"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "Pavement ending in a thick broken lip.",
+      "aura_prompt": "One road slab ending in a thick broken lip, gravel core visible. Single subject, three-quarter view, centered, entire subject in frame, plain backdrop, soft even light, no text, no watermark, 3D game asset concept render. Paint line that stops, no second slab. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One road slab ending in a thick broken lip, gravel core visible. Single subject, three-quarter view, centered, entire subject in frame, plain backdrop, soft even light, no text, no watermark, 3D game asset concept render. Paint line that stops, no second slab. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_broken_road/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "6 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_crucible_basalt_fold",
+      "display_name": "Basalt Fold",
+      "lore_blurb": "Folded strata you can read from the chase camera.",
+      "taxonomy_tags": [
+        "environment",
+        "terrain_kit"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A wave of rock, one crest.",
+      "aura_prompt": "One folded basalt wave with a single quartz crest line. Single subject, three-quarter view, centered, entire subject in frame, dusk ground, soft even light, no text, no watermark, 3D game asset concept render. Grit, no crystal cluster. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One folded basalt wave with a single quartz crest line. Single subject, three-quarter view, centered, entire subject in frame, dusk ground, soft even light, no text, no watermark, 3D game asset concept render. Grit, no crystal cluster. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_crucible_basalt_fold/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "4 m tall fold",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "env_sere_furnace_stack",
+      "display_name": "Furnace Stack",
+      "lore_blurb": "Furnace Belt. One stack, one eye of fire, brick and iron.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A mill stack. The eye is a small opening, not a costume glow.",
+      "aura_prompt": "One brick furnace stack with a single small fire opening near the top. Single subject, three-quarter view, centered, entire subject in frame, smog daylight, soft even light, no text, no watermark, 3D game asset concept render. Soot, iron bands, oil stain, no lava. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One brick furnace stack with a single small fire opening near the top. Single subject, three-quarter view, centered, entire subject in frame, smog daylight, soft even light, no text, no watermark, 3D game asset concept render. Soot, iron bands, oil stain, no lava. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_furnace_stack/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "stack 18 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_waystone",
+      "display_name": "Sere Waystone",
+      "lore_blurb": "A stone on the coast. It is not a Hub gate and not a Link.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark",
+        "waystone"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A rough slab, one brand tile, no arch, no portal.",
+      "aura_prompt": "One rough standing stone with a single brand tile set in the face, no arch. Single subject, three-quarter view, centered, entire subject in frame, coast smog, soft even light, no text, no watermark, 3D game asset concept render. Salt, soot, mud line, Exodus water only as a flat backdrop. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One rough standing stone with a single brand tile set in the face, no arch. Single subject, three-quarter view, centered, entire subject in frame, coast smog, soft even light, no text, no watermark, 3D game asset concept render. Salt, soot, mud line, Exodus water only as a flat backdrop. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_waystone/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "not_a_link_gate": true
+      },
+      "scale_vs_player": "2.4 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_flood_pier",
+      "display_name": "Flooded Pier",
+      "lore_blurb": "Drowned infrastructure. The pier still has a bollard.",
+      "taxonomy_tags": [
+        "environment",
+        "harbor"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A concrete finger, waterline stain halfway up.",
+      "aura_prompt": "One concrete pier finger with a tide stain halfway up and a rusted bollard. Single subject, three-quarter view, centered, entire subject in frame, gray water, soft even light, no text, no watermark, 3D game asset concept render. Rebar, oil, no boat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One concrete pier finger with a tide stain halfway up and a rusted bollard. Single subject, three-quarter view, centered, entire subject in frame, gray water, soft even light, no text, no watermark, 3D game asset concept render. Rebar, oil, no boat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_flood_pier/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "pier 8 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_spire_stub",
+      "display_name": "Spire Stub",
+      "lore_blurb": "Spire City as a footing and a broken shaft.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A stump of tower, thicker than it is proud.",
+      "aura_prompt": "One broken concrete spire stub, rebar at the break, brand tile at the base. Single subject, three-quarter view, centered, entire subject in frame, smog sky, soft even light, no text, no watermark, 3D game asset concept render. Soot, a window empty, no antenna farm. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One broken concrete spire stub, rebar at the break, brand tile at the base. Single subject, three-quarter view, centered, entire subject in frame, smog sky, soft even light, no text, no watermark, 3D game asset concept render. Soot, a window empty, no antenna farm. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_spire_stub/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "stub 10 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_silo_ruin",
+      "display_name": "Breadland Silo",
+      "lore_blurb": "Exhausted farm. One silo, dented, still a cylinder.",
+      "taxonomy_tags": [
+        "environment",
+        "ruin_fragment"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A cylinder with a cone bite missing.",
+      "aura_prompt": "One dented grain silo, cone roof torn on one side, stubble at the base. Single subject, three-quarter view, centered, entire subject in frame, flat smog field, soft even light, no text, no watermark, 3D game asset concept render. Rust, a patched door, no pastoral fence kit. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One dented grain silo, cone roof torn on one side, stubble at the base. Single subject, three-quarter view, centered, entire subject in frame, flat smog field, soft even light, no text, no watermark, 3D game asset concept render. Rust, a patched door, no pastoral fence kit. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_silo_ruin/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "silo 12 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_headframe",
+      "display_name": "Extraction Headframe",
+      "lore_blurb": "The wound's machine. One headframe, wheels still.",
+      "taxonomy_tags": [
+        "environment",
+        "landmark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "An A-frame of steel. One wheel.",
+      "aura_prompt": "One steel mine headframe with a single sheave wheel. Single subject, three-quarter view, centered, entire subject in frame, highland smog, soft even light, no text, no watermark, 3D game asset concept render. Oil, rust, concrete pad, no monster. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One steel mine headframe with a single sheave wheel. Single subject, three-quarter view, centered, entire subject in frame, highland smog, soft even light, no text, no watermark, 3D game asset concept render. Oil, rust, concrete pad, no monster. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_headframe/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "frame 14 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_sere_brand_tile",
+      "display_name": "Compound Brand Tile",
+      "lore_blurb": "The Mark as a floor tile. One tile, one brand.",
+      "taxonomy_tags": [
+        "environment",
+        "street_kit"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A square tile module. The brand is a geometric stamp, not a sigil costume.",
+      "aura_prompt": "One square floor tile of oil concrete with a single geometric brand stamp. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Chip, soot in the stamp, no glow across the whole tile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square floor tile of oil concrete with a single geometric brand stamp. Single subject, three-quarter view, centered, entire subject in frame, studio ground, soft even light, no text, no watermark, 3D game asset concept render. Chip, soot in the stamp, no glow across the whole tile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_sere_brand_tile/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3"
+      },
+      "scale_vs_player": "1 m tile, repeatable",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "env_ix_wharf_joint",
+      "display_name": "Uncounted Wharf Joint",
+      "lore_blurb": "arch_ix_grid_coast. One pipe that is rust at one end and cyan at the other.",
+      "taxonomy_tags": [
+        "environment",
+        "blend",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crime",
+        "Cyber"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A single pipe run. Color changes along the length. Floor is wet asphalt.",
+      "aura_prompt": "One pipe run, rusted iron at one end and cyan fiber at the other, on wet asphalt. Single subject, three-quarter view, centered, entire subject in frame, wet wharf dusk, soft even light, no text, no watermark, 3D game asset concept render. Soot, a cloth banner hem, sodium and cyan both small. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pipe run, rusted iron at one end and cyan fiber at the other, on wet asphalt. Single subject, three-quarter view, centered, entire subject in frame, wet wharf dusk, soft even light, no text, no watermark, 3D game asset concept render. Soot, a cloth banner hem, sodium and cyan both small. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ix_wharf_joint/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_grid_coast"
+      },
+      "scale_vs_player": "pipe 6 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "env_ix_crown_step",
+      "display_name": "Held Crown Step",
+      "lore_blurb": "arch_ix_sunder_dawn. Granite tread, marble lip, one step.",
+      "taxonomy_tags": [
+        "environment",
+        "blend",
+        "landmark"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Superhero"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "One tread. Stone below, pale crown on the nose.",
+      "aura_prompt": "One stair tread, granite body, a chipped marble and chrome nose. Single subject, three-quarter view, centered, entire subject in frame, studio, soft even light, no text, no watermark, 3D game asset concept render. Gold worn off, moss in the riser. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stair tread, granite body, a chipped marble and chrome nose. Single subject, three-quarter view, centered, entire subject in frame, studio, soft even light, no text, no watermark, 3D game asset concept render. Gold worn off, moss in the riser. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ix_crown_step/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_sunder_dawn"
+      },
+      "scale_vs_player": "tread 4 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "env_ix_foundry_vent",
+      "display_name": "Unclosed Foundry Vent",
+      "lore_blurb": "arch_ix_crucible_foundry. A vent and a clock bite with the last numeral gone.",
+      "taxonomy_tags": [
+        "environment",
+        "blend",
+        "landmark"
+      ],
+      "world_ids": [
+        "Crucible",
+        "Crime",
+        "Frontier"
+      ],
+      "batch": "B18_lookfeel_env",
+      "silhouette_notes": "A wall vent, brass, a quartz rib stopping short, a partial clock.",
+      "aura_prompt": "One foundry wall vent of soot brick and brass, a quartz rib stopping short of the arch, a clock missing its last numeral. Single subject, three-quarter view, centered, entire subject in frame, foundry interior, soft even light, no text, no watermark, 3D game asset concept render. Copper pipe, ash, no closed circle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One foundry wall vent of soot brick and brass, a quartz rib stopping short of the arch, a clock missing its last numeral. Single subject, three-quarter view, centered, entire subject in frame, foundry interior, soft even light, no text, no watermark, 3D game asset concept render. Copper pipe, ash, no closed circle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/env_ix_foundry_vent/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_crucible_foundry"
+      },
+      "scale_vs_player": "vent 3 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    }
+  ]
+}

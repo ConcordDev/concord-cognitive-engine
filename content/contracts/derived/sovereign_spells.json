@@ -1,0 +1,85 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.catalogue_site",
+      "name": "catalogue_site"
+    },
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.complete_site",
+      "name": "complete_site"
+    },
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.list_sites",
+      "name": "list_sites"
+    },
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.read_site",
+      "name": "read_site"
+    },
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.seed_site",
+      "name": "seed_site"
+    },
+    {
+      "_derived": true,
+      "domain": "sovereign_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sovereign_spells.shards_earned",
+      "name": "shards_earned"
+    }
+  ],
+  "domain": "sovereign_spells",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

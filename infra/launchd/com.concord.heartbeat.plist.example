@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional sim-only process (CONCORD_HEARTBEAT_ONLY=1) — binds NO HTTP port.
+  Use INSTEAD of letting instance 0 own the tick, when you want every HTTP
+  worker on CONCORD_DISABLE_HEARTBEAT=true. See docs/CONCURRENCY_CEILING_AUDIT.md §7.
+  SCAFFOLD ONLY — A40 / roomy box. Not for the swap-maxed 16GB Mac.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.concord.heartbeat</string>
+  <key>WorkingDirectory</key>
+  <string>PLACEHOLDER_REPO/server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>--max-old-space-size=4096</string>
+    <string>--expose-gc</string>
+    <string>PLACEHOLDER_REPO/server/server.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_ENV</key>
+    <string>production</string>
+    <key>CONCORD_HEARTBEAT_ONLY</key>
+    <string>1</string>
+    <key>NODE_APP_INSTANCE</key>
+    <string>0</string>
+    <key>DATA_DIR</key>
+    <string>PLACEHOLDER_REPO/server/data</string>
+    <key>ENV_PATH</key>
+    <string>PLACEHOLDER_REPO/.env</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>PLACEHOLDER_LOG_DIR/heartbeat.log</string>
+  <key>StandardErrorPath</key>
+  <string>PLACEHOLDER_LOG_DIR/heartbeat.err</string>
+</dict>
+</plist>

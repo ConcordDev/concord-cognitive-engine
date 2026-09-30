@@ -1,6 +1,14 @@
 # Concordia Art Style Guide — coherence > fidelity
 
-**The thesis (locked).** Photoreal invites comparison to $200M productions; a stylized
+> **RETIRED FOR THE UNITY CLIENT (P0-7).** This file is the Three.js world-lens
+> contract only (BotW lighting + Palworld creature forms). Unity Concordia does
+> **not** follow it. The owner lock lives in `docs/UNITY_ART_LOCK.md`:
+> *Unity client fidelity = store-pack realism: Hub may wear one modern Rocketbox
+> adult; every steel world wears that world’s imported costume (KayKit Knight /
+> dress); architecture and foliage come from imported packs; URP lighting.
+> Kenney / primitive / toon is a missing-prop fallback, never the look.*
+
+**The thesis (locked — web lens only).** Photoreal invites comparison to $200M productions; a stylized
 look *sets its own standard* — as long as everything shares one visual language. Hades
 chose pen-and-ink partly because it was *faster to produce*. We pick a style whose
 production is fast, not just whose result is pretty. The load-bearing discipline: **every
@@ -10,7 +18,8 @@ the *same rules* across all 9 worlds, a *different palette* per world.
 
 This is not a vibe; it's a small set of constants every render pass reads, so styling
 never drifts per-component. The source of truth is
-`concord-frontend/lib/world-lens/concordia-theme.ts`:
+`concord-frontend/lib/world-lens/concordia-theme.ts` (retired Three.js art
+constants — Unity is the live Concordia presenter):
 
 ## The shared rules (`ART_STYLE`)
 | Constant | Value | Rule |

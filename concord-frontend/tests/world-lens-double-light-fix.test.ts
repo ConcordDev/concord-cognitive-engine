@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 // R7 — ConcordiaScene.tsx mounts its own static, theme-based sun+ambient
 // rig, and SkyWeatherRenderer.tsx (mounted alongside it under the default
-// viewMode==='explore' path — app/lenses/world/page.tsx) mounts a SECOND,
+// viewMode==='explore' path — components/world/WorldOsSurface.tsx) mounts a SECOND,
 // independent, real time-of-day-driven sun+ambient rig into the SAME
 // scene. Both used to stay live for the whole session: at midday the two
 // suns' intensities summed well past what either was individually tuned
@@ -128,7 +128,7 @@ describe('ConcordiaScene — quality auto-downgrade now recovers and notifies (R
 
 describe('world/page.tsx — quality prop distinguishes "no preference" from "explicit medium" (R7)', () => {
   const pageSrc = readFileSync(
-    join(process.cwd(), 'app/lenses/world/page.tsx'),
+    join(process.cwd(), 'components/world/WorldOsSurface.tsx'),
     'utf8',
   );
 

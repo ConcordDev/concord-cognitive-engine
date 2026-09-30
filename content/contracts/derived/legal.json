@@ -1263,6 +1263,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "legal.procedure-reference",
+      "name": "procedure-reference"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.procedure-reference-states-list",
+      "name": "procedure-reference-states-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "legal.publish",
       "name": "publish"
     },
@@ -1568,5 +1594,5 @@
   ],
   "domain": "legal",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 85
+  "macroCount": 87
 }

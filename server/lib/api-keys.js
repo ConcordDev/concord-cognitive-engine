@@ -288,7 +288,7 @@ export function checkScope(keyRecord, domain) {
  * (where the DB row is gone or `is_active=0`) are pruned.
  *
  * @param {import("better-sqlite3").Database} db
- * @returns {{ loaded: number, skipped: number, pruned: number }}
+ * @returns {{ loaded: number, skipped: number, pruned: number, error?: string }}
  */
 export function loadKeysFromDb(db) {
   if (!db || typeof db.prepare !== "function") {

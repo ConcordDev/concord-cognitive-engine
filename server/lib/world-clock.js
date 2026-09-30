@@ -14,6 +14,8 @@
  * NPC's behavior tree can switch tracks based on time.
  */
 
+import { mirrorToGateways } from "./gateway-fanout.js";
+
 const WORLD_DAY_LENGTH_MS = 24 * 60 * 1000;       // 24 real minutes
 let _worldEpoch = Date.now();                      // can be reset for testing
 
@@ -49,13 +51,17 @@ export function startWorldClockBroadcast(REALTIME, { intervalMs = 30_000 } = {})
   const tick = () => {
     try {
       const phase = getWorldPhase();
-      REALTIME.io.emit("world:clock", {
+      const payload = {
         phase,
         segment:  getDayPhase(phase),
         epochMs:  _worldEpoch,
         dayLengthMs: WORLD_DAY_LENGTH_MS,
         ts:       new Date().toISOString(),
-      });
+      };
+      REALTIME.io.emit("world:clock", payload);
+      // Clock is global on socket.io (every connected browser). Gateways
+      // have no default room — broadcast to every authenticated WS client.
+      mirrorToGateways("world:clock", payload);
     } catch { /* socket.io may be disposed mid-shutdown */ }
   };
   tick(); // immediate emit so newcomers don't wait

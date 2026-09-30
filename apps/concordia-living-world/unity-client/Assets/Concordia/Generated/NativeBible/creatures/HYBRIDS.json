@@ -1,0 +1,1035 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "hybrids",
+  "count": 14,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "hyb_ashfang",
+      "display_name": "Ashfang",
+      "lore_blurb": "Ruins hybrid. Sundering wolf body, fossil-ash plates along the shoulders only, combat hook is a plated lunge that bursts ash on hit and then leaves the shoulders bare.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:lunge_ashburst"
+      ],
+      "world_ids": [
+        "Ruins",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wolf wear plus cracked bone plate with bevels. Burst is VFX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wolf chevron plus two square shoulders. Plates must not hide the head.",
+      "palette": [
+        "#2a241c",
+        "#b89060",
+        "#c8a070"
+      ],
+      "scale_vs_player": "0.8\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_ashfang",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_ashfang.prefab",
+        "animator_stub": "AC_hyb_ashfang",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Wolf with two cracked bone pauldrons only, ash in the cracks, Ruins road. Lunge pose with shoulders opening.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "slash_ash",
+        "loot": [
+          "ash_plate",
+          "fang"
+        ],
+        "spawn": "Ruins/Fantasy border, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_lunge",
+        "verb_hyb_ashburst",
+        "verb_fauna_nip"
+      ],
+      "primary_plan": "primary_body:quadruped wolf (faun_sunder_wolf rig)",
+      "secondary_trait": "secondary:ash plate pauldrons grown from catalogue bone, not a full armor suit",
+      "combat_hook": "lunge_ashburst",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "pauldron_seam",
+          "hint": "burst vent"
+        }
+      ],
+      "audio_tell": "A wolf growl with a ceramic tick before the lunge.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_cursebeak",
+      "display_name": "Cursebeak",
+      "lore_blurb": "Sundering hybrid. Ward griffin body, basilisk hood grown as a leather cowl behind the beak. Hook is a petrify peck: the hood flares, then one peck. Not a gaze cone.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:petrify_peck"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Same griffin wear. Hood is skin, not cloth.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Grounded big-cat plus one diamond cowl. If the cowl is down it must still read as a griffin.",
+      "palette": [
+        "#6a5438",
+        "#1a3028",
+        "#c8c060"
+      ],
+      "scale_vs_player": "1.4\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_cursebeak",
+          "topology": "winged_quadruped",
+          "gaitKind": "quad_bound_fly",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_cursebeak.prefab",
+        "animator_stub": "AC_hyb_cursebeak",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.winged_quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Griffin with a single diamond scale-hood behind the beak, Sundering cliff. Hood flare is the only tell.",
+      "stats_hooks": {
+        "health": "table:mon_elite",
+        "damage_profile": "pierce_petrify_short",
+        "loot": [
+          "hood_scale",
+          "pinion"
+        ],
+        "spawn": "Fantasy curse folds, 1"
+      },
+      "verb_ids": [
+        "verb_mon_dive",
+        "verb_hyb_hood_peck"
+      ],
+      "primary_plan": "primary_body:winged quadruped griffin (mon_sunder_griffin rig)",
+      "secondary_trait": "secondary:basilisk hood cowl behind the beak, one diamond",
+      "combat_hook": "petrify_peck",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "hood_hinge",
+          "hint": "during flare"
+        }
+      ],
+      "audio_tell": "Hawk scream, then the basilisk rasp, then the peck.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_pollenwyrm",
+      "display_name": "Pollenwyrm",
+      "lore_blurb": "Tunya hybrid. Fold-basilisk coil as the body, pollen sacs as a mane of fat bulbs. Hook is a sleep cloud on the hood flare, short, dodgeable.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:sleep_cloud"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet scales, real pollen crust. Bulbs look like fruit and are the weak point.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick coil, bulb mane contained in the hood diamond. Cloud is VFX.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "1.0\u00d7 player length of coil",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_pollenwyrm",
+          "topology": "serpentine",
+          "gaitKind": "serpent_slither",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "serpentine",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_pollenwyrm.prefab",
+        "animator_stub": "AC_hyb_pollenwyrm",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.serpentine"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick green serpent with a mane of fat pollen bulbs, Tunya grove floor. Cloud is separate VFX.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "poison_sleep",
+        "loot": [
+          "pollen_sac",
+          "scale"
+        ],
+        "spawn": "Tunya deep grove, 1"
+      },
+      "verb_ids": [
+        "verb_mon_hood_flare",
+        "verb_hyb_pollen_cloud",
+        "verb_mon_strike"
+      ],
+      "primary_plan": "primary_body:serpentine basilisk coil",
+      "secondary_trait": "secondary:grove pollen sacs as a bulb mane, not wings",
+      "combat_hook": "sleep_cloud",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "sac",
+          "hint": "burst a sac early and the cloud is smaller"
+        }
+      ],
+      "audio_tell": "Bees, then the rasp. The bees are the tell.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_billdrone",
+      "display_name": "Billdrone",
+      "lore_blurb": "Crime hybrid. Bill hound body with a census-drone rotor housed in the spine, one rotor, thick. Hook is an invoice beam from the mouth on a bark commit.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:invoice_beam"
+      ],
+      "world_ids": [
+        "Crime",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Rain, rusted screws, rotor is scratched acrylic.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide hound head, one disc on the spine like a bad saddle. Beam comes from the mouth.",
+      "palette": [
+        "#2a241c",
+        "#e0c040",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "1.1\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_billdrone",
+          "topology": "quadruped",
+          "gaitKind": "quad_charge",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_billdrone.prefab",
+        "animator_stub": "AC_hyb_billdrone",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive hound with a single thick rotor disc screwed to the spine, rain, Iron Coast. Beam from the mouth, cyan-sodium.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "pulse_pierce",
+        "loot": [
+          "rotor",
+          "coin_tooth"
+        ],
+        "spawn": "Crime roofs when witness heat is high, 1"
+      },
+      "verb_ids": [
+        "verb_mon_charge",
+        "verb_hyb_invoice_bark"
+      ],
+      "primary_plan": "primary_body:quadruped bill-hound",
+      "secondary_trait": "secondary:one thick spinal rotor disc, not a fleet of drones",
+      "combat_hook": "invoice_beam",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "rotor_hub",
+          "hint": "break hub, beam becomes a bark only"
+        }
+      ],
+      "audio_tell": "Paper-tear bark plus a counting tick.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_nullhound",
+      "display_name": "Nullhound",
+      "lore_blurb": "Grid hybrid. Uncounted stray body scaled up, null-plates as two flat panels on the ribs. Hook is a short cloak: plates slide shut and the hound drops out of the Census ping for one dodge window.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:census_cloak"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Alley wear, plates are ground-off serials.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Dog chevron with two rectangles. Cloak is a material swap to unlit, not invisibility soup; the silhouette remains.",
+      "palette": [
+        "#1a1228",
+        "#2a241c",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "0.75\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_nullhound",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_nullhound.prefab",
+        "animator_stub": "AC_hyb_nullhound",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean alley hound with two flat gunmetal plates on the ribs, Grid rain. Cloak still shows the silhouette.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "slash",
+        "loot": [
+          "null_plate"
+        ],
+        "spawn": "Cyber uncounted alleys, 1-2"
+      },
+      "verb_ids": [
+        "verb_fauna_skulk",
+        "verb_hyb_cloak",
+        "verb_fauna_nip"
+      ],
+      "primary_plan": "primary_body:quadruped dog",
+      "secondary_trait": "secondary:two flat null-plates on the ribs",
+      "combat_hook": "census_cloak",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "plate_hinge",
+          "hint": "jam the hinge, cloak fails"
+        }
+      ],
+      "audio_tell": "The counting tick skips one beat.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_dustgriffin",
+      "display_name": "Dustgriffin",
+      "lore_blurb": "Frontier hybrid. Griffin body, canvas wagon-sail stretched over the wings as the secondary trait. Hook is a dive that dumps a dust curtain on impact.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:dust_curtain_dive"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sun-bleached canvas, rope stitches, dust.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same griffin. Canvas reads as rectangles on the wings, not feathers erased.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828"
+      ],
+      "scale_vs_player": "1.5\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_dustgriffin",
+          "topology": "winged_quadruped",
+          "gaitKind": "quad_bound_fly",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_dustgriffin.prefab",
+        "animator_stub": "AC_hyb_dustgriffin",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.winged_quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Griffin with patched wagon-canvas over the wings, Frontier sky, dive kicking a dust curtain.",
+      "stats_hooks": {
+        "health": "table:mon_elite",
+        "damage_profile": "blunt",
+        "loot": [
+          "canvas",
+          "pinion"
+        ],
+        "spawn": "Frontier mesas, 1"
+      },
+      "verb_ids": [
+        "verb_mon_dive",
+        "verb_hyb_dust_curtain"
+      ],
+      "primary_plan": "primary_body:winged quadruped griffin",
+      "secondary_trait": "secondary:canvas sail membranes over the existing wings, patched",
+      "combat_hook": "dust_curtain_dive",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "canvas_stitch",
+          "hint": "cut stitches, curtain fails, dive remains"
+        }
+      ],
+      "audio_tell": "Canvas snap, then the hawk scream.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_mercywraith",
+      "display_name": "Mercy Wraith",
+      "lore_blurb": "Dawn hybrid. Ruins wraith cowl as the body, a physical brass halo as the donor. Hook is a nonlethal shock when the halo drops to the shoulders. Killing blow is refused by the effect, not by HP cheating: the last hit becomes a knockdown.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:mercy_shock"
+      ],
+      "world_ids": [
+        "Superhero",
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash cloth under chipped marble dust. Halo is metal.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bell cowl plus a ring. Ring tilt is the telegraph.",
+      "palette": [
+        "#d8d4dc",
+        "#b89060",
+        "#3a78ff"
+      ],
+      "scale_vs_player": "1.35\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_mercywraith",
+          "topology": "amorphous",
+          "gaitKind": "drift_glide",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "amorphous",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_mercywraith.prefab",
+        "animator_stub": "AC_hyb_mercywraith",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.amorphous"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-cowl wraith with one chipped brass halo, Dawn marble dust, ring tilting before a blue shock.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "shock_nonlethal",
+        "loot": [
+          "halo_shard"
+        ],
+        "spawn": "Dawn heights near ruin imports, 1"
+      },
+      "verb_ids": [
+        "verb_mon_reach",
+        "verb_hyb_mercy_shock"
+      ],
+      "primary_plan": "primary_body:amorphous wraith cowl with thick arms",
+      "secondary_trait": "secondary:one brass halo ring, physical",
+      "combat_hook": "mercy_shock",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "halo_hinge",
+          "hint": "during tilt"
+        }
+      ],
+      "audio_tell": "Late breath, then the capacitor tone.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_latticebasilisk",
+      "display_name": "Unclosed Basilisk",
+      "lore_blurb": "Crucible hybrid. Serpent body, quartz ribs that do not meet at the spine. Hook is an un-end: a strike that rewinds the target's last dodge if it connected, once per cast.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:unend_rewind"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet dark scales, quartz with bevels, no full-body glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick snake, ribs as a broken cage. The gap in the cage is the weak point and the silhouette notch.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff"
+      ],
+      "scale_vs_player": "1.1\u00d7 player length",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_latticebasilisk",
+          "topology": "serpentine",
+          "gaitKind": "serpent_slither",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "serpentine",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_latticebasilisk.prefab",
+        "animator_stub": "AC_hyb_latticebasilisk",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.serpentine"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick dark serpent with a broken cage of quartz ribs that do not meet, teal only in the gap, Crucible.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "arcane_pierce",
+        "loot": [
+          "quartz_rib"
+        ],
+        "spawn": "Crucible, 1"
+      },
+      "verb_ids": [
+        "verb_mon_strike",
+        "verb_hyb_rewind_dodge"
+      ],
+      "primary_plan": "primary_body:serpentine coil",
+      "secondary_trait": "secondary:iridescent quartz ribs that fail to meet",
+      "combat_hook": "unend_rewind",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "rib_gap",
+          "hint": "the notch"
+        }
+      ],
+      "audio_tell": "Music-box click on the rewind only.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_markharpy",
+      "display_name": "Marked Harpy",
+      "lore_blurb": "Sere hybrid. Veil harpy body, invoice brand tiles bolted to the chest. Hook is a dive-grab that applies witness heat to a faction instead of a long stun.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:dive_grab_heat"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Smog, chipped tiles, thick legs preserved.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Harpy silhouette; tiles are a rectangle on the chest so Sere reads at range.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030"
+      ],
+      "scale_vs_player": "1.15\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_markharpy",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flap",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_markharpy.prefab",
+        "animator_stub": "AC_hyb_markharpy",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Harpy with three iron brand tiles bolted to the chest, smog, Sere furnace sky, thick legs.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "slash",
+        "loot": [
+          "brand_tile"
+        ],
+        "spawn": "Sere belts, 2-4",
+        "faction_hook": "FactionStandingBook.AddWitnessHeat"
+      },
+      "verb_ids": [
+        "verb_mon_dive_grab",
+        "verb_hyb_apply_heat"
+      ],
+      "primary_plan": "primary_body:winged biped harpy",
+      "secondary_trait": "secondary:three iron brand tiles on the chest",
+      "combat_hook": "dive_grab_heat",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "chest_tile",
+          "hint": "knock a tile off to cancel the heat application"
+        }
+      ],
+      "audio_tell": "Two-note scream, second note is a stamp.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_ribwolf",
+      "display_name": "Ribwolf",
+      "lore_blurb": "Ruins hybrid. Wolf body, a fossil ribcage worn outside the torso like a basket. Hook is a short charge that ends in a bone rattle stagger.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:bone_rattle_charge"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash, yellowed bone, no spikes everywhere.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wolf head clear of the ribs. Basket widens the chest into a barrel.",
+      "palette": [
+        "#5a5044",
+        "#2a241c",
+        "#b89060"
+      ],
+      "scale_vs_player": "0.8\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_ribwolf",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_ribwolf.prefab",
+        "animator_stub": "AC_hyb_ribwolf",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Wolf wearing an external fossil rib basket, head clear, ash road, Sovereign Ruins.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "blunt",
+        "loot": [
+          "rib",
+          "fang"
+        ],
+        "spawn": "Ruins bone yards, 2-3"
+      },
+      "verb_ids": [
+        "verb_mon_charge",
+        "verb_hyb_rattle"
+      ],
+      "primary_plan": "primary_body:quadruped wolf",
+      "secondary_trait": "secondary:external fossil rib basket",
+      "combat_hook": "bone_rattle_charge",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "basket_lash",
+          "hint": "cut the lash, basket falls, charge remains"
+        }
+      ],
+      "audio_tell": "Knuckle-crack of bone before the charge.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_saltwyrm",
+      "display_name": "Salt Wyrm",
+      "lore_blurb": "Hub-ring hybrid on the salt road, outside Flower Law. Eel body (topology eel), brine crystals as a collar. Hook is a salt spit that slows, not a basilisk gaze. It does not enter the 42m plaza.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:salt_spit"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet, salt crust, pine needles stuck to the side.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One long muscle, crystal collar as a white ring. Spit is a visible glob.",
+      "palette": [
+        "#c4b49a",
+        "#8aa0b4",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "1.3\u00d7 player length, low",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_saltwyrm",
+          "topology": "eel",
+          "gaitKind": "eel_undulate",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "eel",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_saltwyrm.prefab",
+        "animator_stub": "AC_hyb_saltwyrm",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.eel"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick eel with a chunky white salt-crystal collar, Pinewood salt road, spit glob visible. Not inside a flower plaza.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "salt_slow",
+        "loot": [
+          "brine_crystal"
+        ],
+        "spawn": "Pinewood road past HubLawRadius, 1",
+        "plaza_forbid": true
+      },
+      "verb_ids": [
+        "verb_mon_undulate",
+        "verb_hyb_salt_spit"
+      ],
+      "primary_plan": "primary_body:eel, thick, beached capable",
+      "secondary_trait": "secondary:brine crystal collar, chunky",
+      "combat_hook": "salt_spit",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "collar",
+          "hint": "break the collar, spit stops"
+        }
+      ],
+      "audio_tell": "A wet inhale, like a tide in a pipe.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_censusconstruct",
+      "display_name": "Census Construct",
+      "lore_blurb": "Grid-Crucible hybrid. Construct body, sentinel bar-visor as the only donor. Hook is a count-beam from the visor that applies 'counted' unless refused.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:count_beam"
+      ],
+      "world_ids": [
+        "Cyber",
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Mismatched plate, visor is the only clean part.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Construct silhouette plus one horizontal bar of light. Beam is thin VFX from the bar.",
+      "palette": [
+        "#2a2430",
+        "#3dffa0",
+        "#20ffd0"
+      ],
+      "scale_vs_player": "1.5\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_censusconstruct",
+          "topology": "humanoid",
+          "gaitKind": "biped_medium",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_censusconstruct.prefab",
+        "animator_stub": "AC_hyb_censusconstruct",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric construct with a single clean sentinel visor bar, Grid alley, cyan beam on windup only.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "pulse",
+        "loot": [
+          "visor_bar"
+        ],
+        "spawn": "Cyber/Crucible edge, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_tool_swing",
+        "verb_hyb_count_beam"
+      ],
+      "primary_plan": "primary_body:humanoid construct, asymmetric arms",
+      "secondary_trait": "secondary:sentinel bar visor on the sheet hood",
+      "combat_hook": "count_beam",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "visor_bar",
+          "hint": "during windup"
+        }
+      ],
+      "audio_tell": "One missing number, same as the Census, quieter.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_veilstag",
+      "display_name": "Veil Stag",
+      "lore_blurb": "Tunya hybrid. Pinewood stag body, harpy wrist-talons replacing the hooves of the forelegs only. Hook is an antler charge that plants a pollen ward on hit. Hind legs stay hooves so the gait stays the stag rig.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:antler_pollen_charge"
+      ],
+      "world_ids": [
+        "Tunya",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Salt or pollen depending on world. Talons chipped.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Stag wedge. Talons read as hooks, not wings. No wing membranes or the silhouette becomes a griffin.",
+      "palette": [
+        "#6a5340",
+        "#e0c060",
+        "#3a4a28"
+      ],
+      "scale_vs_player": "1.4\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_veilstag",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_veilstag.prefab",
+        "animator_stub": "AC_hyb_veilstag",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Stag with thick talons on the forelegs only, antlers, pollen dust, Tunya terrace. No wings.",
+      "stats_hooks": {
+        "health": "table:mon_elite",
+        "damage_profile": "blunt_nature",
+        "loot": [
+          "antler",
+          "talon"
+        ],
+        "spawn": "Tunya/Fantasy verge, 1"
+      },
+      "verb_ids": [
+        "verb_fauna_antler_shove",
+        "verb_hyb_pollen_charge"
+      ],
+      "primary_plan": "primary_body:quadruped stag (faun_pinewood_stag rig)",
+      "secondary_trait": "secondary:forelimb talons, two, thick",
+      "combat_hook": "antler_pollen_charge",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "fore_talon",
+          "hint": "a talon break shortens the charge"
+        }
+      ],
+      "audio_tell": "Bugle, then a wingless scrape.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    },
+    {
+      "id": "hyb_dawnjackal",
+      "display_name": "Dawn Jackal",
+      "lore_blurb": "Superhero hybrid. Reap jackal body, marble dust plates on the brow only. Hook is a nonlethal shock nip that cannot execute below 15% target HP \u2014 the Refusal of the Win, baked into the effect.",
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:mercy_nip"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. City soot, chipped marble, gold only as a thin inlay.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Jackal wedge plus a pale brow. No cape.",
+      "palette": [
+        "#efe6d4",
+        "#3a78ff",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "0.7\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "hyb_dawnjackal",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/hyb_dawnjackal.prefab",
+        "animator_stub": "AC_hyb_dawnjackal",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Jackal with a single chipped marble brow plate, Dawn street, no cape, no full armor.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "shock_nonlethal",
+        "loot": [
+          "marble_chip"
+        ],
+        "spawn": "Dawn streets, 3-5",
+        "execute_forbid_below_hp_fraction": 0.15
+      },
+      "verb_ids": [
+        "verb_mon_flank",
+        "verb_hyb_mercy_nip"
+      ],
+      "primary_plan": "primary_body:quadruped jackal",
+      "secondary_trait": "secondary:marble brow plate, one",
+      "combat_hook": "mercy_nip",
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "brow",
+          "hint": "plate break removes the mercy rule and the faction will hostile the player for finishing kills"
+        }
+      ],
+      "audio_tell": "Yip plus a short capacitor.",
+      "hybrid_rule": "One body plan, one donor trait, one telegraphed hook. Extra donors rejected.",
+      "readability": {
+        "silhouette_test": true,
+        "thin_limbs_forbidden": true,
+        "unique_locomotion": false
+      }
+    }
+  ]
+}

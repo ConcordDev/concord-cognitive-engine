@@ -73,6 +73,10 @@ interface CreateDTUInput {
   citationType?: string;
   artifactSourcesUsed?: string[];
   meta?: Record<string, unknown>;
+  contentClass?: string;
+  licenseScopes?: string[];
+  scopes?: string[];
+  license?: { scopes?: string[]; listingScopes?: string[]; [key: string]: unknown };
 }
 
 interface CreateDTUResponse {
@@ -193,12 +197,26 @@ export function useLensDTUs(options: LensDTUOptions) {
         activeContext = JSON.parse(sessionStorage.getItem(`lens_context_${lens}`) || '[]');
       } catch { /* silent */ }
 
+      const licenseScopes =
+        (Array.isArray(input.licenseScopes) && input.licenseScopes.length > 0
+          ? input.licenseScopes
+          : null) ||
+        (Array.isArray(input.scopes) && input.scopes.length > 0 ? input.scopes : null) ||
+        (Array.isArray(input.license?.scopes) && input.license!.scopes!.length > 0
+          ? input.license!.scopes!
+          : null) ||
+        ['private'];
+      const contentClass = input.contentClass || (input.meta?.contentClass as string | undefined) || 'generic';
       const { data } = await api.post('/api/dtus', {
         title: input.title,
         content: input.content,
         tags: input.tags || [],
         source: input.source || lens,
         parents: input.parents || [],
+        contentClass,
+        licenseScopes,
+        scopes: licenseScopes,
+        license: { ...(input.license || {}), scopes: licenseScopes },
         meta: {
           ...(input.meta || {}),
           lens,
@@ -206,6 +224,7 @@ export function useLensDTUs(options: LensDTUOptions) {
           contextAtCreation: activeContext,
           citationType: input.citationType || 'reference',
           artifactSourcesUsed: input.artifactSourcesUsed || [],
+          contentClass,
         },
       });
       return data as CreateDTUResponse;

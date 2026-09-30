@@ -2,13 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -347,9 +344,7 @@ export default function PlatformPage() {
 
   return (
     <LensShell lensId="platform" asMain={false}>
-      <FirstRunTour lensId="platform" />
-      <ManifestActionBar />
-      <DepthBadge lensId="platform" size="sm" className="ml-2" />
+      <FirstRunTour lensId="platform" />      <DepthBadge lensId="platform" size="sm" className="ml-2" />
     <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">
       {/* Top Bar */}
       <div className="border-b border-lattice-border bg-lattice-deep/50 backdrop-blur-sm sticky top-0 z-10">
@@ -442,10 +437,7 @@ export default function PlatformPage() {
       </section>
     </div>
 
-      <a href="#platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to platform content</a>
-          <RecentMineCard domain="platform" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="platform" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="platform" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to platform content</a>          <CrossLensRecentsPanel lensId="platform" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

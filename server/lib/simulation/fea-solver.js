@@ -39,6 +39,85 @@ function memberCosines(nodes, m) {
   return { lx: dx / L, ly: dy / L, lz: dz / L, L };
 }
 
+// ── Frame element (3D Euler–Bernoulli beam, 12 DOF) ─────────────────────────
+//
+// 2026-09-27 rewrite. The previous element never rotated member stiffness into
+// its real orientation: any member lying in the XY plane got its bending
+// stiffness added along GLOBAL Y. Right for a horizontal beam, wrong for a
+// column — a vertical member got transverse stiffness along its own axis
+// (axial deflection ~17% too small) and NO lateral stiffness (a sideways tip
+// load returned 0 via a silently-singular solve). Results also depended on
+// which end of a member was listed first. Pinned against closed-form cases by
+// tests/fea-frame-element.test.js.
+//
+// Section inputs: `momentI` is the in-plane (strong-axis, local z) inertia.
+// Optional `Iy` (out-of-plane, defaults to momentI), `J` torsion constant
+// (defaults to Iy+Iz, polar approximation) and `shearModulus` G (defaults to
+// E/2.6, steel ν≈0.3). For planar frames only the in-plane terms matter.
+
+function memberProps(m, L) {
+  const E = m.elasticModulus || 29e6; // psi (steel default)
+  const A = m.area || 1;
+  const Iz = m.Iz || m.momentI || 1;
+  const Iy = m.Iy || m.momentIy || m.momentI || 1;
+  const J = m.J || m.torsionJ || (Iy + Iz);
+  const G = m.shearModulus || E / 2.6;
+  return { E, A, Iz, Iy, J, G, L };
+}
+
+// Rotation (rows = local x, y, z in global coordinates). Local y lies in the
+// plane containing global Z (the 2D-frame convention: in-plane bending is about
+// local z = global Z); members parallel to Z use global Y as the reference.
+function rotation(lx, ly, lz) {
+  const x = [lx, ly, lz];
+  const ref = Math.abs(lz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
+  let y = [ref[1] * x[2] - ref[2] * x[1], ref[2] * x[0] - ref[0] * x[2], ref[0] * x[1] - ref[1] * x[0]];
+  const ny = Math.hypot(y[0], y[1], y[2]);
+  y = y.map((v) => v / ny);
+  const z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+  return [x, y, z];
+}
+
+function localStiffness({ E, A, Iz, Iy, J, G, L }) {
+  const k = Array.from({ length: 12 }, () => new Float64Array(12));
+  const set = (r, c, v) => { k[r][c] = v; k[c][r] = v; };
+  const a = (E * A) / L, t = (G * J) / L;
+  const z12 = 12 * E * Iz / L ** 3, z6 = 6 * E * Iz / L ** 2, z4 = 4 * E * Iz / L, z2 = 2 * E * Iz / L;
+  const y12 = 12 * E * Iy / L ** 3, y6 = 6 * E * Iy / L ** 2, y4 = 4 * E * Iy / L, y2 = 2 * E * Iy / L;
+  set(0, 0, a); set(0, 6, -a); set(6, 6, a);
+  set(3, 3, t); set(3, 9, -t); set(9, 9, t);
+  // bending in local x–y plane (v, θz) — uses Iz
+  set(1, 1, z12); set(1, 5, z6); set(1, 7, -z12); set(1, 11, z6);
+  set(5, 5, z4); set(5, 7, -z6); set(5, 11, z2);
+  set(7, 7, z12); set(7, 11, -z6); set(11, 11, z4);
+  // bending in local x–z plane (w, θy) — uses Iy
+  set(2, 2, y12); set(2, 4, -y6); set(2, 8, -y12); set(2, 10, -y6);
+  set(4, 4, y4); set(4, 8, y6); set(4, 10, y2);
+  set(8, 8, y12); set(8, 10, y6); set(10, 10, y4);
+  return k;
+}
+
+// Global element displacement vector → local (T·u), T = diag(R,R,R,R).
+function toLocal(R, ue) {
+  const out = new Float64Array(12);
+  for (let blk = 0; blk < 4; blk++) {
+    for (let r = 0; r < 3; r++) {
+      let v = 0;
+      for (let c = 0; c < 3; c++) v += R[r][c] * ue[blk * 3 + c];
+      out[blk * 3 + r] = v;
+    }
+  }
+  return out;
+}
+
+function elementData(nodes, m) {
+  const { lx, ly, lz, L } = memberCosines(nodes, m);
+  const R = rotation(lx, ly, lz);
+  const props = memberProps(m, L);
+  const kl = localStiffness(props);
+  return { R, kl, props, iIdx: nodeIndex(nodes, m.nodeI), jIdx: nodeIndex(nodes, m.nodeJ) };
+}
+
 // ── Global Stiffness Matrix ───────────────────────────────────────────────────
 
 export function buildStiffnessMatrix(members, nodes) {
@@ -47,74 +126,22 @@ export function buildStiffnessMatrix(members, nodes) {
   // Flat row-major array
   const K = new Float64Array(size * size);
 
-  function kset(r, c, v) { K[r * size + c] += v; }
-
   for (const m of members) {
-    const iIdx = nodeIndex(nodes, m.nodeI);
-    const jIdx = nodeIndex(nodes, m.nodeJ);
-    const { lx, ly, lz, L } = memberCosines(nodes, m);
-
-    const E = m.elasticModulus || 29e6; // psi (steel default)
-    const A = m.area || 1;
-    const I = m.momentI || 1;
-
-    // Axial stiffness EA/L
-    const ka = (E * A) / L;
-    // Bending stiffness 12EI/L³, 6EI/L², 4EI/L, 2EI/L
-    const k12 = (12 * E * I) / (L * L * L);
-    const k6  = (6  * E * I) / (L * L);
-    const k4  = (4  * E * I) / L;
-    const k2  = (2  * E * I) / L;
-
-    // Local 12×12 stiffness in member frame (axial + strong-axis bending)
-    // Simplified: treat as planar member in xz-plane for 3D frame
-    // DOF order per node: [ux, uy, uz, rx, ry, rz] → global indices [6i..6i+5]
-    const gi = iIdx * DOF_PER_NODE;
-    const gj = jIdx * DOF_PER_NODE;
-
-    // Axial: ux direction (projected)
-    const axialCoef = [lx, ly, lz];
-    for (let a = 0; a < 3; a++) {
-      for (let b = 0; b < 3; b++) {
-        const v = ka * axialCoef[a] * axialCoef[b];
-        kset(gi + a, gi + b,  v);
-        kset(gi + a, gj + b, -v);
-        kset(gj + a, gi + b, -v);
-        kset(gj + a, gj + b,  v);
+    const { R, kl, iIdx, jIdx } = elementData(nodes, m);
+    // T (12×12) = block-diagonal of R; Kg = Tᵀ · kl · T
+    const T = Array.from({ length: 12 }, () => new Float64Array(12));
+    for (let blk = 0; blk < 4; blk++) for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) T[blk * 3 + r][blk * 3 + c] = R[r][c];
+    const kT = Array.from({ length: 12 }, () => new Float64Array(12));
+    for (let r = 0; r < 12; r++) for (let c = 0; c < 12; c++) { let v = 0; for (let q = 0; q < 12; q++) v += kl[r][q] * T[q][c]; kT[r][c] = v; }
+    const dofs = [];
+    for (let d = 0; d < 6; d++) dofs.push(iIdx * DOF_PER_NODE + d);
+    for (let d = 0; d < 6; d++) dofs.push(jIdx * DOF_PER_NODE + d);
+    for (let r = 0; r < 12; r++) {
+      for (let c = 0; c < 12; c++) {
+        let v = 0;
+        for (let q = 0; q < 12; q++) v += T[q][r] * kT[q][c];
+        if (v !== 0) K[dofs[r] * size + dofs[c]] += v;
       }
-    }
-
-    // Bending in local y (strong axis) — simplified to global y for non-inclined members
-    // Transverse direction: perpendicular to member axis
-    // For members in the xz plane, bending is about y-axis
-    if (Math.abs(lz) < 0.001) {
-      // Primarily horizontal member — bending in y direction
-      // uy DOF = index 1, rz DOF = index 5
-      const uy_i = gi + 1, rz_i = gi + 5;
-      const uy_j = gj + 1, rz_j = gj + 5;
-
-      kset(uy_i, uy_i,  k12);  kset(uy_i, uy_j, -k12);
-      kset(uy_i, rz_i,  k6);   kset(uy_i, rz_j,  k6);
-      kset(uy_j, uy_i, -k12);  kset(uy_j, uy_j,  k12);
-      kset(uy_j, rz_i, -k6);   kset(uy_j, rz_j, -k6);
-      kset(rz_i, uy_i,  k6);   kset(rz_i, uy_j, -k6);
-      kset(rz_i, rz_i,  k4);   kset(rz_i, rz_j,  k2);
-      kset(rz_j, uy_i,  k6);   kset(rz_j, uy_j, -k6);
-      kset(rz_j, rz_i,  k2);   kset(rz_j, rz_j,  k4);
-    } else {
-      // Primarily vertical member — bending in x direction
-      // ux DOF = 0, ry DOF = 4
-      const ux_i = gi + 0, ry_i = gi + 4;
-      const ux_j = gj + 0, ry_j = gj + 4;
-
-      kset(ux_i, ux_i,  k12);  kset(ux_i, ux_j, -k12);
-      kset(ux_i, ry_i, -k6);   kset(ux_i, ry_j, -k6);
-      kset(ux_j, ux_i, -k12);  kset(ux_j, ux_j,  k12);
-      kset(ux_j, ry_i,  k6);   kset(ux_j, ry_j,  k6);
-      kset(ry_i, ux_i, -k6);   kset(ry_i, ux_j,  k6);
-      kset(ry_i, ry_i,  k4);   kset(ry_i, ry_j,  k2);
-      kset(ry_j, ux_i, -k6);   kset(ry_j, ux_j,  k6);
-      kset(ry_j, ry_i,  k2);   kset(ry_j, ry_j,  k4);
     }
   }
 
@@ -161,6 +188,7 @@ export function solveSystem(K, F, size) {
   // Copy to avoid mutation
   const A = K.slice();
   const b = new Float64Array(F);
+  const singular = [];
 
   for (let col = 0; col < size; col++) {
     // Find pivot
@@ -181,7 +209,7 @@ export function solveSystem(K, F, size) {
     }
 
     const pivot = A[col * size + col];
-    if (Math.abs(pivot) < 1e-12) continue; // singular DOF (unconstrained isolated node)
+    if (Math.abs(pivot) < 1e-12) { singular.push(col); continue; } // singular DOF (mechanism / unrestrained)
 
     for (let row = col + 1; row < size; row++) {
       const factor = A[row * size + col] / pivot;
@@ -201,6 +229,9 @@ export function solveSystem(K, F, size) {
     u[row] = Math.abs(diag) < 1e-12 ? 0 : sum / diag;
   }
 
+  // Report singular DOFs instead of silently returning 0 for them: a zero
+  // displacement at an unrestrained DOF is a mechanism, not a stiff result.
+  u.singularDofs = singular;
   return u;
 }
 
@@ -208,44 +239,24 @@ export function solveSystem(K, F, size) {
 
 export function computeMemberForces(u, members, nodes) {
   return members.map(m => {
-    const { lx, ly, lz, L } = memberCosines(nodes, m);
-    const iIdx = nodeIndex(nodes, m.nodeI);
-    const jIdx = nodeIndex(nodes, m.nodeJ);
-    const gi = iIdx * DOF_PER_NODE;
-    const gj = jIdx * DOF_PER_NODE;
-
-    const E = m.elasticModulus || 29e6;
-    const A = m.area || 1;
-
-    // Axial force from elongation
-    const dui = u[gi] * lx + u[gi + 1] * ly + u[gi + 2] * lz;
-    const duj = u[gj] * lx + u[gj + 1] * ly + u[gj + 2] * lz;
-    const axialForce = (E * A / L) * (duj - dui);
-
-    // Shear / moment from transverse displacements
-    const transI = Math.abs(lz) < 0.001 ? u[gi + 1] : u[gi + 0];
-    const transJ = Math.abs(lz) < 0.001 ? u[gj + 1] : u[gj + 0];
-    const rotI   = Math.abs(lz) < 0.001 ? u[gi + 5] : u[gi + 4];
-    const rotJ   = Math.abs(lz) < 0.001 ? u[gj + 5] : u[gj + 4];
-
-    const I = m.momentI || 1;
-    const k12 = (12 * E * I) / (L * L * L);
-    const k6  = (6  * E * I) / (L * L);
-    const k4  = (4  * E * I) / L;
-    const k2  = (2  * E * I) / L;
-
-    const shearI = k12 * (transI - transJ) + k6 * (rotI + rotJ);
-    const momentI = k6 * (transI - transJ) + k4 * rotI + k2 * rotJ;
-    const momentJ = k6 * (transI - transJ) + k2 * rotI + k4 * rotJ;
-
+    const { R, kl, props, iIdx, jIdx } = elementData(nodes, m);
+    const ue = new Float64Array(12);
+    for (let d = 0; d < 6; d++) { ue[d] = u[iIdx * DOF_PER_NODE + d]; ue[6 + d] = u[jIdx * DOF_PER_NODE + d]; }
+    const ul = toLocal(R, ue);
+    const f = new Float64Array(12);
+    for (let r = 0; r < 12; r++) { let v = 0; for (let c = 0; c < 12; c++) v += kl[r][c] * ul[c]; f[r] = v; }
+    // Local end forces: f[6] is the axial force at end j (tension positive);
+    // f[1]/f[5]/f[11] are in-plane shear at i and moments at i/j; f[4]/f[10]
+    // are the out-of-plane moments.
     return {
       id: m.id,
-      axialForce,
-      shearI,
-      momentI,
-      momentJ,
-      maxMoment: Math.max(Math.abs(momentI), Math.abs(momentJ)),
-      L,
+      axialForce: f[6],
+      shearI: f[1],
+      momentI: f[5],
+      momentJ: f[11],
+      maxMoment: Math.max(Math.abs(f[5]), Math.abs(f[11]), Math.abs(f[4]), Math.abs(f[10])),
+      torsion: f[9],
+      L: props.L,
     };
   });
 }
@@ -380,6 +391,15 @@ export function runFEA(input) {
   const utilization  = checkUtilization(stresses, members);
 
   const maxDisp = Math.max(...displacements.map(d => d.magnitude));
+  const warnings = [];
+  if (u.singularDofs?.length) {
+    const names = Object.keys(DOF_MAP);
+    warnings.push({
+      code: 'unstable_structure',
+      message: 'Some degrees of freedom have no stiffness (a mechanism or missing support); their displacements are not meaningful.',
+      dofs: u.singularDofs.slice(0, 24).map((i) => `${nodes[Math.floor(i / DOF_PER_NODE)]?.id}.${names[i % DOF_PER_NODE]}`),
+    });
+  }
   const maxUtil = Math.max(...utilization.map(u => u.utilization));
 
   return {
@@ -389,6 +409,7 @@ export function runFEA(input) {
     memberForces,
     stresses,
     utilization,
+    warnings,
     summary: {
       maxDisplacement: maxDisp,
       maxUtilization: maxUtil,

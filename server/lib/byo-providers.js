@@ -32,12 +32,13 @@
 // provider's official API — never proxied through concord-os.org.
 
 import { scanMessagesForLeaks } from "./outbound-content-guard.js";
+import cloudflareChat from "./cloudflare-ai-provider.js";
 
 const DEFAULT_MODELS = Object.freeze({
   openai:    { conscious: "gpt-4o",         subconscious: "gpt-4o-mini",  utility: "gpt-4o-mini", repair: "gpt-4o-mini", vision: "gpt-4o" },
   anthropic: { conscious: "claude-opus-4-7", subconscious: "claude-sonnet-4-6", utility: "claude-haiku-4-5-20251001", repair: "claude-haiku-4-5-20251001", vision: "claude-opus-4-7" },
   xai:       { conscious: "grok-3",         subconscious: "grok-3-fast",  utility: "grok-3-fast", repair: "grok-3-fast", vision: "grok-3" },
-  google:    { conscious: "gemini-2.5-pro", subconscious: "gemini-2.5-flash", utility: "gemini-2.5-flash", repair: "gemini-2.5-flash", vision: "gemini-2.5-pro" },
+  google:    { conscious: "gemini-3.6-flash", subconscious: "gemini-3.5-flash-lite", utility: "gemini-3.5-flash-lite", repair: "gemini-3.5-flash-lite", vision: "gemini-3.6-flash" },
   // Groq — no training on inputs/outputs regardless of tier (verified against
   // Groq's own Services Agreement), so this is the one platform provider with
   // no privacy tradeoff. Free-tier catalog is text-only today, no vision
@@ -59,13 +60,24 @@ const DEFAULT_MODELS = Object.freeze({
   // two don't drift; that file only PICKS the provider, this file is what
   // actually calls it.
   openrouter: { conscious: "meta-llama/llama-3.3-70b-instruct:free", subconscious: "qwen/qwen-2.5-72b-instruct:free", utility: "meta-llama/llama-3.1-8b-instruct:free", repair: "qwen/qwen-2.5-coder-32b-instruct:free", vision: "llama-3.2-90b-vision-instruct:free" },
+  // Cloudflare Workers AI — platform / free-cloud path (also BRAIN_VISION_PROVIDER=cloudflare).
+  cloudflare: {
+    conscious: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    subconscious: "@cf/meta/llama-3.1-8b-instruct",
+    utility: "@cf/meta/llama-3.1-8b-instruct",
+    repair: "@cf/meta/llama-3.1-8b-instruct",
+    vision: "@cf/meta/llama-3.2-11b-vision-instruct",
+    multimodal: "@cf/meta/llama-3.2-11b-vision-instruct",
+  },
 });
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 function pickModel(provider, slot, override) {
   if (override) return override;
-  return DEFAULT_MODELS[provider]?.[slot] || DEFAULT_MODELS[provider]?.conscious;
+  const table = DEFAULT_MODELS[provider] || {};
+  // free-cloud-router uses slot "multimodal"; BYO tables historically used "vision"
+  return table[slot] || (slot === "multimodal" ? table.vision : null) || (slot === "vision" ? table.multimodal : null) || table.conscious;
 }
 
 // ── OpenAI ───────────────────────────────────────────────────────
@@ -198,12 +210,23 @@ async function openaiCompatibleChat(url, { apiKey, modelId, messages, opts = {},
     }
     const j = await res.json();
     const msg = j.choices?.[0]?.message || {};
+    const cachedPromptTokens = j.usage?.prompt_tokens_details?.cached_tokens
+      ?? j.usage?.cached_tokens
+      ?? 0;
+    const usage = j.usage ? {
+      prompt_tokens: j.usage.prompt_tokens || 0,
+      completion_tokens: j.usage.completion_tokens || 0,
+      cached_prompt_tokens: cachedPromptTokens,
+      reasoning_tokens: j.usage.completion_tokens_details?.reasoning_tokens || 0,
+    } : null;
     return {
       ok: true,
       text: msg.content || "",
       toolCalls: [],
-      tokensIn: j.usage?.prompt_tokens || 0,
-      tokensOut: j.usage?.completion_tokens || 0,
+      tokensIn: usage?.prompt_tokens || 0,
+      tokensOut: usage?.completion_tokens || 0,
+      cachedPromptTokens,
+      usage,
     };
   } catch (err) {
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };
@@ -291,6 +314,14 @@ async function openrouterChat({ apiKey, modelId, messages, opts = {} }) {
     }
     const j = await res.json();
     const msg = j.choices?.[0]?.message || {};
+    const cachedPromptTokens = j.usage?.prompt_tokens_details?.cached_tokens
+      ?? j.usage?.cached_tokens
+      ?? 0;
+    const usage = j.usage ? {
+      prompt_tokens: j.usage.prompt_tokens || 0,
+      completion_tokens: j.usage.completion_tokens || 0,
+      cached_prompt_tokens: cachedPromptTokens,
+    } : null;
     return {
       ok: true,
       text: msg.content || "",
@@ -299,8 +330,10 @@ async function openrouterChat({ apiKey, modelId, messages, opts = {} }) {
         name: tc.function?.name || "",
         args: tryParse(tc.function?.arguments) || {},
       })),
-      tokensIn: j.usage?.prompt_tokens || 0,
-      tokensOut: j.usage?.completion_tokens || 0,
+      tokensIn: usage?.prompt_tokens || 0,
+      tokensOut: usage?.completion_tokens || 0,
+      cachedPromptTokens,
+      usage,
     };
   } catch (err) {
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };
@@ -322,6 +355,7 @@ const ADAPTERS = {
   groq:      groqChat,
   mistral:   mistralChat,
   openrouter: openrouterChat,
+  cloudflare: cloudflareChat,
 };
 
 /**

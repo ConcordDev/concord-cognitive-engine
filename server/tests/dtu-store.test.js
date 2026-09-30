@@ -103,12 +103,21 @@ describe("initDTUStore", () => {
     const { db } = createMockDB();
     const result = initDTUStore(db);
     assert.equal(result, true);
-    assert.equal(db._execCalls.length, 1);
+    // First exec is the CREATE TABLE + base indexes.
+    assert.ok(db._execCalls.length >= 1);
     assert.ok(db._execCalls[0].includes("CREATE TABLE IF NOT EXISTS dtu_store"));
     assert.ok(db._execCalls[0].includes("idx_dtu_tier"));
     assert.ok(db._execCalls[0].includes("idx_dtu_scope"));
     assert.ok(db._execCalls[0].includes("idx_dtu_source"));
     assert.ok(db._execCalls[0].includes("idx_dtu_updated"));
+    // Migration 442 (Concurrency Refactor Phase 3): visibility columns + list
+    // indexes are ensured here too (guarded per-column) so a fresh install that
+    // hasn't run the migration still gets them.
+    const all = db._execCalls.join("\n");
+    assert.ok(all.includes("ADD COLUMN owner_user_id"));
+    assert.ok(all.includes("ADD COLUMN visibility"));
+    assert.ok(all.includes("idx_dtu_store_owner"));
+    assert.ok(all.includes("idx_dtu_store_list"));
   });
 
   it("returns false on exec error", () => {

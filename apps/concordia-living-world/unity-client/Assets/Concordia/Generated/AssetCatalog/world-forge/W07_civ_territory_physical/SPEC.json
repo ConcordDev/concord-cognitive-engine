@@ -1,0 +1,509 @@
+{
+  "schema": "concordia-world-forge-territory/1.0",
+  "slice_id": "W07_civ_territory_physical",
+  "phase": "G4",
+  "phase_note": "G4c civilization territory. Population, economy, growth, infrastructure, and mesh physicalization are later stages.",
+  "batch": "WF4_territory",
+  "title": "Civilization territory physicalizer: Concord factions onto named regions as borders, capitals, mines, farms, and ports. No random kingdoms.",
+  "consumes": [
+    {
+      "schema": "concordia-world-forge-suitability/1.0",
+      "slice_id": "W06_settlement_suitability",
+      "path": "world-forge/W06_settlement_suitability/SPEC.json",
+      "reads": ["tier", "cannot_found", "parent_region_id", "faction_holder", "type_hint", "stamp_cells", "vetoes"]
+    },
+    {
+      "schema": "concordia-world-forge-transport/1.0",
+      "slice_id": "W05_transport_graph_spec",
+      "reads": ["atlas edge ids", "finished", "adds_city", "port nodes"]
+    },
+    {
+      "schema": "concordia-world-forge-biome-resource/1.0",
+      "slice_id": "W04_biome_resource_spec",
+      "reads": ["locus id", "quantity null", "fertility vetoes"]
+    },
+    {
+      "schema": "concordia-world-forge-canon-graph/1.0",
+      "slice_id": "W00_world_forge_canon_graph",
+      "reads": ["region_id", "constraints stage civ", "no_hub_kingdom", "no_vinewood", "fantasy_is_sundering", "flower_law_42m"]
+    }
+  ],
+  "writes": "territory_site_table",
+  "writes_channels": [],
+  "grid_materialized": false,
+  "kingdoms_minted": 0,
+  "claim_circles_left_on_local_metres": 70,
+  "authored_faction_records": 85,
+  "regions_unchanged": 44,
+  "pipeline": [
+    "Elevation",
+    "Hydrology",
+    "Climate",
+    "Biome",
+    "Resources",
+    "Mobility",
+    "Suitability",
+    "Civ",
+    "Pop",
+    "Economy",
+    "Growth",
+    "Infra",
+    "Physicalization"
+  ],
+  "planes": {
+    "megaworld_region": "Named W00 region. No new polygon in this slice.",
+    "local_claim_metres": "countries.json capital plus territory_radius, about 18–28 m. WorldGeography.BuildTerritories already emits these as KingdomTerritoryDef discs. Do not promote them.",
+    "hub_canon_metres": "Flower Law 42, doors 34, wall 56, Pinewood (62, -28), arena (0, 18) radius 8. Not faction borders.",
+    "tunya_local_metres": "Fluxom Gate (62, 18). Not the Fluxom harbor sector and not Pinewood."
+  },
+  "alias_bind": [
+    { "w06_holder": "concordant_assembly", "faction_id": "concordant_assembly", "file": "content/world/concordia-hub/factions.json" },
+    { "w06_holder": "zero_collective", "faction_id": "zero_collective", "file": "content/world/cyber/factions.json" },
+    { "w06_holder": "catalogue_keepers", "faction_id": "ruins_archivists", "file": "content/world/sovereign-ruins/factions.json" },
+    { "w06_holder": "wildwood_circle", "faction_id": "wildwood_circle", "file": "content/world/fantasy/factions.json" },
+    { "w06_holder": "verdant_veil", "faction_id": null, "note": "Not a disc owner. Tunya sectors bind to their own file ids. verdant_veil_remnant gets no site." },
+    { "w06_holder": "delgado_syndicate", "faction_id": "iron_rose_syndicate", "file": "content/world/crime/factions.json", "note": "No faction id delgado_syndicate. Mama Delgado is iron_rose_syndicate." },
+    { "w06_holder": "dawn_civic", "faction_id": "superhero_civic_super_taskforce", "file": "content/world/superhero/factions.json" },
+    { "w06_holder": "unclosed_foundry", "faction_id": "crucible_lattice_engineers", "file": "content/world/lattice-crucible/factions.json", "closed_capital": false },
+    { "w06_holder": "tally_house", "faction_id": "the_tally_house", "file": "content/world/sere/factions.json", "plane": "local_claim_metres" }
+  ],
+  "tunya_sector_bind": [
+    { "region_id": "tunya_masond", "faction_id": "masond", "country_id": null },
+    { "region_id": "tunya_asbir", "faction_id": "asbir", "country_id": "asbir", "country_plane": "local_claim_metres" },
+    { "region_id": "tunya_sangree", "faction_id": "sandrun_sanguire", "country_id": "sangree", "country_plane": "local_claim_metres" },
+    { "region_id": "tunya_aekon", "faction_id": "aekon", "country_id": "aekon", "country_plane": "local_claim_metres" },
+    { "region_id": "tunya_fluxom", "faction_id": "fluxom", "country_id": "fluxom", "country_plane": "local_claim_metres" },
+    { "region_id": "tunya_nil", "faction_id": "nil", "country_id": "nil", "country_plane": "local_claim_metres" }
+  ],
+  "tunya_no_site": [
+    "dinye",
+    "sahm",
+    "bahiij",
+    "akeia",
+    "vessine",
+    "corre",
+    "dormas",
+    "vrellan_nationalists",
+    "ancient-tunyan-ruins",
+    "cactem-strip"
+  ],
+  "algorithm": [
+    "Copy W06 region fields. Do not rescore.",
+    "Replace faction_holder aliases with file ids. Unbound regions get faction_id null.",
+    "Capital only if tier is city or town, cannot_found is false, a file id is bound, and conquest/closed-capital vetoes do not fire. kingdom is always false.",
+    "One border per W05 disc-pair, plus one Tunya terrace seam with no coordinates.",
+    "Mines are sangree_ore, asbir_salt, crucible_scrap only. quantity stays null.",
+    "One farm: Masond terrace landings. Cliff face excluded.",
+    "Ports are the three W05 harbors plus the Sere pier with physicalize false. adds_city stays false.",
+    "Other countries.json factions in the same world are claim_plane_only. They do not get a second site."
+  ],
+  "capitals": [
+    {
+      "site_id": "cap_hub_court",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Hub",
+      "region_id": "hub_plaza",
+      "faction_id": "concordant_assembly",
+      "role": "city_state_court",
+      "tier": "city",
+      "plane": "hub_canon_metres",
+      "flower_law_m": 42,
+      "physicalize": false,
+      "notes": ["Territories(Hub) stays empty", "import food", "civic drain is not a river"]
+    },
+    {
+      "site_id": "cap_cyber_stacks",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Cyber",
+      "region_id": "cyber_stacks",
+      "faction_id": "zero_collective",
+      "role": "borough_heart",
+      "tier": "city",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "claim_plane_only": ["blackout_resistance", "cyber_nevex", "cyber_augmented_elite_club", "cyber_street_docs", "cyber_ai_rights_movement", "cyber_fixer_guild"]
+    },
+    {
+      "site_id": "cap_crime_sodium",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Crime",
+      "region_id": "crime_sodium",
+      "faction_id": "iron_rose_syndicate",
+      "w06_alias": "delgado_syndicate",
+      "role": "block_heart",
+      "tier": "city",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "claim_plane_only": ["ghost_network", "crime_corrupt_precinct", "crime_white_collar_ring", "crime_federal_task_force", "crime_pi_agency", "crime_north_market_gang"]
+    },
+    {
+      "site_id": "cap_dawn_kane",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Superhero",
+      "region_id": "dawn_kane",
+      "faction_id": "superhero_civic_super_taskforce",
+      "w06_alias": "dawn_civic",
+      "role": "skyline_heart",
+      "tier": "city",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "veto_honored": "no_victory_heart",
+      "not_this_seat": ["luminary_empire", "enforcers_movement"],
+      "claim_plane_only": ["enforcers_movement", "luminary_empire", "superhero_criminal_supers", "superhero_civil_rights_emerged", "superhero_normie_resistance", "superhero_biokinetics_college"]
+    },
+    {
+      "site_id": "cap_tunya_masond",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Tunya",
+      "region_id": "tunya_masond",
+      "faction_id": "masond",
+      "role": "sector_hold",
+      "tier": "town",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "notes": ["No country_id. Landings only. Cliff face is not the seat."]
+    },
+    {
+      "site_id": "cap_tunya_sangree",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Tunya",
+      "region_id": "tunya_sangree",
+      "faction_id": "sandrun_sanguire",
+      "role": "forge_hold",
+      "tier": "town",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "notes": ["GoldenSlice is the only crafting forge.", "countries.json Sangree Fire Forge pin stays local metres."]
+    },
+    {
+      "site_id": "cap_tunya_fluxom",
+      "kind": "capital",
+      "kingdom": false,
+      "world_id": "Tunya",
+      "region_id": "tunya_fluxom",
+      "faction_id": "fluxom",
+      "role": "harbor_hold",
+      "tier": "town",
+      "plane": "megaworld_region",
+      "physicalize": false,
+      "same_hold_as": "port_fluxom",
+      "notes": ["Not a second city.", "Fluxom Gate (62, 18) m is tunya_local_metres."]
+    }
+  ],
+  "borders": [
+    {
+      "site_id": "border_cyber_ruins",
+      "kind": "border",
+      "edges": ["march_cyber_ruins"],
+      "world_geography_route": "route/cyber/sovereign-ruins",
+      "faction_a": "zero_collective",
+      "faction_b": "ruins_archivists",
+      "finished": true
+    },
+    {
+      "site_id": "border_ruins_fantasy",
+      "kind": "border",
+      "edges": ["march_ruins_fantasy"],
+      "world_geography_route": "route/sovereign-ruins/fantasy",
+      "faction_a": "ruins_archivists",
+      "faction_b": "wildwood_circle",
+      "finished": true,
+      "notes": ["Moss on Sundering. Ash on Ruins. Not a fourth kit."]
+    },
+    {
+      "site_id": "border_fantasy_tunya",
+      "kind": "border",
+      "edges": ["march_fantasy_tunya", "sea_tunya_fantasy"],
+      "world_geography_route": "route/fantasy/tunya",
+      "faction_a": "wildwood_circle",
+      "faction_b": "fluxom",
+      "faction_b_note": "Sea meets Fluxom. The march meets the Tunya disc, not one kingdom.",
+      "finished": true
+    },
+    {
+      "site_id": "border_tunya_frontier",
+      "kind": "border",
+      "edges": ["walk_tunya_frontier"],
+      "world_geography_route": "route/tunya/concord-link-frontier",
+      "faction_a": null,
+      "faction_a_note": "Six Tunya sectors, not one crown.",
+      "faction_b": null,
+      "faction_b_note": "No Frontier capital.",
+      "finished": true
+    },
+    {
+      "site_id": "border_frontier_crime",
+      "kind": "border",
+      "edges": ["walk_frontier_crime"],
+      "world_geography_route": "route/concord-link-frontier/crime",
+      "faction_a": null,
+      "faction_b": "iron_rose_syndicate",
+      "finished": true
+    },
+    {
+      "site_id": "border_crime_dawn",
+      "kind": "border",
+      "edges": ["march_crime_superhero", "sea_crime_superhero"],
+      "world_geography_route": "route/crime/superhero",
+      "faction_a": "iron_rose_syndicate",
+      "faction_b": "superhero_civic_super_taskforce",
+      "finished": true,
+      "notes": ["Barge lane does not add a Dawn port."]
+    },
+    {
+      "site_id": "border_dawn_crucible",
+      "kind": "border",
+      "edges": ["march_superhero_crucible"],
+      "world_geography_route": "route/superhero/lattice-crucible",
+      "faction_a": "superhero_civic_super_taskforce",
+      "faction_b": "crucible_lattice_engineers",
+      "finished": true
+    },
+    {
+      "site_id": "border_crucible_cyber",
+      "kind": "border",
+      "edges": ["seam_crucible_cyber"],
+      "unused_edge": "march_crucible_cyber",
+      "world_geography_route": "route/lattice-crucible/cyber",
+      "faction_a": "crucible_lattice_engineers",
+      "faction_b": "zero_collective",
+      "finished": false
+    },
+    {
+      "site_id": "border_crime_sere",
+      "kind": "border",
+      "edges": ["sea_crime_sere", "waystone_crime_sere"],
+      "world_geography_route": "route/crime/sere",
+      "faction_a": "iron_rose_syndicate",
+      "faction_b": "the_tally_house",
+      "faction_b_plane": "local_claim_metres",
+      "finished": true,
+      "link_gate": false,
+      "minutes": { "sea_crime_sere": 96, "waystone_crime_sere": 480 }
+    },
+    {
+      "site_id": "border_tunya_terrace",
+      "kind": "border",
+      "edges": [],
+      "coordinates": null,
+      "factions": ["masond", "asbir", "sandrun_sanguire", "aekon", "fluxom", "nil"],
+      "finished": true,
+      "notes": ["Seam among the six stamped sectors. Fallback countries are not on it."]
+    }
+  ],
+  "mines": [
+    {
+      "site_id": "mine_sangree_ore",
+      "kind": "mine",
+      "locus_id": "sangree_ore",
+      "region_id": "tunya_sangree",
+      "world_id": "Tunya",
+      "faction_id": "sandrun_sanguire",
+      "commodity": "ore",
+      "quantity": null,
+      "physicalize": false,
+      "notes": ["One stack face. Forge seat is not a second mine."]
+    },
+    {
+      "site_id": "mine_asbir_salt",
+      "kind": "mine",
+      "locus_id": "asbir_salt",
+      "region_id": "tunya_asbir",
+      "world_id": "Tunya",
+      "faction_id": "asbir",
+      "commodity": "salt",
+      "quantity": null,
+      "physicalize": false,
+      "notes": ["Salt pan. Wadi stays dry. Village, not a capital."]
+    },
+    {
+      "site_id": "mine_crucible_scrap",
+      "kind": "mine",
+      "locus_id": "crucible_scrap",
+      "region_id": "crucible_foundry",
+      "world_id": "Crucible",
+      "faction_id": "crucible_lattice_engineers",
+      "commodity": "scrap",
+      "quantity": null,
+      "physicalize": false,
+      "closed_capital": false,
+      "notes": ["Road ends. Seam unfinished. Not a ninth district."]
+    }
+  ],
+  "farms": [
+    {
+      "site_id": "farm_masond_landings",
+      "kind": "farm",
+      "region_id": "tunya_masond",
+      "world_id": "Tunya",
+      "faction_id": "masond",
+      "where": "terrace_landings",
+      "excludes": ["cliff_face", "clearcut"],
+      "physicalize": false,
+      "notes": ["Beside tunya_masond_river. One realized river."]
+    }
+  ],
+  "ports": [
+    {
+      "site_id": "port_fluxom",
+      "kind": "port",
+      "node_id": "node_fluxom",
+      "water_id": "tunya_fluxom_lock",
+      "edge_ids": ["sea_tunya_fantasy"],
+      "region_id": "tunya_fluxom",
+      "world_id": "Tunya",
+      "faction_id": "fluxom",
+      "adds_city": false,
+      "physicalize": false,
+      "same_hold_as": "cap_tunya_fluxom",
+      "not_this_port": "Fluxom Gate (62, 18) tunya_local_metres"
+    },
+    {
+      "site_id": "port_crime_wharf",
+      "kind": "port",
+      "node_id": "node_wharf",
+      "water_id": "crime_working_river",
+      "edge_ids": ["sea_crime_superhero"],
+      "region_id": "crime_wharf",
+      "world_id": "Crime",
+      "faction_id": "iron_rose_syndicate",
+      "tier": "town",
+      "adds_city": false,
+      "physicalize": false,
+      "notes": ["Not a second capital. Strait is border_crime_sere, not this polygon."]
+    },
+    {
+      "site_id": "port_cyber_march",
+      "kind": "port",
+      "node_id": "edge_cyber_crime",
+      "water_id": "cyber_wharf_meet",
+      "region_id": "cyber_wharf_march",
+      "world_id": "Cyber",
+      "faction_id": "zero_collective",
+      "tier": "village",
+      "adds_city": false,
+      "physicalize": false,
+      "notes": ["Not a chord to Crime. Not a pastoral river."]
+    },
+    {
+      "site_id": "port_sere_pier",
+      "kind": "port",
+      "node_id": "node_sere_pier",
+      "world_id": "Sere",
+      "faction_id": "the_tally_house",
+      "plane": "local_claim_metres",
+      "stamp_cells": false,
+      "adds_city": false,
+      "physicalize": false,
+      "link_gate": false
+    }
+  ],
+  "refused": [
+    { "id": "no_hub_kingdom", "effect": "No Hub capital except the city-state court, and Territories(Hub) stays empty." },
+    { "id": "flower_law_not_a_farm", "regions": ["hub_plaza", "hub_doors"] },
+    { "id": "hub_doors_not_a_capital", "parent": "hub_plaza" },
+    { "id": "crown_roads_are_not_borders", "count": 8 },
+    { "id": "catalogue_not_conquer", "region_id": "ruins_forum", "faction_id": "ruins_archivists" },
+    { "id": "house_voss_is_a_stair", "region_id": "sunder_fold", "not_a_capital": "house_voss" },
+    { "id": "no_obsidian_kingdom", "faction_id": "fantasy_obsidian_crown", "plane": "local_claim_metres" },
+    { "id": "no_victory_heart", "not_this_seat": "luminary_empire" },
+    { "id": "glue_not_a_border", "region_id": "dawn_crown_stair_glue" },
+    { "id": "no_ninth_district", "world_id": "Crucible" },
+    { "id": "no_frontier_capital" },
+    { "id": "no_sere_kilometre_capital" },
+    { "id": "no_link_sere" },
+    { "id": "exhausted_not_breadbasket", "region_id": "sere_breadlands" },
+    { "id": "no_clearcut", "regions": ["tunya_nil", "tunya_fallback"] },
+    { "id": "aekon_ice_not_a_mine" },
+    { "id": "ruins_cold_iron_not_a_mine" },
+    { "id": "hub_cut_stone_not_a_quarry_camp" },
+    { "id": "no_dawn_port" },
+    { "id": "waystone_not_a_port", "node_id": "node_sere_waystone" },
+    { "id": "delta_not_a_port", "node_id": "node_sere_delta" },
+    { "id": "edge_cyber_crime_not_a_border" },
+    { "id": "claim_circles_are_not_borders", "count": 70 },
+    { "id": "no_vinewood" },
+    { "id": "fantasy_is_sundering", "world_id": "Fantasy" },
+    { "id": "cottonwood_is_not_a_town", "region_id": "frontier_drift" }
+  ],
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["renderedElevationAt", "generatePoughkeepsieHeightmap"],
+      "do_not": "Retune seed 0xc0ffee or sample the walk patch for a realm outline."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["solveFlowStep", "setWater", "tickWaterFlow"],
+      "do_not": "Seed flow from a port or wet the plaza."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "domain": "server/domains/procgen-settlements.js",
+      "cycle": "server/emergent/procgen-settlement-cycle.js",
+      "symbols": ["spawnSettlementForRegion"],
+      "do_not": "Spawn NPCs from a capital flag. This is not a city physicalizer."
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "domain": "server/domains/faction-strategy.js",
+      "cycle": "server/emergent/faction-strategy-cycle.js",
+      "symbols": ["pickMove", "applyMove"],
+      "do_not": "Let PROCLAIM_EXPANSION invent a kingdom polygon or a faction id."
+    },
+    {
+      "id": "world_geography",
+      "path": "Assets/Concordia/Scripts/WorldGeography.cs",
+      "symbols": ["BuildTerritories", "BuildBordersAndRoutes", "Territories"],
+      "do_not": "Add countries, fill Hub, or promote 10-gon claim discs into veil kilometres in this slice."
+    }
+  ],
+  "outputs_for_population": {
+    "reads": ["site_id", "kind", "faction_id", "region_id", "kingdom", "physicalize", "stamp_cells"],
+    "may": "Place people only on a W06 pad whose tier is hamlet or above and cannot_found is false, using population_bias as an ordinal.",
+    "may_not": [
+      "Read territory_radius as a population.",
+      "Give luminary_empire, fantasy_obsidian_crown, or the_tessera a headcount from a claim circle.",
+      "Open a market on port_sere_pier while physicalize is false.",
+      "Pave seam_crucible_cyber.",
+      "Set quantity on a mine."
+    ]
+  },
+  "do_not_build_yet": [
+    "No city block-out, parceler, street spline, NavMesh, or border mesh.",
+    "No edits to world-terrain.js, terrain-water.js, procgen-settlements.js, faction-strategy.js, or WorldGeography.cs.",
+    "No new faction files and no new countries.json rows.",
+    "No PROMPTS_INDEX rows, meshes, or images.",
+    "No 2 km raster and no new MAP_MASTER link.",
+    "No retune of Flower Law, mob caps, or batches B21–B31."
+  ],
+  "counts": {
+    "capitals": 7,
+    "borders": 10,
+    "mines": 3,
+    "farms": 1,
+    "ports": 4,
+    "ports_physicalize_later": 3,
+    "kingdoms_minted": 0
+  },
+  "honesty_pins": [
+    "Every faction_id is a content/world factions.json id.",
+    "kingdom is false on every capital.",
+    "writes_channels is empty.",
+    "Hub territories stay empty. Flower Law is 42 m.",
+    "Fantasy is the Sundering. No Vinewood.",
+    "Sere has no Link and no kilometre capital.",
+    "A port does not add a city. A claim circle does not become a border.",
+    "Masond farm is landings only. Nil is not a farm. Breadlands stay exhausted."
+  ]
+}

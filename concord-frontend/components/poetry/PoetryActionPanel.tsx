@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -101,7 +102,7 @@ export function PoetryActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', meterResult?.possibleForm ?? 'unknown'], source: 'poetry:poem:mint', meta: { visibility: 'private', consent: { allowCitations: false }, poem: { title: poemTitle, text: poemText, meter: meterResult, rhyme: rhymeResult, form: formResult, frequency: freqResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', meterResult?.possibleForm ?? 'unknown'], source: 'poetry:poem:mint', meta: { visibility: 'private', consent: { allowCitations: false }, poem: { title: poemTitle, text: poemText, meter: meterResult, rhyme: rhymeResult, form: formResult, frequency: freqResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('poetry.mintedDtuId', id, { label: `poem ${id.slice(0, 8)}` }); ok(`Poem DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -124,7 +125,7 @@ export function PoetryActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Published poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', 'public', meterResult?.possibleForm ?? 'free-verse'], source: 'poetry:poem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, poem: { title: poemTitle, text: poemText, form: meterResult?.possibleForm, scheme: rhymeResult?.scheme } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Published poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', 'public', meterResult?.possibleForm ?? 'free-verse'], source: 'poetry:poem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, poem: { title: poemTitle, text: poemText, form: meterResult?.possibleForm, scheme: rhymeResult?.scheme } } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

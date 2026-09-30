@@ -178,6 +178,19 @@
       "name": "deleteTelemetry"
     },
     {
+      "_derived": true,
+      "domain": "sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sandbox.enterArena",
+      "name": "enterArena"
+    },
+    {
       "_derived": false,
       "domain": "sandbox",
       "fuzz_cases": [
@@ -668,5 +681,5 @@
   ],
   "domain": "sandbox",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 19
+  "macroCount": 20
 }

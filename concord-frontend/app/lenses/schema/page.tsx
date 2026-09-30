@@ -2,15 +2,12 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench } from '@/components/schema/SchemaWorkbench';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { FileCode, Database, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -25,9 +22,7 @@ export default function SchemaLensPage() {
 
   return (
     <LensShell lensId="schema" asMain={false}>
-      <FirstRunTour lensId="schema" />
-      <ManifestActionBar />
-      <DepthBadge lensId="schema" size="sm" className="ml-2" />
+      <FirstRunTour lensId="schema" />      <DepthBadge lensId="schema" size="sm" className="ml-2" />
       <LensVerticalHero lensId="schema" className="mx-6 mt-4" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between flex-wrap gap-3">
@@ -82,10 +77,7 @@ export default function SchemaLensPage() {
           </div>
         )}
       </section>
-    </div>
-          <RecentMineCard domain="schema" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="schema" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="schema" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="schema" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

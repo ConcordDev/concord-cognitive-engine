@@ -16,7 +16,12 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODAL = path.resolve(__dirname, '..', 'components', 'concordia', 'economy', 'WagerModal.tsx');
-const WORLD = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport-first shell (WorldUnityShell); the former ~7.6k LOC HUD/OS
+// monolith — where this component actually mounts — moved to
+// components/world/WorldOsSurface.tsx (opened via Menu -> Advanced OS tools
+// or ?surface=os, still inside /lenses/world).
+const WORLD = path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx');
 const USE_SOCKET = path.resolve(__dirname, '..', 'hooks', 'useSocket.ts');
 const SOCKET_TYPES = path.resolve(__dirname, '..', 'lib', 'realtime', 'socket.ts');
 const WAGERS_ROUTE = path.resolve(__dirname, '..', '..', 'server', 'routes', 'wagers.js');

@@ -16,6 +16,8 @@
 
 import crypto from "node:crypto";
 import { checkHeartEvent } from "./heart-events.js";
+import { gatherAttendees } from "./social-gatherings.js";
+import { getActiveWorldForPlayer } from "./world-loader.js";
 
 const COURT_AFFINITY_DELTA = 0.05;
 const ENGAGE_THRESHOLD     = 0.70;
@@ -111,6 +113,33 @@ export function wed(db, playerUserId, partnerKind, partnerId) {
     `).run(playerUserId, partnerKind, partnerId);
   });
   tx();
+
+  // Thin emit of the existing wedding composition — not a new guest engine.
+  // Empty attendees stay empty; Unity only Attends matching GuestNpcs.
+  try {
+    const gathering = gatherAttendees(db, { kind: "wedding", focalKind: "player", focalId: playerUserId });
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function") {
+      let worldId = "concordia-hub";
+      try {
+        worldId = getActiveWorldForPlayer(db, playerUserId) || "concordia-hub";
+      } catch { /* presence optional */ }
+      emit("npc:wedding", {
+        marriageId,
+        celebrantId: playerUserId,
+        partnerKind,
+        partnerId,
+        worldId,
+        attendees: (gathering.attendees || []).map((a) => ({
+          id: a.id || null,
+          name: a.name || "",
+          role: a.role || "",
+        })),
+        beats: gathering.beats || [],
+      }, { worldId });
+    }
+  } catch { /* presentation optional */ }
+
   return { ok: true, marriageId, status: "married" };
 }
 

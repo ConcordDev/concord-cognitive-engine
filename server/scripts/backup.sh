@@ -1,4 +1,16 @@
 #!/bin/bash
+# NO_DUTCH_BACKUP_THROTTLE 2026-09-05 — avoid sqlite3 .backup temp-copy storms on low disk.
+# If a backup newer than 20h exists under BACKUP_DIR/today, skip. Prefer server runBackup stream.
+_THROTTLE_MARKER_DIR="${BACKUP_DIR:-./data/backups}"
+_TODAY=$(date +%F)
+if [ -d "$_THROTTLE_MARKER_DIR/$_TODAY" ]; then
+  _newest=$(find "$_THROTTLE_MARKER_DIR/$_TODAY" -type f -name 'concord.db*' -mtime -1 2>/dev/null | head -1)
+  if [ -n "$_newest" ]; then
+    echo "[backup.sh] skip: recent backup exists ($_newest) — disk-safe throttle"
+    exit 0
+  fi
+fi
+
 # Concord Backup Script
 # Creates a snapshot of:
 #   - SQLite database (online backup + gzip compression + integrity verification)
@@ -7,6 +19,20 @@
 # Retains rolling window of 7 backups.
 
 set -euo pipefail
+
+# Single-instance lock (2026-09-08) — a slow `.backup` of a multi-GB DB must not
+# be re-triggered while running (stacked runs = stacked read locks + stacked
+# disk-doubling staging copies → box wedge on a near-full disk). See the fuller
+# note in scripts/db-backup.sh.
+_BKLOCK="${TMPDIR:-/tmp}/concord-backup-sh.lock.d"
+if ! mkdir "$_BKLOCK" 2>/dev/null; then
+  if [ -n "$(find "$_BKLOCK" -maxdepth 0 -mmin +120 2>/dev/null)" ]; then
+    rmdir "$_BKLOCK" 2>/dev/null && mkdir "$_BKLOCK" 2>/dev/null || { echo "[backup.sh] lock held — skipping"; exit 0; }
+  else
+    echo "[backup.sh] another backup is running — skipping this run"; exit 0
+  fi
+fi
+trap 'rmdir "$_BKLOCK" 2>/dev/null || true' EXIT
 
 DATA_DIR="${DATA_DIR:-/data}"
 DB_PATH="${DB_PATH:-$DATA_DIR/db/concord.db}"
@@ -25,7 +51,14 @@ if [ -f "$DB_PATH" ]; then
   echo "[Backup] Copying database..."
   # Use sqlite3 .backup for online-safe copy, fall back to cp
   if command -v sqlite3 &>/dev/null; then
+    # Prefer cp when free disk < 3Gi to avoid .backup doubling usage
+    _free_k=$(df -k "$(dirname "$DB_PATH")" 2>/dev/null | awk 'NR==2{print $4}')
+    if [ -n "$_free_k" ] && [ "$_free_k" -lt 3000000 ]; then
+      echo "[backup.sh] low disk — using cp instead of sqlite3 .backup"
+      cp "$DB_PATH" "$BACKUP_DB"
+    else
     sqlite3 "$DB_PATH" ".backup '$BACKUP_DB'"
+    fi
   else
     cp "$DB_PATH" "$BACKUP_DB"
   fi

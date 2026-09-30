@@ -10,6 +10,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "artistry.analyticsHistory",
+      "name": "analyticsHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.analyticsSnapshot",
+      "name": "analyticsSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "artistry.appreciate",
       "name": "appreciate"
     },
@@ -357,6 +383,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "artistry.dm-inbox",
+      "name": "dm-inbox"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.dm-list",
+      "name": "dm-list"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.dm-send",
+      "name": "dm-send"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "artistry.duplicate",
       "name": "duplicate"
     },
@@ -680,6 +745,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "artistry.notifications-list",
+      "name": "notifications-list"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.notifications-mark-read",
+      "name": "notifications-mark-read"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "artistry.personalizedFeed",
       "name": "personalizedFeed"
     },
@@ -734,6 +825,58 @@
       ],
       "macro_id": "artistry.profileUpdate",
       "name": "profileUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.project-image-delete",
+      "name": "project-image-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.project-image-download",
+      "name": "project-image-download"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.project-image-list",
+      "name": "project-image-list"
+    },
+    {
+      "_derived": true,
+      "domain": "artistry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "artistry.project-image-upload",
+      "name": "project-image-upload"
     },
     {
       "_derived": false,
@@ -1148,5 +1291,5 @@
   ],
   "domain": "artistry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 65
 }

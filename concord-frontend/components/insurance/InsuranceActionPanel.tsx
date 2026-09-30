@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -141,7 +142,7 @@ export function InsuranceActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Insurance — ${riskTitle || 'book'}`, tags: ['insurance', 'risk', riskResult?.level].filter(Boolean), source: 'insurance:book:mint', meta: { visibility: 'private', consent: { allowCitations: false }, insurance: { gap: gapResult, loss: lossResult, renewal: renewalResult, risk: riskResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Insurance — ${riskTitle || 'book'}`, tags: ['insurance', 'risk', riskResult?.level].filter(Boolean), source: 'insurance:book:mint', meta: { visibility: 'private', consent: { allowCitations: false }, insurance: { gap: gapResult, loss: lossResult, renewal: renewalResult, risk: riskResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('insurance.mintedDtuId', id, { label: `Book DTU ${id.slice(0, 8)}…` }); ok(`Book DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -170,7 +171,7 @@ export function InsuranceActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

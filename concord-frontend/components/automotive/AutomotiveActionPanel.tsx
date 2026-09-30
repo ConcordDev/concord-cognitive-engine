@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -96,7 +97,7 @@ export function AutomotiveActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Vehicle — ${year} ${make} ${model}`, tags: ['automotive', 'vehicle', make.toLowerCase()], source: 'automotive:vehicle:mint', meta: { visibility: 'private', consent: { allowCitations: false }, auto: { vin: vinResult, recalls: recallResult, maint: maintResult, diag: diagResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Vehicle — ${year} ${make} ${model}`, tags: ['automotive', 'vehicle', make.toLowerCase()], source: 'automotive:vehicle:mint', meta: { visibility: 'private', consent: { allowCitations: false }, auto: { vin: vinResult, recalls: recallResult, maint: maintResult, diag: diagResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('auto.mintedDtuId', id, { label: `Vehicle DTU ${id.slice(0, 8)}…` }); ok(`Vehicle DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -125,7 +126,7 @@ export function AutomotiveActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

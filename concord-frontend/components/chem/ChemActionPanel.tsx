@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -145,7 +146,7 @@ export function ChemActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult, analysis: analyzeResult, reaction: balanceResult, solution: solutionResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult, analysis: analyzeResult, reaction: balanceResult, solution: solutionResult } } }, 'formula', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('chem.mintedDtuId', id, { label: `Lab DTU ${id.slice(0, 8)}…` }); ok(`Lab DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -175,7 +176,7 @@ export function ChemActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Compound profile — ${formula}`, tags: ['chem', 'compound', 'public'], source: 'chem:compound:publish', meta: { visibility: 'public', consent: { allowCitations: true }, formula, mw: mwResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Compound profile — ${formula}`, tags: ['chem', 'compound', 'public'], source: 'chem:compound:publish', meta: { visibility: 'public', consent: { allowCitations: true }, formula, mw: mwResult } }, 'formula', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

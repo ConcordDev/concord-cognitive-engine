@@ -1,0 +1,1644 @@
+{
+  "generatedAt": "2026-09-08T20:06:04.929Z",
+  "keyCount": 121,
+  "summary": [
+    {
+      "key": "dtus",
+      "totalWrites": 61,
+      "byScope": {
+        "helper/unknown": 13,
+        "boot": 3,
+        "macro": 25,
+        "heartbeat": 1,
+        "http-route": 19
+      },
+      "requestPathWrites": 44,
+      "requestPathWritesWithoutWriteThrough": 36,
+      "riskiestSites": [
+        "server.js:35376  STATE.dtus.set(id, dtu);",
+        "server.js:42263  STATE.dtus.set(normalized.id, normalized);",
+        "server.js:42447  STATE.dtus.set(dtuId, dtu);",
+        "server.js:43456  if (hydrated) STATE.dtus.set(dtuId, hydrated);",
+        "server.js:43642  STATE.dtus.set(clone.id, clone);"
+      ],
+      "note": "SAFE-ish — dtu_store write-through (Phase 3) + Rust read sidecar. Verify every STATE.dtus.set has a persist."
+    },
+    {
+      "key": "global",
+      "totalWrites": 8,
+      "byScope": {
+        "http-route": 8
+      },
+      "requestPathWrites": 8,
+      "requestPathWritesWithoutWriteThrough": 8,
+      "riskiestSites": [
+        "server.js:81378  STATE.global = {",
+        "server.js:81431  STATE.global.pendingPublish.set(dtuId, publishRequest);",
+        "server.js:81446  STATE.global.dtus.set(dtuId, globalDtu);",
+        "server.js:81447  STATE.global.pendingPublish.delete(dtuId);",
+        "server.js:81513  STATE.global.dtus.set(dtuId, globalDtu);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "globalThread",
+      "totalWrites": 10,
+      "byScope": {
+        "helper/unknown": 3,
+        "http-route": 7
+      },
+      "requestPathWrites": 7,
+      "requestPathWritesWithoutWriteThrough": 7,
+      "riskiestSites": [
+        "server.js:84472  if (!STATE.globalThread) STATE.globalThread = { councilQueue: [], acceptedContributions: [] };",
+        "server.js:84473  if (!Array.isArray(STATE.globalThread.councilQueue)) STATE.globalThread.councilQueue = [];",
+        "server.js:84480  STATE.globalThread.councilQueue.push({",
+        "server.js:84513  if (!STATE.globalThread) STATE.globalThread = { councilQueue: [], acceptedContributions: [] };",
+        "server.js:84538  if (!Array.isArray(STATE.globalThread.acceptedContributions)) STATE.globalThread.acceptedContributions = [];"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "lensArtifacts",
+      "totalWrites": 13,
+      "byScope": {
+        "helper/unknown": 3,
+        "boot": 1,
+        "macro": 7,
+        "http-route": 2
+      },
+      "requestPathWrites": 9,
+      "requestPathWritesWithoutWriteThrough": 7,
+      "riskiestSites": [
+        "server.js:42836  STATE.lensArtifacts.set(artifact.id, artifact);",
+        "server.js:45443  STATE.lensArtifacts.delete(id);",
+        "server.js:45725  STATE.lensArtifacts.set(id, artifact);",
+        "server.js:45867  STATE.lensArtifacts.set(id, artifact);",
+        "server.js:47124  STATE.lensArtifacts.set(forkId, fork);"
+      ],
+      "note": "SAFE-ish — lens_artifacts write-through exists. Verify."
+    },
+    {
+      "key": "queues",
+      "totalWrites": 20,
+      "byScope": {
+        "helper/unknown": 10,
+        "macro": 9,
+        "http-route": 1
+      },
+      "requestPathWrites": 10,
+      "requestPathWritesWithoutWriteThrough": 7,
+      "riskiestSites": [
+        "server.js:14800  STATE.queues.terminalRequests = STATE.queues.terminalRequests || [];",
+        "server.js:14801  STATE.queues.terminalRequests.push(proposal);",
+        "server.js:40554  STATE.queues.metaProposals.push({ id: proposal.id, type:\"META_DTU_PROPOSAL\", createdAt: proposal.createdAt, proposerOrganId: \"federation\", m",
+        "server.js:43273  STATE.queues.macroProposals = STATE.queues.macroProposals || [];",
+        "server.js:43274  STATE.queues.macroProposals.push({ type: \"plugin_review\", pluginId: listing.id, name: listing.name, githubUrl: listing.githubUrl, submittedA"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "wallets",
+      "totalWrites": 6,
+      "byScope": {
+        "http-route": 6
+      },
+      "requestPathWrites": 6,
+      "requestPathWritesWithoutWriteThrough": 6,
+      "riskiestSites": [
+        "server.js:63517  if (!STATE.wallets) STATE.wallets = new Map();",
+        "server.js:63528  STATE.wallets.set(walletId, wallet);",
+        "server.js:63539  if (!STATE.wallets) STATE.wallets = new Map();",
+        "server.js:63554  STATE.wallets.set(walletId, wallet);",
+        "server.js:63563  if (!STATE.wallets) STATE.wallets = new Map();"
+      ],
+      "note": "MONEY — must be DB-authoritative. Any STATE.wallets mutation on the request path without a ledger write is a bug."
+    },
+    {
+      "key": "gameProfiles",
+      "totalWrites": 9,
+      "byScope": {
+        "http-route": 5,
+        "helper/unknown": 4
+      },
+      "requestPathWrites": 5,
+      "requestPathWritesWithoutWriteThrough": 5,
+      "riskiestSites": [
+        "server.js:62396  if (!STATE.gameProfiles) STATE.gameProfiles = new Map();",
+        "server.js:62401  STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, badges: [], streak: 0, lastActivityAt: null });",
+        "server.js:62464  if (!STATE.gameProfiles) STATE.gameProfiles = new Map();",
+        "server.js:62487  if (!STATE.gameProfiles) STATE.gameProfiles = new Map();",
+        "server.js:62489  STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, questsCompleted: 0, badges: [] });"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "music",
+      "totalWrites": 8,
+      "byScope": {
+        "http-route": 8
+      },
+      "requestPathWrites": 8,
+      "requestPathWritesWithoutWriteThrough": 5,
+      "riskiestSites": [
+        "server.js:63144  if (req.body?.track) STATE.music.currentTrack = req.body.track;",
+        "server.js:63145  if (req.body?.volume !== undefined) STATE.music.volume = clamp(Number(req.body.volume), 0, 1);",
+        "server.js:63157  STATE.music.userPlaylists.set(id, playlist);",
+        "server.js:63174  STATE.music.userPlaylists.set(id, existing);",
+        "server.js:63185  STATE.music.userPlaylists.delete(id);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "__chicken3",
+      "totalWrites": 5,
+      "byScope": {
+        "helper/unknown": 1,
+        "http-route": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:40408  STATE.__chicken3.lastCronAt = nowISO();",
+        "server.js:40412  // (Opt-in) If you ever want cron to also tick the kernel: set STATE.__chicken3.cronCallsKernelTick=true.",
+        "server.js:40551  STATE.__chicken3.lastFederationAt = nowISO();",
+        "server.js:40600  STATE.__chicken3.stats.federationTx = (STATE.__chicken3.stats.federationTx || 0) + 1;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "__resonanceHistory",
+      "totalWrites": 4,
+      "byScope": {
+        "macro": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:35729  if (!STATE.__resonanceHistory) STATE.__resonanceHistory = [];",
+        "server.js:35746  if (!STATE.__resonanceHistory) STATE.__resonanceHistory = [];",
+        "server.js:35747  STATE.__resonanceHistory.push({",
+        "server.js:35759  STATE.__resonanceHistory.splice(0, STATE.__resonanceHistory.length - 1000);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "customPersonas",
+      "totalWrites": 4,
+      "byScope": {
+        "macro": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:42518  if (!STATE.customPersonas) STATE.customPersonas = new Map();",
+        "server.js:42542  STATE.customPersonas.set(persona.id, persona);",
+        "server.js:42574  STATE.customPersonas.set(persona.id, persona);",
+        "server.js:42582  STATE.customPersonas.delete(input.id);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "flywheelHistory",
+      "totalWrites": 4,
+      "byScope": {
+        "http-route": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:52797  STATE.flywheelHistory = STATE.flywheelHistory || [];",
+        "server.js:52916  STATE.flywheelHistory = STATE.flywheelHistory || [];",
+        "server.js:52917  STATE.flywheelHistory.push({ ...computeFlywheelMetrics(), ts: nowISO() });",
+        "server.js:52918  if (STATE.flywheelHistory.length > 720) STATE.flywheelHistory.splice(0, STATE.flywheelHistory.length - 720);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "lensDomainIndex",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 2,
+        "http-route": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:45152  STATE.lensDomainIndex.clear();",
+        "server.js:45154  if (!STATE.lensDomainIndex.has(art.domain)) STATE.lensDomainIndex.set(art.domain, new Set());",
+        "server.js:45159  if (!STATE.lensDomainIndex.has(domain)) STATE.lensDomainIndex.set(domain, new Set());",
+        "server.js:45164  if (set) { set.delete(id); if (set.size === 0) STATE.lensDomainIndex.delete(domain); }"
+      ],
+      "note": "DERIVED — rebuildable from lensArtifacts; no persistence needed, rebuild on boot."
+    },
+    {
+      "key": "metabolismState",
+      "totalWrites": 5,
+      "byScope": {
+        "http-route": 5
+      },
+      "requestPathWrites": 5,
+      "requestPathWritesWithoutWriteThrough": 4,
+      "riskiestSites": [
+        "server.js:68296  STATE.metabolismState.excreted = (STATE.metabolismState.excreted || []).concat(excreted.map(e => e.id));",
+        "server.js:68299  STATE.metabolismState.excreted = STATE.metabolismState.excreted.slice(-200);",
+        "server.js:68354  STATE.metabolismState.lastRun = new Date().toISOString();",
+        "server.js:68400  STATE.metabolismState.excreted = (STATE.metabolismState.excreted || []).filter(id => id !== req.params.id);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_healthAlerts",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:70593  if (!STATE._healthAlerts) STATE._healthAlerts = [];",
+        "server.js:70594  STATE._healthAlerts.push({ component, status, score, timestamp: Date.now() });",
+        "server.js:70596  if (STATE._healthAlerts.length > 200) STATE._healthAlerts = STATE._healthAlerts.slice(-200);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_sessionRecordings",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:71673  if (!STATE._sessionRecordings) STATE._sessionRecordings = [];",
+        "server.js:71684  STATE._sessionRecordings.push(recording);",
+        "server.js:71685  if (STATE._sessionRecordings.length > 50) STATE._sessionRecordings = STATE._sessionRecordings.slice(-50);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_traces",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:70989  if (!STATE._traces) STATE._traces = [];",
+        "server.js:71004  STATE._traces.push(trace);",
+        "server.js:71005  if (STATE._traces.length > 1000) STATE._traces = STATE._traces.slice(-1000);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "anon",
+      "totalWrites": 4,
+      "byScope": {
+        "macro": 4
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:33875  STATE.anon = STATE.anon || {",
+        "server.js:33885  STATE.anon.identities.set(anonId, { anonId, publicKeyPem: pubPem, privateKeyPem: privPem, createdAt: nowISO(), rotatedFrom: rotateFromAnonId",
+        "server.js:33886  if (!STATE.anon.inbox.has(anonId)) STATE.anon.inbox.set(anonId, []);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "battles",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:69581  if (!STATE.battles) STATE.battles = [];",
+        "server.js:69612  STATE.battles.push(battle);",
+        "server.js:69613  if (STATE.battles.length > 100) STATE.battles = STATE.battles.slice(-100);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "bounties",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:69101  if (!STATE.bounties) STATE.bounties = [];",
+        "server.js:69121  STATE.bounties.push(bounty);",
+        "server.js:69122  if (STATE.bounties.length > 200) STATE.bounties = STATE.bounties.slice(-200);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "causalEdges",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:69321  if (!STATE.causalEdges) STATE.causalEdges = [];",
+        "server.js:69343  STATE.causalEdges.push(edge);",
+        "server.js:69344  if (STATE.causalEdges.length > 5000) STATE.causalEdges = STATE.causalEdges.slice(-5000);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "councilSessions",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:68539  if (!STATE.councilSessions) STATE.councilSessions = [];",
+        "server.js:68556  STATE.councilSessions.push(session);",
+        "server.js:68558  if (STATE.councilSessions.length > 50) STATE.councilSessions = STATE.councilSessions.slice(-50);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "debates",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:63486  if (!STATE.debates) STATE.debates = new Map();",
+        "server.js:63487  STATE.debates.set(debateId, debate);",
+        "server.js:63490  STATE.debates.delete(oldest);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "delegatedTasks",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:68818  if (!STATE.delegatedTasks) STATE.delegatedTasks = [];",
+        "server.js:68877  STATE.delegatedTasks.push(task);",
+        "server.js:68879  if (STATE.delegatedTasks.length > 100) STATE.delegatedTasks = STATE.delegatedTasks.slice(-100);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "dreamState",
+      "totalWrites": 5,
+      "byScope": {
+        "http-route": 5
+      },
+      "requestPathWrites": 5,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:67824  STATE.dreamState = {",
+        "server.js:67909  STATE.dreamState._replayDTUs = recentDTUs;",
+        "server.js:67990  STATE.dreamState.insights.push({"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "episodes",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:68408  if (!STATE.episodes) STATE.episodes = [];",
+        "server.js:68430  STATE.episodes.push(episode);",
+        "server.js:68434  STATE.episodes = STATE.episodes.slice(-500);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "futures",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:69209  if (!STATE.futures) STATE.futures = [];",
+        "server.js:69232  STATE.futures.push(future);",
+        "server.js:69233  if (STATE.futures.length > 100) STATE.futures = STATE.futures.slice(-100);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "gardens",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:68957  if (!STATE.gardens) STATE.gardens = [];",
+        "server.js:68975  STATE.gardens.push(garden);",
+        "server.js:68977  if (STATE.gardens.length > 50) STATE.gardens = STATE.gardens.slice(-50);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "mentorships",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:69506  if (!STATE.mentorships) STATE.mentorships = [];",
+        "server.js:69544  STATE.mentorships.push(mentorship);",
+        "server.js:69545  if (STATE.mentorships.length > 50) STATE.mentorships = STATE.mentorships.slice(-50);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "mlModels",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:62272  if (!STATE.mlModels) STATE.mlModels = new Map();",
+        "server.js:62277  STATE.mlModels.set(\"embeddings\", { id: \"embeddings\", name: \"Text Embeddings\", status: \"active\", type: \"embedding\", requestCount: 0, discover",
+        "server.js:62282  STATE.mlModels.set(\"classifier\", { id: \"classifier\", name: \"Intent Classifier\", status: \"active\", type: \"classification\", requestCount: 0, d"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "pathWeights",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 3
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:70141  if (!STATE.pathWeights) STATE.pathWeights = new Map(); // \"sourceId:targetId\" → { weight, lastTraversed }",
+        "server.js:70149  STATE.pathWeights.set(key, existing);",
+        "server.js:70172  if (data.weight < 0.1) STATE.pathWeights.delete(key);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "personas",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 2,
+        "http-route": 2
+      },
+      "requestPathWrites": 4,
+      "requestPathWritesWithoutWriteThrough": 3,
+      "riskiestSites": [
+        "server.js:35798  STATE.personas.set(id, persona);",
+        "server.js:68715  STATE.personas = Array.from(STATE.personas.values());",
+        "server.js:68718  STATE.personas = DEFAULT_PERSONAS.map(p => ({"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_apiRateWindows",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52053  STATE._apiRateWindows = STATE._apiRateWindows || new Map();",
+        "server.js:52059  STATE._apiRateWindows.set(keyId, recent);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_apiUsage",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52044  STATE._apiUsage = STATE._apiUsage || new Map();",
+        "server.js:52049  STATE._apiUsage.set(key, usage);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_costAccounting",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 2,
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:71052  if (!STATE._costAccounting) STATE._costAccounting = new Map();",
+        "server.js:71082  if (!STATE._costAccounting.has(uid)) STATE._costAccounting.set(uid, { daily: {}, weekly: 0, monthly: 0, total: 0, calls: [] });"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_dailyDtuCount",
+      "totalWrites": 2,
+      "byScope": {
+        "macro": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:24719  if (!STATE._dailyDtuCount) STATE._dailyDtuCount = {};",
+        "server.js:24720  if (!STATE._dailyDtuCount[_dtuTodayKey]) STATE._dailyDtuCount = { [_dtuTodayKey]: {} };"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_lastCascadeRecovery",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:46560  STATE._lastCascadeRecovery = report;",
+        "server.js:72473  STATE._lastCascadeRecovery = cascadeReport;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_lastIntegrityCheck",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 2,
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:46530  STATE._lastIntegrityCheck = { ...results, timestamp: Date.now() };",
+        "server.js:72459  STATE._lastIntegrityCheck = { ...integrityResults, timestamp: Date.now() };"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_migrations",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:71123  if (!STATE._migrations) STATE._migrations = { applied: [], pending: [] };",
+        "server.js:71202  STATE._migrations.applied.push({"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_pregenCache",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:51763  STATE._pregenCache = STATE._pregenCache || new Set();",
+        "server.js:51764  STATE._pregenCache.add(preGenKey);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_rateLimits",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 2,
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:71051  if (!STATE._rateLimits) STATE._rateLimits = new Map();",
+        "server.js:71066  if (!STATE._rateLimits.has(uid)) STATE._rateLimits.set(uid, { calls: [] });"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "apiKeys",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 3,
+        "macro": 1,
+        "http-route": 2
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52153  STATE.apiKeys = STATE.apiKeys || new Map();",
+        "server.js:52154  STATE.apiKeys.set(key.id, key);"
+      ],
+      "note": "SAFE — api_keys table; cache."
+    },
+    {
+      "key": "artistry",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:81845  STATE.artistry = {",
+        "server.js:81881  if (!STATE.artistry.citationRoyaltyUsage) STATE.artistry.citationRoyaltyUsage = new Map();"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "bequests",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52412  STATE.bequests = STATE.bequests || new Map();",
+        "server.js:52413  STATE.bequests.set(bequest.id, bequest);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "cognitiveDigitalTwins",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:69706  if (!STATE.cognitiveDigitalTwins) STATE.cognitiveDigitalTwins = new Map();",
+        "server.js:69826  STATE.cognitiveDigitalTwins.set(uid, twin);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "consent",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:64142  if (!STATE.consent) STATE.consent = new Map();",
+        "server.js:64144  STATE.consent.set(key, { granted: !!granted, updatedAt: nowISO() });"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "councilProposals",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:51453  if (!STATE.councilProposals) STATE.councilProposals = new Map();",
+        "server.js:51482  STATE.councilProposals.set(proposal.id, proposal);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "economic",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 4,
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:80848  STATE.economic.listings.set(listingId, {",
+        "server.js:81303  STATE.economic.ingestTracking.set(odId, tracking);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "entities",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52223  if (!STATE.entities) STATE.entities = new Map();",
+        "server.js:52262  STATE.entities.set(id, agent);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "feedbackQueue",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:46241  STATE.feedbackQueue = STATE.feedbackQueue || [];",
+        "server.js:46242  STATE.feedbackQueue.push({ id: feedbackId, targetType, targetId, feedbackType, description, processed: false });"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "feeds",
+      "totalWrites": 4,
+      "byScope": {
+        "helper/unknown": 2,
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:58417  if (!STATE.feeds) STATE.feeds = new Map();",
+        "server.js:58418  STATE.feeds.set(id, feed);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "governors",
+      "totalWrites": 2,
+      "byScope": {
+        "macro": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:54348  STATE.governors = STATE.governors || new Map();",
+        "server.js:54349  STATE.governors.set(governor.userId, governor);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "marketplaceListings",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:43729  if (!STATE.marketplaceListings) STATE.marketplaceListings = new Map();",
+        "server.js:43730  STATE.marketplaceListings.set(listing.id, listing);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "orgInvites",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52533  STATE.orgInvites = STATE.orgInvites || new Map();",
+        "server.js:52534  STATE.orgInvites.set(invite.id, invite);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "orgs",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 3,
+        "macro": 1,
+        "http-route": 2
+      },
+      "requestPathWrites": 3,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:52506  STATE.orgs = STATE.orgs || new Map();",
+        "server.js:52507  STATE.orgs.set(org.id, org);"
+      ],
+      "note": "SAFE — orgs table; cache."
+    },
+    {
+      "key": "sessions",
+      "totalWrites": 7,
+      "byScope": {
+        "helper/unknown": 4,
+        "macro": 1,
+        "boot": 1,
+        "http-route": 1
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:26153  STATE.sessions.set(sessionId, {",
+        "server.js:65800  for (const k of toRemove) STATE.sessions.delete(k);"
+      ],
+      "note": "PROCESS-LOCAL-BLOCKING — chat session buffers. Cluster needs sticky routing or Redis."
+    },
+    {
+      "key": "swarms",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:70005  if (!STATE.swarms) STATE.swarms = [];",
+        "server.js:70110  STATE.swarms = newSwarms;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "timeCrystals",
+      "totalWrites": 3,
+      "byScope": {
+        "http-route": 2,
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 2,
+      "riskiestSites": [
+        "server.js:70203  if (!STATE.timeCrystals) STATE.timeCrystals = [];",
+        "server.js:70267  STATE.timeCrystals = crystals;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_circuitBreakers",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:70837  STATE._circuitBreakers = circuitBreakers;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_eventBus",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:70565  STATE._eventBus = eventBus;"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_mindSpaceBridge",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:70574  STATE._mindSpaceBridge = {"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_pendingTransactions",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:72415  if (!STATE._pendingTransactions) STATE._pendingTransactions = {};"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_pulses",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:70653  if (!STATE._pulses) STATE._pulses = {};"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "assessments",
+      "totalWrites": 1,
+      "byScope": {
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:49637  if (!STATE.assessments) STATE.assessments = new Map();"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "councilVotes",
+      "totalWrites": 2,
+      "byScope": {
+        "macro": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:42412  if (!STATE.councilVotes.has(dtuId)) STATE.councilVotes.set(dtuId, []);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "entitlements",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:34831  STATE.entitlements.set(entId, ent);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "listings",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:34786  STATE.listings.set(id, listing);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "logs",
+      "totalWrites": 4,
+      "byScope": {
+        "helper/unknown": 1,
+        "boot": 2,
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:65803  if (STATE.logs?.length > 200) STATE.logs.splice(0, STATE.logs.length - 200);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "mlJobs",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:62271  if (!STATE.mlJobs) STATE.mlJobs = new Map();"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "notifications",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:64615  STATE.notifications.delete(req.params.id);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "papers",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:34847  STATE.papers.set(id, paper);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "simTimelines",
+      "totalWrites": 1,
+      "byScope": {
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:34295  STATE.simTimelines = STATE.simTimelines || {};"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "styleVectors",
+      "totalWrites": 8,
+      "byScope": {
+        "helper/unknown": 3,
+        "macro": 5
+      },
+      "requestPathWrites": 5,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:26199  STATE.styleVectors.set(sessionId, styleVec);"
+      ],
+      "note": "PROCESS-LOCAL-BENIGN — per-session style; regenerates."
+    },
+    {
+      "key": "transactions",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:34828  STATE.transactions.set(txId, tx);"
+      ],
+      "note": "MONEY — economy_ledger is authoritative."
+    },
+    {
+      "key": "userUniverses",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:84033  STATE.userUniverses.set(userId, universe);"
+      ],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "xpStore",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 1,
+      "riskiestSites": [
+        "server.js:67333  if (!STATE.xpStore) STATE.xpStore = {};"
+      ],
+      "note": "PER-USER — needs write-through or sticky routing."
+    },
+    {
+      "key": "__bgTickCounter",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "__chicken2",
+      "totalWrites": 7,
+      "byScope": {
+        "helper/unknown": 3,
+        "boot": 2,
+        "macro": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "__errorTracking",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "__governorTickAt",
+      "totalWrites": 1,
+      "byScope": {
+        "heartbeat": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_autogenPipeline",
+      "totalWrites": 2,
+      "byScope": {
+        "helper/unknown": 2
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_bridge",
+      "totalWrites": 11,
+      "byScope": {
+        "http-route": 11
+      },
+      "requestPathWrites": 11,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_interfaceProfiles",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_lastNPCSegment",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_lastNewsLogPoll",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_saveFailures",
+      "totalWrites": 2,
+      "byScope": {
+        "boot": 2
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_scopeSeparation",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "_startedAt",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "abstraction",
+      "totalWrites": 10,
+      "byScope": {
+        "helper/unknown": 10
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "attention",
+      "totalWrites": 2,
+      "byScope": {
+        "helper/unknown": 2
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "chemCompounds",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "chemReactions",
+      "totalWrites": 2,
+      "byScope": {
+        "http-route": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "cityWeather",
+      "totalWrites": 2,
+      "byScope": {
+        "helper/unknown": 2
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "commonsense",
+      "totalWrites": 7,
+      "byScope": {
+        "helper/unknown": 3,
+        "boot": 4
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "config",
+      "totalWrites": 2,
+      "byScope": {
+        "helper/unknown": 1,
+        "boot": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "crawlQueue",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "db",
+      "totalWrites": 1,
+      "byScope": {
+        "boot": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "experienceLearning",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 3
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "explanations",
+      "totalWrites": 4,
+      "byScope": {
+        "helper/unknown": 4
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "globalIndex",
+      "totalWrites": 7,
+      "byScope": {
+        "helper/unknown": 5,
+        "macro": 2
+      },
+      "requestPathWrites": 2,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "goals",
+      "totalWrites": 11,
+      "byScope": {
+        "helper/unknown": 11
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "PER-USER — verify persistence."
+    },
+    {
+      "key": "grounding",
+      "totalWrites": 15,
+      "byScope": {
+        "boot": 11,
+        "helper/unknown": 4
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "growth",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 3
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "hypothesisEngine",
+      "totalWrites": 7,
+      "byScope": {
+        "helper/unknown": 7
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "jobs",
+      "totalWrites": 5,
+      "byScope": {
+        "helper/unknown": 5
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "PROCESS-LOCAL-BLOCKING — in-memory job queue. Cluster needs a shared queue (Redis/DB)."
+    },
+    {
+      "key": "metaLearning",
+      "totalWrites": 9,
+      "byScope": {
+        "helper/unknown": 9
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "metacognition",
+      "totalWrites": 27,
+      "byScope": {
+        "helper/unknown": 27
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "npcCurrentBehaviors",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "organs",
+      "totalWrites": 5,
+      "byScope": {
+        "helper/unknown": 5
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "physics",
+      "totalWrites": 1,
+      "byScope": {
+        "http-route": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "reasoning",
+      "totalWrites": 13,
+      "byScope": {
+        "helper/unknown": 13
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "reflection",
+      "totalWrites": 2,
+      "byScope": {
+        "helper/unknown": 2
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "semantic",
+      "totalWrites": 8,
+      "byScope": {
+        "helper/unknown": 8
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "settings",
+      "totalWrites": 10,
+      "byScope": {
+        "helper/unknown": 10
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "shadowDtus",
+      "totalWrites": 6,
+      "byScope": {
+        "helper/unknown": 6
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "PROCESS-LOCAL — LRU-capped, not persisted. Shadow tier is internal; per-process divergence tolerable but a cluster loses shadows on the wrong node."
+    },
+    {
+      "key": "sources",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 2,
+        "macro": 1
+      },
+      "requestPathWrites": 1,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "sovereignAlerts",
+      "totalWrites": 3,
+      "byScope": {
+        "heartbeat": 3
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "teamTemplates",
+      "totalWrites": 1,
+      "byScope": {
+        "helper/unknown": 1
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "transfer",
+      "totalWrites": 8,
+      "byScope": {
+        "helper/unknown": 8
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    },
+    {
+      "key": "users",
+      "totalWrites": 3,
+      "byScope": {
+        "helper/unknown": 3
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "SAFE — users table is the source of truth; STATE.users is a cache (now also fronted by _userCache)."
+    },
+    {
+      "key": "worldModel",
+      "totalWrites": 12,
+      "byScope": {
+        "helper/unknown": 12
+      },
+      "requestPathWrites": 0,
+      "requestPathWritesWithoutWriteThrough": 0,
+      "riskiestSites": [],
+      "note": "UNCLASSIFIED — review."
+    }
+  ]
+}

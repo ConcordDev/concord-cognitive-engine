@@ -1,0 +1,23 @@
+{
+  "task_id": "44e04530-2adf-40da-812a-e99609ef2863",
+  "original_generation_task_id": "4a557967-de43-4593-81c0-08838a3144d1",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/4a557967-de43-4593-81c0-08838a3144d1/tripo_model_4a557967-de43-4593-81c0-08838a3144d1.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvNGE1NTc5NjctZGU0My00NTkzLTgxYzAtMDg4MzhhMzE0NGQxL3RyaXBvX21vZGVsXzRhNTU3OTY3LWRlNDMtNDU5My04MWMwLTA4ODM4YTMxNDRkMS5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzQ4NDd9fX1dfQ__&Signature=Mzv2I9doVsBtAD0buqtRI3BI0Zj9T25pB0tsMQjnkUJYij4RgEWJSxGKWXH44rDwnxJMrl9b6PcO-EGx~Ka~gFXMX6acLMJDeMbCOWmvxLsis82KfrdDvBxTn2BRWZMO5ny6YyyG6dAdTeheyF9Mri359xvk4edK~8RJrALYCU3q1ODQiU4QUpRM2palGuUdXWeFCZg1cmeA~uXH7wb4kgFkQc9PmSlNmoY6tKuAXNo63Wy4Ki4Sw2NIUilTysXpHiEmdMGcxYASdjOuT~o5rD8GcDq8tAvsGuzoPNlkHmLoKj6~DUFH7XvXjeOezxS34GuGGdblAoSghIHUQcOCnQ__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:14:14.629480",
+  "description": "A lore-grounded fantasy forge hall for Sangree, homeland of the Sanguire of Sandrun in Tunya. Obsidian-spire architecture: a low monumental black volcanic-stone forge house with a tall tapered chimney, heavy arched entry, ember-lattice metal braces, smelt-rune relief bands, broad fire-bloodline hearth opening, quench-vat alcove, and a signed-blade workbench bay. Built as a believable playable hero building with grounded walls, readable doors, thick masonry, asymmetrical hand-forged metal details, warm interior emissive fire surfaces, and weathered ash, soot, and red-orange metal accents. No characters.",
+  "negative_prompt": "No cubes, no placeholder primitives, no modern factory, no guns, no sci-fi panels, no floating parts, no text, no logos, no vegetation, no impossible overhangs.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_Sangree_Fire_Forge/Concordia_Sangree_Fire_Forge_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_Sangree_Fire_Forge/Concordia_Sangree_Fire_Forge.fbx"
+}

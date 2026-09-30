@@ -18,6 +18,24 @@ import { platformProviderIdForSlot } from "./platform-providers.js";
 // Environment-based toggle for adaptive brain scaling
 const ADAPTIVE_BRAIN_SCALING = process.env.CONCORD_ADAPTIVE_BRAIN_SCALING !== 'false';
 
+// Concurrency Refactor Phase 4 — fail-fast ollama-proxy cutover.
+// When OLLAMA_PROXY_URL is set, every local Ollama endpoint (http/https scheme)
+// is rewritten to the proxy address. The proxy reads `model` from each request
+// body, so one URL serves all brains. Non-http endpoints (cloudflare://, cloud
+// sentinels) pass through untouched. Applied inside _parseEndpoints so it covers
+// BOTH the static BRAIN_CONFIG.<brain>.url/.urls reads (chat-parallel-brains,
+// conversation-memory/summarizer, oracle-brain, repair-brain, brain-router, and
+// the ~4 direct server.js fetch sites) AND pickBrainEndpoint's candidate list.
+// Default unset → behaviour unchanged.
+const _OLLAMA_PROXY_URL = process.env.OLLAMA_PROXY_URL || "";
+function _applyProxy(list) {
+  if (!_OLLAMA_PROXY_URL) return list;
+  const mapped = list.map((u) =>
+    typeof u === "string" && /^https?:\/\//i.test(u) ? _OLLAMA_PROXY_URL : u,
+  );
+  return [...new Set(mapped)];
+}
+
 // Phase D — multi-endpoint scale-out.
 // If BRAIN_<NAME>_URLS is set (comma-separated), it overrides the singular
 // BRAIN_<NAME>_URL and a round-robin picker spreads requests across the
@@ -25,9 +43,9 @@ const ADAPTIVE_BRAIN_SCALING = process.env.CONCORD_ADAPTIVE_BRAIN_SCALING !== 'f
 function _parseEndpoints(plural, singular, fallback) {
   if (plural) {
     const list = String(plural).split(",").map(s => s.trim()).filter(Boolean);
-    if (list.length) return list;
+    if (list.length) return _applyProxy(list);
   }
-  return [singular || fallback];
+  return _applyProxy([singular || fallback]);
 }
 
 // Single-instance fallback: someone who just ran `ollama serve` (or set
@@ -68,14 +86,65 @@ const _vision_urls = _parseEndpoints(
   "http://ollama-vision:11434",
 );
 
+// Single-Ollama "hot-swap" collapse (Mac self-host).
+// The A40 deploy runs 7 Ollama instances, each with ONE resident model — so
+// pointing every brain slot at its own differentiated model is free there.
+// A single-Ollama box (one `ollama serve`, OLLAMA_MAX_LOADED_MODELS defaults
+// to 1) pointing 4 brain slots at 4 different models makes Ollama evict and
+// reload a model from disk on nearly every cross-brain call. That model
+// churn dominates latency and, under memory pressure, thrashes swap.
+// Set BRAIN_LOCAL_UNIFIED_MODEL to force every LOCAL (http/https) brain slot
+// onto one model so Ollama never swaps. Cloud slots (cloudflare://, cloud
+// sentinels) are untouched. An explicit per-slot BRAIN_<NAME>_MODEL still
+// wins if you deliberately want one slot differentiated.
+const _localUnifiedModel = String(process.env.BRAIN_LOCAL_UNIFIED_MODEL || "").trim();
+function _isLocalHttpEndpoint(u) {
+  return typeof u === "string" && /^https?:\/\//i.test(u);
+}
+/**
+ * Resolve a brain slot's model, honoring BRAIN_LOCAL_UNIFIED_MODEL.
+ * @param {string|undefined} perSlotEnv  value of BRAIN_<NAME>_MODEL (wins if set)
+ * @param {string} fallback              the built-in default for this slot
+ * @param {string} url                   the slot's resolved endpoint (a local
+ *                                       http(s):// endpoint is collapsible; a
+ *                                       cloudflare:// / cloud sentinel is not)
+ * @returns {string}
+ * Exported so the hand-written BRAIN object in server.js (the live source of
+ * truth for the 4 cognitive brains) resolves models identically.
+ */
+export function resolveBrainModel(perSlotEnv, fallback, url) {
+  if (perSlotEnv) return perSlotEnv; // explicit per-slot override always wins
+  if (_localUnifiedModel && _isLocalHttpEndpoint(url)) return _localUnifiedModel;
+  return fallback;
+}
+function _resolveBrainModel(perSlotEnv, fallback, urls) {
+  return resolveBrainModel(perSlotEnv, fallback, urls && urls[0]);
+}
+
+// 4-lane cutover: vision/multimodal may be Cloudflare Workers AI (not A40 VRAM).
+const _visionProvider = String(process.env.BRAIN_VISION_PROVIDER || "").toLowerCase().trim();
+const _visionIsCloudflare = _visionProvider === "cloudflare"
+  || _visionProvider === "workers-ai"
+  || _visionProvider === "cf"
+  || String(_vision_urls[0] || "").startsWith("cloudflare://");
+const _visionEffectiveUrls = _visionIsCloudflare
+  ? [process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || "cloudflare://workers-ai"]
+  : _vision_urls;
+
 export const BRAIN_CONFIG = Object.freeze({
   conscious: {
     url: _conscious_urls[0],
     urls: _conscious_urls,
-    model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
+    model: _resolveBrainModel(process.env.BRAIN_CONSCIOUS_MODEL, "concord-conscious:latest", _conscious_urls),
     role: "chat, deep reasoning, council deliberation, user-facing interactions",
     temperature: 0.7,
-    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 45000, // GPU inference; override per-deployment
+    // 180s (2026-09-09): on the A40 the conscious 30B blob lives on MooseFS
+    // network storage — a COLD load runs 45-120s, and a shorter timeout
+    // aborts it mid-load, which cancels the llama-server start and wedges
+    // ollama's scheduler into a retry loop that never seats the model.
+    // Once warm (keep_alive:-1) a call is fast; this only bites the first
+    // request after an ollama restart. Override per-deployment.
+    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 180000,
     priority: 1,       // CRITICAL — user-facing
     // Bumped 3 → 8 to match OLLAMA_NUM_PARALLEL=8 on the conscious
     // service. Anything lower bottlenecks the JS queue while the GPU
@@ -84,17 +153,25 @@ export const BRAIN_CONFIG = Object.freeze({
     // High context for conscious brain — handles chat history, reasoning chains,
     // and complex user queries. This is the brain users interact with directly.
     // Conscious is USER-FACING — needs full conversation memory.
-// 8192 = ~5GB KV cache max, still leaves 3GB cushion on 48GB A40
-// when combined with the low-cap background brains.
-// (Bumped back up 2026-08-15 from 4096 — background brains stay capped
-// at 2048-4096 to keep total KV cache headroom under ~6GB.)
-contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 8192),
+    //
+    // 32768 (2026-09-09): conscious is the ONLY brain that needs a large
+    // window — it carries the live conversation, reasoning chains and cited
+    // context a person is actually reading. The background brains
+    // (subconscious 4096 / utility 2048 / repair 2048) each run one
+    // autonomous task at a time with a fresh, task-scoped prompt, so they
+    // stay deliberately small. On the A40 (46GB) the KV budget with
+    // OLLAMA_KV_CACHE_TYPE=q8_0 is ~5-6GB for conscious@32k on the 30B-A3B
+    // (GQA) + <2GB combined for the three background brains — leaves the
+    // 30B+14B+2B weights (~32GB) comfortably resident with MAX_LOADED_MODELS=3.
+    // Raise past 32k per-deployment with BRAIN_CONSCIOUS_CONTEXT (also bump
+    // CONCORD_NUM_CTX_CAP — server.js#_ollamaNumCtx clamps to it).
+contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65536),
     maxTokens: 4096,   // Full output — let it think
   },
   subconscious: {
     url: _subconscious_urls[0],
     urls: _subconscious_urls,
-    model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
+    model: _resolveBrainModel(process.env.BRAIN_SUBCONSCIOUS_MODEL, "qwen2.5:7b-instruct-q4_K_M", _subconscious_urls),
     role: "autogen, dream, evolution, synthesis, birth, background analysis",
     temperature: 0.85,
     timeout: Number(process.env.BRAIN_SUBCONSCIOUS_TIMEOUT_MS) || 30000,
@@ -109,7 +186,7 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 819
   utility: {
     url: _utility_urls[0],
     urls: _utility_urls,
-    model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
+    model: _resolveBrainModel(process.env.BRAIN_UTILITY_MODEL, "qwen2.5:3b", _utility_urls),
     role: "lens interactions, entity actions, quick domain tasks, function calls",
     temperature: 0.3,
     timeout: Number(process.env.BRAIN_UTILITY_TIMEOUT_MS) || 20000,
@@ -123,14 +200,16 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 819
     maxTokens: 800,    // GPU: more complete outputs for entity actions
   },
   repair: {
+    // 4-lane: repair is NOT a separate VRAM brain — set BRAIN_REPAIR_URL/MODEL
+    // to the subconscious endpoint+model (alias). Call sites prefix REPAIR_MODE.
     url: _repair_urls[0],
     urls: _repair_urls,
     // Default matches the inline BRAIN declaration in server.js
     // (the hand-written object at server.js:14712 is the live source
     // of truth — see Phase 12 audit). 0.5b was the pre-Sprint-D
     // choice; 1.5b proved necessary for the auto-repair quality bar.
-    model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:1.5b",
-    role: "error detection, auto-fix, runtime repair",
+    model: _resolveBrainModel(process.env.BRAIN_REPAIR_MODEL, "qwen2.5:1.5b", _repair_urls),
+    role: "error detection, auto-fix, runtime repair (aliased to subconscious when env matches)",
     temperature: 0.1,
     timeout: Number(process.env.BRAIN_REPAIR_TIMEOUT_MS) || 10000,
     priority: 0,       // HIGHEST — system health
@@ -146,15 +225,16 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 819
     //   2. BRAIN_MULTIMODAL_URL — legacy alias.
     //   3. OLLAMA_URL / OLLAMA_HOST — single-Ollama deployments.
     //   4. ollama-vision:11434 — docker-compose default.
-    url: _vision_urls[0],
-    urls: _vision_urls,
+    url: _visionEffectiveUrls[0],
+    urls: _visionEffectiveUrls,
     // Default Qwen2.5-VL 7B (Apache-2.0) — unifies the stack on the Qwen family
     // and removes the LLaVA/Vicuna→LLaMA + GPT-4-instruction-data license ambiguity
     // (CC-BY-NC heritage) that made the old `llava:13b-v1.6-vicuna` a commercial
     // exposure. q4-class quant ≈ 7GB VRAM; with OLLAMA_FLASH_ATTENTION + the RTX PRO
     // 4500's 5th-gen tensor cores this stays well within the vision container budget.
     // Override with BRAIN_VISION_MODEL to pin a different vision model per deployment.
-    model: process.env.BRAIN_VISION_MODEL || process.env.OLLAMA_VISION_MODEL || "qwen2.5vl:7b",
+    model: process.env.BRAIN_VISION_MODEL || process.env.OLLAMA_VISION_MODEL || (_visionIsCloudflare ? "@cf/meta/llama-3.2-11b-vision-instruct" : "qwen2.5vl:7b"),
+    provider: _visionIsCloudflare ? "cloudflare" : "ollama",
     role: "vision analysis, image understanding, document layout, visual reasoning",
     temperature: 0.1,
     // Vision queries can take longer than chat — bumped 60s → 120s.
@@ -368,6 +448,9 @@ const _rrCursor = new Map();
 
 function _candidatesForBrain(brainName, { includeCloud = false } = {}) {
   const cfg = getActiveBrainConfig()[brainName];
+  // Phase 4 proxy substitution already happened in _parseEndpoints when
+  // BRAIN_CONFIG was built, so cfg.url/.urls are the proxy already if
+  // OLLAMA_PROXY_URL is set — nothing to do here.
   const local = cfg
     ? (Array.isArray(cfg.urls) && cfg.urls.length ? cfg.urls : (cfg.url ? [cfg.url] : []))
     : [];

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -100,7 +101,7 @@ export function PhotographyActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Photo — ${genre}`, tags: ['photography', genre, 'shoot'], source: 'photography:shoot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, photo: { exp: expResult, comp: compResult, gear: gearResult, print: printResult, genre, budget } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Photo — ${genre}`, tags: ['photography', genre, 'shoot'], source: 'photography:shoot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, photo: { exp: expResult, comp: compResult, gear: gearResult, print: printResult, genre, budget } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('photography.mintedDtuId', id, { label: `shoot ${id.slice(0, 8)}` }); ok(`Shoot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -123,7 +124,7 @@ export function PhotographyActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Shoot template — ${genre}`, tags: ['photography', genre, 'public', 'template'], source: 'photography:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, exp: expResult, comp: compResult, gear: gearResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Shoot template — ${genre}`, tags: ['photography', genre, 'public', 'template'], source: 'photography:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, exp: expResult, comp: compResult, gear: gearResult } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -136,7 +137,7 @@ export function ArtActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Art — ${pieceTitle.trim() || 'piece'}`, tags: ['art', styleResult?.topMatch?.style ?? 'unknown', harmonyResult?.temperature ?? ''].filter(Boolean), source: 'art:piece:mint', meta: { visibility: 'private', consent: { allowCitations: false }, art: { title: pieceTitle, colors: colors.split('\n').filter(Boolean), harmony: harmonyResult, composition: compositionResult, palette: paletteResult, style: styleResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Art — ${pieceTitle.trim() || 'piece'}`, tags: ['art', styleResult?.topMatch?.style ?? 'unknown', harmonyResult?.temperature ?? ''].filter(Boolean), source: 'art:piece:mint', meta: { visibility: 'private', consent: { allowCitations: false }, art: { title: pieceTitle, colors: colors.split('\n').filter(Boolean), harmony: harmonyResult, composition: compositionResult, palette: paletteResult, style: styleResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('art.mintedDtuId', id, { label: `Piece DTU ${id.slice(0, 8)}…` }); ok(`Piece DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -164,7 +165,7 @@ export function ArtActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public piece — ${pieceTitle.trim() || 'untitled'}`, tags: ['art', 'public', styleResult?.topMatch?.style ?? 'unknown'], source: 'art:piece:publish', meta: { visibility: 'public', consent: { allowCitations: true }, piece: { title: pieceTitle, palette: paletteResult?.palette?.map(p => p.hex), style: styleResult?.topMatch?.style, harmony: harmonyResult?.harmonyScore } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public piece — ${pieceTitle.trim() || 'untitled'}`, tags: ['art', 'public', styleResult?.topMatch?.style ?? 'unknown'], source: 'art:piece:publish', meta: { visibility: 'public', consent: { allowCitations: true }, piece: { title: pieceTitle, palette: paletteResult?.palette?.map(p => p.hex), style: styleResult?.topMatch?.style, harmony: harmonyResult?.harmonyScore } } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

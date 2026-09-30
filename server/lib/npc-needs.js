@@ -11,7 +11,11 @@
 // Pure + deterministic (no DB, no clock) so the math is contract-testable; the
 // DB read/write helpers are thin wrappers (needs live in world_npcs.needs_json).
 
-export const NEED_KINDS = Object.freeze(["hunger", "energy", "wealth", "social", "safety", "purpose", "comfort"]);
+export const NEED_KINDS = Object.freeze([
+  "hunger", "thirst", "energy", "sleep", "wealth", "social", "safety",
+  "purpose", "comfort", "status", "belonging", "entertainment", "romance",
+  "curiosity", "power", "freedom",
+]);
 
 // Deficit gained per HOUR of game/real time, per need. Tuned so hunger/energy
 // cycle a few times a day and purpose/wealth drift slowly. Env-overridable.
@@ -23,19 +27,32 @@ export const NEED_KINDS = Object.freeze(["hunger", "energy", "wealth", "social",
 // common case (honest-by-construction: no invented pressure without a real reading).
 export const DECAY_PER_HOUR = Object.freeze({
   hunger: Number(process.env.CONCORD_NEED_HUNGER_DECAY) || 0.16,
+  thirst: Number(process.env.CONCORD_NEED_THIRST_DECAY) || 0.14,
   energy: Number(process.env.CONCORD_NEED_ENERGY_DECAY) || 0.10,
+  sleep: Number(process.env.CONCORD_NEED_SLEEP_DECAY) || 0.09,
   wealth: Number(process.env.CONCORD_NEED_WEALTH_DECAY) || 0.05,
   social: Number(process.env.CONCORD_NEED_SOCIAL_DECAY) || 0.08,
   safety: Number(process.env.CONCORD_NEED_SAFETY_DECAY) || 0.03,
   purpose: Number(process.env.CONCORD_NEED_PURPOSE_DECAY) || 0.04,
   comfort: Number(process.env.CONCORD_NEED_COMFORT_DECAY) || 0,
+  status: Number(process.env.CONCORD_NEED_STATUS_DECAY) || 0.03,
+  belonging: Number(process.env.CONCORD_NEED_BELONGING_DECAY) || 0.04,
+  entertainment: Number(process.env.CONCORD_NEED_ENTERTAINMENT_DECAY) || 0.06,
+  romance: Number(process.env.CONCORD_NEED_ROMANCE_DECAY) || 0.03,
+  curiosity: Number(process.env.CONCORD_NEED_CURIOSITY_DECAY) || 0.05,
+  power: Number(process.env.CONCORD_NEED_POWER_DECAY) || 0.02,
+  freedom: Number(process.env.CONCORD_NEED_FREEDOM_DECAY) || 0.02,
 });
 
 function clamp01(n) { return Math.max(0, Math.min(1, n)); }
 
 /** A fresh needs vector — mild baseline deficits so even a new NPC has wants. */
 export function freshNeeds() {
-  return { hunger: 0.2, energy: 0.2, wealth: 0.3, social: 0.2, safety: 0.1, purpose: 0.2, comfort: 0 };
+  return {
+    hunger: 0.2, thirst: 0.15, energy: 0.2, sleep: 0.15, wealth: 0.3, social: 0.2,
+    safety: 0.1, purpose: 0.2, comfort: 0, status: 0.1, belonging: 0.15,
+    entertainment: 0.15, romance: 0.08, curiosity: 0.12, power: 0.08, freedom: 0.1,
+  };
 }
 
 /** Normalise any partial/garbage needs object to a complete clamped vector. */

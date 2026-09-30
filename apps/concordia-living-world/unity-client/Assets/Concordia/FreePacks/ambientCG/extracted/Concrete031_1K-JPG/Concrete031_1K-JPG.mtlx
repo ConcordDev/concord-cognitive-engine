@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<materialx version="1.39" fileprefix="./">
+  <open_pbr_surface name="Concrete031_1K_JPG_OpenPbrSurface" ypos="-1.879310" xpos="6.159420" type="surfaceshader">
+    <input name="base_color" nodename="Concrete031_1K_JPG_Color" type="color3" />
+    <input name="geometry_normal" nodename="NormalMap" type="vector3" />
+    <input name="specular_roughness" nodename="Concrete031_1K_JPG_Roughness" type="float" />
+  </open_pbr_surface>
+  <surfacematerial name="Concrete031_1K_JPG" ypos="0.000000" xpos="8.695652" type="material">
+    <input name="surfaceshader" nodename="Concrete031_1K_JPG_OpenPbrSurface" type="surfaceshader" />
+    <input name="displacementshader" nodename="displacement" type="displacementshader" />
+  </surfacematerial>
+  <tiledimage name="Concrete031_1K_JPG_Color" ypos="-3.103448" xpos="3.623188" type="color3">
+    <input name="file" colorspace="srgb_texture" value="Concrete031_1K-JPG_Color.jpg" type="filename" />
+    <input name="uvtiling" value="1.0, 1.0" type="vector2" />
+  </tiledimage>
+  <tiledimage name="Concrete031_1K_JPG_Displacement" ypos="5.163793" xpos="3.623188" type="float">
+    <input name="file" value="Concrete031_1K-JPG_Displacement.jpg" type="filename" />
+    <input name="uvtiling" value="1.0, 1.0" type="vector2" />
+  </tiledimage>
+  <displacement name="displacement" ypos="1.879310" xpos="6.159420" type="displacementshader">
+    <input name="displacement" nodename="Concrete031_1K_JPG_Displacement" type="float" />
+    <input name="scale" value="1.0" type="float" />
+  </displacement>
+  <tiledimage name="Concrete031_1K_JPG_NormalGL" ypos="0.879310" xpos="1.086957" type="vector3">
+    <input name="file" value="Concrete031_1K-JPG_NormalGL.jpg" type="filename" />
+    <input name="uvtiling" value="1.0, 1.0" type="vector2" />
+  </tiledimage>
+  <normalmap name="NormalMap" ypos="3.586207" xpos="3.623188" type="vector3">
+    <input name="in" nodename="Concrete031_1K_JPG_NormalGL" type="vector3" />
+    <input name="scale" value="1.0" type="float" />
+  </normalmap>
+  <tiledimage name="Concrete031_1K_JPG_Roughness" ypos="-0.413793" xpos="3.623188" type="float">
+    <input name="file" value="Concrete031_1K-JPG_Roughness.jpg" type="filename" />
+    <input name="uvtiling" value="1.0, 1.0" type="vector2" />
+  </tiledimage>
+</materialx>

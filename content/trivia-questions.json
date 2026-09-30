@@ -37,7 +37,7 @@
   {
     "id": "concordia-006",
     "questionText": "What ratio defines DTU consolidation from regulars to MEGAs?",
-    "answerHumanSummary": "33:1 compression (5-20 regulars per MEGA, every 30 ticks).",
+    "answerHumanSummary": "HASH-mode design-target compression (live IR ~1.2×) (5-20 regulars per MEGA, every 30 ticks).",
     "difficulty": 4,
     "tags": ["dtu", "consolidation"]
   },

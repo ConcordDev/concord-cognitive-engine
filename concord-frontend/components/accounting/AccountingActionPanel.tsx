@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -130,7 +131,7 @@ export function AccountingActionPanel() {
     setBusy('mint'); setFeedback(null);
     try {
       const periodLabel = plPeriodLabel(plResult);
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Books — ${periodLabel}`, tags: ['accounting', 'books', periodLabel].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Books — ${periodLabel}`, tags: ['accounting', 'books', periodLabel].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } }, 'dataset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('accounting.mintedDtuId', id, { label: `Books DTU ${id.slice(0, 8)}…` }); ok(`Books DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -160,7 +161,7 @@ export function AccountingActionPanel() {
     try {
       const periodLabel = plPeriodLabel(plResult);
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `P&L summary — ${periodLabel}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `P&L summary — ${periodLabel}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } }, 'dataset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

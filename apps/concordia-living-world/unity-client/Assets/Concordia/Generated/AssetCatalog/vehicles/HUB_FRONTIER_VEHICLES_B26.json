@@ -1,0 +1,663 @@
+{
+  "batch": "B26_vehicles",
+  "slice": "A08_vehicles_mounts_hub_frontier",
+  "count": 14,
+  "entries": [
+    {
+      "id": "veh_tack_draft_collar",
+      "display_name": "Draft Collar",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "tack",
+        "mount_part",
+        "lead_only"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One draft horse collar with two traces, harness only. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn leather, one brass ring, rope gall. Empty of people. No bit, no horse in frame. Harness for a lead. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One draft horse collar with two traces, harness only. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn leather, one brass ring, rope gall. Empty of people. No bit, no horse in frame. Harness for a lead. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thick ring with two lines hanging. Not a saddle.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "item_horse_tack on faun_wagon_horse. Lead only. Court visits may add the existing flower sprig as cloth, not a spell.",
+      "scale_vs_player": "0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_tack_draft_collar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "lead",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_hub_court",
+        "item_id": "item_horse_tack",
+        "creature_id": "faun_wagon_horse",
+        "mount_id": "mount_wagon_horse",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_hitch_rope",
+      "display_name": "Hitch Rope",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "tack",
+        "travel_prop"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One coiled hitch rope with a worn loop, no animal. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hemp, dust, one splice. Lies on the ground. No bridle, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One coiled hitch rope with a worn loop, no animal. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hemp, dust, one splice. Lies on the ground. No bridle, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat coil and one loop.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "item_hitch_rope for prop_hitching_rail. The horse is not in this mesh.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_hitch_rope/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hitch",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_frontier_road",
+        "item_id": "item_hitch_rope",
+        "parent_prop": "prop_hitching_rail",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_lead_rope",
+      "display_name": "Lead Rope",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "tack",
+        "travel_prop"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One lead rope, short coil and a single ring, no bridle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached hemp, grit in the lay. Empty of people. No pronghorn, no goat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One lead rope, short coil and a single ring, no bridle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached hemp, grit in the lay. Empty of people. No pronghorn, no goat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short coil with one ring standing up.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#8a7048",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "item_lead_rope. Frontier lead. mount_wind_pronghorn stays unbridled and is not this rope.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_lead_rope/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "lead",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Frontier road verge, open sky. Do not stake this into a roof. The road stays a door. Dome ribs are not parts.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "item_id": "item_lead_rope",
+        "creature_id": "faun_wagon_horse",
+        "flower_law": "n/a"
+      }
+    },
+    {
+      "id": "veh_wagon_pin",
+      "display_name": "Wagon Pin",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "part",
+        "travel_prop"
+      ],
+      "triangle_budget": 350,
+      "aura_prompt": "One iron wagon linchpin with a rope keeper, no wheel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short bent pin, rust, leather thong. Lies alone. Empty of weapons. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron wagon linchpin with a rope keeper, no wheel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short bent pin, rust, leather thong. Lies alone. Empty of weapons. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short bent bar with a thong.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "item_wagon_pin. Pins prop_wagon. No seated driver.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_wagon_pin/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 350,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hitch",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_hub_court",
+        "item_id": "item_wagon_pin",
+        "parent_prop": "prop_wagon",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_trace_hook",
+      "display_name": "Trace Hook",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "part",
+        "hitch"
+      ],
+      "triangle_budget": 450,
+      "aura_prompt": "One iron trace hook, open jaw, no chain gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Forged hook, rope burn on the eye. Empty. No animal, no harness mass, no dome fitting. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron trace hook, open jaw, no chain gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Forged hook, rope burn on the eye. Empty. No animal, no harness mass, no dome fitting. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A question-mark of iron.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "Joins the draft collar traces to prop_wagon. The animal stays a separate mesh.",
+      "scale_vs_player": "0.18 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_trace_hook/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 450,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hitch",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_hub_court",
+        "parent_prop": "prop_wagon",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_spare_iron_wheel",
+      "display_name": "Spare Iron Wheel",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "wheel",
+        "part"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One wooden wagon wheel with an iron tire, axle hole empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Twelve spokes, dust in the felloe, rust on the tire. Stands alone. Pivot is the axle hole, not a baked spin. No cart body. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wooden wagon wheel with an iron tire, axle hole empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Twelve spokes, dust in the felloe, rust on the tire. Stands alone. Pivot is the axle hole, not a baked spin. No cart body. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A circle with a dark hole. Reads round at 100 m.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "Wheel for prop_wagon, the hand carts, and the barrow. Radius about 0.42 m. Spin is speed over radius.",
+      "scale_vs_player": "0.84 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_spare_iron_wheel/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_hub_court",
+        "wheel_radius_m": 0.42,
+        "axle_pivot": true,
+        "parent_prop": "prop_wagon",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_hub_handcart",
+      "display_name": "Court Hand Cart",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "cart",
+        "push"
+      ],
+      "triangle_budget": 5200,
+      "aura_prompt": "One two-wheel hand cart, empty bed, hand shafts, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone dust on oak, small iron tires, no seat, no reins, no cargo. Shafts are for hands. Market-empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One two-wheel hand cart, empty bed, hand shafts, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone dust on oak, small iron tires, no seat, no reins, no cargo. Shafts are for hands. Market-empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low box between two circles and two short shafts.",
+      "palette": [
+        "#c4b49a",
+        "#6a5340",
+        "#c8721a",
+        "#2a241c",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Push cart. Empty bed may sit in the market. No steel cargo inside 42 m. Not prop_wagon.",
+      "scale_vs_player": "1.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_hub_handcart/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 5200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Market edge or Pinewood hitch. Empty of weapons. Not a wagon.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "wheel_radius_m": 0.28,
+        "parent_prop": null,
+        "flower_law": "empty_bed_ok_in_market"
+      }
+    },
+    {
+      "id": "veh_frontier_handcart",
+      "display_name": "Road Hand Cart",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "cart",
+        "push"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One low Frontier hand cart, canvas strap, iron tires, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached boards, one loose strap, hand shafts, empty bed, no seat, no sail, no dome. Lower than a court cart. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low Frontier hand cart, canvas strap, iron tires, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached boards, one loose strap, hand shafts, empty bed, no seat, no sail, no dome. Lower than a court cart. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat bed, two large wheels, one strap across.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#8a7048",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Push on the open road. Not the Iron Coast wharf cart. Not a retint of the Hub cart.",
+      "scale_vs_player": "1.7 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_frontier_handcart/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 5000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Frontier road verge, open sky. Do not stake this into a roof. The road stays a door. Dome ribs are not parts.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "wheel_radius_m": 0.34,
+        "flower_law": "n/a"
+      }
+    },
+    {
+      "id": "veh_frontier_wind_sail",
+      "display_name": "Wind-Wagon Sail",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "cloth",
+        "windwagon"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One laced canvas sail on a short spar, open, not a roof. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached patch, rope lacing, dust. No mast climb, no hull, no wagon body, no dome, no sealed canopy. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One laced canvas sail on a short spar, open, not a roof. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sun-bleached patch, rope lacing, dust. No mast climb, no hull, no wagon body, no dome, no sealed canopy. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A leaning cloth triangle on one stick.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#8a7048",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Sail part for veh_frontier_windwagon. Parent mesh stays prop_wagon. Player stays on foot or stands in the bed with no sit clip.",
+      "scale_vs_player": "1.8 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_frontier_wind_sail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "drift_with_wind",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Frontier road verge, open sky. Do not stake this into a roof. The road stays a door. Dome ribs are not parts.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "parent_prop": "prop_wagon",
+        "vehicle_id": "veh_frontier_windwagon",
+        "anim_state": "veh.sail_luff",
+        "flower_law": "n/a"
+      }
+    },
+    {
+      "id": "veh_pack_frame",
+      "display_name": "Walker Pack Frame",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "carry"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One empty wooden pack frame, shoulder yoke, no animal. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two uprights, one crossbar, rope lashing unused. Stands on the ground. No bedroll, no person, empty of weapons. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty wooden pack frame, shoulder yoke, no animal. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two uprights, one crossbar, rope lashing unused. Stands on the ground. No bedroll, no person, empty of weapons. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A narrow A with a crossbar.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "The walker carries this. It is not a mount and not a saddle.",
+      "scale_vs_player": "0.9 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_pack_frame/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "carry",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Salt-road verge or Frontier cabin porch. Not worn in this mesh.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_hub_court",
+        "flower_law": "outside_42m"
+      }
+    },
+    {
+      "id": "veh_link_hub_barrow",
+      "display_name": "Link Halt Barrow",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "cart",
+        "concord_link",
+        "perimeter"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One two-handle wooden barrow, empty pan, no engine. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak handles, one iron-tired wheel, dust from the west approach. No seat, no motor, no weapon, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One two-handle wooden barrow, empty pan, no engine. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak handles, one iron-tired wheel, dust from the west approach. No seat, no motor, no weapon, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two long handles and one wheel. A wedge.",
+      "palette": [
+        "#c4b49a",
+        "#6a5340",
+        "#c8721a",
+        "#2a241c",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Parked outside the wall so the Concord Link stays a step. Does not cross the Frontier plaque.",
+      "scale_vs_player": "1.5 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_link_hub_barrow/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 4000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Hub west approach, past the 56 m wall on the Frontier bearing. The Link is a two-minute plaque step. This prop does not enter the plaque.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "wheel_radius_m": 0.22,
+        "flower_law": "outside_42m",
+        "link": "concord_link_perimeter"
+      }
+    },
+    {
+      "id": "veh_link_halt_chock",
+      "display_name": "Wheel Chock",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "concord_link",
+        "perimeter"
+      ],
+      "triangle_budget": 320,
+      "aura_prompt": "One wooden wheel chock, wedge with a rope hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak, grit, no metal spike. Sits alone. Stops a parked wheel. No cart in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wooden wheel chock, wedge with a rope hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak, grit, no metal spike. Sits alone. Stops a parked wheel. No cart in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low wedge.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#c4b49a",
+        "#6a5340",
+        "#2a241c"
+      ],
+      "lore_blurb": "Holds prop_wagon or a hand cart at the hitch so it does not roll into the 42 m disk.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_link_halt_chock/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 320,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "also_kit": "arch_kit_frontier_road",
+        "flower_law": "outside_42m",
+        "link": "concord_link_perimeter"
+      }
+    },
+    {
+      "id": "veh_frontier_road_chest",
+      "display_name": "Road Chest",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "concord_link"
+      ],
+      "triangle_budget": 2600,
+      "aura_prompt": "One lashed road chest, shut, rope cross, no lettering. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust boards, iron corner nails, hemp cross. Closed. No lock hero, no papers, no dome mark. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One lashed road chest, shut, rope cross, no lettering. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust boards, iron corner nails, hemp cross. Closed. No lock hero, no papers, no dome mark. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low box with an X of rope.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#8a7048",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Cargo that stays on the Frontier side of the Link. It does not ride the plaque step.",
+      "scale_vs_player": "0.7 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_frontier_road_chest/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 2600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Frontier side of the Hub link, open road, not inside a cabin mesh.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "link": "concord_link_perimeter"
+      }
+    },
+    {
+      "id": "veh_hub_salt_skid",
+      "display_name": "Salt Keg Skid",
+      "batch": "B26_vehicles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "skid"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One salt keg on a two-runner wooden skid, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak keg, pale salt crust, short runners, empty of tools. No lettering, no wagon, no seat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One salt keg on a two-runner wooden skid, no horse. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oak keg, pale salt crust, short runners, empty of tools. No lettering, no wagon, no seat. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cylinder on two short rails.",
+      "palette": [
+        "#c4b49a",
+        "#6a5340",
+        "#c8721a",
+        "#2a241c",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Salt-road travel prop outside the wall, Pinewood side. Not the Flower Law urn.",
+      "scale_vs_player": "0.8 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_hub_salt_skid/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Pinewood hitch, outside the 56 m wall, salt road. Not inside the 42 m Flower Law disk. Not on the Frontier plaque at (-34, 0).",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "outside_42m"
+      }
+    }
+  ]
+}

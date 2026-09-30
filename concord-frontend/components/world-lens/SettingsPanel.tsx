@@ -24,6 +24,9 @@ export interface Settings {
   chatFilterEnabled: boolean;
   showFps: boolean;
   showDamageNumbers: boolean;
+  privacy: {
+    worldVisibility: boolean;
+  };
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -58,6 +61,9 @@ const DEFAULT_SETTINGS: Settings = {
   chatFilterEnabled: true,
   showFps: false,
   showDamageNumbers: true,
+  privacy: {
+    worldVisibility: true,
+  },
 };
 
 interface SettingsPanelProps {
@@ -152,9 +158,14 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
                      onChange={(v) => update('showDamageNumbers', v)} />
         </Section>
 
+        <Section title="Privacy">
+          <ToggleRow label="World Visible to Others" value={draft.privacy.worldVisibility}
+                     onChange={(v) => update('privacy', { ...draft.privacy, worldVisibility: v })} />
+        </Section>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
           <button onClick={reset} style={resetButtonStyle}>Reset to Defaults</button>
-          <button onClick={save} style={saveButtonStyle}>Save</button>
+          <button onClick={save} style={saveButtonStyle}>Apply</button>
         </div>
       </div>
     </div>
@@ -190,10 +201,10 @@ function SliderRow({ label, value, min, max, step, onChange }: { label: string; 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
       <span style={{ flex: 1 }}>{label}</span>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input type="range" min={min} max={max} step={step} value={Number(value ?? 0)}
              onChange={(e) => onChange(parseFloat(e.target.value))}
              style={{ flex: 2 }} />
-      <span style={{ width: 40, textAlign: 'right', color: '#aaa' }}>{value.toFixed(2)}</span>
+      <span style={{ width: 40, textAlign: 'right', color: '#aaa' }}>{Number(value ?? 0).toFixed(2)}</span>
     </div>
   );
 }

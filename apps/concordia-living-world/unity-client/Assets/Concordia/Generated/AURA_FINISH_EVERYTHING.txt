@@ -1,0 +1,95 @@
+UNITY-CLIENT CHAT ONLY. ConcordiaHub / unity-client.
+FINISH EVERYTHING — DO NOT STOP until FINAL REPORT is written.
+No waiting for chat. No “next wave tomorrow.” Chain phases L0→L7 continuously. If blocked, write the exact blocker into ~/.zuko/NEED_DUTCH.md and CONTINUE every unblocked phase.
+
+## ALREADY DONE — SKIP (do not redo)
+- 147 materials / 146 CX prefabs
+- Wave 0 LIFE_PROOF A–F PASS (kill→spoils→gossip→Hub remembers)
+- ContinentStream kill-memory preserve + AgentMotor inactive CC fix
+- UAL1 extracted: 86+ clips in UAL1_CLIP_INDEX.txt (Idle/Walk/Jog/Sprint/Jump/Roll/Sword/Hit/Death/Sit/Swim/…)
+- AuraRefs / open-world brief / cascade code on disk
+
+## HARD RULES
+- Do NOT regenerate plates/materials/prefabs unless LoadAsset fails.
+- Do NOT wipe Library / kill Concord / Claude RC.
+- Do NOT use Quaternius **meshes** as CX identity — clips only.
+- Do NOT start motion-matching.
+- Do NOT claim PASS without proof files + Play evidence.
+- Disk ~12 GB free — no bulk Poly Haven reimport; prefer binding UAL1 before new downloads; if free <6 GB, stop downloads and finish bind/glide/travel with UAL1 only.
+- Prefer bind existing systems (HitResolver, CombatMotion, CombatFeel, Hostile, SoftEnter, CxDress, ConcordClient).
+
+## L0 — UAL1 → Animator (must finish first)
+1) Rebuild ConcordiaLocomotion to drive from UAL1 Humanoid clips:
+   Idle=Idle_Loop · Walk=Walk_Loop · Jog=Jog_Fwd_Loop · Sprint=Sprint_Loop
+   JumpStart/Loop/Land · Dodge/Roll=Roll · Sword_Idle · Sword_Attack · Hit_Chest/Hit_Head · Death01
+2) ModularPerson + MixamoAvatar: `SetFloat("Speed", v, 0.12f, Time.deltaTime)` (damped). When `_clipsFit` and controller bound, disable full-body procedural gait + moving PlantFeet.
+3) Sync CombatMotion / HitResolver contact to Sword_Attack apex; dodge i-frames to Roll.
+4) Update AnimationLiveBindings honesty (no Idle-as-Attack / WalkTurnSharp-as-Dodge).
+5) Play CX hero: idle→walk→sprint→turn→stop→roll→sword→hit. `_clipsFit` must be true.
+Write progress into Assets/Concordia/Generated/FINISH_PROGRESS.txt after L0.
+
+## L1 — Glide / pacing
+1) Run ConcordiaVisualBenchmarkController 30s after warmup → GLIDE_PERF_PROOF.txt (avg/p50/p95/p99/worst). Target p95≤20ms, p99≤33ms. If FAIL: fix top spike (alloc/FindObjects/stream) — do not LeanPlay to fake it.
+2) Body turn + stop inertia; ChaseCamera exponential follow; no Fixed/Update fight.
+3) Gate idle PlantFeet / weapon-arm override to stable idle only with fade weights.
+4) Write AURA_GLIDE_PROOF.txt A–H (hero/bandit/guest/camera/clipsFit). Both ~/.zuko and Generated/.
+
+## L2 — Free packs (continue if blocked)
+If disk ≥8 GB free AND download tools available:
+  A) UAL2 Standard CC0 → Assets/Concordia/FreePacks/Quaternius/UAL2/ + UAL2_CLIP_INDEX.txt
+     https://quaternius.itch.io/universal-animation-library-2
+  B) Kevin Human Melee FREE → Assets/Concordia/FreePacks/KevinIglesias/HumanMeleeFREE/
+     https://assetstore.unity.com/packages/3d/animations/human-melee-animations-free-165785
+  C) Mixamo in-place Humanoid FBX (project use only) → Assets/Concordia/Anim/Mixamo/
+     Walking/Running/Strafe/Idle/Sword slash/Rolling/Impact/Turn — do not redistributable-pack Mixamo.
+If login required: append URL+dest to ~/.zuko/NEED_DUTCH.md and CONTINUE with UAL1-only combat set. Import any packs that land; bind best melee clips into ConcordiaLocomotion combat states.
+
+## L3 — Combat duel (Wave 1 leftover)
+Fantasy road, all 5 CX_Bandit_Sundering_* loadable:
+- Hostile telegraph visible; CounterMatches dodge/parry/block
+- CombatFeel kick/trail/spark on connect
+- CharacterGear CX weapons grip + reach
+- Spoils pouch on kill; Flower Law (no steel wounds in Court)
+- 30s duel Play + screenshots → Generated/Proof/Combat/
+Append PASS/FAIL to FINISH_PROGRESS.txt.
+
+## L4 — Visual megaworld (Wave 3 leftover)
+Against AuraRefs north-star + tours + CINEMATIC:
+- Hub Court weenie + Vinewood density (Kaykit/Kenney/BOXOPHOBIC mesh + CX mats); kill PlazaPad identity
+- SoftEnter Hub + Fantasy + one more spoke: sky/fog/kit/civic shift, no magenta
+- Gates dressed (not Prim); P2 props + P4 wayposts/carts on plaza + Crown Road
+Shots → Generated/Proof/Look/
+
+## L5 — Inter-megaworld travel (Wave 4 leftover)
+- SoftEnter walk Hub→Fantasy: breadcrumbs every 40–80m; horizon ≥3 POI types
+- WorldGate Teleport only at Canon gates; walking never menu-teleports
+- ContinentStream IsReady / ReceiveTraveler; second spoke out-and-back; player.world+kit sync
+Ban empty commute / house spam. Shots → Generated/Proof/Travel/
+
+## L6 — Concord presentation (Wave 5 leftover)
+With Concord running if possible:
+- ConcordClient open; gossip → feed; combat:kill → chronicle
+- SkillLattice kick → CombatFeel
+If Concord down: document in FINISH_PROGRESS; local WorldBook path must still hold (LIFE_PROOF already PASS).
+Do NOT rebuild settlements / consequences / fauna systems.
+
+## L7 — Re-prove + FINAL REPORT (mandatory stop condition)
+1) Re-run living loop smoke (A–F still PASS) — do not regress kill memory.
+2) Write ALL missing proofs:
+   ~/.zuko/AURA_GLIDE_PROOF.txt + Assets/.../AURA_GLIDE_PROOF.txt
+   ~/.zuko/AURA_MOCAP_BIND_PROOF.txt + Assets/.../AURA_MOCAP_BIND_PROOF.txt
+   Assets/Concordia/Generated/GLIDE_PERF_PROOF.txt
+   Assets/Concordia/Generated/FINISH_REPORT.txt
+3) FINISH_REPORT.txt format:
+   STATUS: COMPLETE | BLOCKED
+   L0..L7 each PASS/FAIL + one-line evidence
+   NEED_DUTCH leftovers (downloads/disk)
+   Prefab/mat counts
+   Animator source (UAL1/…)
+   Compile: clean?
+   Concord: up/down
+
+## DONE WHEN
+FINISH_REPORT.txt exists with L0–L5 PASS (L2 may be PARTIAL if NEED_DUTCH downloads), L6 PASS or honest Concord-down note, L7 smoke PASS, glide+mocap proofs written, compile clean, no Ethan Idle-as-Attack honesty traps left.
+
+START L0 immediately. After each Lx, append to FINISH_PROGRESS.txt and proceed to the next without asking. Only stop when FINISH_REPORT.txt is written.

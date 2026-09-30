@@ -70,6 +70,8 @@ vi.mock('@/lib/lens-registry', () => ({
 }));
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => () => null }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
   useAnimation: () => ({ start: vi.fn() }),

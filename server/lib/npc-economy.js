@@ -20,6 +20,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { performConstruction, performFarming, performLogging, performMining } from "./npc-labor-world.js";
+import { tryRecordConsequence } from "./world-consequence.js";
 import { npcBreakIn } from "./world-crime.js";
 
 // ── Resource taxonomy ───────────────────────────────────────────────────────
@@ -231,6 +232,16 @@ export function performTrade(db, npc) {
     });
     try { tx(); }
     catch (err) { return { ok: false, reason: "tx_failed", error: err?.message }; }
+    tryRecordConsequence(db, {
+      worldId: npc.world_id,
+      actorKind: "npc",
+      actorId: npc.id,
+      action: "trade",
+      targetKind: "npc",
+      targetId: peer.id,
+      importance: 0.4,
+      immediate: { item: surplusItem, qty: 1 },
+    });
     return { ok: true, gave: surplusItem, to_npc: peer.id };
   }
   return { ok: false, reason: "no_buyer" };

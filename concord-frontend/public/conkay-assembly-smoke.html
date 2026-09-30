@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay assembly smoke — multi-part + revise transform</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 160px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">CAD Wave 1 — assembly multi-part apply_mesh + revise transform (clear+redraw). ASSEMBLY LIVE — not full suite.</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var phase = 'wait_ready';
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    phase: phase,
+    partsApplied: 0,
+    reviseAck: false,
+    honesty: 'ASSEMBLY multi-part + revise — not full CAD suite'
+  };
+  window.__CONKAY_ASSEMBLY_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' || out.textContent === '' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function markOk() {
+    var applied = events.filter(function (e) { return e && e.event === 'mesh_applied'; });
+    state.partsApplied = applied.length;
+    state.eventNames = events.map(function (e) { return e && e.event; });
+    // Need >=2 mesh_applied from initial spawn, plus revise path (>=1 more mesh_applied OR transform_set OR clear ack + re-apply)
+    var hasTwo = applied.length >= 2;
+    var reviseEvents = events.filter(function (e) {
+      if (!e) return false;
+      if (e.event === 'transform_set') return true;
+      if (e.event === 'mesh_applied' && e.id && String(e.id).indexOf('revise') >= 0) return true;
+      if (e.event === 'ack' && e.payload && (e.payload.cmd === 'set_transform' || e.payload.cmd === 'clear_temp')) return true;
+      return false;
+    });
+    // Also count mesh_applied after phase revise
+    if (state.revisePosted && applied.length >= 3) state.reviseAck = true;
+    if (reviseEvents.length > 0) state.reviseAck = true;
+    state.ok = !!(hasTwo && state.reviseAck && state.bundleParts >= 2);
+    if (state.ok && state.reason === 'waiting') state.reason = 'assembly≥2parts+revise_transform';
+    state.phase = phase;
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    // parse payload if string
+    if (typeof data.payload === 'string') {
+      try { data.payload = JSON.parse(data.payload); } catch (e) {}
+    }
+    events.push(data);
+    line('EVENT ' + JSON.stringify({ event: data.event, id: data.id, payload: data.payload }));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload, id) {
+    var win = iframe.contentWindow;
+    if (!win) { line('post FAILED no contentWindow for ' + cmd); return false; }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || {},
+      id: id || ('asm-' + cmd + '-' + Date.now()),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify({ cmd: msg.cmd, id: msg.id, idField: payload && payload.id, pos: payload && payload.position }));
+      return true;
+    } catch (e) {
+      line('post ERR ' + e);
+      return false;
+    }
+  }
+
+  function startAssembly(bundle) {
+    if (!bundle || !bundle.parts || bundle.parts.length < 2) {
+      line('no bundle.parts (>=2 required)');
+      state.reason = 'missing_bundle';
+      return;
+    }
+    state.bundleParts = bundle.parts.length;
+    state.assemblyId = bundle.assemblyId || null;
+    phase = 'spawn';
+    postCmd('clear_temp', {}, 'asm-clear-init');
+    bundle.parts.forEach(function (p, i) {
+      postCmd('apply_mesh', {
+        positions: p.positions,
+        indices: p.indices,
+        color: p.color || (i === 0 ? '#22c55e' : '#3b82f6'),
+        id: p.id,
+        position: p.position || { x: i * 1.5, y: 1.2, z: 0 },
+        scale: p.scale || 1
+      }, 'asm-part-' + i + '-' + p.id);
+    });
+    // Revise: clear + re-apply part0 at new position (transform revise)
+    setTimeout(function () {
+      phase = 'revise';
+      state.revisePosted = true;
+      var p0 = bundle.parts[0];
+      var newPos = bundle.revisePosition || { x: 2.5, y: 1.2, z: 0.5 };
+      // Try set_transform first (may ack-only on older WebGL)
+      postCmd('set_transform', { id: p0.id, position: newPos }, 'asm-revise-xf-' + p0.id);
+      // LIVE-proven path: re-apply_mesh with new position (stable id replaces)
+      postCmd('apply_mesh', {
+        positions: p0.positions,
+        indices: p0.indices,
+        color: p0.color || '#22c55e',
+        id: p0.id,
+        position: newPos,
+        scale: p0.scale || 1
+      }, 'asm-revise-mesh-' + p0.id);
+      state.revisePosition = newPos;
+      markOk();
+    }, 2500);
+  }
+
+  window.__START_ASSEMBLY__ = startAssembly;
+
+  function tryStart() {
+    if (window.__ASSEMBLY_BUNDLE__) {
+      startAssembly(window.__ASSEMBLY_BUNDLE__);
+      return true;
+    }
+    return false;
+  }
+
+  var readyTimer = setInterval(function () {
+    var names = events.map(function (e) { return e && e.event; });
+    if (names.indexOf('ready') >= 0 || names.indexOf('pong') >= 0) {
+      if (!state.startedSpawn) {
+        state.startedSpawn = tryStart();
+      }
+    }
+    if (state.ok) {
+      state.finishedAt = Date.now();
+      clearInterval(readyTimer);
+      line('OK ' + state.reason);
+    }
+  }, 400);
+
+  // hello
+  setTimeout(function () {
+    postCmd('hello', { source: 'conkay-assembly-smoke' }, 'asm-hello');
+    postCmd('ping', { source: 'conkay-assembly-smoke' }, 'asm-ping');
+  }, 1500);
+
+  // late start if bundle injected after load
+  setTimeout(function () { if (!state.startedSpawn) state.startedSpawn = tryStart(); }, 5000);
+  setTimeout(function () { if (!state.startedSpawn) state.startedSpawn = tryStart(); }, 12000);
+})();
+  </script>
+</body>
+</html>

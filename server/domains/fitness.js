@@ -637,12 +637,23 @@ Generate the plan.`;
   }
 
   function periodBounds(period) {
+    // UTC-based throughout (not local .getDay()/.setDate()/.setHours()):
+    // goalProgress compares this boundary against activity dates parsed as
+    // explicit UTC (`new Date(a.date + "T00:00:00Z")`). Mixing a local-time
+    // boundary with UTC-parsed activity timestamps silently drops an
+    // activity logged "today" whenever local time has already rolled past
+    // local midnight but UTC hasn't caught up to the local period-start yet
+    // (or vice versa) — real, reproduced bug: at 00:29 local (EDT, UTC-4)
+    // on a Monday, local period-start computed 04:00 UTC Monday, but
+    // "today"'s activity (UTC date already Monday) parsed to 00:00 UTC
+    // Monday — 4 hours BEFORE the boundary — so a same-day 15km run
+    // reported 0 progress against a same-week goal.
     const now = new Date();
     const d = new Date(now);
-    if (period === "year") { d.setMonth(0, 1); }
-    else if (period === "month") { d.setDate(1); }
-    else { const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); } // week (Mon start)
-    d.setHours(0, 0, 0, 0);
+    if (period === "year") { d.setUTCMonth(0, 1); }
+    else if (period === "month") { d.setUTCDate(1); }
+    else { const dow = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - dow); } // week (Mon start)
+    d.setUTCHours(0, 0, 0, 0);
     return { start: d.getTime(), label: period || "week" };
   }
 

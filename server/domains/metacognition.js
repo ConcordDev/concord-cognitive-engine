@@ -2,6 +2,11 @@
 // Domain actions for metacognitive monitoring: confidence calibration,
 // learning curve modeling, and cognitive bias detection.
 
+import {
+  computeBrierScore, computeBrierSkillScore, computeLogLoss,
+  computeReliabilityBins, computeECE, computeMCE, calibrationQualityLabel,
+} from "../lib/calibration-math.js";
+
 export default function registerMetacognitionActions(registerLensAction) {
   /**
    * confidenceCalibration
@@ -36,51 +41,26 @@ export default function registerMetacognitionActions(registerLensAction) {
 
     const n = valid.length;
 
-    // --- Brier score: mean of (predicted - actual)^2 ---
-    const brierScore = valid.reduce((s, p) => s + Math.pow(p.predicted - p.actual, 2), 0) / n;
-
-    // --- Brier skill score (relative to climatological forecast) ---
+    // --- Brier score / skill / log-loss: shared math (lib/calibration-math.js) ---
+    const brierScore = computeBrierScore(valid);
     const baseRate = valid.reduce((s, p) => s + p.actual, 0) / n;
-    const brierClimatology = baseRate * (1 - baseRate);
-    const brierSkillScore = brierClimatology > 0 ? 1 - brierScore / brierClimatology : 0;
+    const brierSkillScore = computeBrierSkillScore(brierScore, baseRate);
+    const logLoss = computeLogLoss(valid);
 
-    // --- Log loss ---
-    const epsilon = 1e-15;
-    const logLoss = -valid.reduce((s, p) => {
-      const clipped = Math.max(epsilon, Math.min(1 - epsilon, p.predicted));
-      return s + (p.actual * Math.log(clipped) + (1 - p.actual) * Math.log(1 - clipped));
-    }, 0) / n;
+    // --- Calibration curve (binned), field names kept for back-compat ---
+    const rawBins = computeReliabilityBins(valid, numBins);
+    const bins = rawBins.map((b) => (b.count === 0
+      ? { binRange: [r(b.lower), r(b.upper)], count: 0, avgPredicted: null, avgActual: null, gap: null }
+      : {
+        binRange: [r(b.lower), r(b.upper)],
+        count: b.count,
+        avgPredicted: r(b.meanPredicted),
+        avgActual: r(b.meanActual),
+        gap: r(b.gap),
+      }));
 
-    // --- Calibration curve (binned) ---
-    const bins = [];
-    for (let i = 0; i < numBins; i++) {
-      const lower = i / numBins;
-      const upper = (i + 1) / numBins;
-      const inBin = valid.filter(p => p.predicted >= lower && (i === numBins - 1 ? p.predicted <= upper : p.predicted < upper));
-      if (inBin.length === 0) {
-        bins.push({ binRange: [r(lower), r(upper)], count: 0, avgPredicted: null, avgActual: null, gap: null });
-        continue;
-      }
-      const avgPredicted = inBin.reduce((s, p) => s + p.predicted, 0) / inBin.length;
-      const avgActual = inBin.reduce((s, p) => s + p.actual, 0) / inBin.length;
-      const gap = Math.abs(avgPredicted - avgActual);
-      bins.push({
-        binRange: [r(lower), r(upper)],
-        count: inBin.length,
-        avgPredicted: r(avgPredicted),
-        avgActual: r(avgActual),
-        gap: r(gap),
-      });
-    }
-
-    // --- Expected Calibration Error (ECE) ---
-    const ece = bins.reduce((s, bin) => {
-      if (bin.count === 0) return s;
-      return s + (bin.count / n) * (bin.gap || 0);
-    }, 0);
-
-    // --- Maximum Calibration Error (MCE) ---
-    const mce = Math.max(...bins.filter(b => b.count > 0).map(b => b.gap || 0), 0);
+    const ece = computeECE(rawBins, n);
+    const mce = computeMCE(rawBins);
 
     // --- Overconfidence / underconfidence analysis ---
     const overconfident = valid.filter(p => p.predicted > 0.5 && p.actual === 0).length;
@@ -97,7 +77,7 @@ export default function registerMetacognitionActions(registerLensAction) {
       ? negativePredictions.reduce((s, v) => s + v, 0) / negativePredictions.length : 0;
     const discrimination = avgPosPred - avgNegPred;
 
-    const calibrationQuality = ece < 0.05 ? "excellent" : ece < 0.1 ? "good" : ece < 0.2 ? "moderate" : "poor";
+    const calibrationQuality = calibrationQualityLabel(ece);
 
     return {
       ok: true,
@@ -764,35 +744,25 @@ export default function registerMetacognitionActions(registerLensAction) {
       }
       const numBins = mcClamp(Math.round(mcNum(params.bins) || 5), 2, 10);
 
-      // Brier score: mean (confidence - actual)^2
-      const brierScore = resolved.reduce((s, d) => s + Math.pow(d.confidence - (d.correct ? 1 : 0), 2), 0) / n;
+      // Brier score / skill + reliability diagram: shared math (lib/calibration-math.js)
+      const pairs = resolved.map((d) => ({ predicted: d.confidence, actual: d.correct ? 1 : 0 }));
+      const brierScore = computeBrierScore(pairs);
       const baseRate = resolved.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / n;
-      const brierClimatology = baseRate * (1 - baseRate);
-      const brierSkillScore = brierClimatology > 0 ? 1 - brierScore / brierClimatology : 0;
+      const brierSkillScore = computeBrierSkillScore(brierScore, baseRate);
       const accuracy = baseRate;
 
-      // Reliability diagram (binned predicted vs observed)
-      const reliability = [];
-      for (let i = 0; i < numBins; i++) {
-        const lower = i / numBins;
-        const upper = (i + 1) / numBins;
-        const inBin = resolved.filter((d) => d.confidence >= lower && (i === numBins - 1 ? d.confidence <= upper : d.confidence < upper));
-        if (inBin.length === 0) {
-          reliability.push({ binRange: [round(lower), round(upper)], midpoint: round((lower + upper) / 2), count: 0, predicted: null, observed: null, gap: null });
-          continue;
-        }
-        const predicted = inBin.reduce((s, d) => s + d.confidence, 0) / inBin.length;
-        const observed = inBin.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / inBin.length;
-        reliability.push({
-          binRange: [round(lower), round(upper)],
-          midpoint: round((lower + upper) / 2),
-          count: inBin.length,
-          predicted: round(predicted),
-          observed: round(observed),
-          gap: round(Math.abs(predicted - observed)),
-        });
-      }
-      const ece = reliability.reduce((s, b) => (b.count === 0 ? s : s + (b.count / n) * (b.gap || 0)), 0);
+      const rawBins = computeReliabilityBins(pairs, numBins);
+      const reliability = rawBins.map((b) => (b.count === 0
+        ? { binRange: [round(b.lower), round(b.upper)], midpoint: round((b.lower + b.upper) / 2), count: 0, predicted: null, observed: null, gap: null }
+        : {
+          binRange: [round(b.lower), round(b.upper)],
+          midpoint: round((b.lower + b.upper) / 2),
+          count: b.count,
+          predicted: round(b.meanPredicted),
+          observed: round(b.meanActual),
+          gap: round(b.gap),
+        }));
+      const ece = computeECE(rawBins, n);
 
       // Over/under-confidence summary
       const overconfident = resolved.filter((d) => d.confidence > 0.5 && !d.correct).length;
@@ -825,7 +795,7 @@ export default function registerMetacognitionActions(registerLensAction) {
           avgConfidence: round(avgConfidence),
           calibrationGap: round(calibrationGap),
           ece: round(ece),
-          quality: ece < 0.05 ? "excellent" : ece < 0.1 ? "good" : ece < 0.2 ? "moderate" : "poor",
+          quality: calibrationQualityLabel(ece),
           tendency: calibrationGap > 0.08 ? "overconfident" : calibrationGap < -0.08 ? "underconfident" : "well-calibrated",
           overconfident,
           underconfident,

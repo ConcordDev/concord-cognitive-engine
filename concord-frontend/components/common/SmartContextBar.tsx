@@ -52,6 +52,7 @@ function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
         .then((r) => r.data as LensListResponse)
         .catch(() => ({ items: [], total: 0 })),
     staleTime: 30_000,
+    retry: 0,
   });
 
   const dtuCount = domainDtus?.total || domainDtus?.items?.length || 0;

@@ -1,0 +1,4 @@
+
+# Python bytecode (OCC daemon / scripts)
+__pycache__/
+*.pyc

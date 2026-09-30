@@ -17,6 +17,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { SaveToCollectionButton } from '@/components/gallery/SaveToCollectionButton';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -95,7 +96,7 @@ export function GalleryActionPanel() {
     if (!selectedArt && !cmaResults.length) { err('Pick an artwork or run a search.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Gallery — ${selectedArt?.title ?? query}`, tags: ['gallery', 'artwork', selectedArt?.artist ?? 'collection'], source: 'gallery:artwork:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gallery: { query, selected: selectedArt, cmaResults: cmaResults.slice(0, 12), siResults: siResults.slice(0, 12) } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Gallery — ${selectedArt?.title ?? query}`, tags: ['gallery', 'artwork', selectedArt?.artist ?? 'collection'], source: 'gallery:artwork:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gallery: { query, selected: selectedArt, cmaResults: cmaResults.slice(0, 12), siResults: siResults.slice(0, 12) } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('gallery.mintedDtuId', id, { label: `Gallery DTU ${id.slice(0, 8)}…` }); ok(`Gallery DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -118,7 +119,7 @@ export function GalleryActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Curated gallery — ${query}`, tags: ['gallery', 'curated', 'public'], source: 'gallery:curated:publish', meta: { visibility: 'public', consent: { allowCitations: true }, curated: { query, featured: selectedArt, picks: cmaResults.slice(0, 6).concat(siResults.slice(0, 6)) } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Curated gallery — ${query}`, tags: ['gallery', 'curated', 'public'], source: 'gallery:curated:publish', meta: { visibility: 'public', consent: { allowCitations: true }, curated: { query, featured: selectedArt, picks: cmaResults.slice(0, 6).concat(siResults.slice(0, 6)) } } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

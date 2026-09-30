@@ -95,6 +95,21 @@ export function bumpStress(db, npcId, eventKind, magnitudeOverride = null) {
       WHERE npc_id = ?
     `).run(next, copingTrait, now, copingUntil, npcId);
     try { logger.info?.("npc_stress_break", { npcId, eventKind, stress: next, copingTrait }); } catch { /* noop */ }
+    try {
+      const emit = globalThis._concordRealtimeEmit;
+      if (typeof emit === "function") {
+        let worldId;
+        try { worldId = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(npcId)?.world_id; }
+        catch { worldId = null; }
+        emit("npc:stress-break", {
+          npcId,
+          copingTrait,
+          stress: next,
+          eventKind,
+          ...(worldId ? { worldId } : {}),
+        }, worldId ? { worldId } : {});
+      }
+    } catch { /* presentation optional */ }
   } else {
     db.prepare(`
       UPDATE npc_stress SET stress = ?, updated_at = unixepoch() WHERE npc_id = ?

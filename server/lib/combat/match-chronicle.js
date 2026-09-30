@@ -149,5 +149,19 @@ export function mintMatchChronicle(db, {
   });
 
   if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, chronicleId: result.dtu?.id ?? null };
+  const chronicleId = result.dtu?.id ?? null;
+  try {
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function" && chronicleId) {
+      emit("combat:chronicle", {
+        chronicleId,
+        title,
+        summary: human.summary,
+        worldId,
+        winnerId: winnerId || null,
+        loserId: loserId || null,
+      }, { worldId });
+    }
+  } catch { /* presentation optional */ }
+  return { ok: true, chronicleId };
 }

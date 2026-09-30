@@ -23,7 +23,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Camera, Share2, Trash2, RefreshCcw, Globe2, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PhotoLightboxModal } from '@/components/photos/PhotoLightboxModal';
 import { useUIStore } from '@/store/ui';
 
@@ -123,9 +122,7 @@ export default function PhotosLensPage() {
   const rows = tab === 'mine' ? mine : worldFeed;
 
   return (
-    <LensShell lensId="photos" asMain={false}>
-      <ManifestActionBar />
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-sky-950/10 text-slate-100">
+    <LensShell lensId="photos" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-sky-950/10 text-slate-100">
         <header className="border-b border-sky-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
             <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-2">

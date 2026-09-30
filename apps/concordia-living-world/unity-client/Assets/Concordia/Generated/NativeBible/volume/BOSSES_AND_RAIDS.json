@@ -1,0 +1,591 @@
+{
+  "schema": "concordia.volume.bosses.v1",
+  "authored": "2026-09-22",
+  "notes": [
+    "Encounters reuse mon_* bodies from creatures/MONSTERS.json. Event names are not new species.",
+    "Telegraph must hit board, scout, and sound before the circle arms.",
+    "Remembrance items are defined in VENDORS_AND_ITEMS.json. They are spoils, not vendor junk, except where a stall displays a spent token.",
+    "Damage still passes HitResolver. boss_rule on the monster row remains the law.",
+    "Schedules are hub-hour windows plus a cron-like hint for Aura's board clock. They are not a second calendar."
+  ],
+  "encounters": [
+    {
+      "id": "enc_held_curse",
+      "name": "The Held Curse",
+      "world_id": "Fantasy",
+      "creature_ids": [
+        "mon_boss_held_curse"
+      ],
+      "telegraph": {
+        "board": "Ward board draws a lowered crest. Offer window tonight.",
+        "scout": "From the fold overlook the hill-body is already there. Crest is the only vertical.",
+        "sound": "A human-like inhale that is not a voice. On the offer, silence."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Crest warn",
+          "tell": "Crest rises like a held blade.",
+          "player_response": "Break bark plates only to stop the sweep. Do not chase gold in the cracks."
+        },
+        {
+          "index": 2,
+          "name": "Inward breath",
+          "tell": "Gold leaks and closes. Breath stays inward.",
+          "player_response": "Stay in the inward cone. Outward breath means someone used the curse."
+        },
+        {
+          "index": 3,
+          "name": "The offer",
+          "tell": "Crest lowers. Silence.",
+          "player_response": "Refuse. skill_steel_curse_fold or a Presence refuse. Taking the offer fails the fight with HP still on the bar."
+        }
+      ],
+      "remembrance_item_id": "item_rem_crest_shard",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 19,
+        "close_hour": 22,
+        "every_nth_day": 3,
+        "cron": "0 19 */3 * *",
+        "label": "Sundering dusk, every third day"
+      },
+      "spawn_anchor": "Sundering fold floor, overlook is scout-only"
+    },
+    {
+      "id": "enc_fold_basilisk",
+      "name": "The Fold Basilisk",
+      "world_id": "Fantasy",
+      "creature_ids": [
+        "mon_sunder_basilisk"
+      ],
+      "telegraph": {
+        "board": "Hood-root sketch posted by the ward gate.",
+        "scout": "Overlook shows the hood before the body.",
+        "sound": "Dry scale on stone, then a stop."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Hood rise",
+          "tell": "Hood opens. Windup is not the idle coil.",
+          "player_response": "Leave the hood-root line or commit to it. Half-measures get the gaze."
+        },
+        {
+          "index": 2,
+          "name": "Stone offer",
+          "tell": "It wants you still.",
+          "player_response": "Move on the windup, not after. Killing it is allowed. Becoming a statue is the loss."
+        }
+      ],
+      "remembrance_item_id": "item_rem_hood_scale",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 11,
+        "close_hour": 14,
+        "every_nth_day": 2,
+        "cron": "0 11 */2 * *",
+        "label": "Fold noon, every second day"
+      },
+      "spawn_anchor": "Fold floor below the basilisk overlook"
+    },
+    {
+      "id": "enc_milepost_fold",
+      "name": "The Milepost Fold",
+      "world_id": "Fantasy",
+      "creature_ids": [
+        "mon_sunder_griffin"
+      ],
+      "telegraph": {
+        "board": "Pinewood Crossing post gains a second card: griffin on the Fantasy side of the seam.",
+        "scout": "The Hub side of the milepost stays clear. The griffin does not perch on the Court road.",
+        "sound": "One pinion beat, then canvas-quiet. Not a horse."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Pinion show",
+          "tell": "Wings make the silhouette. Idle is folded.",
+          "player_response": "Read the milepost name before you fight. Wrong name fails the scout."
+        },
+        {
+          "index": 2,
+          "name": "Seam test",
+          "tell": "It tests the gate seam, not the plaza.",
+          "player_response": "Hold the Fantasy side. Do not kite it through the 42m Court."
+        }
+      ],
+      "remembrance_item_id": "item_rem_milepost_splinter",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 16,
+        "close_hour": 18,
+        "every_nth_day": 4,
+        "cron": "0 16 */4 * *",
+        "label": "Salt-road late day, every fourth day"
+      },
+      "spawn_anchor": "Fantasy side of the Pinewood Crossing seam. The post itself stays Hub."
+    },
+    {
+      "id": "enc_twelfth_reap",
+      "name": "The Twelfth Reaper",
+      "world_id": "Tunya",
+      "creature_ids": [
+        "mon_tunya_harpy",
+        "mon_tunya_reapjackal"
+      ],
+      "mesh_note": "No unique mesh. The event dresses an existing harpy as the alpha and jackals as the pack. Do not invent a third body.",
+      "telegraph": {
+        "board": "Grove board: a reap is scheduled, theft is not the crime.",
+        "scout": "Harpy above the twelfth edge, jackals on the terrace.",
+        "sound": "Wood bell, then wing wrist."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Tool theft",
+          "tell": "They take tools and fruit.",
+          "player_response": "Recover goods. Downing them here is optional and not the fine."
+        },
+        {
+          "index": 2,
+          "name": "Reap attempt",
+          "tell": "Alpha goes for a trunk, not a basket.",
+          "player_response": "Stop the reap. skill_presence_do_not_reap staggers the alpha."
+        },
+        {
+          "index": 3,
+          "name": "Fine",
+          "tell": "Pack breaks.",
+          "player_response": "Turn in fruit, not trophies, or the veil standing drops."
+        }
+      ],
+      "remembrance_item_id": "item_rem_reap_talon",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 6,
+        "close_hour": 9,
+        "every_nth_day": 3,
+        "cron": "0 6 */3 * *",
+        "label": "Grove morning, every third day"
+      },
+      "spawn_anchor": "Twelfth district edge under the canopy"
+    },
+    {
+      "id": "enc_unfinished",
+      "name": "The Unfinished",
+      "world_id": "Ruins",
+      "creature_ids": [
+        "mon_boss_unfinished"
+      ],
+      "telegraph": {
+        "board": "Keeper board draws the ask pose and the mask.",
+        "scout": "Overlook. Staples catch ash light.",
+        "sound": "A question with no last consonant."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Ask",
+          "tell": "Mask turns. It wants an ending.",
+          "player_response": "Do not answer with a killing blow yet."
+        },
+        {
+          "index": 2,
+          "name": "Staples",
+          "tell": "Plates try to close the page.",
+          "player_response": "Open staples. skill_steel_unburial."
+        },
+        {
+          "index": 3,
+          "name": "Refuse the last line",
+          "tell": "It offers you the mask.",
+          "player_response": "Leave the mask. Wearing it completes the page and fails the Refusal of Death."
+        }
+      ],
+      "remembrance_item_id": "item_rem_unfinished_mask",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 21,
+        "close_hour": 23,
+        "every_nth_day": 3,
+        "cron": "0 21 */3 * *",
+        "label": "Ash night, every third day"
+      },
+      "spawn_anchor": "Unfinished floor under the keeper overlook"
+    },
+    {
+      "id": "enc_catalogue_walks",
+      "name": "The Catalogue That Walks",
+      "world_id": "Ruins",
+      "creature_ids": [
+        "mon_ruins_crawler",
+        "mon_ruins_wraith"
+      ],
+      "mesh_note": "Crawler is the body of the event. Wraiths are the margins, not a second boss.",
+      "telegraph": {
+        "board": "A catalogue line appears with no author.",
+        "scout": "Crawler between ribs. Wraith bells at the edge.",
+        "sound": "Page-turn that is actually plates."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Margin bells",
+          "tell": "Wraiths circle.",
+          "player_response": "Catalogue them. Do not finish them."
+        },
+        {
+          "index": 2,
+          "name": "Walker",
+          "tell": "Crawler advances a line.",
+          "player_response": "Break the line it is writing. skill_craft_catalogue names what you actually see."
+        }
+      ],
+      "remembrance_item_id": "item_rem_catalogue_tooth",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 15,
+        "close_hour": 17,
+        "every_nth_day": 2,
+        "cron": "0 15 */2 * *",
+        "label": "Ash afternoon, every second day"
+      },
+      "spawn_anchor": "Fossil rib yard"
+    },
+    {
+      "id": "enc_census",
+      "name": "The Census",
+      "world_id": "Cyber",
+      "creature_ids": [
+        "mon_boss_census"
+      ],
+      "telegraph": {
+        "board": "Junction slate lights a ring and leaves one number dark.",
+        "scout": "Magenta ring readable at 100m as a single hoop, not a crowd of UI.",
+        "sound": "A count that skips."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Ring",
+          "tell": "Hoop locks the junction.",
+          "player_response": "Stay unnamed. skill_presence_refuse_count."
+        },
+        {
+          "index": 2,
+          "name": "Missing number",
+          "tell": "It hunts the dark digit.",
+          "player_response": "Do not fill it with your name or a friend's."
+        },
+        {
+          "index": 3,
+          "name": "Forced total",
+          "tell": "It offers a sum that would make you legible.",
+          "player_response": "Break the sum. A completed census fails the Refusal of Numbers even if you win the bar."
+        }
+      ],
+      "remembrance_item_id": "item_rem_missing_number",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 2,
+        "close_hour": 4,
+        "every_nth_day": 3,
+        "cron": "0 2 */3 * *",
+        "label": "Grid small hours, every third day"
+      },
+      "spawn_anchor": "Census junction, scout from the cable walk"
+    },
+    {
+      "id": "enc_junction_null",
+      "name": "Junction Null",
+      "world_id": "Cyber",
+      "creature_ids": [
+        "mon_grid_sentinel",
+        "mon_grid_construct"
+      ],
+      "mesh_note": "Sentinel is the event lead. Construct is the hinge. Drones are ambient, not this roster.",
+      "telegraph": {
+        "board": "A junction box ticks a null where a serial should be.",
+        "scout": "Sentinel visor dark. Construct visor bar catches one lamp.",
+        "sound": "Relay click, then nothing in the slot a beep would fill."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Serial hunt",
+          "tell": "Sentinel paints numbers on the ground.",
+          "player_response": "Step out of your own number."
+        },
+        {
+          "index": 2,
+          "name": "Hinge",
+          "tell": "Construct tries to close the null.",
+          "player_response": "Keep the null. skill_steel_pulse on the hinge, not on a bystander."
+        }
+      ],
+      "remembrance_item_id": "item_rem_null_ring",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 13,
+        "close_hour": 15,
+        "every_nth_day": 2,
+        "cron": "0 13 */2 * *",
+        "label": "Grid midday, every second day"
+      },
+      "spawn_anchor": "Live junction box, nest already moved by q_cyber_sparrow_nest if that quest is done"
+    },
+    {
+      "id": "enc_outstanding",
+      "name": "The Outstanding Invoice",
+      "world_id": "Crime",
+      "creature_ids": [
+        "mon_coast_billhound"
+      ],
+      "telegraph": {
+        "board": "Bell's corner chalks a sum that is not yours until you pick it up.",
+        "scout": "Billhound on the wharf, invoice in the teeth, oil on the chest.",
+        "sound": "Paper snap, then claws on wet wood."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Presentment",
+          "tell": "It drops the invoice at your feet.",
+          "player_response": "Read it. Denial does not clear the sum."
+        },
+        {
+          "index": 2,
+          "name": "Collection",
+          "tell": "Pack circles.",
+          "player_response": "Pay, fight, or witness. Erasing the paper fails the Refusal of Consequence."
+        },
+        {
+          "index": 3,
+          "name": "Stamp",
+          "tell": "A stamp hovers.",
+          "player_response": "Take the stamp only after the sum is acknowledged."
+        }
+      ],
+      "remembrance_item_id": "item_rem_invoice_stamp",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 21,
+        "every_nth_day": 2,
+        "cron": "0 18 */2 * *",
+        "label": "Rain evening, every second day"
+      },
+      "spawn_anchor": "Wharf pilings under the gull line"
+    },
+    {
+      "id": "enc_last_dome",
+      "name": "The Last Dome",
+      "world_id": "Frontier",
+      "creature_ids": [
+        "mon_frontier_domebreaker"
+      ],
+      "telegraph": {
+        "board": "Road board: rivet heard. Dome trying to close over the mile.",
+        "scout": "Breaker on the flat, sky still open behind it.",
+        "sound": "Rivet gun rhythm, three then a gap."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Raise",
+          "tell": "A dome rib tries to become shelter.",
+          "player_response": "Knock the rib down. Shelter that closes the road fails the law."
+        },
+        {
+          "index": 2,
+          "name": "Rivet",
+          "tell": "It pins the rib.",
+          "player_response": "skill_steel_dust_kick the pin. Wind does the rest."
+        },
+        {
+          "index": 3,
+          "name": "Open sky",
+          "tell": "Ribs fall.",
+          "player_response": "Do not build a replacement roof."
+        }
+      ],
+      "remembrance_item_id": "item_rem_dome_rivet",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 12,
+        "close_hour": 15,
+        "every_nth_day": 3,
+        "cron": "0 12 */3 * *",
+        "label": "Road noon, every third day"
+      },
+      "spawn_anchor": "Open flat one mile past the frontier gate"
+    },
+    {
+      "id": "enc_road_followed",
+      "name": "The Road That Followed",
+      "world_id": "Frontier",
+      "creature_ids": [
+        "mon_road_watcher"
+      ],
+      "telegraph": {
+        "board": "A mile stake is on the wrong side of the rut.",
+        "scout": "Watcher silhouette is a post that moves between blinks.",
+        "sound": "Wood knock, like a milepost settling, twice."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Wrong stake",
+          "tell": "It wears the shape of a legitimate post.",
+          "player_response": "Read it. If the words are not a road law, it is the watcher."
+        },
+        {
+          "index": 2,
+          "name": "Follow",
+          "tell": "It paces your wagon.",
+          "player_response": "Lead the horse. Do not mount. Break the follow by leaving the dome it offers."
+        }
+      ],
+      "remembrance_item_id": "item_rem_watcher_nail",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 8,
+        "close_hour": 11,
+        "every_nth_day": 4,
+        "cron": "0 8 */4 * *",
+        "label": "Road morning, every fourth day"
+      },
+      "spawn_anchor": "Wagon mile between hitching rail and the verge"
+    },
+    {
+      "id": "enc_unfinished_sunrise",
+      "name": "The Unfinished Sunrise",
+      "world_id": "Superhero",
+      "creature_ids": [
+        "mon_dawn_mercy_sentinel"
+      ],
+      "telegraph": {
+        "board": "Dawn board: perch and hour. Band still on the sentinel.",
+        "scout": "Kite-hover silhouette at 100m, distinct from the aegis kestrel.",
+        "sound": "One chalk-dry wingbeat over the roof."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Perch",
+          "tell": "It offers a finishing blow as help.",
+          "player_response": "Refuse the help. skill_steel_mercy."
+        },
+        {
+          "index": 2,
+          "name": "Band",
+          "tell": "The mercy band brightens like a medal.",
+          "player_response": "Leave the band. Taking the win ends the dawn."
+        },
+        {
+          "index": 3,
+          "name": "Same morning",
+          "tell": "Sky does not change color to celebrate.",
+          "player_response": "Walk off the roof. No podium."
+        }
+      ],
+      "remembrance_item_id": "item_rem_mercy_band",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "every_nth_day": 2,
+        "cron": "0 5 */2 * *",
+        "label": "Permanent dawn hour, every second day"
+      },
+      "spawn_anchor": "Spar roof perch, scout from the thermal ledge"
+    },
+    {
+      "id": "enc_unender",
+      "name": "The Un-Ender",
+      "world_id": "Crucible",
+      "creature_ids": [
+        "mon_boss_unender"
+      ],
+      "telegraph": {
+        "board": "Lattice board: gap facing the overlook.",
+        "scout": "The hole in the shape is the read at 100m.",
+        "sound": "A seam pulling shut, then slipping."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Gap",
+          "tell": "It faces you with the missing piece.",
+          "player_response": "Do not fill the gap with a body."
+        },
+        {
+          "index": 2,
+          "name": "Close attempt",
+          "tell": "Plates try to finish.",
+          "player_response": "skill_craft_unend or skill_steel_shard on the seam."
+        },
+        {
+          "index": 3,
+          "name": "Almost ninth",
+          "tell": "A law offers itself.",
+          "player_response": "Stop. There is no ninth. Closing the fight as a completed system fails."
+        }
+      ],
+      "remembrance_item_id": "item_rem_unclosed_seam",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 20,
+        "close_hour": 23,
+        "every_nth_day": 3,
+        "cron": "0 20 */3 * *",
+        "label": "Lattice night, every third day"
+      },
+      "spawn_anchor": "Un-Ender gap floor. Overlook is scout-only."
+    },
+    {
+      "id": "enc_compound_mark",
+      "name": "The Compound Mark",
+      "world_id": "Sere",
+      "creature_ids": [
+        "mon_boss_compound_mark"
+      ],
+      "telegraph": {
+        "board": "Worker board at the furnace belt: eye and tile skirt.",
+        "scout": "Furnace eye is the only emissive. Skirt is tiles, not cloth.",
+        "sound": "Bellows, then a tile click that compounds."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Eye",
+          "tell": "Furnace eye tracks a debt.",
+          "player_response": "Name the holder with skill_presence_name_holder. Anonymous damage feeds the mark."
+        },
+        {
+          "index": 2,
+          "name": "Skirt",
+          "tell": "Tiles add interest.",
+          "player_response": "Crack one tile. Do not add your own brand."
+        },
+        {
+          "index": 3,
+          "name": "Compound",
+          "tell": "The sum tries to include the open ledger.",
+          "player_response": "Keep Esha's ledger out of the circle. Winning by selling the seed library fails."
+        }
+      ],
+      "remembrance_item_id": "item_rem_furnace_eye",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 17,
+        "close_hour": 20,
+        "every_nth_day": 3,
+        "cron": "0 17 */3 * *",
+        "label": "Furnace evening, every third day"
+      },
+      "spawn_anchor": "Furnace belt floor. Overlook is the worker scout."
+    }
+  ]
+}

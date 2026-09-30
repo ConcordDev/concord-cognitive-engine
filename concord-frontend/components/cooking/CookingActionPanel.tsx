@@ -23,6 +23,7 @@ import {
   RecallSlot,
   LoadFromSubstrate,
 } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -151,7 +152,7 @@ export function CookingActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult?.recipe ?? recipeName}`, tags: ['cooking', 'recipe'], source: 'cooking:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cook: { usda: usdaResult, scale: scaleResult, nutr: nutrResult, sub: subResult, recipe: recipeFor() } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Recipe — ${scaleResult?.recipe ?? recipeName}`, tags: ['cooking', 'recipe'], source: 'cooking:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cook: { usda: usdaResult, scale: scaleResult, nutr: nutrResult, sub: subResult, recipe: recipeFor() } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) {
         setMintedDtuId(id);
@@ -186,7 +187,7 @@ export function CookingActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult.recipe}`, tags: ['cooking', 'recipe', 'public'], source: 'cooking:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, scale: scaleResult, nutr: nutrResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Recipe — ${scaleResult.recipe}`, tags: ['cooking', 'recipe', 'public'], source: 'cooking:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, scale: scaleResult, nutr: nutrResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

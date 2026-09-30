@@ -127,6 +127,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "offline.filterCreate",
+      "name": "filterCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.filterDelete",
+      "name": "filterDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.filterList",
+      "name": "filterList"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "offline.like",
       "name": "like"
     },
@@ -393,5 +432,5 @@
   ],
   "domain": "offline",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 30
+  "macroCount": 33
 }

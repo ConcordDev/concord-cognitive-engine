@@ -1,4 +1,5 @@
 {
+  "license": "SEE LICENSE IN LICENSE.txt",
   "scripts": {
     "verify:move-render": "node scripts/verify-move-render-coverage.mjs",
     "verify:event-consumers": "node scripts/verify-event-consumers.mjs",
@@ -33,7 +34,11 @@
     "lens:unsurfaced": "node scripts/lens-unsurfaced.mjs",
     "lens:broken-calls": "node scripts/lens-broken-calls.mjs",
     "lens:unloaded": "node scripts/lens-unloaded-domains.mjs",
-    "export:web": "node scripts/export-godot-web.mjs"
+    "export:web": "node scripts/export-godot-web.mjs",
+    "export:unity-web": "node scripts/export-unity-web.mjs",
+    "sync:hub-kit": "node scripts/sync-concordia-hub-kit.mjs",
+    "bench:dhtp-rs": "node server/scripts/run-dhtp-rs.mjs",
+    "bench:dhtp-rs:resume": "node server/scripts/run-dhtp-rs.mjs resume"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

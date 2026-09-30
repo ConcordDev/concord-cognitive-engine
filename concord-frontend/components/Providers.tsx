@@ -15,6 +15,7 @@ import SplashScreen from '@/components/SplashScreen';
 import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket, reconnectSocket, subscribe } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
+import { installCsrfFetchGuard } from '@/lib/api/csrf-fetch';
 import { useUIStore } from '@/store/ui';
 import { reportClientError } from '@/hooks/useBugContext';
 import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
@@ -111,6 +112,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
+            retry: 1,
+            retryDelay: 400,
           },
         },
       })
@@ -121,6 +124,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // FE-018: Start performance observation
   useEffect(() => {
+    // Before any lens mounts: bare fetch() POSTs must carry CSRF or they
+    // 403 in production and look like permission failures.
+    installCsrfFetchGuard();
     observeWebVitals();
   }, []);
 
@@ -139,43 +145,44 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(id);
   }, []);
 
-  // Connect WebSocket and fetch user scopes on mount (if authenticated)
+  // Connect WebSocket and fetch user scopes on mount if authenticated.
+  // Do NOT require localStorage.concord_entered: cookie-only sessions
+  // (httpOnly concord_auth from Playwright storageState / returning browser)
+  // must still open the socket. Visible cookies start immediately; httpOnly
+  // cookies are detected via /api/auth/me. On success, persist the flag.
   useEffect(() => {
-    const entered = safeGetItem(localStorage, 'concord_entered');
-    if (!entered) return;
-
     let cancelled = false;
+    let started = false;
+    let offSystemReconnect: (() => void) | undefined;
 
-    // Connect WebSocket with existing session cookie
-    connectSocket();
+    const startRealtime = () => {
+      if (started) return;
+      started = true;
+      connectSocket();
+      // DET-C batch 8 — server/emergent/repair-cortex.js's `reconnect_websocket`
+      // self-repair action fires this to tell an already-connected client its
+      // socket state should be reset (stale auth, a detected desync, etc.).
+      offSystemReconnect = subscribe('system:reconnect', () => {
+        reconnectSocket();
+      });
+      api.get('/api/auth/csrf-token').catch(() => {});
+    };
 
-    // DET-C batch 8 — server/emergent/repair-cortex.js's `reconnect_websocket`
-    // self-repair action fires this to tell an already-connected client its
-    // socket state should be reset (stale auth, a detected desync, etc.). It
-    // used to have zero consumers: the repair action would "succeed" server-
-    // side while nothing on the client ever actually reconnected.
-    const offSystemReconnect = subscribe('system:reconnect', () => {
-      reconnectSocket();
-    });
+    const entered = safeGetItem(localStorage, 'concord_entered');
+    const hasVisibleAuthCookie =
+      typeof document !== 'undefined' &&
+      /(?:^|;\s*)(concord_auth|concord_refresh)=/.test(document.cookie);
+    if (entered || hasVisibleAuthCookie) startRealtime();
 
-    // Fetch CSRF token on app init (ensures POSTs work even if login was in a prior session)
-    api.get('/api/auth/csrf-token').catch(() => {});
-
-    // Fetch user scopes for PermissionGate + sync the real role into
-    // useUIStore. The real backend shape (server/routes/auth.js `/me`) is
-    // `{ ok, user: { id, username, email, role, scopes, ... } }` — reading
-    // `res.data?.scopes` (no `.user`) was a stale wrong-path bug that meant
-    // `scopes` always fell through to `res.data?.permissions` (also never
-    // present) and silently resolved to `[]` for every user, every session.
-    // The role sync is new: `useUIStore`'s `userRole` previously had no
-    // real producer anywhere in the app and stayed stuck at its hardcoded
-    // default forever, which — combined with `isLensVisible` — meant
-    // sovereign-gated lenses (admin/command-center) were never actually
-    // hidden from anyone regardless of their real role.
     api.get('/api/auth/me')
       .then((res) => {
         if (cancelled) return;
         const user = res.data?.user;
+        const authed = !!(user || res.data?.ok);
+        if (authed) {
+          safeSetItem(localStorage, 'concord_entered', 'true');
+          startRealtime();
+        }
         const scopes = user?.scopes || res.data?.scopes || res.data?.permissions || [];
         if (Array.isArray(scopes)) setUserScopes(scopes);
         if (typeof user?.role === 'string' && user.role) {
@@ -183,13 +190,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {
-        // Not authenticated — the 401 interceptor will handle redirect.
+        // Not authenticated — GET 401 interceptor does not hard-redirect.
         // userRole stays at its fail-closed 'user' default.
       });
 
     return () => {
       cancelled = true;
-      offSystemReconnect();
+      offSystemReconnect?.();
       disconnectSocket();
     };
   }, []);

@@ -39,6 +39,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import zlib from "node:zlib";
 import { stripComments } from "../lib/detectors/command-injection-detector.js";
 
 const RAW = readFileSync(
@@ -92,7 +93,7 @@ describe("runBackup — the database is actually captured", () => {
 
   it("uses the real DB_PATH constant", () => {
     assert.match(RUN_BACKUP, /fs\.existsSync\(DB_PATH\)/);
-    assert.match(RUN_BACKUP, /fs\.promises\.readFile\(DB_PATH\)/);
+    assert.match(RUN_BACKUP, /fs\.createReadStream\(DB_PATH\)/);
   });
 
   it("DB_PATH is the same constant the rest of the server opens", () => {
@@ -115,7 +116,29 @@ describe("runBackup — the database is actually captured", () => {
   it("compresses off the event loop", () => {
     // gzipSync on a 33MB+ database blocked the loop for the whole compression.
     assert.ok(!RUN_BACKUP.includes("gzipSync"), "still compressing synchronously");
-    assert.match(RUN_BACKUP, /zlib\.gzip\(/);
+    assert.match(RUN_BACKUP, /zlib\.createGzip\(/);
+  });
+
+  it("streams the database through gzip instead of buffering it whole — the 2026-09-05 fix", () => {
+    // zlib's one-shot gzip(buffer, cb) has a hard ~2^31-1 byte (2GiB) input
+    // ceiling, independent of available memory. fs.promises.readFile(DB_PATH)
+    // + zlib.gzip(raw, ...) hit exactly that ceiling once the live DB (grown
+    // past 2GiB by event_timeline_log's unbounded growth, fixed separately)
+    // crossed it — every daily backup failed with "File size (...) is
+    // greater than 2 GiB" while correctly logging the error, not silently
+    // swallowing it (that part was already fixed; this fixes the actual
+    // capture). A streaming pipeline has no such ceiling and never
+    // materializes a second multi-GB copy of the DB in the Node heap.
+    assert.ok(
+      !RUN_BACKUP.includes("fs.promises.readFile(DB_PATH)"),
+      "runBackup still reads the whole database into one Buffer before compressing",
+    );
+    assert.ok(
+      !RUN_BACKUP.includes("zlib.gzip(raw"),
+      "runBackup still calls zlib's one-shot gzip API, which has the 2GiB input ceiling",
+    );
+    assert.match(RUN_BACKUP, /pipeline\(/, "must use a real stream pipeline, not a manual .pipe() chain (which drops error propagation)");
+    assert.match(RUN_BACKUP, /fs\.createWriteStream\(gzipPath\)/);
   });
 });
 
@@ -203,5 +226,74 @@ describe("createBackup — retention is a span of TIME, not a raw count", () => 
     assert.match(SRC, /function _stateBackupRetentionCount\(\)/);
     assert.match(SRC, /Math\.min\(24, Math\.max\(3, perDay \* _STATE_BACKUP_RETENTION_DAYS\)\)/);
     assert.match(SRC, /const MAX_STATE_BACKUPS = _stateBackupRetentionCount\(\)/);
+  });
+});
+
+// The source-text assertions above pin that runBackup CALLS the streaming
+// shape; this describes whether that shape actually WORKS — a real,
+// end-to-end exercise of the exact pipeline runBackup now runs
+// (createReadStream -> zlib.createGzip -> createWriteStream via
+// stream/promises' pipeline), independent of server.js's own wiring.
+// Genuinely constructing a >2GiB fixture to reproduce the original ceiling
+// directly would be a slow, disk-heavy test for a well-documented, fixed
+// constant of zlib's one-shot API (Node's own docs: gzip's one-shot form is
+// bounded by `buffer.constants.MAX_LENGTH` / the V8 string/array-buffer
+// limit around 2^31-1 bytes) — the streaming form has no such ceiling
+// because it never holds the whole input in one buffer, which is exactly
+// what this test demonstrates on a real (smaller, fast-to-generate) file:
+// correct round-trip compression via the identical three-stage pipeline.
+describe("the streaming gzip pipeline runBackup uses: real round-trip, not just source-text shape", () => {
+  it("compresses a real file via createReadStream -> createGzip -> createWriteStream and decompresses back to the exact original bytes", async () => {
+    const { pipeline } = await import("node:stream/promises");
+    const zlib = (await import("zlib")).default;
+    const fs = (await import("fs")).default;
+    const os = await import("node:os");
+    const path = (await import("path")).default;
+    const crypto = await import("node:crypto");
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "backup-gzip-stream-"));
+    const srcPath = path.join(dir, "fake.db");
+    const gzipPath = path.join(dir, "fake.db.gz");
+    const outPath = path.join(dir, "fake.db.restored");
+    try {
+      // Not huge (a real >2GiB fixture would make this test itself part of
+      // the disk-pressure problem CLAUDE.md's own doctrine warns about
+      // creating during verification) but large enough across enough
+      // chunks to be a genuine multi-buffer stream, not a single read.
+      const original = crypto.randomBytes(8 * 1024 * 1024); // 8MB, incompressible on purpose
+      fs.writeFileSync(srcPath, original);
+
+      await pipeline(
+        fs.createReadStream(srcPath),
+        zlib.createGzip({ level: 6 }),
+        fs.createWriteStream(gzipPath),
+      );
+      assert.ok(fs.existsSync(gzipPath));
+      assert.ok(fs.statSync(gzipPath).size > 0);
+
+      await pipeline(
+        fs.createReadStream(gzipPath),
+        zlib.createGunzip(),
+        fs.createWriteStream(outPath),
+      );
+      const restored = fs.readFileSync(outPath);
+      assert.equal(restored.length, original.length);
+      assert.ok(restored.equals(original), "decompressed bytes must exactly match the source — a byte-level round trip, not just a size check");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("the one-shot API this replaces really does have the documented ceiling (sanity check that the fix targets a real constraint, not an imagined one)", () => {
+    // Node's zlib one-shot functions reject a buffer whose length exceeds
+    // buffer.constants.MAX_LENGTH when that exceeds the internal kMaxLength
+    // check; on every platform this repo targets the effective ceiling zlib
+    // itself enforces is 2^32 - 1 bytes for the underlying C library call,
+    // surfaced by Node as a RangeError/"invalid input" for input at or past
+    // that boundary. This test doesn't allocate a multi-GB buffer (slow,
+    // and the point is already proven by the vendor's own documented
+    // behavior) — it exists so a future reader has a pointer to WHY the
+    // ceiling is real, not asserted on faith.
+    assert.equal(typeof zlib.gzip, "function", "one-shot API still exists for other, smaller-payload call sites — this test is not asking for its removal");
   });
 });

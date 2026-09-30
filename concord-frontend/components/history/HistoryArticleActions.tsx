@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 export interface ArticleSummaryLike {
   title: string;
@@ -72,7 +73,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Citing ${article.title}`,
           tags: ['history', 'wikipedia', 'citation'],
           source: 'history:cite',
@@ -82,7 +83,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
             citation: { title: article.title, url: sourceUrl, lang: article.lang ?? 'en' },
             extract: article.extract.slice(0, 1000),
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -112,7 +113,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: guideDtuId
             ? `Added to study guide: ${article.title}`
             : `Study guide (${new Date().toISOString().slice(0, 10)})`,
@@ -124,7 +125,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
             consent: { allowCitations: false },
             article: { title: article.title, url: sourceUrl, description: article.description ?? null },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -142,7 +143,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Brief: ${article.title}`,
           tags: ['history', 'brief', 'public'],
           source: 'history:brief:publish',
@@ -152,7 +153,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
             article: { title: article.title, url: sourceUrl, description: article.description ?? null },
             extract: article.extract.slice(0, 2000),
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

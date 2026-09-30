@@ -98,6 +98,18 @@ export const ALLOWLIST = [
     reason:
       "real-data poll, not animation: re-fetches the actual /api/chat/context-budget/:sessionId endpoint on an adaptive cadence (5s over-threshold, 30s otherwise); the rendered badge is pure derived state from that real payload, and the hook self-reports 'unreachable' on any fetch failure rather than faking a value — no progress/percentage is animated on this clock.",
   },
+  {
+    file: "concord-frontend/components/conkay/ConKayOverlay.tsx",
+    snippet: "setInterval(refresh, 2000)",
+    reason:
+      "DOM-presence poll, not animation: refresh = () => setUnityPresent(unityIframePresent()), a real check of whether the Unity WebGL iframe is currently mounted. There is no 'iframe added/removed' DOM event and the iframe appears/disappears as the user navigates lenses; `unityPresent` only gates whether the F0 build-marker buttons are enabled. Cleared on unmount. No progress is animated.",
+  },
+  {
+    file: "concord-frontend/lib/conkay/evo-glb-to-world.ts",
+    snippet: "const deadline = setTimeout(() => {",
+    reason:
+      "event-race deadline, not animation: real completion is the Unity `glb_loaded` event (the onUnityEvent listener resolves + clearTimeout on receipt); this one-shot setTimeout only bounds the wait at waitMs (15s default) so a silent Unity never hangs the caller. Fires once, no poll loop, no motion.",
+  },
 ];
 
 // ---------------------------------------------------------------------------

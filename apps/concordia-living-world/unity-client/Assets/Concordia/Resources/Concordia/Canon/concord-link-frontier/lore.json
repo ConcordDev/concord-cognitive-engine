@@ -1,0 +1,192 @@
+{
+  "world_id": "concord-link-frontier",
+  "world_name": "The Frontier",
+  "world_description": "The territory between the cities, where the federation actually does its work — peer-to-peer routing, walker journeys, and the human-scale anchors that make trust transitive between cities.",
+  "history": [
+    {
+      "id": "frontier_lore_first_walk",
+      "title": "The First Walk",
+      "type": "founding",
+      "era": "Year 8",
+      "description": "Eight years after Concordia's founding, the first Concord-Link walker carried a sealed parcel from Concordia to Sovereign Ruins. The journey took 11 days. The walker was a courier named Helva — Postmaster Ria's grandmother. The parcel contained Concordia's first Refusal Compact and Sovereign's accepting reply. The Frontier's first Link Post was built that year on the campsite where Helva had broken her ankle on day six.",
+      "significance": "founding",
+      "factions_involved": [
+        "frontier_couriers_guild"
+      ]
+    },
+    {
+      "id": "frontier_lore_freenode_emergence",
+      "title": "The Emergence of the Freenodes",
+      "type": "discovery",
+      "era": "Year 88",
+      "description": "Eighty years into the Couriers' Guild monopoly, Temir's predecessor founded the first autonomous relay — a single solar-powered station that could exchange handshakes without a human courier present. Within a year, seven more had appeared. The Couriers' Guild voted unanimously to shun them; the Freenodes voted unanimously to refuse the shunning. Both votes were recorded in the Sovereign Archive.",
+      "significance": "major",
+      "factions_involved": [
+        "frontier_couriers_guild",
+        "frontier_freenodes"
+      ],
+      "known_by": [
+        "frontier_couriers_guild",
+        "frontier_freenodes",
+        "ruins_archivists"
+      ]
+    },
+    {
+      "id": "frontier_lore_handshake_protocol",
+      "title": "The Handshake Protocol",
+      "type": "discovery",
+      "era": "Year 91",
+      "description": "Three years after the Freenodes emerged, Temir negotiated the Handshake Protocol that allows a Freenode and a Courier to bear witness to each other's parcels. The Protocol is a piece of glyph-algebra borrowed from the Sovereign Archive: a parcel's record cannot be valid unless both signatures appear. The Protocol does not solve the rivalry, but it has prevented a single lost parcel since.",
+      "significance": "major",
+      "factions_involved": [
+        "frontier_couriers_guild",
+        "frontier_freenodes"
+      ],
+      "known_by": [
+        "frontier_couriers_guild",
+        "frontier_freenodes"
+      ],
+      "hidden_truth": "The Handshake Protocol was secretly seeded by Vela of the Sovereign Ruins, who walked the parcel that delivered it to Temir. Vela has not been seen leaving the Ruins in over a hundred years; the Frontier's most senior couriers consider her appearance that month a folk-tale."
+    },
+    {
+      "id": "frontier_lore_compromised_relays",
+      "title": "The Compromised Relays",
+      "type": "conflict",
+      "era": "current",
+      "description": "Three Freenode relays were sabotaged in the last lunar quarter. Two failed silently; one logged a partial intrusion record before the relay's keeper destroyed it. The Couriers' Guild has not commented. Postmaster Ria knows more than she has said; Temir knows she knows.",
+      "significance": "active",
+      "factions_involved": [
+        "frontier_freenodes",
+        "frontier_couriers_guild",
+        "iron_wardens"
+      ],
+      "known_by": [
+        "frontier_freenodes"
+      ],
+      "hidden_truth": "The third relay was attacked by a Concordian operative under direct orders from Warden Commander Voss. Ria has the proof; Temir suspects but cannot prove."
+    },
+    {
+      "id": "frontier_lore_the_mesh_gate",
+      "title": "The Mesh Gate",
+      "type": "monument",
+      "era": "Year 95",
+      "description": "A monument made of stripped antennas from the first ten federation handshakes. It stands at the geographic center of the Frontier. Players who arrive there for the first time find a small plaque acknowledging them as the seventh-thousand-and-something visitor; the count is updated by walker Lin every time a new player passes through.",
+      "significance": "minor"
+    },
+    {
+      "id": "frontier_lore_the_lost_parcel",
+      "title": "The Lost Parcel",
+      "type": "active",
+      "era": "current",
+      "description": "Two months ago, Dorvik delivered a parcel from Concordia to Sovereign that did not arrive. The receipt was logged at Link Post Alpha; the delivery was never logged at Sovereign. Dorvik insists he delivered it; Kestra insists no parcel arrived. The Handshake Protocol failed for the first time. Both factions are quietly investigating.",
+      "significance": "active",
+      "factions_involved": [
+        "frontier_couriers_guild",
+        "frontier_freenodes",
+        "ruins_archivists"
+      ]
+    },
+    {
+      "id": "frontier_lore_walker_lin_question",
+      "title": "Whether Walker Lin Remembers",
+      "type": "philosophical",
+      "era": "current",
+      "description": "Dorvik has begun greeting Lin by name on every encounter. Lin has begun greeting Dorvik first, in advance of being addressed. Ria refuses to discuss it. The Couriers' Guild constitution does not provide for autonomous walkers having continuity of identity, so the question has not been formally raised.",
+      "significance": "minor",
+      "factions_involved": [
+        "frontier_couriers_guild"
+      ]
+    },
+    {
+      "id": "frontier_lore_concordia_compact_refresh",
+      "title": "Concordia's Compact-Refresh Ratification",
+      "type": "event",
+      "era": "Year 100",
+      "description": "Concordia's hundredth-anniversary ratification of the Founding Compact was witnessed by a Frontier delegation including Postmaster Ria's mother and a young Temir. The witnessing established the Frontier as the primary venue for inter-city Refusal disputes — a role the Frontier has held for two generations.",
+      "significance": "major",
+      "factions_involved": [
+        "frontier_couriers_guild",
+        "frontier_freenodes",
+        "scholars_guild"
+      ]
+    },
+    {
+      "id": "frontier_third_incursion",
+      "title": "The Third Incursion",
+      "type": "war",
+      "era": "Year -3",
+      "description": "The third frontier incursion broke against Zara Morn's perimeter. She has not slept eight hours since.",
+      "significance": "major",
+      "factions_involved": [
+        "frontier_militia"
+      ],
+      "known_by": [
+        "frontier_militia"
+      ],
+      "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_dust_rose_arrival",
+      "title": "Dust Rose Arrives",
+      "type": "personal",
+      "era": "Year -3",
+      "description": "A ten-year-old appeared at the militia camp during the incursion. Refused to say from where. Has stayed.",
+      "significance": "minor",
+      "factions_involved": [],
+      "known_by": [],
+      "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_mara_election",
+      "title": "The Letter-Writer's Election",
+      "type": "founding",
+      "era": "Year -5",
+      "description": "Mara Pin was elected on a platform of writing letters and refusing the militia's worse ideas. Has done both.",
+      "significance": "minor",
+      "factions_involved": [],
+      "known_by": [],
+      "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_silas_quinn_route",
+      "title": "Silas Quinn's Western Route",
+      "type": "discovery",
+      "era": "Year -8",
+      "description": "Long Rider Silas Quinn discovered a passable route through the lattice-touched western waste. He has not declared it on any map.",
+      "significance": "major",
+      "factions_involved": [],
+      "known_by": [],
+      "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_first_portal_anomaly",
+      "title": "The First Portal Anomaly",
+      "type": "mystery",
+      "era": "Year 0",
+      "description": "A portal at the western perimeter opened off-schedule for the first time recorded. Six months later it opened a second time. Now it opens weekly.",
+      "significance": "major",
+      "factions_involved": [
+        "frontier_militia"
+      ],
+      "known_by": [
+        "frontier_militia"
+      ],
+      "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_lore_the_parcel_resurfaces",
+      "title": "The Parcel Resurfaces",
+      "type": "mystery",
+      "era": "Year 91",
+      "description": "The lost Concordia-to-Sovereign parcel surfaced — not at either end, but as a Handshake echo: Link Post Alpha logged the same parcel-hash being requested for delivery a second time, from a portal that opened off-schedule and answered to no post. Whoever holds it can speak to the Link without a post's leave. Kestra now believes the parcel never failed to arrive; it was taken in transit, inside the Link itself, by someone who can walk it untracked. The manifest line the couriers will not read aloud names the addressee only as 'V.' Dorvik has stopped insisting he is innocent and started asking who else can open a door the Handshake did not.",
+      "significance": "Advances the Lost Parcel from a flat mystery to an active thread, welding it to the off-schedule portal anomaly + the cross-world Voss ('V.') genealogy + the hub's off-schedule-portal clue. A next-step for the player, not a closed case.",
+      "factions_involved": [
+        "frontier_militia"
+      ],
+      "known_by": [
+        "frontier_militia"
+      ],
+      "world_id": "concord-link-frontier"
+    }
+  ]
+}

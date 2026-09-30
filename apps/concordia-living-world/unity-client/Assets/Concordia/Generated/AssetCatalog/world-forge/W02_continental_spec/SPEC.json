@@ -1,0 +1,582 @@
+{
+  "schema": "concordia-world-forge-continental/1.0",
+  "slice_id": "W02_continental_spec",
+  "phase": "G1",
+  "batch": "WF1_continental",
+  "title": "Continental generator: landforms, mountain chains, passes, coasts, islands on the World Field",
+  "consumes": [
+    {
+      "schema": "concordia-world-forge-field/1.0",
+      "slice_id": "W01_world_field_schema",
+      "path": "world-forge/W01_world_field_schema/SPEC.json"
+    },
+    {
+      "schema": "concordia-world-forge-canon-graph/1.0",
+      "slice_id": "W00_world_forge_canon_graph",
+      "path": "world-forge/W00_world_forge_canon_graph/SPEC.json"
+    }
+  ],
+  "authority_docs": [
+    "lookfeel/MAP_MASTER.json",
+    "lookfeel/geography/",
+    "WORLD_FORGE_GEO_CIV_AUDIT.md",
+    "world-forge/GEO_CIV_AUDIT.md"
+  ],
+  "honesty": "Feature geometry is design-intent constrained by W00 affinities and W01 exemplar bands. The 2 km grid is a contract, not a file. Sere, tunya_unplaced, tunya_fallback kilometres, the Last Dome mile, and the Ruins envoy claim are not stamped. Crucible crest metres are design-intent and are not in W01. Play-patch constants are copied from server/lib/world-terrain.js and are not retuned. islands is empty on purpose.",
+  "pipeline": [
+    "elevation",
+    "hydrology",
+    "climate",
+    "biome",
+    "resources",
+    "mobility",
+    "suitability",
+    "civ",
+    "pop",
+    "economy",
+    "growth",
+    "infra",
+    "physicalization"
+  ],
+  "writes_channels": ["elevation", "slope", "geology"],
+  "leaves_for_later_stages": [
+    "drainage",
+    "water",
+    "temperature",
+    "rainfall",
+    "humidity",
+    "biome",
+    "soil",
+    "resource",
+    "fertility"
+  ],
+  "continent": {
+    "id": "concordia_megaworld",
+    "frame": "megaworld_km",
+    "origin": "Hub",
+    "axes": "+x east toward Cyber, +z north toward the Sundering",
+    "ring_km": 400.0,
+    "seas": ["inner_veil", "exodus_ocean"],
+    "sea_level_m": 0,
+    "discs_are": "worlds on one field, not separate continents",
+    "world_id_fantasy_display": "The Sundering",
+    "world_id_unchanged": "Fantasy"
+  },
+  "frames": {
+    "continental_veil_datum": {
+      "unit": "metres above the Inner Veil / Exodus water plane",
+      "horizontal": "megaworld_km",
+      "cell_km": 2.0,
+      "cell_authority": "design_intent",
+      "sea_rule": "elevation_m <= 0 is the sea mask G2 inherits"
+    },
+    "hub_court_walk": {
+      "unit": "metres above the Hub walk surface",
+      "flower_law_radius_m": 42,
+      "flower_law_axis": "horizontal",
+      "court_absolute_veil": "inherit inner edge of hub_approaches band 15–40 m; do not store 0 and do not invent a surveyed offset"
+    },
+    "play_patch_metres": {
+      "source": "server/lib/world-terrain.js",
+      "symbols_unchanged": [
+        "renderedElevationAt",
+        "generatePoughkeepsieHeightmap",
+        "terrainSpec",
+        "sampleRenderedHeight",
+        "hashSeed",
+        "createSimplexNoise2D",
+        "octaveNoise2D"
+      ],
+      "terrain_size_m": 2000,
+      "max_elevation_m": 80,
+      "seed": 12648430,
+      "seed_hex": "0xc0ffee",
+      "seed_is_per_world": false,
+      "authority_label_for_later_binder": "play_patch_legacy",
+      "must_not": "Add continental_veil_datum metres to renderedElevationAt. Retune the seed. Encode 42 as elevation."
+    }
+  },
+  "grid": {
+    "materialize": false,
+    "cell_km": 2.0,
+    "bbox_km": { "min_x": -520, "max_x": 520, "min_z": -580, "max_z": 520 },
+    "origin": "southwest corner, cell (0,0)",
+    "index": "gx = floor((x_km - min_x) / cell_km); gz likewise",
+    "nx": 520,
+    "nz": 550,
+    "cell_count_if_allocated": 286000,
+    "note": "Count is the design-intent allocation size. This catalog does not store the cells."
+  },
+  "seed_policy": {
+    "macro": "feature stamp from chains, passes, coasts, marches, and sector bands. No simplex orogeny.",
+    "micro": {
+      "symbol": "hashSeed",
+      "path": "server/lib/world-terrain.js",
+      "algorithm": "fnv1a-32",
+      "input": "worldId + ':' + gx + ':' + gz",
+      "amplitude_m": "min(2, 0.02 * (band.max - band.min))",
+      "clamp": "result stays inside the stamped band",
+      "can_change_class": false,
+      "applies_to_renderedElevationAt": false
+    }
+  },
+  "algorithm": [
+    "sea_mask_named_gaps_and_exodus_basin",
+    "sector_stamp_inside_disc",
+    "chain_ridge_stamp",
+    "pass_carve",
+    "land_march_interpolation",
+    "coast_polyline",
+    "island_flood_fill_clamp",
+    "slope_from_neighbours",
+    "geology_lookup",
+    "built_relief_excluded_from_ground",
+    "affinity_check"
+  ],
+  "slope_classes": [
+    { "id": "near_level", "rise_over_run_max_exclusive": 0.04 },
+    { "id": "gentle", "rise_over_run_max_exclusive": 0.12 },
+    { "id": "moderate", "rise_over_run_max_exclusive": 0.25 },
+    { "id": "steep", "rise_over_run_max_exclusive": 0.5 },
+    { "id": "cliff", "rise_over_run_min_inclusive": 0.5 }
+  ],
+  "slope_sample": {
+    "derived_from": "elevation",
+    "neighbour": "4-neighbour",
+    "run_m": 2000,
+    "formula": "max abs(delta elevation_m) / 2000"
+  },
+  "built_relief_not_elevation": [
+    "stack_vertical",
+    "skybridge",
+    "skyline",
+    "roof_pad",
+    "overpass_as_tall_ordinary",
+    "low_wall",
+    "fossil_span_over_dry_channel"
+  ],
+  "play_patch_mismatch": {
+    "source_symbol": "renderedElevationAt",
+    "shapes_in_the_walk_formula": [
+      "river_zone_nx_below_0_1",
+      "bluff_nx_0_1_to_0_2",
+      "central_plateau_nx_0_2_to_0_6",
+      "eastern_hills_nx_above_0_6",
+      "fall_kill_creek_depression"
+    ],
+    "those_shapes_are": "Properties of the fixed Poughkeepsie profile. Not Hub terrain_affinity. Not a Tunya or Sundering class.",
+    "geographic_reader": "continentalSpec"
+  },
+  "chains": [
+    {
+      "id": "chain_sunder_alpine",
+      "world_id": "Fantasy",
+      "region_id": "sunder_alpine",
+      "kind": "rim",
+      "placement": "north_edge_of_disc",
+      "crest_m": { "min": 700, "max": 1100 },
+      "crest_authority": "W01 exemplar Fantasy:sunder_alpine",
+      "width_km": 8,
+      "width_authority": "design_intent",
+      "geology": { "class": "alpine_rim", "rock": "thin_over_stone" },
+      "stops_before": "march_ruins_fantasy",
+      "landmark": { "id": "titan_pillar", "height_m": null, "note": "A landmark, not a range." },
+      "stamp_cells": true
+    },
+    {
+      "id": "chain_sunder_fold",
+      "world_id": "Fantasy",
+      "region_id": "sunder_fold",
+      "kind": "lip",
+      "placement": "mid_disc",
+      "crest_m": { "min": 300, "max": 520 },
+      "crest_authority": "W01 exemplar Fantasy:sunder_fold",
+      "width_km": 4,
+      "width_authority": "design_intent",
+      "geology": { "class": "lip_and_drop", "rock": "dimension_stone" },
+      "note": "Not a second range. House Voss is a stair fragment, not a flying castle.",
+      "stamp_cells": true
+    },
+    {
+      "id": "chain_tunya_masond",
+      "world_id": "Tunya",
+      "region_id": "tunya_masond",
+      "kind": "escarpment",
+      "crest_m": { "min": 400, "max": 900 },
+      "crest_authority": "W01 exemplar Tunya:tunya_masond",
+      "geology": { "class": "cliff_stone", "rock": "dimension_stone" },
+      "slope_note": "Face may be cliff. Landings are locally near_level.",
+      "stamp_cells": true
+    },
+    {
+      "id": "chain_tunya_aekon",
+      "world_id": "Tunya",
+      "region_id": "tunya_aekon",
+      "kind": "glacier_ridge",
+      "crest_m": { "min": 900, "max": 1600 },
+      "crest_authority": "W01 exemplar Tunya:tunya_aekon",
+      "geology": { "class": "ice_over_ark_rib", "rock": "ice" },
+      "forbidden": ["ice_spell_gameplay"],
+      "stamp_cells": true
+    },
+    {
+      "id": "chain_crucible_fault",
+      "world_id": "Crucible",
+      "region_id": "crucible_lattice",
+      "kind": "fault_scarp",
+      "crest_m": { "min": 200, "max": 700 },
+      "crest_authority": "design_intent",
+      "crest_not_in_w01": true,
+      "geology": { "class": "folded_basalt", "rock": "basalt" },
+      "ends_at": "seam_crucible_cyber",
+      "does_not_enter_world": "Cyber",
+      "stamp_cells": true
+    },
+    {
+      "id": "chain_sere_highland",
+      "world_id": "Sere",
+      "region_id": "sere_highland",
+      "kind": "role_only",
+      "crest_m": null,
+      "anchor_km": null,
+      "geology": { "class": "highland_wind", "rock": null },
+      "stamp_cells": false
+    }
+  ],
+  "passes": [
+    {
+      "id": "pass_sunder_salt",
+      "world_id": "Fantasy",
+      "region_id": "sunder_salt_toll",
+      "kind": "through_saddle",
+      "on_chain": null,
+      "note": "South track. Not a saddle on chain_sunder_alpine.",
+      "band_m": { "min": 160, "max": 280 },
+      "band_authority": "W01 exemplar Fantasy:sunder_salt_toll",
+      "centerline_cells": 2,
+      "centerline_slope_class_max": "moderate",
+      "stamp_cells": true
+    },
+    {
+      "id": "pass_sunder_fold_shelf",
+      "world_id": "Fantasy",
+      "region_id": "sunder_fold",
+      "kind": "stair_not_saddle",
+      "on_chain": "chain_sunder_fold",
+      "band_m": { "min": 300, "max": 520 },
+      "band_authority": "W01 exemplar Fantasy:sunder_fold",
+      "stamp_cells": true,
+      "do_not": "Grade a highway through the shelf waterfall."
+    },
+    {
+      "id": "pass_crucible_road_end",
+      "world_id": "Crucible",
+      "region_id": "crucible_lattice",
+      "kind": "road_ends",
+      "on_chain": "chain_crucible_fault",
+      "saddle": false,
+      "trade_edge": "seam_crucible_cyber",
+      "trade_kind": "weak",
+      "stamp_cells": false,
+      "note": "Records the refusal. Carves no through-saddle."
+    },
+    {
+      "id": "pass_frontier_drift",
+      "world_id": "Frontier",
+      "region_id": "frontier_drift",
+      "kind": "gap_cut",
+      "local_cut_m": { "min": 8, "max": 15 },
+      "local_cut_authority": "design_intent",
+      "inside_band_of": "frontier_hitch_open_flat",
+      "forbidden": ["mesa", "dome", "alpine_pass"],
+      "stamp_cells": true
+    },
+    {
+      "id": "pass_sere",
+      "world_id": "Sere",
+      "region_id": "sere_passes",
+      "kind": "role_only",
+      "anchor_km": null,
+      "stamp_cells": false
+    },
+    {
+      "id": "egress_hub_crown",
+      "world_id": "Hub",
+      "region_id": "hub_approaches",
+      "kind": "disc_egress_not_a_pass",
+      "count": 8,
+      "band_m": { "min": 15, "max": 40 },
+      "band_authority": "W01 exemplar Hub:hub_approaches",
+      "slope_class": "gentle",
+      "stamp_cells": true
+    }
+  ],
+  "coasts": [
+    {
+      "id": "coast_sunder_veil_shoal",
+      "world_id": "Fantasy",
+      "region_id": "sunder_salt_toll",
+      "sea": "inner_veil",
+      "trade_edge": "sea_tunya_fantasy",
+      "kind": "shoal",
+      "island": false,
+      "elevation_m": { "min": -2, "max": 2 },
+      "elevation_authority": "design_intent_near_sea_level",
+      "shares_pair_with_land_march": "march_fantasy_tunya",
+      "stamp_cells": true
+    },
+    {
+      "id": "coast_tunya_fluxom",
+      "world_id": "Tunya",
+      "region_id": "tunya_fluxom",
+      "sea": "inner_veil",
+      "kind": "harbor_and_lock",
+      "island": false,
+      "band_m": { "min": 0, "max": 15 },
+      "band_authority": "W01 exemplar Tunya:tunya_fluxom",
+      "local_claim_not_this_coast": { "name": "Fluxom Gate", "x_m": 62, "z_m": 18 },
+      "stamp_cells": true
+    },
+    {
+      "id": "coast_crime_exodus",
+      "world_id": "Crime",
+      "region_id": "crime_wharf",
+      "sea": "exodus_ocean",
+      "kind": "warehouse_at_water",
+      "island": false,
+      "band_m": { "min": 0, "max": 8 },
+      "band_authority": "design_intent",
+      "stamp_cells": true
+    },
+    {
+      "id": "coast_crime_sere_strait",
+      "world_id": "Crime",
+      "also_world_id": "Sere",
+      "region_id": "crime_wharf",
+      "sere_region_id": "sere_passes",
+      "sea": "exodus_ocean",
+      "trade_edge": "sea_crime_sere",
+      "water_gap_km": 24.0,
+      "kind": "strait",
+      "island": false,
+      "stamp_cells": true,
+      "sere_shore_cells": false
+    },
+    {
+      "id": "coast_dawn_sere",
+      "world_id": "Superhero",
+      "region_id": "dawn_arterials",
+      "sea": "exodus_ocean",
+      "trade_edge": "sea_superhero_sere",
+      "water_gap_km": 54.8,
+      "kind": "coastal_leg",
+      "island": false,
+      "river_lane": "deferred_to_hydrology",
+      "stamp_cells": true
+    },
+    {
+      "id": "coast_frontier_sere",
+      "world_id": "Frontier",
+      "region_id": "frontier_hitch",
+      "sea": "exodus_ocean",
+      "trade_edge": "sea_frontier_sere",
+      "water_gap_km": 329.0,
+      "kind": "long_ocean",
+      "island": false,
+      "islands_forbidden": true,
+      "stamp_cells": true
+    },
+    {
+      "id": "coast_sere_drowned",
+      "world_id": "Sere",
+      "region_id": "sere_flooded",
+      "also_region_id": "sere_drowned",
+      "sea": "exodus_ocean",
+      "kind": "low_drowned_role",
+      "island": false,
+      "anchor_km": null,
+      "stamp_cells": false
+    },
+    {
+      "id": "coast_cyber_wharf_march",
+      "world_id": "Cyber",
+      "region_id": "cyber_wharf_march",
+      "sea": null,
+      "kind": "march_not_a_surveyed_port",
+      "island": false,
+      "stamp_cells": false,
+      "note": "Uncounted Wharf is a march toward the Grid. No placed harbor point."
+    }
+  ],
+  "islands": [],
+  "island_rule": {
+    "accidental_closed_contour": "clamp_to_sea",
+    "shoal_is_island": false,
+    "ark_exodus_is_land": false,
+    "named_island_ids": []
+  },
+  "marches": [
+    { "id": "march_cyber_ruins", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false },
+    { "id": "march_ruins_fantasy", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false, "note": "Moss against ash. Low. Not a range." },
+    { "id": "march_fantasy_tunya", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false, "coexists_with": "sea_tunya_fantasy" },
+    { "id": "walk_tunya_frontier", "kind": "walker", "open_km": 86.1, "surface": "land", "new_chain": false },
+    { "id": "walk_frontier_crime", "kind": "walker", "open_km": 86.1, "surface": "land", "new_chain": false },
+    { "id": "march_crime_superhero", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false },
+    { "id": "march_superhero_crucible", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false },
+    { "id": "march_crucible_cyber", "kind": "road", "open_km": 86.1, "surface": "land", "new_chain": false, "seam": "seam_crucible_cyber", "seam_kind": "weak" }
+  ],
+  "sea_edges_open_km_86_1": [
+    { "id": "sea_tunya_fantasy", "sea": "inner_veil", "open_km": 86.1, "does_not_flood": "march_fantasy_tunya" },
+    { "id": "sea_crime_superhero", "sea": "inner_veil", "open_km": 86.1, "does_not_flood": "march_crime_superhero" }
+  ],
+  "stamps_skipped": [
+    { "world_id": "Tunya", "region_id": "tunya_unplaced", "reason": "channels null" },
+    { "world_id": "Tunya", "region_id": "tunya_fallback", "reason": "class stepped_terrace allowed, anchor_km null, no metre band" },
+    { "world_id": "Frontier", "region_id": "frontier_last_dome_unplaced", "reason": "mile past the gate is not converted" },
+    { "world_id": "Ruins", "region_id": "ruins_envoy_claim", "reason": "do_not_lift_to_kilometres" },
+    { "world_id": "Sere", "region_id": "sere_old_capital", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_spire", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_furnace", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_breadlands", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_flooded", "reason": "role only; see coast_sere_drowned" },
+    { "world_id": "Sere", "region_id": "sere_drowned", "reason": "role only; see coast_sere_drowned" },
+    { "world_id": "Sere", "region_id": "sere_passes", "reason": "role only; see pass_sere" },
+    { "world_id": "Sere", "region_id": "sere_haven", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_delta", "reason": "role only, anchor_km null" },
+    { "world_id": "Sere", "region_id": "sere_highland", "reason": "role only; see chain_sere_highland" },
+    { "world_id": "Superhero", "region_id": "dawn_crown_stair_glue", "reason": "route overlay across the Hub, not a new landform or a shared border" }
+  ],
+  "ground_bands": [
+    { "world_id": "Cyber", "region_id": "cyber_stacks", "class": "midrise_grid", "m": { "min": 18, "max": 40 }, "authority": "design_intent", "built_not_in_band": ["stack_vertical", "skybridge"] },
+    { "world_id": "Cyber", "region_id": "cyber_under", "class": "service_corridor_down_a_few_metres", "m": { "min": 10, "max": 32 }, "authority": "design_intent", "note": "A few metres under the street. Not a canyon and not below sea level." },
+    { "world_id": "Ruins", "region_id": "ruins_forum", "class": "cracked_flat", "m": { "min": 25, "max": 70 }, "authority": "design_intent" },
+    { "world_id": "Ruins", "region_id": "ruins_rib", "class": "fossil_span_over_dry_channel", "m": { "min": 30, "max": 80 }, "authority": "design_intent", "note": "Span is ground. The dry channel is G2." },
+    { "world_id": "Ruins", "region_id": "ruins_unfinished", "class": "ash_march", "m": { "min": 20, "max": 60 }, "authority": "design_intent" },
+    { "world_id": "Frontier", "region_id": "frontier_hitch", "class": "open_flat", "m": { "min": 40, "max": 90 }, "authority": "design_intent", "forbidden": ["mesa", "dome"] },
+    { "world_id": "Frontier", "region_id": "frontier_drift", "class": "drift_gap", "m": { "min": 25, "max": 90 }, "authority": "design_intent", "see": "pass_frontier_drift" },
+    { "world_id": "Crime", "region_id": "crime_sodium", "class": "low_tenement", "m": { "min": 6, "max": 22 }, "authority": "design_intent", "built_not_in_band": ["overpass_as_tall_ordinary"] },
+    { "world_id": "Superhero", "region_id": "dawn_kane", "class": "street_and_park", "m": { "min": 12, "max": 35 }, "authority": "design_intent", "built_not_in_band": ["skyline", "roof_pad"] },
+    { "world_id": "Superhero", "region_id": "dawn_arterials", "class": "arterial", "m": { "min": 10, "max": 30 }, "authority": "design_intent" },
+    { "world_id": "Crucible", "region_id": "crucible_foundry", "class": "foundry_edge", "m": { "min": 80, "max": 220 }, "authority": "design_intent", "note": "Vents are local. Not a second range." }
+  ],
+  "exemplar_bands_consumed": [
+    { "exemplar_id": "Hub:hub_plaza", "datum": "hub_court_walk", "class": "flat_court", "m": { "min": 0, "max": 1.5 } },
+    { "exemplar_id": "Hub:hub_doors", "datum": "hub_court_walk", "class": "flat_court", "m": { "min": 0, "max": 1.0 } },
+    { "exemplar_id": "Hub:hub_wall", "datum": "hub_court_walk", "class": "low_wall", "m": { "min": 0, "max": 2.0 }, "slope_not": "cliff" },
+    { "exemplar_id": "Hub:hub_pinewood", "datum": "hub_court_walk", "class": "salt_road_drain", "m": { "min": 1, "max": 4 } },
+    { "exemplar_id": "Hub:hub_approaches", "datum": "continental_veil_datum", "class": "road_and_verge", "m": { "min": 15, "max": 40 } },
+    { "exemplar_id": "Fantasy:sunder_wildwood", "datum": "continental_veil_datum", "class": "lower_forest", "m": { "min": 180, "max": 320 } },
+    { "exemplar_id": "Fantasy:sunder_fold", "datum": "continental_veil_datum", "class": "lip_and_drop", "m": { "min": 300, "max": 520 } },
+    { "exemplar_id": "Fantasy:sunder_alpine", "datum": "continental_veil_datum", "class": "alpine_rim", "m": { "min": 700, "max": 1100 } },
+    { "exemplar_id": "Fantasy:sunder_salt_toll", "datum": "continental_veil_datum", "class": "drier_track", "m": { "min": 160, "max": 280 } },
+    { "exemplar_id": "Tunya:tunya_masond", "datum": "continental_veil_datum", "class": "cliff_terrace", "m": { "min": 400, "max": 900 } },
+    { "exemplar_id": "Tunya:tunya_asbir", "datum": "continental_veil_datum", "class": "dune", "m": { "min": 80, "max": 220 } },
+    { "exemplar_id": "Tunya:tunya_sangree", "datum": "continental_veil_datum", "class": "stack_yard", "m": { "min": 200, "max": 450 } },
+    { "exemplar_id": "Tunya:tunya_aekon", "datum": "continental_veil_datum", "class": "glacier", "m": { "min": 900, "max": 1600 } },
+    { "exemplar_id": "Tunya:tunya_fluxom", "datum": "continental_veil_datum", "class": "sea_level_harbor", "m": { "min": 0, "max": 15 } },
+    { "exemplar_id": "Tunya:tunya_nil", "datum": "continental_veil_datum", "class": "wet_canopy", "m": { "min": 40, "max": 180 } }
+  ],
+  "interface": {
+    "replaces_for_geographic_class": "Hub-only world-terrain seed path",
+    "proposed_symbols": ["continentalSpec", "continentalElevationAt"],
+    "proposed_home": "server/lib/world-terrain.js",
+    "shipped_this_slice": false,
+    "continentalSpec_returns": ["frame", "chains", "passes", "coasts", "islands", "marches", "cell_km", "seed_policy"],
+    "continentalSpec_does_not_return": "sampledGrid",
+    "continentalSpec_does_not_call": ["generatePoughkeepsieHeightmap", "renderedElevationAt"],
+    "terrainSpec_remains": "play_patch_legacy until physicalization"
+  },
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols_today": ["terrainSpec", "generatePoughkeepsieHeightmap", "renderedElevationAt", "sampleRenderedHeight", "hashSeed"],
+      "symbols_proposed": ["continentalSpec", "continentalElevationAt"],
+      "today": "One 2000 m patch, max 80 m, seed 0xc0ffee, for every worldId. hashSeed is unused by the rendered grid.",
+      "g1_extends": "continentalSpec answers class and veil-datum metres from this feature set. terrainSpec keeps the walk mesh and gains the label play_patch_legacy when a binder touches it.",
+      "do_not": "Replace the walk formula in this slice. Add veil metres into renderedElevationAt. Drive the walk grid with hashSeed(worldId)."
+    },
+    {
+      "id": "terrain_deformation",
+      "path": "server/lib/terrain-deformation.js",
+      "symbols": ["baseElevation", "CELL_SIZE"],
+      "today": "baseElevation delegates to renderedElevationAt. Cell is 10 m unless CONCORD_TERRAIN_CELL_M is set.",
+      "g1_extends": "No new deformation.",
+      "do_not": "Store the continental grid in the deformation table."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["solveFlowStep", "setWater", "tickWaterFlow", "waterDepthAt"],
+      "today": "4-neighbour flow on the play-patch cell. Volume conserved.",
+      "g1_extends": "G2 may read the sea mask and coast ids. G1 does not call setWater.",
+      "do_not": "A second solver. A Hub plaza seed. A Sundering lake. Treating a coast polyline as a river."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "symbols": ["spawnSettlementForRegion"],
+      "cycle": "server/emergent/procgen-settlement-cycle.js",
+      "today": "3–5 NPCs and a Living Society settlements row.",
+      "g1_extends": "Later suitability may choose an existing region_id using slope class.",
+      "do_not": "Spawn from a crest cell or replace spawnSettlementForRegion."
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "domain": "server/domains/faction-strategy.js",
+      "cycle": "server/emergent/faction-strategy-cycle.js",
+      "today": "Stance machine on authored factions.",
+      "g1_extends": "A move may name a chain_id, pass_id, coast_id, or region_id from this spec.",
+      "do_not": "Mint a kingdom from a ridge. Fill Hub territories. Add a ninth Crucible district."
+    },
+    {
+      "id": "unity_world_geography",
+      "path": "Assets/Concordia/Scripts/GeographyRuntime.cs",
+      "symbols": ["WorldGeography"],
+      "today": "Routes and borders. Hub territories empty.",
+      "g1_extends": "Atlas agreement for centers, 86.1 km marches, and the named sea gaps.",
+      "do_not": "Promote claim circles or the 0.55 m per km present scale into veil metres."
+    }
+  ],
+  "outputs_for_g2": {
+    "reads": ["elevation grid contract", "derived slope", "sea mask elevation_m <= 0", "coasts", "W00 water_dependency"],
+    "writes_later": "watershed, river, lake, wetland masks that obey forbidden lists",
+    "must_not": [
+      "Move a coast to create a river",
+      "Lake country in the Sundering",
+      "A river through the Hub plaza",
+      "A stream forced through pass_crucible_road_end",
+      "Rainfall redrawing a channel (climate is after hydrology)"
+    ]
+  },
+  "do_not_build": [
+    "heightmap file",
+    "286000-cell dump",
+    "watershed raster",
+    "edits to world-terrain.js or terrain-water.js",
+    "city block-out",
+    "meshes",
+    "PROMPTS_INDEX rows",
+    "Sere cells",
+    "tunya_unplaced cells"
+  ],
+  "validation": [
+    "schema is concordia-world-forge-continental/1.0",
+    "consumes names field 1.0 and canon graph 1.0",
+    "every chain, pass, and coast region_id exists in the W00 graph",
+    "no chain has world_id Hub",
+    "islands length is 0",
+    "chain_sere_highland, pass_sere, and coast_sere_drowned have stamp_cells false and null anchors",
+    "tunya_unplaced is in stamps_skipped",
+    "Sundering and Tunya crest bands match W01 exemplar ranges",
+    "chain_crucible_fault.crest_authority is design_intent",
+    "water gaps are 24, 54.8, and 329 km; land march open_km is 86.1; crown egress count is 8",
+    "play_patch seed is 12648430 and max_elevation_m is 80",
+    "flower_law_radius_m is 42 on a horizontal axis",
+    "writes_channels is exactly elevation, slope, geology",
+    "slope_sample.derived_from is elevation",
+    "world_id Fantasy is not renamed",
+    "W00 constraint no_vinewood has no feature id"
+  ]
+}

@@ -127,7 +127,13 @@ describe("Phase D wiring fix — callBrain() sources its URL from pickBrainEndpo
     // reachable through the OLD (pre-fix) code path that read brain.url
     // directly. If the fix weren't wired, this call would fail/timeout
     // rather than reach fakeUtilA/fakeUtilB.
-    assert.equal(__TEST__.BRAIN.utility.url, "http://ollama-utility:11434");
+    // (Exact value is environment config — the docker default in CI, a local
+    // Ollama from a developer's server/.env — so pin the property that
+    // matters: the singular URL is neither fake endpoint.)
+    assert.ok(
+      ![fakeUtilA.url, fakeUtilB.url].includes(__TEST__.BRAIN.utility.url),
+      `singular utility url ${__TEST__.BRAIN.utility.url} must not be a fake multi-endpoint`,
+    );
 
     const before = brainConfig.getEndpointStats().utility;
     assert.deepEqual(before.map((e) => e.lastHealthyAt), [0, 0], "no prior traffic recorded");

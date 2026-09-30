@@ -154,6 +154,7 @@ const DOMAIN_TAG_MAP = Object.freeze({
   healthcare: ["medical", "clinical", "patient", "diagnosis", "treatment"],
   household: ["family", "home", "chores", "maintenance", "domestic"],
   hypothesis: ["test", "experiment", "theory", "prediction", "evidence"],
+  predict: ["forecast", "calibration", "probability", "monte-carlo", "walk-forward"],
   insurance: ["policy", "claim", "premium", "coverage", "risk", "underwriting"],
   lab: ["experiment", "sandbox", "explore", "adjacent", "reality"],
   law: ["legal", "contract", "compliance", "license", "rights", "regulation"],

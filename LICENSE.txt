@@ -1,13 +1,19 @@
 CONCORD SOURCE LICENSE — COMMUNITY EDITION (CSL-CE 1.0)
 
-(DRAFT — Source-Available License)
-(Not legal advice — for public release until formal review)
+SPDX-License-Identifier: LicenseRef-Concord-CSL-CE-1.0
+Copyright (c) 2026 Concord Dev. All rights reserved.
+
+A source-available license. You may run, study, and modify the Software for
+non-commercial personal, research, and educational purposes. Commercial use —
+including hosting it as a service, operating a derivative marketplace, running a
+competing network, or monetizing Concord-derived assets — requires a separate
+written commercial license from the Owner (see Section 9).
 
 ⸻
 
 1. Purpose
 
-The Concord Source License – Community Edition (“License”) enables individuals, students, researchers, and open-source contributors to freely use, run, study, and modify ConcordOS for personal and self-hosted purposes.
+The Concord Source License – Community Edition (“License”) enables individuals, students, researchers, and non-commercial contributors to freely use, run, study, and modify ConcordOS for personal and self-hosted purposes.
 
 This License exists to protect:
 	•	the integrity of the Concord ecosystem,
@@ -118,4 +124,20 @@ This keeps the community open while ensuring the brand identity stays protected.
 
 8. Warranty Disclaimer
 
-The Software is provided “AS IS,” without warranty or liability.
+The Software is provided “AS IS,” without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the Owner be liable for any claim, damages, or other liability arising from, out of, or in connection with the Software or its use.
+
+⸻
+
+9. Commercial Licensing & Contact
+
+For commercial hosting, enterprise deployment, marketplace operation, running a Concord-based public network, or any use outside the grants in Section 3, contact the Owner:
+
+Concord Dev — dutchtropez@gmail.com
+
+Permission may be granted or denied at the Owner’s sole discretion.
+
+⸻
+
+10. Governing Terms
+
+This License is the entire agreement between You and the Owner regarding the Software and supersedes any prior understanding. If any provision is held unenforceable, the remaining provisions stay in effect. Failure to enforce any provision is not a waiver of it.

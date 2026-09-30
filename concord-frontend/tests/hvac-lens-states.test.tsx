@@ -114,7 +114,11 @@ vi.mock('@/components/hvac/ManualJCalc', () => ({ ManualJCalc: () => null }));
 vi.mock('@/components/hvac/FieldService', () => ({ FieldService: () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
+  AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -181,7 +185,13 @@ describe('hvac lens — four UX states', () => {
     expect(() => getByText(/No .* items yet/i)).toThrow();
 
     // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Retry')); });
+    // HvacDeskPanel renders its own error state via the shared ErrorState
+    // preset (components/common/EmptyState.tsx), whose retry button says
+    // "Try again" — the LensPageShell mock above (with its own "Retry"
+    // label) is a faithful stub for OTHER lenses that feed isLoading/isError
+    // into LensPageShell itself, but hvac doesn't: each tab panel
+    // (HvacDeskPanel) owns its own data + error UI.
+    await act(async () => { fireEvent.click(getByText(/try again/i)); });
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 

@@ -231,6 +231,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "history.figure-add",
+      "name": "figure-add"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "history.figure-delete",
+      "name": "figure-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "history.figure-link-event",
+      "name": "figure-link-event"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "history.figure-list",
+      "name": "figure-list"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "history.figure-unlink-event",
+      "name": "figure-unlink-event"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "history.figure-update",
+      "name": "figure-update"
+    },
+    {
+      "_derived": true,
+      "domain": "history",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "history.history-dashboard",
       "name": "history-dashboard"
     },
@@ -692,5 +770,5 @@
   ],
   "domain": "history",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 53
+  "macroCount": 59
 }

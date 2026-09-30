@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Scissors, Copy, Clipboard, Trash2, Maximize2, TrendingDown, TrendingUp, ArrowLeftRight, Volume2, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { emitAudioDTU } from '@/lib/daw/dtu-hooks';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import type { AudioBuffer as DAWAudioBuffer, AudioEditOperation } from '@/lib/daw/types';
 
 interface AudioEditorProps {
@@ -65,19 +65,6 @@ export function AudioEditor({
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
-
-  const handleSaveAsDTU = useCallback(() => {
-    if (!audioBuffer) return;
-    emitAudioDTU({
-      bufferId: audioBuffer.id,
-      name: audioBuffer.name,
-      duration: audioBuffer.duration,
-      sampleRate: audioBuffer.sampleRate,
-      bpm: audioBuffer.bpm,
-      key: audioBuffer.key,
-      spectralProfile: audioBuffer.spectralProfile,
-    });
-  }, [audioBuffer]);
 
   if (!audioBuffer) {
     return (
@@ -150,12 +137,24 @@ export function AudioEditor({
 
         <div className="w-px h-4 bg-white/10" />
 
-        <button
-          onClick={handleSaveAsDTU}
-          className="text-[10px] px-2 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded hover:bg-neon-cyan/20"
-        >
-          Save as DTU
-        </button>
+        <SaveAsDtuButton
+          apiSource="studio-audio"
+          title={`Audio — ${audioBuffer.name}`}
+          content={`Audio buffer: ${audioBuffer.name}\nDuration: ${audioBuffer.duration.toFixed(3)}s\nSample rate: ${audioBuffer.sampleRate}Hz\nChannels: ${audioBuffer.channels}${audioBuffer.bpm ? `\nBPM: ${audioBuffer.bpm}` : ''}${audioBuffer.key ? `\nKey: ${audioBuffer.key}` : ''}`}
+          extraTags={['studio', 'audio', ...(audioBuffer.bpm ? [`${audioBuffer.bpm}bpm`] : []), ...(audioBuffer.key ? [audioBuffer.key] : [])]}
+          rawData={{
+            bufferId: audioBuffer.id,
+            name: audioBuffer.name,
+            duration: audioBuffer.duration,
+            sampleRate: audioBuffer.sampleRate,
+            bpm: audioBuffer.bpm,
+            key: audioBuffer.key,
+            spectralProfile: audioBuffer.spectralProfile,
+          }}
+          compact
+          confirm
+          className="!bg-neon-cyan/10 !text-neon-cyan hover:!bg-neon-cyan/20"
+        />
 
         <button
           onClick={isRecording ? onStopRecording : onStartRecording}

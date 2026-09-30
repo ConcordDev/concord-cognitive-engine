@@ -61,10 +61,10 @@ function makeMockMarker() {
 // so the mock must match that shape.
 vi.mock('maplibre-gl', () => {
   return {
-    Map: vi.fn().mockImplementation(() => makeMockMap()),
-    Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-    Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
-    NavigationControl: vi.fn().mockImplementation(() => ({})),
+    Map: vi.fn().mockImplementation(function () { return makeMockMap(); }),
+    Marker: vi.fn().mockImplementation(function () { return makeMockMarker(); }),
+    Popup: vi.fn().mockImplementation(function () { return { setHTML: vi.fn().mockReturnThis() }; }),
+    NavigationControl: vi.fn().mockImplementation(function () { return {}; }),
     // Deferred closure (not a direct reference) so this doesn't dereference
     // addProtocolMock until the mock is actually invoked — vi.mock factories
     // run before top-level const initializers in this file, so a direct

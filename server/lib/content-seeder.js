@@ -1227,6 +1227,15 @@ export async function seedContent({ db = null } = {}) {
       logger.warn("content_seeder", "city_layout_seed_failed", { err: err?.message });
     }
 
+    // Density — buildings via world-seeder, routines from authored schedules.
+    // NPCs/quests already persisted above. Never mints extra citizens.
+    try {
+      const { seedWorldDensity } = await import("./world-density-seed.js");
+      results.density = seedWorldDensity(db, "concordia-hub");
+    } catch (err) {
+      logger.warn("content_seeder", "world_density_seed_failed", { err: err?.message });
+    }
+
     try {
       const hpJson = readJSON("hacking-puzzles.json");
       if (Array.isArray(hpJson) && hpJson.length > 0) {

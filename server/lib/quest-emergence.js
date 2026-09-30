@@ -86,9 +86,9 @@ Generate a quest this NPC would give to a player. Return JSON only:
       return JSON.parse(match[0]);
     })();
 
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("quest_brain_timeout")), BRAIN_TIMEOUT_MS)
-    );
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("quest_brain_timeout")), BRAIN_TIMEOUT_MS);
+    });
 
     questData = await Promise.race([brainCall, timeout]);
     if (!questData) return null;

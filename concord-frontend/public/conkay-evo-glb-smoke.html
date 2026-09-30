@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay evo-glb smoke — generate/resolve → load_glb</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 140px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">Evo path — resolved evo-asset GLB URL (same-origin /api/evo-asset/file/…) → load_glb → glb_loaded. Archetypes only.</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var cmdsSent = false;
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    glbUrl: null,
+    honesty: 'archetype→evo-asset generate/resolve→load_glb via glTFast — not full free-text CAD'
+  };
+  window.__CONKAY_EVO_GLB_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' || out.textContent === '' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function markOk() {
+    var names = events.map(function (e) { return e && e.event; });
+    var loaded = events.filter(function (e) { return e && e.event === 'glb_loaded'; });
+    var hasLoaded = loaded.length > 0;
+    var payloadOk = false;
+    var urlMatch = false;
+    if (hasLoaded && loaded[0] && loaded[0].payload) {
+      var p = loaded[0].payload;
+      payloadOk = p.ok === true && typeof p.url === 'string' && p.url.length > 0;
+      if (state.glbUrl && typeof p.url === 'string') {
+        urlMatch = p.url === state.glbUrl || p.url.indexOf('/api/evo-asset/file/') !== -1;
+      }
+    }
+    state.eventNames = names;
+    state.glbLoadedCount = loaded.length;
+    state.glbLoadedSample = loaded[0] || null;
+    state.urlMatch = urlMatch;
+    state.payloadOk = payloadOk;
+    state.ok = !!(hasLoaded && payloadOk);
+    if (state.ok && state.reason === 'waiting') state.reason = 'evo-resolve+load_glb+glb_loaded';
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    events.push(data);
+    line('EVENT ' + JSON.stringify(data));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload) {
+    var win = iframe.contentWindow;
+    if (!win) {
+      line('post FAILED no contentWindow for ' + cmd);
+      return false;
+    }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || { source: 'conkay-evo-glb-smoke' },
+      id: 'evo-' + cmd + '-' + Date.now(),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify({ type: msg.type, cmd: msg.cmd, id: msg.id, url: payload && payload.url, name: payload && payload.name }));
+      return true;
+    } catch (e) {
+      line('post threw ' + (e && e.message));
+      return false;
+    }
+  }
+
+  function clickCanvas() {
+    try {
+      var doc = iframe.contentDocument;
+      var canvas = doc && doc.querySelector('#unity-canvas, canvas');
+      if (canvas) {
+        canvas.focus();
+        canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe.contentWindow }));
+        line('clicked/focused unity canvas');
+      } else {
+        iframe.focus();
+        line('no canvas yet; focused iframe');
+      }
+    } catch (e) {
+      iframe.focus();
+      line('canvas click skipped: ' + (e && e.message));
+    }
+  }
+
+  function sendLoad() {
+    if (cmdsSent) return;
+    var url = (window.__GLB_URL__ && typeof window.__GLB_URL__ === 'string') ? window.__GLB_URL__ : null;
+    if (!url) {
+      line('waiting for __GLB_URL__ from proof script');
+      return;
+    }
+    state.glbUrl = url;
+    cmdsSent = true;
+    line('GLB url=' + url);
+    clickCanvas();
+    postCmd('hello', { source: 'conkay-evo-glb-smoke' });
+    postCmd('ping', { source: 'conkay-evo-glb-smoke' });
+    postCmd('load_glb', {
+      url: url,
+      name: (window.__GLB_NAME__ || 'evo-asset'),
+      position: { x: 0.4, y: 0, z: 0.4 },
+      scale: 1,
+      source: 'conkay-evo-glb-smoke'
+    });
+    markOk();
+  }
+
+  window.__START_EVO_GLB_LOAD__ = function (urlOverride, name) {
+    if (urlOverride) window.__GLB_URL__ = urlOverride;
+    if (name) window.__GLB_NAME__ = name;
+    cmdsSent = false;
+    sendLoad();
+  };
+
+  iframe.addEventListener('load', function () {
+    line('iframe load');
+    setTimeout(function () { line('wait 8s — first load window'); sendLoad(); }, 8000);
+    setTimeout(function () {
+      line('wait 12s — retry if needed');
+      if (!cmdsSent) sendLoad();
+      else { clickCanvas(); }
+    }, 12000);
+    setTimeout(function () {
+      line('wait 18s — final burst');
+      clickCanvas();
+      if (!cmdsSent) sendLoad();
+    }, 18000);
+  });
+
+  setTimeout(function () {
+    state.finishedAt = Date.now();
+    markOk();
+    if (!state.ok) {
+      if (!state.glbLoadedCount) state.reason = 'timeout-no-glb_loaded';
+      else state.reason = 'timeout';
+    }
+    line('DONE ok=' + state.ok + ' events=' + events.length + ' glbLoaded=' + (state.glbLoadedCount || 0) + ' reason=' + state.reason);
+  }, 65000);
+
+  line('listening; set __GLB_URL__ / __START_EVO_GLB_LOAD__');
+})();
+  </script>
+</body>
+</html>

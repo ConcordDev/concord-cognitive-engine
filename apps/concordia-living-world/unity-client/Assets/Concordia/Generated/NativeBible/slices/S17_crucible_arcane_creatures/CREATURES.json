@@ -1,0 +1,512 @@
+{
+  "schema": "concordia.slice.creatures.v1",
+  "slice_id": "S17_crucible_arcane_creatures",
+  "world_id": "Crucible",
+  "canon_world_id": "lattice-crucible",
+  "display_world": "The Crucible",
+  "facet": "creatures_bosses",
+  "title": "Crucible — arcane/cosmic creatures, bosses",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, the Un-Ender clock, the Compound Mark clock, Canon lore, countries.json, or prior slices S01–S16.",
+  "canon_pins": {
+    "world_id": "Crucible",
+    "canon_folder": "lattice-crucible",
+    "canon_world_def_title": "The Crucible",
+    "refusal": "The Eighth Refusal",
+    "refusal_worlddef": "A system that refuses to close can never rest.",
+    "the_no": "A thing that refuses completion cannot be written down.",
+    "the_no_second_line": "There is no ninth.",
+    "law_text": "If it would end, un-end it.",
+    "style_id": "drift",
+    "style_name": "Open Lattice",
+    "style_verbs": ["Shard", "Recycle", "Refuse completion", "Un-end"],
+    "steel_live": true,
+    "fight_style_for_people": "Sword, as stamped on npc_role_crucible_mystic. People are CX. The focus is wpn_focus_crucible_unend.",
+    "humanoid_body": "CX only for people. The lattice walker is CX. mon_boss_unender is amorphous. mon_crucible_drift is amorphous. hyb_latticebasilisk is serpentine. faun_lattice_moth is a winged critter. None of those four is a CX body. mon_grid_construct is topology humanoid and stays at Crucible cap 0.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern the Crucible. A thrown shard dragged inside that disk and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 5.497787,
+    "gate_angle_expr": "7 * pi / 4",
+    "gate_short_name": "CRUCIBLE",
+    "gate_neighbors_on_ring": ["Superhero", "Cyber"],
+    "sere_is_not_a_ring_neighbor": "Sere is a waystone. The only megaworld route into Sere in WorldGeography.BuildBordersAndRoutes is Crime–Sere. The Compound Mark adjacency is a law and a foundry evening, not a shared disc.",
+    "palette": ["#204040", "#20ffd0", "#c8b4ff"],
+    "foundry_palette_extra": ["#c8a060", "#8a6a48"],
+    "ground": "#204040",
+    "sun": "#20ffd0",
+    "kit": "arch_kit_crucible_lattice",
+    "foundry_blend": "arch_ix_crucible_foundry",
+    "foundry_parents": ["arch_kit_crucible_lattice", "arch_kit_crime_coast", "arch_kit_frontier_road"],
+    "weather": "drift",
+    "traversal": "unstable ground",
+    "combat": "drift",
+    "fantasy": "rules that refuse to stay",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "The post stays Hub. No moth, drift mass, basilisk, walker, or Un-Ender stands on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": [
+      "moth corrected into a bowtie",
+      "drift mass as a particle-only body",
+      "a fourth shard counted as anatomy",
+      "basilisk as echo_serpent or as crucible_warden",
+      "drift mass as drift_mote_swarm",
+      "CX body as the Un-Ender",
+      "CX body as the basilisk",
+      "CX body as a moth",
+      "Grid construct on Crucible quartz",
+      "census construct as the construct alias",
+      "Compound Mark kiln on a Crucible bay",
+      "Quaternius",
+      "Kenney",
+      "full-body glow",
+      "a closed clock numeral"
+    ],
+    "canon_fauna_aliases": ["drift", "wraith", "construct"],
+    "drift_rule": "WorldDef lists drift. mon_crucible_drift carries canon_kind_alias drift. This facet fields it at cap 2 on gap_eng_procgen.",
+    "wraith_rule": "WorldDef lists wraith. mon_ruins_wraith is a Ruins id. hyb_mercywraith is Superhero and Ruins and S07 set both caps to 0. Neither id is a Crucible row. The alias resolves to nothing here.",
+    "construct_rule": "WorldDef lists construct. mon_grid_construct carries canon_kind_alias construct and lists Crucible in world_ids. S11 set the Crucible cap to 0 and the Cyber cap to 1. This slice does not reopen either number. hyb_censusconstruct stays at cap 0."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/factions.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/creatures.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json faun_lattice_moth",
+    "monsters": "native-bible/creatures/MONSTERS.json mon_crucible_drift, mon_boss_unender, mon_boss_compound_mark, mon_grid_construct",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_latticebasilisk, hyb_censusconstruct",
+    "roles": "native-bible/npcs/ROLES.json npc_role_crucible_mystic",
+    "taxonomy": "native-bible/01_TAXONOMY.md Crucible row: unclosed moth, drift, un-ender, arch_kit_crucible_lattice",
+    "kit": "native-bible/architecture/KITS.json arch_kit_crucible_lattice named_sets unend_hall, shard_yard, leaning_stack",
+    "foundry": "native-bible/architecture/KITS.json arch_ix_crucible_foundry, INTERSECTIONS.md Unclosed Foundry",
+    "density": "native-bible/volume/DENSITY_TABLES.json Crucible block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_unender, enc_compound_mark",
+    "tokens": ["item_rem_unclosed_seam", "item_rem_furnace_eye"],
+    "skills": ["skill_craft_unend", "skill_steel_shard"],
+    "geography": "WorldGeography.CountryCenter reads capital x,z when abs(x) or abs(z) exceeds 2. Non-Hub worlds with countries get a wilds ring from 90 m to 126 m."
+  },
+  "existing_quests_not_redone": [
+    "q_crucible_hear_pact",
+    "q_crucible_bog_letter",
+    "q_crucible_print_tracks",
+    "q_crucible_unend_shard",
+    "q_crucible_moth",
+    "q_crucible_unend_fall",
+    "q_crucible_no_ninth",
+    "q_crucible_unender_scout",
+    "lattice_voss_01_drill",
+    "lattice_voss_02_pact",
+    "lattice_voss_03_calla",
+    "lattice_ono_01_sit",
+    "lattice_ono_02_carry",
+    "lattice_ono_03_return",
+    "lattice_emer_01_sketches",
+    "lattice_emer_02_track",
+    "lattice_emer_03_breach"
+  ],
+  "prior_slices_left_closed": {
+    "S01_pinewood": "Pinewood Crossing stays (62, -28). No Crucible body on that verge.",
+    "S07_mercywraith": "hyb_mercywraith stays cap 0. The Crucible wraith alias is not filled with it.",
+    "S11_construct": "mon_grid_construct Crucible cap 0 and Cyber cap 1 stay S11's. hyb_censusconstruct stays 0. Weights in the Cyber block stay S11's.",
+    "S13_watcher": "mon_road_watcher crucible_shard skin is not fielded. The Frontier iron skin stays S13's.",
+    "S15_dawn": "Dawn caps, the sunrise clock, and the mercy band stay S15's. The ring neighbor is not an import.",
+    "volume_unender": "enc_unender hours 20–23, every third day, cron 0 20 */3 * *, are cited and not edited.",
+    "volume_mark": "enc_compound_mark stays world_id Sere, hours 17–20, every third day, cron 0 17 */3 * *. Sere caps are S19's work.",
+    "density_weights": "faun_lattice_moth weight 4 and mon_crucible_drift weight 2 stay the table. Mystic budget 4 stays the table. prop_unclosed_shard stays 5. prop_spell_basin stays 1."
+  },
+  "faction_id_note": "Volume quests delta a faction_id open_lattice. The walker role stamps open_lattice. factions.json has neither string. It has crucible_witnesses, crucible_drift_cultists, crucible_lattice_engineers, crucible_drift_refugees, crucible_procgen_collective, and crucible_meta_witnesses. Lore also names calvex_forge, lattice_cohort, kell_circle, and verge_scouts on NPC rows. This slice's deltas use the six country ids only. The volume file and the role file were not corrected. Generated faction ids in factions-extra.json are not given standing.",
+  "geography": {
+    "method": "Floors are a gap derived from CountryCenter circles, or an unplaced kit piece. A faction capital is a rim, not a paddock. District anchors in countries.json are the capital plus (8, -6), which is 10 m, and they sit inside the parent radius. They are not wilds and they are not hash places. Where both radii are equal, the capital midpoint is the center of the open. Where they differ, the floor is the point on the segment at radius_a + open/2 from capital A.",
+    "wilds_ring_m": [90, 126],
+    "farthest_capital_rim_m": 86.5,
+    "sliver_before_wilds_m": 3.5,
+    "sliver_note": "Engineer capital (48.72, -36.71) radius 25.5 has outer rim 86.50 m. The wilds ring starts at 90 m. The 3.50 m sliver cannot hold a 4 m module. Cap 0.",
+    "foundry_fit": "arch_ix_crucible_foundry module_m is 4. The snap line is a foundry bay 2x2, which is 8 m on that grid. One 4 m module fits the 7.66 m throat. The 8 m bay does not. This slice recommends the throat for one module and does not move the seat onto a wider field to force the 2x2. The kit still has no Canon transform.",
+    "district_step": { "offset": [8, -6], "distance_m": 10 },
+    "countries": [
+      { "id": "crucible_witnesses", "x": -62.76, "z": 5.49, "radius_m": 23, "center_from_origin_m": 63.0, "outer_rim_m": 86.0 },
+      { "id": "crucible_drift_cultists", "x": 28.29, "z": -17.0, "radius_m": 23, "center_from_origin_m": 33.0, "outer_rim_m": 56.0 },
+      { "id": "crucible_lattice_engineers", "x": 48.72, "z": -36.71, "radius_m": 25.5, "center_from_origin_m": 61.0, "outer_rim_m": 86.5 },
+      { "id": "crucible_drift_refugees", "x": 44.99, "z": 9.56, "radius_m": 23, "center_from_origin_m": 45.99, "outer_rim_m": 68.99 },
+      { "id": "crucible_procgen_collective", "x": -24.55, "z": -26.33, "radius_m": 23, "center_from_origin_m": 36.0, "outer_rim_m": 59.0 },
+      { "id": "crucible_meta_witnesses", "x": 35.64, "z": -18.16, "radius_m": 23, "center_from_origin_m": 40.0, "outer_rim_m": 63.0 }
+    ],
+    "opens": [
+      {
+        "id": "gap_wit_procgen",
+        "between": ["crucible_witnesses", "crucible_procgen_collective"],
+        "center_distance_m": 49.72,
+        "open_m": 3.72,
+        "floor": [-43.66, -10.42],
+        "holds": ["faun_lattice_moth", "enc_vein_short"],
+        "bay_note": "3.72 m is narrower than the foundry module of 4 m. Moths at 0.08x player height fit. A 4 m module does not. An 8 m 2x2 bay does not."
+      },
+      {
+        "id": "gap_cult_procgen",
+        "between": ["crucible_drift_cultists", "crucible_procgen_collective"],
+        "center_distance_m": 53.66,
+        "open_m": 7.66,
+        "floor": [1.87, -21.66],
+        "holds": ["hyb_latticebasilisk", "mon_boss_unender", "enc_rib_notch", "enc_unender"],
+        "bay_note": "One 4 m foundry module centered here has 1.83 m of open on each side. This is the narrowest country gap that clears 4 m, and the recommended seat for one module. Six wider gaps also clear 4 m and stay cap 0. An 8 m 2x2 bay does not fit this throat. The kit still has no Canon transform. The recommendation is not a placement."
+      },
+      {
+        "id": "gap_eng_procgen",
+        "between": ["crucible_lattice_engineers", "crucible_procgen_collective"],
+        "center_distance_m": 74.0,
+        "open_m": 25.5,
+        "capital_midpoint": [12.08, -31.52],
+        "floor": [10.85, -31.34],
+        "floor_method": "On the segment, 25.5 + 12.75 m from the engineer capital. The capital midpoint sits 1.25 m off that point because the radii differ. This 25.50 m open can hold a 4 m module and an 8 m bay. It is the drift floor, not the foundry seat.",
+        "holds": ["mon_crucible_drift", "enc_two_masses"]
+      }
+    ],
+    "wider_opens_cap_0": [
+      { "id": "gap_proc_meta", "between": ["crucible_procgen_collective", "crucible_meta_witnesses"], "center_distance_m": 60.74, "open_m": 14.74, "floor": [5.54, -22.24], "note": "Narrowest open that clears an 8 m 2x2 bay. Cap 0. Not a foundry seat and not a beast floor." },
+      { "id": "gap_proc_ref", "between": ["crucible_procgen_collective", "crucible_drift_refugees"], "center_distance_m": 78.26, "open_m": 32.26, "floor": [10.22, -8.38], "note": "Field. Cap 0." },
+      { "id": "gap_wit_cult", "between": ["crucible_witnesses", "crucible_drift_cultists"], "center_distance_m": 93.79, "open_m": 47.79, "floor": [-17.23, -5.76], "note": "Field. Cap 0." },
+      { "id": "gap_wit_meta", "between": ["crucible_witnesses", "crucible_meta_witnesses"], "center_distance_m": 101.20, "open_m": 55.20, "floor": [-13.56, -6.33], "note": "Field. Cap 0." },
+      { "id": "gap_wit_ref", "between": ["crucible_witnesses", "crucible_drift_refugees"], "center_distance_m": 107.83, "open_m": 61.83, "floor": [-8.88, 7.53], "note": "Field. Cap 0." },
+      { "id": "gap_wit_eng", "between": ["crucible_witnesses", "crucible_lattice_engineers"], "center_distance_m": 119.20, "open_m": 70.70, "floor": [-8.19, -15.17], "note": "Field. Cap 0. Witnesses list engineers as a disputed border. The circles do not overlap." }
+    ],
+    "overlaps_cap_0": [
+      { "pair": ["crucible_drift_cultists", "crucible_meta_witnesses"], "center_distance_m": 7.44, "overlap_m": 38.56, "note": "Nested. Temple and observatory are one welded disc." },
+      { "pair": ["crucible_drift_cultists", "crucible_lattice_engineers"], "center_distance_m": 28.39, "overlap_m": 20.11 },
+      { "pair": ["crucible_lattice_engineers", "crucible_meta_witnesses"], "center_distance_m": 22.7, "overlap_m": 25.8 },
+      { "pair": ["crucible_drift_refugees", "crucible_meta_witnesses"], "center_distance_m": 29.25, "overlap_m": 16.75 },
+      { "pair": ["crucible_drift_cultists", "crucible_drift_refugees"], "center_distance_m": 31.37, "overlap_m": 14.63 },
+      { "pair": ["crucible_lattice_engineers", "crucible_drift_refugees"], "center_distance_m": 46.42, "overlap_m": 2.08 }
+    ],
+    "cap_0_also": [
+      "all six capitals",
+      "all six districts at capital+(8,-6)",
+      "wilds ring 90–126 m",
+      "sliver 86.50–90 m",
+      "named sets unend_hall, shard_yard, leaning_stack until a transform exists",
+      "arch_ix_crucible_foundry until a transform exists",
+      "gap_proc_meta, gap_proc_ref, gap_wit_cult, gap_wit_meta, gap_wit_ref, gap_wit_eng"
+    ]
+  },
+  "fauna_caps": [
+    {
+      "id": "faun_lattice_moth",
+      "display_name": "Unclosed Moth",
+      "density_weight": 4,
+      "catalog_herd": "3-10",
+      "catalog_spawn": "Crucible night",
+      "catalog_hostile": false,
+      "health": "table:faun_critter",
+      "ambient_cap": 4,
+      "ambient_where": "gap_wit_procgen",
+      "ambient_when": "night",
+      "day_cap": 0,
+      "window_cap": 4,
+      "window_id": "enc_vein_short",
+      "additive": false,
+      "despawn_rule": "If the wing pattern completes, the moth is already dead. Remove the four. Do not aggro them on the way out.",
+      "clear": "The teal vein stops before the wing edge. The four stay."
+    },
+    {
+      "id": "mon_crucible_drift",
+      "display_name": "Drift Mass",
+      "density_weight": 2,
+      "catalog_spawn": "1-3",
+      "catalog_hostile": false,
+      "health": "table:mon_skirmisher",
+      "ambient_cap": 2,
+      "ambient_where": "gap_eng_procgen",
+      "window_cap": 2,
+      "window_id": "enc_two_masses",
+      "additive": false,
+      "body_rule": "Three orbiting shards maximum. A further flare is VFX and is not a hitbox, a plate, or a loot shard.",
+      "clear": "The flare is refused as anatomy. Both masses remain. Killing either fails the window and drops no unclosed_shard."
+    },
+    {
+      "id": "hyb_latticebasilisk",
+      "display_name": "Unclosed Basilisk",
+      "density_weight": null,
+      "density_note": "Absent from the Crucible fauna list. This slice does not add a weight.",
+      "catalog_spawn": "1",
+      "catalog_hostile": false,
+      "health": "table:mon_brute",
+      "ambient_cap": 0,
+      "window_cap": 1,
+      "window_id": "enc_rib_notch",
+      "clear": "The quartz ribs stay short of the spine. Killing the basilisk fails the window and drops no quartz_rib.",
+      "hook": "verb_hyb_rewind_dodge rewinds a connected dodge once per cast. The rewind is the tell. It is not a license to finish the cage."
+    },
+    {
+      "id": "mon_boss_unender",
+      "display_name": "The Un-Ender",
+      "density_weight": null,
+      "catalog_hostile": true,
+      "health": "table:boss_region",
+      "ambient_cap": 0,
+      "window_cap": 1,
+      "window_id": "enc_unender",
+      "floor": "gap_cult_procgen",
+      "shares_floor_with": "enc_rib_notch at different hours. Morning basilisk is absent during 20–23.",
+      "loot_on_forced_open_completion": "item_rem_unclosed_seam",
+      "loot_on_walk_away": [],
+      "loot_on_ninth_close": []
+    }
+  ],
+  "zero_caps": [
+    { "id": "mon_grid_construct", "reason": "S11 Crucible cap 0. Cyber cap 1. Not retuned. Art-note quartz patch is not a spawn." },
+    { "id": "hyb_censusconstruct", "reason": "S11 cap 0 on Cyber and on Crucible. The construct alias does not fall through to the hybrid." },
+    { "id": "mon_boss_compound_mark", "reason": "Sere boss. enc_compound_mark is not moved. Crucible cap 0." },
+    { "id": "mon_road_watcher", "reason": "One per spoke in the bible. This facet does not place the crucible_shard skin. S13's frontier_iron placement is untouched." },
+    { "id": "mon_ruins_wraith", "reason": "Ruins id. Not a Crucible wraith." },
+    { "id": "hyb_mercywraith", "reason": "S07 cap 0. Not reopened to fill the wraith alias." },
+    { "id": "drift_mote_swarm", "source": "Canon/lattice-crucible/creatures.json", "reason": "No bible id. mon_crucible_drift is the drift alias. A cloud of motes is not added." },
+    { "id": "crucible_warden", "source": "Canon/lattice-crucible/creatures.json", "reason": "No bible id. The quadruped of fused stone is not the basilisk and not the Un-Ender." },
+    { "id": "echo_serpent", "source": "Canon/lattice-crucible/creatures.json", "reason": "No bible id. A lag-strike ribbon is not hyb_latticebasilisk." }
+  ],
+  "role_budget": {
+    "id": "npc_role_crucible_mystic",
+    "budget": 4,
+    "where": "spans and cart",
+    "cart": "vend_crucible_cart",
+    "unique_do_not_clone": ["lyra", "emer", "ono"],
+    "named_lore_not_spawned_as_extras": ["witness_orla", "witness_pem", "witness_sael", "yorin", "voss", "rina", "ono", "emer", "lyra"],
+    "window_loan": "During enc_vein_short, one of the four stands on gap_wit_procgen. The other three stay on spans and cart. When the window is suppressed by enc_unender, all four stay on spans and cart. Budget does not become 5."
+  },
+  "mini_bosses": [
+    {
+      "id": "enc_rib_notch",
+      "name": "Rib notch",
+      "kind": "mini_boss",
+      "creature_ids": ["hyb_latticebasilisk"],
+      "count": 1,
+      "floor_id": "gap_cult_procgen",
+      "schedule": { "open_hour": 8, "close_hour": 10, "day_index_mod": 3, "day_index_residue": 0 },
+      "catalog_hostile": false,
+      "instance_aggro": true,
+      "telegraph": "The cage of quartz leans toward a close. The notch is the read at the silhouette.",
+      "audio_tell": "Music-box click on the rewind only.",
+      "player_response": "Take the rewind once. Leave the ribs short. skill_craft_unend on the notch keeps the cage open. A killing blow fails the window.",
+      "drops": [],
+      "faction_delta_on_clear": [
+        { "faction_id": "crucible_drift_cultists", "delta": 1 },
+        { "faction_id": "crucible_lattice_engineers", "delta": -1 }
+      ],
+      "faction_delta_on_kill": [
+        { "faction_id": "crucible_lattice_engineers", "delta": 1 },
+        { "faction_id": "crucible_procgen_collective", "delta": -1 }
+      ]
+    },
+    {
+      "id": "enc_two_masses",
+      "name": "Two masses",
+      "kind": "mini_boss",
+      "creature_ids": ["mon_crucible_drift"],
+      "count": 2,
+      "floor_id": "gap_eng_procgen",
+      "schedule": { "open_hour": 11, "close_hour": 13, "day_index_mod": 3, "day_index_residue": 1 },
+      "catalog_hostile": false,
+      "instance_aggro": true,
+      "telegraph": "Each mass shows three shards. A fourth light appears between them and must stay light.",
+      "audio_tell": "A tone that almost resolves and drops.",
+      "player_response": "Hit the open seam on a mass if you must move it. Do not strike the flare. Do not log the flare as a plate. Killing a mass fails the window.",
+      "drops": [],
+      "faction_delta_on_clear": [
+        { "faction_id": "crucible_procgen_collective", "delta": 1 },
+        { "faction_id": "crucible_lattice_engineers", "delta": -1 }
+      ]
+    },
+    {
+      "id": "enc_vein_short",
+      "name": "Vein short of the edge",
+      "kind": "mini_boss",
+      "creature_ids": ["faun_lattice_moth"],
+      "count": 4,
+      "role_loan": { "id": "npc_role_crucible_mystic", "count": 1 },
+      "floor_id": "gap_wit_procgen",
+      "schedule": { "open_hour": 21, "close_hour": 23, "day_index_mod": 3, "day_index_residue": 2 },
+      "suppressed_when": "enc_unender schedule is open the same night. Moths stay ambient. The loaned walker returns to the cart.",
+      "catalog_hostile": false,
+      "instance_aggro": false,
+      "legal_strike_on_walker": false,
+      "legal_strike_on_moth": false,
+      "telegraph": "One teal vein on each moth lengthens toward the wing edge and toward the 3.72 m open, as if the two country rims were a pattern to finish.",
+      "player_response": "Un-end the vein with skill_craft_unend or by breaking the walker's stitch without striking the walker. A completed pattern despawns the four as already dead and fails the window.",
+      "drops": [],
+      "faction_delta_on_clear": [
+        { "faction_id": "crucible_witnesses", "delta": 1 },
+        { "faction_id": "crucible_procgen_collective", "delta": 1 }
+      ],
+      "charter_note": "The Witness Charter says observe and do not intervene. Stopping the vein is an intervention. The clear still follows the world law, un-end. The log will be argued between Sael and Orla. This slice does not split crucible_witnesses into two faction ids."
+    }
+  ],
+  "compound_mark_adjacency": {
+    "id": "enc_numeral_open",
+    "name": "Missing numeral",
+    "kind": "adjacency",
+    "not_a_spawn_of": "mon_boss_compound_mark",
+    "sere_encounter_left_closed": {
+      "id": "enc_compound_mark",
+      "world_id": "Sere",
+      "open_hour": 17,
+      "close_hour": 20,
+      "every_nth_day": 3,
+      "cron": "0 17 */3 * *"
+    },
+    "crucible_face": {
+      "open_hour": 17,
+      "close_hour": 19,
+      "every_nth_day": 3,
+      "cron_family": "0 17 */3 * *",
+      "closes_before_hour": 20,
+      "reason": "Hour 20 belongs to enc_unender on the nights that cron also opens the gap. The Mark's own window runs through 20 on Sere. The Crucible face ends at 19 so the two Crucible clocks do not share an hour."
+    },
+    "floor": {
+      "kit": "arch_ix_crucible_foundry",
+      "piece": "glue_clock_face_unclosed",
+      "placed": false,
+      "recommended_open": "gap_cult_procgen",
+      "recommendation_is_one_module": "A single 4 m module. The kit snap is a 2x2 bay of 8 m, which this throat cannot hold. gap_proc_meta at 14.74 m is the narrowest open that clears 8 m. It stays cap 0 and is not the seat.",
+      "recommendation_is_not_a_transform": true
+    },
+    "creature_ids": [],
+    "props_already_in_kit": ["prop_furnace_bellows", "prop_unclosed_shard", "prop_bench_forge"],
+    "prop_counts_not_raised": true,
+    "law": "The clock face is missing its last numeral. That missing numeral is the Crucible reading of a bill the Compound Mark would compound. Leaving it missing is the clear. Stamping a digit, bolting a brand tile, or carrying item_rem_furnace_eye into the bay fails the window and does not spawn the kiln.",
+    "spawn_until_transform": "nothing",
+    "token_forbidden_in_bay": "item_rem_furnace_eye",
+    "drops": []
+  },
+  "boss": {
+    "id": "enc_unender",
+    "name": "The Un-Ender",
+    "creature_ids": ["mon_boss_unender"],
+    "count": 1,
+    "floor_id": "gap_cult_procgen",
+    "volume_schedule_cited": {
+      "open_hour": 20,
+      "close_hour": 23,
+      "every_nth_day": 3,
+      "cron": "0 20 */3 * *",
+      "label": "Lattice night, every third day"
+    },
+    "volume_phases_cited": ["Gap", "Close attempt", "Almost ninth"],
+    "player_response": "Do not fill the gap with a body. skill_craft_unend or skill_steel_shard on the seam forces a completion the ring cannot refuse. Stop before the offer becomes a ninth law. Walking out of the open stamps refused completion and is a legal win.",
+    "skill_id_mismatch": "The monster row names skill_craft_lattice_unend. The skills catalog and the volume phase name skill_craft_unend. This slice follows the volume id and does not mint the other string.",
+    "remembrance_item_id": "item_rem_unclosed_seam",
+    "drop_rule": "The seam drops only if completion was forced and the gap is still the face. Walk-away drops nothing. A ninth-close drops nothing. closed_ring_fragment in the monster loot list is not a second item id in this slice.",
+    "boss_rule_cited": "Walking out of the arena stamps WorldEventLog 'refused completion' and counts as a win. It does not drop the fragment.",
+    "faction_delta_on_walk_away": [
+      { "faction_id": "crucible_drift_cultists", "delta": 1 },
+      { "faction_id": "crucible_witnesses", "delta": 1 }
+    ],
+    "faction_delta_on_seam": [
+      { "faction_id": "crucible_lattice_engineers", "delta": 1 },
+      { "faction_id": "crucible_drift_cultists", "delta": 1 }
+    ],
+    "faction_delta_on_ninth_close": [
+      { "faction_id": "crucible_witnesses", "delta": -2 },
+      { "faction_id": "crucible_procgen_collective", "delta": -2 }
+    ]
+  },
+  "token": {
+    "id": "item_rem_unclosed_seam",
+    "display_name": "Unclosed seam",
+    "world_ids": ["Crucible"],
+    "extends": "mon_boss_unender",
+    "notes_cited": "Seam token. Completing it fails the drop.",
+    "second_token": false
+  },
+  "side_quests": [
+    {
+      "id": "q_s17_rib_notch",
+      "title": "Foundry gap — Leave the rib open",
+      "giver_role_id": "npc_role_crucible_mystic",
+      "giver_place": "vend_crucible_cart",
+      "backstory_lore_ids": ["lattice_calvex_alloys"],
+      "objectives": [
+        { "id": "obj_q_s17_rib_notch_1", "verb": "reach", "target": "gap_cult_procgen", "text": "Stand in the 7.66 m open while the basilisk window can exist." },
+        { "id": "obj_q_s17_rib_notch_2", "verb": "witness", "target": "hyb_latticebasilisk", "text": "See the quartz ribs fail to meet. The notch is the third alloy staying untaught." },
+        { "id": "obj_q_s17_rib_notch_3", "verb": "craft", "target": "skill_craft_unend", "text": "Leave the cage short. Do not write the recipe the master withheld." }
+      ],
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "crucible_drift_cultists", "delta": 1 },
+        { "faction_id": "crucible_lattice_engineers", "delta": -1 }
+      ],
+      "does_not_grant": ["skill_craft_unend", "skill_steel_shard"],
+      "hidden_withheld": "The third alloy's recipe is not in this quest. Rina rediscovered two. The master's refusal stands."
+    },
+    {
+      "id": "q_s17_three_plates",
+      "title": "Engineer gap — Three plates, and light",
+      "giver_role_id": "npc_role_crucible_mystic",
+      "giver_place": "vend_crucible_cart",
+      "backstory_lore_ids": ["crucible_lore_first_alert", "crucible_lore_seventh_door_origin"],
+      "objectives": [
+        { "id": "obj_q_s17_three_plates_1", "verb": "reach", "target": "gap_eng_procgen", "text": "Reach the 25.50 m open between the engineers and the collective." },
+        { "id": "obj_q_s17_three_plates_2", "verb": "witness", "target": "mon_crucible_drift", "text": "Count three shards on a mass. The flare between the pair is not a fourth." },
+        { "id": "obj_q_s17_three_plates_3", "verb": "talk", "target": "npc_role_crucible_mystic", "text": "Report the count as three. A closed tally is a failed watch." }
+      ],
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "crucible_procgen_collective", "delta": 1 },
+        { "faction_id": "crucible_lattice_engineers", "delta": -1 }
+      ],
+      "not_a_redo_of": "q_crucible_unend_shard",
+      "hidden_withheld": "Orla's player-conditional drift class is not the flare, and it is not explained here."
+    },
+    {
+      "id": "q_s17_vein_short",
+      "title": "Witness gap — The vein stops",
+      "giver_role_id": "npc_role_crucible_mystic",
+      "giver_place": "vend_crucible_cart",
+      "backstory_lore_ids": ["crucible_lore_charter_question"],
+      "objectives": [
+        { "id": "obj_q_s17_vein_short_1", "verb": "reach", "target": "gap_wit_procgen", "text": "Night, in the 3.72 m open, on a night the Un-Ender is not up." },
+        { "id": "obj_q_s17_vein_short_2", "verb": "craft", "target": "skill_craft_unend", "text": "Stop the teal vein before the wing edge. The moths stay in the air." },
+        { "id": "obj_q_s17_vein_short_3", "verb": "talk", "target": "npc_role_crucible_mystic", "text": "Log a stop. Do not log a corrected bowtie, and do not strike the walker who was stitching." }
+      ],
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "crucible_witnesses", "delta": 1 },
+        { "faction_id": "crucible_procgen_collective", "delta": 1 }
+      ],
+      "not_a_redo_of": "q_crucible_moth",
+      "difference": "q_crucible_moth rejects a symmetric lie. This quest enforces the despawn rule on a measured open: a finished pattern is a dead moth."
+    },
+    {
+      "id": "q_s17_missing_numeral",
+      "title": "Clock gantry — No digit for the bill",
+      "giver_role_id": "npc_role_crucible_mystic",
+      "giver_place": "vend_crucible_cart",
+      "backstory_lore_ids": ["crucible_lore_seventh_door_origin"],
+      "requires_floor": "glue_clock_face_unclosed placed",
+      "if_unplaced": "The reach objective cannot complete. The board says the bay has no transform. Do not satisfy it at a capital.",
+      "objectives": [
+        { "id": "obj_q_s17_missing_numeral_1", "verb": "reach", "target": "glue_clock_face_unclosed", "text": "Stand at the unclosed clock during enc_numeral_open." },
+        { "id": "obj_q_s17_missing_numeral_2", "verb": "witness", "target": "missing_numeral", "text": "The last numeral is absent while the Compound Mark walks on Sere. It does not walk here." },
+        { "id": "obj_q_s17_missing_numeral_3", "verb": "talk", "target": "npc_role_crucible_mystic", "text": "Leave the face short. Do not bring the cooled furnace eye into the bay." }
+      ],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "crucible_drift_cultists", "delta": 1 },
+        { "faction_id": "crucible_lattice_engineers", "delta": -1 }
+      ],
+      "sere_faction_delta": [],
+      "not_a_redo_of": "q_crucible_no_ninth"
+    }
+  ],
+  "withheld": [
+    "Orla's private corpus and the cause of player-conditional drift",
+    "The names of the three who know the cross-world pact",
+    "The untaught third Calvex alloy recipe",
+    "The contents of Ono Kell's forty-year silence",
+    "Any board line that would publish those four"
+  ]
+}

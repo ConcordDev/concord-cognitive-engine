@@ -1,0 +1,289 @@
+{
+  "schema": "concordia.volume.companions.v1",
+  "authored": "2026-09-22",
+  "notes": [
+    "Banter fires on flags, not on a timer. Intro once, mid when the named flag flips, postboss only if the player holds that remembrance.",
+    "Assist verbs are existing skill_* ids. SkillLattice is still a lookup until ActionRunner windows change.",
+    "Bodies are CX. No Quaternius. Brackish is a child: scout and gossip only, no romance, no combat puppet.",
+    "Pillars (Concordia, Concord, Sovereign) are not companions."
+  ],
+  "companions": [
+    {
+      "id": "comp_brackish",
+      "name": "Brackish",
+      "npc_id": "brackish",
+      "role_id": "npc_role_plaza_urchin",
+      "world_home": "Hub",
+      "assist_verb": "skill_presence_gossip",
+      "assist_note": "Points at a real plaza fact. Does not fight.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "If you stand still the Court will tell you a secret. I already heard it."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "You gave me bread. I am still deciding."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "You came back with a thing from a boss and you did not try to impress me with it."
+        }
+      }
+    },
+    {
+      "id": "comp_old_seam",
+      "name": "Old Seam",
+      "npc_id": "preacher_old_seam",
+      "role_id": "npc_role_court_labor",
+      "world_home": "Hub",
+      "assist_verb": "skill_presence_lantern_step",
+      "assist_note": "Walks the next post. Does not close the gap with Nesha unless that quest says so.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "Walk soft. I have mended this street since before the gates had names."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "Quartus. She is on the other ring. We are not speaking."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "A remembrance is not a reunion. Do not ask me to pretend it is."
+        }
+      }
+    },
+    {
+      "id": "comp_maren",
+      "name": "Maren Ashveil",
+      "npc_id": "archivist_maren",
+      "role_id": "npc_role_scholar",
+      "world_home": "Hub",
+      "assist_verb": "skill_presence_witness",
+      "assist_note": "Writes what was seen. Strikes inference from the fact book.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "Write what you see. Not what the embassies will claim you saw."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "That is an inference. It goes in the second book."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "If this token is a story, say who held it. If you did not see the fight, say that."
+        }
+      }
+    },
+    {
+      "id": "comp_gale",
+      "name": "Arena Warden Gale",
+      "npc_id": "warden",
+      "role_id": "npc_role_iron_warden",
+      "world_home": "Hub",
+      "assist_verb": "skill_steel_parry",
+      "assist_note": "Parry only on Arena sand. Inside the 42m Court she uses skill_presence_flower_law and will not swing steel.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "The Court forbids conquest. The sand does not. Poise, not luck."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "Your flower is still a flower. Good."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "You brought a crest shard onto my sand. Sheathe it before you brag."
+        }
+      }
+    },
+    {
+      "id": "comp_thorne",
+      "name": "Thorne Blackroot",
+      "npc_id": "thorne",
+      "role_id": "npc_role_sunder_guard",
+      "world_home": "Fantasy",
+      "assist_verb": "skill_steel_curse_fold",
+      "assist_note": "Folds hostility inward. If the player takes the curse offer, Thorne leaves the party.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "I carry a curse I could turn outward and win with. I refuse, every day."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "The boar lived. So did you. That is the better count."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "The crest shard is a refusal, not a trophy. Do not set it in gold."
+        }
+      }
+    },
+    {
+      "id": "comp_maeris",
+      "name": "Maeris",
+      "npc_id": "witch_maeris",
+      "role_id": "npc_role_sunder_mystic",
+      "world_home": "Fantasy",
+      "assist_verb": "skill_presence_second_hour",
+      "assist_note": "Invents steps. Will not teach a ninth Refusal.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "Eight steps. Three I will make up. You will not know which until you are back."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "You planted what you cut. The verge noticed."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "A boss token is not a crossing permit. Put it away before the bog."
+        }
+      }
+    },
+    {
+      "id": "comp_nyx",
+      "name": "Nyx Torres",
+      "npc_id": "nyx",
+      "role_id": "npc_role_grid_officer",
+      "world_home": "Cyber",
+      "assist_verb": "skill_presence_refuse_count",
+      "assist_note": "Pulls the player out of a number painted on the ground.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "He counts. I organize the uncounted."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "The stray is a dog. Leave the scar as skin."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "That missing-number token stays dark. If you ink it, we are done."
+        }
+      }
+    },
+    {
+      "id": "comp_jax",
+      "name": "Jax Rivera",
+      "npc_id": "jax",
+      "role_id": "npc_role_shadow_courier",
+      "world_home": "Crime",
+      "assist_verb": "skill_steel_invoice",
+      "assist_note": "Produces the paper. Does not erase it. Home is the coast even though the guest stand is Hub.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "Contracts from all eight. Loyalty from none."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "The invoice landed. Do not call that cruelty."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "A stamp from a billhound is still a bill. I will not hide it in the lining."
+        }
+      }
+    },
+    {
+      "id": "comp_kel",
+      "name": "Kel",
+      "npc_id": "kel",
+      "role_id": "npc_role_frontier_guard",
+      "world_home": "Frontier",
+      "assist_verb": "skill_presence_witness",
+      "assist_note": "Canon chain frontier_silas_02_kel asks the player to find Kel. This row binds that courier as a companion after the turn-in.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "Tell me the sound of the portal. Keep the theory."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "The letter stayed sealed. That is why I am still walking with you."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "Remembrance in a saddlebag is fine. A mounted hero shot is not. There is no seated clip."
+        }
+      }
+    },
+    {
+      "id": "comp_esha",
+      "name": "Esha of the Open Table",
+      "npc_id": "esha_of_the_open_table",
+      "role_id": "npc_role_sere_enforcer",
+      "world_home": "Sere",
+      "assist_verb": "skill_presence_name_holder",
+      "assist_note": "Names who holds a mark. Will not display the open ledger in a capital.",
+      "role_note": "Her canon work is the open table, not enforcement. role_id is the nearest CX crowd silhouette (enforcer coat) until a dedicated plate exists. Do not give her a Tessera tile.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "The ledger works. It is small. Do not make it famous."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "One brand on the hound. A second mark is how the machine eats a name."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "If the furnace eye saw the seed library, we turn around. The token in your hand is not worth that."
+        }
+      }
+    },
+    {
+      "id": "comp_calla",
+      "name": "Calla",
+      "npc_id": "calla",
+      "role_id": "npc_role_ruins_elite",
+      "world_home": "Ruins",
+      "assist_verb": "skill_steel_unburial",
+      "assist_note": "Opens a staple. Does not start the fourth uprising from follow-mode.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "You can hear the plan. Hearing is not dawn."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "Leave the wraith unfinished. I have buried enough completed people."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "The mask is a question. Wear it and you answered wrong."
+        }
+      }
+    },
+    {
+      "id": "comp_vesper",
+      "name": "Vesper Kane",
+      "npc_id": "vesper",
+      "role_id": "npc_role_court_merchant",
+      "world_home": "Hub",
+      "assist_verb": "skill_presence_bargain",
+      "assist_note": "Adjusts a stall price to standing. Does not enter raids.",
+      "banter_flags": {
+        "intro": {
+          "flag": "companion_intro_spoken",
+          "line": "I keep half this city fed. The other half I keep honest."
+        },
+        "mid": {
+          "flag": "companion_mid_flag",
+          "line": "Your standing just moved my loaf. Look at the slate before you complain."
+        },
+        "postboss": {
+          "flag": "companion_postboss_remembrance",
+          "line": "Boss tokens are not currency at my stall. Sell them to a keeper if you must."
+        }
+      }
+    }
+  ]
+}

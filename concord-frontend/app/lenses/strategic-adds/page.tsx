@@ -6,7 +6,6 @@ import { Layers, Shield, Brain, GraduationCap, AlertTriangle, Briefcase, BadgeCh
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { DataControlsPanel } from '@/components/privacy/DataControlsPanel';
@@ -54,9 +53,7 @@ export default function StrategicAddsPage() {
 
   return (
     <LensShell lensId="strategic-adds" asMain={false}>
-      <FirstRunTour lensId="strategic-adds" />
-      <ManifestActionBar />
-      <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
+      <FirstRunTour lensId="strategic-adds" />      <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
 
       <div data-lens-theme="command" className="p-6 space-y-6">
         <header className="space-y-2">

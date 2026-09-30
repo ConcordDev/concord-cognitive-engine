@@ -44,6 +44,16 @@ vi.mock('@/components/lens/DepthBadge', () => ({
 // that this focused state-machine test doesn't mount — stub it like every
 // other *-lens-states test does (see tests/retail-lens-states.test.tsx).
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+// The overview view's Simulation-overview + Federation-mesh cards go through
+// lensRun (POST /api/lens/run), not one of the mocked /api/admin/* fetch
+// routes — without this mock the real client's real axios instance runs
+// under jsdom, hits (and 401s against) the actual deployed API, and the
+// resulting auth-refresh dance is pure network noise this test has no
+// business causing. A uniform honest ok:false is enough: none of the
+// assertions below exercise the simulation/fedmesh cards' content.
+vi.mock('@/lib/api/client', () => ({
+  lensRun: vi.fn(() => Promise.resolve({ data: { ok: false, result: null, error: 'not mocked in this test' } })),
+}));
 
 // Import AFTER mocks are registered.
 import OpsTelemetryPage from '@/app/lenses/ops-telemetry/page';
@@ -111,6 +121,16 @@ const EMPTY: RouteMap = {
 beforeEach(() => { vi.useRealTimers(); });
 afterEach(() => { vi.restoreAllMocks(); });
 
+// The page (app/lenses/ops-telemetry/page.tsx) is a "Grafana dashboards" view
+// union — Overview / Missions / Heartbeats / Workers / Brains / Shards — with
+// OpsTelemetryConsole rendering only the active view's panels (and remounting
+// fresh, key={view}, on every switch). Data that used to live on one flat
+// page (heartbeat rows, pool stats, brain endpoints, shard rows) is now
+// spread across these tabs, so most assertions need a tab switch first.
+function goToView(getByRole: (role: string, opts: { name: string }) => HTMLElement, name: string) {
+  fireEvent.click(getByRole('tab', { name }));
+}
+
 describe('ops-telemetry lens — four UX states', () => {
   it('LOADING: shows a role=status indicator while the first fetch is in flight', async () => {
     // Primary endpoint never resolves → page stays in initial-loading.
@@ -128,60 +148,83 @@ describe('ops-telemetry lens — four UX states', () => {
         ? Promise.reject(new Error('network down'))
         : jsonResponse({ ok: true, modules: [HB_ROW] }),
     });
-    const { container, getByText } = render(<OpsTelemetryPage />);
+    const { container, getByText, getByRole } = render(<OpsTelemetryPage />);
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/Telemetry failed to load/i)).toBeInTheDocument();
 
     fail = false;
     await act(async () => { fireEvent.click(getByText('Retry')); });
-    // recovers to populated — the heartbeat module row appears
+    // recovers — the full-page error state (this specific message) is gone.
+    // (The mocked lensRun above still returns ok:false, so the Overview tab's
+    // OWN simulation/fedmesh cards legitimately show their own honest
+    // role=alert — that's unrelated and expected, not a lingering failure.)
+    await waitFor(() => expect(() => getByText(/Telemetry failed to load/i)).toThrow());
+    // the heartbeat module row lives on the Heartbeats tab, not Overview.
+    await act(async () => { goToView(getByRole, 'Heartbeats'); });
     await waitFor(() => expect(getByText('social-npc-bridge')).toBeInTheDocument());
   });
 
   it('EMPTY: succeeds with no data and shows honest per-panel empty states', async () => {
     global.fetch = wire(EMPTY);
-    const { getByText } = render(<OpsTelemetryPage />);
+    const { getByText, getByRole } = render(<OpsTelemetryPage />);
+    // Heartbeats
+    await waitFor(() => expect(getByRole('tab', { name: 'Heartbeats' })).toBeInTheDocument());
+    await act(async () => { goToView(getByRole, 'Heartbeats'); });
     await waitFor(() => expect(getByText(/no samples yet/i)).toBeInTheDocument());
-    expect(getByText(/no endpoints loaded/i)).toBeInTheDocument();
+    // Brains
+    await act(async () => { goToView(getByRole, 'Brains'); });
+    await waitFor(() => expect(getByText(/no endpoints loaded/i)).toBeInTheDocument());
     expect(getByText(/no brain activity loaded/i)).toBeInTheDocument();
-    // shards disabled note
-    expect(getByText(/disabled — in-process/i)).toBeInTheDocument();
+    // Shards — disabled note
+    await act(async () => { goToView(getByRole, 'Shards'); });
+    await waitFor(() => expect(getByText(/disabled — in-process/i)).toBeInTheDocument());
   });
 
   it('EMPTY: a null inference window shows the honest "living on instinct" note', async () => {
     // inference-costs returns ok:false → costs stays null → the null-state copy shows.
     global.fetch = wire({ ...EMPTY, 'inference-costs': () => jsonResponse({ ok: false }) });
-    const { getByText } = render(<OpsTelemetryPage />);
+    const { getByText, getByRole } = render(<OpsTelemetryPage />);
+    // "living on instinct" is an Overview-tab card (the default active tab).
+    await waitFor(() => expect(getByText(/living on instinct/i)).toBeInTheDocument());
+    // "no samples yet" lives on the Heartbeats tab.
+    await act(async () => { goToView(getByRole, 'Heartbeats'); });
     await waitFor(() => expect(getByText(/no samples yet/i)).toBeInTheDocument());
-    expect(getByText(/living on instinct/i)).toBeInTheDocument();
   });
 
   it('POPULATED: renders heartbeat rows, pool stats, brain endpoints, costs, and shards', async () => {
     global.fetch = wire(POPULATED);
-    const { getByText, container } = render(<OpsTelemetryPage />);
-    await waitFor(() => expect(getByText('social-npc-bridge')).toBeInTheDocument());
+    const { getByText, getByRole, container } = render(<OpsTelemetryPage />);
 
-    // pool stats
-    expect(getByText('Macro worker pool')).toBeInTheDocument();
-    // brain endpoint — the endpoint url is unique to the endpoints panel
-    expect(getByText('http://ollama-conscious:11434')).toBeInTheDocument();
-    // brain endpoints section header present
+    // Overview (default) — cost story
+    await waitFor(() => expect(getByText('$0.01')).toBeInTheDocument());
+
+    // Workers — pool stats
+    await act(async () => { goToView(getByRole, 'Workers'); });
+    await waitFor(() => expect(getByText('Macro worker pool')).toBeInTheDocument());
+
+    // Brains — endpoint url + section header
+    await act(async () => { goToView(getByRole, 'Brains'); });
+    await waitFor(() => expect(getByText('http://ollama-conscious:11434')).toBeInTheDocument());
     expect(getByText(/Brain endpoints \(Phase D\)/i)).toBeInTheDocument();
-    // cost story
-    expect(getByText('$0.01')).toBeInTheDocument();
-    // shards enabled + a row
-    expect(getByText('enabled')).toBeInTheDocument();
-    expect(getByText('concordia-hub')).toBeInTheDocument();
 
-    // a11y: the two data tables carry aria-labels
+    // Heartbeats — the real module row + its aria-labeled table
+    await act(async () => { goToView(getByRole, 'Heartbeats'); });
+    await waitFor(() => expect(getByText('social-npc-bridge')).toBeInTheDocument());
     expect(container.querySelector('table[aria-label="Heartbeat module timings"]')).toBeTruthy();
+
+    // Shards — enabled + a row + its aria-labeled table
+    await act(async () => { goToView(getByRole, 'Shards'); });
+    await waitFor(() => expect(getByText('concordia-hub')).toBeInTheDocument());
+    expect(getByText('enabled')).toBeInTheDocument();
     expect(container.querySelector('table[aria-label="World shard status"]')).toBeTruthy();
   });
 
   it('OPERATOR: shard Restart POSTs the restart route then re-refreshes', async () => {
     const restart = vi.fn(() => jsonResponse({ ok: true }));
     global.fetch = wire({ ...POPULATED, 'world-shards/concordia-hub/restart': restart });
-    const { getByText, getByLabelText } = render(<OpsTelemetryPage />);
+    const { getByText, getByLabelText, getByRole } = render(<OpsTelemetryPage />);
+    await waitFor(() => expect(getByRole('tab', { name: 'Shards' })).toBeInTheDocument());
+    await act(async () => { goToView(getByRole, 'Shards'); });
     await waitFor(() => expect(getByText('concordia-hub')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(getByLabelText(/Restart shard concordia-hub/i)); });

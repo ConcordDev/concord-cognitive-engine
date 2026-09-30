@@ -1,0 +1,210 @@
+{
+  "captured_at": "2026-08-15T13:15:00Z",
+  "context": "Dila expansion audit \u2014 what systems Dila can reach today",
+  "local_machine": {
+    "hostname": "Dutch Mac (this machine)",
+    "os": "macOS 15.6.1",
+    "user": "dutch",
+    "home": "/Users/dutch",
+    "ssh_keys": [
+      "~/.ssh/id_ed25519 (operator key)"
+    ],
+    "ssh_config_hosts": [
+      {
+        "host": "63.141.33.108",
+        "port": 22064,
+        "reachable": false,
+        "note": "OP timeout \u2014 likely old/dead"
+      },
+      {
+        "host": "69.30.85.101",
+        "port": 22004,
+        "reachable": false,
+        "note": "OP timeout \u2014 likely old/dead"
+      },
+      {
+        "host": "194.68.245.26",
+        "port": 22109,
+        "reachable": true,
+        "note": "A40 RunPod \u2014 concord-os"
+      }
+    ]
+  },
+  "pod_access": {
+    "primary_pod": {
+      "ip": "194.68.245.26",
+      "ssh_port": 22109,
+      "backend_port": 5050,
+      "public_url": "https://concord-os.org",
+      "cpu": "Intel Xeon Gold 6342 @ 2.80GHz (96 cores)",
+      "ram": "503 GB",
+      "gpu": "NVIDIA A40, 48GB VRAM",
+      "disk": "/workspace 756TB (155TB free), / 100GB",
+      "reachable": true,
+      "auth": "key",
+      "projects_on_pod": [
+        "/workspace/concord-cognitive-engine (main project)",
+        "/workspace/concord (concord-data, snapshots)",
+        "/workspace/concord-data (db, backups)"
+      ]
+    },
+    "services_on_pod": {
+      "node_server": "PID 2428748, port 5050, healthy",
+      "ollama_brains": "5 servers running (conscious 14.8B, subconscious 7B, utility 3B, repair 1.5B, multimodal 7B)",
+      "cloudflared": "PID 274711, tunnel active",
+      "jupyter": "PID 133, port 8888, no auth needed"
+    }
+  },
+  "api_keys_loaded": {
+    "OPENROUTER_API_KEY": {
+      "len": 73,
+      "verified": true,
+      "usage_daily": 0,
+      "limit": null,
+      "note": "clean \u2014 fresh quota"
+    },
+    "CLOUDFLARE_ACCOUNT_ID": {
+      "len": 32,
+      "verified": true
+    },
+    "CLOUDFLARE_API_TOKEN": {
+      "len": 53,
+      "verified": true,
+      "scopes": "account:read + AI:read verified, token verify endpoint needs different scope"
+    },
+    "GEMINI_API_KEY": {
+      "len": 53,
+      "verified": true,
+      "models_available": "gemini-2.5-flash, etc"
+    },
+    "GROQ_API_KEY": {
+      "len": 56,
+      "verified": true,
+      "models_available": "groq/compound-mini, llama-3.3-70b-versatile, etc"
+    },
+    "CEREBRAS_API_KEY": {
+      "len": 52,
+      "verified": true,
+      "models_available": "gemma-4-31b, gpt-oss-120b, zai-glm-4.7"
+    },
+    "MISTRAL_API_KEY": {
+      "len": 32,
+      "verified": true,
+      "models_available": "mistral-medium-2505, mistral-large, codestral, pixtral"
+    },
+    "XAI_API_KEY": {
+      "len": 84,
+      "verified": true,
+      "balance": "$0 \u2014 card removed by operator",
+      "team_id": "f3d57236-44f8-4f7e-b710-c99016e2051a"
+    }
+  },
+  "api_keys_missing": [
+    "ANTHROPIC_API_KEY (for Claude Sonnet/Opus)",
+    "OPENAI_API_KEY (for GPT-4)",
+    "FIREWORKS_API_KEY (for Kimi, GLM)",
+    "HUGGINGFACE_TOKEN",
+    "REPLICATE_API_TOKEN",
+    "AWS_ACCESS_KEY_ID (for S3 + Lambda)",
+    "STRIPE_API_KEY (for billing management)",
+    "GITHUB_TOKEN (for PR/issue/repo management)",
+    "GOOGLE_APPLICATION_CREDENTIALS (for GCP)"
+  ],
+  "pre_tier_access": {
+    "CLOUDFLARE": {
+      "scopes_verified": "account:read + AI models:read",
+      "can_do": [
+        "list/read account info",
+        "list Workers AI models (48 models available)",
+        "list Workers scripts (currently 0)",
+        "create Workers (if scope allows)",
+        "manage DNS for concord-os.org zone",
+        "Workers AI inference via REST"
+      ],
+      "cant_do_yet": "write operations need verify of token scopes"
+    },
+    "GEMINI": {
+      "models_verified": [
+        "gemini-2.5-flash"
+      ],
+      "can_do": "chat completions, embeddings, vision input",
+      "free_tier": "60 RPM, 1500 RPD (estimated)"
+    },
+    "GROQ": {
+      "models_verified": [
+        "groq/compound-mini",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant"
+      ],
+      "can_do": "chat completions, very fast inference",
+      "free_tier": "30 RPM, 14400 RPD, 12K TPM (Groq docs)"
+    },
+    "MISTRAL": {
+      "models_verified": [
+        "mistral-medium-2505",
+        "codestral",
+        "mistral-large",
+        "pixtral"
+      ],
+      "can_do": "chat, code, vision",
+      "free_tier": "~500k tokens/month per model"
+    },
+    "CEREBRAS": {
+      "models_verified": [
+        "gemma-4-31b",
+        "gpt-oss-120b",
+        "zai-glm-4.7"
+      ],
+      "can_do": "chat completions, fastest inference (2000 tok/s)",
+      "free_tier": "30 RPM, 1M TPD, 60k TPM"
+    },
+    "OPENROUTER": {
+      "models_verified": "all 200+ free models accessible",
+      "can_do": "route to any free-tier model via one key",
+      "free_tier": "50 RPM for :free variants"
+    },
+    "XAI": {
+      "status": "AUTH OK but $0 balance",
+      "team_id": "f3d57236-44f8-4f7e-b710-c99016e2051a",
+      "note": "operator removed card; awaits top-up"
+    }
+  },
+  "launchd_jobs": {
+    "kept": [
+      "ai.hermes.gateway (PID 20791)"
+    ],
+    "stopped": [
+      "com.concord.vault-autocompress (was every 15min)",
+      "com.concord.mcp-proxy (was MCP server restarter)"
+    ]
+  },
+  "hermes_cron_jobs": {
+    "all_paused": 12,
+    "list": [
+      "concord-doc-drift (every 60m)",
+      "concord-detectors (every 60m)",
+      "concord-depth-floor (every 360m)",
+      "concord-ux-polish (every 360m)",
+      "concord-lens-wiring",
+      "concord-schema-drift (every 1440m)",
+      "concord-health-pulse (every 5m)",
+      "a40-stock-watch (every 5m)",
+      "concord-backend-watch (every 2m, no-agent)",
+      "concord-backend-restart (every 90m, no-agent)",
+      "concord-logwatch (every 2m, no-agent)",
+      "concord-watchdog (*/2, no-agent)"
+    ]
+  },
+  "next_steps_to_expand": [
+    "1. Verify CF token scopes for write (Workers deploy, DNS write)",
+    "2. Test Workers AI inference via REST",
+    "3. Wire OpenCode CLI auth (needs OPENCODE_API_KEY from operator)",
+    "4. Re-arm Mistral/Gemini workers (free cloud LLMs for code)",
+    "5. Request GitHub PAT from operator for PR/issue management",
+    "6. Capture backend Cloudflare Worker in front of concord-os.org for global edge cache",
+    "7. OpenCode-free quota integration (if key exists)",
+    "8. Wire fire-cortex (Workers AI inference fallback when Ollama down)",
+    "9. Direct psql access for migrations/audit (currently API-only)",
+    "10. Other project repos (godot-bridge, concord-frontend, sovereign-ruins) \u2014 separate codebases"
+  ]
+}

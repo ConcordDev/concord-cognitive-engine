@@ -126,14 +126,36 @@ export function arriveAtDestination(db, eventId, opts = {}) {
   });
   tx();
 
-  return {
+  const result = {
     ok: true,
-    eventId,
+    eventId: String(eventId),
     npcId: event.npc_id,
     fromWorld: event.from_world_id,
     toWorld: event.to_world_id,
     arrivalTime,
   };
+  try {
+    const emit = globalThis._concordRealtimeEmit;
+        if (typeof emit === "function") {
+          // Thin emit of fields this function already returns. Destination
+          // first so the arrival world can present it; origin second so a
+          // hub player can see someone walk a named gate. @dead-event-ok:
+          // Unity ConcordClient.cs consumes npc:migrated.
+          const payload = {
+            ok: true,
+            eventId: String(eventId),
+            npcId: event.npc_id,
+            fromWorld: event.from_world_id,
+            toWorld: event.to_world_id,
+            arrivalTime,
+          };
+          emit("npc:migrated", payload, { worldId: event.to_world_id });
+          if (event.from_world_id && event.from_world_id !== event.to_world_id) {
+            emit("npc:migrated", payload, { worldId: event.from_world_id });
+          }
+        }
+  } catch { /* presentation optional */ }
+  return result;
 }
 
 // ── Sweep helpers for the heartbeat ───────────────────────────────

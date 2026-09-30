@@ -2,13 +2,10 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
@@ -119,9 +116,7 @@ export default function AnonLensPage() {
 
   return (
     <LensShell lensId="anon" asMain={false}>
-      <FirstRunTour lensId="anon" />
-      <ManifestActionBar />
-      <DepthBadge lensId="anon" size="sm" className="ml-2" />
+      <FirstRunTour lensId="anon" />      <DepthBadge lensId="anon" size="sm" className="ml-2" />
       <LensVerticalHero lensId="anon" className="mx-6 mt-4" />
       <div data-lens-theme="anon" className="space-y-6 p-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -448,10 +443,7 @@ export default function AnonLensPage() {
         className="sr-only focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-amber-500"
       >
         Skip to anon content
-      </a>
-      <RecentMineCard domain="anon" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="anon" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="anon" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>      <CrossLensRecentsPanel lensId="anon" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

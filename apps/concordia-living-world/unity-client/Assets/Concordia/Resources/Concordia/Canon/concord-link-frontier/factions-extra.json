@@ -1,0 +1,69 @@
+[
+  {
+    "id": "gen_concord-link-frontier_faction_0000",
+    "name": "Accord Heirs",
+    "motto": "Memory outlasts stone.",
+    "goal": "consolidate the splintered districts under one accord",
+    "values": [
+      "endurance",
+      "discipline",
+      "secrecy"
+    ],
+    "fears": [
+      "a rival learning where the cache is hidden",
+      "a betrayal from within their own ranks"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "frontier_pioneer_alliance"
+    ],
+    "allied_factions": [
+      "frontier_mesh_cult"
+    ],
+    "npc_ids": [
+      "mesh_prophet_torven"
+    ],
+    "dialogue_style": "cold_clinical",
+    "reputation_currency": "standing",
+    "world_id": "concord-link-frontier",
+    "visual": {
+      "primary_color": "#f6fde3",
+      "secondary_color": "#2c6787",
+      "accent_color": "#f9bb8c"
+    },
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_faction_0001",
+    "name": "Assembly Witnesses",
+    "motto": "We answer the silence.",
+    "goal": "broker peace between the rival houses on their own terms",
+    "values": [
+      "loyalty",
+      "sacrifice",
+      "autonomy"
+    ],
+    "fears": [
+      "a rival learning where the cache is hidden"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "frontier_signal_pirates"
+    ],
+    "allied_factions": [
+      "frontier_pioneer_alliance"
+    ],
+    "npc_ids": [
+      "field_relay_iso"
+    ],
+    "dialogue_style": "zealous_fervent",
+    "reputation_currency": "standing",
+    "world_id": "concord-link-frontier",
+    "visual": {
+      "primary_color": "#148ce3",
+      "secondary_color": "#18f06a",
+      "accent_color": "#5d4250"
+    },
+    "generated": true
+  }
+]

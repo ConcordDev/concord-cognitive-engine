@@ -1,0 +1,68 @@
+# Unity-generated (never commit)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+MemoryCaptures/
+Recordings/
+
+# IDE
+.vs/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Crash / OS
+sysinfo.txt
+*.stacktrace
+.DS_Store
+
+# Editor debug captures (p0 Hub shots) — never commit
+[Aa]ssets/[Ss]creenshots/
+Assets/Concordia/Shots/
+Captures/
+
+# Mixamo / character FBX (~587MB). Restore locally from the kitchen tree.
+Assets/Concordia/Models/**
+!Assets/Concordia/Models/README.txt
+
+# Stale copies sitting outside Assets/ — Unity does not compile these.
+# Live gameplay scripts: Assets/Concordia/Scripts/
+# Live editor scripts:   Assets/Editor/
+/Scripts/
+/Editor/
+
+# Asset Store My Assets imports (reinstall from Package Manager; never vendor)
+Assets/ADG_Textures/
+Assets/_Creepy_Cat/
+Assets/3DGamekit/
+Assets/NatureStarterKit/
+Assets/Free Island Collection/
+Assets/Free Pack/
+Assets/3DForge/
+Assets/ALP_Assets/
+Assets/BodyGuards/
+Assets/Cartoon_Texture_Pack/
+Assets/InnerverseInteractive/
+Assets/Medieval Action - FX Pack 2.0/
+Assets/RPG_FPS_game_assets_industrial/
+Assets/Rocks and Boulders 2/
+Assets/TreePackVol.1/
+Assets/RPG_inventory_icons/
+Assets/YughuesFreeMetalMaterials/
+Assets/Plugins/Demigiant/

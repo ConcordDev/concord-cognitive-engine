@@ -73,6 +73,16 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       // Disable shedding for e2e spawns; they exist to test real behaviour,
       // not admission control.
       CONCORD_LOAD_SHED_ENABLED: '0',
+      // AuthDB.getUser() carries a 5s per-request cache (server.js, the
+      // Concurrency Refactor's request-admission perf work). The "admin
+      // role (flipped from member)" test below flips `role` via a RAW SQL
+      // UPDATE on a second, direct sqlite connection — no app code path
+      // runs, so nothing busts the cache — and re-requests with the SAME
+      // token immediately after, so without this the flip doesn't take
+      // effect within the test's timeframe and the gate wrongly 403s on
+      // the still-cached "member" role. Same fix as
+      // tests/e2e/admin-liveness-role-gate.test.js.
+      CONCORD_USER_CACHE_TTL_MS: '0',
       DATA_DIR: dataDir,
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',

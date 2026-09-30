@@ -171,7 +171,16 @@ jobs:
           # past Node's default ~3.8GB. Match the build step's heap.
           NODE_OPTIONS: --max-old-space-size=6144
           NODE_ENV: test
-        run: npm run test:coverage
+        # test:coverage:ci wraps the raw `vitest run --coverage` in
+        # scripts/ci-test-coverage-tolerant.mjs — tolerates ONLY a known,
+        # open upstream Vitest 4.1.x worker-pool teardown race
+        # ("[vitest-worker]: Closing rpc while ... was pending",
+        # vitest-dev/vitest#8649/#9872/#9736) that intermittently makes an
+        # otherwise-fully-passing run exit 1. Real test failures and real
+        # coverage-threshold violations are never tolerated — see that
+        # script's header for the exact, narrow decision logic. Local dev
+        # still uses the raw `npm run test:coverage`, unchanged.
+        run: npm run test:coverage:ci
 
       - name: Frontend diff-coverage gate (changed files must be tested)
         if: github.event_name == 'pull_request'
@@ -761,6 +770,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      # playthrough.spec.ts reads two hero GLBs, which are Git LFS objects: a
+      # plain checkout leaves 130-byte pointer files and the "real GLB bytes"
+      # assertions fail. Pull only those two (~5 MB), not the 330 MB hero set,
+      # to stay inside the LFS bandwidth quota.
+      - name: Fetch the LFS meshes the playthrough spec reads
+        run: git lfs pull --include="concord-frontend/public/meshes/heroes/_archetype_warrior__concord-link-frontier.glb,concord-frontend/public/meshes/heroes/sovereign_first_refusal.glb"
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -160,7 +161,7 @@ export function MathActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Math — ${problem.trim() || 'analysis'}`, tags: ['math', 'analysis'], source: 'math:analysis:mint', meta: { visibility: 'private', consent: { allowCitations: false }, math: { problem, stats: statsResult, matrix: matrixResult, poly: polyResult, regress: regressResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Math — ${problem.trim() || 'analysis'}`, tags: ['math', 'analysis'], source: 'math:analysis:mint', meta: { visibility: 'private', consent: { allowCitations: false }, math: { problem, stats: statsResult, matrix: matrixResult, poly: polyResult, regress: regressResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('math.mintedDtuId', id, { label: `analysis ${id.slice(0, 8)}` }); ok(`Math DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -182,7 +183,7 @@ export function MathActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public derivation — ${problem.trim() || 'analysis'}`, tags: ['math', 'public', 'derivation'], source: 'math:derivation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, derivation: { problem, stats: statsResult, regression: regressResult, poly: polyResult } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public derivation — ${problem.trim() || 'analysis'}`, tags: ['math', 'public', 'derivation'], source: 'math:derivation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, derivation: { problem, stats: statsResult, regression: regressResult, poly: polyResult } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

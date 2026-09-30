@@ -348,6 +348,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "world-creator.npc-move",
+      "name": "npc-move"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "world-creator.npc-place",
       "name": "npc-place"
     },
@@ -480,6 +493,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "world-creator.spawn-move",
+      "name": "spawn-move"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "world-creator.spawn-remove",
       "name": "spawn-remove"
     },
@@ -519,11 +545,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "world-creator.zone-move",
+      "name": "zone-move"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "world-creator.zone-remove",
       "name": "zone-remove"
     }
   ],
   "domain": "world-creator",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 24
+  "macroCount": 27
 }

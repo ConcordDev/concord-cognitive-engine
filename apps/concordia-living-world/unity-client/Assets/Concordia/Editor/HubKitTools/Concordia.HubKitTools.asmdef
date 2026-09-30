@@ -1,0 +1,20 @@
+{
+    "name": "Concordia.HubKitTools",
+    "rootNamespace": "",
+    "references": [
+        "Concordia.Runtime",
+        "glTFast",
+        "glTFast.Export"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

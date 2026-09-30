@@ -1,0 +1,762 @@
+{
+  "batch": "B24_arch_interior",
+  "cycle": 2,
+  "slice": "A04_arch_interiors_hub",
+  "count": 16,
+  "extends": "nine council modules in architecture/HUB_INTERIORS_B24.json",
+  "kit_id": "arch_kit_hub_court",
+  "entries": [
+    {
+      "id": "arch_int_hub_door_jamb",
+      "display_name": "Court Door Jamb",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "door_kit"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One limestone door jamb, a single upright with a worn rebate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf in frame. No iron crest. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone door jamb, a single upright with a worn rebate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf in frame. No iron crest. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall narrow stone upright. The rebate is the dark slot.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Opening kit. The door leaf stays arch_int_hub_door_leaf.",
+      "scale_vs_player": "2.4 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_door_jamb/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "council opening, off the 1.2 x 2.2 m clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_door_head",
+      "display_name": "Court Door Head",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "door_kit"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One short timber door head with limestone ends, spanning one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No hall body. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short timber door head with limestone ends, spanning one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No hall body. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short horizontal timber bar on two stone ends.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Head of one opening. Not the lintel baked into arch_hero_hub_council_hall.",
+      "scale_vs_player": "1.6 m span",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_door_head/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "above the council door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_stone_sill",
+      "display_name": "Court Stone Sill",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "door_kit"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One limestone door sill, a worn tread slab. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No rush mat. No lettering. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone door sill, a worn tread slab. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No rush mat. No lettering. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low stone bar. Reads as a step, not a mat.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Stone sill. The rush mat stays prop_hub_se_threshold_mat.",
+      "scale_vs_player": "1.4 m wide",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_stone_sill/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "under the council door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_door_reveal",
+      "display_name": "Court Door Reveal",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "door_kit"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One interior limestone wall return, the thickness of the wall at a door opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No second wall bay. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior limestone wall return, the thickness of the wall at a door opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No second wall bay. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short stone cheek. Depth, not a wall.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Wall thickness beside the clear. The clear stays 1.2 by 2.2 m.",
+      "scale_vs_player": "0.45 m deep",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_door_reveal/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "beside the council door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_window_frame",
+      "display_name": "Court Window Frame",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "window_kit"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One limestone window opening, a single hole in a stone surround. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Empty. No shutter boards. No glass sheet. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone window opening, a single hole in a stone surround. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Empty. No shutter boards. No glass sheet. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A stone rectangle with a dark hole. Not a shutter.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Window surround. The shutter leaf stays arch_int_hub_shutter_leaf.",
+      "scale_vs_player": "1.2 m opening",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_window_frame/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "council wall, above the wainscot"
+      }
+    },
+    {
+      "id": "arch_int_hub_window_mullion",
+      "display_name": "Court Window Mullion",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "window_kit"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One timber window mullion, a single vertical bar, worn edges. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No second bar. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber window mullion, a single vertical bar, worn edges. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No second bar. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One vertical stick. Narrow.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Splits the empty opening. Not a glazed sheet.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_window_mullion/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "in the council window opening"
+      }
+    },
+    {
+      "id": "arch_int_hub_window_sill",
+      "display_name": "Court Window Sill",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "window_kit"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One projecting limestone window sill, empty top, worn drip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No flower box. No pot. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One projecting limestone window sill, empty top, worn drip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No flower box. No pot. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A stone lip. Horizontal, thicker at the nose.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Sill under the empty opening. The flower box stays a separate prop.",
+      "scale_vs_player": "1.3 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_window_sill/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "under the council window opening"
+      }
+    },
+    {
+      "id": "arch_int_hub_casement_leaf",
+      "display_name": "Court Casement Leaf",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "window_kit"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One open timber casement leaf, an empty frame, swung aside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass pane. No shutter boards. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open timber casement leaf, an empty frame, swung aside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass pane. No shutter boards. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin open rectangle. Not a boarded shutter.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Casement. Not arch_int_hub_shutter_leaf. The stay stays prop_hub_se_shutter_stay.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_casement_leaf/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "beside the council window opening"
+      }
+    },
+    {
+      "id": "arch_int_hub_wainscot",
+      "display_name": "Council Wainscot Bay",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "set_dress"
+      ],
+      "triangle_budget": 3200,
+      "aura_prompt": "One limestone wainscot bay, a chair rail and three stone panels, worn. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No lettering. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone wainscot bay, a chair rail and three stone panels, worn. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No lettering. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low wall band. Three panels, one rail.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Council wall below the window kit. Not the floor bay.",
+      "scale_vs_player": "4 m bay",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_wainscot/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 3200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "council wall, below the window sill"
+      }
+    },
+    {
+      "id": "arch_int_hub_gallery_rail",
+      "display_name": "Council Gallery Rail",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "set_dress"
+      ],
+      "triangle_budget": 2400,
+      "aura_prompt": "One timber gallery rail, four plain posts and a single top rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre run. No cloth. No banner. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber gallery rail, four plain posts and a single top rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre run. No cloth. No banner. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A horizontal rail on short posts.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Gallery edge. The banner strip stays anim_org_hall_banner_strip.",
+      "scale_vs_player": "4 m run",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_gallery_rail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2400,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "council gallery, off the door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_market_plank",
+      "display_name": "Market Plank Floor",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "market_interior"
+      ],
+      "triangle_budget": 3800,
+      "aura_prompt": "One interior market floor bay of worn timber planks and a limestone border. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No cobble. No crate. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior market floor bay of worn timber planks and a limestone border. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No cobble. No crate. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat plank rectangle. Reads as floor.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Market interior floor. Not arch_int_hub_council_floor. Outside the 42 m disk.",
+      "scale_vs_player": "4 m bay",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_market_plank/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 3800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_42m",
+        "place": "inside arch_hero_hub_market_facade, outside the 42 m disk"
+      }
+    },
+    {
+      "id": "arch_int_hub_stall_post",
+      "display_name": "Market Stall Post",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "market_interior"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One square timber stall post with an iron shoe, worn corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No awning cloth. No grab rail. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square timber stall post with an iron shoe, worn corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No awning cloth. No grab rail. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A vertical post. The shoe is the dark foot.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Stall post. Not the facade grab rail. Outside the 42 m disk.",
+      "scale_vs_player": "2.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_stall_post/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_42m",
+        "place": "market interior, off the door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_arena_passage",
+      "display_name": "Arena Passage Floor",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "arena_interior"
+      ],
+      "triangle_budget": 3600,
+      "aura_prompt": "One worn stone passage floor, sand in the joints. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No door. No crest. No iron band. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One worn stone passage floor, sand in the joints. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No door. No crest. No iron band. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat stone rectangle. Sand sits in the joints only.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Passage floor. The double door stays arch_hero_hub_arena_gate. Inside the 42 m disk.",
+      "scale_vs_player": "4 m bay",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_arena_passage/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 3600,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "inside the arena gate, off the door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_arena_pier",
+      "display_name": "Arena Passage Pier",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "arena_interior"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One square limestone pier, scuffed base, sand stain. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No iron band. No crest. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square limestone pier, scuffed base, sand stain. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No iron band. No crest. No neon. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A square column. Plain capital.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Passage pier. Drawn steel stays on the warden. Inside the 42 m disk.",
+      "scale_vs_player": "3.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_arena_pier/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "inside_42m",
+        "place": "arena passage, off the door clear"
+      }
+    },
+    {
+      "id": "arch_int_hub_stable_floor",
+      "display_name": "Pinewood Stable Floor",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "stable_interior"
+      ],
+      "triangle_budget": 3200,
+      "aura_prompt": "One stable floor bay, packed earth with a worn plank strip, salt dust, hay stain. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No horse. No rider. No signage. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stable floor bay, packed earth with a worn plank strip, salt dust, hay stain. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No horse. No rider. No signage. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low rectangle. Earth and one plank run.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Stable interior at Hub (62, -28), outside the wall. Not the council floor.",
+      "scale_vs_player": "4 m bay",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_stable_floor/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 3200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_wall",
+        "place": "Hub (62, -28), outside the 56 m wall"
+      }
+    },
+    {
+      "id": "arch_int_hub_stall_rail",
+      "display_name": "Pinewood Stall Rail",
+      "batch": "B24_arch_interior",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_hub_court",
+        "stable_interior"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One low timber stall rail, two posts and one rail, empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No horse. No half-door. No latch. No signage. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low timber stall rail, two posts and one rail, empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No horse. No half-door. No latch. No signage. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low rail. Knee height.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Stall divider. The half-door stays on the stable hero. The latch stays prop_hub_se_half_latch.",
+      "scale_vs_player": "1.8 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_hub_stall_rail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_wall",
+        "place": "Hub (62, -28), outside the 56 m wall"
+      }
+    }
+  ]
+}

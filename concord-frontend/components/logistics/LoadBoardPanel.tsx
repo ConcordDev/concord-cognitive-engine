@@ -87,10 +87,10 @@ export function LoadBoardPanel() {
                   <span className="text-xs text-white truncate flex-1">{l.origin}</span>
                   <ArrowRight className="w-3 h-3 text-gray-400" />
                   <span className="text-xs text-white truncate flex-1">{l.destination}</span>
-                  <span className="font-mono text-sm tabular-nums text-violet-300">${l.ratePerMile.toFixed(2)}/mi</span>
+                  <span className="font-mono text-sm tabular-nums text-violet-300">${Number(l.ratePerMile ?? 0).toFixed(2)}/mi</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', l.status === 'available' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{l.status}</span>
                 </div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{l.equipment.replace('_', ' ')} · {l.weightLbs}lbs {l.pickupDate ? `· pickup ${l.pickupDate}` : ''}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">{String(l.equipment || '').replace('_', ' ')} · {l.weightLbs || 0}lbs {l.pickupDate ? `· pickup ${l.pickupDate}` : ''}</div>
                 {l.status === 'available' && (
                   <div className="mt-1">
                     {bidFor === l.id ? (
@@ -101,13 +101,13 @@ export function LoadBoardPanel() {
                         <button onClick={() => setBidFor(null)} className="px-2 py-0.5 text-[11px] text-gray-400">×</button>
                       </div>
                     ) : (
-                      <button onClick={() => setBidFor(l.id)} className="text-[11px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-0.5"><Gavel className="w-2.5 h-2.5" />Bid ({l.bids.length} so far)</button>
+                      <button onClick={() => setBidFor(l.id)} className="text-[11px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-0.5"><Gavel className="w-2.5 h-2.5" />Bid ({(l.bids || []).length} so far)</button>
                     )}
                   </div>
                 )}
-                {l.bids.length > 0 && l.status === 'available' && (
+                {(l.bids || []).length > 0 && l.status === 'available' && (
                   <ul className="mt-1 ml-3 space-y-0.5">
-                    {l.bids.sort((a, b) => a.amount - b.amount).map((b, i) => (
+                    {[...(l.bids || [])].sort((a, b) => a.amount - b.amount).map((b, i) => (
                       <li key={i} className="flex items-center gap-2 text-[10px]">
                         <span className="text-gray-400 font-mono">{b.carrierId}</span>
                         <span className="font-mono text-emerald-300">${b.amount}</span>

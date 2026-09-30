@@ -1,0 +1,889 @@
+run-all via ollama/qwen3.5:2b
+Skipping STEP_1_analyze_phase1 (complete)
+
+============================================================
+Executing STEP_2_phase2_generalization
+============================================================
+
+DHTP-RS-MASTER-001 — STEP_2_phase2_generalization
+  Provider: ollama (qwen3.5:2b)
+  20 trials × 3 conditions × 6 probes = 360 LLM calls
+  Evaluator: blind rubric (NOT independent)
+
+  [1/360] fleet_health/dhtp_packet t1: q=87% tok=254 
+  [2/360] fleet_health/dhtp_packet t2: q=87% tok=253 
+  [3/360] fleet_health/dhtp_packet t3: q=87% tok=252 
+  [4/360] fleet_health/dhtp_packet t4: q=73% tok=255 
+  [5/360] fleet_health/dhtp_packet t5: q=87% tok=254 
+  [6/360] fleet_health/dhtp_packet t6: q=93% tok=253 
+  [7/360] fleet_health/dhtp_packet t7: q=87% tok=253 
+  [8/360] fleet_health/dhtp_packet t8: q=93% tok=253 
+  [9/360] fleet_health/dhtp_packet t9: q=93% tok=252 
+  [10/360] fleet_health/dhtp_packet t10: q=87% tok=253 
+  [11/360] fleet_health/dhtp_packet t11: q=87% tok=255 
+  [12/360] fleet_health/dhtp_packet t12: q=67% tok=255 
+  [13/360] fleet_health/dhtp_packet t13: q=87% tok=255 
+  [14/360] fleet_health/dhtp_packet t14: q=87% tok=253 
+  [15/360] fleet_health/dhtp_packet t15: q=93% tok=254 
+  [16/360] fleet_health/dhtp_packet t16: q=67% tok=253 
+  [17/360] fleet_health/dhtp_packet t17: q=87% tok=253 
+  [18/360] fleet_health/dhtp_packet t18: q=87% tok=253 
+  [19/360] fleet_health/dhtp_packet t19: q=87% tok=254 
+  [20/360] fleet_health/dhtp_packet t20: q=87% tok=253 
+  [21/360] fleet_health/matched_budget_raw t1: q=86% tok=285 
+  [22/360] fleet_health/matched_budget_raw t2: q=87% tok=285 
+  [23/360] fleet_health/matched_budget_raw t3: q=87% tok=285 
+  [24/360] fleet_health/matched_budget_raw t4: q=93% tok=285 
+  [25/360] fleet_health/matched_budget_raw t5: q=87% tok=285 
+  [26/360] fleet_health/matched_budget_raw t6: q=87% tok=285 
+  [27/360] fleet_health/matched_budget_raw t7: q=87% tok=285 
+  [28/360] fleet_health/matched_budget_raw t8: q=87% tok=285 
+  [29/360] fleet_health/matched_budget_raw t9: q=87% tok=285 
+  [30/360] fleet_health/matched_budget_raw t10: q=80% tok=285 
+  [31/360] fleet_health/matched_budget_raw t11: q=93% tok=285 
+  [32/360] fleet_health/matched_budget_raw t12: q=93% tok=285 
+  [33/360] fleet_health/matched_budget_raw t13: q=87% tok=285 
+  [34/360] fleet_health/matched_budget_raw t14: q=87% tok=285 
+  [35/360] fleet_health/matched_budget_raw t15: q=87% tok=285 
+  [36/360] fleet_health/matched_budget_raw t16: q=87% tok=285 
+  [37/360] fleet_health/matched_budget_raw t17: q=87% tok=285 
+  [38/360] fleet_health/matched_budget_raw t18: q=80% tok=285 
+  [39/360] fleet_health/matched_budget_raw t19: q=87% tok=285 
+  [40/360] fleet_health/matched_budget_raw t20: q=80% tok=285 
+  [41/360] fleet_health/random_budget_raw t1: q=80% tok=143 
+  [42/360] fleet_health/random_budget_raw t2: q=80% tok=143 
+  [43/360] fleet_health/random_budget_raw t3: q=73% tok=143 
+  [44/360] fleet_health/random_budget_raw t4: q=87% tok=143 
+  [45/360] fleet_health/random_budget_raw t5: q=80% tok=143 
+  [46/360] fleet_health/random_budget_raw t6: q=80% tok=143 
+  [47/360] fleet_health/random_budget_raw t7: q=80% tok=143 
+  [48/360] fleet_health/random_budget_raw t8: q=80% tok=143 
+  [49/360] fleet_health/random_budget_raw t9: q=73% tok=143 
+  [50/360] fleet_health/random_budget_raw t10: q=80% tok=143 
+  [51/360] fleet_health/random_budget_raw t11: q=80% tok=144 
+  [52/360] fleet_health/random_budget_raw t12: q=80% tok=144 
+  [53/360] fleet_health/random_budget_raw t13: q=80% tok=144 
+  [54/360] fleet_health/random_budget_raw t14: q=80% tok=144 
+  [55/360] fleet_health/random_budget_raw t15: q=80% tok=144 
+  [56/360] fleet_health/random_budget_raw t16: q=80% tok=144 
+  [57/360] fleet_health/random_budget_raw t17: q=80% tok=144 
+  [58/360] fleet_health/random_budget_raw t18: q=80% tok=144 
+  [59/360] fleet_health/random_budget_raw t19: q=80% tok=144 
+  [60/360] fleet_health/random_budget_raw t20: q=87% tok=144 
+  [61/360] contradiction_detection/dhtp_packet t1: q=87% tok=283 
+  [62/360] contradiction_detection/dhtp_packet t2: q=87% tok=283 
+  [63/360] contradiction_detection/dhtp_packet t3: q=87% tok=284 
+  [64/360] contradiction_detection/dhtp_packet t4: q=87% tok=280 
+  [65/360] contradiction_detection/dhtp_packet t5: q=87% tok=283 
+  [66/360] contradiction_detection/dhtp_packet t6: q=80% tok=281 
+  [67/360] contradiction_detection/dhtp_packet t7: q=57% tok=282 
+  [68/360] contradiction_detection/dhtp_packet t8: q=80% tok=282 
+  [69/360] contradiction_detection/dhtp_packet t9: q=39% tok=283 
+  [70/360] contradiction_detection/dhtp_packet t10: q=87% tok=281 
+  [71/360] contradiction_detection/dhtp_packet t11: q=87% tok=284 
+  [72/360] contradiction_detection/dhtp_packet t12: q=87% tok=283 
+  [73/360] contradiction_detection/dhtp_packet t13: q=87% tok=282 
+  [74/360] contradiction_detection/dhtp_packet t14: q=87% tok=284 
+  [75/360] contradiction_detection/dhtp_packet t15: q=87% tok=283 
+  [76/360] contradiction_detection/dhtp_packet t16: q=67% tok=281 
+  [77/360] contradiction_detection/dhtp_packet t17: q=87% tok=283 
+  [78/360] contradiction_detection/dhtp_packet t18: q=87% tok=284 
+  [79/360] contradiction_detection/dhtp_packet t19: q=87% tok=282 
+  [80/360] contradiction_detection/dhtp_packet t20: q=87% tok=284 
+  [81/360] contradiction_detection/matched_budget_raw t1: q=80% tok=310 
+  [82/360] contradiction_detection/matched_budget_raw t2: q=80% tok=310 
+  [83/360] contradiction_detection/matched_budget_raw t3: q=73% tok=310 
+  [84/360] contradiction_detection/matched_budget_raw t4: q=80% tok=310 
+  [85/360] contradiction_detection/matched_budget_raw t5: q=80% tok=310 
+  [86/360] contradiction_detection/matched_budget_raw t6: q=80% tok=310 
+  [87/360] contradiction_detection/matched_budget_raw t7: q=80% tok=310 
+  [88/360] contradiction_detection/matched_budget_raw t8: q=79% tok=310 
+  [89/360] contradiction_detection/matched_budget_raw t9: q=80% tok=310 
+  [90/360] contradiction_detection/matched_budget_raw t10: q=80% tok=310 
+  [91/360] contradiction_detection/matched_budget_raw t11: q=80% tok=311 
+  [92/360] contradiction_detection/matched_budget_raw t12: q=80% tok=311 
+  [93/360] contradiction_detection/matched_budget_raw t13: q=80% tok=311 
+  [94/360] contradiction_detection/matched_budget_raw t14: q=80% tok=311 
+  [95/360] contradiction_detection/matched_budget_raw t15: q=80% tok=311 
+  [96/360] contradiction_detection/matched_budget_raw t16: q=80% tok=311 
+  [97/360] contradiction_detection/matched_budget_raw t17: q=80% tok=311 
+  [98/360] contradiction_detection/matched_budget_raw t18: q=80% tok=311 
+  [99/360] contradiction_detection/matched_budget_raw t19: q=80% tok=311 
+  [100/360] contradiction_detection/matched_budget_raw t20: q=80% tok=311 
+  [101/360] contradiction_detection/random_budget_raw t1: q=47% tok=150 
+  [102/360] contradiction_detection/random_budget_raw t2: q=73% tok=150 
+  [103/360] contradiction_detection/random_budget_raw t3: q=73% tok=150 
+  [104/360] contradiction_detection/random_budget_raw t4: q=80% tok=150 
+  [105/360] contradiction_detection/random_budget_raw t5: q=80% tok=150 
+  [106/360] contradiction_detection/random_budget_raw t6: q=80% tok=150 
+  [107/360] contradiction_detection/random_budget_raw t7: q=80% tok=150 
+  [108/360] contradiction_detection/random_budget_raw t8: q=80% tok=150 
+  [109/360] contradiction_detection/random_budget_raw t9: q=80% tok=150 
+  [110/360] contradiction_detection/random_budget_raw t10: q=80% tok=150 
+  [111/360] contradiction_detection/random_budget_raw t11: q=80% tok=151 
+  [112/360] contradiction_detection/random_budget_raw t12: q=80% tok=151 
+  [113/360] contradiction_detection/random_budget_raw t13: q=73% tok=151 
+  [114/360] contradiction_detection/random_budget_raw t14: q=80% tok=151 
+  [115/360] contradiction_detection/random_budget_raw t15: q=73% tok=151 
+  [116/360] contradiction_detection/random_budget_raw t16: q=80% tok=151 
+  [117/360] contradiction_detection/random_budget_raw t17: q=73% tok=151 
+  [118/360] contradiction_detection/random_budget_raw t18: q=80% tok=151 
+  [119/360] contradiction_detection/random_budget_raw t19: q=73% tok=151 
+  [120/360] contradiction_detection/random_budget_raw t20: q=80% tok=151 
+  [121/360] decision/dhtp_packet t1: q=88% tok=276 
+  [122/360] decision/dhtp_packet t2: q=88% tok=273 
+  [123/360] decision/dhtp_packet t3: q=88% tok=276 
+  [124/360] decision/dhtp_packet t4: q=88% tok=275 
+  [125/360] decision/dhtp_packet t5: q=88% tok=277 
+  [126/360] decision/dhtp_packet t6: q=88% tok=276 
+  [127/360] decision/dhtp_packet t7: q=88% tok=276 
+  [128/360] decision/dhtp_packet t8: q=88% tok=277 
+  [129/360] decision/dhtp_packet t9: q=79% tok=277 
+  [130/360] decision/dhtp_packet t10: q=88% tok=277 
+  [131/360] decision/dhtp_packet t11: q=88% tok=276 
+  [132/360] decision/dhtp_packet t12: q=88% tok=275 
+  [133/360] decision/dhtp_packet t13: q=88% tok=278 
+  [134/360] decision/dhtp_packet t14: q=79% tok=277 
+  [135/360] decision/dhtp_packet t15: q=88% tok=275 
+  [136/360] decision/dhtp_packet t16: q=88% tok=278 
+  [137/360] decision/dhtp_packet t17: q=88% tok=277 
+  [138/360] decision/dhtp_packet t18: q=88% tok=276 
+  [139/360] decision/dhtp_packet t19: q=88% tok=275 
+  [140/360] decision/dhtp_packet t20: q=88% tok=277 
+  [141/360] decision/matched_budget_raw t1: q=72% tok=300 
+  [142/360] decision/matched_budget_raw t2: q=72% tok=300 
+  [143/360] decision/matched_budget_raw t3: q=72% tok=300 
+  [144/360] decision/matched_budget_raw t4: q=72% tok=300 
+  [145/360] decision/matched_budget_raw t5: q=72% tok=300 
+  [146/360] decision/matched_budget_raw t6: q=72% tok=300 
+  [147/360] decision/matched_budget_raw t7: q=72% tok=300 
+  [148/360] decision/matched_budget_raw t8: q=72% tok=300 
+  [149/360] decision/matched_budget_raw t9: q=72% tok=300 
+  [150/360] decision/matched_budget_raw t10: q=72% tok=300 
+  [151/360] decision/matched_budget_raw t11: q=72% tok=302 
+  [152/360] decision/matched_budget_raw t12: q=72% tok=302 
+  [153/360] decision/matched_budget_raw t13: q=72% tok=302 
+  [154/360] decision/matched_budget_raw t14: q=81% tok=302 
+  [155/360] decision/matched_budget_raw t15: q=72% tok=302 
+  [156/360] decision/matched_budget_raw t16: q=72% tok=302 
+  [157/360] decision/matched_budget_raw t17: q=72% tok=302 
+  [158/360] decision/matched_budget_raw t18: q=81% tok=302 
+  [159/360] decision/matched_budget_raw t19: q=72% tok=302 
+  [160/360] decision/matched_budget_raw t20: q=72% tok=302 
+  [161/360] decision/random_budget_raw t1: q=65% tok=141 
+  [162/360] decision/random_budget_raw t2: q=72% tok=141 
+  [163/360] decision/random_budget_raw t3: q=65% tok=141 
+  [164/360] decision/random_budget_raw t4: q=72% tok=141 
+  [165/360] decision/random_budget_raw t5: q=72% tok=141 
+  [166/360] decision/random_budget_raw t6: q=72% tok=141 
+  [167/360] decision/random_budget_raw t7: q=72% tok=141 
+  [168/360] decision/random_budget_raw t8: q=72% tok=141 
+  [169/360] decision/random_budget_raw t9: q=72% tok=141 
+  [170/360] decision/random_budget_raw t10: q=72% tok=141 
+  [171/360] decision/random_budget_raw t11: q=72% tok=142 
+  [172/360] decision/random_budget_raw t12: q=72% tok=142 
+  [173/360] decision/random_budget_raw t13: q=72% tok=142 
+  [174/360] decision/random_budget_raw t14: q=72% tok=142 
+  [175/360] decision/random_budget_raw t15: q=72% tok=142 
+  [176/360] decision/random_budget_raw t16: q=72% tok=142 
+  [177/360] decision/random_budget_raw t17: q=72% tok=142 
+  [178/360] decision/random_budget_raw t18: q=72% tok=142 
+  [179/360] decision/random_budget_raw t19: q=72% tok=142 
+  [180/360] decision/random_budget_raw t20: q=72% tok=142 
+  [181/360] temporal_reasoning/dhtp_packet t1: q=100% tok=281 
+  [182/360] temporal_reasoning/dhtp_packet t2: q=100% tok=281 
+  [183/360] temporal_reasoning/dhtp_packet t3: q=93% tok=277 
+  [184/360] temporal_reasoning/dhtp_packet t4: q=100% tok=276 
+  [185/360] temporal_reasoning/dhtp_packet t5: q=100% tok=281 
+  [186/360] temporal_reasoning/dhtp_packet t6: q=100% tok=280 
+  [187/360] temporal_reasoning/dhtp_packet t7: q=100% tok=277 
+  [188/360] temporal_reasoning/dhtp_packet t8: q=100% tok=281 
+  [189/360] temporal_reasoning/dhtp_packet t9: q=100% tok=279 
+  [190/360] temporal_reasoning/dhtp_packet t10: q=100% tok=280 
+  [191/360] temporal_reasoning/dhtp_packet t11: q=100% tok=281 
+  [192/360] temporal_reasoning/dhtp_packet t12: q=100% tok=279 
+  [193/360] temporal_reasoning/dhtp_packet t13: q=100% tok=279 
+  [194/360] temporal_reasoning/dhtp_packet t14: q=100% tok=280 
+  [195/360] temporal_reasoning/dhtp_packet t15: q=100% tok=278 
+  [196/360] temporal_reasoning/dhtp_packet t16: q=72% tok=281 
+  [197/360] temporal_reasoning/dhtp_packet t17: q=100% tok=279 
+  [198/360] temporal_reasoning/dhtp_packet t18: q=100% tok=280 
+  [199/360] temporal_reasoning/dhtp_packet t19: q=100% tok=280 
+  [200/360] temporal_reasoning/dhtp_packet t20: q=100% tok=281 
+  [201/360] temporal_reasoning/matched_budget_raw t1: q=100% tok=310 
+  [202/360] temporal_reasoning/matched_budget_raw t2: q=95% tok=310 
+  [203/360] temporal_reasoning/matched_budget_raw t3: q=100% tok=310 
+  [204/360] temporal_reasoning/matched_budget_raw t4: q=100% tok=310 
+  [205/360] temporal_reasoning/matched_budget_raw t5: q=100% tok=310 
+  [206/360] temporal_reasoning/matched_budget_raw t6: q=100% tok=310 
+  [207/360] temporal_reasoning/matched_budget_raw t7: q=100% tok=310 
+  [208/360] temporal_reasoning/matched_budget_raw t8: q=100% tok=310 
+  [209/360] temporal_reasoning/matched_budget_raw t9: q=100% tok=310 
+  [210/360] temporal_reasoning/matched_budget_raw t10: q=100% tok=310 
+  [211/360] temporal_reasoning/matched_budget_raw t11: q=100% tok=310 
+  [212/360] temporal_reasoning/matched_budget_raw t12: q=100% tok=310 
+  [213/360] temporal_reasoning/matched_budget_raw t13: q=95% tok=310 
+  [214/360] temporal_reasoning/matched_budget_raw t14: q=100% tok=310 
+  [215/360] temporal_reasoning/matched_budget_raw t15: q=100% tok=310 
+  [216/360] temporal_reasoning/matched_budget_raw t16: q=100% tok=310 
+  [217/360] temporal_reasoning/matched_budget_raw t17: q=100% tok=310 
+  [218/360] temporal_reasoning/matched_budget_raw t18: q=100% tok=310 
+  [219/360] temporal_reasoning/matched_budget_raw t19: q=100% tok=310 
+  [220/360] temporal_reasoning/matched_budget_raw t20: q=100% tok=310 
+  [221/360] temporal_reasoning/random_budget_raw t1: q=95% tok=147 
+  [222/360] temporal_reasoning/random_budget_raw t2: q=100% tok=147 
+  [223/360] temporal_reasoning/random_budget_raw t3: q=100% tok=147 
+  [224/360] temporal_reasoning/random_budget_raw t4: q=100% tok=147 
+  [225/360] temporal_reasoning/random_budget_raw t5: q=100% tok=147 
+  [226/360] temporal_reasoning/random_budget_raw t6: q=100% tok=147 
+  [227/360] temporal_reasoning/random_budget_raw t7: q=93% tok=147 
+  [228/360] temporal_reasoning/random_budget_raw t8: q=95% tok=147 
+  [229/360] temporal_reasoning/random_budget_raw t9: q=93% tok=147 
+  [230/360] temporal_reasoning/random_budget_raw t10: q=100% tok=147 
+  [231/360] temporal_reasoning/random_budget_raw t11: q=100% tok=148 
+  [232/360] temporal_reasoning/random_budget_raw t12: q=100% tok=148 
+  [233/360] temporal_reasoning/random_budget_raw t13: q=93% tok=148 
+  [234/360] temporal_reasoning/random_budget_raw t14: q=100% tok=148 
+  [235/360] temporal_reasoning/random_budget_raw t15: q=100% tok=148 
+  [236/360] temporal_reasoning/random_budget_raw t16: q=100% tok=148 
+  [237/360] temporal_reasoning/random_budget_raw t17: q=100% tok=148 
+  [238/360] temporal_reasoning/random_budget_raw t18: q=100% tok=148 
+  [239/360] temporal_reasoning/random_budget_raw t19: q=100% tok=148 
+  [240/360] temporal_reasoning/random_budget_raw t20: q=95% tok=148 
+  [241/360] anomaly_detection/dhtp_packet t1: q=83% tok=277 
+  [242/360] anomaly_detection/dhtp_packet t2: q=100% tok=279 
+  [243/360] anomaly_detection/dhtp_packet t3: q=100% tok=278 
+  [244/360] anomaly_detection/dhtp_packet t4: q=83% tok=276 
+  [245/360] anomaly_detection/dhtp_packet t5: q=82% tok=276 
+  [246/360] anomaly_detection/dhtp_packet t6: q=83% tok=276 
+  [247/360] anomaly_detection/dhtp_packet t7: q=100% tok=279 
+  [248/360] anomaly_detection/dhtp_packet t8: q=65% tok=279 
+  [249/360] anomaly_detection/dhtp_packet t9: q=100% tok=277 
+  [250/360] anomaly_detection/dhtp_packet t10: q=83% tok=278 
+  [251/360] anomaly_detection/dhtp_packet t11: q=100% tok=278 
+  [252/360] anomaly_detection/dhtp_packet t12: q=100% tok=275 
+  [253/360] anomaly_detection/dhtp_packet t13: q=65% tok=277 
+  [254/360] anomaly_detection/dhtp_packet t14: q=90% tok=277 
+  [255/360] anomaly_detection/dhtp_packet t15: q=83% tok=278 
+  [256/360] anomaly_detection/dhtp_packet t16: q=83% tok=275 
+  [257/360] anomaly_detection/dhtp_packet t17: q=100% tok=277 
+  [258/360] anomaly_detection/dhtp_packet t18: q=83% tok=278 
+  [259/360] anomaly_detection/dhtp_packet t19: q=100% tok=279 
+  [260/360] anomaly_detection/dhtp_packet t20: q=83% tok=277 
+  [261/360] anomaly_detection/matched_budget_raw t1: q=83% tok=303 
+  [262/360] anomaly_detection/matched_budget_raw t2: q=83% tok=303 
+  [263/360] anomaly_detection/matched_budget_raw t3: q=83% tok=303 
+  [264/360] anomaly_detection/matched_budget_raw t4: q=83% tok=303 
+  [265/360] anomaly_detection/matched_budget_raw t5: q=83% tok=303 
+  [266/360] anomaly_detection/matched_budget_raw t6: q=83% tok=303 
+  [267/360] anomaly_detection/matched_budget_raw t7: q=83% tok=303 
+  [268/360] anomaly_detection/matched_budget_raw t8: q=83% tok=303 
+  [269/360] anomaly_detection/matched_budget_raw t9: q=83% tok=303 
+  [270/360] anomaly_detection/matched_budget_raw t10: q=83% tok=303 
+  [271/360] anomaly_detection/matched_budget_raw t11: q=83% tok=304 
+  [272/360] anomaly_detection/matched_budget_raw t12: q=83% tok=304 
+  [273/360] anomaly_detection/matched_budget_raw t13: q=83% tok=304 
+  [274/360] anomaly_detection/matched_budget_raw t14: q=83% tok=304 
+  [275/360] anomaly_detection/matched_budget_raw t15: q=83% tok=304 
+  [276/360] anomaly_detection/matched_budget_raw t16: q=83% tok=304 
+  [277/360] anomaly_detection/matched_budget_raw t17: q=83% tok=304 
+  [278/360] anomaly_detection/matched_budget_raw t18: q=83% tok=304 
+  [279/360] anomaly_detection/matched_budget_raw t19: q=83% tok=304 
+  [280/360] anomaly_detection/matched_budget_raw t20: q=83% tok=304 
+  [281/360] anomaly_detection/random_budget_raw t1: q=83% tok=143 
+  [282/360] anomaly_detection/random_budget_raw t2: q=83% tok=143 
+  [283/360] anomaly_detection/random_budget_raw t3: q=90% tok=143 
+  [284/360] anomaly_detection/random_budget_raw t4: q=83% tok=143 
+  [285/360] anomaly_detection/random_budget_raw t5: q=90% tok=143 
+  [286/360] anomaly_detection/random_budget_raw t6: q=83% tok=143 
+  [287/360] anomaly_detection/random_budget_raw t7: q=83% tok=143 
+  [288/360] anomaly_detection/random_budget_raw t8: q=83% tok=143 
+  [289/360] anomaly_detection/random_budget_raw t9: q=83% tok=143 
+  [290/360] anomaly_detection/random_budget_raw t10: q=83% tok=143 
+  [291/360] anomaly_detection/random_budget_raw t11: q=83% tok=144 
+  [292/360] anomaly_detection/random_budget_raw t12: q=83% tok=144 
+  [293/360] anomaly_detection/random_budget_raw t13: q=83% tok=144 
+  [294/360] anomaly_detection/random_budget_raw t14: q=83% tok=144 
+  [295/360] anomaly_detection/random_budget_raw t15: q=83% tok=144 
+  [296/360] anomaly_detection/random_budget_raw t16: q=83% tok=144 
+  [297/360] anomaly_detection/random_budget_raw t17: q=83% tok=144 
+  [298/360] anomaly_detection/random_budget_raw t18: q=83% tok=144 
+  [299/360] anomaly_detection/random_budget_raw t19: q=83% tok=144 
+  [300/360] anomaly_detection/random_budget_raw t20: q=83% tok=144 
+  [301/360] planning/dhtp_packet t1: q=90% tok=277 
+  [302/360] planning/dhtp_packet t2: q=100% tok=276 
+  [303/360] planning/dhtp_packet t3: q=100% tok=280 
+  [304/360] planning/dhtp_packet t4: q=100% tok=280 
+  [305/360] planning/dhtp_packet t5: q=100% tok=280 
+  [306/360] planning/dhtp_packet t6: q=100% tok=277 
+  [307/360] planning/dhtp_packet t7: q=100% tok=277 
+  [308/360] planning/dhtp_packet t8: q=100% tok=280 
+  [309/360] planning/dhtp_packet t9: q=100% tok=281 
+  [310/360] planning/dhtp_packet t10: q=100% tok=279 
+  [311/360] planning/dhtp_packet t11: q=100% tok=280 
+  [312/360] planning/dhtp_packet t12: q=100% tok=279 
+  [313/360] planning/dhtp_packet t13: q=100% tok=279 
+  [314/360] planning/dhtp_packet t14: q=90% tok=279 
+  [315/360] planning/dhtp_packet t15: q=100% tok=278 
+  [316/360] planning/dhtp_packet t16: q=100% tok=279 
+  [317/360] planning/dhtp_packet t17: q=100% tok=278 
+  [318/360] planning/dhtp_packet t18: q=100% tok=280 
+  [319/360] planning/dhtp_packet t19: q=100% tok=280 
+  [320/360] planning/dhtp_packet t20: q=100% tok=281 
+  [321/360] planning/matched_budget_raw t1: q=100% tok=308 
+  [322/360] planning/matched_budget_raw t2: q=100% tok=308 
+  [323/360] planning/matched_budget_raw t3: q=100% tok=308 
+  [324/360] planning/matched_budget_raw t4: q=100% tok=308 
+  [325/360] planning/matched_budget_raw t5: q=100% tok=308 
+  [326/360] planning/matched_budget_raw t6: q=100% tok=308 
+  [327/360] planning/matched_budget_raw t7: q=100% tok=308 
+  [328/360] planning/matched_budget_raw t8: q=100% tok=308 
+  [329/360] planning/matched_budget_raw t9: q=100% tok=308 
+  [330/360] planning/matched_budget_raw t10: q=100% tok=308 
+  [331/360] planning/matched_budget_raw t11: q=100% tok=308 
+  [332/360] planning/matched_budget_raw t12: q=100% tok=308 
+  [333/360] planning/matched_budget_raw t13: q=100% tok=308 
+  [334/360] planning/matched_budget_raw t14: q=100% tok=308 
+  [335/360] planning/matched_budget_raw t15: q=100% tok=308 
+  [336/360] planning/matched_budget_raw t16: q=100% tok=308 
+  [337/360] planning/matched_budget_raw t17: q=100% tok=308 
+  [338/360] planning/matched_budget_raw t18: q=100% tok=308 
+  [339/360] planning/matched_budget_raw t19: q=100% tok=308 
+  [340/360] planning/matched_budget_raw t20: q=100% tok=308 
+  [341/360] planning/random_budget_raw t1: q=100% tok=144 
+  [342/360] planning/random_budget_raw t2: q=100% tok=144 
+  [343/360] planning/random_budget_raw t3: q=100% tok=144 
+  [344/360] planning/random_budget_raw t4: q=100% tok=144 
+  [345/360] planning/random_budget_raw t5: q=100% tok=144 
+  [346/360] planning/random_budget_raw t6: q=100% tok=144 
+  [347/360] planning/random_budget_raw t7: q=100% tok=144 
+  [348/360] planning/random_budget_raw t8: q=100% tok=144 
+  [349/360] planning/random_budget_raw t9: q=100% tok=144 
+  [350/360] planning/random_budget_raw t10: q=100% tok=144 
+  [351/360] planning/random_budget_raw t11: q=100% tok=145 
+  [352/360] planning/random_budget_raw t12: q=100% tok=145 
+  [353/360] planning/random_budget_raw t13: q=100% tok=145 
+  [354/360] planning/random_budget_raw t14: q=100% tok=145 
+  [355/360] planning/random_budget_raw t15: q=100% tok=145 
+  [356/360] planning/random_budget_raw t16: q=100% tok=145 
+  [357/360] planning/random_budget_raw t17: q=100% tok=145 
+  [358/360] planning/random_budget_raw t18: q=100% tok=145 
+  [359/360] planning/random_budget_raw t19: q=100% tok=145 
+  [360/360] planning/random_budget_raw t20: q=100% tok=145 
+
+Wrote /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/rsb_6055b7b1-d0e.json
+
+Condition               Quality   Tokens API fail
+────────────────────────────────────────────────────
+DHTP packet               89.9%      275       0%
+Matched-budget raw        87.0%      303       0%
+Random-budget raw         84.9%      145       0%
+
+────────────────────────────────────────────────────────────────────────
+STATISTICAL REPORT — DHTP-RS-MASTER-001
+────────────────────────────────────────────────────────────────────────
+  dhtp_packet
+    N=120  mean=89.9%  median=88.1%  stdev=10.4pp
+    95% CI: 88.0% – 91.7%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  matched_budget_raw
+    N=120  mean=87.0%  median=83.3%  stdev=10.2pp
+    95% CI: 85.2% – 88.8%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  random_budget_raw
+    N=120  mean=84.9%  median=83.3%  stdev=11.4pp
+    95% CI: 82.9% – 87.0%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+
+PAIRED DIFFERENCES (DHTP minus control)
+  dhtp_packet_minus_matched_budget_raw (n=120)
+    mean Δ=2.9pp  median Δ=0.0pp
+    95% CI on Δ: 1.0pp – 4.7pp
+  dhtp_packet_minus_random_budget_raw (n=120)
+    mean Δ=4.9pp  median Δ=6.7pp
+    95% CI on Δ: 3.0pp – 6.9pp
+
+FAILURE BREAKDOWN (spec §18)
+  schema_failure: 61
+
+Claim level estimate: 2
+
+============================================================
+Executing STEP_3_selection_ablations
+============================================================
+
+DHTP-RS-MASTER-001 — STEP_3_selection_ablations
+  Provider: ollama (qwen3.5:2b)
+  20 trials × 5 conditions × 2 probes = 200 LLM calls
+  Evaluator: blind rubric (NOT independent)
+
+  [1/200] fleet_health/dhtp_full t1: q=93% tok=201 
+  [2/200] fleet_health/dhtp_full t2: q=93% tok=200 
+  [3/200] fleet_health/dhtp_full t3: q=93% tok=199 
+  [4/200] fleet_health/dhtp_full t4: q=87% tok=202 
+  [5/200] fleet_health/dhtp_full t5: q=87% tok=201 
+  [6/200] fleet_health/dhtp_full t6: q=87% tok=200 
+  [7/200] fleet_health/dhtp_full t7: q=87% tok=200 
+  [8/200] fleet_health/dhtp_full t8: q=93% tok=200 
+  [9/200] fleet_health/dhtp_full t9: q=87% tok=199 
+  [10/200] fleet_health/dhtp_full t10: q=87% tok=200 
+  [11/200] fleet_health/dhtp_full t11: q=93% tok=202 
+  [12/200] fleet_health/dhtp_full t12: q=87% tok=202 
+  [13/200] fleet_health/dhtp_full t13: q=87% tok=202 
+  [14/200] fleet_health/dhtp_full t14: q=87% tok=200 
+  [15/200] fleet_health/dhtp_full t15: q=93% tok=201 
+  [16/200] fleet_health/dhtp_full t16: q=93% tok=200 
+  [17/200] fleet_health/dhtp_full t17: q=87% tok=200 
+  [18/200] fleet_health/dhtp_full t18: q=87% tok=200 
+  [19/200] fleet_health/dhtp_full t19: q=93% tok=201 
+  [20/200] fleet_health/dhtp_full t20: q=93% tok=200 
+  [21/200] fleet_health/selection_only t1: q=93% tok=399 
+  [22/200] fleet_health/selection_only t2: q=93% tok=399 
+  [23/200] fleet_health/selection_only t3: q=93% tok=399 
+  [24/200] fleet_health/selection_only t4: q=86% tok=399 
+  [25/200] fleet_health/selection_only t5: q=93% tok=399 
+  [26/200] fleet_health/selection_only t6: q=86% tok=399 
+  [27/200] fleet_health/selection_only t7: q=93% tok=399 
+  [28/200] fleet_health/selection_only t8: q=93% tok=399 
+  [29/200] fleet_health/selection_only t9: q=73% tok=399 
+  [30/200] fleet_health/selection_only t10: q=93% tok=399 
+  [31/200] fleet_health/selection_only t11: q=86% tok=401 
+  [32/200] fleet_health/selection_only t12: q=93% tok=401 
+  [33/200] fleet_health/selection_only t13: q=83% tok=401 
+  [34/200] fleet_health/selection_only t14: q=93% tok=401 
+  [35/200] fleet_health/selection_only t15: q=93% tok=401 
+  [36/200] fleet_health/selection_only t16: q=93% tok=401 
+  [37/200] fleet_health/selection_only t17: q=93% tok=401 
+  [38/200] fleet_health/selection_only t18: q=93% tok=401 
+  [39/200] fleet_health/selection_only t19: q=93% tok=401 
+  [40/200] fleet_health/selection_only t20: q=93% tok=401 
+  [41/200] fleet_health/structure_only t1: q=73% tok=254 
+  [42/200] fleet_health/structure_only t2: q=93% tok=253 
+  [43/200] fleet_health/structure_only t3: q=87% tok=252 
+  [44/200] fleet_health/structure_only t4: q=87% tok=255 
+  [45/200] fleet_health/structure_only t5: q=87% tok=254 
+  [46/200] fleet_health/structure_only t6: q=93% tok=253 
+  [47/200] fleet_health/structure_only t7: q=93% tok=253 
+  [48/200] fleet_health/structure_only t8: q=87% tok=253 
+  [49/200] fleet_health/structure_only t9: q=77% tok=252 
+  [50/200] fleet_health/structure_only t10: q=93% tok=253 
+  [51/200] fleet_health/structure_only t11: q=93% tok=255 
+  [52/200] fleet_health/structure_only t12: q=93% tok=255 
+  [53/200] fleet_health/structure_only t13: q=87% tok=255 
+  [54/200] fleet_health/structure_only t14: q=87% tok=253 
+  [55/200] fleet_health/structure_only t15: q=87% tok=254 
+  [56/200] fleet_health/structure_only t16: q=87% tok=253 
+  [57/200] fleet_health/structure_only t17: q=93% tok=253 
+  [58/200] fleet_health/structure_only t18: q=93% tok=253 
+  [59/200] fleet_health/structure_only t19: q=87% tok=254 
+  [60/200] fleet_health/structure_only t20: q=87% tok=253 
+  [61/200] fleet_health/matched_budget_raw t1: q=87% tok=285 
+  [62/200] fleet_health/matched_budget_raw t2: q=93% tok=285 
+  [63/200] fleet_health/matched_budget_raw t3: q=93% tok=285 
+  [64/200] fleet_health/matched_budget_raw t4: q=73% tok=285 
+  [65/200] fleet_health/matched_budget_raw t5: q=93% tok=285 
+  [66/200] fleet_health/matched_budget_raw t6: q=93% tok=285 
+  [67/200] fleet_health/matched_budget_raw t7: q=79% tok=285 
+  [68/200] fleet_health/matched_budget_raw t8: q=93% tok=285 
+  [69/200] fleet_health/matched_budget_raw t9: q=93% tok=285 
+  [70/200] fleet_health/matched_budget_raw t10: q=80% tok=285 
+  [71/200] fleet_health/matched_budget_raw t11: q=87% tok=285 
+  [72/200] fleet_health/matched_budget_raw t12: q=80% tok=285 
+  [73/200] fleet_health/matched_budget_raw t13: q=93% tok=285 
+  [74/200] fleet_health/matched_budget_raw t14: q=80% tok=285 
+  [75/200] fleet_health/matched_budget_raw t15: q=87% tok=285 
+  [76/200] fleet_health/matched_budget_raw t16: q=93% tok=285 
+  [77/200] fleet_health/matched_budget_raw t17: q=87% tok=285 
+  [78/200] fleet_health/matched_budget_raw t18: q=87% tok=285 
+  [79/200] fleet_health/matched_budget_raw t19: q=93% tok=285 
+  [80/200] fleet_health/matched_budget_raw t20: q=87% tok=285 
+  [81/200] fleet_health/random_budget_raw t1: q=80% tok=143 
+  [82/200] fleet_health/random_budget_raw t2: q=80% tok=143 
+  [83/200] fleet_health/random_budget_raw t3: q=87% tok=143 
+  [84/200] fleet_health/random_budget_raw t4: q=87% tok=143 
+  [85/200] fleet_health/random_budget_raw t5: q=87% tok=143 
+  [86/200] fleet_health/random_budget_raw t6: q=80% tok=143 
+  [87/200] fleet_health/random_budget_raw t7: q=87% tok=143 
+  [88/200] fleet_health/random_budget_raw t8: q=80% tok=143 
+  [89/200] fleet_health/random_budget_raw t9: q=80% tok=143 
+  [90/200] fleet_health/random_budget_raw t10: q=80% tok=143 
+  [91/200] fleet_health/random_budget_raw t11: q=87% tok=144 
+  [92/200] fleet_health/random_budget_raw t12: q=80% tok=144 
+  [93/200] fleet_health/random_budget_raw t13: q=73% tok=144 
+  [94/200] fleet_health/random_budget_raw t14: q=87% tok=144 
+  [95/200] fleet_health/random_budget_raw t15: q=80% tok=144 
+  [96/200] fleet_health/random_budget_raw t16: q=80% tok=144 
+  [97/200] fleet_health/random_budget_raw t17: q=87% tok=144 
+  [98/200] fleet_health/random_budget_raw t18: q=87% tok=144 
+  [99/200] fleet_health/random_budget_raw t19: q=80% tok=144 
+  [100/200] fleet_health/random_budget_raw t20: q=80% tok=144 
+  [101/200] planning/dhtp_full t1: q=100% tok=224 
+  [102/200] planning/dhtp_full t2: q=100% tok=223 
+  [103/200] planning/dhtp_full t3: q=100% tok=227 
+  [104/200] planning/dhtp_full t4: q=100% tok=227 
+  [105/200] planning/dhtp_full t5: q=100% tok=227 
+  [106/200] planning/dhtp_full t6: q=100% tok=224 
+  [107/200] planning/dhtp_full t7: q=100% tok=224 
+  [108/200] planning/dhtp_full t8: q=100% tok=227 
+  [109/200] planning/dhtp_full t9: q=100% tok=228 
+  [110/200] planning/dhtp_full t10: q=100% tok=226 
+  [111/200] planning/dhtp_full t11: q=100% tok=227 
+  [112/200] planning/dhtp_full t12: q=100% tok=226 
+  [113/200] planning/dhtp_full t13: q=100% tok=226 
+  [114/200] planning/dhtp_full t14: q=100% tok=226 
+  [115/200] planning/dhtp_full t15: q=100% tok=225 
+  [116/200] planning/dhtp_full t16: q=100% tok=226 
+  [117/200] planning/dhtp_full t17: q=100% tok=225 
+  [118/200] planning/dhtp_full t18: q=100% tok=227 
+  [119/200] planning/dhtp_full t19: q=100% tok=227 
+  [120/200] planning/dhtp_full t20: q=100% tok=228 
+  [121/200] planning/selection_only t1: q=100% tok=401 
+  [122/200] planning/selection_only t2: q=100% tok=401 
+  [123/200] planning/selection_only t3: q=100% tok=401 
+  [124/200] planning/selection_only t4: q=100% tok=401 
+  [125/200] planning/selection_only t5: q=100% tok=401 
+  [126/200] planning/selection_only t6: q=100% tok=401 
+  [127/200] planning/selection_only t7: q=100% tok=401 
+  [128/200] planning/selection_only t8: q=100% tok=401 
+  [129/200] planning/selection_only t9: q=100% tok=401 
+  [130/200] planning/selection_only t10: q=100% tok=401 
+  [131/200] planning/selection_only t11: q=100% tok=403 
+  [132/200] planning/selection_only t12: q=100% tok=403 
+  [133/200] planning/selection_only t13: q=100% tok=403 
+  [134/200] planning/selection_only t14: q=100% tok=403 
+  [135/200] planning/selection_only t15: q=100% tok=403 
+  [136/200] planning/selection_only t16: q=100% tok=403 
+  [137/200] planning/selection_only t17: q=100% tok=403 
+  [138/200] planning/selection_only t18: q=100% tok=403 
+  [139/200] planning/selection_only t19: q=100% tok=403 
+  [140/200] planning/selection_only t20: q=100% tok=403 
+  [141/200] planning/structure_only t1: q=100% tok=277 
+  [142/200] planning/structure_only t2: q=100% tok=276 
+  [143/200] planning/structure_only t3: q=100% tok=280 
+  [144/200] planning/structure_only t4: q=90% tok=280 
+  [145/200] planning/structure_only t5: q=90% tok=280 
+  [146/200] planning/structure_only t6: q=100% tok=277 
+  [147/200] planning/structure_only t7: q=100% tok=277 
+  [148/200] planning/structure_only t8: q=100% tok=280 
+  [149/200] planning/structure_only t9: q=100% tok=281 
+  [150/200] planning/structure_only t10: q=100% tok=279 
+  [151/200] planning/structure_only t11: q=100% tok=280 
+  [152/200] planning/structure_only t12: q=90% tok=279 
+  [153/200] planning/structure_only t13: q=100% tok=279 
+  [154/200] planning/structure_only t14: q=100% tok=279 
+  [155/200] planning/structure_only t15: q=100% tok=278 
+  [156/200] planning/structure_only t16: q=100% tok=279 
+  [157/200] planning/structure_only t17: q=100% tok=278 
+  [158/200] planning/structure_only t18: q=90% tok=280 
+  [159/200] planning/structure_only t19: q=100% tok=280 
+  [160/200] planning/structure_only t20: q=100% tok=281 
+  [161/200] planning/matched_budget_raw t1: q=100% tok=308 
+  [162/200] planning/matched_budget_raw t2: q=100% tok=308 
+  [163/200] planning/matched_budget_raw t3: q=100% tok=308 
+  [164/200] planning/matched_budget_raw t4: q=100% tok=308 
+  [165/200] planning/matched_budget_raw t5: q=100% tok=308 
+  [166/200] planning/matched_budget_raw t6: q=100% tok=308 
+  [167/200] planning/matched_budget_raw t7: q=100% tok=308 
+  [168/200] planning/matched_budget_raw t8: q=100% tok=308 
+  [169/200] planning/matched_budget_raw t9: q=100% tok=308 
+  [170/200] planning/matched_budget_raw t10: q=100% tok=308 
+  [171/200] planning/matched_budget_raw t11: q=100% tok=308 
+  [172/200] planning/matched_budget_raw t12: q=100% tok=308 
+  [173/200] planning/matched_budget_raw t13: q=100% tok=308 
+  [174/200] planning/matched_budget_raw t14: q=100% tok=308 
+  [175/200] planning/matched_budget_raw t15: q=100% tok=308 
+  [176/200] planning/matched_budget_raw t16: q=100% tok=308 
+  [177/200] planning/matched_budget_raw t17: q=100% tok=308 
+  [178/200] planning/matched_budget_raw t18: q=100% tok=308 
+  [179/200] planning/matched_budget_raw t19: q=100% tok=308 
+  [180/200] planning/matched_budget_raw t20: q=100% tok=308 
+  [181/200] planning/random_budget_raw t1: q=100% tok=144 
+  [182/200] planning/random_budget_raw t2: q=100% tok=144 
+  [183/200] planning/random_budget_raw t3: q=100% tok=144 
+  [184/200] planning/random_budget_raw t4: q=100% tok=144 
+  [185/200] planning/random_budget_raw t5: q=100% tok=144 
+  [186/200] planning/random_budget_raw t6: q=100% tok=144 
+  [187/200] planning/random_budget_raw t7: q=100% tok=144 
+  [188/200] planning/random_budget_raw t8: q=100% tok=144 
+  [189/200] planning/random_budget_raw t9: q=100% tok=144 
+  [190/200] planning/random_budget_raw t10: q=100% tok=144 
+  [191/200] planning/random_budget_raw t11: q=100% tok=145 
+  [192/200] planning/random_budget_raw t12: q=100% tok=145 
+  [193/200] planning/random_budget_raw t13: q=100% tok=145 
+  [194/200] planning/random_budget_raw t14: q=100% tok=145 
+  [195/200] planning/random_budget_raw t15: q=100% tok=145 
+  [196/200] planning/random_budget_raw t16: q=100% tok=145 
+  [197/200] planning/random_budget_raw t17: q=100% tok=145 
+  [198/200] planning/random_budget_raw t18: q=100% tok=145 
+  [199/200] planning/random_budget_raw t19: q=100% tok=145 
+  [200/200] planning/random_budget_raw t20: q=100% tok=145 
+
+Wrote /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/rsb_a2e7e9ed-2a1.json
+
+Condition               Quality   Tokens API fail
+────────────────────────────────────────────────────
+DHTP full                 94.8%      213       0%
+Selection only            95.4%      401       0%
+Structure only            93.1%      266       0%
+Matched-budget raw        93.8%      297       0%
+Random-budget raw         91.1%      144       0%
+
+────────────────────────────────────────────────────────────────────────
+STATISTICAL REPORT — DHTP-RS-MASTER-001
+────────────────────────────────────────────────────────────────────────
+  dhtp_full
+    N=40  mean=94.8%  median=96.7%  stdev=5.7pp
+    95% CI: 93.1% – 96.6%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  selection_only
+    N=40  mean=95.4%  median=96.7%  stdev=6.0pp
+    95% CI: 93.5% – 97.2%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  structure_only
+    N=40  mean=93.1%  median=93.3%  stdev=6.9pp
+    95% CI: 90.9% – 95.2%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  matched_budget_raw
+    N=40  mean=93.8%  median=96.7%  stdev=7.7pp
+    95% CI: 91.4% – 96.2%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  random_budget_raw
+    N=40  mean=91.1%  median=93.3%  stdev=9.4pp
+    95% CI: 88.2% – 94.1%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+
+PAIRED DIFFERENCES (DHTP minus control)
+  dhtp_packet_minus_dhtp_full: insufficient paired trials
+  dhtp_packet_minus_selection_only: insufficient paired trials
+  dhtp_packet_minus_structure_only: insufficient paired trials
+  dhtp_packet_minus_matched_budget_raw: insufficient paired trials
+  dhtp_packet_minus_random_budget_raw: insufficient paired trials
+
+FAILURE BREAKDOWN (spec §18)
+  schema_failure: 16
+
+Claim level estimate: 1
+
+============================================================
+Executing STEP_4_local_model_portability
+============================================================
+Local models available: minimax-m3:cloud, qwen3.5:2b
+Portability sweep: 2B=qwen3.5:2b
+
+--- Local model tier 2B: qwen3.5:2b ---
+
+DHTP-RS-MASTER-001 — null
+  Provider: ollama (qwen3.5:2b)
+  10 trials × 3 conditions × 2 probes = 60 LLM calls
+  Evaluator: blind rubric (NOT independent)
+
+  [1/60] fleet_health/dhtp_packet t1: q=87% tok=254 
+  [2/60] fleet_health/dhtp_packet t2: q=87% tok=253 
+  [3/60] fleet_health/dhtp_packet t3: q=93% tok=252 
+  [4/60] fleet_health/dhtp_packet t4: q=93% tok=255 
+  [5/60] fleet_health/dhtp_packet t5: q=87% tok=254 
+  [6/60] fleet_health/dhtp_packet t6: q=87% tok=253 
+  [7/60] fleet_health/dhtp_packet t7: q=93% tok=253 
+  [8/60] fleet_health/dhtp_packet t8: q=87% tok=253 
+  [9/60] fleet_health/dhtp_packet t9: q=93% tok=252 
+  [10/60] fleet_health/dhtp_packet t10: q=87% tok=253 
+  [11/60] fleet_health/matched_budget_raw t1: q=87% tok=285 
+  [12/60] fleet_health/matched_budget_raw t2: q=87% tok=285 
+  [13/60] fleet_health/matched_budget_raw t3: q=93% tok=285 
+  [14/60] fleet_health/matched_budget_raw t4: q=87% tok=285 
+  [15/60] fleet_health/matched_budget_raw t5: q=87% tok=285 
+  [16/60] fleet_health/matched_budget_raw t6: q=80% tok=285 
+  [17/60] fleet_health/matched_budget_raw t7: q=87% tok=285 
+  [18/60] fleet_health/matched_budget_raw t8: q=93% tok=285 
+  [19/60] fleet_health/matched_budget_raw t9: q=87% tok=285 
+  [20/60] fleet_health/matched_budget_raw t10: q=87% tok=285 
+  [21/60] fleet_health/random_budget_raw t1: q=87% tok=143 
+  [22/60] fleet_health/random_budget_raw t2: q=87% tok=143 
+  [23/60] fleet_health/random_budget_raw t3: q=80% tok=143 
+  [24/60] fleet_health/random_budget_raw t4: q=80% tok=143 
+  [25/60] fleet_health/random_budget_raw t5: q=80% tok=143 
+  [26/60] fleet_health/random_budget_raw t6: q=80% tok=143 
+  [27/60] fleet_health/random_budget_raw t7: q=80% tok=143 
+  [28/60] fleet_health/random_budget_raw t8: q=87% tok=143 
+  [29/60] fleet_health/random_budget_raw t9: q=73% tok=143 
+  [30/60] fleet_health/random_budget_raw t10: q=87% tok=143 
+  [31/60] decision/dhtp_packet t1: q=88% tok=276 
+  [32/60] decision/dhtp_packet t2: q=88% tok=273 
+  [33/60] decision/dhtp_packet t3: q=79% tok=276 
+  [34/60] decision/dhtp_packet t4: q=88% tok=275 
+  [35/60] decision/dhtp_packet t5: q=88% tok=277 
+  [36/60] decision/dhtp_packet t6: q=88% tok=276 
+  [37/60] decision/dhtp_packet t7: q=88% tok=276 
+  [38/60] decision/dhtp_packet t8: q=88% tok=277 
+  [39/60] decision/dhtp_packet t9: q=88% tok=277 
+  [40/60] decision/dhtp_packet t10: q=88% tok=277 
+  [41/60] decision/matched_budget_raw t1: q=72% tok=300 
+  [42/60] decision/matched_budget_raw t2: q=72% tok=300 
+  [43/60] decision/matched_budget_raw t3: q=81% tok=300 
+  [44/60] decision/matched_budget_raw t4: q=72% tok=300 
+  [45/60] decision/matched_budget_raw t5: q=72% tok=300 
+  [46/60] decision/matched_budget_raw t6: q=72% tok=300 
+  [47/60] decision/matched_budget_raw t7: q=72% tok=300 
+  [48/60] decision/matched_budget_raw t8: q=72% tok=300 
+  [49/60] decision/matched_budget_raw t9: q=72% tok=300 
+  [50/60] decision/matched_budget_raw t10: q=72% tok=300 
+  [51/60] decision/random_budget_raw t1: q=72% tok=141 
+  [52/60] decision/random_budget_raw t2: q=65% tok=141 
+  [53/60] decision/random_budget_raw t3: q=72% tok=141 
+  [54/60] decision/random_budget_raw t4: q=72% tok=141 
+  [55/60] decision/random_budget_raw t5: q=72% tok=141 
+  [56/60] decision/random_budget_raw t6: q=72% tok=141 
+  [57/60] decision/random_budget_raw t7: q=72% tok=141 
+  [58/60] decision/random_budget_raw t8: q=72% tok=141 
+  [59/60] decision/random_budget_raw t9: q=72% tok=141 
+  [60/60] decision/random_budget_raw t10: q=72% tok=141 
+
+Wrote /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/rsb_12d335e0-062_2B.json
+
+Condition               Quality   Tokens API fail
+────────────────────────────────────────────────────
+DHTP packet               88.3%      265       0%
+Matched-budget raw        80.2%      293       0%
+Random-budget raw         76.7%      142       0%
+
+────────────────────────────────────────────────────────────────────────
+STATISTICAL REPORT — DHTP-RS-MASTER-001
+────────────────────────────────────────────────────────────────────────
+  dhtp_packet
+    N=20  mean=88.3%  median=88.1%  stdev=3.3pp
+    95% CI: 86.8% – 89.7%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  matched_budget_raw
+    N=20  mean=80.2%  median=80.7%  stdev=8.1pp
+    95% CI: 76.6% – 83.7%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  random_budget_raw
+    N=20  mean=76.7%  median=72.3%  stdev=6.4pp
+    95% CI: 73.8% – 79.5%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+
+PAIRED DIFFERENCES (DHTP minus control)
+  dhtp_packet_minus_matched_budget_raw (n=20)
+    mean Δ=8.1pp  median Δ=6.7pp
+    95% CI on Δ: 4.5pp – 11.6pp
+  dhtp_packet_minus_random_budget_raw (n=20)
+    mean Δ=11.6pp  median Δ=14.7pp
+    95% CI on Δ: 8.4pp – 14.8pp
+
+FAILURE BREAKDOWN (spec §18)
+  schema_failure: 7
+
+Claim level estimate: 1
+
+============================================================
+Executing STEP_5_full_raw_selective
+============================================================
+Full raw selective on strongest probe: planning
+
+DHTP-RS-MASTER-001 — STEP_5_full_raw_selective
+  Provider: ollama (qwen3.5:2b)
+  5 trials × 3 conditions × 1 probes = 15 LLM calls
+  Evaluator: blind rubric (NOT independent)
+
+  [1/15] planning/raw_corpus t1: q=100% tok=4098 
+  [2/15] planning/raw_corpus t2: q=100% tok=4098 
+  [3/15] planning/raw_corpus t3: q=100% tok=4098 
+  [4/15] planning/raw_corpus t4: q=100% tok=4098 
+  [5/15] planning/raw_corpus t5: q=100% tok=4098 
+  [6/15] planning/dhtp_packet t1: q=100% tok=277 
+  [7/15] planning/dhtp_packet t2: q=100% tok=276 
+  [8/15] planning/dhtp_packet t3: q=100% tok=280 
+  [9/15] planning/dhtp_packet t4: q=100% tok=280 
+  [10/15] planning/dhtp_packet t5: q=100% tok=280 
+  [11/15] planning/matched_budget_raw t1: q=100% tok=308 
+  [12/15] planning/matched_budget_raw t2: q=100% tok=308 
+  [13/15] planning/matched_budget_raw t3: q=100% tok=308 
+  [14/15] planning/matched_budget_raw t4: q=100% tok=308 
+  [15/15] planning/matched_budget_raw t5: q=100% tok=308 
+
+Wrote /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/rsb_dbe4ab09-212_fullraw.json
+
+Condition               Quality   Tokens API fail
+────────────────────────────────────────────────────
+Raw corpus               100.0%     4098       0%
+DHTP packet              100.0%      279       0%
+Matched-budget raw       100.0%      308       0%
+
+────────────────────────────────────────────────────────────────────────
+STATISTICAL REPORT — DHTP-RS-MASTER-001
+────────────────────────────────────────────────────────────────────────
+  raw_corpus
+    N=5  mean=100.0%  median=100.0%  stdev=0.0pp
+    95% CI: 100.0% – 100.0%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  dhtp_packet
+    N=5  mean=100.0%  median=100.0%  stdev=0.0pp
+    95% CI: 100.0% – 100.0%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+  matched_budget_raw
+    N=5  mean=100.0%  median=100.0%  stdev=0.0pp
+    95% CI: 100.0% – 100.0%
+    API fail: 0.0%  timeout: 0.0%  success: 100.0%
+
+PAIRED DIFFERENCES (DHTP minus control)
+  dhtp_packet_minus_raw_corpus (n=5)
+    mean Δ=0.0pp  median Δ=0.0pp
+    95% CI on Δ: 0.0pp – 0.0pp
+  dhtp_packet_minus_matched_budget_raw (n=5)
+    mean Δ=0.0pp  median Δ=0.0pp
+    95% CI on Δ: 0.0pp – 0.0pp
+
+FAILURE BREAKDOWN (spec §18)
+  (none)
+
+Claim level estimate: 1
+
+============================================================
+Executing STEP_6_human_blind_validation
+============================================================
+Exported 30 blind items to /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/human_validation_rsb_6055b7b1-d0e.json
+
+============================================================
+Executing STEP_7_freeze_and_publish
+============================================================
+Wrote /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs/DHTP_RS_FINAL_REPORT.md
+
+Claim level: 4 — frozen.
+
+run-all complete.
+DHTP-RS cloud agent status — DHTP-RS-MASTER-001
+Updated: 2026-09-01T18:22:40.167Z
+
+EXECUTION PROGRESS
+  ✓ STEP_1_analyze_phase1: Analyze Phase 1 results [complete]
+      run: rsb_c57a1d7b-6d5
+      note: Phase 1 fleet-health 30-trial baseline complete
+  ✓ STEP_2_phase2_generalization: Phase 2 — 6 probes × 20 trials × 3 conditions [complete]
+      run: rsb_6055b7b1-d0e
+      note: ollama/qwen3.5:2b trials=20 cost=$0.1240
+  ✓ STEP_3_selection_ablations: Selection/structure ablations [complete]
+      run: rsb_a2e7e9ed-2a1
+      note: ollama/qwen3.5:2b trials=20 cost=$0.0716
+  ✓ STEP_4_local_model_portability: Local model portability (2B/7B/14B) [complete]
+      note: 2B:qwen3.5:2b=88%
+  ✓ STEP_5_full_raw_selective: Full raw on strongest probe [complete]
+      run: rsb_dbe4ab09-212
+      note: ollama/qwen3.5:2b trials=5 cost=$0.0169
+  ✓ STEP_6_human_blind_validation: Human blind validation subset export [complete]
+      note: 30 items exported for human scoring
+  ✓ STEP_7_freeze_and_publish: Freeze benchmark + publish claim [complete]
+      note: claim_level=4
+
+ALL AUTOMATED STEPS COMPLETE — review results and proceed to manual validation.
+
+CONFIGURED PROVIDERS:
+  (none — set GEMINI_API_KEY or use --env-file)
+
+RESULT ARTIFACTS: 7 in /Users/dutch/concord vs code/concord-cognitive-engine/server/results/dhtp-rs
+  • rsb_dbe4ab09-212_fullraw.json (2026-09-01T18:22:40.148Z)
+  • rsb_12d335e0-062_2B.json (2026-09-01T18:18:57.099Z)
+  • rsb_a2e7e9ed-2a1.json (2026-09-01T18:04:44.429Z)
+  • rsb_6055b7b1-d0e.json (2026-09-01T17:16:53.975Z)
+  • rsb_6e5e8d6d-c01.json (2026-09-01T15:51:29.161Z)
+
+Resolved backend: ollama (qwen3.5:2b)

@@ -39,7 +39,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx'), 'utf8');
+const src = readFileSync(path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx'), 'utf8');
 
 describe('world lens page — 2D dashboard panels hidden in 3D Explore mode', () => {
   it('hides the World Actions Panel while viewMode is explore', () => {

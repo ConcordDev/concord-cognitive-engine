@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.dtu-sidecar</string>
+
+	<!--
+	  Concurrency Refactor Phase 3 — read-only DTU reader (Rust). Serves
+	  dtu.get / dtu.list off the Node event loop when the backend has
+	  CONCORD_DTU_SIDECAR=1. Fail-soft: if this is down the macros fall back to
+	  the in-memory filter. Correctness is gated by
+	  engines/concord-dtu-sidecar/proof/run-proof.mjs (differential vs the live
+	  macro) — re-run it after any change to the Rust filter or the DTU schema.
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-dtu-sidecar/bin/concord-dtu-sidecar</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CONCORD_DTU_SIDECAR_SOCK</key>
+		<string>/Users/dutch/concord/run/concord-dtu-sidecar.sock</string>
+		<key>CONCORD_DB_PATH</key>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/server/data/concord.db</string>
+		<key>CONCORD_DTU_SIDECAR_WORKERS</key>
+		<string>4</string>
+		<key>CONCORD_DTU_SIDECAR_REFRESH_MS</key>
+		<string>2500</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-dtu-sidecar</string>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/dtu-sidecar.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/dtu-sidecar.err</string>
+</dict>
+</plist>

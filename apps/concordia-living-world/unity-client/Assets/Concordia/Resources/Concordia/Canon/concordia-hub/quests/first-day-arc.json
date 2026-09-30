@@ -1,0 +1,130 @@
+[
+  {
+    "id": "first_day_claim_land",
+    "title": "First Day — Claim a Patch",
+    "description": "After the First Cycle, Concordia tells you to claim a small patch of land. Settlers who own a place on the map have a place the world remembers them by. Walk to a quiet meadow east of the glade and place a stake. The patch will be small — twenty meters across — but it will be yours, and the city will know your name in association with it.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_day_arc",
+    "estimated_time": "5m",
+    "objectives": [
+      {
+        "id": "obj_fda_claim_1",
+        "type": "reach_location",
+        "target": "first_day_meadow",
+        "required_count": 1,
+        "description": "Walk to the quiet meadow east of the glade"
+      },
+      {
+        "id": "obj_fda_claim_2",
+        "type": "macro",
+        "target": "land-claims.claim",
+        "required_count": 1,
+        "description": "Claim a 20m-radius patch via the Land Claims macro"
+      }
+    ],
+    "rewards": {
+      "concord_coin": 5,
+      "skill_xp": { "diplomacy": 50, "research": 25 },
+      "ecosystem_score_delta": 0.05
+    },
+    "prerequisites": ["first_cycle_commune"],
+    "next_quest_id": "first_day_invite_friend",
+    "narrative_payoff": "The Wardens log your claim in the city ledger; you are now a recorded resident."
+  },
+  {
+    "id": "first_day_invite_friend",
+    "title": "First Day — Invite Someone",
+    "description": "A claim is just a patch until someone else has been there. Find another player or NPC and invite them to your patch as a co-owner or guest. You don't have to share — you just have to acknowledge that the world is bigger than you alone.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_day_arc",
+    "estimated_time": "5m",
+    "objectives": [
+      {
+        "id": "obj_fda_invite_1",
+        "type": "macro",
+        "target": "land-claims.invite_to_claim",
+        "required_count": 1,
+        "description": "Invite another user or NPC to your claim"
+      }
+    ],
+    "rewards": {
+      "concord_coin": 5,
+      "skill_xp": { "diplomacy": 75 },
+      "concord_alignment_delta": 0.04
+    },
+    "prerequisites": ["first_day_claim_land"],
+    "next_quest_id": "first_day_attend_event",
+    "narrative_payoff": "Your invitation is logged. If they accept, the patch belongs to both of you."
+  },
+  {
+    "id": "first_day_attend_event",
+    "title": "First Day — Show Up",
+    "description": "Concordia hosts a small gathering at dusk — a planted-cycle ritual every settler in their first month is invited to. Walk to the central plaza when the event opens. You don't have to do anything; just be present. The world-event scheduler will mark you as having attended.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_day_arc",
+    "estimated_time": "8m",
+    "objectives": [
+      {
+        "id": "obj_fda_event_1",
+        "type": "rsvp_event",
+        "target": "first_day_planted_cycle",
+        "required_count": 1,
+        "description": "RSVP to the Planted Cycle gathering"
+      },
+      {
+        "id": "obj_fda_event_2",
+        "type": "attend_event",
+        "target": "first_day_planted_cycle",
+        "required_count": 1,
+        "description": "Be present at the central plaza when the event opens at dusk"
+      }
+    ],
+    "rewards": {
+      "concord_coin": 8,
+      "skill_xp": { "diplomacy": 75, "research": 25 },
+      "ecosystem_score_delta": 0.05,
+      "concord_alignment_delta": 0.05
+    },
+    "prerequisites": ["first_day_invite_friend"],
+    "next_quest_id": "first_day_witness_faction_move",
+    "narrative_payoff": "The other attendees recognise you on sight from now on; your presence is in the city's memory."
+  },
+  {
+    "id": "first_day_witness_faction_move",
+    "title": "First Day — Witness a Move",
+    "description": "Sometime in your first day a faction will make a move — a treaty signed, a war declared, a rebuild begun. The Frontier delegation knows when these happen and will tell you. Find a Witness from the Crucible (or any Frontier broker) and ask them to log you as a witness for the next move. The move may not happen for a few minutes — be patient.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_day_arc",
+    "estimated_time": "10m",
+    "objectives": [
+      {
+        "id": "obj_fda_witness_1",
+        "type": "talk_to_npc",
+        "target": "witness_orla",
+        "required_count": 1,
+        "description": "Talk to a Witness or Frontier broker about logging your name"
+      },
+      {
+        "id": "obj_fda_witness_2",
+        "type": "macro",
+        "target": "faction-strategy.witness_next_move",
+        "required_count": 1,
+        "description": "Be witnessed at the next faction-strategy move (auto-realises via lattice-quest-cycle)"
+      }
+    ],
+    "rewards": {
+      "concord_coin": 12,
+      "skill_xp": { "diplomacy": 100, "research": 100 },
+      "ecosystem_score_delta": 0.07,
+      "concord_alignment_delta": 0.06,
+      "concordia_alignment_delta": 0.04
+    },
+    "prerequisites": ["first_day_attend_event"],
+    "next_quest_id": null,
+    "narrative_payoff": "The Witness logs your name as having been present at a real political event. Your first day is complete; the city now has a record of you that future quests can reference. From here, choose your own arc."
+  }
+]

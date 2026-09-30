@@ -75,6 +75,9 @@ describe("@concord/inference — Agent Loop", () => {
     const brain = makeBrain([{ ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: "brain_down" }]);
     const r = await runAgentLoop(brain, BASE_MESSAGES, [], {});
     assert.equal(r.terminated, "brain_error");
+    // The error must never pose as the model's answer.
+    assert.equal(r.finalText, "");
+    assert.equal(r.error, "brain_down");
   });
 
   it("accumulates tokensIn and tokensOut across steps", async () => {

@@ -570,6 +570,97 @@
       "name": "hr-document-list"
     },
     {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-add",
+      "name": "i9-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-document-attach",
+      "name": "i9-document-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-everify-submit",
+      "name": "i9-everify-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-list",
+      "name": "i9-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-reject",
+      "name": "i9-reject"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-status",
+      "name": "i9-status"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.i9-verify",
+      "name": "i9-verify"
+    },
+    {
       "_derived": false,
       "domain": "hr",
       "fuzz_cases": [
@@ -687,6 +778,19 @@
       ],
       "macro_id": "hr.job-post",
       "name": "job-post"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.laborForecast",
+      "name": "laborForecast"
     },
     {
       "_derived": true,
@@ -1272,5 +1376,5 @@
   ],
   "domain": "hr",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 77
+  "macroCount": 85
 }

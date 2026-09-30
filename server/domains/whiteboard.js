@@ -185,6 +185,21 @@ export default function registerWhiteboardActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // Coerce a shared board's `participants` to a Set and write it back.
+  // STATE persistence (state.json round-trip) serializes the Set as a plain
+  // array, so a board restored after a save has `participants: string[]` —
+  // every `b.participants.has/.add/.delete/.size` call site would then throw
+  // ("b.participants?.has is not a function"). Normalizing on read fixes all
+  // of them and makes subsequent mutations stick.
+  function wbParticipants(b) {
+    if (!b) return new Set();
+    if (b.participants instanceof Set) return b.participants;
+    let arr = [];
+    if (Array.isArray(b.participants)) arr = b.participants;
+    else if (b.participants && typeof b.participants === "object") arr = Object.keys(b.participants);
+    b.participants = new Set(arr.filter(Boolean).map(String));
+    return b.participants;
+  }
   function wbActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function nextWbId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoWb() { return new Date().toISOString(); }
@@ -441,8 +456,8 @@ export default function registerWhiteboardActions(registerLensAction) {
   function sharedBoardSummary(b) {
     return {
       id: b.id, title: b.title, ownerId: b.ownerId,
-      participants: Array.from(b.participants || []),
-      participantCount: (b.participants && b.participants.size) || 0,
+      participants: Array.from(wbParticipants(b)),
+      participantCount: wbParticipants(b).size,
       elementCount: Array.isArray(b.scene?.elements) ? b.scene.elements.length : 0,
       createdAt: b.createdAt, updatedAt: b.updatedAt,
     };
@@ -492,7 +507,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const boards = [];
     for (const b of s.sharedBoards.values()) {
-      if (b.participants?.has(userId)) boards.push(sharedBoardSummary(b));
+      if (wbParticipants(b).has(userId)) boards.push(sharedBoardSummary(b));
     }
     boards.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { boards } };
@@ -505,8 +520,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    if (!b.participants) b.participants = new Set();
-    b.participants.add(userId);
+    wbParticipants(b).add(userId);
     saveWhiteboardState();
     return { ok: true, result: { board: { ...sharedBoardSummary(b), scene: b.scene } } };
   });
@@ -518,9 +532,9 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    b.participants?.delete(userId);
+    wbParticipants(b).delete(userId);
     saveWhiteboardState();
-    return { ok: true, result: { id, remainingParticipants: b.participants?.size || 0 } };
+    return { ok: true, result: { id, remainingParticipants: wbParticipants(b).size } };
   });
 
   // broadcast-scene — persist + realtime fan-out via the io that
@@ -533,7 +547,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     if (!params.scene || typeof params.scene !== "object") return { ok: false, error: "scene required" };
     b.scene = params.scene;
     b.updatedAt = nowIsoWb();
@@ -558,7 +572,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     const x = Number(params.x);
     const y = Number(params.y);
     if (!isFinite(x) || !isFinite(y)) return { ok: false, error: "x, y required" };
@@ -581,7 +595,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const elementId = String(params.elementId || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     if (!elementId) return { ok: false, error: "elementId required" };
     if (!s.sharedVotes.has(id)) s.sharedVotes.set(id, new Map());
     const boardVotes = s.sharedVotes.get(id);
@@ -606,7 +620,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const id = String(params.id || params.boardId || "");
     const b = s.sharedBoards.get(id);
     if (!b) return { ok: false, error: "shared board not found" };
-    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!wbParticipants(b).has(userId)) return { ok: false, error: "not a participant" };
     const boardVotes = s.sharedVotes.get(id);
     if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
     const tally = Array.from(boardVotes.entries())
@@ -631,7 +645,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     const own = s.boards.get(userId)?.get(boardId);
     if (own) return { board: own, scope: 'own' };
     const shared = s.sharedBoards.get(boardId);
-    if (shared && (shared.ownerId === userId || (shared.participants && shared.participants.has(userId)))) {
+    if (shared && (shared.ownerId === userId || wbParticipants(shared).has(userId))) {
       return { board: shared, scope: 'shared' };
     }
     return null;
@@ -1631,7 +1645,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     let sharedCount = 0;
     for (const board of s.sharedBoards.values()) {
-      if (board.ownerId === userId || (board.participants && board.participants.has(userId))) sharedCount++;
+      if (board.ownerId === userId || wbParticipants(board).has(userId)) sharedCount++;
     }
     const cBucket = ensureCommentsBucket(s);
     let openCommentCount = 0;

@@ -35,8 +35,10 @@ export function Toasts() {
       aria-live="polite"
       aria-label="Notifications"
       style={{ zIndex: Z_INDEX.TOAST }}
-      className={`fixed right-4 flex flex-col gap-2 transition-[bottom] duration-300 ${
-        syncIndicatorVisible ? 'bottom-16' : 'bottom-4'
+      className={`fixed left-4 right-4 sm:left-auto sm:right-4 flex flex-col items-stretch sm:items-end gap-2 transition-[bottom] duration-300 ${
+        // On mobile the MobileTabBar owns the bottom edge — clear it so toasts
+        // don't stack on top of the nav / cover page content.
+        syncIndicatorVisible ? 'bottom-24 sm:bottom-16' : 'bottom-20 sm:bottom-4'
       }`}
     >
       {toasts.map((toast) => (
@@ -100,7 +102,7 @@ function Toast({ type, message, duration = TOAST_DURATION, onClose }: ToastProps
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${bg} ${border} min-w-[300px] max-w-md animate-slide-in shadow-lg`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${bg} ${border} w-full sm:w-auto sm:min-w-[300px] max-w-md animate-slide-in shadow-lg`}
     >
       <Icon className={`w-5 h-5 ${text} flex-shrink-0`} />
       <p className="flex-1 text-sm text-white">{message}</p>

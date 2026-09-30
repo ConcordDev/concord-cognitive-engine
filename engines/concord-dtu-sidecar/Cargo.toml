@@ -1,0 +1,24 @@
+[package]
+name = "concord-dtu-sidecar"
+version = "0.1.0"
+edition = "2021"
+description = "Read-only DTU reader for the Concord dtu_store — keeps DTU list/get off the Node event loop"
+
+[[bin]]
+name = "concord-dtu-sidecar"
+path = "src/main.rs"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+# NOTE: do not set `strip = true` — on macOS arm64 it removes the ad-hoc code
+# signature cargo adds, and a stripped unsigned binary hangs in dyld under
+# Gatekeeper/amfid (process state UE, socket never created). `cargo build`'s
+# output is already signed; keep it that way. If you strip manually, re-sign:
+#   codesign -s - --force bin/concord-dtu-sidecar

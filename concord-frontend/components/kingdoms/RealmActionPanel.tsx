@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 // Realm rows are `SELECT * FROM realms` (migration 158) — snake_case,
 // no `loyalty`/`size` columns (loyalty is a separately-computed summary
@@ -289,12 +290,12 @@ export function RealmActionPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Realm snapshot — ${myRealm?.name ?? 'realmless'}`,
           tags: ['kingdoms', 'realm', myRealm?.id ? `realm:${myRealm.id}` : 'unowned'],
           source: 'kingdoms:realm:mint',
           meta: { visibility: 'private', consent: { allowCitations: false }, realm: { mine: myRealm, all: realmList.slice(0, 50), recentDecree: decreeResult, loyalty: loyaltyResult, takeover: takeoverResult } },
-        },
+        }, 'world_asset', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -335,12 +336,12 @@ export function RealmActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Public decree — ${targetRealmId || decreeResult.kind}`,
             tags: ['kingdoms', 'decree', 'public', decreeKind],
             source: 'kingdoms:decree:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, decree: { kingdomId: targetRealmId, kind: decreeResult.kind ?? decreeKind, popularityDelta: decreeResult.popularity_delta } },
-          },
+          }, 'world_asset', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

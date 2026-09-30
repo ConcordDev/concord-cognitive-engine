@@ -7,6 +7,7 @@
 // current user's most-at-risk skill DTU through it.
 
 import { getAtrophyRisk } from "../lib/skill-atrophy.js";
+import { getCatalogSkillMastery, getSkillMastery } from "../lib/skills/skill-mastery.js";
 
 export default function registerSkillsActions(registerLensAction) {
   registerLensAction("skills", "atrophy_risk", (ctx, _artifact, _params = {}) => {
@@ -50,5 +51,23 @@ export default function registerSkillsActions(registerLensAction) {
       ...getAtrophyRisk(row),
     })).sort((a, b) => b.projectedLoss - a.projectedLoss);
     return { ok: true, result: { skills } };
+  });
+
+  // T3.1 — full SKILL_CATALOG mastery overlay for Unity / lens:run.
+  // Untrained skills stay level-0 novice. Missing actor is an honest fail.
+  registerLensAction("skills", "mastery", (ctx, _a, params = {}) => {
+    const userId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || null;
+    if (!userId) return { ok: false, error: "authentication required" };
+    const skillType = typeof params.skillType === "string" ? params.skillType : "";
+    if (skillType) {
+      return {
+        ok: true,
+        ...getSkillMastery(ctx?.db, userId, skillType, {
+          element: typeof params.element === "string" ? params.element : "none",
+          kind: typeof params.kind === "string" ? params.kind : null,
+        }),
+      };
+    }
+    return { ok: true, ...getCatalogSkillMastery(ctx?.db, userId) };
   });
 }

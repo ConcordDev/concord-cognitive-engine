@@ -56,9 +56,22 @@ test.describe('Lens CRUD Operations', () => {
       expect(response.status()).toBeLessThan(500);
     }
     await page.waitForLoadState('domcontentloaded').catch(() => {});
-    // Check that the page has some structure
+    // Check that the page has some structure.
+    //
+    // Root-caused 2026-09-12: the previous `if (await main.isVisible()) {
+    // await expect(main).toBeVisible() }` shape is racy by construction —
+    // `isVisible()` is a one-shot, non-retrying check, so a transient
+    // loading-spinner-to-content swap (or any re-render) between that check
+    // and the `expect` re-query can make the SAME locator resolve to a
+    // now-unmounted element, failing "element(s) not found" even though a
+    // matching container appeared moments earlier (observed directly in
+    // CI). `expect().toBeVisible()` already retries/polls internally, so
+    // gating it behind a separate one-shot visibility check adds no safety
+    // and only opens that race window. Guard on `count()` instead — a
+    // synchronous DOM query, not a time-varying one — then let the
+    // assertion's own retry loop handle genuine loading-state timing.
     const main = page.locator('main, [role="main"], .lens-content, .page-content').first();
-    if (await main.isVisible().catch(() => false)) {
+    if (await main.count().catch(() => 0) > 0) {
       await expect(main).toBeVisible();
     }
   });

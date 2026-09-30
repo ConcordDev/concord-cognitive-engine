@@ -38,7 +38,10 @@ import type { NextRequest } from 'next/server';
  * report-only rollout history this flip closes out.
  */
 
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }): string {
+  // Default document policy is frame-ancestors 'none'. /unity-client/ and
+  // /concordia-webgl/ are the same-origin iframe exceptions (world lens → Unity WebGL).
+  const frameAncestors = opts?.frameAncestors ?? "'none'";
   const directives = [
     `default-src 'self'`,
     // 'strict-dynamic' lets Next's own nonce'd bootstrap script load its
@@ -46,7 +49,7 @@ function buildCsp(nonce: string): string {
     // 'wasm-unsafe-eval' is required for @dimforge/rapier3d-compat's
     // client-side WASM physics (world-lens) — narrower than 'unsafe-eval',
     // it permits WASM instantiation only, not arbitrary string-to-JS eval.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
     // See header comment: nonces cannot cover the `style` HTML attribute,
     // and this app's React components use it pervasively.
     `style-src 'self' 'unsafe-inline'`,
@@ -110,7 +113,7 @@ function buildCsp(nonce: string): string {
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `frame-ancestors 'none'`,
+    `frame-ancestors ${frameAncestors}`,
   ];
   return directives.join('; ');
 }
@@ -120,13 +123,32 @@ const PUBLIC_PATHS = new Set([
   '/explore',        // public "look around first" showcase — no account needed
   '/login',
   '/register',
+  '/signup',         // alias → /register
   '/forgot-password',
   '/reset-password',  // token arrives via ?token= — the page itself must be public
   '/onboarding',
+  // ConKay <-> Unity WebGL postMessage smoke (public/conkay-bridge-smoke.html).
+  // Must stay public so headless proof can load without a session cookie.
+  '/conkay-bridge-smoke.html',
+  // Industrial slice smoke: FEA util→color→spawn_primitive (public HTML).
+  '/conkay-industrial-smoke.html',
+  // Mesh apply smoke: partMesh positions/indices → apply_mesh (public HTML).
+  '/conkay-apply-mesh-smoke.html',
+  // NLP CAD smoke: free-text → intent → apply_mesh (public HTML).
+  '/conkay-nlp-cad-smoke.html',
+  // GLB load smoke: load_glb URL → glTFast → glb_loaded (public HTML).
+  '/conkay-glb-smoke.html',
+  // Evo-asset generate→resolve→load_glb smoke (public HTML).
+  '/conkay-evo-glb-smoke.html',
+  // CAD Wave 1 assembly multi-part + revise smoke (public HTML).
+  '/conkay-assembly-smoke.html',
+  // set_transform player-LIVE smoke: apply_mesh → set_transform → transform_set.
+  '/conkay-set-transform-smoke.html',
 ]);
 
 const PUBLIC_PREFIXES = [
   '/api/',
+  '/socket.io',
   '/_next/',
   '/icons/',
   '/legal/',
@@ -152,6 +174,15 @@ const PUBLIC_PREFIXES = [
   // /meshes/ above: these are asset bytes, not a page route, and the real
   // auth happens inside the client via the gateway token it's given at boot.
   '/godot-client/',
+  // Unity WebGL — two export paths coexist: the deployed frontend serves the
+  // gzip build from public/concordia-webgl/ (NEXT_PUBLIC_UNITY_WEBGL_URL), and
+  // scripts/export-unity-web.mjs writes the canonical export to
+  // public/unity-client/ (index.html nonce-injected by
+  // app/unity-client/index.html/route.ts). Both are static render-pipeline
+  // asset bytes that must load inside the world-lens iframe without a
+  // 307→/login; real auth is the parent /lenses/world session + /unity-ws.
+  '/concordia-webgl/',
+  '/unity-client/',
   '/manifest.json',
   '/manifest.webmanifest',
   '/robots.txt',
@@ -211,12 +242,39 @@ const STATIC_ASSET_RE =
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const ALIASES: Record<string, string> = {
+    '/signup': '/register',
+    '/chat': '/lenses/chat',
+    '/dashboard': '/hub',
+    '/marketplace': '/lenses/marketplace',
+    '/world': '/lenses/world',
+    '/graph': '/lenses/graph',
+    '/hermes': '/agents',
+    '/dila': '/agents',
+    '/lenses': '/hub',
+  };
+  if (ALIASES[pathname]) {
+    const dest = new URL(ALIASES[pathname], request.url);
+    dest.search = request.nextUrl.search;
+    const status = pathname === '/signup' ? 308 : 307;
+    return NextResponse.redirect(dest, status);
+  }
+
   // Nonce is generated for every request (not just authenticated ones) —
   // the CSP must cover the public /login, /explore, etc. pages too. Base64
   // of a random UUID, the standard pattern (128 bits of entropy, never
   // reused across requests).
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildCsp(nonce);
+  // /unity-client/ and /concordia-webgl/ are world-lens iframe documents.
+  // frame-ancestors 'none' (and X-Frame-Options DENY) would refuse even a
+  // same-origin embed — pass frameAncestors into buildCsp (not only a later
+  // string-replace) so the CSP is correct from the start.
+  const csp = buildCsp(
+    nonce,
+    pathname.startsWith('/unity-client/') || pathname.startsWith('/concordia-webgl/')
+      ? { frameAncestors: "'self'" }
+      : undefined,
+  );
 
   // Propagate the nonce to Server Components via a request header (read
   // with `(await headers()).get('x-nonce')`), and set the CSP itself as a
@@ -226,12 +284,43 @@ export function middleware(request: NextRequest) {
   forwardedHeaders.set('x-nonce', nonce);
 
   function withCspHeaders(response: NextResponse): NextResponse {
-    response.headers.set('Content-Security-Policy', csp);
+    let effectiveCsp = csp;
+    // Unity WebGL static template + ConKay smoke need classic inline scripts
+    // (no nonce). Also allow same-origin framing for world lens / smoke iframe.
+    if (
+      pathname.startsWith('/concordia-webgl/') ||
+      pathname === '/conkay-bridge-smoke.html' ||
+      pathname === '/conkay-industrial-smoke.html' ||
+      pathname === '/conkay-apply-mesh-smoke.html' ||
+      pathname === '/conkay-nlp-cad-smoke.html' ||
+      pathname === '/conkay-glb-smoke.html' ||
+      pathname === '/conkay-evo-glb-smoke.html' ||
+      pathname === '/conkay-assembly-smoke.html' ||
+      pathname === '/conkay-set-transform-smoke.html'
+    ) {
+      effectiveCsp = csp
+        .replace(/frame-ancestors 'none'/, "frame-ancestors 'self'")
+        .replace(
+          /script-src [^;]+/,
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+        );
+    }
+    response.headers.set('Content-Security-Policy', effectiveCsp);
     response.headers.set('x-nonce', nonce);
     return response;
   }
 
   const passThroughOptions = { request: { headers: forwardedHeaders } };
+
+  const hasSessionCookie =
+    request.cookies.has('concord_auth') ||
+    request.cookies.has('concord_refresh');
+
+  // Authed home must never paint marketing landing. Cookie check is
+  // first-party (httpOnly) so this 307 happens before HTML.
+  if (pathname === '/' && hasSessionCookie) {
+    return withCspHeaders(NextResponse.redirect(new URL('/hub', request.url), 307));
+  }
 
   // Allow public paths through
   if (PUBLIC_PATHS.has(pathname)) {

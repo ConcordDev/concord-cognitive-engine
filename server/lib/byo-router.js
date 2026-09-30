@@ -113,6 +113,16 @@ function touchOverride(db, userId, slot) {
  * @returns {Promise<{ok, text, toolCalls, tokensIn, tokensOut, provider, model, error?}>}
  */
 export async function brainChat({ db, userId, slot, messages, opts = {}, brainMode = null }) {
+  const startedAt = Date.now();
+  const result = await _brainChatDispatch({ db, userId, slot, messages, opts, brainMode });
+  try {
+    const { meterBrainChatResult } = await import("./runtime/inference-billing-bridge.js");
+    meterBrainChatResult(db, result, { slot, userId, latencyMs: Date.now() - startedAt, opts });
+  } catch { /* metering never blocks */ }
+  return result;
+}
+
+async function _brainChatDispatch({ db, userId, slot, messages, opts = {}, brainMode = null }) {
   if (!slot) {
     return {
       ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0,

@@ -59,6 +59,7 @@ export function WikimediaArt() {
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
+            defaultContentClass="media"
             compact
             apiSource="wikimedia-commons"
             apiUrl="https://commons.wikimedia.org/w/api.php"

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay NLP CAD smoke — free-text → intent → apply_mesh</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 140px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">NLP CAD v1 — free-text intent → partMesh-shaped mesh → apply_mesh (not industrial CAD suite / GLB)</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var cmdsSent = false;
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    mesh: null,
+    intent: null,
+    freeText: null,
+    meshMode: 'apply_mesh',
+    honesty: 'NLP intent → deterministic mesh → apply_mesh — not industrial CAD / GLB'
+  };
+  window.__CONKAY_NLP_CAD_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' || out.textContent === '' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function resolveBundle() {
+    if (window.__NLP_CAD__ && typeof window.__NLP_CAD__ === 'object') {
+      return window.__NLP_CAD__;
+    }
+    return null;
+  }
+
+  function markOk() {
+    var names = events.map(function (e) { return e && e.event; });
+    var applied = events.filter(function (e) { return e && e.event === 'mesh_applied'; });
+    var hasApplied = applied.length > 0;
+    var mesh = state.mesh;
+    var vertsOk = false;
+    if (mesh && hasApplied && applied[0] && applied[0].payload) {
+      var p = applied[0].payload;
+      vertsOk = Number(p.vertexCount) > 0 && Number(p.triangleCount) > 0;
+      if (mesh.vertexCount && Number(p.vertexCount) === Number(mesh.vertexCount)) vertsOk = true;
+    }
+    state.eventNames = names;
+    state.meshAppliedCount = applied.length;
+    state.meshAppliedSample = applied[0] || null;
+    state.ok = !!(hasApplied && mesh && vertsOk && state.intent);
+    if (state.ok && state.reason === 'waiting') state.reason = 'nlp→apply_mesh+mesh_applied';
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    events.push(data);
+    line('EVENT ' + JSON.stringify(data));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload) {
+    var win = iframe.contentWindow;
+    if (!win) {
+      line('post FAILED no contentWindow for ' + cmd);
+      return false;
+    }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || { source: 'conkay-nlp-cad-smoke' },
+      id: 'nlp-' + cmd + '-' + Date.now(),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify({ type: msg.type, cmd: msg.cmd, id: msg.id, positionsLen: (payload && payload.positions && payload.positions.length) || 0, indicesLen: (payload && payload.indices && payload.indices.length) || 0, color: payload && payload.color }));
+      return true;
+    } catch (e) {
+      line('post threw ' + (e && e.message));
+      return false;
+    }
+  }
+
+  function clickCanvas() {
+    try {
+      var doc = iframe.contentDocument;
+      var canvas = doc && doc.querySelector('#unity-canvas, canvas');
+      if (canvas) {
+        canvas.focus();
+        canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe.contentWindow }));
+        line('clicked/focused unity canvas');
+      } else {
+        iframe.focus();
+        line('no canvas yet; focused iframe');
+      }
+    } catch (e) {
+      iframe.focus();
+      line('canvas click skipped: ' + (e && e.message));
+    }
+  }
+
+  function sendApply() {
+    if (cmdsSent) return;
+    var bundle = resolveBundle();
+    if (!bundle || !bundle.mesh || !Array.isArray(bundle.mesh.positions) || !Array.isArray(bundle.mesh.indices)) {
+      line('waiting for __NLP_CAD__ {freeText,intent,mesh} (proof runner injects after NLP parse)');
+      return;
+    }
+    cmdsSent = true;
+    state.freeText = bundle.freeText || null;
+    state.intent = bundle.intent || null;
+    state.mesh = bundle.mesh;
+    var mesh = bundle.mesh;
+    line('TEXT ' + JSON.stringify(bundle.freeText || ''));
+    line('INTENT ' + JSON.stringify({ part: state.intent && state.intent.part, spans: state.intent && state.intent.spans, material: state.intent && state.intent.material, meshKind: state.intent && state.intent.meshKind, loads: state.intent && state.intent.loads }));
+    line('MESH kind=' + (mesh.kind || '?') + ' verts=' + (mesh.vertexCount || mesh.positions.length / 3) + ' tris=' + (mesh.triangleCount || mesh.indices.length / 3) + ' color=' + (mesh.color || '#22c55e') + ' source=' + (mesh.source || 'nlp'));
+    clickCanvas();
+    postCmd('hello', { source: 'conkay-nlp-cad-smoke' });
+    postCmd('ping', { source: 'conkay-nlp-cad-smoke' });
+    postCmd('apply_mesh', {
+      positions: mesh.positions,
+      indices: mesh.indices,
+      color: mesh.color || '#22c55e',
+      id: mesh.id || 'smoke-nlp-ibeam',
+      position: mesh.position || { x: 0, y: 1.2, z: 0 },
+      scale: mesh.scale != null ? mesh.scale : 1,
+      source: 'conkay-nlp-cad-smoke',
+      kind: mesh.kind || 'i-beam'
+    });
+    markOk();
+  }
+
+  window.__START_NLP_CAD__ = function (bundleOverride) {
+    if (bundleOverride) window.__NLP_CAD__ = bundleOverride;
+    cmdsSent = false;
+    sendApply();
+  };
+
+  iframe.addEventListener('load', function () {
+    line('iframe load');
+    setTimeout(function () { line('wait 8s — first apply_mesh window'); sendApply(); }, 8000);
+    setTimeout(function () {
+      line('wait 12s — retry if mesh ready');
+      if (!cmdsSent) sendApply();
+      else { clickCanvas(); }
+    }, 12000);
+    setTimeout(function () {
+      line('wait 15s — final burst');
+      clickCanvas();
+      if (!cmdsSent) sendApply();
+    }, 15000);
+  });
+
+  setTimeout(function () {
+    state.finishedAt = Date.now();
+    markOk();
+    if (!state.ok) {
+      if (!state.mesh) state.reason = 'no-nlp-bundle-injected';
+      else if (!state.meshAppliedCount) state.reason = 'timeout-no-mesh_applied';
+      else state.reason = 'timeout';
+    }
+    line('DONE ok=' + state.ok + ' events=' + events.length + ' meshApplied=' + (state.meshAppliedCount || 0) + ' reason=' + state.reason);
+  }, 45000);
+
+  line('listening; inject via __NLP_CAD__ / __START_NLP_CAD__');
+})();
+  </script>
+</body>
+</html>

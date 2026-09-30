@@ -84,6 +84,9 @@ interface EmptyStateProps {
   };
   variant?: 'default' | 'minimal' | 'illustrated';
   className?: string;
+  /** Forwarded to the canonical primitive — see its own doc comment. Only
+   * the `ErrorState` preset below should ever pass 'alert'. */
+  role?: 'region' | 'alert';
 }
 
 export function EmptyState({
@@ -93,7 +96,8 @@ export function EmptyState({
   action,
   secondaryAction,
   variant = 'default',
-  className
+  className,
+  role,
 }: EmptyStateProps) {
   return (
     <CanonicalEmptyState
@@ -104,6 +108,7 @@ export function EmptyState({
       secondaryAction={secondaryAction}
       compact={variant === 'minimal'}
       className={className}
+      role={role}
     />
   );
 }
@@ -241,6 +246,7 @@ export function ErrorState({
       title="Something went wrong"
       description={error || 'An unexpected error occurred. Please try again.'}
       action={onRetry ? { label: 'Try again', onClick: onRetry } : undefined}
+      role="alert"
     />
   );
 }

@@ -1,11 +1,12 @@
 'use client';
 
+import { getApiBase } from '@/lib/api/base';
 import { useState, useCallback, FormEvent, useEffect } from 'react';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { OAuthButtons } from './OAuthButtons';
 import { useAuth } from '@/hooks/useAuth';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = getApiBase();
 
 type AuthMode = 'signin' | 'signup';
 

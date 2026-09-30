@@ -15,6 +15,11 @@ import { X, Zap, Plus } from 'lucide-react';
 import type { DTUTier } from '@/lib/api/generated-types';
 // Phase P — wire the 5-tier VisibilityScopePicker.
 import { VisibilityScopePicker, type VisibilityScope } from '@/components/scope/VisibilityScopePicker';
+import {
+  ContentClassLicenseFields,
+  buildContentLicensePayload,
+  type ContentClass,
+} from '@/components/dtu/ContentClassLicenseFields';
 
 interface DTUQuickCreateProps {
   onClose: () => void;
@@ -32,6 +37,8 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
   const [tier, setTier] = useState<DTUTier>('regular');
   const [isGlobal, setIsGlobal] = useState(false);
   const [visibilityScope, setVisibilityScope] = useState<VisibilityScope>('private');
+  const [contentClass, setContentClass] = useState<ContentClass>('generic');
+  const [licenseScopes, setLicenseScopes] = useState<string[]>(['private']);
 
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
@@ -43,13 +50,21 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
         .map((t) => t.trim())
         .filter(Boolean);
 
+      const licensePayload = buildContentLicensePayload(contentClass, licenseScopes, {
+        tier,
+        visibilityScope,
+      });
       return apiHelpers.dtus.create({
         title: title || undefined,
         content,
         tags: tags.length > 0 ? tags : undefined,
         source: source || 'manual',
         isGlobal: isGlobal || visibilityScope === 'global',
-        meta: { tier, visibilityScope },
+        contentClass: licensePayload.contentClass,
+        licenseScopes: licensePayload.licenseScopes,
+        scopes: licensePayload.scopes,
+        license: licensePayload.license,
+        meta: licensePayload.meta,
       });
     },
     onSuccess: () => {
@@ -174,6 +189,15 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
             </label>
             <VisibilityScopePicker value={visibilityScope} onChange={setVisibilityScope} />
           </div>
+
+          <ContentClassLicenseFields
+            contentClass={contentClass}
+            onContentClassChange={setContentClass}
+            licenseScopes={licenseScopes}
+            onLicenseScopesChange={setLicenseScopes}
+            variant="lattice"
+            idPrefix="quick-create"
+          />
         </div>
 
         {/* Footer */}

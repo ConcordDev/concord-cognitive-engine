@@ -16,6 +16,7 @@
 import fs from "fs";
 import path from "path";
 import logger from "../logger.js";
+import { unpackDtuData } from "./dtu-at-rest.js";
 
 // 64 hex chars followed by a dot and extension
 const HASH_FILE_PATTERN = /^([a-f0-9]{64})\.(.+)$/;
@@ -100,7 +101,7 @@ function collectArchivedHashes(db) {
     const rows = db.prepare("SELECT data FROM archived_dtus").all();
     for (const row of rows) {
       try {
-        const dtu = JSON.parse(row.data);
+        const dtu = JSON.parse(unpackDtuData(row.data));
         if (dtu.artifact?.hash) {
           hashes.add(dtu.artifact.hash);
         }

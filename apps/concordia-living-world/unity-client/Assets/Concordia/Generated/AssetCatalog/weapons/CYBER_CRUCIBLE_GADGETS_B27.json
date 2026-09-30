@@ -1,0 +1,907 @@
+{
+  "batch": "B27_gadgets",
+  "slice": "A23_weapons_gadgets_cyber",
+  "worlds": [
+    "Cyber",
+    "Crucible"
+  ],
+  "count": 18,
+  "keeps": [
+    "wpn_1h_grid_pulseblade",
+    "wpn_pole_grid_countpike",
+    "wpn_bow_grid_rail",
+    "wpn_imp_grid_cable",
+    "wpn_throw_crucible_shard",
+    "wpn_focus_crucible_unend",
+    "wpn_1h_crucible_seamchisel",
+    "wpn_2h_crucible_ventbar",
+    "wpn_pole_crucible_latticepike",
+    "wpn_imp_crucible_opencaliper"
+  ],
+  "notes": "Gadgets and tools. No rifle. No digit on Grid faces. Crucible gaps stay open. Construct cap stays 0.",
+  "entries": [
+    {
+      "id": "wpn_imp_grid_fiberspool",
+      "display_name": "Fiber Spool",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One short fat fiber spool with a single deep groove around the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal core, one cyan fiber in the groove, scratched acrylic cheeks, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short fat fiber spool with a single deep groove around the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal core, one cyan fiber in the groove, scratched acrylic cheeks, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short fat cylinder and one groove. Not the cable whip and not the loose fiber hank.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Held spool. wpn_imp_grid_cable stays the whip. prop_grid_cl_fiber_hank stays clutter. prop_cable_coil stays the coil.",
+      "scale_vs_player": "0.16 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not parent to mon_grid_drone or the drone sled.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_fiberspool/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Beside arch_hero_cyber_bridge_hall, not on the sled.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_imp_grid_cable,prop_grid_cl_fiber_hank,prop_cable_coil",
+        "no_digit": true,
+        "no_rotor": true
+      }
+    },
+    {
+      "id": "wpn_imp_grid_cornerbar",
+      "display_name": "Corner Bar",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One short L-shaped pry bar with a blunt toe and a worn grip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal bar, one cyan scuff on the toe, dull grip, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short L-shaped pry bar with a blunt toe and a worn grip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal bar, one cyan scuff on the toe, dull grip, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short L. Not the pulse-blade rectangle and not a straight pike.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Pry tool. wpn_1h_grid_pulseblade stays the cleaver. wpn_pole_grid_countpike stays the pike.",
+      "scale_vs_player": "0.38 m",
+      "bind_hints": "Right hand. Procedural heavy. Not a one-hand edge.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_cornerbar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Alley sill. Not env_cyber_glitch_frame.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_1h_grid_pulseblade,wpn_pole_grid_countpike",
+        "no_digit": true
+      }
+    },
+    {
+      "id": "wpn_imp_grid_conduitsnips",
+      "display_name": "Conduit Snips",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 1000,
+      "aura_prompt": "One pair of short conduit snips, jaws open a finger width, handles looped. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal jaws, acrylic handle loops, one cyan nick on the pivot, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pair of short conduit snips, jaws open a finger width, handles looped. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal jaws, acrylic handle loops, one cyan nick on the pivot, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small open X of two short jaws. Not a stock and not a long blade.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Cutters. Not wpn_bow_grid_rail. The rail bow stays and is not given a second stock.",
+      "scale_vs_player": "0.22 m",
+      "bind_hints": "Right hand. Procedural heavy. Jaws stay a tool, not a shot.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_conduitsnips/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 1000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Service-corridor mouth. env_cyber_service_corridor stays the hall.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_bow_grid_rail",
+        "no_digit": true
+      }
+    },
+    {
+      "id": "wpn_focus_grid_crackedloupe",
+      "display_name": "Cracked Loupe",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "focus",
+        "verb_cast_loop",
+        "grid"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One palm loupe: a cracked round lens on a short stem. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Acrylic lens, one cyan crack, gunmetal stem, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One palm loupe: a cracked round lens on a short stem. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Acrylic lens, one cyan crack, gunmetal stem, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A ring and a stub handle. Not the disc on the count pike.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Hold only. Cyan is the crack, not a hologram sheet. wpn_pole_grid_countpike stays the pike.",
+      "scale_vs_player": "0.14 m",
+      "bind_hints": "Off hand. Hold. No attack clip. No hologram mesh.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_grid_crackedloupe/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "hold_only",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Near env_cyber_census_plinth. The plinth mesh stays.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_pole_grid_countpike,env_cyber_census_plinth",
+        "no_digit": true,
+        "no_hologram": true
+      }
+    },
+    {
+      "id": "wpn_throw_grid_blankpuck",
+      "display_name": "Blank Puck",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "verb_thrown",
+        "grid"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One palm-sized blank disc with a blunt rim and an empty face. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Matte acrylic, gunmetal rim, no mark on the face, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One palm-sized blank disc with a blunt rim and an empty face. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Matte acrylic, gunmetal rim, no mark on the face, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat disc. No crack, no hole, no digit.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Thrown gadget. Throw clip is missing. Do not bind Sword_Attack as a throw. Not the Dawn glass disc. Not the board hole.",
+      "scale_vs_player": "0.08 m",
+      "bind_hints": "Holstered. Throw unbound. Face stays blank.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_throw_grid_blankpuck/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "throw_holstered",
+        "clip": "unbound_throw",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Alley. Not ui_board_cyber_hole. Not wpn_throw_dawn_glassdisc.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_throw_dawn_glassdisc,ui_board_cyber_hole",
+        "no_digit": true,
+        "clip_honesty": "throw MISSING"
+      }
+    },
+    {
+      "id": "wpn_imp_grid_openclamp",
+      "display_name": "Open Clamp",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One small C-clamp with the screw backed off so the jaw does not meet the anvil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal C, acrylic screw knob, cyan only in the open jaw, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small C-clamp with the screw backed off so the jaw does not meet the anvil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal C, acrylic screw knob, cyan only in the open jaw, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A C and a knob. The jaw gap stays open. Not the Crucible caliper.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Clamp gadget. Jaw stays open. wpn_imp_crucible_opencaliper stays the Crucible caliper.",
+      "scale_vs_player": "0.2 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not close the jaw in the mesh.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_openclamp/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Bridge-hall bench. Not a Crucible lattice tool.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_imp_crucible_opencaliper",
+        "no_digit": true,
+        "gap": "stays_open"
+      }
+    },
+    {
+      "id": "wpn_imp_grid_nestedrod",
+      "display_name": "Nested Rod",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One collapsed rod of three nested tubes with a blunt cap, fully shortened. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal tubes, three shoulder rings, one cyan band on the cap, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One collapsed rod of three nested tubes with a blunt cap, fully shortened. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal tubes, three shoulder rings, one cyan band on the cap, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short stack with three shoulders. Not a long pike and not a stocked bow.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Collapsed reach tool. It stays short. wpn_pole_grid_countpike stays the long pike. wpn_bow_grid_rail stays the bow.",
+      "scale_vs_player": "0.28 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not extend it into a pole in the mesh.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_nestedrod/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Alley. Not snapped to env_cyber_skybridge_segment.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_pole_grid_countpike,wpn_bow_grid_rail",
+        "no_digit": true,
+        "extended": false
+      }
+    },
+    {
+      "id": "wpn_imp_grid_blankkey",
+      "display_name": "Blank Key",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One blank T-shaped key with a smooth bit and no cuts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal T, acrylic bow, smooth bit, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One blank T-shaped key with a smooth bit and no cuts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal T, acrylic bow, smooth bit, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A T. The bit is smooth. Not a knife and not a letter.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Access wedge. Face and bit stay blank. Not npc_grid_fac_zero_notch. Not the census slate.",
+      "scale_vs_player": "0.12 m",
+      "bind_hints": "Right hand. Procedural heavy. No cuts that read as type.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_blankkey/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Under-hatch lip. env_cyber_under_hatch stays the hatch.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "veh_cyber_blank_slate,npc_grid_fac_zero_notch",
+        "no_digit": true
+      }
+    },
+    {
+      "id": "wpn_imp_grid_horseshoe",
+      "display_name": "Horseshoe",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "tool",
+        "verb_improvised_swing",
+        "grid"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One open horseshoe magnet, the two poles not touching. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal U, cyan only in the open mouth, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open horseshoe magnet, the two poles not touching. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal U, cyan only in the open mouth, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A U. The poles do not meet. Not a halo and not a closed ring.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Magnet gadget. The mouth stays open. Not wpn_focus_crucible_unend. Not the drone-sled ring.",
+      "scale_vs_player": "0.18 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not close the U. No rotor.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_grid_horseshoe/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Not parented to veh_cyber_drone_sled or mon_grid_drone.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "veh_cyber_drone_sled,mon_grid_drone,hyb_billdrone",
+        "no_digit": true,
+        "gap": "stays_open",
+        "no_rotor": true
+      }
+    },
+    {
+      "id": "wpn_focus_grid_tallyclick",
+      "display_name": "Tally Click",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "gadget",
+        "focus",
+        "verb_cast_loop",
+        "grid"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One small blank tally box with a single thumb lever. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Matte acrylic box, gunmetal lever, empty face, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small blank tally box with a single thumb lever. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Matte acrylic box, gunmetal lever, empty face, Grid. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A box and one lever. No digit on the face.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090",
+        "#2a241c"
+      ],
+      "lore_blurb": "Hold only. Census count stays off the mesh. veh_cyber_blank_slate stays the slate. env_cyber_census_plinth stays the plinth.",
+      "scale_vs_player": "0.07 m",
+      "bind_hints": "Off hand. Hold. No attack clip. Face stays blank.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_grid_tallyclick/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "hold_only",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Grid mid-rise, off the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Named set sky_bridge stays unplaced. Bridge runner stays empty-handed. Capoeira bias unchanged. Clerk hand near the plinth. Not the slate on the dolly. Not a bridge-runner hand.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "veh_cyber_blank_slate,env_cyber_census_plinth",
+        "no_digit": true,
+        "empty_hand_mobs": "bridge_runner"
+      }
+    },
+    {
+      "id": "wpn_imp_crucible_seamroller",
+      "display_name": "Seam Roller",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "gadget",
+        "verb_improvised_swing",
+        "drift"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One hand roller whose wheel has a wedge bitten out, the rim not closed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome wheel, teal only in the missing wedge, short haft, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One hand roller whose wheel has a wedge bitten out, the rim not closed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome wheel, teal only in the missing wedge, short haft, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A circle with a wedge gone. Not the vent bar and not a full wheel.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Held roller. The bite stays open. Not wpn_2h_crucible_ventbar. Not veh spare wheels. No flame.",
+      "scale_vs_player": "0.26 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not fill the bite. People may hold it. Constructs may not.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_crucible_seamroller/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_2h_crucible_ventbar",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_1h_crucible_driftawl",
+      "display_name": "Drift Awl",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_1h_slash",
+        "drift"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One short awl whose tip stops in an open notch, the point unfinished. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome spike, teal only inside the tip notch, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short awl whose tip stops in an open notch, the point unfinished. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome spike, teal only inside the tip notch, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short spike and a notch. Not the seam chisel's flat bar.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "One-hand tool. wpn_1h_crucible_seamchisel stays the chisel. Gap at the tip stays open. Construct cap stays 0.",
+      "scale_vs_player": "0.24 m",
+      "bind_hints": "Right hand. Sword_Attack. Tip notch stays open.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_crucible_driftawl/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_slash",
+        "clip": "Sword_Attack",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_1h_crucible_seamchisel",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_2h_crucible_slagspoon",
+      "display_name": "Slag Spoon",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_2h_heavy",
+        "drift"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One deep empty oval spoon on a short haft. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome bowl, dull haft, empty bowl, no flame, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One deep empty oval spoon on a short haft. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome bowl, dull haft, empty bowl, no flame, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A bowl and a short haft. The bowl is empty. Not a furnace stack.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Heavy tool. No flame mesh. Not env_sere_furnace_stack. Not the vent bar.",
+      "scale_vs_player": "0.7 m",
+      "bind_hints": "Two hands. Procedural heavy. Bowl stays empty. No flame tongue.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_2h_crucible_slagspoon/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "heavy",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0. Not the Sere furnace belt.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_2h_crucible_ventbar,env_sere_furnace_stack",
+        "construct_cap": 0,
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_imp_crucible_openwrench",
+      "display_name": "Open Wrench",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "gadget",
+        "verb_improvised_swing",
+        "drift"
+      ],
+      "triangle_budget": 1000,
+      "aura_prompt": "One open-end wrench, the jaw a visible gap, nothing seated in it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome handle, teal only inside the open jaw, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open-end wrench, the jaw a visible gap, nothing seated in it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome handle, teal only inside the open jaw, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A handle and an open jaw. Not the caliper's two curved arms and not the focus ring.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Wrench. The jaw stays empty. wpn_imp_crucible_opencaliper and wpn_focus_crucible_unend stay.",
+      "scale_vs_player": "0.32 m",
+      "bind_hints": "Right hand. Procedural heavy. Do not close the jaw.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_crucible_openwrench/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_imp_crucible_opencaliper,wpn_focus_crucible_unend",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_focus_crucible_gapblock",
+      "display_name": "Gap Block",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "gadget",
+        "focus",
+        "verb_cast_loop",
+        "drift"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One palm block of two thin plates with a dark slot between them. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome plates, lilac only in the slot, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One palm block of two thin plates with a dark slot between them. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome plates, lilac only in the slot, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two small slabs and a slot. Much smaller than the vent bar.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Hold only. The slot stays open. Not wpn_2h_crucible_ventbar. Not Gap Bracket.",
+      "scale_vs_player": "0.1 m",
+      "bind_hints": "Off hand. Hold. No attack clip. Slot stays open.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_crucible_gapblock/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "hold_only",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_2h_crucible_ventbar,mon_crucible_gap_bracket",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_imp_crucible_quartzfile",
+      "display_name": "Quartz File",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_improvised_swing",
+        "drift"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One flat quartz file, teeth on one long edge, the far end unfinished. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale quartz body, teal teeth on one edge, unfinished end, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flat quartz file, teeth on one long edge, the far end unfinished. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale quartz body, teal teeth on one edge, unfinished end, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat rectangle. Not the jagged thrown shard.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Scrape tool. wpn_throw_crucible_shard stays the shard. Throw clip is not this file.",
+      "scale_vs_player": "0.28 m",
+      "bind_hints": "Right hand. Procedural heavy. Not a throw.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_crucible_quartzfile/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "improvised_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_throw_crucible_shard",
+        "construct_cap": 0,
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_1h_crucible_pinpunch",
+      "display_name": "Pin Punch",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_1h_slash",
+        "drift"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One short fat punch with a cupped end, the cup not closed over. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome peg, lilac only inside the cup, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short fat punch with a cupped end, the cup not closed over. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome peg, lilac only inside the cup, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short fat peg. The cup reads as a hollow end, not a barrel.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "One-hand punch. No stock. prop_kit crucible open pin stays clutter. Not a firearm.",
+      "scale_vs_player": "0.18 m",
+      "bind_hints": "Right hand. Sword_Attack. Cup stays open. No stock.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_crucible_pinpunch/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_slash",
+        "clip": "Sword_Attack",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0. Not the lattice-hall open pin clutter.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "prop_cruc_cl_open_pin",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "wpn_focus_crucible_brokenloop",
+      "display_name": "Broken Loop",
+      "batch": "B27_gadgets",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "gadget",
+        "focus",
+        "verb_cast_loop",
+        "drift"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One small wire circle with a visible break, the ends not touching. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome wire, lilac only in the break, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small wire circle with a visible break, the ends not touching. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome wire, lilac only in the break, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small open O. Smaller than the Un-End focus ring.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Hold only. The break stays open. wpn_focus_crucible_unend stays the larger ring. Not Gap Bracket.",
+      "scale_vs_player": "0.09 m",
+      "bind_hints": "Off hand. Hold. No attack clip. Do not close the break.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_crucible_brokenloop/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "hold_only",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Do not seat on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "keeps": "wpn_focus_crucible_unend,mon_crucible_gap_bracket",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "no_flame": true
+      }
+    }
+  ]
+}

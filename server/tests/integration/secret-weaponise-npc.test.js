@@ -105,4 +105,24 @@ describe("T2.1 — weaponiseHeldSecrets", () => {
     assert.equal(weaponiseHeldSecrets(db, { proposeScheme }).weaponised.length, 0);
     db.close();
   });
+
+  it("fans secret:weaponised through the realtime hook", () => {
+    const db = freshDb();
+    npc(db, "cruel-holder"); npc(db, "victim-a");
+    secret(db, "s1", "cruel-holder", "victim-a");
+    stress(db, "cruel-holder", 70, "cruel");
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      weaponiseHeldSecrets(db, { proposeScheme, worldId: "w1" });
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].event, "secret:weaponised");
+    assert.equal(seen[0].payload.kind, "crime");
+    assert.equal(seen[0].payload.byNpc, true);
+    db.close();
+  });
 });

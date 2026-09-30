@@ -25,8 +25,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => React.createElement('span', { 'data-testid': 'depth-badge' }) }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => React.createElement('div', { 'data-testid': 'recent-mine-card' }) }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => React.createElement('div', { 'data-testid': 'auto-action-strip' }) }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => React.createElement('div', { 'data-testid': 'cross-lens-recents' }) }));
 
 // the three real, macro-backed panels — marker stubs so we can assert they mount.
@@ -50,18 +48,24 @@ describe('carpentry lens — real-engine composition (no generic scaffold)', () 
     expect(getByTestId('wood-species-reference')).toBeInTheDocument();
   });
 
-  it('does NOT import the generic artifact-CRUD scaffold (use-lens-data / use-lens-artifacts / manifest action bar / universal actions)', () => {
+  it('does NOT import the generic artifact-CRUD scaffold (use-lens-data / use-lens-artifacts / manifest action bar / universal actions / generic discovery trio)', () => {
     const src: string = readFileSync(join(__dirname, '../app/lenses/carpentry/page.tsx'), 'utf8');
     expect(src).not.toMatch(/use-lens-data/);
     expect(src).not.toMatch(/use-lens-artifacts/);
     expect(src).not.toMatch(/ManifestActionBar/);
     expect(src).not.toMatch(/UniversalActions/);
+    // RecentMineCard + AutoActionStrip are the other two legs of CLAUDE.md's
+    // GENERIC_TRIO (with ManifestActionBar) — a page built on real bespoke
+    // panels (JobOps/CarpentryShop/WoodSpeciesReference, all macro-backed)
+    // has no honest use for the generic "recent items"/"auto action" scaffold
+    // either. Matches every sibling rebuilt trade lens (electrical, hvac,
+    // plumbing, masonry, welding) — none of them mount these two.
+    expect(src).not.toMatch(/RecentMineCard/);
+    expect(src).not.toMatch(/AutoActionStrip/);
   });
 
-  it('mounts the discovery sentinels (recent/auto-action/cross-lens) alongside real depth', () => {
+  it('mounts CrossLensRecentsPanel (the one discovery sentinel this lens uses) alongside real depth', () => {
     const { getByTestId } = render(<CarpentryLensPage />);
-    expect(getByTestId('recent-mine-card')).toBeInTheDocument();
-    expect(getByTestId('auto-action-strip')).toBeInTheDocument();
     expect(getByTestId('cross-lens-recents')).toBeInTheDocument();
   });
 });

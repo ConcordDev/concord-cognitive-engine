@@ -1,0 +1,1021 @@
+{
+  "schema": "concordia-world-forge-canon-graph/1.0",
+  "slice_id": "W00_world_forge_canon_graph",
+  "phase": "G0",
+  "batch": "WF0_canon_graph",
+  "title": "Geographic constraint graph for ten Concordia worlds",
+  "authority_docs": [
+    "lookfeel/MAP_MASTER.json",
+    "lookfeel/geography/GEOGRAPHY_INDEX.json",
+    "lookfeel/geography/GEO_*.md",
+    "WORLD_FORGE_GEO_CIV_AUDIT.md"
+  ],
+  "honesty": "Atlas kilometres and Hub metres are copied. Spoke and Sere disc radii are design_intent_disc. Sector offsets inside a disc are design_intent unless coordinates is null. countries.json claim circles are not borders. Resource quantity is always null. population_bias.relative is a within-world rank, not a census.",
+  "pipeline": [
+    "elevation",
+    "hydrology",
+    "climate",
+    "biome",
+    "resources",
+    "mobility",
+    "suitability",
+    "civ",
+    "pop",
+    "economy",
+    "growth",
+    "infra",
+    "physicalization"
+  ],
+  "frames": {
+    "megaworld_km": {
+      "origin": "Hub",
+      "axes": "+x east toward Cyber (gate angle 0), +z north toward the Sundering (gate angle π/2)",
+      "ring_km": 400.0,
+      "present_metres_per_km": 0.55,
+      "present_ring_m": 220.0,
+      "note": "Present metres are the jog. travel_minutes on trade_graph are atlas time, not that jog."
+    },
+    "hub_canon_metres": {
+      "flower_law_radius_m": 42,
+      "ring_of_doors_m": 34,
+      "wall_m": 56,
+      "court_km_authored": 12,
+      "metro_km_authored": 40,
+      "approaches_km_design_intent": 80,
+      "arena": { "x_m": 0, "z_m": 18, "steel_radius_m": 8 },
+      "pinewood_crossing": { "x_m": 62, "z_m": -28 },
+      "concordia_stand": { "x_m": 0, "z_m": -6.4 },
+      "concord_stand": { "x_m": 0, "z_m": 6.2 },
+      "sovereign_stand": { "x_m": 8.6, "z_m": 0.3 }
+    },
+    "local_claim_metres": {
+      "note": "countries.json circles of about 18–28 local metres overlap and are claims. Fluxom Gate (62, 18) m and the Ruins envoy pin (63.86, -9.91) m live here. Do not promote them into megaworld_km."
+    }
+  },
+  "walk_model_kmh": {
+    "road": 5,
+    "walker": 3.5,
+    "coastal_sea": 15,
+    "river_barge": 20,
+    "open_exodus": 12,
+    "waystone_scramble": 3,
+    "link_plaque_minutes": 2
+  },
+  "seas": {
+    "inner_veil": "Shoal in the ring marches where a coast exists, especially Tunya–Sundering and the Iron Coast river lane.",
+    "exodus_ocean": "Basin outside the Canon Ring on the southwest-to-south arc. Sere sits in it. Crime–Sere is the short strait. Frontier–Sere is the long ocean. Ark Exodus is lore, not a ninth spoke."
+  },
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["terrainSpec", "generatePoughkeepsieHeightmap", "renderedElevationAt", "hashSeed"],
+      "today": "One Poughkeepsie heightmap. Fixed seed 0xc0ffee for every world. hashSeed(worldId) is reserved and not applied to the rendered grid.",
+      "g0_extends": "Per-world terrain_affinity classes and forbidden landforms for a future continental field beside this profile.",
+      "do_not": "Replace the rendered formula or treat seedForWorldId as live."
+    },
+    {
+      "id": "terrain_deformation",
+      "path": "server/lib/terrain-deformation.js",
+      "symbols": ["baseElevation"],
+      "today": "Delegates to renderedElevationAt.",
+      "g0_extends": "No new deformation. Digs stay on the local grid.",
+      "do_not": "Reintroduce a sine approximation of Hub geography."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["solveFlowStep", "setWater", "tickWaterFlow", "waterDepthAt"],
+      "today": "Local 4-neighbour flow on a cell grid.",
+      "g0_extends": "water_dependency tells a later watershed which discs may seed setWater.",
+      "do_not": "Ship a second flow solver or a river through the Hub plaza."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "cycle": "server/emergent/procgen-settlement-cycle.js",
+      "heartbeat": "procgen-settlement-cycle",
+      "today": "3–5 NPCs per procgen region plus a Living Society settlements row. Not a city physicalizer.",
+      "g0_extends": "Named hearts and population ordinals a later suitability pass can choose among.",
+      "do_not": "Replace spawnSettlementForRegion or invent capitals."
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "domain": "server/domains/faction-strategy.js",
+      "cycle": "server/emergent/faction-strategy-cycle.js",
+      "today": "Deterministic stance machine on authored factions. Moves include DECLARE_WAR and RAID.",
+      "g0_extends": "A named region, march, or strait a move can be about.",
+      "do_not": "Mint kingdoms from noise or give the Hub a territory."
+    },
+    {
+      "id": "unity_world_geography",
+      "path": "Assets/Concordia/Scripts/GeographyRuntime.cs",
+      "symbols": ["WorldGeography"],
+      "today": "Routes and borders. Hub territories are empty by design.",
+      "g0_extends": "Atlas agreement for a later bind.",
+      "do_not": "Add a Hub kingdom or confuse present metres with Crown Road kilometres."
+    },
+    {
+      "id": "procedural_buildings_and_trees",
+      "path": "concord-frontend procedural-buildings and TreeLayer",
+      "today": "Local building and tree placement. hashSeed is the shared string seed.",
+      "g0_extends": "architecture.kit_id and flora budget notes.",
+      "do_not": "Author new kits or meshes in G0."
+    }
+  ],
+  "architecture_kits_existing": [
+    "arch_kit_hub_court",
+    "arch_kit_fantasy_sunder",
+    "arch_kit_ruins_ash",
+    "arch_kit_crime_coast",
+    "arch_kit_cyber_grid",
+    "arch_kit_frontier_road",
+    "arch_kit_superhero_dawn",
+    "arch_kit_crucible_lattice",
+    "arch_kit_sere_mark"
+  ],
+  "constraints": [
+    { "id": "no_vinewood", "stage": "civ", "reject": "Any region, settlement, or kit named Vinewood." },
+    { "id": "fantasy_is_sundering", "stage": "civ", "reject": "A second fantasy continent. world_id Fantasy displays as the Sundering." },
+    { "id": "flower_law_42m", "stage": "physicalization", "reject": "Flower Law as a kilometre disk, or steel that stays steel inside the 42 m Hub disk outside the arena sand." },
+    { "id": "no_hub_kingdom", "stage": "civ", "reject": "A Hub territory polygon. Districts are rings. WorldGeography Hub territories stay empty." },
+    { "id": "no_hub_river", "stage": "hydrology", "reject": "A river capital or fantasy channel through the Hub plaza. Civic drain and brass mouth only." },
+    { "id": "no_hub_mountain", "stage": "elevation", "reject": "A mountain inside the Hub metro. Vertical play is metres of awning and bracket." },
+    { "id": "sere_not_a_gate", "stage": "mobility", "reject": "A Link door, a ninth Refusal, or a flowering blade on Sere. Waystone is a mark." },
+    { "id": "claim_circles_are_not_borders", "stage": "civ", "reject": "Promoting countries.json 18–28 m circles into megaworld kingdoms." },
+    { "id": "null_coords_stay_null", "stage": "elevation", "reject": "Inventing kilometres for fallback Tunya names, unplaced sites, the Last Dome mile, or Sere political capitals." },
+    { "id": "frontier_no_mesa_no_dome", "stage": "elevation", "reject": "A placed mesa or an energy dome on the Frontier." },
+    { "id": "sundering_not_a_lake", "stage": "hydrology", "reject": "Lake country in the Sundering. One shelf waterfall and a short clear run." },
+    { "id": "ruins_one_spout", "stage": "hydrology", "reject": "A forum lake or a lava tube in Sovereign Ruins." },
+    { "id": "grid_no_pastoral_river", "stage": "hydrology", "reject": "A pastoral river on the Grid. Alleys drain. Harbor is the Uncounted Wharf march." },
+    { "id": "crucible_road_may_end", "stage": "mobility", "reject": "A finished road on the Crucible–Grid seam. Kind stays weak." },
+    { "id": "crucible_no_ninth_district", "stage": "civ", "reject": "A ninth district or a closed capital in the Crucible." },
+    { "id": "dawn_no_victory_heart", "stage": "physicalization", "reject": "A victory statue as the Dawn heart." },
+    { "id": "kits_do_not_merge", "stage": "physicalization", "reject": "A fourth blend kit where marches meet. Weathering crosses; kits stay distinct." },
+    { "id": "quantity_stays_null", "stage": "resources", "reject": "A tonnage, grade, or spawn rate on a resource locus in this graph." },
+    { "id": "fixed_terrain_seed_untouched", "stage": "elevation", "reject": "Retuning world-terrain.js seed 0xc0ffee in G0 or pretending hashSeed(worldId) already drives the rendered grid." }
+  ],
+  "worlds": [
+    {
+      "world_id": "Hub",
+      "display_name": "The Unburned Court",
+      "ring_index": null,
+      "center_km": { "x_km": 0.0, "z_km": 0.0 },
+      "radius_km": 40.0,
+      "radius_authority": "authored_megaworld",
+      "climate_tag": "clear",
+      "climate_prose": "Temperate civic. Rain is a visitor.",
+      "gate": null,
+      "palette_ref": "styles/STYLE_Hub.md",
+      "architecture_kit": "arch_kit_hub_court",
+      "steel": "flower_inside_42m_except_arena_sand",
+      "flora_budget": "plaza hardscape; pine and stag on the salt road outside a tight radius of Pinewood Crossing",
+      "regions": [
+        {
+          "region_id": "hub_plaza",
+          "name": "Inner Court plaza",
+          "frame": "hub_canon_metres",
+          "radius_m": 42,
+          "flower_law": true,
+          "coordinates_authority": "authored",
+          "terrain_affinity": ["flat_court", "arena_dish", "low_steps"],
+          "water_dependency": { "mode": "civic_drain", "forbidden": ["river", "lake", "waterfall"] },
+          "resources": [
+            { "id": "hub_cut_stone", "kind": "dimension_stone", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_hub_court", "grammar": "court, assembly, archive, market awnings, arena gate" },
+          "population_bias": { "ordinal": "plaza_peak", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_hub_heart", "node_hub_arena"]
+        },
+        {
+          "region_id": "hub_doors",
+          "name": "Ring of Doors",
+          "frame": "hub_canon_metres",
+          "radius_m": 34,
+          "flower_law": true,
+          "coordinates_authority": "authored",
+          "terrain_affinity": ["flat_court"],
+          "water_dependency": { "mode": "civic_drain", "forbidden": ["river"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_hub_court", "grammar": "eight plaques inside Flower Law" },
+          "population_bias": { "ordinal": "plaza_peak", "relative": 0.9, "authority": "design_intent" },
+          "trade_nodes": ["node_link_cyber", "node_link_ruins", "node_link_fantasy", "node_link_tunya", "node_link_frontier", "node_link_crime", "node_link_superhero", "node_link_crucible"]
+        },
+        {
+          "region_id": "hub_wall",
+          "name": "Warden wall",
+          "frame": "hub_canon_metres",
+          "radius_m": 56,
+          "flower_law": false,
+          "coordinates_authority": "authored",
+          "terrain_affinity": ["low_wall"],
+          "water_dependency": { "mode": "civic_drain", "forbidden": ["river"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_hub_court", "grammar": "low band, not a cliff" },
+          "population_bias": { "ordinal": "thinned", "relative": 0.4, "authority": "design_intent" },
+          "trade_nodes": []
+        },
+        {
+          "region_id": "hub_pinewood",
+          "name": "Pinewood Crossing",
+          "frame": "hub_canon_metres",
+          "point_m": { "x_m": 62, "z_m": -28 },
+          "flower_law": false,
+          "coordinates_authority": "authored",
+          "terrain_affinity": ["salt_road_drain", "pine_verge"],
+          "water_dependency": { "mode": "dry_salt_line", "forbidden": ["river_through_plaza"] },
+          "resources": [
+            { "id": "hub_pine", "kind": "timber_scarce", "quantity": null, "authority": "geo_prose" },
+            { "id": "hub_salt_dust", "kind": "salt_crust", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_hub_court", "grammar": "milepost and crossing, letter only this name" },
+          "population_bias": { "ordinal": "crossing", "relative": 0.35, "authority": "design_intent" },
+          "trade_nodes": ["node_pinewood"]
+        },
+        {
+          "region_id": "hub_approaches",
+          "name": "Crown Road approaches",
+          "frame": "megaworld_km",
+          "band_km": { "inner": 40, "outer": 80 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["road_and_verge"],
+          "water_dependency": { "mode": "inner_veil_beyond_approaches", "forbidden": ["river_capital"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_hub_court", "grammar": "eight road starts, bandits only in later volumes" },
+          "population_bias": { "ordinal": "road_verge", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["edge_crown_roads"]
+        }
+      ]
+    },
+    {
+      "world_id": "Cyber",
+      "display_name": "The Grid",
+      "ring_index": 0,
+      "center_km": { "x_km": 400.0, "z_km": 0.0 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "neon",
+      "climate_prose": "Haze and wet pavement. Night-biased sky.",
+      "gate": { "angle_rad": 0.0, "bearing_deg": 0.0, "hub_plaque_m": { "x_m": 34.0, "z_m": 0.0 } },
+      "palette_ref": "styles/STYLE_Cyber.md",
+      "architecture_kit": "arch_kit_cyber_grid",
+      "steel": "live",
+      "flora_budget": "weed and moss pad; do not spend density on trees",
+      "regions": [
+        {
+          "region_id": "cyber_stacks",
+          "name": "The Stacks",
+          "placement": "disc_heart",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["midrise_grid", "stack_vertical", "skybridge"],
+          "water_dependency": { "mode": "alley_drain", "forbidden": ["pastoral_river", "lake"] },
+          "resources": [
+            { "id": "cyber_cable_salvage", "kind": "salvage", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_cyber_grid", "grammar": "stacks, census plinths, one cyan practical" },
+          "population_bias": { "ordinal": "ring_dense", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_cyber_stacks", "node_link_cyber"]
+        },
+        {
+          "region_id": "cyber_under",
+          "name": "Under-District",
+          "placement": "negative_metres",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["service_corridor_down_a_few_metres"],
+          "water_dependency": { "mode": "trench_and_reflection", "forbidden": ["hell_level", "pastoral_river"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_cyber_grid", "grammar": "hatches and service corridors; Glitch Chapel is a frame in a block" },
+          "population_bias": { "ordinal": "service", "relative": 0.7, "authority": "design_intent" },
+          "trade_nodes": ["node_cyber_under"]
+        },
+        {
+          "region_id": "cyber_wharf_march",
+          "name": "Uncounted Wharf march",
+          "placement": "southwest_disc_edge_toward_crime",
+          "coordinates": null,
+          "coordinates_authority": "march_not_a_surveyed_port_point",
+          "terrain_affinity": ["wet_joint_acrylic_to_brick"],
+          "water_dependency": { "mode": "drainage_meets_harbor", "forbidden": ["pastoral_river"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_cyber_grid", "grammar": "joint weathers; Coast kit does not replace Grid kit" },
+          "population_bias": { "ordinal": "march", "relative": 0.4, "authority": "design_intent" },
+          "trade_nodes": ["edge_cyber_crime"]
+        }
+      ]
+    },
+    {
+      "world_id": "Ruins",
+      "display_name": "Sovereign Ruins",
+      "ring_index": 1,
+      "center_km": { "x_km": 282.84, "z_km": 282.84 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "ash",
+      "climate_prose": "Dry ash and dust. Rain makes the aqueduct honest. Mild, dull sun.",
+      "gate": { "angle_rad": 0.785398, "bearing_deg": 45.0, "hub_plaque_m": { "x_m": 24.04, "z_m": 24.04 } },
+      "palette_ref": "styles/STYLE_Ruins.md",
+      "architecture_kit": "arch_kit_ruins_ash",
+      "steel": "live",
+      "flora_budget": "mineral stain and birds; not crowds",
+      "regions": [
+        {
+          "region_id": "ruins_forum",
+          "name": "Catalogue Forum",
+          "placement": "slightly_north_of_disc_center",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["cracked_flat"],
+          "water_dependency": { "mode": "one_spout_cracked_basin", "forbidden": ["forum_lake", "lava"] },
+          "resources": [
+            { "id": "ruins_limestone", "kind": "dimension_stone", "quantity": null, "authority": "geo_prose" },
+            { "id": "ruins_ash", "kind": "ash", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_ruins_ash", "grammar": "libraries, colonnade, streets that still run; no victory plaza" },
+          "population_bias": { "ordinal": "quiet_forum", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_ruins_forum", "node_link_ruins"]
+        },
+        {
+          "region_id": "ruins_rib",
+          "name": "Rib wilds",
+          "placement": "toward_rim",
+          "coordinates": null,
+          "coordinates_authority": "named_sector_unsurveyed",
+          "terrain_affinity": ["fossil_span_over_dry_channel"],
+          "water_dependency": { "mode": "dry_until_rain", "forbidden": ["perennial_river", "lava_tube"] },
+          "resources": [
+            { "id": "ruins_cold_iron", "kind": "archive_iron", "quantity": null, "authority": "geo_prose", "note": "Bone and cold iron as archive, not a magma city." }
+          ],
+          "architecture": { "kit_id": "arch_kit_ruins_ash", "grammar": "rib bridge and a stele whose lines stop" },
+          "population_bias": { "ordinal": "empty_road", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["node_ruins_rib"]
+        },
+        {
+          "region_id": "ruins_unfinished",
+          "name": "Unfinished approach",
+          "placement": "sector_not_a_dungeon_gate",
+          "coordinates": null,
+          "coordinates_authority": "named_sector_unsurveyed",
+          "terrain_affinity": ["ash_march"],
+          "water_dependency": { "mode": "mineral_stain", "forbidden": ["lake"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_ruins_ash", "grammar": "unfinished arch; catalogue, do not conquer" },
+          "population_bias": { "ordinal": "empty_road", "relative": 0.1, "authority": "design_intent" },
+          "trade_nodes": []
+        },
+        {
+          "region_id": "ruins_envoy_claim",
+          "name": "Envoy compound claim pin",
+          "frame": "local_claim_metres",
+          "point_m": { "x_m": 63.86, "z_m": -9.91 },
+          "coordinates_authority": "local_claim_not_megaworld",
+          "terrain_affinity": ["do_not_lift_to_kilometres"],
+          "water_dependency": { "mode": "inherit_forum", "forbidden": ["invented_lake"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_ruins_ash", "grammar": "claim plane only" },
+          "population_bias": { "ordinal": "claim", "relative": null, "authority": "not_a_census" },
+          "trade_nodes": []
+        }
+      ]
+    },
+    {
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "ring_index": 2,
+      "center_km": { "x_km": 0.0, "z_km": 400.0 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "clear",
+      "climate_prose": "Temperate forest to alpine. Mist is local to waterfalls and the fold.",
+      "gate": { "angle_rad": 1.570796, "bearing_deg": 90.0, "hub_plaque_m": { "x_m": 0.0, "z_m": 34.0 } },
+      "palette_ref": "styles/STYLE_Fantasy.md",
+      "architecture_kit": "arch_kit_fantasy_sunder",
+      "steel": "live",
+      "flora_budget": "oak and shrine in wildwood; rune-scar pine on the alpine rim",
+      "regions": [
+        {
+          "region_id": "sunder_wildwood",
+          "name": "Wildwood",
+          "placement": "west_of_center",
+          "coordinates": null,
+          "coordinates_authority": "design_intent_sector_no_kilometre_fix",
+          "terrain_affinity": ["lower_forest", "root_architecture"],
+          "water_dependency": { "mode": "short_clear_run_from_shelf", "forbidden": ["lake_country"] },
+          "resources": [
+            { "id": "sunder_oak", "kind": "timber", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_fantasy_sunder", "grammar": "oak and held shrine approach; not a megacity" },
+          "population_bias": { "ordinal": "grove_quiet", "relative": 0.6, "authority": "design_intent" },
+          "trade_nodes": ["node_wildwood"]
+        },
+        {
+          "region_id": "sunder_fold",
+          "name": "Fold and ravine",
+          "placement": "mid_disc",
+          "coordinates": null,
+          "coordinates_authority": "design_intent_sector_no_kilometre_fix",
+          "terrain_affinity": ["lip_and_drop"],
+          "water_dependency": { "mode": "one_shelf_waterfall", "forbidden": ["lake_country"] },
+          "resources": [
+            { "id": "sunder_shrine_stone", "kind": "dimension_stone", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_fantasy_sunder", "grammar": "stair fragment; House Voss is not a flying castle" },
+          "population_bias": { "ordinal": "track", "relative": 0.45, "authority": "design_intent" },
+          "trade_nodes": ["node_voss", "node_fold_road"]
+        },
+        {
+          "region_id": "sunder_alpine",
+          "name": "Alpine rim",
+          "placement": "north_edge_of_disc",
+          "coordinates": null,
+          "coordinates_authority": "design_intent_sector_no_kilometre_fix",
+          "terrain_affinity": ["alpine_rim", "thin_soil"],
+          "water_dependency": { "mode": "mist_only", "forbidden": ["lake_country"] },
+          "resources": [
+            { "id": "sunder_pine_scar", "kind": "timber_thin", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_fantasy_sunder", "grammar": "titan pillar is a landmark height, not a range; shrine toward the north rim" },
+          "population_bias": { "ordinal": "almost_empty", "relative": 0.1, "authority": "design_intent" },
+          "trade_nodes": ["node_held_shrine"]
+        },
+        {
+          "region_id": "sunder_salt_toll",
+          "name": "Salt toll road",
+          "placement": "south_side_toward_crown_road",
+          "coordinates": null,
+          "coordinates_authority": "design_intent_sector_no_kilometre_fix",
+          "terrain_affinity": ["drier_track"],
+          "water_dependency": { "mode": "drier_than_fold", "forbidden": ["river_capital"] },
+          "resources": [
+            { "id": "sunder_salt_toll", "kind": "salt", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_fantasy_sunder", "grammar": "salt track back toward the Hub bearing" },
+          "population_bias": { "ordinal": "track", "relative": 0.5, "authority": "design_intent" },
+          "trade_nodes": ["node_link_fantasy", "edge_sunder_veil"]
+        }
+      ]
+    },
+    {
+      "world_id": "Tunya",
+      "display_name": "Tunya",
+      "ring_index": 3,
+      "center_km": { "x_km": -282.84, "z_km": 282.84 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "grove",
+      "climate_prose": "Grove is the terrace default, not the glacier and not the dune.",
+      "gate": { "angle_rad": 2.356194, "bearing_deg": 135.0, "hub_plaque_m": { "x_m": -24.04, "z_m": 24.04 } },
+      "palette_ref": "styles/STYLE_Tunya.md",
+      "architecture_kit": null,
+      "architecture_note": "No Tunya-specific kit id is in architecture_kits_existing. Do not borrow arch_kit_fantasy_sunder. Terrace grammar stays prose until a kit slice exists. GoldenSlice remains the only forge that crafts.",
+      "steel": "live_on_tunya_ground",
+      "flora_budget": "terrace and Nil canopy; do not clearcut a terrace",
+      "regions": [
+        {
+          "region_id": "tunya_masond",
+          "name": "Masond",
+          "offset_km_from_center": { "x_km": -40, "z_km": 50 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["cliff_terrace", "vertical_path", "ark_arrival_stair"],
+          "water_dependency": { "mode": "one_river", "forbidden": ["second_ocean"] },
+          "resources": [
+            { "id": "masond_cliff_stone", "kind": "dimension_stone", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": null, "grammar": "cliff arrival; Africa's ark and the people already here; no country_id" },
+          "population_bias": { "ordinal": "terrace_road", "relative": 0.7, "authority": "design_intent" },
+          "trade_nodes": ["node_masond"]
+        },
+        {
+          "region_id": "tunya_asbir",
+          "name": "Asbir",
+          "offset_km_from_center": { "x_km": 10, "z_km": -60 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["dune", "dry_wadi", "buried_vault"],
+          "water_dependency": { "mode": "salt_and_shade", "forbidden": ["inland_ocean"] },
+          "resources": [
+            { "id": "asbir_salt", "kind": "salt", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": null, "grammar": "shaded court; sector is not the overlapping claim circle" },
+          "population_bias": { "ordinal": "shade", "relative": 0.4, "authority": "design_intent" },
+          "trade_nodes": ["node_asbir"]
+        },
+        {
+          "region_id": "tunya_sangree",
+          "name": "Sangree",
+          "offset_km_from_center": { "x_km": 55, "z_km": 10 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["stack_yard", "blackened_stone"],
+          "water_dependency": { "mode": "terrace_runnel", "forbidden": ["forge_as_second_ocean"] },
+          "resources": [
+            { "id": "sangree_ore", "kind": "ore", "quantity": null, "authority": "geo_prose", "note": "One stack. GoldenSlice is the only crafting forge. Sandrun shares the look when shown." }
+          ],
+          "architecture": { "kit_id": null, "grammar": "fire forge yard; burns scrub on one face only" },
+          "population_bias": { "ordinal": "works", "relative": 0.65, "authority": "design_intent" },
+          "trade_nodes": ["node_sangree"]
+        },
+        {
+          "region_id": "tunya_aekon",
+          "name": "Aekon",
+          "offset_km_from_center": { "x_km": -10, "z_km": 70 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["glacier", "exposed_ark_rib"],
+          "water_dependency": { "mode": "ice", "forbidden": ["ice_spell_gameplay"] },
+          "resources": [
+            { "id": "aekon_ice", "kind": "ice", "quantity": null, "authority": "geo_prose", "note": "Fuel ration and wind are the cold that is placed." }
+          ],
+          "architecture": { "kit_id": null, "grammar": "warm hold, a pocket, not a city" },
+          "population_bias": { "ordinal": "pocket", "relative": 0.25, "authority": "design_intent" },
+          "trade_nodes": ["node_aekon"]
+        },
+        {
+          "region_id": "tunya_fluxom",
+          "name": "Fluxom",
+          "offset_km_from_center": { "x_km": -60, "z_km": -20 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["sea_level_harbor", "canals", "lock"],
+          "water_dependency": { "mode": "inner_veil_coast", "forbidden": ["confuse_with_fluxom_gate_local_metres"] },
+          "local_claim_not_this_sector": { "name": "Fluxom Gate", "x_m": 62, "z_m": 18, "frame": "tunya_local_metres" },
+          "resources": [
+            { "id": "fluxom_dye", "kind": "dye", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": null, "grammar": "dye harbor, sanitation, a lock" },
+          "population_bias": { "ordinal": "harbor", "relative": 0.9, "authority": "design_intent" },
+          "trade_nodes": ["node_fluxom", "edge_tunya_veil"]
+        },
+        {
+          "region_id": "tunya_nil",
+          "name": "Nil",
+          "offset_km_from_center": { "x_km": 35, "z_km": -45 },
+          "coordinates_authority": "design_intent",
+          "terrain_affinity": ["wet_canopy", "dark_basin"],
+          "water_dependency": { "mode": "canopy_basin", "forbidden": ["clearcut"] },
+          "resources": [
+            { "id": "nil_lichen", "kind": "lichen", "quantity": null, "authority": "geo_prose", "note": "One lichen." }
+          ],
+          "architecture": { "kit_id": null, "grammar": "listening grove; minimal construction" },
+          "population_bias": { "ordinal": "sparse", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["node_nil"]
+        },
+        {
+          "region_id": "tunya_fallback",
+          "name": "Fallback terrace countries",
+          "names": ["Dinye", "Sahm", "Bahiij", "Akeia", "Vessine", "Corre", "Dormas", "Vrellan", "Sandrun"],
+          "coordinates": null,
+          "coordinates_authority": "inherit_terrace_do_not_invent_kilometres",
+          "terrain_affinity": ["stepped_terrace"],
+          "water_dependency": { "mode": "terrace_runnel", "forbidden": ["invented_kilometre_river"] },
+          "resources": [
+            { "id": "terrace_limestone", "kind": "dimension_stone", "quantity": null, "authority": "geo_prose" },
+            { "id": "terrace_timber", "kind": "timber", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": null, "grammar": "timber, limestone, solar eaves until a dedicated grammar exists" },
+          "population_bias": { "ordinal": "claim_plane", "relative": null, "authority": "not_a_census" },
+          "trade_nodes": []
+        },
+        {
+          "region_id": "tunya_unplaced",
+          "name": "Named and unplaced",
+          "names": ["Hold of First Arrival", "twelfth lip", "sky temple", "quiet quarter", "tide temple", "old Fluxom harbor", "ancestor caves"],
+          "coordinates": null,
+          "coordinates_authority": "unplaced",
+          "terrain_affinity": [],
+          "water_dependency": { "mode": "unplaced", "forbidden": ["invented_coordinate"] },
+          "resources": [],
+          "architecture": { "kit_id": null, "grammar": "no coordinate is invented to finish them" },
+          "population_bias": { "ordinal": "unplaced", "relative": null, "authority": "not_a_census" },
+          "trade_nodes": []
+        }
+      ]
+    },
+    {
+      "world_id": "Frontier",
+      "display_name": "The Frontier",
+      "ring_index": 4,
+      "center_km": { "x_km": -400.0, "z_km": 0.0 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "wind",
+      "climate_prose": "Wind and dust. Sky is the largest prop. Rain is a passing wall.",
+      "gate": { "angle_rad": 3.141593, "bearing_deg": 180.0, "hub_plaque_m": { "x_m": -34.0, "z_m": 0.0 } },
+      "palette_ref": "styles/STYLE_Frontier.md",
+      "architecture_kit": "arch_kit_frontier_road",
+      "steel": "live",
+      "flora_budget": "cottonwood where water was; emptiness is the content",
+      "regions": [
+        {
+          "region_id": "frontier_hitch",
+          "name": "Council hitch",
+          "placement": "near_heart",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["open_flat", "wagon_rut"],
+          "water_dependency": { "mode": "dry_most_of_year", "forbidden": ["river_the_paths_follow", "mesa", "dome"] },
+          "resources": [
+            { "id": "frontier_dust", "kind": "dust", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_frontier_road", "grammar": "hitch, relay, cabin that could be taken apart" },
+          "population_bias": { "ordinal": "post", "relative": 0.4, "authority": "design_intent" },
+          "trade_nodes": ["node_frontier_hitch", "node_link_frontier"]
+        },
+        {
+          "region_id": "frontier_drift",
+          "name": "Drift gap",
+          "placement": "cut_bank",
+          "coordinates": null,
+          "coordinates_authority": "named_sector_unsurveyed",
+          "terrain_affinity": ["drift_gap", "cut_bank", "hand_built_bridge"],
+          "water_dependency": { "mode": "cottonwood_marks_former_water", "forbidden": ["mesa", "dome", "perennial_river"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_frontier_road", "grammar": "Canvas Dive and Morning Chevron are encounters on floor_drift_gap, not towns" },
+          "population_bias": { "ordinal": "empty_then_post", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["node_drift_gap"]
+        },
+        {
+          "region_id": "frontier_last_dome_unplaced",
+          "name": "The Last Dome",
+          "coordinates": null,
+          "coordinates_authority": "unplaced_one_mile_past_frontier_gate_mile_not_converted",
+          "terrain_affinity": ["open_flat"],
+          "water_dependency": { "mode": "unplaced", "forbidden": ["dome", "converted_mile"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_frontier_road", "grammar": "no energy roof" },
+          "population_bias": { "ordinal": "unplaced", "relative": null, "authority": "not_a_census" },
+          "trade_nodes": []
+        }
+      ]
+    },
+    {
+      "world_id": "Crime",
+      "display_name": "Iron Coast",
+      "ring_index": 5,
+      "center_km": { "x_km": -282.84, "z_km": -282.84 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "rain",
+      "climate_prose": "Maritime rain. Sodium at night. Fog in the avenues.",
+      "gate": { "angle_rad": 3.926991, "bearing_deg": 225.0, "hub_plaque_m": { "x_m": -24.04, "z_m": -24.04 } },
+      "palette_ref": "styles/STYLE_Crime.md",
+      "architecture_kit": "arch_kit_crime_coast",
+      "steel": "live",
+      "culture_note": "Wing Chun is the people's style. The bill is social, not a storm. Factions stay on the claim plane.",
+      "flora_budget": "wet street, not a forest",
+      "regions": [
+        {
+          "region_id": "crime_sodium",
+          "name": "Sodium streets",
+          "placement": "gentle_rise",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["low_tenement", "overpass_as_tall_ordinary"],
+          "water_dependency": { "mode": "rain_and_gutter", "forbidden": ["flood_apocalypse", "spire"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_crime_coast", "grammar": "blocks, roofs, yards, fire escapes" },
+          "population_bias": { "ordinal": "block", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_sodium", "node_link_crime"]
+        },
+        {
+          "region_id": "crime_wharf",
+          "name": "The Wharf",
+          "placement": "exodus_side_southwest_of_disc",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["warehouse_at_water"],
+          "water_dependency": { "mode": "working_river_and_harbor", "forbidden": ["gate_to_sere"] },
+          "resources": [
+            { "id": "crime_river_silt", "kind": "silt", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_crime_coast", "grammar": "bollards, tide on the piles" },
+          "population_bias": { "ordinal": "block", "relative": 0.85, "authority": "design_intent" },
+          "trade_nodes": ["node_wharf", "edge_crime_sere_strait", "edge_crime_dawn_lane"]
+        }
+      ]
+    },
+    {
+      "world_id": "Superhero",
+      "display_name": "Permanent Dawn",
+      "ring_index": 6,
+      "center_km": { "x_km": 0.0, "z_km": -400.0 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "dawn",
+      "climate_prose": "A dawn that does not finish. Clear air, long gold shadows.",
+      "gate": { "angle_rad": 4.712389, "bearing_deg": 270.0, "hub_plaque_m": { "x_m": 0.0, "z_m": -34.0 } },
+      "palette_ref": "styles/STYLE_Superhero.md",
+      "architecture_kit": "arch_kit_superhero_dawn",
+      "steel": "live",
+      "culture_note": "Aegis in the visual bible. Karate. Task-force and Luminary rows stay on the local claim plane.",
+      "flora_budget": "roof parks and street trees as civic planting, not wildwood",
+      "regions": [
+        {
+          "region_id": "dawn_kane",
+          "name": "Kane crown",
+          "placement": "skyline_heart",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["skyline", "roof_pad", "arterial", "street_and_park"],
+          "water_dependency": { "mode": "park_and_street_drain", "forbidden": ["sacred_lake", "victory_monument_heart"] },
+          "resources": [
+            { "id": "dawn_concrete", "kind": "concrete", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_superhero_dawn", "grammar": "Kane fin is the tall read; neural clinics are canopies on ordinary blocks" },
+          "population_bias": { "ordinal": "pedestrian_roof_transit", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_kane", "node_link_superhero"]
+        },
+        {
+          "region_id": "dawn_arterials",
+          "name": "Bronx Arterials",
+          "placement": "mid_level",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["arterial", "dirtier_concrete_low_rent"],
+          "water_dependency": { "mode": "street_drain", "forbidden": ["sacred_lake"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_superhero_dawn", "grammar": "same composite language, dirtier concrete; mercy plaza stays open" },
+          "population_bias": { "ordinal": "pedestrian_roof_transit", "relative": 0.8, "authority": "design_intent" },
+          "trade_nodes": ["node_bronx_arterials"]
+        },
+        {
+          "region_id": "dawn_crown_stair_glue",
+          "name": "Held Crown Stair",
+          "placement": "glue_kit_not_a_land_border_with_the_sundering",
+          "coordinates": null,
+          "coordinates_authority": "unsurveyed_relationship",
+          "terrain_affinity": ["stair_of_relationship"],
+          "water_dependency": { "mode": "none", "forbidden": ["shared_land_border_with_fantasy"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_superhero_dawn", "grammar": "glue toward the Sundering across the Hub; marble against Crucible basalt is the east march" },
+          "population_bias": { "ordinal": "unsurveyed", "relative": null, "authority": "not_a_census" },
+          "trade_nodes": []
+        }
+      ]
+    },
+    {
+      "world_id": "Crucible",
+      "display_name": "The Crucible",
+      "ring_index": 7,
+      "center_km": { "x_km": 282.84, "z_km": -282.84 },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "climate_tag": "drift",
+      "climate_prose": "Two temperatures may share a sky. Hero ground stays readable.",
+      "gate": { "angle_rad": 5.497787, "bearing_deg": 315.0, "hub_plaque_m": { "x_m": 24.04, "z_m": -24.04 } },
+      "palette_ref": "styles/STYLE_Crucible.md",
+      "architecture_kit": "arch_kit_crucible_lattice",
+      "steel": "live",
+      "flora_budget": "moss on a fault with no stream; drift masses are not populations",
+      "regions": [
+        {
+          "region_id": "crucible_lattice",
+          "name": "Open Lattice",
+          "placement": "heart",
+          "coordinates": null,
+          "coordinates_authority": "named_heart_unsurveyed_inside_disc",
+          "terrain_affinity": ["folded_basalt", "fault_step", "road_that_ends"],
+          "water_dependency": { "mode": "contradictory_sheet", "forbidden": ["pretty_river_city", "closed_capital"] },
+          "resources": [
+            { "id": "crucible_basalt", "kind": "basalt", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_crucible_lattice", "grammar": "open lattice; if a pattern would end, the arch stops short" },
+          "population_bias": { "ordinal": "few", "relative": 0.35, "authority": "design_intent" },
+          "trade_nodes": ["node_lattice", "node_link_crucible"]
+        },
+        {
+          "region_id": "crucible_foundry",
+          "name": "Foundry edge",
+          "placement": "disc_edge_toward_coast_and_frontier_scrap",
+          "coordinates": null,
+          "coordinates_authority": "named_sector_unsurveyed",
+          "terrain_affinity": ["foundry_edge", "vent"],
+          "water_dependency": { "mode": "industrial_steam", "forbidden": ["steam_as_whole_continent"] },
+          "resources": [
+            { "id": "crucible_scrap", "kind": "scrap", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_crucible_lattice", "grammar": "unclosed foundry; blend, not the continent" },
+          "population_bias": { "ordinal": "few", "relative": 0.3, "authority": "design_intent" },
+          "trade_nodes": ["node_foundry_edge", "edge_crucible_cyber_seam"]
+        }
+      ]
+    },
+    {
+      "world_id": "Sere",
+      "display_name": "Sere",
+      "ring_index": null,
+      "center_km": { "x_km": -227.76, "z_km": -489.62 },
+      "radius_km": 80.0,
+      "radius_authority": "design_intent_disc",
+      "radius_factor_vs_ring": 1.35,
+      "sere_bearing_deg": 245.05,
+      "sere_angle_rad": 4.276991,
+      "climate_tag": "smog",
+      "climate_prose": "Smog, extraction, flood. No Flower Law. No Link.",
+      "gate": null,
+      "palette_ref": "styles/STYLE_Sere.md",
+      "architecture_kit": "arch_kit_sere_mark",
+      "steel": "live_no_flower",
+      "placement_note": "Off-ring. Crime's angle plus 0.35 rad. Political capitals (Tessera, House Aldermere, Tally House, Clearing Spire) stay on the local claim plane.",
+      "flora_budget": "stubble, reed, thorn; new beauty architecture is the wrong history",
+      "regions": [
+        {
+          "region_id": "sere_old_capital",
+          "name": "Old Capital",
+          "role": "exhausted_center",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["cracked_civic_concrete"],
+          "water_dependency": { "mode": "failed_levee_not_a_clean_lake", "forbidden": ["link_gate"] },
+          "resources": [
+            { "id": "sere_soot_brick", "kind": "brick", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "soot brick; repair visible" },
+          "population_bias": { "ordinal": "exhausted", "relative": 0.5, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_old_capital"]
+        },
+        {
+          "region_id": "sere_spire",
+          "name": "Spire City",
+          "role": "stub_and_footing",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["rebar_stub"],
+          "water_dependency": { "mode": "inherit_flood", "forbidden": ["resort"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "empty windows" },
+          "population_bias": { "ordinal": "stub", "relative": 0.25, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_spire"]
+        },
+        {
+          "region_id": "sere_furnace",
+          "name": "Furnace Belt",
+          "role": "emissive",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["industrial_flat"],
+          "water_dependency": { "mode": "process_not_a_river_city", "forbidden": ["pretty_waterfront"] },
+          "resources": [
+            { "id": "sere_furnace_iron", "kind": "iron", "quantity": null, "authority": "geo_prose", "note": "One eye in a stack." }
+          ],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "brick and iron bay" },
+          "population_bias": { "ordinal": "shift", "relative": 1.0, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_furnace"]
+        },
+        {
+          "region_id": "sere_breadlands",
+          "name": "Breadlands",
+          "role": "exhausted_farm",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["stubble"],
+          "water_dependency": { "mode": "failed_irrigation", "forbidden": ["fertile_heartland_retcon"] },
+          "resources": [
+            { "id": "sere_exhausted_soil", "kind": "exhausted_soil", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "dented silo" },
+          "population_bias": { "ordinal": "thin", "relative": 0.2, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_silo"]
+        },
+        {
+          "region_id": "sere_flooded",
+          "name": "Flooded Lowland",
+          "role": "drowned_streets",
+          "placement_hint": "south_and_west_of_disc_low",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["low_drowned"],
+          "water_dependency": { "mode": "tide_stain", "forbidden": ["clean_lake"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "tide stain halfway up" },
+          "population_bias": { "ordinal": "thin", "relative": 0.2, "authority": "design_intent" },
+          "trade_nodes": []
+        },
+        {
+          "region_id": "sere_drowned",
+          "name": "Drowned Provinces",
+          "role": "same_water_wider",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["polluted_shallows"],
+          "water_dependency": { "mode": "pier_and_shallow", "forbidden": ["clean_lake"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "piers" },
+          "population_bias": { "ordinal": "thin", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_pier"]
+        },
+        {
+          "region_id": "sere_passes",
+          "name": "Contested Passes",
+          "role": "crime_strait_hinterland",
+          "placement_hint": "toward_crime",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["pass"],
+          "water_dependency": { "mode": "short_strait_outside", "forbidden": ["ninth_door"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "waystone hinterland; brand tile, no portal" },
+          "population_bias": { "ordinal": "contested", "relative": 0.35, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_waystone", "edge_crime_sere_strait"]
+        },
+        {
+          "region_id": "sere_haven",
+          "name": "Offshore Haven",
+          "role": "water_settlement",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["platform"],
+          "water_dependency": { "mode": "exodus", "forbidden": ["resort"] },
+          "resources": [],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "platforms, not a resort" },
+          "population_bias": { "ordinal": "platform", "relative": 0.3, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_haven"]
+        },
+        {
+          "region_id": "sere_delta",
+          "name": "River Delta",
+          "role": "silt_and_flood",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["silt"],
+          "water_dependency": { "mode": "reed_and_flood", "forbidden": ["clean_lake"] },
+          "resources": [
+            { "id": "sere_silt", "kind": "silt", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "reed and concrete" },
+          "population_bias": { "ordinal": "thin", "relative": 0.15, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_delta"]
+        },
+        {
+          "region_id": "sere_highland",
+          "name": "Highland",
+          "role": "wind_and_extraction",
+          "placement_hint": "higher_windier",
+          "coordinates": null,
+          "coordinates_authority": "role_only",
+          "terrain_affinity": ["highland_wind"],
+          "water_dependency": { "mode": "wind_not_lake", "forbidden": ["city"] },
+          "resources": [
+            { "id": "sere_headframe", "kind": "extraction", "quantity": null, "authority": "geo_prose" }
+          ],
+          "architecture": { "kit_id": "arch_kit_sere_mark", "grammar": "headframe and thorn" },
+          "population_bias": { "ordinal": "almost_nothing", "relative": 0.05, "authority": "design_intent" },
+          "trade_nodes": ["node_sere_headframe"]
+        }
+      ]
+    }
+  ],
+  "trade_graph": [
+    { "id": "gate_hub_cyber", "from": "Hub", "to": "Cyber", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_cyber"] },
+    { "id": "road_hub_cyber", "from": "Hub", "to": "Cyber", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_ruins", "from": "Hub", "to": "Ruins", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_ruins"] },
+    { "id": "road_hub_ruins", "from": "Hub", "to": "Ruins", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_fantasy", "from": "Hub", "to": "Fantasy", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_fantasy"] },
+    { "id": "road_hub_fantasy", "from": "Hub", "to": "Fantasy", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_tunya", "from": "Hub", "to": "Tunya", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_tunya"] },
+    { "id": "road_hub_tunya", "from": "Hub", "to": "Tunya", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_frontier", "from": "Hub", "to": "Frontier", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_frontier"] },
+    { "id": "road_hub_frontier", "from": "Hub", "to": "Frontier", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_crime", "from": "Hub", "to": "Crime", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_crime"] },
+    { "id": "road_hub_crime", "from": "Hub", "to": "Crime", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_superhero", "from": "Hub", "to": "Superhero", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_superhero"] },
+    { "id": "road_hub_superhero", "from": "Hub", "to": "Superhero", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "gate_hub_crucible", "from": "Hub", "to": "Crucible", "kind": "gate", "travel_minutes": 2, "nodes": ["node_link_crucible"] },
+    { "id": "road_hub_crucible", "from": "Hub", "to": "Crucible", "kind": "road", "travel_minutes": 4800, "distance_km": 400, "speed_kmh": 5, "nodes": ["edge_crown_roads"] },
+    { "id": "march_cyber_ruins", "from": "Cyber", "to": "Ruins", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "march_ruins_fantasy", "from": "Ruins", "to": "Fantasy", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "march_fantasy_tunya", "from": "Fantasy", "to": "Tunya", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "walk_tunya_frontier", "from": "Tunya", "to": "Frontier", "kind": "walker", "travel_minutes": 1476, "open_km": 86.1, "speed_kmh": 3.5, "nodes": ["edge_walker"] },
+    { "id": "walk_frontier_crime", "from": "Frontier", "to": "Crime", "kind": "walker", "travel_minutes": 1476, "open_km": 86.1, "speed_kmh": 3.5, "nodes": ["edge_walker"] },
+    { "id": "march_crime_superhero", "from": "Crime", "to": "Superhero", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "march_superhero_crucible", "from": "Superhero", "to": "Crucible", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "march_crucible_cyber", "from": "Crucible", "to": "Cyber", "kind": "road", "travel_minutes": 1033, "open_km": 86.1, "nodes": ["edge_ring_march"] },
+    { "id": "sea_tunya_fantasy", "from": "Tunya", "to": "Fantasy", "kind": "sea", "travel_minutes": 344, "open_km": 86.1, "speed_kmh": 15, "sea": "inner_veil", "nodes": ["edge_tunya_veil", "edge_sunder_veil"] },
+    { "id": "sea_crime_superhero", "from": "Crime", "to": "Superhero", "kind": "sea", "travel_minutes": 258, "open_km": 86.1, "speed_kmh": 20, "sea": "inner_veil", "nodes": ["edge_crime_dawn_lane"] },
+    { "id": "sea_crime_sere", "from": "Crime", "to": "Sere", "kind": "sea", "travel_minutes": 96, "center_distance_km": 214.0, "water_gap_km": 24.0, "sea": "exodus_ocean", "nodes": ["edge_crime_sere_strait"] },
+    { "id": "sea_superhero_sere", "from": "Superhero", "to": "Sere", "kind": "sea", "travel_minutes": 219, "water_gap_km": 54.8, "sea": "exodus_ocean", "nodes": ["edge_dawn_sere"] },
+    { "id": "sea_frontier_sere", "from": "Frontier", "to": "Sere", "kind": "sea", "travel_minutes": 1645, "water_gap_km": 329.0, "speed_kmh": 12, "sea": "exodus_ocean", "nodes": ["edge_frontier_sere"] },
+    { "id": "waystone_crime_sere", "from": "Crime", "to": "Sere", "kind": "weak", "travel_minutes": 480, "speed_kmh": 3, "nodes": ["node_sere_waystone"], "note": "Mark on the near coast. Not a door." },
+    { "id": "seam_crucible_cyber", "from": "Crucible", "to": "Cyber", "kind": "weak", "travel_minutes": 1476, "nodes": ["edge_crucible_cyber_seam"], "note": "Walkable and unfinished. A closed road would violate the presentation." }
+  ],
+  "stage_io": {
+    "elevation": { "reads": ["worlds[].regions[].terrain_affinity", "constraints stage elevation", "centers and radii"], "writes": "elevation field in megaworld_km; march ground between discs" },
+    "hydrology": { "reads": ["water_dependency", "seas", "elevation field"], "writes": "watershed, river, lake, wetland masks that obey forbidden lists" },
+    "climate": { "reads": ["climate_tag", "elevation"], "writes": "temperature and moisture fields; tags stay the canon weather words" },
+    "biome": { "reads": ["climate", "hydrology", "flora_budget"], "writes": "biome class per cell; Grid stays weed and moss" },
+    "resources": { "reads": ["regions[].resources"], "writes": "scored loci; quantity stays null until a real feed exists" },
+    "mobility": { "reads": ["trade_graph", "elevation", "hydrology"], "writes": "cost graph; must not finish the Crucible–Grid seam" },
+    "suitability": { "reads": ["mobility", "water_dependency", "terrain_affinity", "population_bias"], "writes": "scores on named regions only" },
+    "civ": { "reads": ["faction-strategy authored factions", "suitability", "constraints stage civ"], "writes": "attachment of existing factions to named regions; no new kingdoms" },
+    "pop": { "reads": ["population_bias", "procgen-settlements"], "writes": "ordinal checks; not a census" },
+    "economy": { "reads": ["trade_nodes", "resources"], "writes": "flows along trade_graph" },
+    "growth": { "reads": ["economy", "suitability"], "writes": "which named pads may gain a structure" },
+    "infra": { "reads": ["growth", "trade_graph"], "writes": "roads and ports that already exist as edges" },
+    "physicalization": { "reads": ["architecture.kit_id", "infra"], "writes": "placement of existing kits; no new meshes in G0" }
+  },
+  "not_yet": [
+    "No heightmap, watershed raster, or biome raster.",
+    "No city block-out and no procedural kingdom names.",
+    "No edits to world-terrain.js, terrain-water.js, procgen-settlements.js, or faction-strategy.js in this slice.",
+    "No PROMPTS_INDEX rows and no meshes.",
+    "No retune of Flower Law, mob caps, or B21–B31 asset batches."
+  ]
+}

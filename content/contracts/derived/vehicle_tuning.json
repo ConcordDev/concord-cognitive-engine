@@ -1,0 +1,163 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.add_decal",
+      "name": "add_decal"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.base_stats",
+      "name": "base_stats"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.create_part",
+      "name": "create_part"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.get_part",
+      "name": "get_part"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.install",
+      "name": "install"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.list_catalog",
+      "name": "list_catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.list_installed",
+      "name": "list_installed"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.remove_decal",
+      "name": "remove_decal"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.set_paint",
+      "name": "set_paint"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.uninstall",
+      "name": "uninstall"
+    },
+    {
+      "_derived": true,
+      "domain": "vehicle_tuning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "vehicle_tuning.vehicle_stats",
+      "name": "vehicle_stats"
+    }
+  ],
+  "domain": "vehicle_tuning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 12
+}

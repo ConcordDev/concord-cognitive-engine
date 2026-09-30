@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import { updateClockOffset } from '../offline/db';
 import { useUIStore } from '@/store/ui';
 import { fromAxiosError } from '@/lib/errors';
+import { getApiBase } from './base';
 import type {
   CreateDTURequest,
   UpdateDTURequest,
@@ -27,7 +28,7 @@ import type {
   CreateApiKeyRequest,
 } from './generated-types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = getApiBase();
 
 /**
  * FE-004: Runtime validation of API base URL.
@@ -197,19 +198,56 @@ const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
 const RETRY_BASE_DELAY_MS = 1000;
 
+/** True when the server is shedding/warming (not a permission gate). */
+function isServiceWarmingOrOverloaded(error: AxiosError): boolean {
+  const data = error.response?.data as {
+    error?: string;
+    code?: string;
+    reason?: string;
+    warming?: boolean;
+  } | undefined;
+  if (!data) return false;
+  if (data.warming === true) return true;
+  if (data.error === 'service_overloaded' || data.code === 'service_overloaded' || data.code === 'service_warming') {
+    return true;
+  }
+  if (typeof data.reason === 'string' && /^event_loop_lag/.test(data.reason)) return true;
+  return false;
+}
+
+function retryDelayMsFor(error: AxiosError, retryCount: number): number {
+  const data = error.response?.data as { retryAfterS?: number; retryAfter?: number } | undefined;
+  const headerRetryAfter = error.response?.headers?.['retry-after'];
+  const retryAfterS =
+    (typeof data?.retryAfterS === 'number' && data.retryAfterS > 0 ? data.retryAfterS : undefined) ??
+    (typeof data?.retryAfter === 'number' && data.retryAfter > 0 ? data.retryAfter : undefined) ??
+    (headerRetryAfter ? Number(headerRetryAfter) : undefined);
+  if (Number.isFinite(retryAfterS) && (retryAfterS as number) > 0) {
+    // One short automatic retry for warmup/overload — prefer server hint.
+    return Math.min(Math.max((retryAfterS as number) * 1000, 500), 10_000);
+  }
+  return RETRY_BASE_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
+}
+
 api.interceptors.response.use(undefined, async (error: AxiosError) => {
   const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number; _retried?: boolean };
   if (!config) return Promise.reject(error);
 
   const status = error.response?.status;
-  const isRetryable = status && RETRY_STATUS_CODES.has(status);
+  const warmingOrOverloaded = isServiceWarmingOrOverloaded(error);
+  // 503 family always retryable; also retry a single time on 429 when the body
+  // is the load-shed/warmup path (never treat that as a permission gate).
+  const isRetryable =
+    (status && RETRY_STATUS_CODES.has(status)) ||
+    (warmingOrOverloaded && (status === 429 || status === 503));
   const retryCount = config._retryCount || 0;
+  const maxRetries = warmingOrOverloaded ? Math.max(1, Math.min(MAX_RETRIES, 2)) : MAX_RETRIES;
 
-  if (isRetryable && retryCount < MAX_RETRIES) {
+  if (isRetryable && retryCount < maxRetries) {
     config._retryCount = retryCount + 1;
     config._retried = true; // Signal to downstream interceptors that this request was already retried
-    const delay = RETRY_BASE_DELAY_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
-    console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} (attempt ${config._retryCount}/${MAX_RETRIES}) after ${delay}ms`);
+    const delay = retryDelayMsFor(error, retryCount);
+    console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} (attempt ${config._retryCount}/${maxRetries}) after ${delay}ms${warmingOrOverloaded ? ' [warming/overload]' : ''}`);
     await new Promise(resolve => setTimeout(resolve, delay));
     return api.request(config);
   }
@@ -420,7 +458,7 @@ api.interceptors.response.use(
     }
 
     if (typeof window !== 'undefined') {
-      const data = error.response?.data as { ok?: boolean; error?: string; reason?: string; code?: string } | undefined;
+      const data = error.response?.data as { ok?: boolean; error?: string; reason?: string; code?: string; warming?: boolean; permission?: string } | undefined;
       const requestId = (error.response?.headers?.['x-request-id'] as string | undefined) ||
         (error.response?.headers?.['X-Request-ID'] as string | undefined);
       const reason = data?.reason || data?.error || (error.response?.status === 401 ? 'Login required' : error.message);
@@ -463,16 +501,38 @@ api.interceptors.response.use(
       const shouldThrottle = existingToastCount >= 2;
 
       if (!shouldThrottle) {
-        if (toastStatus === 401) {
+        const warmingOrOverloaded =
+          data?.warming === true
+          || data?.error === 'service_overloaded'
+          || data?.code === 'service_overloaded'
+          || data?.code === 'service_warming'
+          || (typeof data?.reason === 'string' && /^event_loop_lag/.test(data.reason));
+        if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
+          // Post-restart / event-loop shed — buttons are not permission-gated.
+          store.addToast({ type: 'warning', message: 'Concord warming up — retry' });
+        } else if (toastStatus === 401) {
           store.addToast({ type: 'warning', message: 'Session expired. Please log in again.' });
         } else if (toastStatus === 403) {
-          store.addToast({ type: 'error', message: "You don't have permission to do that." });
+          const code = data?.code;
+          if (code === 'CSRF_FAILED') {
+            store.addToast({ type: 'warning', message: 'Session security token expired. Refresh the page and try again.' });
+          } else if (code === 'PERMISSION_DENIED' && data?.permission) {
+            store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
+          } else if (!isBackgroundFetch) {
+            // A user action hit a bare 403 (no PERMISSION_DENIED code). Far more
+            // often a stale CSRF cookie — common on mobile Safari's stricter
+            // SameSite/Secure/partitioned-cookie handling — than a real authz
+            // denial. Don't cry "permission denied"; tell them to refresh.
+            store.addToast({ type: 'warning', message: 'That action was blocked — your session may have expired. Refresh the page and try again.' });
+          }
+          // Background GET 403 (e.g. role-gated telemetry polls hitting a
+          // non-admin session): stay silent — the caller handles it.
         } else if (toastStatus === 429) {
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
         } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
         } else if (!error.response && !isBackgroundFetch) {
-          store.addToast({ type: 'error', message: 'Unable to connect. Check your internet and try again.' });
+          store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
         } else if (data?.ok === false && data?.error && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: data.error.replace(/_/g, ' ') });
         }
@@ -603,7 +663,32 @@ export async function lensRun<T = any>(
  */
 export function isForbidden(x: unknown): boolean {
   if (!x || typeof x !== 'object') return false;
-  const o = x as { statusCode?: unknown; status?: unknown; response?: { status?: unknown }; code?: unknown; ok?: unknown; error?: unknown };
+  const o = x as {
+    statusCode?: unknown;
+    status?: unknown;
+    response?: { status?: unknown; data?: { code?: unknown; error?: unknown } };
+    code?: unknown;
+    ok?: unknown;
+    error?: unknown;
+    data?: { code?: unknown; error?: unknown };
+  };
+  // Ghost-blocker: CSRF / bot-gate / write-auth / anon-rate 403s are NOT admin ACL.
+  // AdminRequiredState must not fire when the real issue is missing CSRF, empty UA,
+  // session cookie drop, or rate-limit noise.
+  const code = o.code ?? o.data?.code ?? o.response?.data?.code;
+  const errStr = [o.error, o.data?.error, o.response?.data?.error]
+    .filter((v) => typeof v === 'string')
+    .join(' ');
+  if (
+    code === 'CSRF_FAILED' ||
+    code === 'PROD_WRITE_AUTH' ||
+    code === 'ANON_RATE_LIMIT' ||
+    code === 'AUTH_REQUIRED' ||
+    code === 'bot_access_denied' ||
+    /csrf|bot_access_denied|rate limit|authentication required/i.test(errStr)
+  ) {
+    return false;
+  }
   if (o.statusCode === 403 || o.status === 403 || o.response?.status === 403) return true;
   if (o.code === 'FORBIDDEN') return true;
   if (o.ok === false && typeof o.error === 'string'

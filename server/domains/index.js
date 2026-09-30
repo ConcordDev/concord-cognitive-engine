@@ -111,6 +111,7 @@ import queue from './queue.js';
 import schema from './schema.js';
 import tick from './tick.js';
 import lock from './lock.js';
+import usbLease from './usb-lease.js';
 import fork from './fork.js';
 import creationSingularity from './creation-singularity.js';
 import invariant from './invariant.js';
@@ -196,6 +197,7 @@ import githubConnector from './github.js';
 import notion from './notion.js';
 import importdomain from './importdomain.js';
 import ingest from './ingest.js';
+import latticeSeed from './lattice-seed.js';
 import law from './law.js';
 import marketplace from './marketplace.js';
 import ml from './ml.js';
@@ -212,6 +214,14 @@ import voice from './voice.js';
 import wallet from './wallet.js';
 import welding from './welding.js';
 import whiteboard from './whiteboard.js';
+import predict from './predict.js';
+import dila from './dila.js';
+import browserOrgan from './browser-organ.js';
+import sentinel from './sentinel.js';
+import traceFabric from './trace-fabric.js';
+import incidentEngine from './incident-engine.js';
+import researchFrontier from './research-frontier.js';
+import opportunityEngine from './opportunity-engine.js';
 import world from './world.js';
 import all from './all.js';
 import crafting from './crafting.js';
@@ -264,6 +274,13 @@ import registerDistrictActions from './district.js';
 import registerCobuildActions from './cobuild.js';
 import registerCompanionActions from './companion.js';
 import hub from './hub.js';
+// `dila` already imported above (line ~218 — HEAD's block). Merge dedup.
+import zuko from './zuko.js';
+import polymarket from './polymarket.js';
+import trading from './trading.js';
+import pentester from './pentester.js';
+import concordia from './concordia.js';
+import constellation from './constellation.js';
 
 // ── TheVault ⇄ DTU-permanence handshake ───────────────────────────────────
 //
@@ -410,6 +427,7 @@ export default [
   schema,
   tick,
   lock,
+  usbLease,
   fork,
   creationSingularity,
   invariant,
@@ -495,6 +513,7 @@ export default [
   notion,
   importdomain,
   ingest,
+  latticeSeed,
   law,
   marketplace,
   ml,
@@ -563,4 +582,18 @@ export default [
   registerCobuildActions,
   registerCompanionActions,
   hub,
+  predict,
+  dila,
+  browserOrgan,
+  sentinel,
+  traceFabric,
+  incidentEngine,
+  researchFrontier,
+  opportunityEngine,
+  zuko,
+  polymarket,
+  trading,
+  pentester,
+  concordia,
+  constellation,
 ];

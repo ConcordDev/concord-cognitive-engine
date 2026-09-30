@@ -30,6 +30,7 @@ static func run() -> TestUtils:
 	_test_building_kind_with_world_id_prefers_the_per_world_variant(t)
 	_test_building_kind_with_no_world_id_uses_the_universal_convention(t)
 	_test_building_kind_with_empty_world_id_matches_no_world_id(t)
+	_test_hub_kind_uses_the_models_convention(t)
 	return t
 
 
@@ -172,3 +173,10 @@ static func _test_building_kind_with_empty_world_id_matches_no_world_id(t: TestU
 		AssetResolver.fallback_url("http://host:3000", "building", "market", ""),
 		AssetResolver.fallback_url("http://host:3000", "building", "market"),
 		"an explicit empty-string world_id is equivalent to omitting it — scene_bootstrap.gd's per-world/universal equality check relies on this")
+
+
+static func _test_hub_kind_uses_the_models_convention(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "hub", "tree_oak"),
+		"http://host:3000/models/hub/tree_oak.glb",
+		"Unburned Court hub kit is the generic models/{kind}/{id} path — no special-case needed")

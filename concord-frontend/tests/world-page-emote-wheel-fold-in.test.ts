@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'), 'utf8');
+const src = readFileSync(path.resolve(__dirname, '..', 'components/world/WorldOsSurface.tsx'), 'utf8');
 
 describe('world/page.tsx — EmoteWheel fold-in (Phase 6d)', () => {
   it('no longer imports either deleted EmoteWheel component', () => {

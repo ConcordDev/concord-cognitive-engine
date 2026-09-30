@@ -14,7 +14,7 @@ export default function registerEntityActions(registerLensAction) {
   try {
     const records = artifact.data?.records || [];
     if (records.length < 2) {
-      return { ok: true, result: { message: "Need at least 2 records for entity resolution." } };
+      return { ok: false, error: "need_at_least_2_records", message: "Need at least 2 records for entity resolution." };
     }
 
     const threshold = params.threshold || 0.85;

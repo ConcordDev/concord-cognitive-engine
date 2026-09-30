@@ -144,6 +144,11 @@ export default function registerChatRoutes(app, {
         }
       } catch (_e) { /* non-fatal */ }
 
+      // Honesty 2026-09-05: surface toolCalls on meta for ?full=1 clients
+      // that only read meta.llmUsed / meta.toolCalls (chat panel path).
+      if (out && typeof out === "object" && Array.isArray(out.toolCalls) && out.toolCalls.length) {
+        out.meta = { ...(out.meta || {}), toolCalls: out.toolCalls, toolCallCount: out.toolCalls.length, llmUsed: out.llmUsed };
+      }
       return uiJson(
         res,
         _withAck(out, req, ["state","logs","shadow"], ["/api/state/latest","/api/logs"], null, { panel: "chat" }),

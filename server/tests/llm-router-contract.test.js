@@ -43,6 +43,24 @@ describe("LLM router contract — gated on CONCORD_BEHAVIOR_TEST_LLM", () => {
     const ctx = __TEST__.makeInternalCtx("llm-contract-test");
     assert.ok(ctx?.llm?.chat, "ctx.llm.chat must exist");
 
+    // initFiveBrains() probes all five brains AFTER `import("../server.js")`
+    // already resolves — the import awaits the synchronous boot sequence,
+    // not the async brain probe. On a cold boot (fresh process, nothing
+    // pre-warmed) that probe can still be in flight for several seconds
+    // after import returns; calling chat() immediately raced it and saw a
+    // stale BRAIN.conscious.enabled === false, failing with "conscious
+    // brain offline" even though the brain came online moments later (2026-
+    // 08-27, RunPod live-brain run — confirmed via the boot log's own
+    // `brain_online` event landing AFTER this test's assertion had already
+    // failed). Wait for the real signal instead of assuming import() means
+    // ready.
+    const BRAIN = __TEST__.BRAIN ?? globalThis._concordBRAIN;
+    const brainReadyDeadline = Date.now() + 60000;
+    while (!BRAIN?.conscious?.enabled && Date.now() < brainReadyDeadline) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    assert.ok(BRAIN?.conscious?.enabled, "BRAIN.conscious never came online within 60s of server import");
+
     const result = await ctx.llm.chat({
       messages: [{ role: "user", content: "Reply with exactly the word PONG (no punctuation)." }],
       maxTokens: 16,

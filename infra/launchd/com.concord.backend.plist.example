@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Primary HTTP + heartbeat instance (NODE_APP_INSTANCE=0).
+  Dutch override 2026-09-09: safe to activate on 16 GB Mac with heap 3072
+  (NOT 8192) + dual i1. Copy → ~/Library/LaunchAgents/ — never commit filled copy.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.concord.backend</string>
+  <key>WorkingDirectory</key>
+  <string>PLACEHOLDER_REPO/server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>--max-old-space-size=3072</string>
+    <string>--expose-gc</string>
+    <string>PLACEHOLDER_REPO/server/server.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_ENV</key>
+    <string>production</string>
+    <key>PORT</key>
+    <string>5050</string>
+    <key>NODE_APP_INSTANCE</key>
+    <string>0</string>
+    <key>CONCORD_DTU_SIDECAR</key>
+    <string>1</string>
+    <key>CONCORD_WALLET_SIDECAR</key>
+    <string>1</string>
+    <key>CONCORD_SESSION_SIDECAR</key>
+    <string>1</string>
+    <key>CONCORD_STICKY_REDIS</key>
+    <string>1</string>
+    <key>DATA_DIR</key>
+    <string>PLACEHOLDER_REPO/server/data</string>
+    <key>ENV_PATH</key>
+    <string>PLACEHOLDER_REPO/.env</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>PLACEHOLDER_LOG_DIR/backend.log</string>
+  <key>StandardErrorPath</key>
+  <string>PLACEHOLDER_LOG_DIR/backend.err</string>
+</dict>
+</plist>

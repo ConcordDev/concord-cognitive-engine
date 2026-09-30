@@ -385,6 +385,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "audit.modelCheckLedgerConservation",
+      "name": "modelCheckLedgerConservation"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.modelCheckRoyaltyCascade",
+      "name": "modelCheckRoyaltyCascade"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.modelCheckTreasuryInvariant",
+      "name": "modelCheckTreasuryInvariant"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "audit.monitorConfigure",
       "name": "monitorConfigure"
     },
@@ -978,5 +1017,5 @@
   ],
   "domain": "audit",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 49
 }

@@ -1,3 +1,5 @@
+> See [`docs/STACK_REALITY.md`](docs/STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Concord Cognitive Engine — Architecture
 
 ## Five-Brain Architecture (4 cognitive + 1 multimodal/vision)
@@ -45,10 +47,10 @@ Forgetting (unconsolidatable DTUs only)
 ### Consolidation Constants (Hardware-Derived)
 
 - No hard DTU ceiling; memory pressure is governed against `MAX_OLD_SPACE_SIZE` (~1.5M DTU capacity with the 32GB-heap default)
-- Consolidation runs inline on the heartbeat every 30 ticks (~7.5 minutes)
+- Consolidation is designed to run on the heartbeat (~30 ticks); treat dense MEGA/HYPER formation as TARGET until measured
 - MEGA: 5-20 regular DTUs → 1 consolidated MEGA
 - HYPER: 50-200 originals → 1 meta-consolidated HYPER
-- Effective compression ratio: ~33:1 (regular → HYPER)
+- Effective compression ratio: ~1.2× measured (was 33:1 target). Regular→HYPER densification is designed, not a proven dense LIVE substrate
 - Forgetting engine only handles unconsolidatable noise
 
 ## Entity Lifecycle

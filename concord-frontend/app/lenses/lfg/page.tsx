@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle, Loader2, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 type Role = 'tank' | 'healer' | 'dps' | 'support' | 'any';
@@ -135,9 +134,7 @@ export default function LfgLensPage() {
   }, [refresh, showFlash]);
 
   return (
-    <LensShell lensId="lfg" asMain={false}>
-      <ManifestActionBar />
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
+    <LensShell lensId="lfg" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
         <header className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
             <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">

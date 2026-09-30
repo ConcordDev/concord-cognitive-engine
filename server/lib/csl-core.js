@@ -158,30 +158,23 @@ export class ConcordSoSRuntime {
         context = hits; // degrade to quad hits only
       }
 
-      // Step 4: Invoke deterministic macro
+      // Step 4: Invoke deterministic macro.
+      //
+      // The only production caller (csl-router.js#createCslToolGate) always
+      // supplies domainHint + macroHint — it gates a concrete
+      // `[TOOL_CALL: {"tool": ...}]` marker whose (domain, action) is already
+      // resolved. A CSL turn with NEITHER hint has no deterministic macro to
+      // run; there is no NL-text -> (domain, macro) classifier here, and
+      // resolveDualRegistry cannot do that job (it resolves a KNOWN pair,
+      // not free text). Earlier code called it with a wrong-shaped signature
+      // inside a silent catch, so this branch never actually did anything —
+      // it's honest about that now.
       const { domainHint, macroHint } = input;
-      let result = { ok: false, reason: 'no_macro_resolved' };
-
+      let result;
       if (domainHint && macroHint) {
         result = await this._lockedRunMacro(domainHint, macroHint, { text: input.turnText, context }, turnId);
       } else {
-        // Resolve via dual registry (chat-agent / MCP pattern)
-        try {
-          const { resolveDualRegistry } = await import('./dual-registry-resolve.js');
-          if (resolveDualRegistry) {
-            const resolved = await resolveDualRegistry(
-              input.turnText,
-              this.lensActions,
-              null, // macros registry not passed here, fallback to heuristic
-              { role: 'system', internal: false }
-            );
-            if (resolved) {
-              result = await this._lockedRunMacro(resolved.domain, resolved.macro, { text: input.turnText, context }, turnId);
-            }
-          }
-        } catch (e) {
-          logger.debug?.('[csl-core] dual registry resolve error: %s', e.message);
-        }
+        result = { ok: false, reason: 'no_macro_hint', detail: 'CSL turn requires domainHint + macroHint; no free-text macro resolver exists' };
       }
 
       // Obligation 2: macro lock safety — a bounded model check, no Z3/brain

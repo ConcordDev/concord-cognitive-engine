@@ -1,0 +1,69 @@
+AURA LIFE PROOF — CONCORDIA WAVE 0
+Date: 2026-09-22
+Project: unity-client / ConcordiaHub
+Scope: Wave 0 living loop only. No Wave 1 work started.
+
+RESULT: PASS — A through F completed by direct Play Mode probes.
+
+RUNTIME BASELINE
+- Unity Play Mode: active.
+- Compilation: PASS — check_compile_errors returned "No compile errors".
+- Final clean console check after restart: PASS — 0 current error entries for "CharacterController.Move called on inactive controller".
+- Hub readiness probe: world=Hub, continent=True, hubReady=True, hero=True, guests=22.
+- Hub staged logs observed: bind_ready, guests_done, pillars done, lore, city_ring, forest, realmfill_done.
+
+A — HUB WALK: PASS
+- Direct probe: world=Hub, hubReady=True, hero=True, guests=22.
+- Game View capture: /Users/dutch/Library/Application Support/AuraForUnity/CapturedImages/787ad77ff6579c24/c8e93f44-1731-4e01-8da7-c0e916dec44f.jpeg
+- Additional material probe during Play: magentaLike=0.
+
+B — HUB GUEST / CX DRESS: PASS
+- Canon-backed guest probes found authored guest entries including The Lamplighter, Old Seam, and Maren Ashveil.
+- Direct component probe: The Lamplighter modular=True, renderers=3.
+- Runtime log evidence:
+  - staged hub phase=guest lamplighter
+  - CX plate bound owner=The Lamplighter plate=CX_Guest_Lamplighter
+  - ModularPerson bound owner=The Lamplighter prefab=Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_Lamplighter.prefab
+- Hub Game View evidence is the A capture above.
+
+C — SOFTENTER FANTASY / THE SUNDERING: PASS
+- Direct SoftEnter probe result:
+  world=Fantasy
+  clock=Fantasy
+  kind=walk
+  position=(0.00, 0.12, 222.00)
+  last=You left Hub for The Sundering.
+- Game View capture: /Users/dutch/Library/Application Support/AuraForUnity/CapturedImages/787ad77ff6579c24/85f61b54-9894-4945-8ee0-140c40ea6390.jpeg
+
+D — NAMED SUNDERING BANDIT KILL / SPOILS: PASS
+- Direct combat probe killed the authored road bandit Marrow.
+- Result: name=Marrow, id=road-bandit-SUNDERING, hp=-935, active=False, dead=True, spoils=1, playerValid=True.
+- Kill consequence observed: The Sundering: road-bandit-SUNDERING fell.
+- Existing systems exercised: TrainingDummy damage/death, WorldClock.NoteKill, WorldMemory, RoadWorld.DropSpoils, KitBag, and RoadWorld.NoticeKill.
+
+E — GOSSIP / MEMORY: PASS
+- Real GossipEar attached to the authored witness Kest with summary: Marrow fell on the road.
+- Witness probe: distance=4.50m; after proximity update, last=Marrow fell on the road.; newest gossip=Marrow fell on the road.
+- World memory probe: WorldMemory.IsDead(Fantasy, road-bandit-SUNDERING)=True during the kill/gossip pass.
+
+F — RETURN TO HUB / RETAINED KILL MEMORY: PASS
+- Regression probe after the SoftEnter preservation fix:
+  id=road-bandit-SUNDERING
+  deadBefore=True
+  deadAfter=True
+  world=Hub
+  player=Hub
+  eventBefore=The Sundering: road-bandit-SUNDERING fell.
+  eventAfter=The Sundering: road-bandit-SUNDERING fell.
+  killLine=True
+- This confirms the return journey does not replace the kill chronicle with "You came home from The Sundering.".
+
+FIX APPLIED DURING PROOF
+- ContinentStream.SoftEnter now captures a kill LastEvent before WorldClock.Leave/Enter and restores it after entering the destination world.
+- AgentMotor.Hold now uses Grounding.CanMove before CharacterController.Move.
+- Both edits compile cleanly.
+
+NOTES
+- Unity Test Runner was not used as acceptance evidence because its prior initialization timed out before tests started.
+- Direct Play Mode probes and captured frames are the acceptance evidence for this Wave 0 proof.
+- Existing generated CX prefabs/materials were preserved; no plate/material regeneration was performed.

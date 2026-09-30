@@ -131,9 +131,9 @@ export default function DepthChart({ yesBids, noBids, midProbability, loading, c
         <line x1={midX} y1={PAD} x2={midX} y2={H - PAD} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3,3" />
       </svg>
       <div className="mt-1 flex items-center justify-between text-[10px] font-mono tabular-nums text-gray-400">
-        <span className="text-emerald-300">▲ YES {totalYes.toFixed(0)} ⚡</span>
-        <span className="text-gray-300">mid {midProbability.toFixed(2)}</span>
-        <span className="text-rose-300">▼ NO {totalNo.toFixed(0)} ⚡</span>
+        <span className="text-emerald-300">▲ YES {Number(totalYes ?? 0).toFixed(0)} ⚡</span>
+        <span className="text-gray-300">mid {Number(midProbability ?? 0).toFixed(2)}</span>
+        <span className="text-rose-300">▼ NO {Number(totalNo ?? 0).toFixed(0)} ⚡</span>
       </div>
     </div>
   );

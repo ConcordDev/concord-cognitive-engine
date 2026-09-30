@@ -140,6 +140,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.discoverCoverage",
+      "name": "discoverCoverage"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.dislike",
       "name": "dislike"
     },
@@ -549,5 +562,5 @@
   ],
   "domain": "grounding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 43
 }

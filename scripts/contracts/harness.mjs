@@ -27,11 +27,18 @@ let _boot = null;
  * makeInternalCtx + MACROS, and globalThis.__CARTOGRAPHER__ for the registry.
  * @returns {Promise<{ runMacro:Function, makeInternalCtx:Function, MACROS:Map, cartographer:object }>}
  */
-export async function bootEngine() {
+export async function bootEngine(opts = {}) {
   if (_boot) return _boot;
+  if (opts.awaitGhostFleet) {
+    process.env.CONCORD_GHOST_FLEET_DELAY_MS = "0";
+    process.env.CONCORD_DISABLE_GHOST_FLEET = "false";
+  }
   const mod = await import(new URL("../../server/server.js", import.meta.url).href);
   const T = mod.__TEST__ || mod.default?.__TEST__;
   if (!T) throw new Error("server.js did not export __TEST__");
+  if (opts.awaitGhostFleet && typeof T.initGhostFleet === "function") {
+    await T.initGhostFleet();
+  }
   const { MACROS, runMacro, makeInternalCtx, LENS_ACTIONS, dispatchLensRun, BRAIN_BACKED_LENS_ACTIONS } = T;
   if (!(MACROS instanceof Map)) throw new Error("__TEST__.MACROS must be a Map");
   if (typeof runMacro !== "function") throw new Error("__TEST__.runMacro must be a function");

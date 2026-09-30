@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -15,7 +13,6 @@ import { NeuroActionPanel } from '@/components/neuro/NeuroActionPanel';
 import { NeuroTrainPanel } from '@/components/neuro/NeuroTrainPanel';
 import { EegWorkbench } from '@/components/neuro/EegWorkbench';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
@@ -32,9 +29,7 @@ export default function NeuroLensPage() {
 
   return (
     <LensShell lensId="neuro" asMain={false}>
-      <FirstRunTour lensId="neuro" />
-      <ManifestActionBar />
-      <DepthBadge lensId="neuro" size="sm" className="ml-2" />
+      <FirstRunTour lensId="neuro" />      <DepthBadge lensId="neuro" size="sm" className="ml-2" />
       <div data-lens-theme="neuro" className="space-y-6 p-6">
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
@@ -117,10 +112,7 @@ export default function NeuroLensPage() {
 
       <a href="#neuro-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
         Skip to neuro content
-      </a>
-      <RecentMineCard domain="neuro" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="neuro" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="neuro" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>      <CrossLensRecentsPanel lensId="neuro" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

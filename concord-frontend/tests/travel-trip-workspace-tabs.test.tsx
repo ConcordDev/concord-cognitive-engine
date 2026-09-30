@@ -27,6 +27,8 @@ vi.mock('@/components/common/MapView', () => ({ default: () => null }));
 vi.mock('@/components/travel/GmailSyncPanel', () => ({ GmailSyncPanel: () => null }));
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, {
     get: () => (props: Record<string, unknown>) => {
       const { layoutId: _layoutId, transition: _transition, initial: _initial, animate: _animate, exit: _exit, ...domProps } = props;

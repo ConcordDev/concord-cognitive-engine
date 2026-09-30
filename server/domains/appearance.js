@@ -228,6 +228,74 @@ export default function registerAppearanceMacros(register) {
     }
   }, { note: "Load player's persisted appearance — user-scoped or primary-avatar-scoped." });
 
+  // Concordia (Unity) character — stored under its own key inside the
+  // account's appearance object so it never clobbers the web avatar's
+  // RichAppearanceConfig fields. Per-account and device-independent.
+  register("appearance", "save_game_character", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const character = input?.character;
+    if (!character || typeof character !== "object" || Array.isArray(character)) return { ok: false, reason: "missing_character" };
+    const json = JSON.stringify(character);
+    if (json.length > 16_000) return { ok: false, reason: "character_too_large" };
+    try {
+      const row = db.prepare(`SELECT appearance_json FROM users WHERE id = ?`).get(userId);
+      let current = {};
+      try { current = row?.appearance_json ? JSON.parse(row.appearance_json) : {}; } catch { current = {}; }
+      if (!current || typeof current !== "object" || Array.isArray(current)) current = {};
+      current.gameCharacter = { ...character, savedAt: new Date().toISOString() };
+      const r = db.prepare(`UPDATE users SET appearance_json = ? WHERE id = ?`).run(JSON.stringify(current), userId);
+      return r.changes > 0 ? { ok: true, savedAt: current.gameCharacter.savedAt } : { ok: false, reason: "user_not_found" };
+    } catch {
+      return { ok: false, reason: "save_failed" };
+    }
+  }, { note: "Persist the player's Concordia (Unity) character to their account (merged, never clobbers web appearance)." });
+
+  register("appearance", "load_game_character", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_actor" };
+    try {
+      const row = db.prepare(`SELECT appearance_json, username FROM users WHERE id = ?`).get(userId);
+      let parsed = null;
+      try { parsed = row?.appearance_json ? JSON.parse(row.appearance_json) : null; } catch { parsed = null; }
+      return { ok: true, character: parsed?.gameCharacter || null, username: row?.username || null };
+    } catch {
+      return { ok: false, reason: "load_failed" };
+    }
+  }, { note: "Load the player's Concordia (Unity) character; character:null means they haven't made one yet." });
+
+  // Other players' characters, for rendering them in the shared world. Only
+  // the visible character fields and display name — what anyone standing
+  // next to them would see. Capped batch.
+  register("appearance", "game_characters_for", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!ctx?.actor?.userId) return { ok: false, reason: "no_actor" };
+    const ids = Array.isArray(input?.userIds) ? [...new Set(input.userIds.map(String))].slice(0, 64) : [];
+    if (ids.length === 0) return { ok: true, characters: {} };
+    const out = {};
+    try {
+      const rows = db.prepare(`SELECT id, username, appearance_json FROM users WHERE id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(ids));
+      for (const r of rows) {
+        let parsed = null;
+        try { parsed = r.appearance_json ? JSON.parse(r.appearance_json) : null; } catch { parsed = null; }
+        const c = parsed?.gameCharacter;
+        out[r.id] = { username: r.username, character: c ? { ...c, savedAt: undefined } : null };
+      }
+      // `list` mirrors `characters` as an array for clients whose JSON parser
+      // can't read keyed objects (Unity JsonUtility); hasCharacter because a
+      // null nested object deserializes there as a default-valued instance.
+      const list = Object.entries(out).map(([userId, v]) => ({ userId, username: v.username, hasCharacter: !!v.character, character: v.character }));
+      return { ok: true, characters: out, list };
+    } catch {
+      return { ok: false, reason: "load_failed" };
+    }
+  }, { note: "Visible Concordia characters for a set of users (for rendering other players)." });
+
   register("appearance", "load_for_avatar", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;

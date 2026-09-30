@@ -23,11 +23,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "scenebridge.map",
+      "name": "map"
+    },
+    {
+      "_derived": true,
+      "domain": "scenebridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "scenebridge.stats",
       "name": "stats"
     }
   ],
   "domain": "scenebridge",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 3
 }

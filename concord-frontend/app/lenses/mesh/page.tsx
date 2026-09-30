@@ -24,8 +24,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -36,7 +34,6 @@ import { MeshMessaging } from '@/components/mesh/MeshMessaging';
 import { MeshSignal } from '@/components/mesh/MeshSignal';
 import { MeshQueue } from '@/components/mesh/MeshQueue';
 import { MeshChannels } from '@/components/mesh/MeshChannels';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -106,9 +103,7 @@ export default function MeshLensPage() {
 
   return (
     <LensShell lensId="mesh" asMain={false}>
-      <FirstRunTour lensId="mesh" />
-      <ManifestActionBar />
-      <DepthBadge lensId="mesh" size="sm" className="ml-2" />
+      <FirstRunTour lensId="mesh" />      <DepthBadge lensId="mesh" size="sm" className="ml-2" />
       <div className="min-h-screen bg-black pb-12 text-teal-50">
         <header className="sticky top-0 z-10 border-b border-teal-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
           <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -245,11 +240,7 @@ export default function MeshLensPage() {
         <section className="mx-auto mt-6 max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 px-4 md:px-8">
           <MeshRepos />
         </section>
-      </div>
-
-      <RecentMineCard domain="mesh" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="mesh" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="mesh" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="mesh" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

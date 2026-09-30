@@ -42,7 +42,7 @@ export function CookieConsent() {
   return (
     <div
       style={{ zIndex: Z_INDEX.ACTION_REQUIRED }}
-      className="fixed bottom-4 left-4 w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom"
+      className="fixed bottom-20 left-4 w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom"
     >
       <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
         <div className="flex flex-col gap-3">

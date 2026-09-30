@@ -66,7 +66,7 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
   (async () => {
     try {
       const legacy = await import("./npc-legacy.js");
-      legacy.onNpcDeath?.(db, npc, { cause: "combat" });
+      legacy.onNpcDeath?.(db, npc, { cause: "combat", killerId, asLeader: !!npc.settlement_role });
     } catch { /* legacy tables optional on minimal builds */ }
   })();
 

@@ -3,13 +3,10 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api/client';
 import { ReleaseCadence } from '@/components/code-quality/ReleaseCadence';
@@ -199,9 +196,7 @@ export default function CodeQualityLensPage() {
 
   return (
     <LensShell lensId="code-quality" asMain={false}>
-      <FirstRunTour lensId="code-quality" />
-      <ManifestActionBar />
-      <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
+      <FirstRunTour lensId="code-quality" />      <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
       <LensVerticalHero lensId="code-quality" className="mx-6 mt-4" />
       <div data-lens-theme="code-quality" className="p-6 space-y-5">
         <header>
@@ -467,10 +462,7 @@ export default function CodeQualityLensPage() {
 
       <div className="sr-only" aria-hidden="true">
         EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
-      </div>
-      <RecentMineCard domain="code-quality" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="code-quality" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="code-quality" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="code-quality" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

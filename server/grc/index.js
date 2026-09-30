@@ -146,10 +146,12 @@ export function init({ register, STATE, helpers }) {
 
   register("grc", "validate", (ctx, input) => {
     const { grc } = input;
-    // validateGRC returns {valid, errors[], warnings[]}. Wrap so the macro
-    // contract holds: ok mirrors valid; the validation detail rides along.
     const r = validateGRC(grc);
-    return { ok: !!r?.valid, ...r };
+    return {
+      ok: !!r?.valid,
+      error: r?.valid ? undefined : (r?.errors?.[0] || "invalid_grc"),
+      ...r,
+    };
   }, {
     description: "Validate a GRC output object against the spec",
   });

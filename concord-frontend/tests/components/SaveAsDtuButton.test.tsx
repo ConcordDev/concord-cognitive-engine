@@ -15,6 +15,8 @@ vi.mock('@/store/ui', () => ({
 }));
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, {
     get: (_, tag: string) => (props: Record<string, unknown> & { children?: React.ReactNode }) => {
       // strip framer-motion-only props that React doesn't know

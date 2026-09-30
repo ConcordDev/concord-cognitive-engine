@@ -80,6 +80,7 @@ vi.mock('@/components/lens/LensShell', () => ({
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => {} }));
 vi.mock('@/hooks/useRealtimeLens', () => ({
   useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
 }));
@@ -105,6 +106,7 @@ vi.mock('@/components/services/BookingActionDock', () => ({ BookingActionDock: (
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+  useReducedMotion: () => false,
 }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();

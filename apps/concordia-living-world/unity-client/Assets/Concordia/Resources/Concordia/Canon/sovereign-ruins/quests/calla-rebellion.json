@@ -1,0 +1,129 @@
+[
+  {
+    "id": "ruins_calla_01_camp",
+    "title": "The Rebel Camp — Earn Calla's Trust",
+    "description": "Calla Bren leads the rebellion. Earn an audience by completing a small message run for her.",
+    "giver_npc_id": "rebel_calla_bren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_calla1_visit",
+        "type": "reach_location",
+        "target": "ruins_rebel_camp",
+        "required_count": 1,
+        "description": "Visit the rebel camp during her morning drill."
+      },
+      {
+        "id": "obj_calla1_run",
+        "type": "deliver",
+        "target": "calla_message_to_zaen",
+        "required_count": 1,
+        "description": "Carry a message to Zaen Drift in the Court."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_calla1",
+        "content": "Zaen has met Calla in disguise twice. Has not killed her. The Court champion is closer to the rebellion than anyone in the Court suspects.",
+        "unlocks_after": "obj_calla1_run",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "ruins_calla_02_plan"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_side"
+    ]
+  },
+  {
+    "id": "ruins_calla_02_plan",
+    "title": "The War Tent — The Fourth Uprising",
+    "description": "Calla shows you the map for the fourth uprising. She wants three things done before dawn.",
+    "giver_npc_id": "rebel_calla_bren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_calla2_disrupt",
+        "type": "interact",
+        "target": "ruins_throne_court_guard_shift",
+        "required_count": 1,
+        "description": "Disrupt the guard shift change at the Court."
+      },
+      {
+        "id": "obj_calla2_signal",
+        "type": "interact",
+        "target": "ruins_rebel_signal_fire",
+        "required_count": 1,
+        "description": "Light the rebel signal fire at the cliff."
+      },
+      {
+        "id": "obj_calla2_archive",
+        "type": "interact",
+        "target": "ruins_scribe_chamber",
+        "required_count": 1,
+        "description": "Slip the rebellion manifesto into Hen Orven's writing pile."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "ruins_calla_03_dawn"
+    ],
+    "prerequisites": [
+      "ruins_calla_01_camp"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_side"
+    ]
+  },
+  {
+    "id": "ruins_calla_03_dawn",
+    "title": "Dawn — The Uprising Begins",
+    "description": "Be at the rebel camp at dawn. The fourth uprising begins with the city watching.",
+    "giver_npc_id": "rebel_calla_bren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_calla3_attend",
+        "type": "reach_location",
+        "target": "ruins_rebel_camp",
+        "required_count": 1,
+        "description": "Be at the camp at dawn."
+      },
+      {
+        "id": "obj_calla3_side",
+        "type": "any_of",
+        "target": "calla_uprising_role",
+        "required_count": 1,
+        "description": "Choose your role: frontline, courier, or witness."
+      }
+    ],
+    "rewards": {
+      "xp": 900,
+      "items": [
+        "calla_rebel_signet"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "ruins_calla_02_plan"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_side"
+    ]
+  }
+]

@@ -39,6 +39,7 @@ import { fuseTwoSkills, skillFusionEnabled } from "./skill-fusion.js";
 import { deriveProfileFromBlueprint, blendMaterialProfile } from "./ecosystem/material-profiles.js";
 import { isTopologyRideable } from "./ecosystem/mount-eligibility.js";
 import { resolveVariant } from "./creature-breed-alchemy.js";
+import { announceCreatureBorn } from "./concordia-creatures.js";
 
 /**
  * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
@@ -414,7 +415,12 @@ export function maybeCrossbreed(db, { a, b, environment, sameEnvironmentBonus = 
   });
   const compat = checkCompatibility({ a, b, bond: getBond(db, a.id, b.id), environment });
   if (!compat.ok) return { ok: false, ...compat };
-  return generateHybrid(db, { a, b, environment });
+  const hybrid = generateHybrid(db, { a, b, environment });
+  if (hybrid?.ok) {
+    try { announceCreatureBorn(hybrid, a.worldId || b.worldId || "concordia-hub"); }
+    catch { /* presentation optional */ }
+  }
+  return hybrid;
 }
 
 /** Read lineage for a creature — direct parents and children. */

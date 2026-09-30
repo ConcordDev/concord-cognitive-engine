@@ -1,0 +1,60 @@
+[
+  {
+    "id": "drift_mote_swarm",
+    "name": "Drift Mote Swarm",
+    "world_id": "lattice-crucible",
+    "description": "A cloud of crystalline motes born where drift events fray reality. Individually harmless; en masse they shear at anything coherent, phasing in and out of the lattice.",
+    "topology_hint": "amorphous",
+    "size_band": "small",
+    "starting_behavior": "Drifts toward drift-alerts, disperses and reforms when struck",
+    "emergent_ability_seeds": [
+      {
+        "name": "phase_scatter",
+        "verb": "phase_scatter",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "speed", "delta": 0.6, "durationMs": 3000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  },
+  {
+    "id": "crucible_warden",
+    "name": "Crucible Warden",
+    "world_id": "lattice-crucible",
+    "description": "A drift-warped quadruped of fused stone and light, patrolling the breach lines the Witnesses document. Its hide hardens as the drift intensifies around it.",
+    "topology_hint": "quadruped",
+    "size_band": "large",
+    "starting_behavior": "Territorial sentinel of drift sites, grows tougher near active drift",
+    "emergent_ability_seeds": [
+      {
+        "name": "lattice_harden",
+        "verb": "lattice_harden",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": -0.4, "durationMs": 5000 } },
+          { "kind": "heal", "params": { "amount": 8, "target": "self" } }
+        ],
+        "trigger": "below_30_health"
+      }
+    ]
+  },
+  {
+    "id": "echo_serpent",
+    "name": "Echo Serpent",
+    "world_id": "lattice-crucible",
+    "description": "A ribbon of half-real matter that mirrors the movements of whatever it stalks, a fraction of a second behind, until it lunges from the lag.",
+    "topology_hint": "serpentine",
+    "size_band": "medium",
+    "starting_behavior": "Mimics a target's path, strikes from the delay",
+    "emergent_ability_seeds": [
+      {
+        "name": "lag_strike",
+        "verb": "lag_strike",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": 0.7, "durationMs": 2000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  }
+]

@@ -46,6 +46,67 @@ export default function registerFeedActions(registerLensAction) {
   // ANALYTICS (pre-existing — unchanged behaviour)
   // ════════════════════════════════════════════════════════════════════════
 
+  
+  // FE/probes call feed.home — real home timeline from STATE posts/DTUs, then rank-for-you.
+  registerLensAction("feed", "home", (ctx, _artifact, params = {}) => {
+    try {
+      const limit = Math.max(1, Math.min(100, Number(params.limit || 30)));
+      const STATE = globalThis._concordSTATE;
+      let candidates = [];
+      // Prefer social posts if the live store has them
+      const posts = STATE?.social?.posts || STATE?.posts || null;
+      if (posts && typeof posts.values === "function") {
+        candidates = [...posts.values()];
+      } else if (Array.isArray(posts)) {
+        candidates = posts.slice();
+      } else if (STATE?.dtus && typeof STATE.dtus.values === "function") {
+        candidates = [...STATE.dtus.values()]
+          .filter((d) => d && d.tier !== "shadow")
+          .map((d) => ({
+            id: d.id,
+            authorId: d.ownerId || d.authorId || "system",
+            content: d.title || d.cretiHuman || "",
+            createdAt: d.createdAt,
+            likes: d.likes || 0,
+            comments: d.comments || 0,
+            reposts: d.reposts || 0,
+          }));
+      }
+      candidates = candidates
+        .filter(Boolean)
+        .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+        .slice(0, Math.max(limit * 3, limit));
+
+      // Reuse affinity ranking when we have candidates
+      const s = getFeedState();
+      const userId = feedActor(ctx);
+      if (s && candidates.length) {
+        const affinityMap = s.interactions.get(userId) || new Map();
+        const controls = s.controls.get(userId) || { mutedWords: [], blockedUsers: [] };
+        const now = Date.now();
+        const ranked = candidates
+          .filter((p) => !(controls.blockedUsers || []).includes(String(p.authorId || "")))
+          .map((p) => {
+            const authorId = String(p.authorId || "");
+            const rec = affinityMap.get(authorId);
+            const affinity = affinityScore(rec);
+            const ageMs = p.createdAt ? Math.max(0, now - new Date(p.createdAt).getTime()) : 0;
+            const recency = Math.pow(0.5, ageMs / (12 * 3600000));
+            const eng = (parseInt(p.likes) || 0) + (parseInt(p.comments) || 0) * 2 + (parseInt(p.reposts) || 0) * 3;
+            const engagement = Math.log10(eng + 1);
+            const score = Math.round((affinity * 2.0 + recency * 3.0 + engagement * 1.5) * 1000) / 1000;
+            return { ...p, score, affinity, reasons: affinity > 0 ? [`you engage with @${authorId}`] : (recency > 0.6 ? ["recent"] : []) };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+        return { ok: true, action: "home", items: ranked, total: ranked.length, source: "ranked_home" };
+      }
+      return { ok: true, action: "home", items: candidates.slice(0, limit), total: Math.min(candidates.length, limit), source: "recent_home" };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("feed", "engagementScore", (ctx, artifact, _params) => {
     const posts = artifact.data?.posts || [];
     if (posts.length === 0) return { ok: true, result: { message: "Add posts with engagement data to analyze." } };

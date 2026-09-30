@@ -31,8 +31,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -44,7 +42,6 @@ import { TelemetryOverlay } from '@/components/sandbox/TelemetryOverlay';
 import { ReplayPanel, type ReplayController, type ReplayFrame } from '@/components/sandbox/ReplayPanel';
 import { SandboxArena3D } from '@/components/sandbox/SandboxArena3D';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, ChevronDown, ChevronRight } from 'lucide-react';
@@ -420,9 +417,7 @@ export default function CombatSandboxPage() {
   const [showSandboxRepos, setShowSandboxRepos] = useState(false);
   return (
     <LensShell lensId="sandbox" asMain={false}>
-      <FirstRunTour lensId="sandbox" />
-      <ManifestActionBar />
-      <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
+      <FirstRunTour lensId="sandbox" />      <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
       <LensVerticalHero lensId="sandbox" className="mx-6 mt-4" />
       <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
         <CombatSandboxInner />
@@ -442,10 +437,7 @@ export default function CombatSandboxPage() {
           </div>
         )}
       </section>
-
-      <RecentMineCard domain="sandbox" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="sandbox" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="sandbox" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="sandbox" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

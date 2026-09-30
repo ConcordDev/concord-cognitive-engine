@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Self-hosting Concord — point a brain at your own model
 
 You can run the entire Concord substrate — the affect/instinct engine, the living NPCs,

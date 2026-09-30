@@ -2,7 +2,7 @@
  * World Lens plan Phase 2 ("Activate Existing Rendering") — real behavioral
  * coverage (pure functions, zero DOM/Three.js dependency beyond jsdom's
  * built-in KeyboardEvent) for the Photo Mode P-key guard logic extracted out
- * of app/lenses/world/page.tsx's `handlePhotoModeKey`. See
+ * of components/world/WorldOsSurface.tsx's `handlePhotoModeKey`. See
  * tests/world-page-photo-mode-activation.test.ts for the page.tsx wiring
  * pins (imports + calls this module) — this file exercises the actual
  * decision logic with constructed events instead of regex-matching source.

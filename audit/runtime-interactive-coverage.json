@@ -1,0 +1,767 @@
+{
+  "generatedAt": "2026-09-02T00:10:42.582Z",
+  "phase": "5b-interactive",
+  "summary": {
+    "total": 65,
+    "passed": 36,
+    "failed": 0,
+    "skipped": 29
+  },
+  "seeds": {
+    "cacheKey": "interactive-coverage-key",
+    "roomId": "room_1788307842023_1cfa2af1"
+  },
+  "actions": [
+    {
+      "macroId": "agent_marathon.revoke",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "agents.destroy",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "agents.reset",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "animation.reset",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "apps.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "automation.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "cache.clear",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "chat.merge_threads",
+      "classification": "D",
+      "contractStatus": "SKIPPED_BRAIN_BACKED",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "chat.publish",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 5,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "chat.save",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "chat.send",
+      "classification": "D",
+      "contractStatus": "SKIPPED_BRAIN_BACKED",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "chat.vote",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "custom.unpublish",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "dila.cognitive_mission_bench",
+      "classification": "B",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "dila.learning_pipeline",
+      "classification": "B",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "drafts.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "dreams.unpublish",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "dtu.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "foundry.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "foundry.unpublish",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "hermes_memory.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "hooks.destroy",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "hooks.drop",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "housing.claim",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 20,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "insurance.revoke",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "lens.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "licensing.revoke",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "loaf.sandbox.kill",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.checkout-create",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 1,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.checkout-history",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.install",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 13,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.installed",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 3,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.publish",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.purchase",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 2,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.purchasePlugin",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 3,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.purchaseWithRoyalties",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 2,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.save",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.saved-searches-delete",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.saved-searches-list",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.saved-searches-save",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.submit",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 14,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.updateListing",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 18,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "marketplace.vote",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "oxygen.reset",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "persona.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "personas.create",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 1,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "personas.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "personas.install",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "personas.publish",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "personas.update",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "playerCorpse.drop",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "quests.claimRewards",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 2,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "sandbox.kill",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "settings.reset",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.publish",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.save",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.splitCreate",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.splitList",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 1,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.splitSettle",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 5,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "wallet.vote",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "webhook.delete",
+      "classification": "E",
+      "contractStatus": "SKIPPED_DESTRUCTIVE",
+      "failureType": null,
+      "ok": true,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "world.publish",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "world.save",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "world.spawn-npc",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 3,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    },
+    {
+      "macroId": "world.vote",
+      "classification": "D",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "ok": true,
+      "durationMs": 0,
+      "seedsUsed": [
+        "cacheKey",
+        "roomId"
+      ]
+    }
+  ]
+}

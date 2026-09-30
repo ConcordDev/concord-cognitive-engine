@@ -37,6 +37,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 describe("migrate.js — numbering beyond 3 digits", () => {
   async function withSyntheticMigrations(files, fn) {
@@ -106,5 +107,69 @@ describe("migrate.js — numbering beyond 3 digits", () => {
     const fixedStrip = "1000_first_four_digit.js".replace(/^\d+_/, "").replace(/\.js$/, "");
     assert.equal(oldStrip, "1000_first_four_digit", "sanity: the old fixed-3-digit strip is a no-op here, leaving the numeric prefix in the stored name");
     assert.equal(fixedStrip, "first_four_digit");
+  });
+});
+
+describe("migrate.js — unique version prefixes", () => {
+  it("two files sharing a numeric prefix are a hard error, not a silent skip", () => {
+    // Mirrors listMigrationFiles() in migrate.js. schema_version.version is a
+    // PRIMARY KEY; a second file with the same number used to be skipped with
+    // `if (version <= currentVersion) continue` after the first INSERT. The
+    // 2026-09-13 446_settlement_identity vs 446_evo_assets_hubkit_source
+    // collision was that class. The runner now throws instead.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "concord-migrate-dup-"));
+    try {
+      for (const name of ["446_one.js", "446_two.js"]) {
+        fs.writeFileSync(path.join(dir, name), "export function up() {}\n");
+      }
+      function listMigrationFiles() {
+        const listed = fs
+          .readdirSync(dir)
+          .map((f) => {
+            const m = f.match(/^(\d+)_.*\.js$/);
+            return m ? { file: f, version: parseInt(m[1], 10) } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.version - b.version);
+        const seen = new Map();
+        for (const { file, version } of listed) {
+          const prev = seen.get(version);
+          if (prev) {
+            throw new Error(
+              `Duplicate migration version ${version}: ${prev} and ${file}. ` +
+                `schema_version.version is a PRIMARY KEY, so runMigrations would ` +
+                `silently skip the second file. Renumber one of them.`
+            );
+          }
+          seen.set(version, file);
+        }
+        return listed;
+      }
+      assert.throws(
+        () => listMigrationFiles(),
+        /Duplicate migration version 446/
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("the real migrations tree has unique numeric prefixes (446 = settlement identity, 448 = hubkit source)", () => {
+    const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../migrations");
+    const files = fs.readdirSync(dir).filter((f) => /^\d+_.*\.js$/.test(f));
+    const byVersion = new Map();
+    for (const f of files) {
+      const version = parseInt(f.match(/^(\d+)/)[1], 10);
+      const prev = byVersion.get(version);
+      assert.equal(
+        prev,
+        undefined,
+        `duplicate version ${version}: ${prev} and ${f}`
+      );
+      byVersion.set(version, f);
+    }
+    assert.equal(byVersion.get(446), "446_settlement_identity.js");
+    assert.equal(byVersion.get(447), "447_settlement_region.js");
+    assert.equal(byVersion.get(448), "448_evo_assets_hubkit_source.js");
   });
 });

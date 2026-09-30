@@ -71,6 +71,23 @@ async function getToolsInScope(scope) {
 export async function pickTools(intent, scope, budget = 10) {
   const allTools = await getToolsInScope(scope);
 
+  if (allTools.length > budget * 3) {
+    try {
+      const { compileToolUniverse } = await import("../runtime/tool-universe-compiler.js");
+      const compiled = compileToolUniverse(intent, {
+        budget,
+        handTools: allTools,
+        includeReflected: false,
+      });
+      if (compiled.tools?.length) {
+        const byName = new Map(allTools.map((t) => [t.name, t]));
+        return compiled.tools
+          .map((t) => byName.get(t.name) || t)
+          .slice(0, budget);
+      }
+    } catch { /* fall through to legacy picker */ }
+  }
+
   if (allTools.length === 0 || allTools.length <= budget) {
     return allTools;
   }

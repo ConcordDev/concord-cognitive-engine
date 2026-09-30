@@ -15,6 +15,8 @@ vi.mock('@/lib/api/client', () => ({
 }));
 vi.mock('@/store/ui', () => ({ useUIStore: (sel: (s: unknown) => unknown) => sel({ addToast }) }));
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, {
     get: (_, tag: string) => (props: Record<string, unknown> & { children?: React.ReactNode }) => {
       const { initial: _i, animate: _a, exit: _e, transition: _t, layout: _l, ...rest } = props as Record<string, unknown>;

@@ -27,7 +27,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { SessionDetail } from '@/components/sessions/SessionDetail';
 import { StaleReminder } from '@/components/sessions/StaleReminder';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -194,9 +193,7 @@ export default function SessionsLensPage() {
 
   return (
     <LensShell lensId="sessions" asMain={false}>
-      <FirstRunTour lensId="sessions" />
-      <ManifestActionBar />
-      <DepthBadge lensId="sessions" size="sm" className="ml-2" />
+      <FirstRunTour lensId="sessions" />      <DepthBadge lensId="sessions" size="sm" className="ml-2" />
 
       <div className="min-h-screen bg-lattice-void p-6 text-zinc-100">
         <div className="max-w-5xl mx-auto">

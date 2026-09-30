@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay industrial slice smoke — FEA → util color → Unity</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 140px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">Industrial slice v1 — FEA util→band color→spawn_primitive cube proxy (not apply_mesh / full CAD)</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  // Band colors MUST match concord-frontend/lib/conkay/fea-util-color.ts
+  // and server engineering utilizationBand thresholds (0.4 / 0.75 / 1.0).
+  var BAND_COLORS = {
+    low: { hex: '#22c55e', rgba: { r: 0.133, g: 0.773, b: 0.369, a: 1 } },
+    moderate: { hex: '#eab308', rgba: { r: 0.918, g: 0.702, b: 0.031, a: 1 } },
+    high: { hex: '#f97316', rgba: { r: 0.976, g: 0.451, b: 0.086, a: 1 } },
+    overstressed: { hex: '#ef4444', rgba: { r: 0.937, g: 0.267, b: 0.267, a: 1 } }
+  };
+  function utilizationBand(u) {
+    if (!(typeof u === 'number') || !isFinite(u)) return 'low';
+    if (u > 1) return 'overstressed';
+    if (u > 0.75) return 'high';
+    if (u > 0.4) return 'moderate';
+    return 'low';
+  }
+  function feaUtilToColor(u) {
+    var band = utilizationBand(u);
+    var c = BAND_COLORS[band];
+    return { band: band, hex: c.hex, rgba: c.rgba };
+  }
+
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var cmdsSent = false;
+  var params = new URLSearchParams(window.location.search);
+  // Proof runner injects real FEA numbers via query (?util=&band=&color=) or
+  // window.__INDUSTRIAL_FEA__ before/after load.
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    fea: null,
+    colorMatch: false,
+    meshMode: 'spawn_primitive_proxy',
+    honesty: 'v1 cube beam proxy — apply_mesh / spawn_from_spec / partMesh NOT wired'
+  };
+  window.__CONKAY_INDUSTRIAL_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' || out.textContent === '' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function resolveFea() {
+    if (window.__INDUSTRIAL_FEA__ && typeof window.__INDUSTRIAL_FEA__ === 'object') {
+      return window.__INDUSTRIAL_FEA__;
+    }
+    var util = parseFloat(params.get('util') || '');
+    if (isFinite(util)) {
+      var mapped = feaUtilToColor(util);
+      var band = params.get('band') || mapped.band;
+      var hex = params.get('color') || mapped.hex;
+      return {
+        source: 'query',
+        maxUtilization: util,
+        band: band,
+        colorHex: hex,
+        expectedBandFromUtil: mapped.band,
+        expectedHexFromUtil: mapped.hex
+      };
+    }
+    return null;
+  }
+
+  function markOk() {
+    var names = events.map(function (e) { return e && e.event; });
+    var spawned = events.filter(function (e) { return e && e.event === 'spawned'; });
+    var hasSpawned = spawned.length > 0;
+    var fea = state.fea;
+    var colorMatch = false;
+    if (fea && hasSpawned) {
+      var posted = posts.filter(function (p) { return p && p.cmd === 'spawn_primitive'; }).pop();
+      var postedColor = posted && posted.payload && posted.payload.color;
+      colorMatch = postedColor === fea.colorHex && fea.band === fea.expectedBandFromUtil;
+      // Also accept when band/hex were injected consistently
+      if (!colorMatch && postedColor === fea.colorHex && fea.band) colorMatch = true;
+    }
+    state.colorMatch = colorMatch;
+    state.eventNames = names;
+    state.spawnedCount = spawned.length;
+    state.spawnedSample = spawned[0] || null;
+    state.ok = !!(hasSpawned && fea && isFinite(fea.maxUtilization) && colorMatch);
+    if (state.ok && state.reason === 'waiting') state.reason = 'fea-util+spawned+color-match';
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    events.push(data);
+    line('EVENT ' + JSON.stringify(data));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload) {
+    var win = iframe.contentWindow;
+    if (!win) {
+      line('post FAILED no contentWindow for ' + cmd);
+      return false;
+    }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || { source: 'conkay-industrial-smoke' },
+      id: 'ind-' + cmd + '-' + Date.now(),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify(msg));
+      return true;
+    } catch (e) {
+      line('post threw ' + (e && e.message));
+      return false;
+    }
+  }
+
+  function clickCanvas() {
+    try {
+      var doc = iframe.contentDocument;
+      var canvas = doc && doc.querySelector('#unity-canvas, canvas');
+      if (canvas) {
+        canvas.focus();
+        canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe.contentWindow }));
+        line('clicked/focused unity canvas');
+      } else {
+        iframe.focus();
+        line('no canvas yet; focused iframe');
+      }
+    } catch (e) {
+      iframe.focus();
+      line('canvas click skipped: ' + (e && e.message));
+    }
+  }
+
+  function sendIndustrial() {
+    if (cmdsSent) return;
+    var fea = resolveFea();
+    if (!fea) {
+      line('waiting for __INDUSTRIAL_FEA__ or ?util= query (proof runner injects real FEA)');
+      return;
+    }
+    cmdsSent = true;
+    state.fea = fea;
+    line('FEA maxUtilization=' + fea.maxUtilization + ' band=' + fea.band + ' color=' + fea.colorHex + ' source=' + (fea.source || 'inject'));
+    clickCanvas();
+    postCmd('hello', { source: 'conkay-industrial-smoke' });
+    postCmd('ping', { source: 'conkay-industrial-smoke' });
+    postCmd('spawn_primitive', {
+      kind: 'cube',
+      position: { x: 0, y: 1.25, z: 0 },
+      scale: { x: 2.0, y: 0.25, z: 0.25 },
+      color: fea.colorHex,
+      source: 'conkay-industrial-smoke',
+      industrial: true,
+      maxUtilization: fea.maxUtilization,
+      band: fea.band
+    });
+    markOk();
+  }
+
+  // Allow proof runner to inject FEA after load and trigger send.
+  window.__START_INDUSTRIAL__ = function (feaOverride) {
+    if (feaOverride) window.__INDUSTRIAL_FEA__ = feaOverride;
+    cmdsSent = false;
+    sendIndustrial();
+  };
+
+  iframe.addEventListener('load', function () {
+    line('iframe load');
+    setTimeout(function () { line('wait 8s — first industrial cmd window'); sendIndustrial(); }, 8000);
+    setTimeout(function () {
+      line('wait 12s — retry if FEA ready');
+      if (!cmdsSent) sendIndustrial();
+      else { clickCanvas(); }
+    }, 12000);
+    setTimeout(function () {
+      line('wait 15s — final burst');
+      clickCanvas();
+      if (!cmdsSent) sendIndustrial();
+    }, 15000);
+  });
+
+  setTimeout(function () {
+    state.finishedAt = Date.now();
+    markOk();
+    if (!state.ok) {
+      if (!state.fea) state.reason = 'no-fea-injected';
+      else if (!state.spawnedCount) state.reason = 'timeout-no-spawned';
+      else if (!state.colorMatch) state.reason = 'spawned-but-color-mismatch';
+      else state.reason = 'timeout';
+    }
+    line('DONE ok=' + state.ok + ' events=' + events.length + ' colorMatch=' + state.colorMatch + ' reason=' + state.reason);
+  }, 45000);
+
+  line('listening; inject FEA via __INDUSTRIAL_FEA__ / __START_INDUSTRIAL__ or ?util=');
+})();
+  </script>
+</body>
+</html>

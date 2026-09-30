@@ -29,7 +29,8 @@ interface Row {
   status: Pact['status'];
 }
 
-function shortId(id: string): string {
+function shortId(id: string | null | undefined): string {
+  if (!id) return '—';
   return id.length > 14 ? `${id.slice(0, 14)}…` : id;
 }
 
@@ -37,7 +38,7 @@ export function InheritanceGraph({ written, beneficiaryOf }: InheritanceGraphPro
   // Flatten every beneficiary across every pact you wrote into one row per
   // (pact, beneficiary) — a single beneficiary can appear on multiple pacts.
   const outRows: Row[] = written.flatMap((p) =>
-    p.beneficiaries.map((b) => ({
+    (p.beneficiaries || []).map((b) => ({
       key: `${p.id}:${b.userId}`,
       label: shortId(b.userId),
       sharePct: b.sharePct,

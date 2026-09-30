@@ -1004,6 +1004,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.sessionInvite",
+      "name": "sessionInvite"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.sessionInviteList",
+      "name": "sessionInviteList"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.sessionInviteRespond",
+      "name": "sessionInviteRespond"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.sessionJoin",
+      "name": "sessionJoin"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.sessionLeave",
+      "name": "sessionLeave"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.sessionRoster",
+      "name": "sessionRoster"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.setFollow",
       "name": "setFollow"
     },
@@ -1114,5 +1192,5 @@
   ],
   "domain": "collab",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 56
+  "macroCount": 62
 }

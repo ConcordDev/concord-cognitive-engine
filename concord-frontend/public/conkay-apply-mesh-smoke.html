@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay apply_mesh smoke — partMesh → Unity MeshFilter</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 140px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">Industrial mesh slice — partMesh positions/indices → apply_mesh MeshFilter (not full CAD / cube proxy)</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var cmdsSent = false;
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    mesh: null,
+    meshMode: 'apply_mesh',
+    honesty: 'real MeshFilter via apply_mesh — not spawn_primitive cube; not full CAD'
+  };
+  window.__CONKAY_APPLY_MESH_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' || out.textContent === '' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function resolveMesh() {
+    if (window.__APPLY_MESH__ && typeof window.__APPLY_MESH__ === 'object') {
+      return window.__APPLY_MESH__;
+    }
+    return null;
+  }
+
+  function markOk() {
+    var names = events.map(function (e) { return e && e.event; });
+    var applied = events.filter(function (e) { return e && e.event === 'mesh_applied'; });
+    var hasApplied = applied.length > 0;
+    var mesh = state.mesh;
+    var vertsOk = false;
+    if (mesh && hasApplied && applied[0] && applied[0].payload) {
+      var p = applied[0].payload;
+      vertsOk = Number(p.vertexCount) > 0 && Number(p.triangleCount) > 0;
+      if (mesh.vertexCount && Number(p.vertexCount) === Number(mesh.vertexCount)) vertsOk = true;
+    }
+    state.eventNames = names;
+    state.meshAppliedCount = applied.length;
+    state.meshAppliedSample = applied[0] || null;
+    state.ok = !!(hasApplied && mesh && vertsOk);
+    if (state.ok && state.reason === 'waiting') state.reason = 'apply_mesh+mesh_applied';
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    events.push(data);
+    line('EVENT ' + JSON.stringify(data));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload) {
+    var win = iframe.contentWindow;
+    if (!win) {
+      line('post FAILED no contentWindow for ' + cmd);
+      return false;
+    }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || { source: 'conkay-apply-mesh-smoke' },
+      id: 'mesh-' + cmd + '-' + Date.now(),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify({ type: msg.type, cmd: msg.cmd, id: msg.id, positionsLen: (payload && payload.positions && payload.positions.length) || 0, indicesLen: (payload && payload.indices && payload.indices.length) || 0, color: payload && payload.color }));
+      return true;
+    } catch (e) {
+      line('post threw ' + (e && e.message));
+      return false;
+    }
+  }
+
+  function clickCanvas() {
+    try {
+      var doc = iframe.contentDocument;
+      var canvas = doc && doc.querySelector('#unity-canvas, canvas');
+      if (canvas) {
+        canvas.focus();
+        canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe.contentWindow }));
+        line('clicked/focused unity canvas');
+      } else {
+        iframe.focus();
+        line('no canvas yet; focused iframe');
+      }
+    } catch (e) {
+      iframe.focus();
+      line('canvas click skipped: ' + (e && e.message));
+    }
+  }
+
+  function sendApply() {
+    if (cmdsSent) return;
+    var mesh = resolveMesh();
+    if (!mesh || !Array.isArray(mesh.positions) || !Array.isArray(mesh.indices)) {
+      line('waiting for __APPLY_MESH__ {positions,indices,color?} (proof runner injects partMesh)');
+      return;
+    }
+    cmdsSent = true;
+    state.mesh = mesh;
+    line('MESH kind=' + (mesh.kind || '?') + ' verts=' + (mesh.vertexCount || mesh.positions.length / 3) + ' tris=' + (mesh.triangleCount || mesh.indices.length / 3) + ' color=' + (mesh.color || '#22c55e') + ' source=' + (mesh.source || 'inject'));
+    clickCanvas();
+    postCmd('hello', { source: 'conkay-apply-mesh-smoke' });
+    postCmd('ping', { source: 'conkay-apply-mesh-smoke' });
+    postCmd('apply_mesh', {
+      positions: mesh.positions,
+      indices: mesh.indices,
+      color: mesh.color || '#22c55e',
+      id: mesh.id || 'smoke-i-beam',
+      position: mesh.position || { x: 0, y: 1.2, z: 0 },
+      scale: mesh.scale != null ? mesh.scale : 1,
+      source: 'conkay-apply-mesh-smoke',
+      kind: mesh.kind || 'i-beam'
+    });
+    markOk();
+  }
+
+  window.__START_APPLY_MESH__ = function (meshOverride) {
+    if (meshOverride) window.__APPLY_MESH__ = meshOverride;
+    cmdsSent = false;
+    sendApply();
+  };
+
+  iframe.addEventListener('load', function () {
+    line('iframe load');
+    setTimeout(function () { line('wait 8s — first apply_mesh window'); sendApply(); }, 8000);
+    setTimeout(function () {
+      line('wait 12s — retry if mesh ready');
+      if (!cmdsSent) sendApply();
+      else { clickCanvas(); }
+    }, 12000);
+    setTimeout(function () {
+      line('wait 15s — final burst');
+      clickCanvas();
+      if (!cmdsSent) sendApply();
+    }, 15000);
+  });
+
+  setTimeout(function () {
+    state.finishedAt = Date.now();
+    markOk();
+    if (!state.ok) {
+      if (!state.mesh) state.reason = 'no-mesh-injected';
+      else if (!state.meshAppliedCount) state.reason = 'timeout-no-mesh_applied';
+      else state.reason = 'timeout';
+    }
+    line('DONE ok=' + state.ok + ' events=' + events.length + ' meshApplied=' + (state.meshAppliedCount || 0) + ' reason=' + state.reason);
+  }, 45000);
+
+  line('listening; inject mesh via __APPLY_MESH__ / __START_APPLY_MESH__');
+})();
+  </script>
+</body>
+</html>

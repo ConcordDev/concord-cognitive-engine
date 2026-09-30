@@ -1,0 +1,23 @@
+{
+  "task_id": "150a244d-b51d-4004-be0b-2b9816233289",
+  "original_generation_task_id": "9df71cf0-da24-406d-a76e-3d0c2daa251d",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/9df71cf0-da24-406d-a76e-3d0c2daa251d/tripo_model_9df71cf0-da24-406d-a76e-3d0c2daa251d.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvOWRmNzFjZjAtZGEyNC00MDZkLWE3NmUtM2QwYzJkYWEyNTFkL3RyaXBvX21vZGVsXzlkZjcxY2YwLWRhMjQtNDA2ZC1hNzZlLTNkMGMyZGFhMjUxZC5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzU2Mjl9fX1dfQ__&Signature=rmQp64lN8e066ZMpqPGHyYFxdUZoDuXJrMa~WB9AaSpVOirO4xsmFYDqxLjZnO5O~9bYFfIiGF4TQ~S0MClnYZm0y0CXPzFlkz3uabeT4ujobx-PR6~2CSPLc5CKXH599LWU1tmBatYgSFNFmwmyd1fOsBQqwkzHTXbkLGqDLXP7Ne0oV4oyu~45kplgE6wrXcgjv~IS1vF~lEBThTvZS2VyfqdOEwt2PsRAqSKOHWPjlS9-TrAf~blB52ahnBiBp6G65XgfH9dnxTvmuEt-XNBnccWQBVy4ZdIrHi~9mcJ9CaR9EdzJGMIqHlK9PRl-MKHOH0VZ3yLaWub4LPfqLg__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:27:15.703286",
+  "description": "Bespoke Frontier hero monument: the Mesh Gate made from stripped antennas from the first ten federation handshakes, with a legible handshake/witness focal point and restrained weathered infrastructure. A single geographic-center monument, not a settlement kit, vehicle, or new faction symbol. Weathered industrial antenna elements form a clear gate-like witness focal point, grounded on a compact base, believable game-ready prop.",
+  "negative_prompt": "No western town main street, fantasy gate, giant sci-fi portal, active antenna screens, invented faction flags, or generic radio tower cluster.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/FrontierMeshGate/FrontierMeshGate_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/FrontierMeshGate/FrontierMeshGate.fbx"
+}

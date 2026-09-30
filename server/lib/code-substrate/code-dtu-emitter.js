@@ -206,6 +206,7 @@ export async function emitCodeDtus(db, root, opts = {}) {
   }
 
   // Persist. Tolerant of varying dtus schema across builds.
+  // Live Concord dtus table uses `type` (not `kind`) plus content/metadata_json.
   const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtus'`).get();
   if (!tableExists) {
     return { ok: false, reason: "dtus_table_missing" };
@@ -215,22 +216,38 @@ export async function emitCodeDtus(db, root, opts = {}) {
   const hasContent = cols.has("content");
   const hasContentType = cols.has("content_type");
   const hasScope = cols.has("scope");
+  const hasVisibility = cols.has("visibility");
   const hasCreator = cols.has("creator_id");
   const hasTitle = cols.has("title");
   const hasUpdatedAt = cols.has("updated_at");
   const hasCreatedAt = cols.has("created_at");
+  const hasKind = cols.has("kind");
+  const hasType = cols.has("type");
+  const hasBodyJson = cols.has("body_json");
+  const hasTagsJson = cols.has("tags_json");
 
   // Build INSERT statement with the columns that actually exist.
-  const colList = ["id", "kind"];
-  const vals = ["?", "?"];
-  const projectFns = [(d) => d.id, (d) => d.kind];
+  // Root-cause fix (2026-09-05): never assume a `kind` column — Dutch's
+  // live schema only has `type`. Emitting into a missing column threw
+  // "table dtus has no column named kind" → macro_uncaught_throw.
+  const colList = ["id"];
+  const vals = ["?"];
+  const projectFns = [(d) => d.id];
 
+  if (hasKind) {
+    colList.push("kind"); vals.push("?"); projectFns.push(d => d.kind);
+  } else if (hasType) {
+    colList.push("type"); vals.push("?"); projectFns.push(d => d.kind || "code_artifact");
+  }
   if (hasScope)      { colList.push("scope");        vals.push("?"); projectFns.push(d => d.scope || "system"); }
+  else if (hasVisibility) { colList.push("visibility"); vals.push("?"); projectFns.push(_d => "system"); }
   if (hasCreator)    { colList.push("creator_id");   vals.push("?"); projectFns.push(_d => "system"); }
   if (hasTitle)      { colList.push("title");        vals.push("?"); projectFns.push(d => (d.human || "").slice(0, 200)); }
   if (hasContent)    { colList.push("content");      vals.push("?"); projectFns.push(d => JSON.stringify(d.core).slice(0, 8000)); }
+  if (hasBodyJson && !hasContent) { colList.push("body_json"); vals.push("?"); projectFns.push(d => JSON.stringify(d.core).slice(0, 8000)); }
   if (hasContentType){ colList.push("content_type"); vals.push("?"); projectFns.push(_d => "application/code-artifact"); }
   if (hasMetadata)   { colList.push("metadata_json");vals.push("?"); projectFns.push(d => JSON.stringify({ machine: d.machine, human: d.human }).slice(0, 4000)); }
+  if (hasTagsJson)   { colList.push("tags_json");    vals.push("?"); projectFns.push(d => JSON.stringify(d.machine?.domain_tags || d.core?.domain_tags || []).slice(0, 2000)); }
   if (hasCreatedAt)  { colList.push("created_at");   vals.push("?"); projectFns.push(_d => new Date().toISOString()); }
   if (hasUpdatedAt)  { colList.push("updated_at");   vals.push("?"); projectFns.push(_d => new Date().toISOString()); }
 

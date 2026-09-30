@@ -2,15 +2,12 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivFeed } from '@/components/hypothesis/ArxivFeed';
 import { StatsWorkbench } from '@/components/hypothesis/StatsWorkbench';
 import { HypothesisLab } from '@/components/hypothesis/HypothesisLab';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -25,9 +22,7 @@ export default function HypothesisLensPage() {
 
   return (
     <LensShell lensId="hypothesis" asMain={false}>
-      <FirstRunTour lensId="hypothesis" />
-      <ManifestActionBar />
-      <DepthBadge lensId="hypothesis" size="sm" className="ml-2" />
+      <FirstRunTour lensId="hypothesis" />      <DepthBadge lensId="hypothesis" size="sm" className="ml-2" />
     <div data-lens-theme="hypothesis" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🧪</span>
@@ -105,10 +100,7 @@ export default function HypothesisLensPage() {
       </section>
     </div>
 
-      <a href="#hypothesis-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hypothesis content</a>
-          <RecentMineCard domain="hypothesis" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="hypothesis" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="hypothesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#hypothesis-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hypothesis content</a>          <CrossLensRecentsPanel lensId="hypothesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

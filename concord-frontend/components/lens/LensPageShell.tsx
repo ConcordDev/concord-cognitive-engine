@@ -28,7 +28,7 @@
  *   </LensPageShell>
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -36,6 +36,21 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { Loading } from '@/components/common/Loading';
 import { ErrorState } from '@/components/common/EmptyState';
+
+const LENS_LOAD_BUDGET_MS = 8000;
+
+function useLoadBudget(isLoading: boolean): boolean {
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setTimedOut(true), LENS_LOAD_BUDGET_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+  return timedOut;
+}
 
 export interface RealtimeProps {
   realtimeData: Record<string, unknown> | null;
@@ -109,6 +124,7 @@ export function LensPageShell({
   className,
 }: LensPageShellProps) {
   useLensNav(domain);
+  const loadTimedOut = useLoadBudget(isLoading);
   const {
     latestData: realtimeData,
     isLive,
@@ -125,8 +141,8 @@ export function LensPageShell({
     alerts: (alerts ?? []) as RealtimeProps['alerts'],
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading state — cap wait so a hung lens fetch cannot block chrome.
+  if (isLoading && !loadTimedOut) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <Loading text={`Loading ${title.toLowerCase()}...`} />

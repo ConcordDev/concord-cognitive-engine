@@ -1,25 +1,55 @@
 // server/lib/vision-inference.js
-// Unified vision inference — calls LLaVA via Ollama /api/chat with image data.
+// Unified vision inference — Ollama multimodal OR Cloudflare Workers AI.
 // Used by: personal locker pipeline, lens visual actions, chat pre-processing.
 // Does NOT require session multimodalOptIn — this is a server-side pipeline helper.
 
 import { BRAIN_CONFIG } from "./brain-config.js";
 import { validateSafeFetchUrl, fetchWithPinnedIp } from "./ssrf-guard.js";
+import cloudflareChat, { DEFAULT_VISION_MODEL } from "./cloudflare-ai-provider.js";
 
 const DEFAULT_PROMPT = "Describe this image in detail. Extract key entities, topics, any visible text, and overall context.";
 
+function visionProvider() {
+  return String(process.env.BRAIN_VISION_PROVIDER || "").toLowerCase().trim();
+}
+
+function isCloudflareVision() {
+  const p = visionProvider();
+  if (p === "cloudflare" || p === "workers-ai" || p === "cf") return true;
+  const url = String(process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || BRAIN_CONFIG?.multimodal?.url || "");
+  return url.startsWith("cloudflare://") || url.includes("api.cloudflare.com");
+}
+
 /**
- * Analyze an image using the multimodal brain (LLaVA).
+ * Analyze an image using the multimodal brain (CF Workers AI or Ollama).
  * @param {string} imageB64 - Base64-encoded image (no data URL prefix)
  * @param {string} [prompt]
  * @param {{ timeoutMs?: number }} [opts]
- * @returns {Promise<{ok: boolean, content?: string, source?: string, error?: string}>}
+ * @returns {Promise<{ok: boolean, content?: string, source?: string, error?: string, model?: string}>}
  */
 export async function callVision(imageB64, prompt = DEFAULT_PROMPT, opts = {}) {
   const brain = BRAIN_CONFIG.multimodal;
-  const url = `${brain.url}/api/chat`;
-  const timeoutMs = opts.timeoutMs || brain.timeout;
+  const timeoutMs = opts.timeoutMs || brain.timeout || 120000;
 
+  if (isCloudflareVision()) {
+    const apiKey = process.env.CLOUDFLARE_API_TOKEN;
+    const modelId = process.env.BRAIN_VISION_MODEL || brain.model || DEFAULT_VISION_MODEL;
+    if (!apiKey) {
+      return { ok: false, error: "cloudflare_api_token_missing", source: "cloudflare_workers_ai" };
+    }
+    const r = await cloudflareChat({
+      apiKey,
+      modelId,
+      messages: [{ role: "user", content: prompt }],
+      opts: { images: [imageB64], temperature: brain.temperature ?? 0.1, maxTokens: brain.maxTokens || 1500, timeoutMs },
+    });
+    if (!r.ok) {
+      return { ok: false, error: r.error || "cloudflare_vision_failed", source: "cloudflare_workers_ai", model: modelId };
+    }
+    return { ok: true, content: r.text || "", source: "cloudflare_workers_ai", model: r.model || modelId };
+  }
+
+  const url = `${brain.url}/api/chat`;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -61,7 +91,7 @@ export async function callVisionUrl(imageUrl, prompt = DEFAULT_PROMPT, opts = {}
     const imageB64 = Buffer.from(buf).toString("base64");
     return callVision(imageB64, prompt, opts);
   } catch (err) {
-    return { ok: false, error: err?.message || String(err), source: "ollama_llava" };
+    return { ok: false, error: err?.message || String(err), source: isCloudflareVision() ? "cloudflare_workers_ai" : "ollama_llava" };
   }
 }
 
@@ -84,3 +114,5 @@ export function visionPromptForDomain(domain) {
   };
   return prompts[domain] || DEFAULT_PROMPT;
 }
+
+export const _testing = { isCloudflareVision, visionProvider };

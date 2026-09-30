@@ -12,8 +12,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -22,7 +20,6 @@ import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
 import { IncidentConsole } from '@/components/ops/IncidentConsole';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers, isForbidden } from '@/lib/api/client';
@@ -121,9 +118,7 @@ export default function OpsLensPage() {
 
   return (
     <LensShell lensId="ops" asMain={false}>
-      <FirstRunTour lensId="ops" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ops" size="sm" className="ml-2" />
+      <FirstRunTour lensId="ops" />      <DepthBadge lensId="ops" size="sm" className="ml-2" />
       <LensVerticalHero lensId="ops" className="mx-6 mt-4" />
     <div className="min-h-screen bg-black pb-12 text-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-800/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
@@ -311,11 +306,7 @@ export default function OpsLensPage() {
           </div>
         )}
       </section>
-    </div>
-
-          <RecentMineCard domain="ops" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="ops" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

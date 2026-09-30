@@ -855,6 +855,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "healthcare.photo-notes-add",
+      "name": "photo-notes-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.photo-notes-delete",
+      "name": "photo-notes-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.photo-notes-list",
+      "name": "photo-notes-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "healthcare.pin",
       "name": "pin"
     },
@@ -922,6 +961,19 @@
       ],
       "macro_id": "healthcare.protocolMatch",
       "name": "protocolMatch"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.protocols-list",
+      "name": "protocols-list"
     },
     {
       "_derived": true,
@@ -1355,5 +1407,5 @@
   ],
   "domain": "healthcare",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 104
+  "macroCount": 108
 }

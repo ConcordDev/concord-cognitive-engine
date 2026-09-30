@@ -987,3 +987,23 @@ export function _resetBridgeState() {
     uptime: Date.now(),
   };
 }
+
+/**
+ * listEntities — return every registered entity as a compact summary.
+ * Each entry: { entityId, channelsActive, lastUpdateAt, sensitivity }.
+ * Added 2026-08-30 to expose the Map<entityId, EntitySensoryState> that
+ * getBridgeMetrics() couldn't reach (it only returns the count).
+ */
+export function listEntities() {
+  const out = [];
+  for (const [entityId, state] of _bridgeState.entities.entries()) {
+    const channels = state?.channels ? Object.keys(state.channels).filter(c => state.channels[c] != null) : [];
+    out.push({
+      entityId,
+      channelsActive: channels.length,
+      lastUpdateAt: state?.lastUpdateAt || null,
+      sensitivity: state?.sensitivity ?? null,
+    });
+  }
+  return out;
+}

@@ -980,6 +980,12 @@ describe("marketplace — DTU listing + plain purchase (register family)", () =>
       human: { summary: overrides.summary || `summary ${id}` },
       meta: { createdBy: ctx.actor.userId, type: "dtu_pack", tags: overrides.tags || [] },
       lineage: overrides.lineage || { parents: [] },
+      // marketplace.list gained an explicit marketplace_sale license gate
+      // (server.js dtuAssertScope, added 2026-09-07) — a DTU with no license
+      // defaults to ["private"] and can't be listed. Grant it here so these
+      // tests exercise the LISTING behaviour, not the license rejection
+      // (which has its own dedicated case).
+      license: { scopes: ["private", "marketplace_sale"], listingScopes: ["personal_use"] },
       ...overrides,
     };
     STATE.dtus.set(id, dtu);
@@ -1066,6 +1072,11 @@ describe("marketplace — Creator lens Listings tab: ownership gate + myListings
       meta: { createdBy: owner, type: "dtu_pack" },
       lineage: { parents: [] },
       createdAt: new Date().toISOString(),
+      // See the note on the other seedDtu above — marketplace.list needs a
+      // marketplace_sale license scope on the DTU (server.js dtuAssertScope,
+      // 2026-09-07). The ownership-gate cases still work: the gate checks the
+      // ACTOR against dtu.ownerId, independent of the license.
+      license: { scopes: ["private", "marketplace_sale"], listingScopes: ["personal_use"] },
       ...overrides,
     };
     STATE.dtus.set(id, dtu);

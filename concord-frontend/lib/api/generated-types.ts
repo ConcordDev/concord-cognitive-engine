@@ -204,6 +204,13 @@ export interface CreateDTURequest {
   isGlobal?: boolean;
   meta?: Record<string, unknown>;
   declaredSourceType?: string;
+  /** Industry admission class (knowledge|media|formula|dataset|software|world_asset|generic). */
+  contentClass?: string;
+  /** Creator-declared license scopes (UI name). Also send as `scopes` — server reads scopes / license.scopes. */
+  licenseScopes?: string[];
+  /** Canonical field read by dtuDefaultLicense / dtu.create. */
+  scopes?: string[];
+  license?: { scopes?: string[]; listingScopes?: string[]; [key: string]: unknown };
 }
 
 export interface UpdateDTURequest {

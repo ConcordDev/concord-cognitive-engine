@@ -293,6 +293,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law-enforcement.caseCreate",
+      "name": "caseCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.caseGet",
+      "name": "caseGet"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.caseLinked",
+      "name": "caseLinked"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.caseList",
+      "name": "caseList"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.caseUpdate",
+      "name": "caseUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law-enforcement.comment",
       "name": "comment"
     },
@@ -1010,5 +1075,5 @@
   ],
   "domain": "law-enforcement",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 51
+  "macroCount": 56
 }

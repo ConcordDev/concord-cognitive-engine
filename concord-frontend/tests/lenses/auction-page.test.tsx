@@ -16,6 +16,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op (matches the
+// convention in tests/components/WalletPage.test.tsx).
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+
 // Capturing socket mock — lets a test fire the real server event names and
 // assert the page's `subscribe('auction:bid-placed'|'auction:settled', ...)`
 // handlers (not dead `window.addEventListener` calls) actually re-fetch.
@@ -80,7 +86,9 @@ describe('AuctionLensPage — four UX states', () => {
     }));
     render(<AuctionLensPage />);
     expect(await screen.findByText(/no active auctions/i)).toBeInTheDocument();
-    expect(screen.getByText(/no open buy orders/i)).toBeInTheDocument();
+    // Buy-order content lives under its own tab (board | market | buy-orders).
+    fireEvent.click(screen.getByText(/buy orders/i));
+    expect(await screen.findByText(/no open buy orders/i)).toBeInTheDocument();
   });
 
   it('POPULATED: renders a real auction card from backend data', async () => {

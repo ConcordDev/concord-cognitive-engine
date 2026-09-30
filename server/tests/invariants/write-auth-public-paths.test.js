@@ -84,6 +84,18 @@ const SERVER_JS = path.join(
  *         to be minted/refreshed somehow). The actual world feed is a GET
  *         (`/api/spectate/:worldId/feed`) and needs no exemption. See the
  *         inline justification at this array's own declaration in server.js.
+ *   /api/metrics/vitals
+ *       — added 2026-08-24, found live during a real-browser load test.
+ *         Web Vitals reporting (lib/perf.ts, navigator.sendBeacon) fires on
+ *         every page load, authenticated or not — standard practice for this
+ *         telemetry, and it was firing on the public /register page
+ *         specifically. The handler itself (server.js) has no auth check and
+ *         only accepts {name, value, kind} into an in-memory rolling window —
+ *         this gate was the sole thing blocking anonymous submissions, which
+ *         were 401ing on every metric per anonymous page load and wasting the
+ *         same 30-req/min anonymous-IP bucket real anonymous traffic
+ *         (including registration) also depends on. No sensitive data in the
+ *         payload; nothing behind this route reads or writes per-user state.
  */
 const EXPECTED = [
   "/api/auth/login",
@@ -93,6 +105,7 @@ const EXPECTED = [
   "/health",
   "/ready",
   "/metrics",
+  "/api/metrics/vitals",
   "/api/stripe/webhook",
   "/api/welding/portal/",
   "/api/spectate/",

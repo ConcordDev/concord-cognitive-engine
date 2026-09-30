@@ -169,6 +169,18 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
   torso.castShadow = true;
   group.add(torso);
 
+  /* ── Neck ─────────────────────────────────────────────────────── */
+  // The head is offset above the torso by exactly p.neckLength (see head
+  // position above and headY/headTopY elsewhere in this file) but nothing
+  // ever filled that gap — every character rendered with its head visibly
+  // floating clear of its shoulders. A simple cylinder spanning the same
+  // gap, same skin material as the limbs.
+  const neckGeom = new THREE.CylinderGeometry(p.headWidth * 0.32, p.headWidth * 0.38, p.neckLength, 12);
+  const neck = new THREE.Mesh(neckGeom, skinPBR);
+  neck.position.y = p.legLength + p.torsoLength + p.neckLength / 2;
+  neck.castShadow = true;
+  group.add(neck);
+
   /* ── Arms ────────────────────────────────────────────────────── */
   for (const sign of [-1, 1] as const) {
     const upperArmGeom = new THREE.CylinderGeometry(p.headWidth * 0.18, p.headWidth * 0.18, p.armLength * 0.5, 10);

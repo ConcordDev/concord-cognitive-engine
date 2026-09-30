@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Waves, Save } from 'lucide-react';
+import { Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_SYNTH_PRESETS } from '@/lib/daw/engine';
-import { emitInstrumentDTU } from '@/lib/daw/dtu-hooks';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import type { SynthPreset, OscillatorShape, FilterType, EnvelopeParams, OscillatorParams } from '@/lib/daw/types';
 
 interface SynthPanelProps {
@@ -108,13 +108,6 @@ export function SynthPanel({
   const [showBrowser, setShowBrowser] = useState(!activePreset);
   const allPresets = [...DEFAULT_SYNTH_PRESETS, ...presets];
 
-  const handleSave = useCallback(() => {
-    if (activePreset) {
-      emitInstrumentDTU(activePreset, 'create');
-      onSavePreset(activePreset);
-    }
-  }, [activePreset, onSavePreset]);
-
   const updateOsc = useCallback((index: number, data: Partial<OscillatorParams>) => {
     if (!activePreset) return;
     const oscillators = [...activePreset.oscillators];
@@ -190,9 +183,16 @@ export function SynthPanel({
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowBrowser(true)} className="text-xs text-gray-400 hover:text-white">Browse</button>
-          <button onClick={handleSave} className="flex items-center gap-1 text-xs px-2 py-1 bg-neon-cyan/10 text-neon-cyan rounded hover:bg-neon-cyan/20">
-            <Save className="w-3 h-3" /> Save as DTU
-          </button>
+          <SaveAsDtuButton
+            apiSource="studio-synth"
+            title={`Synth preset — ${activePreset.name}`}
+            content={`Synth: ${activePreset.name}\nType: ${activePreset.type}\nCategory: ${activePreset.category}\nOscillators: ${activePreset.oscillators.length}\nFilter: ${activePreset.filter?.type}\nPolyphony: ${activePreset.polyphony}\n\n${JSON.stringify(activePreset, null, 2)}`}
+            extraTags={['studio', 'synth', activePreset.type, activePreset.category, ...(activePreset.tags || [])].filter(Boolean)}
+            rawData={activePreset}
+            confirm
+            onSaved={() => onSavePreset(activePreset)}
+            className="!bg-neon-cyan/10 !text-neon-cyan hover:!bg-neon-cyan/20"
+          />
           <button onClick={() => onAddToTrack(activePreset)} className="flex items-center gap-1 text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20">
             <Plus className="w-3 h-3" /> Add to Track
           </button>

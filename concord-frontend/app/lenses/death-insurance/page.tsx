@@ -22,8 +22,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -55,7 +53,7 @@ interface PayoutHistoryResult {
 }
 
 export default function DeathInsurancePage() {
-  const [showChatter, setShowChatter] = useState(false);
+  const [desk, setDesk] = useState<'pacts' | 'community'>('pacts');
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
   const [notifications, setNotifications] = useState<PactNotification[]>([]);
@@ -82,7 +80,18 @@ export default function DeathInsurancePage() {
       if (!list.data?.ok) {
         setError(list.data?.error || 'Could not load your inheritance pacts. Try refreshing.');
       } else if (list.data.result) {
-        setWritten(list.data.result.written || []);
+        // Defensive normalization: PactCard + InheritanceGraph both index into
+        // pact.beneficiaries directly (filter/map/length) with no guard of
+        // their own — a pact record missing the array (a degraded backend
+        // response, or a brand-new pact created before any beneficiary was
+        // added) would otherwise throw and blank the whole page. Never
+        // fabricates data — just fills the honest empty case the type
+        // already allows for "no beneficiaries yet".
+        const normalizedWritten = (list.data.result.written || []).map((p) => ({
+          ...p,
+          beneficiaries: p.beneficiaries || [],
+        }));
+        setWritten(normalizedWritten);
         setBeneficiaryOf(list.data.result.beneficiaryOf || []);
       }
       if (notif.data?.ok && notif.data.result) {
@@ -205,23 +214,18 @@ export default function DeathInsurancePage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
             type="button"
-            onClick={() => setShowChatter(v => !v)}
+            onClick={() => setDesk(d => d === 'community' ? 'pacts' : 'community')}
             className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
           >
-            <span>Community discussion (Reddit)</span>
-            {showChatter ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span>{desk === 'community' ? 'Back to pacts' : 'Community'}</span>
           </button>
-          {showChatter && (
+          {desk === 'community' && (
             <div className="mt-3">
               <InsuranceChatter />
             </div>
           )}
         </section>
-      </div>
-
-      <RecentMineCard domain="death-insurance" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="death-insurance" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="death-insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="death-insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

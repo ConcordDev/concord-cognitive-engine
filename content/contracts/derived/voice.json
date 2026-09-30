@@ -75,6 +75,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "voice.derive-transcript-struct",
+      "name": "derive-transcript-struct"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "voice.dislike",
       "name": "dislike"
     },
@@ -1231,5 +1244,5 @@
   ],
   "domain": "voice",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 64
+  "macroCount": 65
 }

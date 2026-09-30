@@ -1,0 +1,72 @@
+[
+  {
+    "id": "thorn_wolf",
+    "name": "Thorn Wolf",
+    "world_id": "fantasy",
+    "description": "Wolf infused with living vines and thorns. Pack hunter that leaves poisonous trails of growth wherever it sleeps.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Fast pack hunter, leaves poisonous trails",
+    "emergent_ability_seeds": [
+      { "name": "vine_trap", "verb": "vine_trap", "effects": [{ "kind": "terrain", "params": { "kind": "wall", "radius": 3, "durationMs": 6000 } }, { "kind": "stun", "params": { "durationMs": 1200 } }], "trigger": "target_fleeing" },
+      { "name": "bark_armor", "verb": "bark_armor", "effects": [{ "kind": "buff", "params": { "stat": "defense", "delta": 0.5, "durationMs": 5000 } }], "trigger": "below_50_health" },
+      { "name": "thorn_explosion", "verb": "thorn_explosion", "effects": [{ "kind": "damage", "params": { "amount": 16, "kind": "physical", "radius": 4 } }], "trigger": "on_death" }
+    ]
+  },
+  {
+    "id": "mana_drake",
+    "name": "Mana Drake",
+    "world_id": "fantasy",
+    "description": "Small dragon that feeds on raw magic. Hoards enchanted items and breathes refracted spellfire.",
+    "topology_hint": "winged_quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Flight, breath attacks, drawn to magical artifacts",
+    "emergent_ability_seeds": [
+      { "name": "spell_reflection", "verb": "spell_reflection", "effects": [{ "kind": "buff", "params": { "stat": "defense", "delta": 0.7, "durationMs": 2500 } }], "trigger": "incoming_magic" },
+      { "name": "mana_burn", "verb": "mana_burn", "effects": [{ "kind": "damage", "params": { "amount": 14, "kind": "fire" } }, { "kind": "debuff", "params": { "stat": "damage", "delta": -0.4, "durationMs": 4000 } }], "trigger": "target_using_magic" },
+      { "name": "arcane_overload", "verb": "arcane_overload", "effects": [{ "kind": "damage", "params": { "amount": 28, "kind": "fire", "radius": 5 } }, { "kind": "channel", "params": { "tickEvents": [{ "kind": "damage", "params": { "amount": 6, "kind": "fire", "radius": 5 } }], "ticks": 3, "intervalMs": 800 } }], "trigger": "rage_threshold" }
+    ]
+  },
+  {
+    "id": "bone_sentinel",
+    "name": "Bone Sentinel",
+    "world_id": "fantasy",
+    "description": "Undead warrior bound by an ancient curse. Slow, immune to pain, animated by malice older than the kingdom.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Slow but extremely durable, immune to pain and fear",
+    "emergent_ability_seeds": [
+      { "name": "curse_spread", "verb": "curse_spread", "effects": [{ "kind": "debuff", "params": { "stat": "defense", "delta": -0.5, "durationMs": 8000 } }], "trigger": "took_damage" },
+      { "name": "bone_storm", "verb": "bone_storm", "effects": [{ "kind": "damage", "params": { "amount": 10, "kind": "physical", "radius": 5 } }, { "kind": "channel", "params": { "tickEvents": [{ "kind": "damage", "params": { "amount": 4, "kind": "physical", "radius": 5 } }], "ticks": 3, "intervalMs": 500 } }], "trigger": "surrounded" },
+      { "name": "death_link", "verb": "death_link", "effects": [{ "kind": "summon", "params": { "creatureSeed": { "description": "bone fragment guardian", "topology": "humanoid", "size_band": "small" } } }], "trigger": "ally_killed" }
+    ]
+  },
+  {
+    "id": "gloom_stalker",
+    "name": "Gloom Stalker",
+    "world_id": "fantasy",
+    "description": "Shadow creature born from accumulated fear. Intangible in low light. Manifests strongest in graveyards and deep woods at night.",
+    "topology_hint": "amorphous",
+    "size_band": "medium",
+    "starting_behavior": "Intangible in low light, fear-inducing aura, hunts isolated targets",
+    "emergent_ability_seeds": [
+      { "name": "nightmare_manifestation", "verb": "nightmare_manifestation", "effects": [{ "kind": "summon", "params": { "creatureSeed": { "description": "shade of the target's worst fear", "topology": "amorphous", "size_band": "small" } } }], "trigger": "target_alone" },
+      { "name": "fear_plague", "verb": "fear_plague", "effects": [{ "kind": "debuff", "params": { "stat": "damage", "delta": -0.5, "durationMs": 6000 } }, { "kind": "debuff", "params": { "stat": "speed", "delta": -0.3, "durationMs": 6000 } }], "trigger": "in_darkness" },
+      { "name": "shadow_merge", "verb": "shadow_merge", "effects": [{ "kind": "transform", "params": { "topology": "amorphous" } }, { "kind": "buff", "params": { "stat": "stealth", "delta": 1.0, "durationMs": 5000 } }], "trigger": "low_health" }
+    ]
+  },
+  {
+    "id": "crystal_elemental",
+    "name": "Crystal Elemental",
+    "world_id": "fantasy",
+    "description": "Living crystal and gemstone formation. Heavy, reflective, draws strength from sunlight; weakens in dark caves.",
+    "topology_hint": "humanoid",
+    "size_band": "large",
+    "starting_behavior": "Heavy, reflective, grows stronger in sunlight",
+    "emergent_ability_seeds": [
+      { "name": "prism_blast", "verb": "prism_blast", "effects": [{ "kind": "damage", "params": { "amount": 18, "kind": "fire" } }, { "kind": "damage", "params": { "amount": 8, "kind": "cold" } }], "trigger": "in_sunlight" },
+      { "name": "crystal_growth", "verb": "crystal_growth", "effects": [{ "kind": "heal", "params": { "amount": 12, "target": "self" } }, { "kind": "buff", "params": { "stat": "defense", "delta": 0.4, "durationMs": 6000 } }], "trigger": "stationary_3_seconds" },
+      { "name": "refraction_shield", "verb": "refraction_shield", "effects": [{ "kind": "buff", "params": { "stat": "defense", "delta": 0.8, "durationMs": 4000 } }], "trigger": "incoming_ranged" }
+    ]
+  }
+]

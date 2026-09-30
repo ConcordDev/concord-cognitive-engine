@@ -1,15 +1,12 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
 import { FractalRenderer } from '@/components/fractal/FractalRenderer';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
 import { useState } from 'react';
@@ -26,9 +23,7 @@ export default function FractalLensPage() {
 
   return (
     <LensShell lensId="fractal" asMain={false}>
-      <FirstRunTour lensId="fractal" />
-      <ManifestActionBar />
-      <DepthBadge lensId="fractal" size="sm" className="ml-2" />
+      <FirstRunTour lensId="fractal" />      <DepthBadge lensId="fractal" size="sm" className="ml-2" />
       <LensVerticalHero lensId="fractal" className="mx-6 mt-4" />
       <div data-lens-theme="fractal" className="space-y-6 p-6">
         <header className="flex items-center justify-between">
@@ -79,10 +74,7 @@ export default function FractalLensPage() {
 
       <a href="#fractal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
         Skip to fractal content
-      </a>
-      <RecentMineCard domain="fractal" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="fractal" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="fractal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>      <CrossLensRecentsPanel lensId="fractal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

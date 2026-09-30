@@ -2,8 +2,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -12,7 +10,6 @@ import { MentalHealthSection } from '@/components/mental-health/MentalHealthSect
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
 import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -95,9 +92,7 @@ export default function MentalHealthLensPage() {
 
   return (
     <LensShell lensId="mental-health" asMain={false}>
-      <FirstRunTour lensId="mental-health" />
-      <ManifestActionBar />
-      <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
+      <FirstRunTour lensId="mental-health" />      <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
         <MentalHealthSection />
       </div>
@@ -302,10 +297,7 @@ export default function MentalHealthLensPage() {
           </div>
         )}
       </section>
-    </div>
-          <RecentMineCard domain="mental-health" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="mental-health" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="mental-health" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="mental-health" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

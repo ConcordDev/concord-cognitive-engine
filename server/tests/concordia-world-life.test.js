@@ -1,0 +1,263 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const scripts = join(root, "apps/concordia-living-world/unity-client/Assets/Concordia/Scripts");
+
+function src(name) {
+  return readFileSync(join(scripts, name), "utf8");
+}
+
+describe("Concordia world-life — source contracts", () => {
+  it("WorldClock ports kernel hours and persist slices, with REAL/BULK/VIRTUAL LOD", () => {
+    const book = src("WorldBook.cs");
+    assert.match(book, /public static class WorldClock/);
+    assert.match(book, /public static class WorldMemory/);
+    assert.match(book, /enum SimLod \{ Real, Bulk, Virtual \}/);
+    assert.match(book, /dt \* 0\.08f/);
+    assert.match(book, /concordia-living-v1\.json/);
+    assert.match(book, /The world continued while you were away/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("NpcLife walks sleep/work/eat/gather and flees steel", () => {
+    const life = src("NpcLife.cs");
+    assert.match(life, /act = "sleep"/);
+    assert.match(life, /"work"/);
+    assert.match(life, /act = "eat"/);
+    assert.match(life, /act = "gather"/);
+    assert.match(life, /act = "flee"/);
+    assert.match(life, /class BuildingPlace/);
+    assert.match(life, /pinned/);
+  });
+
+  it("FaunaLife is the live path; EvoDrift is disabled on spawn", () => {
+    const evo = src("EvoSpawner.cs");
+    const compiler = src("CreatureCompiler.cs");
+    assert.match(evo, /class FaunaLife/);
+    assert.match(evo, /act = "wander"/);
+    assert.match(evo, /act = "graze"/);
+    assert.match(evo, /act = "flee"/);
+    assert.match(evo, /CreatureCompiler\.FromKind/);
+    assert.match(compiler, /AddComponent<FaunaLife>/);
+    assert.match(compiler, /if \(spin\) spin\.enabled = false/);
+    assert.match(evo, /WorldMemory\.IsDead/);
+  });
+
+  it("Hostile perceives, strafes, and composes with FaunaLife", () => {
+    const h = src("Hostile.cs");
+    assert.match(h, /_seen/);
+    assert.match(h, /_strafe/);
+    assert.match(h, /_fauna\.hunting/);
+    assert.match(h, /Flower-law|Unburned Court|SteelLive/);
+  });
+
+  it("holds are a mouth/hall/vault graph and city ambient stays unlabeled", () => {
+    const fill = src("RealmFill.cs");
+    assert.match(fill, /Room\(hold,.*mouth/);
+    assert.match(fill, /Room\(hold,.*hall/);
+    assert.match(fill, /Room\(hold,.*vault/);
+    assert.match(fill, /AmbientWalkers/);
+    assert.match(fill, /Not an authored citizen/);
+    // Sash stamping moved into LoreNpcBinder (2026-09-22), which RealmFill invokes.
+    assert.match(fill, /LoreNpcBinder\./);
+    assert.match(src("LoreNpcBinder.cs"), /ModularPerson\.StampSash\(/);
+    assert.match(fill, /No authored dungeon name|not an authored dungeon name/);
+    assert.doesNotMatch(fill, /Concord admits he loves her/);
+  });
+
+  it("travel persists the slice and the living clock sits behind F8 DebugHud", () => {
+    const game = src("ConcordiaGame.cs");
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(game, /WorldClock\.Leave\(\)/);
+    assert.match(game, /WorldClock\.Enter\(/);
+    assert.match(game, /WorldClock\.Tick\(/);
+    assert.match(game, /NoticePlayer/);
+    assert.match(hud, /DebugHud/);
+    assert.match(hud, /KeyCode\.F8/);
+    assert.match(hud, /WorldClock\.HudClock\(\)/);
+    assert.match(hud, /WorldClock\.NearbyAct/);
+    assert.match(hud, /if \(DebugHud\)/);
+  });
+
+  it("activities are visible: open shop, patrol, deliver, talk, enter a building", () => {
+    const life = src("NpcLife.cs");
+    assert.match(life, /act = job == Job\.Stall \? "open"/);
+    assert.match(life, /act = "patrol"/);
+    assert.match(life, /act = "deliver"/);
+    assert.match(life, /TrySocial/);
+    assert.match(life, /TryEnter/);
+    assert.match(life, /WanderRing/);
+    assert.match(life, /CharacterGear\.Attach\(gameObject, "crate"/);
+    assert.match(life, /opens a shop/);
+    assert.match(life, /changes post/);
+    assert.match(life, /enters a building/);
+  });
+
+  it("WorldClock rolls authored events and fauna hunt other fauna", () => {
+    const book = src("WorldBook.cs");
+    const evo = src("EvoSpawner.cs");
+    assert.match(book, /TickEvents/);
+    assert.match(book, /stores tightened/);
+    assert.match(book, /EventKinds/);
+    assert.match(book, /NoteBirth/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+    assert.match(evo, /HuntPrey/);
+    assert.match(evo, /CityAtlas\.For\(WorldClock\.World\)/);
+  });
+
+  it("a world is a kingdom: staple, regions, and an audit of authored layers", () => {
+    const book = src("WorldBook.cs");
+    assert.match(book, /class KingdomBook/);
+    assert.match(book, /WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR/);
+    assert.match(book, /Staple\(WorldId id\)/);
+    assert.match(book, /We will not be reaped|harvest/);
+    assert.match(book, /The Court is the city/);
+    assert.match(book, /not a ninth Refusal gate/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("the gate is a connection: cargo, carried kit, plots, and travelers persist", () => {
+    const book = src("WorldBook.cs");
+    const game = src("ConcordiaGame.cs");
+    assert.match(book, /class CrossRing/);
+    assert.match(book, /public static string Walk\(/);
+    assert.match(book, /AwayTick/);
+    assert.match(book, /plot-bill/);
+    assert.match(book, /plot-eighth/);
+    assert.match(book, /travelersCsv/);
+    assert.match(book, /The invoice followed you through a door/);
+    assert.match(game, /CrossRing\.Walk\(/);
+    assert.match(game, /CrossRing\.LivingLines/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("Travel streams continuously; Build is boot only", () => {
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /live path is ContinentStream/);
+    assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
+    assert.doesNotMatch(game, /_world\.Build\(next\)/);
+    assert.match(game, /ContinentStream\.Bind\(_world\)/);
+    assert.match(game, /stream\.Teleport/);
+    const field = src("WorldField.cs");
+    assert.match(field, /SceneMetresToKm = 0\.4f/);
+    assert.match(field, /MegaworldMap\.PresentToKm/);
+    assert.match(field, /ContinentStream\.Live/);
+    assert.doesNotMatch(field, /-42% Magic Damage/);
+  });
+
+  it("HUD presents field physics and abandoned ruins, not a percent sticker", () => {
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(hud, /WorldField\.HudLine/);
+    assert.match(hud, /ruins remain/);
+    assert.doesNotMatch(hud, /-42%/);
+    const player = src("ConcordiaPlayer.cs");
+    assert.match(player, /WorldField\.ScaleDamage/);
+    const evo = src("EvoSpawner.cs");
+    assert.match(evo, /retreats toward home field/);
+    const field = src("WorldField.cs");
+    assert.match(field, /HudLine\(WorldId world, Vector3 localPos\)/);
+    assert.match(field, /At\(world, localPos/);
+    assert.doesNotMatch(field, /ConcordClient\.Live && ConcordClient\.Live\.Connected/);
+  });
+
+  it("stock becomes a caravan with a real Ring tariff, never an invented city", () => {
+    const book = src("WorldBook.cs");
+    const gate = src("WorldGate.cs");
+    const client = src("ConcordClient.cs");
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(book, /caravansCsv/);
+    assert.match(book, /tariffsCsv/);
+    assert.match(book, /DispatchCaravan/);
+    assert.match(book, /status = "loading"/);
+    assert.match(book, /status = "traveling"/);
+    assert.match(book, /status = "at_gate"/);
+    assert.match(book, /RingTariff = 0\.05f/);
+    assert.match(book, /class RingCaravan/);
+    assert.match(gate, /class GatePost/);
+    assert.match(gate, /Concordant Watch/);
+    assert.match(gate, /Not an authored citizen/);
+    assert.match(client, /kingdom:request/);
+    assert.match(client, /concord-kingdom\/v1/);
+    assert.match(client, /ApplyKingdom/);
+    assert.match(hud, /ConcordClient\.HudLine/);
+    assert.doesNotMatch(book, /Aurelia/);
+    assert.doesNotMatch(gate, /Aurelia/);
+    assert.doesNotMatch(client, /Aurelia/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("DressVocab picks a culture kit per WorldId and never invents a kingdom name", () => {
+    const packs = src("FreePacks.cs");
+    const fill = src("RealmFill.cs");
+    const interior = src("BuildingInterior.cs");
+    assert.match(packs, /class DressVocab/);
+    assert.match(packs, /return "court"/);
+    assert.match(packs, /return "grove"/);
+    assert.match(packs, /return "ash"/);
+    assert.match(packs, /return "street"/);
+    assert.match(packs, /return "grid"/);
+    assert.match(packs, /return "drift"/);
+    assert.match(packs, /Assets\/Store/);
+    assert.match(packs, /IsStorePath/);
+    assert.match(packs, /PlayableRooms\(int cityIndex\) => cityIndex == 0 \? 4 : cityIndex <= 2 \? 2 : 0/);
+    assert.match(packs, /WantsFakeWindows/);
+    assert.match(packs, /HasStoreStem/);
+    assert.match(packs, /87811/);
+    // 2026-09-17: houses resolve to the real Concordia building assets, not the
+    // generic house.002 pack stems (and no primitive stand-in fallback).
+    assert.match(packs, /"Concordia_Real_Forge", "Concordia_Real_Industrial_Hangar"/);
+    assert.match(packs, /Room_Big_Part_01/);
+    assert.match(packs, /WORLD NEED vs HAVE/);
+    assert.match(packs, /public static string Weapon/);
+    assert.match(packs, /Mega Fantasy Props/);
+    assert.doesNotMatch(packs, /slavic/i);
+    assert.doesNotMatch(packs, /Aurelia/);
+    assert.doesNotMatch(packs, /Concord admits he loves her/);
+    // City slot kits went away with the settlement compiler (2026-09-22);
+    // RealmFill still dresses every city per its own world's vocabulary.
+    assert.match(fill, /DressVocab\.Prop\(w\.id\)/);
+    // Cities are now built by the settlement compiler (2026-09-22). Carving
+    // playable interiors / fake-window glow into its procedural facades is an
+    // explicitly documented follow-up, NOT faked on the old slot buildings.
+    // Pin the honest gap note so it can't silently disappear.
+    assert.doesNotMatch(fill, /BuildingInterior\.FakeWindows\(/);
+    assert.match(fill, /real room-carving\s*\/\/?\s*inside a procedural shell is a follow-up, not something to fake here/);
+    assert.match(fill, /FortRim/);
+    assert.match(fill, /concordia-visual\.txt/);
+    assert.match(fill, /DressVocab\.Cart\(/);
+    assert.match(src("WorldKit.cs"), /DressVocab\.Kit\(/);
+    assert.match(src("WorldBuilder.cs"), /DressVocab\.House\(/);
+    assert.match(src("WorldBuilder.cs"), /The frontier keeps no seat/);
+    // DressVocab.Dummy retired 2026-09-17 ("Put a person at Present arrival,
+    // not Arena kit") — arrival now receives a person, not a dressed dummy.
+    assert.match(src("CharacterGear.cs"), /DressVocab\.Weapon/);
+    assert.match(interior, /public static void FakeWindows/);
+    assert.match(interior, /FakeWindow/);
+  });
+
+  it("cook is a station you walk to, and talk carries the last event as a rumor", () => {
+    const gate = src("WorldGate.cs");
+    const game = src("ConcordiaGame.cs");
+    const fill = src("RealmFill.cs");
+    assert.match(gate, /class CookStation/);
+    assert.match(gate, /The stove is cold/);
+    assert.match(game, /cook\.Use\(\)/);
+    assert.match(game, /They heard:/);
+    assert.match(game, /AskTwoB/);
+    assert.match(game, /ConcordConvaiManager/);
+    assert.match(game, /concord-2b/);
+    assert.match(src("ConcordClient.cs"), /dialogue:request/);
+    assert.match(src("ConcordClient.cs"), /AskTwoB/);
+    assert.match(src("ConcordClient.cs"), /kitchenUrl, gatewayUrl/);
+    assert.match(src("ConcordClient.cs"), /EnsureConnected/);
+    assert.match(game, /EnsureConnected/);
+    assert.match(src("WorldBuilder.cs"), /TagCrowd\(/);
+    assert.match(fill, /Sidewalks/);
+    assert.match(fill, /a guard/);
+    assert.match(fill, /WorldClock\.Ecology < 0\.28f/);
+  });
+});

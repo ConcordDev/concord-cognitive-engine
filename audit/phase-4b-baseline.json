@@ -1,0 +1,25 @@
+{
+  "frozenAt": "2026-09-01T22:45:00.000Z",
+  "phase": "4B",
+  "gitHead": "26d9acc94d5a1d134f61253c0b8ee38a27ae69b1",
+  "lensWiring": {
+    "WIRED": 262,
+    "PARTIAL": 0,
+    "NO_BACKEND_CALL": 4,
+    "total": 266,
+    "exemptLensIds": ["ar", "art", "narrative-walk", "ux-suite"]
+  },
+  "runtimeSurfaces": {
+    "MACROS_pairs": 3166,
+    "MACROS_domains": 486,
+    "LENS_ACTIONS_raw": 30423,
+    "unique_runtime_pairs": 15155,
+    "brain_backed_skipped": 964
+  },
+  "protectedProofs": {
+    "substrate_oracles": "12/12",
+    "sentinel_domain_tests": "13/13",
+    "sentinel_lens_actions": "40/40"
+  },
+  "note": "Passing behavior is protected — do not modify passing domains unless a test exposes regression."
+}

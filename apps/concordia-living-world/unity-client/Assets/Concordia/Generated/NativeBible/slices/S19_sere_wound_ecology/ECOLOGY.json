@@ -1,0 +1,623 @@
+{
+  "schema": "concordia.slice.ecology.v1",
+  "slice_id": "S19_sere_wound_ecology",
+  "world_id": "Sere",
+  "canon_world_id": "sere",
+  "display_world": "Sere",
+  "facet": "ecology_bosses",
+  "title": "Sere — wound ecology, creatures, bosses",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, volume encounters, Canon lore, countries.json, or any prior slice file. Caps here are the Sere instance budget for this facet.",
+  "canon_pins": {
+    "world_id": "Sere",
+    "canon_world_def_title": "Sere",
+    "refusal": "No Refusal ever held here.",
+    "the_no": "Every attempt to build outside the machine was bought, hollowed, or crushed.",
+    "law_text": "The Mark is the only law that compounds. Live steel is allowed. Flower-law is the Court only.",
+    "style_id": "tessera",
+    "style_name": "Tessera Hold",
+    "steel_live": true,
+    "fight_style_for_people": "WingChun",
+    "humanoid_body": "CX only for people. The enforcer is CX. The kiln, the harpy, the hound, the roach, and the rat are not people and are not CX bodies. The road watcher uses CX proportions under a full mask and is not a Concordia face.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern Sere. A beast kited back through that disk meets flowers, not a legal hunt. The Arena is the Hub exception.",
+    "hub_law_radius_m": 42,
+    "gate": "Sere is absent from Canon.Gates. Eight spokes only: Cyber, Ruins, Fantasy, Tunya, Frontier, Crime, Superhero, Crucible.",
+    "waystone": {
+      "megaworld_map": "HasLinkGate is false. AngleOf is Crime's gate angle 5π/4 plus 0.35 rad, which is 4.277 rad, still 0.435 rad short of the Permanent Dawn at 3π/2. Present radius is RingMeters × 1.35. RingMeters is 400 km × 0.55 m/km = 220 m, so the Sere present sits at 297 m: (−125.27, −269.29). That point is the continent on the megaworld plane. It is not an interior spawn.",
+      "gate_post": "WorldGate.GatePost.Ensure sets waystone when the destination is Sere, tariffRate 0, inspectionLevel 0, ownerFaction empty. A spoke gate keeps the ring tariff, inspection 1, and an owner.",
+      "why_not_a_ninth_refusal": "The three attempts inside the machine — Almsfolk, Lamplighters, Table-of-All — were bought, hollowed, or broken. The Ark Exodus left the ground from the First Launch Cradle because a Refusal could not be held here. Tunya is the other end of that umbilical. The Crucible is already the Eighth Refusal, and S17 keeps the sentence that there is no ninth. A waystone is a step with no law on it."
+    },
+    "palette": ["#3a3428", "#c8a060", "#8a3030", "#1a140e"],
+    "kit": "arch_kit_sere_mark",
+    "kit_allowed_kitbash": ["arch_kit_crime_coast", "arch_kit_ruins_ash"],
+    "bleed": "Weathering on the Verge–Keshar open: soot brick, oil concrete, a fossil stain in the pour. Kitbash of Coast and ash is material. It does not import a Ruins species and it does not open a portal.",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "The post stays Hub. The marked hound shares the veil hound skeleton and does not stand on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": ["flamingo sealie", "parrot harpy", "pinup harpy", "CX body as fauna", "CX face on the kiln", "rifle hero mesh", "full-body fire aura", "Kenney or Quaternius rename"]
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/sere/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/sere/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/sere/factions.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/sere/npcs.json",
+    "animals": "native-bible/creatures/ANIMALS.json faun_mark_hound, faun_smog_roach, faun_sodium_rat",
+    "monsters": "native-bible/creatures/MONSTERS.json mon_boss_compound_mark, mon_grid_drone, mon_road_watcher",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_markharpy",
+    "taxonomy": "native-bible/01_TAXONOMY.md Sere line: marked hound, roach, compound mark, drone skin, arch_kit_sere_mark",
+    "kit": "native-bible/architecture/KITS.json arch_kit_sere_mark named sets furnace_belt, tessera_spire, mark_tenement",
+    "density": "native-bible/volume/DENSITY_TABLES.json Sere block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_compound_mark",
+    "token": "native-bible/volume/VENDORS_AND_ITEMS.json item_rem_furnace_eye",
+    "skill": "skill_presence_name_holder",
+    "skill_string_on_monster_row_not_a_second_skill": "skill_presence_name_the_holder",
+    "existing_quests_not_redone": [
+      "q_sere_half_tile",
+      "q_sere_open_table",
+      "q_sere_curtain_line",
+      "q_sere_mark_price",
+      "q_sere_roach_count",
+      "q_sere_one_brand",
+      "q_sere_same_truth",
+      "q_sere_furnace_scout"
+    ],
+    "prior_slices_not_retuned": [
+      "S01_hub_ecology_mobs",
+      "S05_tunya_ecology_miniboosses",
+      "S07_ruins_bosses_stories",
+      "S09_crime_mobs_raids",
+      "S11_cyber_creatures_density",
+      "S13_frontier_geo_mounts_mobs",
+      "S17_crucible_arcane_creatures"
+    ]
+  },
+  "places": [
+    {
+      "id": "gap_verge_keshar",
+      "kind": "derived_open",
+      "what": "Open ground between Verge Dynamics, capital (−31.52, −12.74), radius 23, and Keshar, capital (−32.0, 55.43), radius 25.5. Center distance 68.17 m. Gap 19.67 m. Midpoint (−31.76, 21.34). Wide enough for one 8 m furnace hall on the Verge side and a 4 m lip against Keshar's rim.",
+      "holds": ["faun_smog_roach", "hyb_markharpy", "enc_chest_stamp", "enc_compound_mark once furnace_belt is placed"],
+      "empty_of": ["faun_mark_hound", "faun_sodium_rat", "mon_road_watcher", "mon_grid_drone", "mon_boss_compound_mark until the set is placed"],
+      "lip": "The 4 m band touching Keshar's circle, outside any hall and outside a 4 m circle at the midpoint. That band is the furnace lip this facet gives to q_sere_roach_count's unplaced string furnace_lip. If CountryCenter moves, the lip moves with the gap.",
+      "hall_seat_when_placed": "Verge-side 8 m, two modules, starting at Verge's rim and ending 1.84 m short of the midpoint on the Verge side. This note does not author the transform.",
+      "district_not_a_floor": "verge_dynamics_district the_furnace_belt is (−23.52, −18.74), the fixed (+8, −6) 10 m step, inside the Verge circle. It is not this open."
+    },
+    {
+      "id": "gap_aldermere_tally",
+      "kind": "derived_open",
+      "what": "Open between House Aldermere (44.5, −17.98) radius 23 and the Tally House (−6.52, 28.26) radius 23. Center distance 68.86 m. Gap 22.86 m. Midpoint (18.99, 5.14). The bank that clears and the house that issues the Mark, with room for one hound between them.",
+      "holds": ["faun_mark_hound", "enc_one_tile"],
+      "empty_of": ["hyb_markharpy", "faun_smog_roach", "faun_sodium_rat", "mon_road_watcher", "mon_boss_compound_mark"],
+      "kennel_string": "q_sere_one_brand targets mark_hound_kennel. That string has no Canon point. This open is a second floor. Completing one errand does not complete the other."
+    },
+    {
+      "id": "gap_dovrane_keshar",
+      "kind": "derived_open",
+      "what": "Open between the Dovrane Reach (34.44, 16.06) radius 25.5 and Keshar (−32.0, 55.43) radius 25.5. Center distance 77.23 m. Gap 26.23 m. Midpoint (1.22, 35.74). The brother-gap. Lore calls the passes contested. countries.json gives no pass coordinate. This midpoint is the pass this facet will use.",
+      "holds": ["mon_road_watcher"],
+      "empty_of": ["faun_mark_hound", "faun_smog_roach", "faun_sodium_rat", "hyb_markharpy", "mon_boss_compound_mark", "mon_grid_drone"],
+      "post": "A 4 m circle at the midpoint. Tariff blank, inspection blank, owner blank. Not a Canon.Gates angle and not the megaworld present (−125.27, −269.29)."
+    },
+    {
+      "id": "gap_tally_hollow",
+      "kind": "derived_seam",
+      "what": "Open between the Tally House (−6.52, 28.26) radius 23 and Hollowford Seed (−47.97, −1.68) radius 23. Center distance 51.13 m. Gap 5.13 m. Midpoint (−27.24, 13.29). Narrower than a 8 m hall and wider than a rat. Spilled grain and grease, no seed-library.",
+      "holds": ["faun_sodium_rat"],
+      "empty_of": ["faun_mark_hound", "hyb_markharpy", "mon_boss_compound_mark", "mon_road_watcher"]
+    },
+    {
+      "id": "slivers_under_4m",
+      "kind": "too_narrow",
+      "what": "Positive opens under one module. tally–verge 2.02 m at (−19.02, 7.76). curtain–keshar 2.48 m at (−31.84, 29.94). tessera–curtain 3.17 m at (−26.62, −20.88). tessera–hollow 3.29 m at (−34.76, −23.95). tally–spire is 4.16 m and is left with them: a corridor, not a kennel.",
+      "holds": [],
+      "cap": 0
+    },
+    {
+      "id": "stacked_capitals",
+      "kind": "overlap",
+      "what": "Pairs with a negative gap are one political pile, cap 0 for every creature in this facet. The tightest is Tessera (−21.55, −46.22) r 25.5 and Mercy Fund (−25.35, −47.68) r 23: centers 4.07 m apart, overlap 44.43 m. Open Table and Keshar overlap 32.20 m. Curtain sits inside Verge and Hollowford. District anchors at the (+8, −6) step are inside their own circles and are not floors.",
+      "holds": []
+    },
+    {
+      "id": "politics_opens_left_empty",
+      "kind": "cited_and_empty",
+      "what": "hollow–keshar is 10.80 m at (−39.98, 26.88), the slow ensnarement of a creditor. curtain–table is 11.07 m at (−22.93, 32.92), between the archive and the small ledger. Both stay empty of beasts. q_sere_open_table and q_sere_curtain_line already own the people there.",
+      "holds": []
+    },
+    {
+      "id": "furnace_belt",
+      "kind": "named_set",
+      "kit": "arch_kit_sere_mark",
+      "set": "furnace_belt",
+      "what": "Soot brick, oil concrete, brand-tile course, furnace iron, one eye of fire in the hall. No Canon.cs transform. Volume spawn anchor is 'Furnace belt floor. Overlook is the worker scout.'",
+      "holds_when_placed": ["mon_boss_compound_mark"],
+      "recommended_seat": "gap_verge_keshar hall_seat_when_placed",
+      "until_placed": "The Compound Mark emits nothing. Do not drop the kiln on the Verge capital, on the district step, or on the bare midpoint."
+    },
+    {
+      "id": "tessera_spire",
+      "kind": "named_set",
+      "kit": "arch_kit_sere_mark",
+      "set": "tessera_spire",
+      "what": "Windowless tower kit. No Canon point. Fauna cap 0. The Clearing Spire country is a different circle and is also cap 0.",
+      "holds": []
+    },
+    {
+      "id": "mark_tenement",
+      "kind": "named_set",
+      "kit": "arch_kit_sere_mark",
+      "set": "mark_tenement",
+      "what": "Street kit. No Canon point. This facet does not move the hound off the Aldermere–Tally open into an unplaced tenement.",
+      "holds": []
+    },
+    {
+      "id": "wilds_ring",
+      "kind": "world_geography",
+      "what": "Non-Hub wilds are a ring from 90 m to 126 m about the realm origin. Keshar's far rim is 89.5 m. No country circle reaches the ring. Cap 0. The generic wilds roadside is not a lip, a kennel, or a waystone.",
+      "holds": []
+    }
+  ],
+  "volume_weights_unchanged": [
+    { "id": "faun_mark_hound", "weight": 2, "volume_note": "one tile brand" },
+    { "id": "faun_smog_roach", "weight": 6, "volume_note": "furnace lip" },
+    { "id": "faun_sodium_rat", "weight": 3, "volume_note": "shared with Crime, grease not neon" }
+  ],
+  "volume_encounters_not_rewritten": [
+    {
+      "id": "enc_compound_mark",
+      "creature_ids": ["mon_boss_compound_mark"],
+      "schedule_label": "Furnace evening, every third day, hours 17–20",
+      "cron": "0 17 */3 * *",
+      "remembrance": "item_rem_furnace_eye",
+      "this_slice": "Placement, no-stack, and the drop condition. Clock, phases, telegraph, and the token id stay in BOSSES_AND_RAIDS.json."
+    }
+  ],
+  "creatures": [
+    {
+      "id": "faun_smog_roach",
+      "display_name": "Smog Roach",
+      "role": "ambient_detritivore",
+      "place_in_sere_life": "It eats the grease the belt sheds. Oval body, six short thick legs, a pebble with feet. The count on the lip is biology. The Quiet Fall stays an unshipped verdict and does not acquire an omen by way of an insect.",
+      "temperament": "creep",
+      "player_aggro": "none",
+      "topology": "polyped",
+      "gait": "creep",
+      "scale_vs_player": "0.08× player length",
+      "verbs": ["verb_fauna_creep"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [], "diet": "detritivore" },
+      "bible_herd": "10-30",
+      "catalog_hostile": false,
+      "density": {
+        "alive_cap": 8,
+        "where": "The Keshar-facing 4 m lip of gap_verge_keshar. Day and night, because the bellows do not clock out. Inside the 4 m harpy circle, cap 0. Inside a placed furnace hall, cap 0. Zero on every other place in this file.",
+        "herd_line_not_used": "10-30 would bury the lip. Eight is a count a person can give Esha without inventing a swarm.",
+        "quest_already_written": "q_sere_roach_count. This slice does not ask for that page again."
+      },
+      "law": "A roach is fauna. Killing one to clear a spill fails q_s19_lip_not_omen. Acid spray is not on the verb list.",
+      "missing_mesh": "Spawn nothing. A thin scorpion is the wrong silhouette."
+    },
+    {
+      "id": "faun_sodium_rat",
+      "display_name": "Sodium Rat",
+      "role": "ambient_critter",
+      "place_in_sere_life": "Floor movement on the narrow seam where minted discs and proprietary seed miss each other. Grease, a torn ear, dark eyes. The yellow on the Crime row is a lamp. This seam has oil light, and the fur stays dull.",
+      "temperament": "scuttle",
+      "player_aggro": "none",
+      "topology": "quadruped",
+      "gait": "quad_scuttle",
+      "scale_vs_player": "0.12× player length",
+      "verbs": ["verb_fauna_scuttle", "verb_fauna_swarm_floor"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [], "diet": "omnivore" },
+      "bible_herd": "6-20",
+      "catalog_hostile": false,
+      "density": {
+        "alive_cap_night": 6,
+        "alive_cap_day": 2,
+        "where": "gap_tally_hollow only. Zero in the sub-4 m slivers, the overlaps, the wilds, and on Crime's street floors.",
+        "crime_owner": "S09 arch_sodium_rat keeps night 6 and day 2 on the unclaimed street, and sere_added_by_this_slice 0. Those numbers stay. This cap is Sere's own seam."
+      },
+      "law": "Critters are not a boss budget. No window, no loot, no omen.",
+      "missing_mesh": "Spawn nothing. Glowing eyes are the failure."
+    },
+    {
+      "id": "faun_mark_hound",
+      "display_name": "Marked Hound",
+      "role": "working_dog",
+      "place_in_sere_life": "One hound between the clearing bank and the mint. Shared skeleton with the veil hound. Smog in the coat. The brand is a single broken tile on the shoulder, a debt you can see, a scar. It heels. It bays when a second tile is offered. It is not a pack and not a mount.",
+      "temperament": "working",
+      "player_aggro": "during enc_one_tile, and only if struck or if a second brand is offered inside the 4 m circle",
+      "topology": "quadruped",
+      "gait": "quad_trot",
+      "canon_kind_alias": "hound",
+      "scale_vs_player": "0.6× player height",
+      "verbs": ["verb_fauna_heel", "verb_fauna_bay"],
+      "stats_hooks": { "health": "table:faun_med", "loot": [], "diet": "omnivore" },
+      "bible_herd": "1",
+      "catalog_hostile": true,
+      "density": {
+        "alive_cap_day": 1,
+        "alive_cap_night": 0,
+        "where": "gap_aldermere_tally, one animal at the midpoint. The window uses that same animal. Peak is 1.",
+        "shared_skeleton": "faun_veil_hound. Tunya's hounds stay on Tunya. Pinewood stays empty of this id."
+      },
+      "law": "One tile is the law. A second brand fails the window and fails q_s19_no_second_pan. The kennel errand q_sere_one_brand remains its own floor.",
+      "missing_mesh": "Spawn nothing. A wolf rename and a Quaternius dog are both the wrong body."
+    },
+    {
+      "id": "hyb_markharpy",
+      "display_name": "Marked Harpy",
+      "role": "skirmisher",
+      "place_in_sere_life": "Veil-harpy plan with three iron brand tiles bolted to the chest, so the belt reads at a distance. Thick legs. The dive-grab applies witness heat to a faction. The second note of the scream is a stamp. Knock one chest tile off on that note and the heat does not land.",
+      "temperament": "dive",
+      "player_aggro": "false until enc_chest_stamp completes board, scout, and sound, and only inside the 4 m circle",
+      "topology": "winged_biped",
+      "gait": "flyer_flap",
+      "scale_vs_player": "1.15× player height",
+      "primary_plan": "winged biped harpy",
+      "secondary_trait": "three iron brand tiles on the chest",
+      "combat_hook": "dive_grab_heat",
+      "verbs": ["verb_mon_dive_grab", "verb_hyb_apply_heat"],
+      "weak_point": "chest_tile",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "slash", "loot": ["brand_tile"] },
+      "bible_spawn": "2-4",
+      "catalog_hostile": false,
+      "density": {
+        "alive_cap_ambient": 1,
+        "where": "gap_verge_keshar, outside the midpoint circle, only while furnace_belt has no transform. During enc_chest_stamp ambient drops to 0 and the window fields 2. Peak is 2.",
+        "when_hall_placed": "Ambient 0 and the window does not arm. The pair does not move to a capital, to Tunya, or onto the lip.",
+        "not_mon_tunya_harpy": "That id is Tunya-only and stays on S05's canopy. This row is the Sere hybrid."
+      },
+      "law": "Three tiles are the donor. A fourth bolt fails the hook. Pocketing the fallen brand_tile fails q_s19_heat_not_a_name. Heat must not land on the_open_table or on keshar. No remembrance is minted for a cancelled stamp.",
+      "missing_mesh": "Spawn nothing. A parrot, a pinup, and a CX face are all forbidden. Thin legs are forbidden."
+    },
+    {
+      "id": "mon_road_watcher",
+      "display_name": "Road Watcher",
+      "role": "elite",
+      "skin": "sere_invoice",
+      "place_in_sere_life": "The one watcher for this spoke, planted in the brother-gap. Feet set, weapon low, mask with no mouth. The coat is street soot. The weapon is the clearing fork, wpn_pole_sere_fork, two short tines. It warns with the world's own line, then holds. It does not collect a tariff, does not inspect, and does not name an owner.",
+      "temperament": "hold",
+      "player_aggro": "false outside the window. During enc_empty_post, true only after board, scout, and sound, and only inside the 4 m post. Walking past is free. Killing the watcher fails the clear.",
+      "topology": "humanoid",
+      "gait": "biped_medium",
+      "scale_vs_player": "1.15× player height",
+      "verbs": ["verb_mon_warn", "verb_mon_weapon_style", "verb_mon_hold_gate"],
+      "weak_point": "mask_strap",
+      "weapon_id": "wpn_pole_sere_fork",
+      "stats_hooks": { "health": "table:mon_elite_human", "damage_profile": "pierce", "loot_if_law_kept": [] },
+      "bible_spawn": "1 per spoke",
+      "catalog_hostile": true,
+      "density": {
+        "alive_cap": 1,
+        "where": "gap_dovrane_keshar midpoint, all hours, the same body the window uses. Peak is 1. Zero inside either capital. Zero on the Frontier wagon mile.",
+        "other_skins": "frontier_iron stays S13. crucible_shard stays unfielded per S17. This slice fields sere_invoice only."
+      },
+      "law": "The post stays empty of ownership. Writing a faction into ownerFaction, chalking a ninth spoke, or speaking the line as if a Refusal had held here fails enc_empty_post and q_s19_empty_tariff. watcher_token on the monster loot list does not drop. item_rem_watcher_nail stays a Frontier token.",
+      "audio_tell": "One spoken line, the WorldDef refusal, then the fork. The line is a warning, not a new Refusal.",
+      "missing_mesh": "Spawn nothing. CX proportions under the mask. The Concordia face stays off. A Quaternius body stays off."
+    },
+    {
+      "id": "mon_grid_drone",
+      "display_name": "Census Drone",
+      "density": { "alive_cap_sere": 0, "owner": "S11_cyber_creatures_density" },
+      "law": "WorldDef lists drone. The monster row lists Sere and desaturates the lens to sodium. S11 set the Sere cap to 0 and wrote that the belt does not receive the Grid discs. This facet does not overturn that cap, does not edit DENSITY.json, and does not hatch a sodium triangle. The alias stays unresolved on purpose.",
+      "missing_mesh": "Spawn nothing on Sere."
+    },
+    {
+      "id": "mon_boss_compound_mark",
+      "display_name": "The Compound Mark",
+      "role": "boss",
+      "see": "boss"
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_chest_stamp",
+      "name": "The Chest Stamp",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["hyb_markharpy"],
+      "count": 2,
+      "where": "gap_verge_keshar, 4 m circle at (−31.76, 21.34), while furnace_belt is unplaced. The lip stays outside the circle.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 10,
+        "close_hour": 12,
+        "every_nth_day": 2,
+        "modulo_gate": "day_index % 2 == 0",
+        "label": "Belt late morning, every second day"
+      },
+      "player_aggro": "true only after board, scout, and sound, and only inside the circle",
+      "telegraph": {
+        "board": "Worker board draws a harpy chest as a rectangle of three tiles.",
+        "scout": "From the lip the wings read harpy. The tiles are the only Sere mass.",
+        "sound": "Two-note scream. The second note is the stamp."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Notes",
+          "tell": "The first note is the dive windup. The second is the stamp.",
+          "player_response": "Knock chest_tile on the second note. One tile leaves the chest. The heat application cancels."
+        },
+        {
+          "index": 2,
+          "name": "Bare dive",
+          "tell": "The grab remains. The faction hook does not.",
+          "player_response": "Meet the dive. Leave the tile on the ground. Do not bolt a fourth."
+        }
+      ],
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "slash" },
+      "loot_if_tile_left": [],
+      "loot_forbidden": ["brand_tile"],
+      "remembrance_item_id": null,
+      "does_not_arm_when": "furnace_belt has a transform, or enc_compound_mark is inside its hour. Hours do not overlap the furnace evening. The placed-hall rule is the stack rule.",
+      "missing_mesh": "Spawn nothing."
+    },
+    {
+      "id": "enc_one_tile",
+      "name": "One Tile",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["faun_mark_hound"],
+      "count": 1,
+      "where": "gap_aldermere_tally, 4 m circle at (18.99, 5.14). Day only. The same hound as the ambient cap.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 12,
+        "close_hour": 14,
+        "every_nth_day": 2,
+        "modulo_gate": "day_index % 2 == 0",
+        "label": "Clearing noon, every second day"
+      },
+      "player_aggro": "The hound bays when a second brand is offered, and nips if struck. Standing in the circle without a tile is a heel, not a fight.",
+      "telegraph": {
+        "board": "A clerk slate draws one broken tile on a hound shoulder, and an empty second outline.",
+        "scout": "From either rim the chevron reads hound. One scar. No pack.",
+        "sound": "A bay that starts when the second outline is touched and stops when the hand leaves."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Heel",
+          "tell": "The hound stands. The scar is one tile.",
+          "player_response": "Look. skill_presence_name_holder may name a holder who already exists. It may not mint a brand."
+        },
+        {
+          "index": 2,
+          "name": "Second outline",
+          "tell": "A hand with a tile starts the bay.",
+          "player_response": "Put the tile down outside the circle. Striking the hound fails the window."
+        }
+      ],
+      "stats_hooks": { "health": "table:faun_med", "loot_if_law_kept": [] },
+      "remembrance_item_id": null,
+      "missing_mesh": "Spawn nothing."
+    },
+    {
+      "id": "enc_empty_post",
+      "name": "The Empty Post",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["mon_road_watcher"],
+      "skin": "sere_invoice",
+      "count": 1,
+      "where": "gap_dovrane_keshar, 4 m circle at (1.22, 35.74).",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "every_nth_day": 4,
+        "modulo_gate": "day_index % 4 == 1",
+        "label": "Waystone pre-dawn, every fourth day, off S13's wagon clock"
+      },
+      "player_aggro": "true only after board, scout, and sound, and only inside the post, and only during the window. The body is the ambient watcher. Clearing is leaving.",
+      "telegraph": {
+        "board": "The post board shows three blank lines: tariff, inspection, owner.",
+        "scout": "Mask, no mouth, fork low. At 100 m the shape is a planted person with a two-tine gap.",
+        "sound": "The refusal line, once, then steel set on stone. No second sentence."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Blank lines",
+          "tell": "Three blanks. The watcher does not fill them.",
+          "player_response": "Read them. Leave them blank."
+        },
+        {
+          "index": 2,
+          "name": "Hold",
+          "tell": "If a name or a spoke-angle is written, the fork comes up.",
+          "player_response": "Step out of the circle. The win is an empty post. A kill drops nothing."
+        }
+      ],
+      "stats_hooks": { "health": "table:mon_elite_human", "damage_profile": "pierce" },
+      "remembrance_item_id": null,
+      "law_tie": "GatePost for a Sere destination: tariff 0, inspection 0, ownerFaction empty. HasLinkGate false. This window is that struct standing in the brother-gap.",
+      "missing_mesh": "Spawn nothing."
+    }
+  ],
+  "boss": {
+    "id": "enc_compound_mark",
+    "name": "The Compound Mark",
+    "rank": "boss",
+    "new_species": false,
+    "schedule_owner": "volume",
+    "creature_ids": ["mon_boss_compound_mark"],
+    "count": 1,
+    "where": "furnace_belt hall, once that set is placed on the Verge-side seat of gap_verge_keshar. Overlook is scout-only and has no separate coordinate in Canon.",
+    "until_placed": "Spawn nothing. q_sere_furnace_scout remains the volume scout and is not repeated here.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 17,
+      "close_hour": 20,
+      "every_nth_day": 3,
+      "cron": "0 17 */3 * *",
+      "label": "Furnace evening, every third day",
+      "slice_rule": "Clock unchanged. S17's enc_numeral_open keeps hours 17–19 on the Crucible face of this cron and still spawns no kiln."
+    },
+    "ambient_cap": 0,
+    "telegraph_owner": "volume",
+    "telegraph_cite": {
+      "board": "Worker board at the furnace belt: eye and tile skirt.",
+      "scout": "Furnace eye is the only emissive. Skirt is tiles, not cloth.",
+      "sound": "Bellows, then a tile click that compounds."
+    },
+    "phases_cite": [
+      "Eye. Name the holder with skill_presence_name_holder. Anonymous damage feeds the mark.",
+      "Skirt. Crack one tile. Do not add your own brand.",
+      "Compound. Keep Esha's ledger out of the circle. Winning by selling the seed library fails."
+    ],
+    "skill_id": "skill_presence_name_holder",
+    "skill_note": "The monster row writes skill_presence_name_the_holder. The skill file's id is skill_presence_name_holder. Bind the real id. Do not author a twin.",
+    "body": "Kiln torso, brand-tile skirt, chimney head, one fire eye. Scale 2.5× player height. Topology humanoid is the gait tag. The mesh is native. Fire stays in the eye and the furnace mouth.",
+    "verbs": ["verb_boss_brand_slam", "verb_boss_interest", "verb_boss_vent", "verb_boss_call_the_bill"],
+    "weak_points": [
+      { "id": "eye", "hint": "during vent windup" },
+      { "id": "tile_skirt", "hint": "remove tiles to cut the interest aura" }
+    ],
+    "stats_hooks": { "health": "table:boss_region", "damage_profile": "fire_blunt" },
+    "boss_rule_cite": "Witness heat on Sere factions rises if you loot the body in front of a Tessera. Naming a real faction id redirects the next slam.",
+    "remembrance_item_id": "item_rem_furnace_eye",
+    "remembrance_rule": "Drops only when the eye cools on the vent, the ledger stayed outside the circle, and the seed library was not sold. Carrying the eye into the Crucible bay fails S17's numeral clear. A loot taken in front of a Tessera still raises witness heat and does not add a second token.",
+    "stack": "While this window is up, hyb_markharpy cap on the open is 0. Roaches stay on the Keshar lip, outside the hall. The hound and the watcher are on other opens.",
+    "missing_mesh": "Spawn nothing. A CX body, a full-body fire aura, and a Quaternius brute are all the wrong kiln."
+  },
+  "tokens": [
+    {
+      "id": "item_rem_furnace_eye",
+      "display_name": "Cooled furnace eye",
+      "owner": "volume",
+      "rule": "The one Sere remembrance. Vendor note: eye cooled, does not name Esha's ledger. This slice adds the placement and the bay ban. No second Sere remembrance is minted."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s19_lip_not_omen",
+      "title": "Lip — Grease Is a Count",
+      "giver_role_id": "npc_role_sere_enforcer",
+      "giver_npc_id": null,
+      "giver_floor_id": "gap_verge_keshar",
+      "giver_note": "One of the density budget of 4, stood on the lip. Not Esha. Not a clone of a unique.",
+      "objectives": [
+        { "id": "obj_q_s19_lip_1", "verb": "reach", "target": "gap_verge_keshar", "text": "Stand on the Keshar-facing lip of the Verge open." },
+        { "id": "obj_q_s19_lip_2", "verb": "witness", "target": "faun_smog_roach", "text": "Count the roaches actually on the lip. The cap is 8. A larger number is a story." },
+        { "id": "obj_q_s19_lip_3", "verb": "witness", "target": "prop_furnace_bellows", "text": "See the leak they are eating. Leave them on it." },
+        { "id": "obj_q_s19_lip_4", "verb": "talk", "target": "npc_role_sere_enforcer", "text": "Give the count as bodies. A prophecy, or a dead roach, fails the errand." }
+      ],
+      "rewards": { "xp": 35, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "the_open_table", "delta": 1 },
+        { "faction_id": "verge_dynamics", "delta": -1 }
+      ],
+      "turn_in": "the lip enforcer",
+      "does_not_replace": "q_sere_roach_count"
+    },
+    {
+      "id": "q_s19_no_second_pan",
+      "title": "Open — A Balance With No Pans",
+      "giver_role_id": "npc_role_sere_enforcer",
+      "giver_npc_id": null,
+      "giver_floor_id": "gap_aldermere_tally",
+      "giver_note": "A second enforcer, still inside budget 4. The other two remain on desks and the belt with no new pin.",
+      "objectives": [
+        { "id": "obj_q_s19_pan_1", "verb": "reach", "target": "gap_aldermere_tally", "text": "Walk the open between Aldermere and the Tally House." },
+        { "id": "obj_q_s19_pan_2", "verb": "witness", "target": "faun_mark_hound", "text": "See the one tile. The crest on the bank is a balance with no pans." },
+        { "id": "obj_q_s19_pan_3", "verb": "talk", "target": "npc_role_sere_enforcer", "text": "Refuse the second tile. Offering it fails the errand." }
+      ],
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "the_open_table", "delta": 1 }
+      ],
+      "turn_in": "the open's enforcer",
+      "does_not_replace": "q_sere_one_brand"
+    },
+    {
+      "id": "q_s19_heat_not_a_name",
+      "title": "Stamp — Heat Misses the Ledger",
+      "giver_role_id": "npc_role_sere_enforcer",
+      "giver_npc_id": null,
+      "giver_floor_id": "gap_verge_keshar",
+      "giver_note": "Same lip enforcer as q_s19_lip_not_omen, a second loop, still one body.",
+      "objectives": [
+        { "id": "obj_q_s19_heat_1", "verb": "reach", "target": "enc_chest_stamp", "text": "Be on the open while the stamp window is up, and while the hall is still unplaced." },
+        { "id": "obj_q_s19_heat_2", "verb": "witness", "target": "hyb_markharpy", "text": "Knock one chest tile off on the stamp note so the heat does not name the Open Table or Keshar." },
+        { "id": "obj_q_s19_heat_3", "verb": "talk", "target": "npc_role_sere_enforcer", "text": "Leave the tile. Report a cancelled stamp. A pocketed brand_tile fails." }
+      ],
+      "rewards": { "xp": 60, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "the_open_table", "delta": 1 },
+        { "faction_id": "keshar", "delta": 1 }
+      ],
+      "turn_in": "the lip enforcer",
+      "waits_while": "furnace_belt has no need to exist for this quest. The window does. If the hall is placed first, the window never arms and the quest cannot be finished. That is the honest stop."
+    },
+    {
+      "id": "q_s19_empty_tariff",
+      "title": "Post — Three Blank Lines",
+      "giver_role_id": null,
+      "giver_npc_id": null,
+      "offer": "The post board on gap_dovrane_keshar during enc_empty_post. No NPC giver. Wend's two volume errands stay his.",
+      "objectives": [
+        { "id": "obj_q_s19_post_1", "verb": "reach", "target": "gap_dovrane_keshar", "text": "Reach the brother-gap in the pre-dawn window." },
+        { "id": "obj_q_s19_post_2", "verb": "witness", "target": "mon_road_watcher", "text": "Read tariff, inspection, and owner. All three are blank. The skin is sere_invoice." },
+        { "id": "obj_q_s19_post_3", "verb": "witness", "target": "waystone_struct", "text": "Leave the lines blank. A faction name or a ninth spoke fails." },
+        { "id": "obj_q_s19_post_4", "verb": "leave", "target": "gap_dovrane_keshar", "text": "Step out. The clear is the empty post." }
+      ],
+      "rewards": { "xp": 80, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "turn_in": "leaving the circle",
+      "why_no_delta": "A faction delta would assign the owner the post is there to lack."
+    }
+  ],
+  "people": {
+    "npc_role_sere_enforcer": {
+      "budget": 4,
+      "budget_owner": "volume density",
+      "this_slice_uses": 2,
+      "body": "CX",
+      "fight_style": "WingChun",
+      "weapon_id": "wpn_throw_sere_marktile",
+      "role_faction_string": "tessera_hold",
+      "canon_faction_id": "the_tessera",
+      "note": "Quest deltas use the canon faction id. The role string was not edited. Esha is not an enforcer. comp_esha may borrow the silhouette elsewhere; this facet does not put her on the lip."
+    },
+    "unique_do_not_clone": [
+      "the_ferryman_wend",
+      "esha_of_the_open_table",
+      "officer_tomas_reib",
+      "archivist_of_the_curtain",
+      "lysandra_aldermere",
+      "minister-for-hire_dell_sarn"
+    ],
+    "npc_role_road_bandit_added": 0,
+    "npc_role_shadow_courier": "Budget 1 stays Wend's route. This facet adds no ferryman."
+  },
+  "zero_caps": [
+    { "id": "mon_grid_drone", "reason": "S11 Sere cap 0 stands. Sodium skin is not fielded." },
+    { "id": "mon_tunya_harpy", "reason": "Tunya id. S05 owns it. The belt aerial is hyb_markharpy." },
+    { "id": "mon_ruins_wraith", "reason": "Ash import. The bleed is a stain in concrete." },
+    { "id": "hyb_ribwolf", "reason": "Ruins donor. S07." },
+    { "id": "faun_ash_wolf", "reason": "Ruins coat. S07." },
+    { "id": "hyb_billdrone", "reason": "Crime hybrid. S09 left it off the roster." },
+    { "id": "mon_boss_unender", "reason": "Crucible. S17. The evening cron's other face stays there." },
+    { "id": "npc_role_road_bandit", "reason": "People, not this facet's ecology." }
+  ],
+  "withheld_from_boards": [
+    "lore_sere_the_quiet_fall hidden_truth: the verdict is not shipped, and this facet does not ship it",
+    "Wend's recognition method beyond what q_sere_half_tile already shows",
+    "Lysandra's hand-copied ledger",
+    "Tomas's unfinished thought about foreseen crises",
+    "The Archivist's deliberate mis-files",
+    "Dell Sarn's dual manifests",
+    "Esha's prototype beyond what q_sere_open_table already shows",
+    "The Cradle manifests of who was refused a berth"
+  ]
+}

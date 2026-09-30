@@ -1,0 +1,111 @@
+[
+  {
+    "id": "crime_ada_01_morgue",
+    "title": "The Morgue — An Unusual Cause of Death",
+    "description": "Ada Pell has been logging cause-of-death anomalies. The latest body looks like cross-world creature predation. She wants a second opinion.",
+    "giver_npc_id": "coroner_ada_pell",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ada1_visit",
+        "type": "reach_location",
+        "target": "crime_morgue",
+        "required_count": 1,
+        "description": "Visit Ada at the morgue during open hours."
+      },
+      {
+        "id": "obj_ada1_examine",
+        "type": "observe",
+        "target": "ada_anomaly_body",
+        "required_count": 1,
+        "description": "Examine the body Ada has set aside."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_ada1",
+        "content": "The wounds match Kiren Owl's hub mystery print. The same creature is crossing worlds and killing.",
+        "unlocks_after": "obj_ada1_examine",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "crime_ada_02_cross"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "crime",
+      "crime_side"
+    ]
+  },
+  {
+    "id": "crime_ada_02_cross",
+    "title": "The Morgue — Cross-Reference",
+    "description": "Ada wants you to carry her log to Kiren in the hub. He'll know whether it matches.",
+    "giver_npc_id": "coroner_ada_pell",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ada2_carry",
+        "type": "deliver",
+        "target": "ada_log_to_kiren",
+        "required_count": 1,
+        "description": "Bring the log to Kiren Owl at the hub Verge outpost."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "crime_ada_03_return"
+    ],
+    "prerequisites": [
+      "crime_ada_01_morgue"
+    ],
+    "tags": [
+      "crime",
+      "crime_side"
+    ]
+  },
+  {
+    "id": "crime_ada_03_return",
+    "title": "The Morgue — Cross-World Confirmation",
+    "description": "Return to Ada with Kiren's confirmation. The two coroners' logs together are evidence enough.",
+    "giver_npc_id": "coroner_ada_pell",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ada3_return",
+        "type": "talk_to",
+        "target": "coroner_ada_pell",
+        "required_count": 1,
+        "description": "Bring Kiren's countersignature back to Ada."
+      }
+    ],
+    "rewards": {
+      "xp": 400,
+      "skill_xp": {
+        "tracking": 60
+      },
+      "items": [
+        "ada_predation_dossier"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "crime_ada_02_cross"
+    ],
+    "tags": [
+      "crime",
+      "crime_side"
+    ]
+  }
+]

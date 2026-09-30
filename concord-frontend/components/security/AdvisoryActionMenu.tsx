@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 export interface AdvisoryLike {
   ghsa_id: string;
@@ -87,7 +88,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Incident — ${advisory.ghsa_id}${advisory.cve_id ? ` (${advisory.cve_id})` : ''}`,
           tags: ['security', 'advisory', 'incident', advisory.severity, advisory.ghsa_id],
           source: 'security:incident',
@@ -105,7 +106,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
             },
             status: 'triaging',
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -139,7 +140,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Patch plan — ${advisory.ghsa_id}`,
           tags: ['security', 'patch-plan', advisory.severity, advisory.ghsa_id],
           source: 'security:patch-plan',
@@ -160,7 +161,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
               ],
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -176,7 +177,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Post-mortem — ${advisory.ghsa_id}${advisory.cve_id ? ` (${advisory.cve_id})` : ''}`,
           tags: ['security', 'post-mortem', 'public', advisory.severity, advisory.ghsa_id],
           source: 'security:postmortem:publish',
@@ -192,7 +193,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
             },
             structure: ['summary', 'timeline', 'impact', 'remediation', 'lessons'],
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

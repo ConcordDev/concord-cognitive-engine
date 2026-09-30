@@ -391,6 +391,19 @@
       "name": "experiment-start"
     },
     {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-train",
+      "name": "experiment-train"
+    },
+    {
       "_derived": false,
       "domain": "ml",
       "fuzz_cases": [
@@ -1109,5 +1122,5 @@
   ],
   "domain": "ml",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 55
 }

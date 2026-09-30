@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay set_transform smoke — apply_mesh → transform_set</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 140px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">set_transform player-LIVE — apply_mesh then set_transform → event transform_set (not re-apply)</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var meshId = 'setxf-proof-beam';
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting',
+    honesty: 'set_transform → transform_set (not clear+redraw / re-apply_mesh)'
+  };
+  window.__CONKAY_SET_TRANSFORM_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  line('listening; wait ready then apply_mesh → set_transform');
+
+  function post(cmd, payload, id) {
+    var msg = { type: 'concordia:cmd', cmd: cmd, payload: payload || {}, id: id || (cmd + '-' + Date.now()), ts: Date.now() };
+    posts.push(msg);
+    line('POST ' + JSON.stringify({ type: msg.type, cmd: msg.cmd, id: msg.id }));
+    try {
+      iframe.contentWindow.postMessage(msg, '*');
+    } catch (e) {
+      line('POST_ERR ' + e);
+    }
+  }
+
+  // Tiny box mesh
+  function boxMesh() {
+    var p = [
+      -0.5,-0.5,-0.5,  0.5,-0.5,-0.5,  0.5,0.5,-0.5, -0.5,0.5,-0.5,
+      -0.5,-0.5, 0.5,  0.5,-0.5, 0.5,  0.5,0.5, 0.5, -0.5,0.5, 0.5
+    ];
+    var idx = [
+      0,1,2, 0,2,3, 4,6,5, 4,7,6,
+      0,4,5, 0,5,1, 2,6,7, 2,7,3,
+      0,3,7, 0,7,4, 1,5,6, 1,6,2
+    ];
+    return { positions: p, indices: idx };
+  }
+
+  var phase = 'wait-ready';
+  var meshApplied = false;
+  var transformSet = false;
+
+  function maybeFinish() {
+    if (meshApplied && transformSet) {
+      state.ok = true;
+      state.reason = 'apply_mesh+mesh_applied+set_transform+transform_set';
+      state.finishedAt = Date.now();
+      line('OK ' + state.reason);
+    }
+  }
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.type !== 'concordia:event') return;
+    events.push(d);
+    line('EVENT ' + JSON.stringify({ event: d.event, id: d.id, payload: d.payload }));
+    if (d.event === 'ready' && phase === 'wait-ready') {
+      phase = 'apply';
+      line('clicked/focused unity canvas');
+      try { iframe.contentWindow.focus(); } catch (e) {}
+      post('hello', { source: 'conkay-set-transform-smoke' }, 'xf-hello');
+      post('ping', { source: 'conkay-set-transform-smoke' }, 'xf-ping');
+      var m = boxMesh();
+      post('apply_mesh', {
+        positions: m.positions,
+        indices: m.indices,
+        color: '#38bdf8',
+        id: meshId,
+        position: { x: 0, y: 1.2, z: 0 },
+        scale: 1
+      }, 'xf-apply');
+    }
+    if (d.event === 'mesh_applied') {
+      meshApplied = true;
+      phase = 'transform';
+      // IMPORTANT: set_transform — not re-apply
+      setTimeout(function () {
+        post('set_transform', {
+          id: meshId,
+          position: { x: 2.5, y: 1.8, z: -1.0 },
+          scale: 1.25,
+          rotation: { x: 0, y: 45, z: 0 }
+        }, 'xf-set');
+      }, 200);
+    }
+    if (d.event === 'transform_set') {
+      transformSet = true;
+      maybeFinish();
+    }
+  });
+
+  // Safety timeout
+  setTimeout(function () {
+    if (!state.ok) {
+      state.reason = 'timeout meshApplied=' + meshApplied + ' transformSet=' + transformSet;
+      state.finishedAt = Date.now();
+      line('TIMEOUT ' + state.reason);
+    }
+  }, 60000);
+})();
+  </script>
+</body>
+</html>

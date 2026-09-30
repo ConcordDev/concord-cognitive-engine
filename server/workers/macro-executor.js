@@ -8,6 +8,7 @@
  * Results are returned to the main thread which applies any STATE mutations.
  */
 
+import "../lib/ollama-request-guard-install.js"; // brain requests: pinned num_ctx + thread cap (worker has its own fetch)
 import { parentPort, workerData } from "node:worker_threads";
 import { runMacroIsolated, syncSnapshot } from "./macro-runtime.js";
 

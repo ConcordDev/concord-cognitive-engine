@@ -2,13 +2,10 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { GitBranch, Code2 as Github } from 'lucide-react';
@@ -38,9 +35,7 @@ export default function ReposLensPage() {
 
   return (
     <LensShell lensId="repos" asMain={false}>
-      <FirstRunTour lensId="repos" />
-      <ManifestActionBar />
-      <DepthBadge lensId="repos" size="sm" className="ml-2" />
+      <FirstRunTour lensId="repos" />      <DepthBadge lensId="repos" size="sm" className="ml-2" />
       <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">
         {/* Header */}
         <header className="bg-[#161b22] border-b border-gray-700">
@@ -118,10 +113,7 @@ export default function ReposLensPage() {
             />
           )}
         </div>
-      </div>
-      <RecentMineCard domain="repos" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="repos" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="repos" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="repos" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -251,12 +251,13 @@ describe("UNIVERSAL_FEATURES", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("EXTENDED_FEATURES — structural invariants", () => {
-  it("is a plain object with 60 lens entries", () => {
+  it("is a plain object with 61 lens entries", () => {
     assert.equal(typeof EXTENDED_FEATURES, "object");
     assert.ok(!Array.isArray(EXTENDED_FEATURES));
     // 58 (lensNumber 66–123) + forge (124, AI_EXT, Phase B) +
-    // ops-telemetry (125, SYSTEM — the admin telemetry surface).
-    assert.equal(ALL_LENS_KEYS.length, 60);
+    // ops-telemetry (125, SYSTEM — the admin telemetry surface) +
+    // predict (129, AI_EXT — Concord Predict × Dila integration).
+    assert.equal(ALL_LENS_KEYS.length, 61);
   });
 
   it("every entry has the standard lens shape", () => {
@@ -290,18 +291,36 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     assert.equal(new Set(numbers).size, numbers.length, "duplicate lens numbers");
   });
 
-  it("lens numbers span 66 to 125", () => {
+  it("lens numbers span 66 to 129", () => {
     const numbers = ALL_LENS_KEYS.map((k) => EXTENDED_FEATURES[k].lensNumber);
     assert.equal(Math.min(...numbers), 66);
     // 125 = ops-telemetry (SYSTEM). 124 = forge (AI_EXT, Phase B).
-    assert.equal(Math.max(...numbers), 125);
+    // 129 = predict (AI_EXT — Concord Predict × Dila integration).
+    assert.equal(Math.max(...numbers), 129);
   });
 
-  it("all lens numbers are contiguous (no gaps)", () => {
+  it("lens numbers within this file are unique and increasing, with a documented gap (126-128) owned by lens-features.js", () => {
+    // lensNumber is a SINGLE sequence shared across two registries —
+    // lens-features.js and this file, lens-features-extended.js — with
+    // nextLensNumber() (server/lib/scaffold-lens.js, pinned by
+    // tests/scaffold-lens.test.js) scanning BOTH for the current max before
+    // assigning a new one. This file's own subset of numbers was
+    // contiguous purely by coincidence until lensNumbers 126-128 were
+    // claimed by lenses registered in lens-features.js (confirmed present
+    // there — see that file's own entries past 100) — this file's next
+    // addition (predict) correctly got 129, the real next-available number
+    // in the shared sequence, not 126. A literal "no gaps" check on this
+    // file alone was never a real invariant of the design; verify
+    // uniqueness + monotonic sort stability instead, and pin the one
+    // known cross-file gap explicitly so a *new*, unexplained gap still
+    // fails loudly.
     const numbers = ALL_LENS_KEYS.map((k) => EXTENDED_FEATURES[k].lensNumber).sort((a, b) => a - b);
-    for (let i = 0; i < numbers.length; i++) {
-      assert.equal(numbers[i], 66 + i, `expected lens number ${66 + i} at index ${i}, got ${numbers[i]}`);
+    assert.equal(new Set(numbers).size, numbers.length, "duplicate lens numbers");
+    const gaps = [];
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] !== numbers[i - 1] + 1) gaps.push([numbers[i - 1], numbers[i]]);
     }
+    assert.deepEqual(gaps, [[125, 129]], `unexpected gap(s) in this file's lensNumber sequence: ${JSON.stringify(gaps)}`);
   });
 
   it("feature IDs are unique within each lens", () => {
@@ -323,13 +342,14 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     }
   });
 
-  it("total extended features equal 284", () => {
+  it("total extended features equal 290", () => {
     let total = 0;
     for (const key of ALL_LENS_KEYS) {
       total += EXTENDED_FEATURES[key].features.length;
     }
-    // 280 pre-ops-telemetry + 4 ops-telemetry features = 284.
-    assert.equal(total, 284);
+    // 280 pre-ops-telemetry + 4 ops-telemetry features = 284,
+    // + 6 predict features = 290.
+    assert.equal(total, 290);
   });
 
   it("every category is one of the expected values", () => {
@@ -474,6 +494,12 @@ describe("EXTENDED_FEATURES — category groupings", () => {
     assert.equal(EXTENDED_FEATURES.artistry.category, "CREATIVE");
     assert.equal(EXTENDED_FEATURES.artistry.lensNumber, 112);
   });
+
+  it("predict lens (129, AI_EXT) is correct", () => {
+    assert.equal(EXTENDED_FEATURES.predict.category, "AI_EXT");
+    assert.equal(EXTENDED_FEATURES.predict.lensNumber, 129);
+    assert.equal(EXTENDED_FEATURES.predict.featureCount, 6);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -495,7 +521,9 @@ describe("EXTENDED_FEATURES — access flags", () => {
     const noEmergent = ALL_LENS_KEYS.filter((k) => !EXTENDED_FEATURES[k].emergentAccess);
     noEmergent.sort();
     // ops-telemetry is the admin telemetry surface — no emergent/bot access.
-    assert.deepEqual(noEmergent, ["defense", "ext_finance", "law-enforcement", "legacy", "ops-telemetry", "organ"]);
+    // predict is a research/forecasting tool over real market data — no
+    // emergent-simulation or bot-agent access either.
+    assert.deepEqual(noEmergent, ["defense", "ext_finance", "law-enforcement", "legacy", "ops-telemetry", "organ", "predict"]);
   });
 
   it("lenses without bot access are the expected set", () => {
@@ -511,6 +539,7 @@ describe("EXTENDED_FEATURES — access flags", () => {
       "ext_suffering",
       "ext_vote",
       "ops-telemetry",
+      "predict",
       "reflection",
     ]);
   });
@@ -1735,11 +1764,16 @@ describe("Cross-cutting feature coverage", () => {
       "law-enforcement",
       "mining",
       "ocean",
+      "predict",
       "space",
       "telecommunications",
       "urban-planning",
       "veterinary",
     ]);
+  });
+
+  it("predict has featureCount 6", () => {
+    assert.equal(EXTENDED_FEATURES.predict.featureCount, 6);
   });
 
   it("crypto has featureCount 8", () => {

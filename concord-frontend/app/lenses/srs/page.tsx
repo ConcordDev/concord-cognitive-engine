@@ -2,14 +2,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SrsRepos } from '@/components/srs/SrsRepos';
 import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -143,9 +140,7 @@ export default function SRSLensPage() {
 
   return (
     <LensShell lensId="srs" asMain={false}>
-      <FirstRunTour lensId="srs" />
-      <ManifestActionBar />
-      <DepthBadge lensId="srs" size="sm" className="ml-2" />
+      <FirstRunTour lensId="srs" />      <DepthBadge lensId="srs" size="sm" className="ml-2" />
       <div data-lens-theme="srs" className="min-h-full bg-lattice-bg">
         {/* Header */}
         <header className="sticky top-0 z-10 bg-lattice-surface border-b border-lattice-border">
@@ -348,11 +343,7 @@ export default function SRSLensPage() {
           onClose={() => setPickerOpen(false)}
           onSelect={handlePickDtu}
         />
-      )}
-
-      <RecentMineCard domain="srs" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="srs" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="srs" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      )}      <CrossLensRecentsPanel lensId="srs" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -15,8 +15,6 @@ import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -160,11 +158,7 @@ export default function ObservePage() {
         <section className="mt-6">
           <ObservePlatform />
         </section>
-      </div>
-
-          <RecentMineCard domain="observe" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="observe" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="observe" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>          <CrossLensRecentsPanel lensId="observe" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

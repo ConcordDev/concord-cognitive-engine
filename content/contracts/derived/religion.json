@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "religion.list_for_world",
+      "name": "list_for_world"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "religion.my_worship",
       "name": "my_worship"
     },
@@ -198,5 +211,5 @@
   ],
   "domain": "religion",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 15
+  "macroCount": 16
 }

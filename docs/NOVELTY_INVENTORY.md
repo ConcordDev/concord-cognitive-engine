@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Concord Novelty Inventory (curated)
 
 > Hand-maintained companion to the auto-generated `audit/cartograph/NOVEL.md`
@@ -18,7 +20,7 @@
 
 ## A. Knowledge substrate & DTU mechanics
 1. **DTU 4-layer self-compressing units** — `lib/dtu-store.js`. human/core/machine/artifact + auto-consolidation + economy on top.
-2. **MEGA→HYPER auto-consolidation** — `economy/dtu-pipeline.js`. 33:1 at population thresholds, every 30 ticks.
+2. **MEGA→HYPER auto-consolidation** — `economy/dtu-pipeline.js`. ~1.2× (was 33:1 target) at population thresholds, every 30 ticks.
 3. **Selective Forgetting Engine** — `emergent/forgetting-engine.js`. Tombstones originals while preserving lineage (forgetting ≠ deletion).
 4. **Shadow DTU graph** — `emergent/shadow-graph.js`. Public timeline posts surface into NPC oracle prompts as shadow DTUs.
 5. **Physical DTU schema** — `emergent/physical-dtu.js`. Knowledge units with physical-world embodiment (System 11).

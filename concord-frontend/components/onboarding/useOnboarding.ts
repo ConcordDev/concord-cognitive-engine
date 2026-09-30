@@ -36,6 +36,19 @@ export function useOnboarding() {
       return;
     }
 
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const guestPublic =
+      path === '/' ||
+      path === '/explore' ||
+      path.startsWith('/explore/') ||
+      path === '/login' ||
+      path === '/register' ||
+      path === '/signup' ||
+      path.startsWith('/legal/');
+    if (guestPublic) {
+      return;
+    }
+
     const openIfNewAndCookieAnswered = () => {
       if (cancelled) return;
       if (!onboardingDoneLocally() && cookieAnswered()) setIsOpen(true);

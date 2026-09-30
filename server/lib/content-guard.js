@@ -278,6 +278,7 @@ export function banAccount(db, tokenBlacklist, userId, reason, category) {
   try {
     // Deactivate account
     db.prepare("UPDATE users SET is_active = 0 WHERE id = ?").run(userId);
+    globalThis.__concordBustUserCache?.(userId); // ban takes effect immediately, not after the 5s TTL
 
     // Record ban reason and category
     try {

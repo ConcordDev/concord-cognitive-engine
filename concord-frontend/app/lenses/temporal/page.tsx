@@ -12,12 +12,9 @@
 /* ------------------------------------------------------------------ */
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { ForecastWorkbench } from '@/components/temporal/ForecastWorkbench';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 import { ds } from '@/lib/design-system';
@@ -25,12 +22,10 @@ import { Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 export default function TemporalLensPage() {
-  const [showRepos, setShowRepos] = useState(false);
+  const [desk, setDesk] = useState<'series' | 'tools'>('series');
   return (
     <LensShell lensId="temporal" asMain={false}>
-      <FirstRunTour lensId="temporal" />
-      <ManifestActionBar />
-      <DepthBadge lensId="temporal" size="sm" className="ml-2" />
+      <FirstRunTour lensId="temporal" />      <DepthBadge lensId="temporal" size="sm" className="ml-2" />
       <div data-lens-theme="temporal" className={ds.pageContainer}>
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
@@ -51,13 +46,12 @@ export default function TemporalLensPage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
             type="button"
-            onClick={() => setShowRepos(v => !v)}
+            onClick={() => setDesk(d => d === 'tools' ? 'series' : 'tools')}
             className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
           >
-            <span>Time-series tooling (GitHub)</span>
-            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span>{desk === 'tools' ? 'Back to series' : 'Time-series tooling'}</span>
           </button>
-          {showRepos && (
+          {desk === 'tools' && (
             <div className="mt-3">
               <TemporalRepos />
             </div>
@@ -70,10 +64,7 @@ export default function TemporalLensPage() {
         className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none"
       >
         Skip to temporal content
-      </a>
-      <RecentMineCard domain="temporal" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="temporal" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="temporal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>      <CrossLensRecentsPanel lensId="temporal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -123,6 +123,26 @@ describe("creatures lens macros", () => {
     assert.ok(lin.lineage.self && lin.lineage.self.child_id === r.hybrid.id);
   });
 
+  it("breed emits creature:born with the hybrid id", async () => {
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      const r = await macros.get("breed")(ctxFor(db), {
+        a: { id: "wolf_a", species_id: "wolf" },
+        b: { id: "bear_b", species_id: "bear" },
+        worldId: WORLD,
+      });
+      assert.equal(r.ok, true);
+      const born = seen.find((s) => s.event === "creature:born");
+      assert.ok(born, "pen-pairing emits creature:born");
+      assert.equal(born.payload.childId, r.hybrid.id);
+      assert.equal(born.payload.worldId, WORLD);
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+  });
+
   it("offspring species is a real, derived species (not fabricated)", async () => {
     const r = await macros.get("breed")(ctxFor(db), {
       a: { id: "deer_x", species_id: "deer" },

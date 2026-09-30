@@ -66,6 +66,16 @@ if (typeof window !== 'undefined') {
     value: vi.fn(),
   });
 
+  // jsdom doesn't implement Element.scrollIntoView at all (real browsers all
+  // do) — any component that keyboard-focuses a row/item and calls
+  // `el.scrollIntoView(...)` (e.g. components/ui/DataTable.tsx's roving
+  // focus) throws `scrollIntoView is not a function` synchronously inside a
+  // passive effect, which React then reports as a component crash even
+  // though nothing is actually wrong with the component.
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = vi.fn();
+  }
+
   // jsdom doesn't implement URL.createObjectURL / revokeObjectURL — map components
   // (leaflet/mapbox-ish) call it at module/import time, so without this they throw
   // on import. Polyfill so the import-smoke net + any map test can load them.

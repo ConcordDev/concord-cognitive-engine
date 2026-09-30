@@ -78,10 +78,28 @@ describe("thread.queue + publish", () => {
     assert.equal(dash.result.published, 1);
     assert.equal(dash.result.total, 1);
   });
-  it("best-time returns ranked posting slots", () => {
+  it("best-time returns a labelled GENERIC guideline when the user has <3 posts", () => {
     const r = call("best-time", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.basis, "generic_guideline");
     assert.ok(r.result.slots.length >= 3);
+    // honest generic path carries no fabricated per-slot score / recommended
+    assert.ok(r.result.slots.every((s) => s.day && s.time && s.rationale));
+    assert.match(r.result.note, /not personalised/i);
+  });
+
+  it("best-time switches to the user's OWN posting-time distribution once ≥3 posts exist", () => {
+    // publish 3 drafts at controlled times
+    for (const iso of ["2026-01-06T09:00:00Z", "2026-01-13T09:30:00Z", "2026-01-20T17:00:00Z"]) {
+      const d = call("thread-draft", ctxA, { content: `post ${iso}` }).result.draft;
+      call("draft-schedule", ctxA, { id: d.id, scheduledAt: iso });
+      call("draft-publish", ctxA, { id: d.id });
+    }
+    const r = call("best-time", ctxA, {});
+    assert.equal(r.result.basis, "your_history");
+    assert.ok(r.result.sampleSize >= 3);
     assert.ok(r.result.recommended.score >= r.result.slots[r.result.slots.length - 1].score);
+    assert.match(r.result.note, /not from audience-engagement data/i);
   });
 });
 

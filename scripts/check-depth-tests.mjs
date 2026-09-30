@@ -93,7 +93,7 @@ function maskNonCode(s) {
 function isSubstantive(body) {
   if (/\.result\.(?!ok\b)[a-zA-Z_]\w*/.test(body)) return true;          // reads a real result field (lens-family)
   if (/assert\.(match|deepEqual|deepStrictEqual|notEqual|notStrictEqual)\s*\(/.test(body)) return true;
-  if (/\.(some|find|filter|includes)\s*\(/.test(body)) return true;       // round-trip / membership
+  if (/\.(some|find|filter|includes|has|get)\s*\(/.test(body)) return true; // round-trip / membership / lookup
   if (/result\.ok\s*,\s*false|result\.ok\s*===\s*false/.test(body)) return true; // rejection (lens-family)
   // register()-family macros (macroRuntime path) return the result DIRECTLY — no
   // `.result` wrapper — so a real assertion reads `r.<field>` not `r.result.<field>`.
@@ -105,6 +105,18 @@ function isSubstantive(body) {
   if (/assert\.(?:equal|strictEqual)\s*\(\s*(?!typeof\b)(?!Array\.)\w+(?:\.\w+)*\.(?!ok\b)\w+\s*,/.test(body)) return true;
   if (/assert\.ok\s*\(\s*(?!typeof\b)(?!Array\.)\w+(?:\.\w+)*\.(?!ok\b)\w+\s*(?:>=|<=|===|!==|<|>|&&|\))/.test(body)) return true;
   if (/assert\.\w+\s*\(\s*\w+(?:\.\w+)*\.reason\b/.test(body)) return true; // rejection by reason (register-family)
+  // Exact-value assertion on the return of a DOMAIN FUNCTION CALL, e.g.
+  //   assert.equal(compute(2), 3)
+  //   assert.equal(isToolAllowed("research_invoke", "proactive"), false)
+  //   assert.equal(hand.decompose().yaku.length, 2)
+  // Excludes the shape-coercion callees (typeof/Boolean/Number/String/Array.*/
+  // parse*) that reduce to what the smoke harness already checks.
+  if (/assert\.(?:equal|strictEqual|deepEqual|deepStrictEqual)\s*\(\s*(?!typeof\b)(?!Boolean\b)(?!Number\b)(?!String\b)(?!Array\.)(?!parseInt\b)(?!parseFloat\b)[A-Za-z_$][\w.$]*\s*\(/.test(body)) return true;
+  // Comparison on the return of a call, e.g.
+  //   assert.ok(STATE.dtus.getVersion() > v0)
+  //   assert.ok(store.countActive(db) >= 1)
+  //   assert.ok(!before.has(id) && after.has(id))    (covered by the .has() rule above too)
+  if (/assert\.ok\s*\([^)]*\([^)]*\)\s*(?:>=|<=|===|!==|<|>)/.test(body)) return true;
   return false;
 }
 

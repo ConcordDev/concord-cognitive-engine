@@ -75,6 +75,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "education.assignments-submissions",
+      "name": "assignments-submissions"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "education.assignments-submit",
       "name": "assignments-submit"
     },
@@ -298,6 +311,19 @@
       ],
       "macro_id": "education.courses-search",
       "name": "courses-search"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-update",
+      "name": "courses-update"
     },
     {
       "_derived": true,
@@ -1604,5 +1630,5 @@
   ],
   "domain": "education",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 93
+  "macroCount": 95
 }

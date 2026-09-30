@@ -1,0 +1,354 @@
+{
+  "_meta": {
+    "purpose": "Machine-readable map from each authority concern to its existing owner in the Concord codebase.",
+    "frozen_at": "2026-08-31T09:30:00Z",
+    "produced_by": "F0.1",
+    "predecessor": "F0.0 archaeology report (/tmp/f0_authority_archaeology.md)",
+    "invariants": [
+      "Auth-gate is composition. This file maps concerns to existing owners; it does not create new authority.",
+      "Disagreement precedence is constitutional (IMMUTABLE > CONSTITUTIONAL > POLICY). See tier_field.",
+      "Every concern maps to exactly one primary_owner."
+    ]
+  },
+  "precedence": {
+    "_doc": "Discovered from existing governance/constitution.js and sovereignty_invariants.js. NOT invented.",
+    "tiers": {
+      "IMMUTABLE": {
+        "level": 3,
+        "label": "hard_veto",
+        "doc": "Cannot be violated regardless of any other code path (sovereignty-invariants.js header)."
+      },
+      "CONSTITUTIONAL": {
+        "level": 2,
+        "label": "rule_bound",
+        "doc": "Tier 2 rules. May be amended via constitutional process (governance/constitution.js)."
+      },
+      "POLICY": {
+        "level": 1,
+        "label": "operational",
+        "doc": "Tier 1 rules. Adjustable without constitutional amendment."
+      }
+    },
+    "conflict_outcomes": {
+      "HIGHER_TIER_WINS": "proposed_supersedes_via_hierarchy",
+      "LOWER_TIER_BLOCKED": "existing_prevails_via_hierarchy",
+      "COUNCIL_REQUIRED": "same_tier_requires_council_resolution"
+    },
+    "rule_comparator": "lib/governance/constitution.js::ruleTakesPrecedence(ruleA, ruleB)"
+  },
+  "concerns": {
+    "capability_existence": {
+      "primary_owner": "Capability Registry",
+      "module": "lib/runtime/capability-registry.js",
+      "tier": "POLICY",
+      "public_api": ["registerCapability", "getCapabilityDescriptor", "listCapabilities", "checkCapabilityHealth"],
+      "input_signature": "getCapabilityDescriptor(capability: string) → CapabilityDescriptor|null",
+      "output_shape": {
+        "capability": "string (domain.action)",
+        "owner": "string",
+        "risk": "read|compute|write|high",
+        "authorization": "string|null",
+        "dependencies": "string[]"
+      },
+      "fail_closed_on": ["unknown_capability", "unreachable_health"],
+      "_note": "Existing macros/lens-actions may be unregistered; AuthGate falls back to 'unregistered_but_dispatchable' with WARNING log, not denial."
+    },
+    "risk_classification": {
+      "primary_owner": "Risk Tiers",
+      "module": "lib/runtime/capability-registry.js",
+      "tier": "POLICY",
+      "tiers": ["read", "compute", "write", "high"],
+      "public_api": ["RISK_TIERS"],
+      "escalation_rule": "high → ESCALATE to Sovereign",
+      "_note": "Existing 4-tier system. No change."
+    },
+    "execution_wrapping": {
+      "primary_owner": "Execution Envelope",
+      "module": "lib/runtime/execution-envelope.js",
+      "tier": "POLICY",
+      "public_api": ["runCapability"],
+      "input_signature": "runCapability(request: {capability, ctx, actor, intent, input, constraints, provenance}) → Promise<ExecutionResult>",
+      "output_shape": {
+        "requestId": "string (uuid)",
+        "status": "ok|error",
+        "result": "any",
+        "reason": "string",
+        "durationMs": "number",
+        "provenance": "object|null"
+      },
+      "audit_emission": ["capability.invoked", "capability.failed", "capability.completed"],
+      "_note": "Reuse runCapability; do NOT duplicate."
+    },
+    "provenance_action_time": {
+      "primary_owner": "Provenance Guard",
+      "module": "lib/provenance-guard.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["classifySource", "tag", "scanForInjection", "quarantineExtract", "screenAction", "assemblePlannerContext"],
+      "input_signature": "screenAction({userIntent, domain, name, params, allowedDomains}) → {allowed, reason}",
+      "_note": "Use screenAction at action dispatch time."
+    },
+    "provenance_record_time": {
+      "primary_owner": "Provenance Ingest",
+      "module": "lib/provenance-ingest.js",
+      "tier": "POLICY",
+      "public_api": ["stampIngestedRecord"],
+      "_note": "Used when persisting records (DTU, audit)."
+    },
+    "provenance_audit": {
+      "primary_owner": "Audit/Provenance",
+      "module": "lib/audit/provenance.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["registerConcordClaims", "preLaunchVerification"],
+      "_note": "For pre-launch claim registration, not per-call."
+    },
+    "refusal": {
+      "primary_owner": "Refusal Field",
+      "module": "lib/refusal-field.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["isRefusedFor", "isRefusedForDb", "getFieldStrength", "applyTemporaryRefusal", "activeFields"],
+      "input_signature": "isRefusedForDb(db, worldId, kind, target={}) → boolean",
+      "_note": "State-level refusal. Mature/immature entities may be refused for certain kinds."
+    },
+    "refusal_archive": {
+      "primary_owner": "Refusal Archive",
+      "module": "lib/sovereign/refusal-archive.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["recordPlayerPowerForArchive", "draftSovereignManifestation"],
+      "_note": "Used after the fact for audit."
+    },
+    "sovereignty_hard_veto": {
+      "primary_owner": "Sovereignty Invariants",
+      "module": "grc/sovereignty-invariants.js",
+      "tier": "IMMUTABLE",
+      "public_api": ["checkSovereigntyInvariants", "assertSovereignty"],
+      "input_signature": "checkSovereigntyInvariants(operation: {type, ...}) → {pass, severity, repair}",
+      "invariants": [
+        "personal_dtus_never_leak",
+        "global_requires_council",
+        "entities_scoped_to_owner",
+        "global_assist_requires_consent"
+      ],
+      "decision_on_fail": "DENY (hard veto, no override)",
+      "_note": "Checked first. Cannot be violated. Calls assertSovereignty() throws on failure."
+    },
+    "constitutional_policy": {
+      "primary_owner": "Governance/Constitution",
+      "module": "lib/governance/constitution.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["ruleTakesPrecedence", "TIER_LEVELS", "CONFLICT_RESOLUTION", "AMENDMENT_REQUIREMENTS"],
+      "input_signature": "ruleTakesPrecedence(ruleA:{tier}, ruleB:{tier}) → boolean",
+      "_note": "Use when concerns disagree. See precedence.tiers."
+    },
+    "general_governance_proposals": {
+      "primary_owner": "Governance",
+      "module": "lib/governance.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["openProposal", "castVote", "tallyProposal", "resolveIfDue", "listOpenProposals"],
+      "_note": "Long-form proposal/vote cycle for non-emergency constitutional changes."
+    },
+    "code_modification": {
+      "primary_owner": "Code Push Governance",
+      "module": "lib/code-push-governance.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["createProposal", "listProposals", "getProposal", "approveProposal", "rejectProposal"],
+      "_note": "ALL code-modifying actions go through proposals."
+    },
+    "emergent_writes": {
+      "primary_owner": "Atlas Write Guard",
+      "module": "emergent/atlas-write-guard.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["applyWrite", "guardedDtuWrite", "runAutoPromoteGate", "getWriteGuardLog"],
+      "_note": "Wraps emergent/atlas writes."
+    },
+    "self_repair": {
+      "primary_owner": "Self-Repair Orchestrator",
+      "module": "lib/self-repair-orchestrator.js",
+      "tier": "CONSTITUTIONAL",
+      "public_api": ["orchestrateRepair", "buildLoopGenerateFix"],
+      "input_signature": "orchestrateRepair({db, fault, generateFix, verifyFix, canaryEval, slo, apply, rollback, escalate}) → {decision, ...}",
+      "decision_outcomes": ["apply", "rollback", "escalate"],
+      "_note": "Use for any 'repair X' action. Self-repair proposals cannot be auto-applied."
+    },
+    "content_restrictions": {
+      "primary_owner": "Content Safety",
+      "module": "lib/content-safety/index.js",
+      "tier": "POLICY",
+      "public_api": ["screenForPublish", "screenLocalSync"],
+      "_note": "Used at publish/sync boundaries."
+    },
+    "health": {
+      "primary_owner": "Deep Health",
+      "module": "emergent/deep-health.js",
+      "tier": "POLICY",
+      "public_api": ["runDeepHealthCheck", "getHealthHistory", "getDegradationHistory", "getDeepHealthMetrics"],
+      "_note": "Sentinel/A phase reads; not on dispatch path."
+    },
+    "drift": {
+      "primary_owner": "Drift Monitor",
+      "module": "emergent/drift-monitor.js",
+      "tier": "POLICY",
+      "public_api": ["runDriftScan", "getDriftAlerts", "getSnapshots"],
+      "_note": "Sentinel/A phase reads; not on dispatch path."
+    },
+    "architectural_reflex": {
+      "primary_owner": "Reflex Cortex",
+      "module": "emergent/reflex-cortex.js",
+      "tier": "POLICY",
+      "public_api": ["initReflexCortex", "runArchitecturalDrift", "runScalingPressure", "runDependencyEntropy", "reflexStatus"],
+      "_note": "Fast-path system reactions. Bypasses auth-gate intentionally for reflexes."
+    },
+    "repair_memory": {
+      "primary_owner": "Repair Cortex",
+      "module": "emergent/repair-cortex.js",
+      "tier": "POLICY",
+      "public_api": ["observe", "addToRepairMemory", "recordRepairSuccess", "recordRepairFailure", "lookupRepairMemory"],
+      "_note": "Used for memory-of-repairs; not on dispatch path."
+    },
+    "event_to_memory": {
+      "primary_owner": "Event-to-DTU Bridge",
+      "module": "emergent/event-to-dtu-bridge.js",
+      "tier": "POLICY",
+      "public_api": ["classify", "eventToDTU", "bridgeEventToDTU", "deduplicationGate"],
+      "_note": "Wired by AuthGate to record outcomes as DTUs."
+    },
+    "http_tool_authorization": {
+      "primary_owner": "routes/mcp.js",
+      "module": "routes/mcp.js",
+      "tier": "POLICY",
+      "public_api": ["authorizeToolCall"],
+      "input_signature": "authorizeToolCall(req, toolName) → {allowed, status?, reason?}",
+      "policy": "Coarse role gate: admin-only namespaces/verbs; everything else requires authenticated user.",
+      "_note": "Runs BEFORE AuthGate. HTTP-level gate."
+    }
+  },
+  "evaluation_order": [
+    {
+      "step": 1,
+      "concern": "http_tool_authorization",
+      "rationale": "Cheapest check; rejects unauthenticated/anon traffic before any other work."
+    },
+    {
+      "step": 2,
+      "concern": "sovereignty_hard_veto",
+      "rationale": "Cannot be violated; reject early if hard invariant fails."
+    },
+    {
+      "step": 3,
+      "concern": "capability_existence",
+      "rationale": "Confirm capability is registered AND reachable before deeper checks."
+    },
+    {
+      "step": 4,
+      "concern": "risk_classification",
+      "rationale": "If high-risk, route to Sovereign BEFORE doing anything else."
+    },
+    {
+      "step": 5,
+      "concern": "refusal",
+      "rationale": "If refused, deny; never execute."
+    },
+    {
+      "step": 6,
+      "concern": "provenance_action_time",
+      "rationale": "Validate the action's provenance at dispatch time."
+    },
+    {
+      "step": 7,
+      "concern": "expiration_ttl",
+      "rationale": "NEW gate: reject expired envelopes."
+    },
+    {
+      "step": 8,
+      "concern": "preconditions",
+      "rationale": "NEW gate: confirm required state before executing."
+    },
+    {
+      "step": 9,
+      "concern": "idempotency",
+      "rationale": "NEW gate: prevent non-idempotent replay."
+    },
+    {
+      "step": 10,
+      "concern": "execution_wrapping",
+      "rationale": "Run capability through Execution Envelope."
+    },
+    {
+      "step": 11,
+      "concern": "verification",
+      "rationale": "NEW gate: post-condition probe before declaring success."
+    },
+    {
+      "step": 12,
+      "concern": "event_to_memory",
+      "rationale": "Record outcome as DTU for institutional memory."
+    }
+  ],
+  "decision_outcomes": {
+    "_doc": "The 5 outcomes that AuthGate.evaluate() may return. ENUM, frozen.",
+    "ALLOW": "Proceed. Handler may execute.",
+    "DENY": "Reject. No execution. Reason_code required.",
+    "DEFER": "Conditions not favorable. Caller may retry when conditions change.",
+    "OBSERVE": "Watch but don't act. Recorded for Sentinel/future analysis.",
+    "ESCALATE": "Route to Sovereign/Governance. AuthGate does NOT decide."
+  },
+  "envelope_shape": {
+    "_doc": "The 14-field envelope AuthGate constructs for each tool call.",
+    "WHO": "entity_id | actor_id | user_id",
+    "WHAT": "tool_name (snake_case) | capability (domain.action)",
+    "WHY": "initiative_id | opportunity_id | proactive_id | incident_id | repair_id | scheduled_job_id | null (for ad-hoc)",
+    "SCOPE": "resource_paths: string[]",
+    "RESOURCE": {
+      "compute_budget": "string|null",
+      "financial_budget": "string|null",
+      "network_budget": "string|null",
+      "storage_budget": "string|null",
+      "time_budget": "string|null",
+      "tool_budget": "string|null"
+    },
+    "RISK": "read|compute|write|high",
+    "AUTHORITY": {
+      "observe": "boolean",
+      "read": "boolean",
+      "write": "boolean",
+      "execute": "boolean",
+      "trade": "boolean",
+      "deploy": "boolean",
+      "code": "boolean",
+      "destructive": "boolean"
+    },
+    "EXPIRATION": "ISO timestamp | null",
+    "PRECONDITIONS": "state checks: {entity_state?, world_state?, ...}",
+    "VERIFICATION": "post-condition probe spec: {kind: 'dtu_exists'|'state_match'|'result_shape', params: object}",
+    "ROLLBACK": "undo spec: {kind: 'compensating_action'|'reverse_id'|'manual', spec: object}",
+    "PROVENANCE": {
+      "origin": "user|initiative|opportunity|proactive|incident|repair|scheduled_job|external_agent",
+      "parent_trace_id": "string|null",
+      "created_at": "ISO timestamp",
+      "actor_chain": "string[]"
+    },
+    "TRACE_ID": "uuid",
+    "DECISION": {
+      "_doc": "Populated by AuthGate.evaluate(); null until decided.",
+      "decision_id": "uuid",
+      "decision_type": "ALLOW|DENY|DEFER|OBSERVE|ESCALATE",
+      "policy_result": "string|null",
+      "confidence": "number (0-1)",
+      "reason_code": "string",
+      "decided_at": "ISO timestamp",
+      "decided_by": "system|sovereign|user"
+    }
+  },
+  "chokepoint": {
+    "module": "server/lib/auth-gate/index.js",
+    "dispatch_function": "dispatchMCP(tool, args, ctx)",
+    "integration_point": "server/server.js:36742 — replace `await callMCPTool(db, tool, args || {}, globalThis.STATE || null);` with `await dispatchMCP(tool, args || {}, {actor: req.user, req});`",
+    "wraps": [
+      "HTTP gate (routes/mcp.js::authorizeToolCall)",
+      "AuthGate.evaluate(envelope)",
+      "Execution Envelope (runCapability)",
+      "Verification probe (post-condition)",
+      "Audit emission (event-bus publish)"
+    ],
+    "note": "AuthGate does NOT replace callMCPTool. It calls callMCPTool AFTER authorization."
+  }
+}

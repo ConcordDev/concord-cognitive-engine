@@ -8,6 +8,7 @@
 // Bounded at MAX_PER_PASS to keep tick cost predictable.
 
 import { findDueMarathons, tickMarathon, startMarathon } from "../lib/agent-marathon.js";
+import { kickstartLinkedMarathon } from "../lib/mission-marathon-bridge.js";
 import { loadOrCreate } from "../lib/affect-bridge.js";
 import { formGoalForAgent } from "../lib/agent-goals.js";
 import { LruMap } from "../lib/lru-map.js";
@@ -96,7 +97,22 @@ export async function runAgentMarathonCycle({ db } = {}) {
   let advanced = 0;
   let errors = 0;
   let onInstinct = 0;
+  let kickedPending = 0;
   try {
+    let pending = [];
+    try {
+      pending = db.prepare(`
+        SELECT id FROM agent_marathon_sessions
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT ?
+      `).all(MAX_PER_PASS);
+    } catch { /* optional */ }
+    for (const { id } of pending) {
+      const kick = kickstartLinkedMarathon(db, id);
+      if (kick.ok) kickedPending++;
+    }
+
     const due = findDueMarathons(db, { limit: MAX_PER_PASS });
     for (const { id } of due) {
       try {
@@ -122,7 +138,7 @@ export async function runAgentMarathonCycle({ db } = {}) {
     }
     // B4 — agents that finished their goal form a new one and keep living.
     const reGoaled = reGoalIdleAgents(db);
-    return { ok: true, processed: due.length, advanced, onInstinct, errors, reGoaled };
+    return { ok: true, processed: due.length, advanced, onInstinct, errors, reGoaled, kickedPending };
   } catch (err) {
     return { ok: false, reason: "cycle_threw", error: String(err?.message || err) };
   }

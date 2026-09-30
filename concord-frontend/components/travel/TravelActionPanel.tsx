@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -188,7 +189,7 @@ export function TravelActionPanel() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await lensRun({
-        domain: 'dtu', name: 'create', input: {
+        domain: 'dtu', name: 'create', input: withContentLicense({
           title: `Trip — ${destination.trim() || 'untitled'}`,
           tags: ['travel', 'trip', travelStyle, destination.trim().toLowerCase()].filter(Boolean),
           source: 'travel:trip:mint',
@@ -196,7 +197,7 @@ export function TravelActionPanel() {
             visibility: 'private', consent: { allowCitations: false },
             trip: { destination, days, style: travelStyle, budget: budgetResult, packing: packingResult, jetlag: jetlagResult, visa: visaResult },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('travel.mintedDtuId', id, { label: `trip ${id.slice(0, 8)}` }); ok(`Trip DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
@@ -227,12 +228,12 @@ export function TravelActionPanel() {
     try {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
-          domain: 'dtu', name: 'create', input: {
+          domain: 'dtu', name: 'create', input: withContentLicense({
             title: `Travel guide — ${destination.trim() || 'destination'}`,
             tags: ['travel', 'guide', 'public', travelStyle],
             source: 'travel:guide:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, guide: { destination, style: travelStyle, packingTips: packingResult?.essentials, budget: budgetResult } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');

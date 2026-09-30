@@ -43,13 +43,13 @@ function makeMockMarker() {
 }
 
 vi.mock('maplibre-gl', () => ({
-  Map: vi.fn().mockImplementation(() => makeMockMap()),
-  Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-  Popup: vi.fn().mockImplementation(() => ({
+  Map: vi.fn().mockImplementation(function () { return makeMockMap(); }),
+  Marker: vi.fn().mockImplementation(function () { return makeMockMarker(); }),
+  Popup: vi.fn().mockImplementation(function () { return {
     setHTML: vi.fn().mockReturnThis(),
     setText: vi.fn().mockReturnThis(),
-  })),
-  NavigationControl: vi.fn().mockImplementation(() => ({})),
+  }; }),
+  NavigationControl: vi.fn().mockImplementation(function () { return {}; }),
 }));
 
 import * as maplibregl from 'maplibre-gl';
@@ -125,7 +125,7 @@ describe('PinDropMap', () => {
   });
 
   it('defers existing-marker sync and pin placement to the load event when the style is not yet loaded', () => {
-    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
       const map = makeMockMap();
       map.isStyleLoaded.mockReturnValue(false);
       return map;

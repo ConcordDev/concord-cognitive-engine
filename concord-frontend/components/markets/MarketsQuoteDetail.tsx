@@ -317,10 +317,10 @@ function QuoteHero({ symbol, quote, history }: { symbol: string; quote: Quote | 
             <div className={`flex items-center gap-1.5 ${trendColor}`}>
               <TrendIcon className="h-4 w-4" />
               <span className="font-mono tabular-nums text-sm font-semibold">
-                {delta != null ? (delta >= 0 ? '+' : '') + delta.toFixed(2) : '—'}
+                {delta != null ? (Number(delta) >= 0 ? '+' : '') + Number(delta).toFixed(2) : '—'}
               </span>
               <span className="font-mono tabular-nums text-sm">
-                ({deltaPct != null ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(2) : '—'}%)
+                ({deltaPct != null ? (Number(deltaPct) >= 0 ? '+' : '') + Number(deltaPct).toFixed(2) : '—'}%)
               </span>
             </div>
             {history?.currency && history.currency !== 'USD' && (
@@ -342,10 +342,10 @@ function QuoteHero({ symbol, quote, history }: { symbol: string; quote: Quote | 
           content={[
             `Symbol: ${symbol}${quote?.name ? `  (${quote.name})` : ''}`,
             `Price: ${price ?? '—'}${history?.currency ? ` ${history.currency}` : ''}`,
-            delta != null ? `Day change: ${delta >= 0 ? '+' : ''}${delta.toFixed(2)} (${deltaPct?.toFixed(2)}%)` : '',
+            delta != null ? `Day change: ${Number(delta) >= 0 ? '+' : ''}${Number(delta).toFixed(2)} (${deltaPct != null ? Number(deltaPct).toFixed(2) : '—'}%)` : '',
             quote?.marketCap ? `Market cap: ${formatCurrency(quote.marketCap)}` : '',
-            quote?.pe ? `P/E (trailing): ${quote.pe.toFixed(2)}` : '',
-            quote?.eps ? `EPS (TTM): ${quote.eps.toFixed(2)}` : '',
+            quote?.pe != null ? `P/E (trailing): ${Number(quote.pe).toFixed(2)}` : '',
+            quote?.eps != null ? `EPS (TTM): ${Number(quote.eps).toFixed(2)}` : '',
             quote?.volume ? `Volume: ${quote.volume.toLocaleString()}` : '',
           ].filter(Boolean).join('\n')}
           extraTags={['markets', 'quote', symbol.toLowerCase()]}
@@ -362,9 +362,9 @@ function QuoteFundamentals({ quote }: { quote: Quote }) {
   const cells: Array<{ label: string; value: string | null; color?: string }> = [
     { label: 'Market Cap', value: quote.marketCap != null ? formatCurrency(quote.marketCap) : null },
     { label: 'Volume', value: quote.volume != null ? formatCompact(quote.volume) : null },
-    { label: 'P/E (TTM)', value: quote.pe != null ? quote.pe.toFixed(2) : null },
-    { label: 'EPS (TTM)', value: quote.eps != null ? quote.eps.toFixed(2) : null },
-    { label: '1Y Change', value: quote.pctChange1y != null ? (quote.pctChange1y >= 0 ? '+' : '') + quote.pctChange1y.toFixed(2) + '%' : null, color: (quote.pctChange1y ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400' },
+    { label: 'P/E (TTM)', value: quote.pe != null ? Number(quote.pe).toFixed(2) : null },
+    { label: 'EPS (TTM)', value: quote.eps != null ? Number(quote.eps).toFixed(2) : null },
+    { label: '1Y Change', value: quote.pctChange1y != null ? (Number(quote.pctChange1y) >= 0 ? '+' : '') + Number(quote.pctChange1y).toFixed(2) + '%' : null, color: (Number(quote.pctChange1y) || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400' },
   ];
 
   return (

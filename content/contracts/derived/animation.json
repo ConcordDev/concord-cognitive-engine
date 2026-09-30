@@ -88,6 +88,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "animation.anim-redo",
+      "name": "anim-redo"
+    },
+    {
+      "_derived": true,
+      "domain": "animation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "animation.anim-rename",
       "name": "anim-rename"
     },
@@ -142,6 +155,19 @@
       ],
       "macro_id": "animation.anim-stroke-undo",
       "name": "anim-stroke-undo"
+    },
+    {
+      "_derived": true,
+      "domain": "animation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "animation.anim-undo",
+      "name": "anim-undo"
     },
     {
       "_derived": true,
@@ -480,6 +506,19 @@
       ],
       "macro_id": "animation.frame-layer-delete",
       "name": "frame-layer-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "animation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "animation.frame-layer-import-image",
+      "name": "frame-layer-import-image"
     },
     {
       "_derived": true,
@@ -1017,5 +1056,5 @@
   ],
   "domain": "animation",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 78
+  "macroCount": 81
 }

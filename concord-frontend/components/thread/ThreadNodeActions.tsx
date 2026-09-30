@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface ThreadNodeLike {
   id: string;
@@ -72,7 +73,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Pin — ${threadName} — node ${node.id.slice(0, 8)}`,
           tags: ['thread', 'pin', `author:${node.author}`, `thread:${threadId}`],
           source: 'thread:pin',
@@ -89,7 +90,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
               content: node.content,
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -104,7 +105,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Branch from ${threadName} — node ${node.id.slice(0, 8)}`,
           tags: ['thread', 'branch', `thread:${threadId}`],
           source: 'thread:branch',
@@ -119,7 +120,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
               parentAuthor: node.author,
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -157,7 +158,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
         .join('\n\n');
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Thread: ${threadName}`,
           tags: ['thread', 'conversation', 'public', `thread:${threadId}`],
           source: 'thread:publish',
@@ -171,7 +172,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
               transcript: fullText.slice(0, 50000),
             },
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

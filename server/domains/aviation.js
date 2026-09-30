@@ -1,7 +1,7 @@
 export default function registerAviationActions(registerLensAction) {
   // ── Weight & Balance shape normalizer ────────────────────────────
   //
-  // The W&B editor (app/lenses/aviation/page.tsx#renderWBEditor) persists a
+  // The W&B editor (components/aviation/aviation-editors.tsx WeightBalanceEditor) persists a
   // FLAT artifact.data shape — emptyWeight/emptyArm + per-station
   // <name>Weight/<name>Arm pairs (fuel/pilot/copilot/paxRow1/paxRow2/cargo/
   // baggage) + maxGross/fwdCGLimit/aftCGLimit + a STRING `aircraft` (type

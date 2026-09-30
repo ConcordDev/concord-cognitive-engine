@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Production Ship-Readiness
 
 Two questions: does everything *ship* (reach the deployed site), and is prod

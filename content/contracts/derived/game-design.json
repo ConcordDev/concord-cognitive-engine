@@ -140,6 +140,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "game-design.asset-fuse",
+      "name": "asset-fuse"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "game-design.asset-import",
       "name": "asset-import"
     },
@@ -337,6 +350,32 @@
       ],
       "macro_id": "game-design.bookmark",
       "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.building-list-mine",
+      "name": "building-list-mine"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.building-publish",
+      "name": "building-publish"
     },
     {
       "_derived": true,
@@ -1552,6 +1591,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "game-design.playtest-enter",
+      "name": "playtest-enter"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-exit",
+      "name": "playtest-exit"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "game-design.playtest-list",
       "name": "playtest-list"
     },
@@ -1580,6 +1645,19 @@
       ],
       "macro_id": "game-design.playtest-report",
       "name": "playtest-report"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-status",
+      "name": "playtest-status"
     },
     {
       "_derived": true,
@@ -1718,6 +1796,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "game-design.scene-load",
+      "name": "scene-load"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.scene-save",
+      "name": "scene-save"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "game-design.share",
       "name": "share"
     },
@@ -1828,5 +1932,5 @@
   ],
   "domain": "game-design",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 120
+  "macroCount": 128
 }

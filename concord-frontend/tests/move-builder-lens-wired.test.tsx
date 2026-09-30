@@ -6,6 +6,13 @@
 // list). Also asserts the real macro names the page calls — pinning that the
 // previously-dangling `lens.move-builder.*` phantom refs are gone and the page
 // reaches the registered `move-builder` domain.
+//
+// MS-P2 de-stacking (2026-09): the page is now a thin "Compose"/"Your moves"
+// tab shell (app/lenses/move-builder/page.tsx) over two panels that each own
+// their own fetch + loading/error state — ComposePanel (catalog/compose/mint)
+// defaults active, MintedMovesPanel (list/get) mounts only once the "Your
+// moves" tab is selected, and only one panel is mounted at a time. Tests
+// below navigate tabs explicitly to reach each panel's own states.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within, cleanup } from '@testing-library/react';
@@ -17,6 +24,10 @@ vi.mock('@/lib/api/client', () => ({ lensRun: (...args: unknown[]) => lensRun(..
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 import MoveBuilderLensPage from '@/app/lenses/move-builder/page';
 
@@ -49,6 +60,11 @@ function router(moves: unknown[]) {
   };
 }
 
+// Switches to the "Your moves" tab, mounting MintedMovesPanel (list/get).
+function goToLibrary() {
+  fireEvent.click(screen.getByRole('button', { name: /your moves/i }));
+}
+
 describe('move-builder lens — wiring + four UX states', () => {
   // Pending catalog/list promises that the loading test holds open; resolved in
   // afterEach so a never-settling render can't bleed into the next test.
@@ -72,13 +88,16 @@ describe('move-builder lens — wiring + four UX states', () => {
   });
 
   it('shows an error state (role=alert) with a working Retry on load failure', async () => {
-    let attempt = 0;
+    // Compose (the default tab) fetches only `catalog` on mount — `list`
+    // isn't fetched until the "Your moves" tab is selected.
+    let catalogAttempt = 0;
     lensRun.mockImplementation((_d: string, action: string) => {
       if (action === 'compose') return Promise.resolve({ data: { result: COMPOSED } });
-      attempt += 1;
-      if (attempt <= 2) return Promise.resolve({ data: { ok: false, result: null, error: 'backend down' } });
-      // After retry, succeed.
-      if (action === 'catalog') return Promise.resolve({ data: { ok: true, result: CATALOG } });
+      if (action === 'catalog') {
+        catalogAttempt += 1;
+        if (catalogAttempt === 1) return Promise.resolve({ data: { ok: false, result: null, error: 'backend down' } });
+        return Promise.resolve({ data: { ok: true, result: CATALOG } });
+      }
       return Promise.resolve({ data: { ok: true, result: { ok: true, moves: [] } } });
     });
     render(<MoveBuilderLensPage />);
@@ -95,10 +114,12 @@ describe('move-builder lens — wiring + four UX states', () => {
   it('shows the empty state when no moves are minted', async () => {
     lensRun.mockImplementation(router([]));
     render(<MoveBuilderLensPage />);
-    expect(await screen.findByText(/no moves yet/i)).toBeInTheDocument();
-    // The compose surface is present + a11y-labelled.
-    expect(screen.getByLabelText(/element/i)).toBeInTheDocument();
+    // The compose surface (default tab) is present + a11y-labelled.
+    expect(await screen.findByLabelText(/element/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/skill kind/i)).toBeInTheDocument();
+
+    goToLibrary();
+    expect(await screen.findByText(/no moves yet/i)).toBeInTheDocument();
   });
 
   it('renders the populated state with a minted move, and calls the REAL macros', async () => {
@@ -107,9 +128,11 @@ describe('move-builder lens — wiring + four UX states', () => {
     ]));
     render(<MoveBuilderLensPage />);
 
-    expect(await screen.findByText('Cinder Lance')).toBeInTheDocument();
-    // The live preview is a pure function of the compose macro.
+    // The live preview (compose tab, default) is a pure function of the compose macro.
     await waitFor(() => expect(screen.getByText(/projectile/)).toBeInTheDocument());
+
+    goToLibrary();
+    expect(await screen.findByText('Cinder Lance')).toBeInTheDocument();
 
     // It reached the REAL `move-builder` domain (not the phantom `lens.move-builder.*`).
     const domains = lensRun.mock.calls.map((c) => c[0]);
@@ -120,8 +143,24 @@ describe('move-builder lens — wiring + four UX states', () => {
     expect(actions).toContain('compose');
   });
 
-  it('mint is disabled until a name is entered, then fires move-builder.mint', async () => {
-    lensRun.mockImplementation(router([]));
+  it('mint is disabled until a name is entered, then fires move-builder.mint, and navigates to the newly-minted move', async () => {
+    // list is empty before the mint, and returns the new move once minted —
+    // onMinted() reloads the library panel and switches to its tab.
+    let minted = false;
+    lensRun.mockImplementation((domain: string, action: string) => {
+      if (domain !== 'move-builder') throw new Error(`unexpected domain ${domain}`);
+      if (action === 'catalog') return Promise.resolve({ data: { ok: true, result: CATALOG } });
+      if (action === 'compose') return Promise.resolve({ data: { ok: true, result: COMPOSED } });
+      if (action === 'list') {
+        const moves = minted ? [{ id: 'move:u1:abcd1234', name: 'Cinder Lance', element: 'fire', skillKind: 'spell', tier: 1 }] : [];
+        return Promise.resolve({ data: { ok: true, result: { ok: true, moves } } });
+      }
+      if (action === 'mint') {
+        minted = true;
+        return Promise.resolve({ data: { ok: true, result: { ok: true, moveId: 'move:u1:abcd1234', name: 'Cinder Lance' } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
     render(<MoveBuilderLensPage />);
 
     const mintBtn = await screen.findByRole('button', { name: /mint move/i });
@@ -134,7 +173,8 @@ describe('move-builder lens — wiring + four UX states', () => {
     await waitFor(() =>
       expect(lensRun.mock.calls.some((c) => c[0] === 'move-builder' && c[1] === 'mint')).toBe(true),
     );
-    expect(await screen.findByText(/Minted "Cinder Lance"/)).toBeInTheDocument();
+    // onMinted() switches to the "Your moves" tab and reloads it with the real mint result.
+    expect(await screen.findByText('Cinder Lance')).toBeInTheDocument();
   });
 
   it('expanding a minted move calls the REAL move-builder.get and renders the stamped motion', async () => {
@@ -164,6 +204,7 @@ describe('move-builder lens — wiring + four UX states', () => {
       return Promise.resolve({ data: { ok: true, result: { ok: true } } });
     });
     render(<MoveBuilderLensPage />);
+    goToLibrary();
 
     const moveToggle = await screen.findByRole('button', { name: /Cinder Lance/ });
     fireEvent.click(moveToggle);
@@ -192,6 +233,7 @@ describe('move-builder lens — wiring + four UX states', () => {
       return Promise.resolve({ data: { ok: true, result: { ok: true } } });
     });
     render(<MoveBuilderLensPage />);
+    goToLibrary();
 
     fireEvent.click(await screen.findByRole('button', { name: /Cinder Lance/ }));
     const detail = await screen.findByTestId('move-detail');

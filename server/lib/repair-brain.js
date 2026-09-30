@@ -1,6 +1,6 @@
 /**
  * Repair brain (qwen2.5:0.5b) — fast, cheap pre-flight validation across the
- * platform. Runs against the dedicated 11437 instance so it never contends
+ * platform. Runs against the configured BRAIN_REPAIR_* endpoint (4-lane: aliased to subconscious) so it never contends
  * with chat/utility traffic.
  *
  * Three primary hooks:
@@ -35,7 +35,8 @@ async function callRepairBrain(prompt, options = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: cfg.model,
-        prompt,
+        // 4-lane: repair jobs run on subconscious-aliased model with REPAIR_MODE prefix
+        prompt: `REPAIR_MODE\n${prompt}`,
         stream: false,
         options: {
           temperature: options.temperature ?? 0.1,

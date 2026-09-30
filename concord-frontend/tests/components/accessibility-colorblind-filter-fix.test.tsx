@@ -59,13 +59,16 @@ describe('AccessibilityDOMApplier — real colorblind correction (Phase 6c)', ()
   });
 
   it('applies a real url() filter referencing the matching SVG def id for each dichromacy mode', () => {
+    // The source sets `url('#cb-protanopia')` (single-quoted), but the CSSOM
+    // getter normalizes url() tokens to double quotes on read-back (jsdom
+    // and real browsers both do this) — match on the id, not quote style.
     render(<AccessibilityDOMApplier />);
     setA11y({ colorblindMode: 'protanopia' });
-    expect(document.documentElement.style.filter).toContain("url('#cb-protanopia')");
+    expect(document.documentElement.style.filter).toMatch(/url\(["']#cb-protanopia["']\)/);
     setA11y({ colorblindMode: 'deuteranopia' });
-    expect(document.documentElement.style.filter).toContain("url('#cb-deuteranopia')");
+    expect(document.documentElement.style.filter).toMatch(/url\(["']#cb-deuteranopia["']\)/);
     setA11y({ colorblindMode: 'tritanopia' });
-    expect(document.documentElement.style.filter).toContain("url('#cb-tritanopia')");
+    expect(document.documentElement.style.filter).toMatch(/url\(["']#cb-tritanopia["']\)/);
   });
 
   it('achromatopsia composes to a plain grayscale(1) — previously had zero handling anywhere', () => {

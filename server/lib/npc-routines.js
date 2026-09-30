@@ -321,7 +321,9 @@ function preoccupationOverrides(preoccupation) {
     }
   }
   if (kind === "personal_loss") {
-    // Add temple visit at dusk regardless of archetype.
+    // Grief: temple at dusk, skip market, rest instead of socialize.
+    overrides.push({ block_idx: 4, activity: "commune", location_kind: "temple" });
+    overrides.push({ block_idx: 5, activity: "rest", location_kind: "home" });
     overrides.push({ block_idx: 6, activity: "commune", location_kind: "temple" });
   }
   return overrides;

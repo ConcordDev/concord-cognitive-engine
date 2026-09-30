@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface SourceLike {
   idx: number; id: string; title: string;
@@ -69,7 +70,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Q+A — ${query.slice(0, 60)}${query.length > 60 ? '…' : ''}`,
           tags: ['expert-mode', 'qa', 'cited'],
           source: 'expert-mode:qa:save',
@@ -84,7 +85,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
               capturedAt: new Date().toISOString(),
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -140,13 +141,13 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Cited answer — ${query.slice(0, 60)}${query.length > 60 ? '…' : ''}`,
             tags: ['expert-mode', 'qa', 'cited', 'public'],
             source: 'expert-mode:qa:publish',
             lineage: sources.map(s => s.id),
             meta: { visibility: 'public', consent: { allowCitations: true }, qa: { query, answer, sourceCount: sources.length, provider, model } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

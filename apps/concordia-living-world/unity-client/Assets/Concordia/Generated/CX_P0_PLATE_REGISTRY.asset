@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!49 &4900000
+TextAsset:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: CX_P0_PLATE_REGISTRY
+  m_Script: "{\n  \"wave\": \"P0-cast\",\n  \"sourceRoot\": \"Assets/Concordia/Generated/P0\",\n 
+    \"converted\": 27,\n  \"skippedVerify\": 0,\n  \"errors\": [],\n  \"plates\":
+    [\n    {\"plate\":\"CX_Bandit_Sundering_captain\",\"source\":\"Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_captain.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_captain.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Bandit_Sundering_dusk\",\"source\":\"Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_dusk.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_dusk.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Bandit_Sundering_hitch\",\"source\":\"Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_hitch.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_hitch.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Bandit_Sundering_marrow\",\"source\":\"Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_marrow.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_marrow.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Bandit_Sundering_nettle\",\"source\":\"Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_nettle.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_nettle.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Hero_Court_front\",\"source\":\"Assets/Concordia/Generated/P0/Hero/CX_Hero_Court_front.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Hero/CX_Hero_Court_front.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Hero_Steel_front\",\"source\":\"Assets/Concordia/Generated/P0/Hero/CX_Hero_Steel_front.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Hero/CX_Hero_Steel_front.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Hero_Steel_grip\",\"source\":\"Assets/Concordia/Generated/P0/Hero/CX_Hero_Steel_grip.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Hero/CX_Hero_Steel_grip.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_HUD_Court_dialogue\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_dialogue.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Court/CX_HUD_Court_dialogue.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Court_health\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_health.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Court/CX_HUD_Court_health.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Court_inventory\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_inventory.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Court/CX_HUD_Court_inventory.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Court_questtoast\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_questtoast.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Court/CX_HUD_Court_questtoast.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Steel_dialogue\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_dialogue.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Steel/CX_HUD_Steel_dialogue.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Steel_health\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_health.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Steel/CX_HUD_Steel_health.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Steel_inventory\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_inventory.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Steel/CX_HUD_Steel_inventory.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_HUD_Steel_questtoast\",\"source\":\"Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_questtoast.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/HUD/Steel/CX_HUD_Steel_questtoast.mat\",\"binding\":\"court-steel-hud-material\"},\n   
+    {\"plate\":\"CX_Mount_Horse_rideable\",\"source\":\"Assets/Concordia/Generated/P0/Mount/CX_Mount_Horse_rideable.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Mount/CX_Mount_Horse_rideable.mat\",\"binding\":\"authored-mount-material\"},\n   
+    {\"plate\":\"CX_NPC_Court_guard\",\"source\":\"Assets/Concordia/Generated/P0/NPCs/CX_NPC_Court_guard.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/NPCs/CX_NPC_Court_guard.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_NPC_Road_merchant\",\"source\":\"Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_merchant.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/NPCs/CX_NPC_Road_merchant.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_NPC_Road_settler\",\"source\":\"Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_settler.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/NPCs/CX_NPC_Road_settler.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_NPC_Road_traveler\",\"source\":\"Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_traveler.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/NPCs/CX_NPC_Road_traveler.mat\",\"binding\":\"authored-cx-humanoid-material\"},\n   
+    {\"plate\":\"CX_Prop_Spoils_pouch\",\"source\":\"Assets/Concordia/Generated/P0/Spoils/CX_Prop_Spoils_pouch.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Spoils/CX_Prop_Spoils_pouch.mat\",\"binding\":\"spoils-material\"},\n   
+    {\"plate\":\"CX_Weapon_Bow\",\"source\":\"Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Bow.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Weapons/CX_Weapon_Bow.mat\",\"binding\":\"authored-weapon-material\"},\n   
+    {\"plate\":\"CX_Weapon_Hatchet\",\"source\":\"Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Hatchet.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Weapons/CX_Weapon_Hatchet.mat\",\"binding\":\"authored-weapon-material\"},\n   
+    {\"plate\":\"CX_Weapon_PulseBaton\",\"source\":\"Assets/Concordia/Generated/P0/Weapons/CX_Weapon_PulseBaton.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Weapons/CX_Weapon_PulseBaton.mat\",\"binding\":\"authored-weapon-material\"},\n   
+    {\"plate\":\"CX_Weapon_Steel_longsword\",\"source\":\"Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Steel_longsword.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Weapons/CX_Weapon_Steel_longsword.mat\",\"binding\":\"authored-weapon-material\"},\n   
+    {\"plate\":\"CX_Weapon_Switchblade\",\"source\":\"Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Switchblade.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P0/Weapons/CX_Weapon_Switchblade.mat\",\"binding\":\"authored-weapon-material\"}\n 
+    ]\n}"

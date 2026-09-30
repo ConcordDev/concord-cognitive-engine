@@ -65,6 +65,7 @@ export function ArxivSearch() {
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <SaveAsDtuButton
+                  defaultContentClass="knowledge"
                   compact
                   apiSource="arxiv"
                   apiUrl={p.url}

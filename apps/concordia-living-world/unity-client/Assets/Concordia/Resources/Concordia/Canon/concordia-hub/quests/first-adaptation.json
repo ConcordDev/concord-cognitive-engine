@@ -1,0 +1,141 @@
+[
+  {
+    "id": "first_adaptation_01_print",
+    "title": "First Adaptation — Print Without a Glyph",
+    "description": "Ranger Kiren Owl has a plaster cast that matches nothing in the Concordant bestiary. The Curators want it filed as 'pending classification.' Kiren wants someone who will look at the yard before they look at the slate. Meet him at the eastern blind with clean boots and no embassy pin.",
+    "giver_npc_id": "ranger_kiren_owl",
+    "difficulty": "beginner",
+    "domain": "hub_ecology",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_fa_meet_kiren",
+        "type": "talk_to",
+        "target": "ranger_kiren_owl",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Meet Ranger Kiren Owl at the eastern blind."
+      },
+      {
+        "id": "obj_fa_inspect_cast",
+        "type": "interact",
+        "target": "unclassified_print_cast",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Inspect the plaster cast. The pad is water-slick; the claw-scorch is not."
+      }
+    ],
+    "rewards": { "xp": 70, "skill_xp": { "lore": 20 } },
+    "breadcrumbs": [
+      {
+        "id": "bc_fa_cast",
+        "content": "Kiren does not lower her voice for Curators. 'Water-bred parent. Heat birth. The slate has a word for neither together. Orin has a foal that steamed this morning. Go see the living argument before they name it wrong.'",
+        "unlocks_after": "obj_fa_inspect_cast",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_adaptation_02_yard"],
+    "prerequisites": [],
+    "tags": ["hub", "ecology", "first_adaptation", "creatures", "kiren"]
+  },
+  {
+    "id": "first_adaptation_02_yard",
+    "title": "First Adaptation — The Yard That Steams",
+    "description": "Stablemaster Orin Rede will not sell you a story. He will show you a stall where the air is wet and hot at once, and a young drake-blood that should have been one element and became a third. Watch the birth-environment ledger. Do not correct him with catalogue language.",
+    "giver_npc_id": "stablemaster_orin_rede",
+    "difficulty": "beginner",
+    "domain": "hub_ecology",
+    "estimated_time": "20m",
+    "objectives": [
+      {
+        "id": "obj_fa_talk_orin",
+        "type": "talk_to",
+        "target": "stablemaster_orin_rede",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Speak with Stablemaster Orin Rede at the hub yard."
+      },
+      {
+        "id": "obj_fa_observe_steam_foal",
+        "type": "observe",
+        "target": "steam_cascade_foal",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Observe the steam-cascade juvenile: water-slick hide, heat-shimmer breath, recessive cold still in the eyes."
+      },
+      {
+        "id": "obj_fa_read_birth_ledger",
+        "type": "interact",
+        "target": "yard_birth_environment_ledger",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Read Orin's birth-environment ledger: temp, humidity, parents' affinities, named third thing."
+      }
+    ],
+    "rewards": { "xp": 100, "skill_xp": { "lore": 35, "husbandry": 25 } },
+    "breadcrumbs": [
+      {
+        "id": "bc_fa_orin",
+        "content": "Orin taps the ledger column marked VARIANT. 'Water times fire under heat does not average. It reacts. Steam. Carry it to wet ground later and the drowned parent climbs back up the blood. Concord will file this next season. Life already filed it in the stall.'",
+        "unlocks_after": "obj_fa_read_birth_ledger",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_adaptation_03_name"],
+    "prerequisites": ["first_adaptation_01_print"],
+    "tags": ["hub", "ecology", "first_adaptation", "steam", "brine", "orin"]
+  },
+  {
+    "id": "first_adaptation_03_name",
+    "title": "First Adaptation — Name the Bend",
+    "description": "Kiren will take your yard notes back to the blind. He will not ask you to invent a catalogue name. He will ask you to say the myth out loud: life bent instead of broke — the First Adaptation — so the next person who breeds a steam-thing knows they are repeating a god-argument, not rolling dice.",
+    "giver_npc_id": "ranger_kiren_owl",
+    "difficulty": "beginner",
+    "domain": "hub_ecology",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_fa_return_kiren",
+        "type": "talk_to",
+        "target": "ranger_kiren_owl",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Return to Kiren with the yard notes."
+      },
+      {
+        "id": "obj_fa_record_myth",
+        "type": "interact",
+        "target": "first_adaptation_field_codex",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Record the field codex entry: First Adaptation — substrate bends biology; water→steam→brine is the cascade with a pulse."
+      }
+    ],
+    "rewards": {
+      "xp": 140,
+      "skill_xp": { "lore": 50, "husbandry": 30 },
+      "named_items": [
+        {
+          "id": "codex_leaf_first_adaptation",
+          "name": "Field Leaf — First Adaptation",
+          "type": "relic",
+          "quality": "tier_2",
+          "tags": ["ecology", "codex", "creatures", "steam"],
+          "description": "Kiren's hand, plain ink: 'They did not break — they bent. Old self folded living inside the new. Concord records. He has never once predicted the next. Breeding a steam-drake is repeating her laugh at his slate.'",
+          "quantity": 1
+        }
+      ]
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fa_named",
+        "content": "Kiren files your leaf under a heading the Curators still mark provisional: First Adaptation. In the margin: water→steam→brine. Substrate bend. Recessive memory. 'When they finally print the glyph,' she says, 'the yard will already have grandchildren.'",
+        "unlocks_after": "obj_fa_record_myth",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["first_adaptation_02_yard"],
+    "tags": ["hub", "ecology", "first_adaptation", "codex", "creatures"]
+  }
+]

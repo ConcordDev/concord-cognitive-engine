@@ -1,0 +1,784 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69b9b23b66e44418b893ef8f9c35f957, type: 3}
+  m_Name: BuildAssetRegistry
+  m_EditorClassIdentifier: Concordia.Runtime::Concordia.BuildAssetRegistry
+  paths:
+  - Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Prefabs/LowPoly - Rock A.prefab
+  - Assets/Concordia/Anim/ConcordiaLocomotion.controller
+  - Assets/Concordia/Anim/SoldierLocomotion.controller
+  - Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2
+    by @Quaternius/FBX/Wolf.fbx
+  - Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/bird.fbx
+  - Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Horse.fbx
+  - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/staff.gltf
+  - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/wand.gltf
+  - Assets/Concordia/FreePacks/Kaykit/city/gltf/car_stationwagon.gltf
+  - Assets/Concordia/FreePacks/Kenney/castle/rocks-large.glb
+  - Assets/Concordia/FreePacks/Kenney/castle/tower-hexagon-mid.glb
+  - Assets/Concordia/FreePacks/Kenney/castle/tower-square-base.glb
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/building-skyscraper-a.glb
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/detail-awning.glb
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/detail-overhang-wide.glb
+  - Assets/Concordia/FreePacks/Kenney/city-roads/dumpster.glb
+  - Assets/Concordia/FreePacks/Kenney/city-roads/road-straight.glb
+  - Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-a.glb
+  - Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-h.glb
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/cart.glb
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/hedge-large.glb
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/lantern.glb
+  - Assets/Concordia/FreePacks/Kenney/furniture/lampRoundFloor.glb
+  - Assets/Concordia/FreePacks/Kenney/graveyard/altar-stone.glb
+  - Assets/Concordia/FreePacks/Kenney/graveyard/column-large.glb
+  - Assets/Concordia/FreePacks/Kenney/graveyard/crypt-small.glb
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/banner.glb
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/shield-rectangle.glb
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/weapon-sword.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/bridge_wood.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/crops_dirtRow.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/flower_redA.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/grass_leafs.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/plant_bushSmall.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/plant_flatShort.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/chest.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/grass.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/platform.glb
+  - Assets/Concordia/FreePacks/Kenney/td/detail-crystal-large.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_rock.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_stone.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_stone.glb
+  - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Barrel.obj
+  - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Cauldron.obj
+  - Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons
+    Pack - Sept 2018/OBJ/Dagger.obj
+  - Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons
+    Pack - Sept 2018/OBJ/Spear.obj
+  - Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_dusk.mat
+  - Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_hitch.mat
+  - Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_marrow.mat
+  - Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_nettle.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_AsbirThelane.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Brackish.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_EliasVoss.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_JaxRivera.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_KaelZero.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Lamplighter.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_LyraSilentchant.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MamaIronRose.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MarenAshveil.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_NyxTorres.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_OldSeam.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_SeraphineVoss.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_ThorneBlackroot.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_VesperKane.mat
+  - Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_WardenGale.mat
+  - Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concord.mat
+  - Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concordia.mat
+  - Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab
+  - Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab
+  - Assets/Concordia/Generated/Prefabs/CX_Mount_Horse.prefab
+  - Assets/Concordia/Generated/Prefabs/CX_Weapon_Hatchet.prefab
+  - Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_captain.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_dusk.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_hitch.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_marrow.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_nettle.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Hero/CX_Hero_Court_front.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Hero/CX_Hero_Steel_front.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Hero/CX_Hero_Steel_grip.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/HUD/Court.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/HUD/Steel.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Mount/CX_Mount_Horse_rideable.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/NPCs/CX_NPC_Court_guard.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/NPCs/CX_NPC_Road_merchant.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/NPCs/CX_NPC_Road_settler.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/NPCs/CX_NPC_Road_traveler.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Spoils/CX_Prop_Spoils_pouch.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Bow.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Hatchet.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_PulseBaton.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Steel_longsword.prefab
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Switchblade.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Predators/CX_Predator_BoneSentinel.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Predators/CX_Predator_CrystalElemental.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Predators/CX_Predator_GloomStalker.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Predators/CX_Predator_ManaDrake.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Predators/CX_Predator_ThornWolf.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Basilisk.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_ChromeEnforcer.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Construct.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Drift.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Drone.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_DustCourser.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_EchoSerpent.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_FurnaceHound.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Griffin.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Hound.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_MechHound.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_RailVulture.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Raptor.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Sealie.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Sentinel.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_ThunderYak.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Wraith.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Boar.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Deer.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Fox.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_LamplighterMoth.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_PlazaStrider.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Raven.prefab
+  - Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Wolf.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Body_Heavy.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Body_Slight.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Face_ShortHair.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Face_Stern.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Face_Walker.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Hair_Bun.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Hair_Crop.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Hair_Long.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Create/CX_Create_Hair_Topknot.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_BanditScrap.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_CourtTunic.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_CrimsonCourt.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_NightMarket.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_SteelJerkin.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_CrimeFixer.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_DawnWatcher.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_FrontierScout.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_GlyphKeeper.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_GridRunner.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_GroveMerchant.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_IronWarden.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/NPCs/CX_NPC_LatticeWalker.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_ArenaDummy.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Campfire.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_CourtLantern.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Crate.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_DelveMouth.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_FishingKit.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Forge.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_MarketStall.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Shrine.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Well.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_WreckWagon.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Signs/CX_Sign_RingPost.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Tiles/CX_Tile_AshCinder.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Tiles/CX_Tile_CourtCobble.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Tiles/CX_Tile_MossFloor.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Tiles/CX_Tile_PackedEarth.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/Tiles/CX_Tile_SandGravel.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/VFX/CX_VFX_CurseFold.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/VFX/CX_VFX_FlowerStep.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/VFX/CX_VFX_HitSparks.prefab
+  - Assets/Concordia/Generated/Prefabs/P2/VFX/CX_VFX_ParryRing.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_AsbirThelane.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_Brackish.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_EliasVoss.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_JaxRivera.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_KaelZero.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_Lamplighter.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_LyraSilentchant.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_MamaIronRose.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_MarenAshveil.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_NyxTorres.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_OldSeam.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_SeraphineVoss.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_ThorneBlackroot.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_VesperKane.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_WardenGale.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Pillars/CX_Pillar_Concord.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Pillars/CX_Pillar_Concordia.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Pillars/CX_Pillar_Sovereign.prefab
+  - Assets/Concordia/Generated/Prefabs/P3/Worlds/CX_NPC_SereTessera.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crime/CX_Civic_Crime_Cab.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crime/CX_Civic_Crime_Dumpster.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crime/CX_Civic_Crime_Hydrant.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crime/CX_Civic_Crime_StreetSign.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crucible/CX_Civic_Crucible_DriftMarker.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Crucible/CX_Civic_Crucible_ShardTram.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Dawn/CX_Civic_Dawn_Gondola.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Dawn/CX_Civic_Dawn_LiftCage.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Dawn/CX_Civic_Dawn_SunDisc.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Frontier/CX_Civic_Frontier_Boxcar.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Frontier/CX_Civic_Frontier_Wagon.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Frontier/CX_Civic_Frontier_Windpump.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Grid/CX_Civic_Grid_Kiosk.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Grid/CX_Civic_Grid_Maglev.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Grid/CX_Civic_Grid_Pylon.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Hub/CX_Civic_Hub_Bench.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Hub/CX_Civic_Hub_FlowerCart.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Hub/CX_Civic_Hub_Waypost.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Ruins/CX_Civic_Ruins_AshTram.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Ruins/CX_Civic_Ruins_CatalogKiosk.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Ruins/CX_Civic_Ruins_GlyphMarker.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Sere/CX_Civic_Sere_OreTram.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Sere/CX_Civic_Sere_SmogLamp.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Sere/CX_Civic_Sere_TesseraPost.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Sundering/CX_Civic_Sundering_ForestCart.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Sundering/CX_Civic_Sundering_Wardpost.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Tunya/CX_Civic_Tunya_Irrigation.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Tunya/CX_Civic_Tunya_OxCart.prefab
+  - Assets/Concordia/Generated/Prefabs/P4/Tunya/CX_Civic_Tunya_Waystone.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestGrass.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestTree.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Forge.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Industrial_Hangar.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Oak.prefab
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_color.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_normal.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_color.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_normal.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_opacity_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_body_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_body_normal.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_normal.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Female_Adult_04.fbx
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Male_Adult_05.fbx
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Male_Adult_08.fbx
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_opacity_color.tga
+  - Assets/Concordia/PolyHaven/HDRIs/dikhololo_night_2k.hdr
+  - Assets/Concordia/PolyHaven/HDRIs/kloofendal_48d_partly_cloudy_puresky_2k.hdr
+  - Assets/Concordia/PolyHaven/HDRIs/the_sky_is_on_fire_2k.hdr
+  - Assets/Concordia/PolyHaven/Models/antique_estoc/antique_estoc_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/fern_02/fern_02_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/island_tree_03/island_tree_03_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/jacaranda_tree/jacaranda_tree_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/Lantern_01/Lantern_01_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/large_iron_gate/large_iron_gate_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/ornate_medieval_mace/ornate_medieval_mace_1k.fbx
+  - Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/gravel/gravel_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/gravel/gravel_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/gravel/gravel_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_nor_gl_2k.jpg
+  objects:
+  - {fileID: 1927372005322154, guid: 39de80c7e7a1a2942820576875608e5d, type: 3}
+  - {fileID: 9100000, guid: 00780c15feb9347c0b12adb486f44aa8, type: 2}
+  - {fileID: 9100000, guid: ac02cc4b2a2094886b15537e96dcea21, type: 2}
+  - {fileID: 919132149155446097, guid: 7070cc3f5e658471ca59cdf0f2ab442f, type: 3}
+  - {fileID: 919132149155446097, guid: 550295361f0014e5ca2ed7b61ca09221, type: 3}
+  - {fileID: 919132149155446097, guid: 3526dd430b77641d3bae39f8e2ebc1f8, type: 3}
+  - {fileID: -4315911128503887239, guid: 3477d5eccfd1c45bc845687fb8a9971c, type: 3}
+  - {fileID: -1863251104475947517, guid: 49f2fff11846e46d5b528242f8bc5feb, type: 3}
+  - {fileID: 8922327601361123562, guid: 9e32811f14a13422c8c422ccc9504edb, type: 3}
+  - {fileID: -3316050811360605216, guid: 75b98e46c2d874af1a85863b51d351d3, type: 3}
+  - {fileID: -351197908708991627, guid: 97bd384b9e90548fe8ab1ec58c701a63, type: 3}
+  - {fileID: 7881635288605673324, guid: f48844c8227504d168c38ba910a127f6, type: 3}
+  - {fileID: -8901736116654588364, guid: 1cabdd2f26b114d6cb5b6030f93d49fe, type: 3}
+  - {fileID: -498914016341454159, guid: 38925c1ee7c2147a6b97ac444b29d1ac, type: 3}
+  - {fileID: 215553289032917096, guid: 95d0736c987d647b79b53de1ed6bb05c, type: 3}
+  - {fileID: -4167740592744175969, guid: 17693b4444ec84246be66ce124d57f68, type: 3}
+  - {fileID: 2836440581664159293, guid: c3038a8e1374044a8b4186e2c055fe2d, type: 3}
+  - {fileID: -6915921080796122464, guid: 9f8164acf0ed34f31a05bf131842b4bb, type: 3}
+  - {fileID: 1082798191813559994, guid: af4dbbf06e9474287a8e6ebd7d6fac39, type: 3}
+  - {fileID: -2398377885531207136, guid: 3cac7710483e04377ac683bd137f95b7, type: 3}
+  - {fileID: -7417250159355276653, guid: 29c0ce7984a7f4912b284245730682a7, type: 3}
+  - {fileID: 9109434365453305017, guid: da4c6fb3b15ac419fab3a703773d038f, type: 3}
+  - {fileID: -6803657291888974157, guid: 1ad4e1d61e8074bffa3ef8a6e00a92e7, type: 3}
+  - {fileID: 3141939589747399081, guid: f7b889aa30d28467aab246ab03f20528, type: 3}
+  - {fileID: 3675426578558557979, guid: a316658fbb6c44a419ab30e4eda4d3e2, type: 3}
+  - {fileID: 1110213672782326076, guid: f761272cc4587490eab8f5858442b81b, type: 3}
+  - {fileID: 4882196908669189502, guid: a9bac7f9b07f44826aadcbe94c842a67, type: 3}
+  - {fileID: 253256653958040807, guid: 6f0b1ac6cb87f4c0589772d3137ebb8b, type: 3}
+  - {fileID: 4179553441014301934, guid: 66b1ee47b82cd4499aa931fab586f97b, type: 3}
+  - {fileID: -6083444303928241919, guid: 030cb48fbc06c43cfbb87a7c4343a1ad, type: 3}
+  - {fileID: -8539117811065784958, guid: 2287de75aa6674c198644a8937b84820, type: 3}
+  - {fileID: -2788926985768836416, guid: dae6d69ebb72740008a9834f9b9a3316, type: 3}
+  - {fileID: 5497822681475995701, guid: ee40a76de29b94e5994c03ff7a2771c6, type: 3}
+  - {fileID: -6810347817962515738, guid: 9871a1a5d68dd43f7b55eb305b268783, type: 3}
+  - {fileID: -1875891993717433880, guid: 1c14a256dab614f1db82fef3473e8af8, type: 3}
+  - {fileID: 210628387231844212, guid: f6c4ce6376da44cd7aec176c62ac500d, type: 3}
+  - {fileID: 129548133899243081, guid: 72fc9c0ab1f8f4980ab33a4bf37e8d70, type: 3}
+  - {fileID: -6399387781660903837, guid: e92d119dd4f7c4b2b95cc7bdb4034c77, type: 3}
+  - {fileID: 981149235833453620, guid: ca95b44d372eb4451927c6f1f654ddf7, type: 3}
+  - {fileID: 2381477341941465193, guid: f21412049731a4396a2bac80fe1e7e50, type: 3}
+  - {fileID: 1629188451866202578, guid: 4710770bc082a4ceeba54cd6ce6b6617, type: 3}
+  - {fileID: 5050727109317231218, guid: 2901107f1a2a14978825ddd436eb4630, type: 3}
+  - {fileID: 7924588320403673470, guid: 497c7163d65404cd7bb7e45790a34527, type: 3}
+  - {fileID: -3532845048511120021, guid: 06e25b3c848d74e44865099e1c029878, type: 3}
+  - {fileID: 919132149155446097, guid: d9d807882c2e5477faf22c6fefd672c4, type: 3}
+  - {fileID: 919132149155446097, guid: 7b47734a760934eddac12f66d9512db7, type: 3}
+  - {fileID: 919132149155446097, guid: c154aece4d3ac457baa75618b93c9b67, type: 3}
+  - {fileID: 919132149155446097, guid: 295c94be9ff6f48d78189c140c56b4a8, type: 3}
+  - {fileID: 2100000, guid: 7315c97dbf6b6400d8eeea871e540842, type: 2}
+  - {fileID: 2100000, guid: d5c821e03caf94ff28ef2185b6c00fdd, type: 2}
+  - {fileID: 2100000, guid: 6c6ee968b50c14e73972119f6c8551bd, type: 2}
+  - {fileID: 2100000, guid: c150eedaa0315464fb5f34a42cfd6131, type: 2}
+  - {fileID: 2100000, guid: 409b657e454434a33ba3cf0e898b1b39, type: 2}
+  - {fileID: 2100000, guid: acf7768fd115341da8b122fedbd8cbee, type: 2}
+  - {fileID: 2100000, guid: 15e825fe620294197b453f3f5634adb5, type: 2}
+  - {fileID: 2100000, guid: 9b3042811fc3a4a50aaf38aa65bcb709, type: 2}
+  - {fileID: 2100000, guid: 8c5c220491cc14ac19205684f054cde7, type: 2}
+  - {fileID: 2100000, guid: f90ba66cf34974549afea6b209746c5d, type: 2}
+  - {fileID: 2100000, guid: 5cb148c30697242719cc7b6f4b2d78fb, type: 2}
+  - {fileID: 2100000, guid: 3670f0ab95e9842fcbd94ced979829e6, type: 2}
+  - {fileID: 2100000, guid: 7faa21e3a4bca48b2a6bbb3838e5bc56, type: 2}
+  - {fileID: 2100000, guid: b8a238943e4b24e0e99ca7dda08dfdea, type: 2}
+  - {fileID: 2100000, guid: 6d61d7e0adefd49fa845d09672529e52, type: 2}
+  - {fileID: 2100000, guid: 73f7e679b72fa49bfaac3e9deb283ab4, type: 2}
+  - {fileID: 2100000, guid: dbc2cb55817ff48e9a0c688bad74a76d, type: 2}
+  - {fileID: 2100000, guid: 3360a783334d140daa109ea6ed9bbbfd, type: 2}
+  - {fileID: 2100000, guid: 704ea066c7f944bd5a75ea7324b95b82, type: 2}
+  - {fileID: 2100000, guid: 611644e3be94742529efbcbd4c159654, type: 2}
+  - {fileID: 2100000, guid: f5670daf9cef744d5a2937d9c0290f84, type: 2}
+  - {fileID: 3459570678297163512, guid: c4b3237d74c154746bdebef650758da8, type: 3}
+  - {fileID: 5863882972029359226, guid: 73a9e8a44e8a841819f4330d029b0576, type: 3}
+  - {fileID: 446876386351713107, guid: 9ee8a7a03d95043f5a204621d880c2d5, type: 3}
+  - {fileID: 622095675437767026, guid: 0ad5ca07c37c24a0f8ec725c80f78823, type: 3}
+  - {fileID: 7775292879252488972, guid: 439bbbac1c1aa4e188641a126a412641, type: 3}
+  - {fileID: 8281662752277770976, guid: 516762b84f48a4cefb5af12855a47968, type: 3}
+  - {fileID: 4632908601734927677, guid: 9f0f81d6cd3d444aeb52a7bd97712740, type: 3}
+  - {fileID: 8178267906630918333, guid: 3d7f1f099eb6c47e8bb4e817c8588738, type: 3}
+  - {fileID: 5489620557418658891, guid: c51e97d1429354d13b2a4d68999bbc12, type: 3}
+  - {fileID: 1885682264554408410, guid: 7d3a1987c716a43ccbb1ba7bce18fef3, type: 3}
+  - {fileID: 3373458531201274874, guid: 3266b8e1dcdf74e3caa7d154fbc8a4ec, type: 3}
+  - {fileID: 4557988751500906210, guid: 0994282ab3c0a4095958f724dfa2f95c, type: 3}
+  - {fileID: 7213306194787051248, guid: 13cb077c70f654a6e90c1c7739fe992b, type: 3}
+  - {fileID: 1459055764574130035, guid: eaa962692705842c1b633c837e5c5238, type: 3}
+  - {fileID: 5654669028073827931, guid: a764f286d549a47f98803baa05f19a97, type: 3}
+  - {fileID: 7427260055978411071, guid: fcde4e38e57d24119b4754bf9d77ccc3, type: 3}
+  - {fileID: 8240543088204892584, guid: e8608718b8ae64013b8b94f12e72112d, type: 3}
+  - {fileID: 7689958508882873663, guid: 1b7b103596a2e487692ccb7c313a2793, type: 3}
+  - {fileID: 2809550230342224557, guid: 79ddf604303bc4a06b939b5b4c1152f8, type: 3}
+  - {fileID: 7683648238406751469, guid: c4d668181d144463aaad65f5fe5221b1, type: 3}
+  - {fileID: 4592195321751685821, guid: 3edcb971a069644e2b2de03a504b00b7, type: 3}
+  - {fileID: 4207777567021998083, guid: b1ba3c7a8853d49dfaae87ce574c39be, type: 3}
+  - {fileID: 4763145012146971506, guid: f367011492bbf488a98280a80bd5dcaa, type: 3}
+  - {fileID: 6062459168306850867, guid: 6748a6ef15c1d43bfb3b9ff43092be4c, type: 3}
+  - {fileID: 2321645539246457691, guid: ec22c68f49fb64985a12adfaa8d877b5, type: 3}
+  - {fileID: 4370304512767983656, guid: 826d44abffc2549949392ff6fbeb74ec, type: 3}
+  - {fileID: 3985539174875514339, guid: 52360c9bbb7af4f77976847bd5e408c0, type: 3}
+  - {fileID: 1027534818333712564, guid: cd0a8950ecc72478d8c4925375b296fb, type: 3}
+  - {fileID: 5624884578039024792, guid: 7f04bd9a36e214fb7bfae0fe0dfd9709, type: 3}
+  - {fileID: 6629006774315360782, guid: 8e215aaac32e04e9891fc41a193bbf22, type: 3}
+  - {fileID: 7294950848182456967, guid: 1ff852bf621514387969ecc17277cf72, type: 3}
+  - {fileID: 4934990010614305774, guid: 97c84eaad66b341f0906795b2d741d84, type: 3}
+  - {fileID: 2238197764624993828, guid: 9af358541218c4f96b304e79444b20d6, type: 3}
+  - {fileID: 1863225282644785936, guid: 71845cf3890cf4d1a92d325a204d0bad, type: 3}
+  - {fileID: 6793308292431712282, guid: e63f3aa0c55784eb588989ee4ae42827, type: 3}
+  - {fileID: 1929935822886955174, guid: 1506d1a37eef346eda28f65f5df08c3c, type: 3}
+  - {fileID: 4204260517961125879, guid: 1991d56cd0b434854ac6aece43c517e3, type: 3}
+  - {fileID: 27350378708214453, guid: 15fa9c55bb5a84dc2bb15ad409fde337, type: 3}
+  - {fileID: 6608882102179931023, guid: fb70b388dbc67443bb4348a30bf8ac5b, type: 3}
+  - {fileID: 1206152122927222188, guid: bd3bfaac961cd42619fa61cac06d03b9, type: 3}
+  - {fileID: 3997885405464883619, guid: 2269188b510ec475aa0b0a6f24740caf, type: 3}
+  - {fileID: 1400136985347048735, guid: 8c288587d3bc4471fb4bab3dbeeabf87, type: 3}
+  - {fileID: 2856761743078528168, guid: c24d8555389a64ffea7e2ad455cdbf79, type: 3}
+  - {fileID: 2938262742286923089, guid: 66ac805a293504bf7887700ee4591c9a, type: 3}
+  - {fileID: 6332879541682252183, guid: 073eae8a7856e47fc9191c0dbfe92823, type: 3}
+  - {fileID: 5103995193960788271, guid: f23813c916d5a49a3b6a4b9d39297351, type: 3}
+  - {fileID: 9190954118009486565, guid: c04185b68c6d34cde93ecb6be7d3cb4a, type: 3}
+  - {fileID: 787255567653324211, guid: 5a1bd0d2c33854a739ab9ed995c733e4, type: 3}
+  - {fileID: 2928440956643191216, guid: 0f22180f6091548debf2a3252e7bb7e9, type: 3}
+  - {fileID: 9085435986378931928, guid: 66c6aeae02d0e4ae4ac36b65b7f69676, type: 3}
+  - {fileID: 3412071711179628906, guid: a79d5c269d72b454e8edbd8a23fba9fa, type: 3}
+  - {fileID: 8761719963440088450, guid: 61d6f2fbedb14442f9164193447f0e1f, type: 3}
+  - {fileID: 6248352927711610773, guid: 931053c31d686426b8c91a8e075b38ad, type: 3}
+  - {fileID: 3989859165352856808, guid: 1203fb4996d3e4083a9d7ba9ca46d642, type: 3}
+  - {fileID: 4554134586620013974, guid: 888ea20b5231f430f983ea65cd5ab26f, type: 3}
+  - {fileID: 4201444002706623703, guid: 7e035108038a3443d9ac84b4e15fdcc3, type: 3}
+  - {fileID: 5784373275563358183, guid: 37c447015936a44108c81a5ea57c3322, type: 3}
+  - {fileID: 1945404490108650973, guid: 22215972dc4654a08bbc55d9fa56e5c9, type: 3}
+  - {fileID: 8677051895719432724, guid: d7c22c747ea8a44dab0d783c9249a325, type: 3}
+  - {fileID: 567224923803606771, guid: 50d4e0561254f4c58a2bb59c724f7c30, type: 3}
+  - {fileID: 6422275108480370354, guid: 6eee0e39117fe402c8dc539f68a220fe, type: 3}
+  - {fileID: 8889998777338329286, guid: 71bf3b1bfc2124d29802fc7075e73b3a, type: 3}
+  - {fileID: 7309371845351219289, guid: 11ea973d364654008b009e53606cc4c3, type: 3}
+  - {fileID: 5716013789474304197, guid: c638a4c5df2d8427ab2399db80a0990c, type: 3}
+  - {fileID: 7217294137615303680, guid: f291610896e594f35af455e44ab7633b, type: 3}
+  - {fileID: 2278409453228263866, guid: 7b05473d8aad24714abdb34493d43560, type: 3}
+  - {fileID: 7917605098759542082, guid: 8fb3cceef3bd041efb2205e7b0beecb2, type: 3}
+  - {fileID: 764467294176777781, guid: 751767d3a1a854ba8a3db500fa9faa2b, type: 3}
+  - {fileID: 2897998966001494998, guid: e11a22be4fc7d4b58b257d137175f1ff, type: 3}
+  - {fileID: 3294769189298098244, guid: b664f7287d7ca4e9783daaba996efac5, type: 3}
+  - {fileID: 7709013040404426588, guid: 79c82e6e67d43457f89c71751f1dc3d6, type: 3}
+  - {fileID: 8478310494913646625, guid: 92aa3989d1f8f4f55bbfef3aef2ce302, type: 3}
+  - {fileID: 7881118730294953180, guid: f984bf0df597d40f1b7a6f1878720dde, type: 3}
+  - {fileID: 8173689410247883189, guid: 21fce572845844e0daf08603ae59c002, type: 3}
+  - {fileID: 5667820657468478671, guid: 06d20a9764bc14590babce56b652b2ec, type: 3}
+  - {fileID: 771204451396529174, guid: 8bac21c0f6a624b48ae7fbb93e0fabd7, type: 3}
+  - {fileID: 3460418878853901500, guid: 16d3709c52b7649559927ac0914d91c8, type: 3}
+  - {fileID: 3130240766730647087, guid: 27c67a176a3024c1f8d3ff4ec7230b4c, type: 3}
+  - {fileID: 5784301207997738356, guid: f06e73d50eed7478883af146a5d103e8, type: 3}
+  - {fileID: 4779224213143208647, guid: 2f029568fcbdf405da1fae00135833eb, type: 3}
+  - {fileID: 7424931830154388608, guid: 9fc33214a55ce402baf2fff9536628f0, type: 3}
+  - {fileID: 6478484357437611371, guid: 7ff89bd9444664b2f969cae0bc819de2, type: 3}
+  - {fileID: 7172894451571798783, guid: da80dd95818c3415caebf384d35e630a, type: 3}
+  - {fileID: 2510161997816218782, guid: 2fc4d4d5352a84fcb875ad1028d74551, type: 3}
+  - {fileID: 4152244461388114413, guid: 056e4a6c16be54a30848b5beaf3175da, type: 3}
+  - {fileID: 5965868769222269196, guid: 2c3d0da4b60a240f1b0c8100eec6b134, type: 3}
+  - {fileID: 359943090518132155, guid: 0ee7c504c33f94be98471a7b61778663, type: 3}
+  - {fileID: 6465896588425687302, guid: fdda9b5325d04464f96bf3ab49d52609, type: 3}
+  - {fileID: 7311341459829665524, guid: e1b0ba649d427437f8fde0aca01edc65, type: 3}
+  - {fileID: 78700460761759768, guid: d294623c6260c434895bc3bd8a932945, type: 3}
+  - {fileID: 663967526709937643, guid: 618d0da5db461404083595d9545c42de, type: 3}
+  - {fileID: 8952442111324369740, guid: 217b0a9152325494ba52ec4997d91860, type: 3}
+  - {fileID: 8595389722249404569, guid: f7d65a3ddc74b4131a62e210e77a88fc, type: 3}
+  - {fileID: 1697377177160899171, guid: 8d050f46bd15143f1a8154355d25f6ed, type: 3}
+  - {fileID: 8269319249885331993, guid: f85855c9563fe4e94946fbc1fb35f567, type: 3}
+  - {fileID: 6099522670411782343, guid: 7a7bde8b4cb8b4bba89a6561624197ff, type: 3}
+  - {fileID: 3075733921884993823, guid: 072785cecb6e4452fb67d660ce1121da, type: 3}
+  - {fileID: 7694086280304570272, guid: cd36d34811bb6467dac8485e315330da, type: 3}
+  - {fileID: 730010409842336126, guid: 44a40e6a10fdc462f9cc5c4df3a60b95, type: 3}
+  - {fileID: 1277686133782011457, guid: e871480b438cd4131abc4191e1a51c05, type: 3}
+  - {fileID: 8174972912230751343, guid: 4c3b62a9da50e428589c8a955f9c7abf, type: 3}
+  - {fileID: 628199340769938669, guid: b87d39b36b2554b24a02df6b0e006038, type: 3}
+  - {fileID: 1636041663632523415, guid: 03762b8eb66664c95850cc580000e927, type: 3}
+  - {fileID: 1269848733761968266, guid: 7c5db6a4ae1244eccafb7b5d2c83b3b7, type: 3}
+  - {fileID: 9088542257318453992, guid: a4a0aeb6d8ecc4441b886cb62bc85985, type: 3}
+  - {fileID: 8695800261112310875, guid: db3f5aaa058dc4e149b3d5bc9acb49c3, type: 3}
+  - {fileID: 5253530335843669537, guid: 096298597752b481185da5baccdda1d9, type: 3}
+  - {fileID: 4130671930081651276, guid: 463a16d02f3ed487588e08c920760c1b, type: 3}
+  - {fileID: 2104545180422742895, guid: 3643ca5db37bd4f6b88374ce7179bfc2, type: 3}
+  - {fileID: 5721207940148494097, guid: 3e16f653b6f324b6e829173e945ae7dc, type: 3}
+  - {fileID: 3570167816033311281, guid: 67c788cd24368452f9927fdc79bbe043, type: 3}
+  - {fileID: 1956185237962476440, guid: 9a4988edbd8da499890d0f3f7455251d, type: 3}
+  - {fileID: 4757162896065522457, guid: 2dbf841b6b1ba4c7e895667022c052bd, type: 3}
+  - {fileID: 4261148946889330250, guid: 10f690c3b439249abb37197e97e5329f, type: 3}
+  - {fileID: 7333590466747050139, guid: 8ea2f7c049d3c403b9e1af99ee77ad4d, type: 3}
+  - {fileID: 3339560289502489344, guid: 40be890c8f4b04f6a985f48ae446bf1a, type: 3}
+  - {fileID: 4733564291208374975, guid: 75b5525f1cdf9437d90595a718701398, type: 3}
+  - {fileID: 6520306395837819612, guid: d3dfdf0dcd4094af0ba6d11182bbd5b8, type: 3}
+  - {fileID: 3330839008852516593, guid: f9d6dc296cb5a49538ac9ed29e7b184e, type: 3}
+  - {fileID: 6638824884445541958, guid: cd5e576ce87554428af1130e6efc2d16, type: 3}
+  - {fileID: 8947806766401436781, guid: 54d7e4d7714274bf28857c3849127b6e, type: 3}
+  - {fileID: 1016011157701904273, guid: 467b5b49beb39413eb533813d21e1f4e, type: 3}
+  - {fileID: 2940148577148433985, guid: 910a4c41212af458f912f690329bcca6, type: 3}
+  - {fileID: 2283303763499474276, guid: 7e482ca3c69dd4172b6b03871a0c8706, type: 3}
+  - {fileID: 8021550142120778959, guid: 0157990a907ef4ec78f64b1aad9bb852, type: 3}
+  - {fileID: 7724041920125060482, guid: 1e10d6fec3bd54b0fb4acb133d02304b, type: 3}
+  - {fileID: 2943322948662642434, guid: 59ad1f2138de74832a99185749df787b, type: 3}
+  - {fileID: 6452536082251136221, guid: 29dade2da87724655baf3bb433163f59, type: 3}
+  - {fileID: 2666293794824932345, guid: 01d73c94421d343269e7109322672cd6, type: 3}
+  - {fileID: 3592984337747980209, guid: eeb930ea5e04a44a0b2ca0f2800af026, type: 3}
+  - {fileID: 8229186726281396817, guid: 28a0add1a73204e2d8e948411f08f5d1, type: 3}
+  - {fileID: 1452956922340665758, guid: 40b00e2011274467da0d5cab8a3738db, type: 3}
+  - {fileID: 4522203402860908431, guid: 3302d397dddac40f88efe819975cb774, type: 3}
+  - {fileID: 7858669620259844526, guid: f489593127aaa427095149d88e2164bb, type: 3}
+  - {fileID: 4582899207267881743, guid: 9086c5868857c46e8a76cc1073a376d5, type: 3}
+  - {fileID: 8801664282166159852, guid: d8a608c359b6447ee951ef4a81b4a883, type: 3}
+  - {fileID: 8809690868765973896, guid: f53a01641eece4c54b9e0456ca7279ac, type: 3}
+  - {fileID: 1603518372383334097, guid: 24fb0af36ef084c82bd050cf358407d0, type: 3}
+  - {fileID: 2098640862708128543, guid: d4a13067d3cc143668eb68e33a198160, type: 3}
+  - {fileID: 490969957992988303, guid: 065eb4dfa451c490fb9eed8a608ae918, type: 3}
+  - {fileID: 20235512186936732, guid: 49ef56d3ad15c41cb98613dd26d33f3e, type: 3}
+  - {fileID: 967793703923920979, guid: a53a97fb818f24c54b835bb4c1b1e1d7, type: 3}
+  - {fileID: 7282168233655780103, guid: 64eeff507af1148258ed1cb1b03d4e9e, type: 3}
+  - {fileID: 3276787696258229023, guid: 4d9fbe1d7be284e68bec18a0d6c68c5b, type: 3}
+  - {fileID: 3394130183593588457, guid: c346e4aafd10d4abca5716350d167673, type: 3}
+  - {fileID: 116752743233378414, guid: 1568f246f7cf64f52949f214488076e9, type: 3}
+  - {fileID: 1966705116648042, guid: e4d448c294928499ca59de4633e244d4, type: 3}
+  - {fileID: 1148613061152340, guid: fc94b326d00f749119b3fd9b1b915fa7, type: 3}
+  - {fileID: 100002, guid: 64ac256babb924a2db8b2ec25266e479, type: 3}
+  - {fileID: 1000011889595636, guid: bcc925858a4374988a6ccd2e260c2ac0, type: 3}
+  - {fileID: 7136653705662473623, guid: 5471df59fe92f469cb1dca0e720c053b, type: 3}
+  - {fileID: 2800000, guid: 28ef4ee4b2f9947339f12dc9842be4dc, type: 3}
+  - {fileID: 2800000, guid: 75dbc8587f0e54a85a0d453250a43a18, type: 3}
+  - {fileID: 2800000, guid: 2c88de139f79142ee91ecaaf49a94343, type: 3}
+  - {fileID: 2800000, guid: 6bc094ed555404fd299aebe7aea3315f, type: 3}
+  - {fileID: 2800000, guid: 0ae33ad31acb54b5bbc7f31441924e73, type: 3}
+  - {fileID: 2800000, guid: 46cd4b45db3444770b4a443abda627c3, type: 3}
+  - {fileID: 2800000, guid: 7c8a9307657ed4748896c553f057a40f, type: 3}
+  - {fileID: 2800000, guid: 03a64d931f247488395c67b17e1c977b, type: 3}
+  - {fileID: 2800000, guid: bd5d5610838f0488fae91fb674dbd1b9, type: 3}
+  - {fileID: 2800000, guid: 19f8fd0527a9d47079595f9d5b0a460e, type: 3}
+  - {fileID: 919132149155446097, guid: 8aa1e7d265a9a4f2984cc85a5268239f, type: 3}
+  - {fileID: 919132149155446097, guid: 9b41f9ab0644946cd80de6847f700a5c, type: 3}
+  - {fileID: 2800000, guid: c9b17b7bcdb9c4cc1a343f8c1a0749d2, type: 3}
+  - {fileID: 2800000, guid: 4002813ae76134bd289c55644390e7bd, type: 3}
+  - {fileID: 2800000, guid: ac685902d8b6a419daaa67039915751a, type: 3}
+  - {fileID: 919132149155446097, guid: bc15d16b223e8444ea142581172cc16f, type: 3}
+  - {fileID: 919132149155446097, guid: 9092aa546e94e41d98953c2022e58a64, type: 3}
+  - {fileID: 2800000, guid: 5a4365f72d8404bcd846c6dcddce9848, type: 3}
+  - {fileID: 2800000, guid: 2b333baa0a8614445a9e773ba2030907, type: 3}
+  - {fileID: 2800000, guid: dde0d920b06a7480689bdb5f02eb0546, type: 3}
+  - {fileID: 919132149155446097, guid: efada8458950e4dab9a4dfdfc72b22e4, type: 3}
+  - {fileID: 2800000, guid: 4f274ee751f694212886f387153fe75f, type: 3}
+  - {fileID: 2800000, guid: f101cac1a7db14a57bda49f5ec029023, type: 3}
+  - {fileID: 2800000, guid: 58c276e72cf444ff9b8d5b4461f9e155, type: 3}
+  - {fileID: 2800000, guid: 651c803ff3d7a464db6d267e41a65265, type: 3}
+  - {fileID: 2800000, guid: c6c718339613744b68e237c6d5f845f5, type: 3}
+  - {fileID: 2800000, guid: cb3587a550b1b4f999f8eea91d4bd523, type: 3}
+  - {fileID: 919132149155446097, guid: 005c456442c1544e9bf756ad05e98473, type: 3}
+  - {fileID: 919132149155446097, guid: 58e3e3b01df164ec9bc9dddddf739a1c, type: 3}
+  - {fileID: 919132149155446097, guid: 4f6ebb9cd360c496e948ec1c0610331c, type: 3}
+  - {fileID: 919132149155446097, guid: 48277489eb6ba42cba099dde4dfe9e14, type: 3}
+  - {fileID: 919132149155446097, guid: 3f98f4a768be644b1baeff35635b2eb6, type: 3}
+  - {fileID: 919132149155446097, guid: f16b1d3bfbe08430ca12aac881693c20, type: 3}
+  - {fileID: 919132149155446097, guid: fbc369915cb004aa586ed0ebc60eb42c, type: 3}
+  - {fileID: 2800000, guid: 64932b491c0b84772b22ddaf97ed5c9c, type: 3}
+  - {fileID: 2800000, guid: edf0f74d1231440a8b91f9dcf0c61bc9, type: 3}
+  - {fileID: 2800000, guid: 0082d9eaf17704ed982ef169c4e36da4, type: 3}
+  - {fileID: 2800000, guid: 94db879fba251472faa414596dc2917f, type: 3}
+  - {fileID: 2800000, guid: 88abf06f7f6de42868b0d75d4d9bf91a, type: 3}
+  - {fileID: 2800000, guid: 94b93fc246177434f857f534c46af3a3, type: 3}
+  - {fileID: 2800000, guid: 944d5316bf127449985572465d6a3a44, type: 3}
+  - {fileID: 2800000, guid: f907d23c5e37a4780839288275cd8c87, type: 3}
+  - {fileID: 2800000, guid: 5c67a08f8f6b847c595bc50b83b2b08d, type: 3}
+  - {fileID: 2800000, guid: b2f4050ef0d874fd8a745bc8bed5ba57, type: 3}
+  - {fileID: 2800000, guid: 356ccbe4b9ffb41b7b74ca313ff21dd9, type: 3}
+  - {fileID: 2800000, guid: 5c2e544468891486f9bc70dfb08135da, type: 3}
+  - {fileID: 2800000, guid: e038585401fb747a4b6aa7a2db93f5c4, type: 3}
+  - {fileID: 2800000, guid: 90affd13de2404094887b7928fbe9916, type: 3}
+  - {fileID: 2800000, guid: 1eb0faf8127154af3a3a91412c7faef4, type: 3}
+  - {fileID: 2800000, guid: 0f62bd1f85cb14c9d97df05f0ce9b5ff, type: 3}
+  - {fileID: 2800000, guid: 09e22ee4c3138465ba564742c66f0f67, type: 3}
+  - {fileID: 2800000, guid: 3ccf2a1aded074048a1b97539d767923, type: 3}
+  - {fileID: 2800000, guid: 99bacfdb75953497a8a82af8732f1532, type: 3}
+  - {fileID: 2800000, guid: 223d21c9c406c43388a7a7ce4ca42cca, type: 3}
+  - {fileID: 2800000, guid: 667b762cfb3424fc3aa17a5f38656af3, type: 3}
+  - {fileID: 2800000, guid: 47fac7a572d4c4f72b0cc98235d0f940, type: 3}
+  - {fileID: 2800000, guid: 8480bb78328354d5ea64a584e51f3e79, type: 3}
+  - {fileID: 2800000, guid: daa0a474b6bae494990b7e6a46395eb4, type: 3}
+  - {fileID: 2800000, guid: 23f2685d493f549dd87a6f5b5352620c, type: 3}
+  - {fileID: 2800000, guid: 6ac6d33ad7e50433ba92d475a16df3b7, type: 3}
+  - {fileID: 2800000, guid: f1f627be89808410fb1907da8dd78128, type: 3}
+  - {fileID: 2800000, guid: 7108a1d89b828469ba1c32ac4b2bbc7e, type: 3}
+  - {fileID: 2800000, guid: da1ab6b25176c433da1a68a18587cd9e, type: 3}
+  - {fileID: 2800000, guid: e2083baeeab5d42f8977fd78f1aaa52b, type: 3}
+  - {fileID: 2800000, guid: 12eb55aa063c246fc979dc321e2f02da, type: 3}
+  - {fileID: 2800000, guid: 09bde73caa3744613a3e8e240f7d6380, type: 3}
+  - {fileID: 2800000, guid: e86a19d0f54a146e993fcd07b36cf8ae, type: 3}
+  - {fileID: 2800000, guid: 8b1bd31e877e844ac8c7421061cee04b, type: 3}
+  - {fileID: 2800000, guid: 2fba331815a3f43588e0465198f9e9c8, type: 3}
+  - {fileID: 2800000, guid: 93663e830f5e54497bce18cd3b9da5d8, type: 3}
+  - {fileID: 2800000, guid: 42d05aed972e546909d14e91d36b6dc0, type: 3}
+  - {fileID: 2800000, guid: 602acd7a571d7410db45112bd316190c, type: 3}
+  - {fileID: 2800000, guid: 841e69592a0d04b01832b2f33812d04b, type: 3}
+  - {fileID: 2800000, guid: 7981d7370aaf744c394c661217db66c8, type: 3}
+  - {fileID: 2800000, guid: 59c12fc1f551043928c5928739d2bab7, type: 3}
+  - {fileID: 2800000, guid: cb4d830c36a3b4f399335281bc5da309, type: 3}
+  - {fileID: 2800000, guid: 6ebd1c69fb75a4808bba4347ef3f9a2b, type: 3}
+  - {fileID: 2800000, guid: 33815047f84d94af9b5f8e97b0982a3e, type: 3}
+  - {fileID: 2800000, guid: d6eda9f7e0dfd4d7f99625edde790816, type: 3}
+  - {fileID: 2800000, guid: fbeac33db384145559c4f1b6162a68a9, type: 3}
+  - {fileID: 2800000, guid: 77638f724285641e9b82bb3dd2ee3434, type: 3}
+  - {fileID: 2800000, guid: 455fbf3361a6d499da103d38ba38e15a, type: 3}
+  keys:
+  - freepacks:altar-stone
+  - freepacks:antique_estoc_1k
+  - freepacks:banner
+  - freepacks:barrel
+  - freepacks:bird
+  - freepacks:bridge_wood
+  - freepacks:building-skyscraper-a
+  - freepacks:building-type-a
+  - freepacks:building-type-h
+  - freepacks:car_stationwagon
+  - freepacks:cart
+  - freepacks:cauldron
+  - freepacks:chest
+  - freepacks:cliff_large_rock
+  - freepacks:cliff_large_stone
+  - freepacks:cliff_stone
+  - freepacks:column-large
+  - freepacks:concordia_real_forestgrass
+  - freepacks:concordia_real_foresttree
+  - freepacks:concordia_real_forge
+  - freepacks:concordia_real_industrial_hangar
+  - freepacks:concordia_real_oak
+  - freepacks:crops_dirtrow
+  - freepacks:crypt-small
+  - freepacks:cx_weapon_hatchet
+  - freepacks:cx_weapon_longsword
+  - freepacks:dagger
+  - freepacks:detail-awning
+  - freepacks:detail-crystal-large
+  - freepacks:detail-overhang-wide
+  - freepacks:dumpster
+  - freepacks:fern_02_1k
+  - freepacks:flower_reda
+  - freepacks:grass
+  - freepacks:grass_leafs
+  - freepacks:hedge-large
+  - freepacks:horse
+  - freepacks:jacaranda_tree_1k
+  - freepacks:lamproundfloor
+  - freepacks:lantern
+  - freepacks:lantern_01_1k
+  - freepacks:large_iron_gate_1k
+  - freepacks:lowpoly - rock a
+  - freepacks:ornate_medieval_mace_1k
+  - freepacks:plant_bushsmall
+  - freepacks:plant_flatshort
+  - freepacks:platform
+  - freepacks:road-straight
+  - freepacks:rocks-large
+  - freepacks:shield-rectangle
+  - freepacks:spear
+  - freepacks:staff
+  - freepacks:statue_column
+  - freepacks:statue_head
+  - freepacks:tower-hexagon-mid
+  - freepacks:tower-square-base
+  - freepacks:wand
+  - freepacks:weapon-sword
+  - freepacks:wolf
+  - skin:f001_body_color
+  - skin:f001_body_normal
+  - skin:f001_head_color
+  - skin:f001_head_normal
+  - skin:f001_opacity_color
+  - skin:f004_head_color
+  - skin:f004_head_normal
+  - skin:f004_opacity_color
+  - skin:m002_body_color
+  - skin:m002_body_normal
+  - skin:m002_head_color
+  - skin:m002_head_normal
+  - skin:m002_opacity_color
+  - skin:m009_head_color
+  - skin:m009_head_normal
+  - skin:m009_opacity_color
+  - skin:m014_head_color
+  - skin:m014_head_normal
+  - skin:m014_opacity_color
+  keyPaths:
+  - Assets/Concordia/FreePacks/Kenney/graveyard/altar-stone.glb
+  - Assets/Concordia/PolyHaven/Models/antique_estoc/antique_estoc_1k.fbx
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/banner.glb
+  - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Barrel.obj
+  - Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/bird.fbx
+  - Assets/Concordia/FreePacks/Kenney/nature/bridge_wood.glb
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/building-skyscraper-a.glb
+  - Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-a.glb
+  - Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-h.glb
+  - Assets/Concordia/FreePacks/Kaykit/city/gltf/car_stationwagon.gltf
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/cart.glb
+  - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Cauldron.obj
+  - Assets/Concordia/FreePacks/Kenney/platformer/chest.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_rock.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_stone.glb
+  - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_stone.glb
+  - Assets/Concordia/FreePacks/Kenney/graveyard/column-large.glb
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestGrass.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestTree.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Forge.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Industrial_Hangar.prefab
+  - Assets/Concordia/Generated/RealWorld/Concordia_Real_Oak.prefab
+  - Assets/Concordia/FreePacks/Kenney/nature/crops_dirtRow.glb
+  - Assets/Concordia/FreePacks/Kenney/graveyard/crypt-small.glb
+  - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Hatchet.prefab
+  - Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab
+  - Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons
+    Pack - Sept 2018/OBJ/Dagger.obj
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/detail-awning.glb
+  - Assets/Concordia/FreePacks/Kenney/td/detail-crystal-large.glb
+  - Assets/Concordia/FreePacks/Kenney/city-commercial/detail-overhang-wide.glb
+  - Assets/Concordia/FreePacks/Kenney/city-roads/dumpster.glb
+  - Assets/Concordia/PolyHaven/Models/fern_02/fern_02_1k.fbx
+  - Assets/Concordia/FreePacks/Kenney/nature/flower_redA.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/grass.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/grass_leafs.glb
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/hedge-large.glb
+  - Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Horse.fbx
+  - Assets/Concordia/PolyHaven/Models/jacaranda_tree/jacaranda_tree_1k.fbx
+  - Assets/Concordia/FreePacks/Kenney/furniture/lampRoundFloor.glb
+  - Assets/Concordia/FreePacks/Kenney/fantasy-town/lantern.glb
+  - Assets/Concordia/PolyHaven/Models/Lantern_01/Lantern_01_1k.fbx
+  - Assets/Concordia/PolyHaven/Models/large_iron_gate/large_iron_gate_1k.fbx
+  - Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Prefabs/LowPoly - Rock A.prefab
+  - Assets/Concordia/PolyHaven/Models/ornate_medieval_mace/ornate_medieval_mace_1k.fbx
+  - Assets/Concordia/FreePacks/Kenney/nature/plant_bushSmall.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/plant_flatShort.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/platform.glb
+  - Assets/Concordia/FreePacks/Kenney/city-roads/road-straight.glb
+  - Assets/Concordia/FreePacks/Kenney/castle/rocks-large.glb
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/shield-rectangle.glb
+  - Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons
+    Pack - Sept 2018/OBJ/Spear.obj
+  - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/staff.gltf
+  - Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
+  - Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
+  - Assets/Concordia/FreePacks/Kenney/castle/tower-hexagon-mid.glb
+  - Assets/Concordia/FreePacks/Kenney/castle/tower-square-base.glb
+  - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/wand.gltf
+  - Assets/Concordia/FreePacks/Kenney/mini-dungeon/weapon-sword.glb
+  - Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2
+    by @Quaternius/FBX/Wolf.fbx
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_color.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_normal.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_color.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_normal.tga
+  - Assets/Concordia/Generated/Rig/FemaleTextures/f001_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_opacity_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_body_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_body_normal.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_color.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_normal.tga
+  - Assets/Concordia/Generated/Rig/MaleTextures/m002_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Textures/m009_opacity_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_head_color.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_head_normal.tga
+  - Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Textures/m014_opacity_color.tga

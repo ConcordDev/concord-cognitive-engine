@@ -9,7 +9,7 @@
  *
  * Rewritten to use the same 'concordia:projector-ready' convention as its
  * siblings (DamageBillboard/NPCActivityTag/BazaarLayer) instead of raw
- * camera-vector props, and mounted in app/lenses/world/page.tsx next to
+ * camera-vector props, and mounted in components/world/WorldOsSurface.tsx next to
  * DamageBillboard. These tests pin the rendered behavior directly.
  */
 

@@ -127,7 +127,7 @@ export default function QuoteCardList({ quotes, isLive, lastUpdated, className =
                   {pct != null && (
                     <div className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded ${pillBg} ${trendColor}`}>
                       <TrendIcon className="w-3 h-3" />
-                      {up ? '+' : ''}{Number(q.change ?? 0).toFixed(2)} ({up ? '+' : ''}{pct.toFixed(2)}%)
+                      {up ? '+' : ''}{Number(q.change ?? 0).toFixed(2)} ({up ? '+' : ''}{Number(pct ?? 0).toFixed(2)}%)
                     </div>
                   )}
                 </div>

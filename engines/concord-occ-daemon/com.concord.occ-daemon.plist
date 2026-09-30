@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.occ-daemon</string>
+
+	<!--
+	  Concurrency Refactor Phase 2 — warm OpenCascade daemon. Replaces the
+	  per-request `execFile(python, [conkay_occ_cli.py, ...])` in occ-bridge.js
+	  with a long-lived process that imports OCP once and serialises OCC work.
+	  Restart this after editing conkay_occ_cli.py / conkay_occ_industrial.py:
+	    launchctl kickstart -k gui/$(id -u)/com.concord.occ-daemon
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/dutch/.zuko/venvs/cad-occ/bin/python</string>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/server/scripts/conkay_occ_daemon.py</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CONCORD_OCC_DAEMON_SOCK</key>
+		<string>/Users/dutch/concord/run/concord-occ-daemon.sock</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/dutch/concord vs code/concord-cognitive-engine/server</string>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/occ-daemon.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/occ-daemon.err</string>
+</dict>
+</plist>

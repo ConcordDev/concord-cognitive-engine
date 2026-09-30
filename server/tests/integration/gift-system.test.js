@@ -111,4 +111,16 @@ describe("F1.2 — giveGift consumes + shifts affinity", () => {
     assert.equal(r.reason, "npc_not_found");
     db.close();
   });
+
+  it("consumes a stack acquired in another world (inventory is user-global)", () => {
+    const db = freshDb();
+    npc(db, "kestra", "scholar");
+    give(db, "u1", "tome01", "Ancient Tome", 1, "tunya");
+    const r = giveGift(db, { userId: "u1", npcId: "kestra", itemId: "tome01", worldId: "concordia-hub" });
+    assert.equal(r.ok, true);
+    assert.equal(r.reaction, "loved");
+    const left = db.prepare(`SELECT * FROM player_inventory WHERE user_id='u1' AND item_id='tome01'`).get();
+    assert.equal(left, undefined);
+    db.close();
+  });
 });

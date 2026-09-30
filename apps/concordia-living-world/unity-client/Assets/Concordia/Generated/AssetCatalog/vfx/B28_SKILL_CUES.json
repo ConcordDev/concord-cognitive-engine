@@ -1,0 +1,626 @@
+{
+  "batch": "B28_vfx",
+  "slice": "A10_vfx_skill_cues",
+  "count": 11,
+  "rule": "New rows only where a Gabriel Aguiar prefab cannot carry the cue. B11 skill rows stay.",
+  "entries": [
+    {
+      "id": "vfx_hub_flower_quench",
+      "display_name": "Flower Quench",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "craft",
+        "flower_law",
+        "cue_quench"
+      ],
+      "triangle_budget": 480,
+      "aura_prompt": "One cream bloom lifting out of a short gray steam cuff, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A round bloom over a short cuff. Not a sword and not a green burst.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#8aa0b4",
+        "#6a6860"
+      ],
+      "lore_blurb": "Quench of skill_craft_quench. The mesh comes up a flower inside the 42 m disk. Steam is the cuff only.",
+      "scale_vs_player": "0.55 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_hub_court",
+        "element": "flower",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 300,
+        "recovery_ms": 200,
+        "parent_skills": [
+          "skill_craft_quench"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "place": "Hub craft barrel, inside the 42 m Flower Law disk. Not arena sand.",
+        "flower_law": "inside_42m_bloom",
+        "fight_styles": [
+          "Sword"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 480,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_hub_flower_quench/"
+      },
+      "prompt": "One cream bloom lifting out of a short gray steam cuff, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_hub_cut_flower",
+      "display_name": "Cut Flower",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "steel",
+        "flower_law",
+        "cue_flower_step"
+      ],
+      "triangle_budget": 320,
+      "aura_prompt": "One cut cream flower lying on a limestone cobble, stem snapped short. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One flat bloom and a short stem on the ground. Not a particle sword.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#c4b49a",
+        "#6a5340"
+      ],
+      "lore_blurb": "Court-only plant for Flower Step and Lay Down Steel. Outside the disk, and on arena sand, this card does not spawn.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_hub_court",
+        "element": "flower",
+        "trigger": "Dodge",
+        "startup_ms": 40,
+        "active_ms": 180,
+        "recovery_ms": 200,
+        "parent_skills": [
+          "skill_steel_flower_step",
+          "skill_presence_flower_law"
+        ],
+        "also_trigger": "Interact on skill_presence_flower_law, 200/200/200",
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "place": "Hub only, distance to plaza center <= 42 m, and not the arena sand. Tunya and Cyber flower-step plants spawn nothing.",
+        "flower_law": "inside_42m_only",
+        "ward_cut": "skill_steel_ward_cut uses this card under Flower Law. Arena steel uses Impact_01.",
+        "fight_styles": [
+          "Capoeira",
+          "Sword"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 320,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_hub_cut_flower/"
+      },
+      "prompt": "One cut cream flower lying on a limestone cobble, stem snapped short. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_cyber_number_break",
+      "display_name": "Number Break",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "steel",
+        "presence",
+        "cue_uncounted"
+      ],
+      "triangle_budget": 280,
+      "aura_prompt": "One dark square token with a single corner broken off, cyan only in the crack. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A square with one corner gone. No digit. Not a lightning bolt.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#2a241c"
+      ],
+      "lore_blurb": "Refuse the Number, slash and cast. The glyph does not resolve. Lightning_01 is a beam and stays off.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_cyber_grid",
+        "element": "break",
+        "trigger": "Slash",
+        "startup_ms": 90,
+        "active_ms": 110,
+        "recovery_ms": 190,
+        "parent_skills": [
+          "skill_steel_pulse",
+          "skill_presence_refuse_count"
+        ],
+        "also_trigger": "Cast on skill_presence_refuse_count, 200/100/240",
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "place": "Grid kit. Census plinth or a body. Do not draw a numeral.",
+        "hides_damage_number": true,
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 280,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_cyber_number_break/"
+      },
+      "prompt": "One dark square token with a single corner broken off, cyan only in the crack. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_crucible_unclosed_seam",
+      "display_name": "Unclosed Seam",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "craft",
+        "gap",
+        "cue_unend"
+      ],
+      "triangle_budget": 360,
+      "aura_prompt": "One stone bar with a teal crack that stops short, the last inch empty. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A bar and a crack that does not reach the end. Not a filled ring.",
+      "palette": [
+        "#102828",
+        "#20ffd0",
+        "#c8b4ff",
+        "#5a5044"
+      ],
+      "lore_blurb": "Un-End the Work and the incomplete half of Shard Cast. Gap Bracket tints the crack lilac. The gap stays open.",
+      "scale_vs_player": "0.8 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_crucible_lattice",
+        "element": "seam",
+        "trigger": "Cast",
+        "startup_ms": 200,
+        "active_ms": 150,
+        "recovery_ms": 240,
+        "parent_skills": [
+          "skill_craft_unend",
+          "skill_steel_shard"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "shard_impacts": "skill_steel_shard still uses vfx_Impact_01 twice. This card is the gap between them.",
+        "gap_bracket_tint": "#c8b4ff inside the gap only",
+        "open_tools": "wpn_1h_crucible_seamchisel, wpn_2h_crucible_ventbar, wpn_pole_crucible_latticepike, wpn_imp_crucible_opencaliper use this on hit, not on idle.",
+        "place": "Lattice kit, outside the named gaps. Do not fill the last inch. Construct cap stays 0. Do not seat on Rib Frame, Vent Jack, or Gap Bracket as a closer.",
+        "construct_cap": 0,
+        "gap": "stays_open",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Sword"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 360,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_crucible_unclosed_seam/"
+      },
+      "prompt": "One stone bar with a teal crack that stops short, the last inch empty. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_ruins_ash_page",
+      "display_name": "Ash Page",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "presence",
+        "ash",
+        "cue_lament"
+      ],
+      "triangle_budget": 300,
+      "aura_prompt": "One thin ash sheet folding shut, blank, no rising column. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat sheet that closes. No letters. Not a smoke pillar.",
+      "palette": [
+        "#b89060",
+        "#2a1c14",
+        "#5a5044"
+      ],
+      "lore_blurb": "Close the Page. The sheet stops. It is not the Unburial burst and not a written line.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_ruins_ash",
+        "element": "ash",
+        "trigger": "Cast",
+        "startup_ms": 240,
+        "active_ms": 200,
+        "recovery_ms": 280,
+        "parent_skills": [
+          "skill_presence_lament"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "keeps_smoke": "skill_steel_unburial stays a one-shot vfx_Smoke_01 burst.",
+        "place": "Ruins catalogue ground. Unlettered. The sheet stops moving when it shuts.",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Sword"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 300,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_ruins_ash_page/"
+      },
+      "prompt": "One thin ash sheet folding shut, blank, no rising column. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_tunya_pollen_stance",
+      "display_name": "Pollen Stance",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "presence",
+        "craft",
+        "cue_grove"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One low uneven sheet of gold pollen at ankle height, no column. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat uneven sheet. Ankle high. Not a poison cloud.",
+      "palette": [
+        "#f0d080",
+        "#6a7a3a",
+        "#e0c060"
+      ],
+      "lore_blurb": "Do Not Reap while the stance holds. Cuts off the frame a strike starts. Reed tip and Pollen Ward reuse this card small.",
+      "scale_vs_player": "1.2 m wide, 0.15 m tall",
+      "unity_bind": {
+        "kit_id": "arch_kit_tunya_veil",
+        "element": "pollen",
+        "trigger": "CastLoop",
+        "startup_ms": 200,
+        "active_ms": 800,
+        "recovery_ms": 200,
+        "parent_skills": [
+          "skill_presence_do_not_reap",
+          "skill_craft_pollen",
+          "skill_steel_reed"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "also_refused": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "cut_on": "Attack",
+        "reed_scale": 0.3,
+        "place": "Tunya grove floor. No jar. No beam. Striking the tree is not this card.",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 400,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_tunya_pollen_stance/"
+      },
+      "prompt": "One low uneven sheet of gold pollen at ankle height, no column. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_fantasy_curse_fold",
+      "display_name": "Curse Fold",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "steel",
+        "curse",
+        "cue_curse_fold"
+      ],
+      "triangle_budget": 280,
+      "aura_prompt": "One dull gold line on a rib arc, the line already closing inward, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short arc shutting toward the chest. Not a jet and not an open Crucible crack.",
+      "palette": [
+        "#c8a060",
+        "#1a3028",
+        "#3a342c"
+      ],
+      "lore_blurb": "Curse Fold on the attacker's ribs. The line closes as the hit lands. Flamethrower_01 stays off.",
+      "scale_vs_player": "0.5 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_fantasy_sunder",
+        "element": "fold",
+        "trigger": "AttackHeavy",
+        "startup_ms": 240,
+        "active_ms": 160,
+        "recovery_ms": 360,
+        "parent_skills": [
+          "skill_steel_curse_fold"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "place": "On the caster ribs, Sundering kit. Closes. Distinct from vfx_crucible_unclosed_seam.",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Sword"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 280,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_fantasy_curse_fold/"
+      },
+      "prompt": "One dull gold line on a rib arc, the line already closing inward, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_dawn_mercy_stop",
+      "display_name": "Mercy Stop",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "steel",
+        "mercy",
+        "cue_mercy"
+      ],
+      "triangle_budget": 420,
+      "aura_prompt": "One flat gold ring with a single missing arc, no beam. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A ring that does not close. The gap faces the target. No bolt.",
+      "palette": [
+        "#c8a060",
+        "#d8d4dc",
+        "#3a342c"
+      ],
+      "lore_blurb": "Mercy Shock. The ring stops short. No disintegration. Street mobs stay empty-handed and do not emit this.",
+      "scale_vs_player": "1.4 m ring",
+      "unity_bind": {
+        "kit_id": "arch_kit_superhero_dawn",
+        "element": "stop",
+        "trigger": "AttackHeavy",
+        "startup_ms": 200,
+        "active_ms": 140,
+        "recovery_ms": 320,
+        "parent_skills": [
+          "skill_steel_mercy"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "place": "Dawn ground under the maul or the mercy orb. Gap faces the target. Do not fill the mercy plaza heart. Not the B27 baton.",
+        "law": "Law.NoFinalWin",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Karate"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 420,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_dawn_mercy_stop/"
+      },
+      "prompt": "One flat gold ring with a single missing arc, no beam. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_sere_coal_dark",
+      "display_name": "Dark Coal",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "focus",
+        "sere",
+        "no_flame"
+      ],
+      "triangle_budget": 360,
+      "aura_prompt": "One dark coal disc sitting in a shallow cup, heat without a flame tongue. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cup and a dark disc. No flame tongue.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Read for wpn_focus_sere_woundcoal. Not Name the Holder. Not a furnace jet.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_sere_mark",
+        "element": "coal",
+        "trigger": "Equip",
+        "startup_ms": 0,
+        "active_ms": 0,
+        "recovery_ms": 0,
+        "parent_weapons": [
+          "wpn_focus_sere_woundcoal"
+        ],
+        "parent_skills": [],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "also_refused": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "place": "In the coal cup while that focus is held. No projectile. Name the Holder stays the tile, not this disc.",
+        "flower_law": "n/a",
+        "no_flame": true,
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 360,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_sere_coal_dark/"
+      },
+      "prompt": "One dark coal disc sitting in a shallow cup, heat without a flame tongue. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_crime_chalk_tick",
+      "display_name": "Chalk Tick",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Crime",
+        "Sere",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "presence",
+        "witness",
+        "cue_witness"
+      ],
+      "triangle_budget": 180,
+      "aura_prompt": "One short chalk stroke on a flat plaster patch, no spark. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One stroke. Not a hit flash.",
+      "palette": [
+        "#e0c040",
+        "#c4b49a",
+        "#8a3030",
+        "#2a241c"
+      ],
+      "lore_blurb": "Witness Mark. Sodium on the Coast, limestone in Court, tile red on Sere. One mesh, three tints.",
+      "scale_vs_player": "0.3 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_crime_coast",
+        "element": "mark",
+        "trigger": "Interact",
+        "startup_ms": 100,
+        "active_ms": 100,
+        "recovery_ms": 200,
+        "parent_skills": [
+          "skill_presence_witness"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "tints": {
+          "Crime": "#e0c040",
+          "Hub": "#c4b49a",
+          "Sere": "#8a3030"
+        },
+        "place": "On a wall or plaster. Not a body flash. Hub uses the limestone tint inside the Court.",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 180,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_crime_chalk_tick/"
+      },
+      "prompt": "One short chalk stroke on a flat plaster patch, no spark. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "vfx_hub_flame_pool",
+      "display_name": "Lantern Pool",
+      "batch": "B28_vfx",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "vfx",
+        "steel",
+        "fire",
+        "cue_lantern"
+      ],
+      "triangle_budget": 240,
+      "aura_prompt": "One low oval of warm flame on stone, a few glass chips at the rim, no jet. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat oval. Not a flamethrower stream.",
+      "palette": [
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40"
+      ],
+      "lore_blurb": "Lantern Toss after the glass breaks. The lantern mesh is the projectile. Lantern Step keeps the bracket flame and does not use this pool.",
+      "scale_vs_player": "0.5 m",
+      "unity_bind": {
+        "kit_id": "arch_kit_hub_court",
+        "element": "fire",
+        "trigger": "Throw",
+        "startup_ms": 80,
+        "active_ms": 40,
+        "recovery_ms": 200,
+        "linger_ms": 1200,
+        "parent_skills": [
+          "skill_steel_lantern"
+        ],
+        "do_not_bind_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "not_for": [
+          "skill_presence_lantern_step"
+        ],
+        "place": "On the cobble at the break. Inside or outside the 42 m disk. No jet. No rifle.",
+        "flower_law": "n/a",
+        "fight_styles": [
+          "Karate"
+        ],
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 240,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/vfx_hub_flame_pool/"
+      },
+      "prompt": "One low oval of warm flame on stone, a few glass chips at the rim, no jet. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    }
+  ]
+}

@@ -39,6 +39,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -280,7 +281,7 @@ export function ExperimentActionPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Experiment — ${name.trim()}`,
           tags: ['science', 'experiment', `samples:${sampleList.length}`],
           source: 'science:experiment:mint',
@@ -296,7 +297,7 @@ export function ExperimentActionPanel() {
               results: { calibration: calibrationResult, protocolValid: protocolResult, sampleAudit: auditResult, custody: custodyResult },
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -336,7 +337,7 @@ export function ExperimentActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Open protocol — ${name.trim()}`,
             tags: ['science', 'protocol', 'public', 'open-science'],
             source: 'science:protocol:publish',
@@ -351,7 +352,7 @@ export function ExperimentActionPanel() {
                 validation: protocolResult,
               },
             },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

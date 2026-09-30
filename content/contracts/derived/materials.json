@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "materials.degradationConstants",
+      "name": "degradationConstants"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "materials.dislike",
       "name": "dislike"
     },
@@ -142,6 +155,71 @@
       ],
       "macro_id": "materials.duplicate",
       "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "materials.durabilityCheck",
+      "name": "durabilityCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "materials.element-detail",
+      "name": "element-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "materials.element-list",
+      "name": "element-list"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "materials.fractographyAnalysis",
+      "name": "fractographyAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "materials",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "materials.fractographyRootCause",
+      "name": "fractographyRootCause"
     },
     {
       "_derived": true,
@@ -549,5 +627,5 @@
   ],
   "domain": "materials",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 48
 }

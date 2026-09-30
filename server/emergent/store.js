@@ -60,11 +60,67 @@ export function createEmergentState() {
 /**
  * Get or create the emergent state on the global STATE object.
  */
+// Incremental re-hydration cadence for getEmergentState (see comment inside).
+const HYDRATE_INTERVAL_MS = 5000;
+// Per-STATE hydration bookkeeping. Kept OFF the STATE object: STATE is
+// persisted to disk, and this holds a live db handle.
+const _hydration = new WeakMap();
+
 export function getEmergentState(STATE) {
   if (!STATE.__emergent) {
     STATE.__emergent = createEmergentState();
   }
+  // 2026-08-31: hydrate from DB (idempotent — only adds missing) so
+  // post-restart persistence works even when in-memory state was populated
+  // elsewhere, and rows registered by the sibling backend still appear.
+  //
+  // 2026-09-27: this used to re-read the WHOLE table on EVERY call. With ~950
+  // emergents and recordTick calling this twice per emergent per heartbeat
+  // tick, that was ~1,900 full-table reads per tick — a measured 1.2-2.8s
+  // event-loop freeze every 15s on the heartbeat backend, which made the
+  // overload gate 503 real user requests. Now: one full read, then an
+  // incremental `updated_at > last` read at most every HYDRATE_INTERVAL_MS.
+  try {
+    const db = STATE?.db || globalThis?._concordDB;
+    const now = Date.now();
+    let h = _hydration.get(STATE);
+    if (!h) { h = { db: null, at: 0, since: -1 }; _hydration.set(STATE, h); }
+    if (db && (h.db !== db || now - h.at >= HYDRATE_INTERVAL_MS)) {
+      const first = h.db !== db;
+      const rows = first
+        ? db.prepare("SELECT * FROM emergent_registry WHERE active = 1").all()
+        : db.prepare("SELECT * FROM emergent_registry WHERE active = 1 AND updated_at > ?").all(h.since);
+      h.db = db;
+      h.at = now;
+      for (const r of rows) if (Number(r.updated_at) > h.since) h.since = Number(r.updated_at);
+      for (const r of rows) {
+        if (!STATE.__emergent.emergents.has(r.emergent_id)) {
+          STATE.__emergent.emergents.set(r.emergent_id, {
+            id: r.emergent_id,
+            name: r.name,
+            role: r.role,
+            instanceScope: r.instance_scope || "local",
+            capabilities: r.capabilities_json ? safeJsonParse(r.capabilities_json, []) : ["talk", "propose"],
+            memoryPolicy: r.memory_policy || "distilled",
+            origin: r.origin || null,
+            purpose: r.purpose || null,
+            district: r.district || "commons",
+            districtHistory: r.district_history_json ? safeJsonParse(r.district_history_json, []) : [],
+            districtAffinity: r.district_affinity_json ? safeJsonParse(r.district_affinity_json, {}) : {},
+            createdAt: new Date(r.created_at || Date.now()).toISOString(),
+            active: r.active === 1,
+            state: r.state || "active",
+            age: r.age || null,
+          });
+        }
+      }
+    }
+  } catch (e) { /* silent — table may not exist yet */ }
   return STATE.__emergent;
+}
+
+function safeJsonParse(str, fallback) {
+  try { return JSON.parse(str); } catch { return fallback; }
 }
 
 // ── Emergent CRUD ─────────────────────────────────────────────────────────
@@ -79,6 +135,37 @@ export function registerEmergent(state, emergent) {
     createdAt: new Date().toISOString(),
     active: true,
   });
+  // 2026-08-30: dual-write to emergent_registry table (limitation fix #1)
+  // Best-effort — silent failure if db/table unavailable
+  try {
+    const db = state?.db || globalThis?._concordDB;
+    if (db) {
+      const now = Date.now();
+      const row = {
+        emergent_id: emergent.id,
+        name: emergent.name || emergent.id,
+        role: emergent.role || null,
+        instance_scope: emergent.instanceScope || "local",
+        capabilities_json: JSON.stringify(emergent.capabilities || []),
+        memory_policy: emergent.memoryPolicy || null,
+        origin: emergent.origin || null,
+        purpose: emergent.purpose || null,
+        district: emergent.district || "commons",
+        district_history_json: JSON.stringify(emergent.districtHistory || []),
+        district_affinity_json: JSON.stringify(emergent.districtAffinity || {}),
+        active: 1,
+        state: "active",
+        age: null,
+        created_at: now,
+        updated_at: now,
+      };
+      // Upsert
+      const cols = Object.keys(row);
+      const placeholders = cols.map(() => "?").join(",");
+      const updateClause = cols.filter(c => c !== "emergent_id").map(c => `${c} = excluded.${c}`).join(", ");
+      db.prepare(`INSERT INTO emergent_registry (${cols.join(",")}) VALUES (${placeholders}) ON CONFLICT(emergent_id) DO UPDATE SET ${updateClause}`).run(cols.map(c => row[c]));
+    }
+  } catch (e) { /* silent — non-fatal */ }
   // Initialize reputation
   if (!state.reputations.has(emergent.id)) {
     state.reputations.set(emergent.id, {

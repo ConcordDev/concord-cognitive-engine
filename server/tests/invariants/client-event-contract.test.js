@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  regexLiteralEnd,
   stripComments,
   collectLiveServerEvents,
   collectDirectSubscriptions,
@@ -125,6 +126,78 @@ test("collectDirectSubscriptions + collectLiveServerEvents: a synthetic FE subsc
 
 // ── (b) The checker does NOT flag a live one (Trap 1 regression guard) ─────
 
+test("collectLiveServerEvents resolves emitWorldEvent({ event: '…' }) object-literal helpers", () => {
+  const serverDir = makeTempDir("client-event-contract-server-emit-world-");
+  try {
+    writeFile(
+      serverDir,
+      "routes/worlds-mini.js",
+      [
+        "export function emitWorldEvent({ io, emitToWorld: emitFn, worldId, event, payload }) {",
+        "  if (typeof emitFn === 'function') emitFn(worldId, event, payload);",
+        "  else if (io) io.to('world:' + worldId).emit(event, payload);",
+        "}",
+        "export function hit() {",
+        "  emitWorldEvent({ io, emitToWorld, worldId: 'hub', event: 'boss:state', payload: {} });",
+        "  emitWorldEvent({ event: 'boss:phase-enter', payload: {} });",
+        "}",
+        "export function other() {",
+        "  notAnEmitHelper({ event: 'should:not-count' });",
+        "}",
+      ].join("\n"),
+    );
+
+    const live = collectLiveServerEvents(serverDir);
+    assert.ok(live.has("boss:state"), "emitWorldEvent({ event: 'boss:state' }) must resolve live");
+    assert.ok(live.has("boss:phase-enter"), "emitWorldEvent({ event: 'boss:phase-enter' }) must resolve live");
+    assert.ok(
+      !live.has("should:not-count"),
+      "an object { event } passed to a non-emit helper must not count as a live emitter",
+    );
+  } finally {
+    rmDir(serverDir);
+  }
+});
+
+test("regex literals: a quote inside a regex does not flip string parity (a helper after it still resolves, a comment-only name still does not)", () => {
+  const serverDir = makeTempDir("client-event-contract-regex-literal-");
+  try {
+    writeFile(
+      serverDir,
+      "lib/regex-parity.js",
+      [
+        "const PATTERNS = [",
+        "  /act\\s+as\\s+(if|though)\\s+you\\s+(have\\s+no|don't\\s+have)/i,",
+        "];",
+        "function emitToRegion(regionId, event, payload) {",
+        "  // one gateway's hiccup must not starve the other",
+        "  io.to('region:' + regionId).emit(event, payload);",
+        "}",
+        "export function go() {",
+        "  emitToRegion('r1', 'region:ping', {});",
+        "  // emitToRegion('r1', 'region:only-in-a-comment', {});",
+        "  const ratio = total / count / 2;",
+        "}",
+      ].join("\n"),
+    );
+    const live = collectLiveServerEvents(serverDir);
+    assert.ok(live.has("region:ping"), "a helper declared after a regex containing a quote must still resolve");
+    assert.ok(!live.has("region:only-in-a-comment"), "a comment-only call must still be stripped");
+  } finally {
+    rmDir(serverDir);
+  }
+});
+
+test("regexLiteralEnd: regex after an operator, division after an operand", () => {
+  const re = "x = /don't/g;";
+  assert.equal(regexLiteralEnd(re, 4, re, 4), 12);
+  const div = "a / b / c";
+  assert.equal(regexLiteralEnd(div, 2, div, 2), -1);
+  const ret = "return /[/]x/.test(s)";
+  assert.equal(regexLiteralEnd(ret, 7, ret, 7), 13);
+  assert.equal(stripComments("const r = /'/; // gone\nkeep('x');"), "const r = /'/; \nkeep('x');");
+});
+
 test("collectLiveServerEvents recognizes a _tickRssDomain-indirect event ('retail:update') as LIVE against the real server/ tree", () => {
   const live = collectLiveServerEvents(path.join(REPO_ROOT, "server"));
   assert.ok(
@@ -141,6 +214,15 @@ test("collectLiveServerEvents recognizes a _tickRssDomain-indirect event ('retai
     live.has("legal:update"),
     "'legal:update' is the other _tickRssDomain-indirect name already used as the " +
       "canonical example in server/tests/invariants/realtime-lens-event-liveness.test.js",
+  );
+  assert.ok(
+    live.has("boss:state"),
+    "boss:state is emitted via emitWorldEvent({ event: 'boss:state' }) in routes/worlds.js — " +
+      "the object-literal helper hop this file pins synthetically must also resolve on the real tree",
+  );
+  assert.ok(
+    live.has("boss:phase-enter"),
+    "boss:phase-enter is the other emitWorldEvent object-literal name the HUD + EmergentEventFeed subscribe to",
   );
 });
 

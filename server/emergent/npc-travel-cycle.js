@@ -31,38 +31,50 @@ export async function runNpcTravelCycle(STATE) {
   const updNpcWorldStmt = db.prepare(`UPDATE world_npcs SET world_id = ?, current_location = ? WHERE id = ?`);
   const delRoutineStmt = db.prepare(`DELETE FROM npc_routine_state WHERE npc_id = ?`);
   const markExecutedStmt = db.prepare(`UPDATE npc_travel_intents SET status = 'executed' WHERE id = ?`);
-  for (const intent of pending) {
-    try {
-      // Update residency.
-      updResidencyStmt.run(intent.destination_world_id, intent.npc_id);
-
-      // Update world_npcs.world_id (current location).
-      const old = selOldWorldStmt.get(intent.npc_id);
-      updNpcWorldStmt.run(intent.destination_world_id, '{"x":0,"z":0}', intent.npc_id);
-
-      // Invalidate routine state — the NPC needs a new schedule for the new world.
-      try { delRoutineStmt.run(intent.npc_id); } catch { /* table may not exist */ }
-
-      // Mark the intent executed.
-      markExecutedStmt.run(intent.id);
-      executed++;
-
-      // Realtime: tell active world clients.
+  // Batch every pending intent's writes into ONE transaction instead of up
+  // to 5 separate synchronous commits per intent. Real production finding,
+  // 2026-08-23 (see lib/npc-simulator.js#_flushPendingPersists for the full
+  // measured rationale — a trivial one-column UPDATE elsewhere in this same
+  // codebase's per-entity-loop pattern cost ~4.4s of CPU time across ~2min
+  // of real traffic purely from per-call overhead, unbounded by any LIMIT
+  // here). Safe: the loop's own per-intent try/catch (unchanged below)
+  // already isolates one intent's failure from the others, so nothing here
+  // can throw out to the transaction wrapper and roll back the whole batch.
+  const executeIntents = db.transaction((intents) => {
+    for (const intent of intents) {
       try {
-        if (globalThis?.__CONCORD_REALTIME__?.io) {
-          const io = globalThis.__CONCORD_REALTIME__.io;
-          io.to(`world:${old?.world_id || ''}`).emit('npc:travelled', {
-            npcId: intent.npc_id, fromWorldId: old?.world_id, toWorldId: intent.destination_world_id, reason: intent.reason,
-          });
-          io.to(`world:${intent.destination_world_id}`).emit('npc:travelled', {
-            npcId: intent.npc_id, fromWorldId: old?.world_id, toWorldId: intent.destination_world_id, reason: intent.reason,
-          });
-        }
-      } catch { /* sockets optional */ }
-    } catch (err) {
-      console.warn('[npc-travel-cycle] failed to execute intent', intent.id, String(err?.message || err));
+        // Update residency.
+        updResidencyStmt.run(intent.destination_world_id, intent.npc_id);
+
+        // Update world_npcs.world_id (current location).
+        const old = selOldWorldStmt.get(intent.npc_id);
+        updNpcWorldStmt.run(intent.destination_world_id, '{"x":0,"z":0}', intent.npc_id);
+
+        // Invalidate routine state — the NPC needs a new schedule for the new world.
+        try { delRoutineStmt.run(intent.npc_id); } catch { /* table may not exist */ }
+
+        // Mark the intent executed.
+        markExecutedStmt.run(intent.id);
+        executed++;
+
+        // Realtime: tell active world clients.
+        try {
+          if (globalThis?.__CONCORD_REALTIME__?.io) {
+            const io = globalThis.__CONCORD_REALTIME__.io;
+            io.to(`world:${old?.world_id || ''}`).emit('npc:travelled', {
+              npcId: intent.npc_id, fromWorldId: old?.world_id, toWorldId: intent.destination_world_id, reason: intent.reason,
+            });
+            io.to(`world:${intent.destination_world_id}`).emit('npc:travelled', {
+              npcId: intent.npc_id, fromWorldId: old?.world_id, toWorldId: intent.destination_world_id, reason: intent.reason,
+            });
+          }
+        } catch { /* sockets optional */ }
+      } catch (err) {
+        console.warn('[npc-travel-cycle] failed to execute intent', intent.id, String(err?.message || err));
+      }
     }
-  }
+  });
+  executeIntents(pending);
 
   // 2. Pick fresh travel intents for ambitious NPCs that don't have one open.
   const ambitious = db.prepare(`

@@ -1,0 +1,894 @@
+{
+  "P0": [
+    {
+      "plate": "Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_captain.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Bandits/CX_Bandit_Sundering_captain.mat",
+      "name": "CX_Bandit_Sundering_captain",
+      "category": "Bandits"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_dusk.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Bandits/CX_Bandit_Sundering_dusk.mat",
+      "name": "CX_Bandit_Sundering_dusk",
+      "category": "Bandits"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_hitch.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Bandits/CX_Bandit_Sundering_hitch.mat",
+      "name": "CX_Bandit_Sundering_hitch",
+      "category": "Bandits"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_marrow.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Bandits/CX_Bandit_Sundering_marrow.mat",
+      "name": "CX_Bandit_Sundering_marrow",
+      "category": "Bandits"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Bandits/CX_Bandit_Sundering_nettle.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Bandits/CX_Bandit_Sundering_nettle.mat",
+      "name": "CX_Bandit_Sundering_nettle",
+      "category": "Bandits"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_dialogue.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Court/CX_HUD_Court_dialogue.mat",
+      "name": "CX_HUD_Court_dialogue",
+      "category": "HUD/Court"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_health.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Court/CX_HUD_Court_health.mat",
+      "name": "CX_HUD_Court_health",
+      "category": "HUD/Court"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_inventory.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Court/CX_HUD_Court_inventory.mat",
+      "name": "CX_HUD_Court_inventory",
+      "category": "HUD/Court"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Court/CX_HUD_Court_questtoast.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Court/CX_HUD_Court_questtoast.mat",
+      "name": "CX_HUD_Court_questtoast",
+      "category": "HUD/Court"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_dialogue.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Steel/CX_HUD_Steel_dialogue.mat",
+      "name": "CX_HUD_Steel_dialogue",
+      "category": "HUD/Steel"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_health.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Steel/CX_HUD_Steel_health.mat",
+      "name": "CX_HUD_Steel_health",
+      "category": "HUD/Steel"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_inventory.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Steel/CX_HUD_Steel_inventory.mat",
+      "name": "CX_HUD_Steel_inventory",
+      "category": "HUD/Steel"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/HUD/Steel/CX_HUD_Steel_questtoast.jpg",
+      "material": "Assets/Concordia/Generated/Materials/HUD/Steel/CX_HUD_Steel_questtoast.mat",
+      "name": "CX_HUD_Steel_questtoast",
+      "category": "HUD/Steel"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Hero/CX_Hero_Court_front.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hero/CX_Hero_Court_front.mat",
+      "name": "CX_Hero_Court_front",
+      "category": "Hero"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Hero/CX_Hero_Steel_front.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hero/CX_Hero_Steel_front.mat",
+      "name": "CX_Hero_Steel_front",
+      "category": "Hero"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Hero/CX_Hero_Steel_grip.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hero/CX_Hero_Steel_grip.mat",
+      "name": "CX_Hero_Steel_grip",
+      "category": "Hero"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Mount/CX_Mount_Horse_rideable.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Mount/CX_Mount_Horse_rideable.mat",
+      "name": "CX_Mount_Horse_rideable",
+      "category": "Mount"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/NPCs/CX_NPC_Court_guard.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_Court_guard.mat",
+      "name": "CX_NPC_Court_guard",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_merchant.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_Road_merchant.mat",
+      "name": "CX_NPC_Road_merchant",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_settler.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_Road_settler.mat",
+      "name": "CX_NPC_Road_settler",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/NPCs/CX_NPC_Road_traveler.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_Road_traveler.mat",
+      "name": "CX_NPC_Road_traveler",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Spoils/CX_Prop_Spoils_pouch.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Spoils/CX_Prop_Spoils_pouch.mat",
+      "name": "CX_Prop_Spoils_pouch",
+      "category": "Spoils"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Bow.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Weapons/CX_Weapon_Bow.mat",
+      "name": "CX_Weapon_Bow",
+      "category": "Weapons"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Hatchet.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Weapons/CX_Weapon_Hatchet.mat",
+      "name": "CX_Weapon_Hatchet",
+      "category": "Weapons"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Weapons/CX_Weapon_PulseBaton.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Weapons/CX_Weapon_PulseBaton.mat",
+      "name": "CX_Weapon_PulseBaton",
+      "category": "Weapons"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Steel_longsword.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Weapons/CX_Weapon_Steel_longsword.mat",
+      "name": "CX_Weapon_Steel_longsword",
+      "category": "Weapons"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P0/Weapons/CX_Weapon_Switchblade.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Weapons/CX_Weapon_Switchblade.mat",
+      "name": "CX_Weapon_Switchblade",
+      "category": "Weapons"
+    }
+  ],
+  "P1": [
+    {
+      "plate": "Assets/Concordia/Generated/P1/Predators/CX_Predator_BoneSentinel.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Predators/CX_Predator_BoneSentinel.mat",
+      "name": "CX_Predator_BoneSentinel",
+      "category": "Predators"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Predators/CX_Predator_CrystalElemental.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Predators/CX_Predator_CrystalElemental.mat",
+      "name": "CX_Predator_CrystalElemental",
+      "category": "Predators"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Predators/CX_Predator_GloomStalker.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Predators/CX_Predator_GloomStalker.mat",
+      "name": "CX_Predator_GloomStalker",
+      "category": "Predators"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Predators/CX_Predator_ManaDrake.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Predators/CX_Predator_ManaDrake.mat",
+      "name": "CX_Predator_ManaDrake",
+      "category": "Predators"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Predators/CX_Predator_ThornWolf.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Predators/CX_Predator_ThornWolf.mat",
+      "name": "CX_Predator_ThornWolf",
+      "category": "Predators"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Basilisk.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Basilisk.mat",
+      "name": "CX_Watcher_Basilisk",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_ChromeEnforcer.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_ChromeEnforcer.mat",
+      "name": "CX_Watcher_ChromeEnforcer",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Construct.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Construct.mat",
+      "name": "CX_Watcher_Construct",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Drift.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Drift.mat",
+      "name": "CX_Watcher_Drift",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Drone.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Drone.mat",
+      "name": "CX_Watcher_Drone",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_DustCourser.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_DustCourser.mat",
+      "name": "CX_Watcher_DustCourser",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_EchoSerpent.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_EchoSerpent.mat",
+      "name": "CX_Watcher_EchoSerpent",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_FurnaceHound.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_FurnaceHound.mat",
+      "name": "CX_Watcher_FurnaceHound",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Griffin.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Griffin.mat",
+      "name": "CX_Watcher_Griffin",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Hound.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Hound.mat",
+      "name": "CX_Watcher_Hound",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_MechHound.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_MechHound.mat",
+      "name": "CX_Watcher_MechHound",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_RailVulture.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_RailVulture.mat",
+      "name": "CX_Watcher_RailVulture",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Raptor.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Raptor.mat",
+      "name": "CX_Watcher_Raptor",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Sealie.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Sealie.mat",
+      "name": "CX_Watcher_Sealie",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Sentinel.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Sentinel.mat",
+      "name": "CX_Watcher_Sentinel",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_ThunderYak.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_ThunderYak.mat",
+      "name": "CX_Watcher_ThunderYak",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Watchers/CX_Watcher_Wraith.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Watchers/CX_Watcher_Wraith.mat",
+      "name": "CX_Watcher_Wraith",
+      "category": "Watchers"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_Boar.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_Boar.mat",
+      "name": "CX_Fauna_Boar",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_Deer.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_Deer.mat",
+      "name": "CX_Fauna_Deer",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_Fox.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_Fox.mat",
+      "name": "CX_Fauna_Fox",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_LamplighterMoth.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_LamplighterMoth.mat",
+      "name": "CX_Fauna_LamplighterMoth",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_PlazaStrider.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_PlazaStrider.mat",
+      "name": "CX_Fauna_PlazaStrider",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_Raven.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_Raven.mat",
+      "name": "CX_Fauna_Raven",
+      "category": "Wildlife"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P1/Wildlife/CX_Fauna_Wolf.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Wildlife/CX_Fauna_Wolf.mat",
+      "name": "CX_Fauna_Wolf",
+      "category": "Wildlife"
+    }
+  ],
+  "P2": [
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Body_Heavy.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Body_Heavy.mat",
+      "name": "CX_Create_Body_Heavy",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Body_Slight.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Body_Slight.mat",
+      "name": "CX_Create_Body_Slight",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Face_ShortHair.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Face_ShortHair.mat",
+      "name": "CX_Create_Face_ShortHair",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Face_Stern.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Face_Stern.mat",
+      "name": "CX_Create_Face_Stern",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Face_Walker.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Face_Walker.mat",
+      "name": "CX_Create_Face_Walker",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Bun.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Hair_Bun.mat",
+      "name": "CX_Create_Hair_Bun",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Crop.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Hair_Crop.mat",
+      "name": "CX_Create_Hair_Crop",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Long.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Hair_Long.mat",
+      "name": "CX_Create_Hair_Long",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Topknot.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Create/CX_Create_Hair_Topknot.mat",
+      "name": "CX_Create_Hair_Topknot",
+      "category": "Create"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Gear/CX_Gear_BanditScrap.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Gear/CX_Gear_BanditScrap.mat",
+      "name": "CX_Gear_BanditScrap",
+      "category": "Gear"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Gear/CX_Gear_CourtTunic.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Gear/CX_Gear_CourtTunic.mat",
+      "name": "CX_Gear_CourtTunic",
+      "category": "Gear"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Gear/CX_Gear_CrimsonCourt.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Gear/CX_Gear_CrimsonCourt.mat",
+      "name": "CX_Gear_CrimsonCourt",
+      "category": "Gear"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Gear/CX_Gear_NightMarket.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Gear/CX_Gear_NightMarket.mat",
+      "name": "CX_Gear_NightMarket",
+      "category": "Gear"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Gear/CX_Gear_SteelJerkin.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Gear/CX_Gear_SteelJerkin.mat",
+      "name": "CX_Gear_SteelJerkin",
+      "category": "Gear"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_CrimeFixer.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_CrimeFixer.mat",
+      "name": "CX_NPC_CrimeFixer",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_DawnWatcher.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_DawnWatcher.mat",
+      "name": "CX_NPC_DawnWatcher",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_FrontierScout.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_FrontierScout.mat",
+      "name": "CX_NPC_FrontierScout",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_GlyphKeeper.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_GlyphKeeper.mat",
+      "name": "CX_NPC_GlyphKeeper",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_GridRunner.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_GridRunner.mat",
+      "name": "CX_NPC_GridRunner",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_GroveMerchant.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_GroveMerchant.mat",
+      "name": "CX_NPC_GroveMerchant",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_IronWarden.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_IronWarden.mat",
+      "name": "CX_NPC_IronWarden",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/NPCs/CX_NPC_LatticeWalker.jpg",
+      "material": "Assets/Concordia/Generated/Materials/NPCs/CX_NPC_LatticeWalker.mat",
+      "name": "CX_NPC_LatticeWalker",
+      "category": "NPCs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_ArenaDummy.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_ArenaDummy.mat",
+      "name": "CX_Prop_ArenaDummy",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_Campfire.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_Campfire.mat",
+      "name": "CX_Prop_Campfire",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_CourtLantern.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_CourtLantern.mat",
+      "name": "CX_Prop_CourtLantern",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_Crate.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_Crate.mat",
+      "name": "CX_Prop_Crate",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_DelveMouth.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_DelveMouth.mat",
+      "name": "CX_Prop_DelveMouth",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_FishingKit.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_FishingKit.mat",
+      "name": "CX_Prop_FishingKit",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_Forge.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_Forge.mat",
+      "name": "CX_Prop_Forge",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_MarketStall.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_MarketStall.mat",
+      "name": "CX_Prop_MarketStall",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_Shrine.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_Shrine.mat",
+      "name": "CX_Prop_Shrine",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_Well.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_Well.mat",
+      "name": "CX_Prop_Well",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Props/CX_Prop_WreckWagon.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Props/CX_Prop_WreckWagon.mat",
+      "name": "CX_Prop_WreckWagon",
+      "category": "Props"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Signs/CX_Sign_RingPost.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Signs/CX_Sign_RingPost.mat",
+      "name": "CX_Sign_RingPost",
+      "category": "Signs"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Tiles/CX_Tile_AshCinder.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tiles/CX_Tile_AshCinder.mat",
+      "name": "CX_Tile_AshCinder",
+      "category": "Tiles"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tiles/CX_Tile_CourtCobble.mat",
+      "name": "CX_Tile_CourtCobble",
+      "category": "Tiles"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Tiles/CX_Tile_MossFloor.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tiles/CX_Tile_MossFloor.mat",
+      "name": "CX_Tile_MossFloor",
+      "category": "Tiles"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Tiles/CX_Tile_PackedEarth.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tiles/CX_Tile_PackedEarth.mat",
+      "name": "CX_Tile_PackedEarth",
+      "category": "Tiles"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/Tiles/CX_Tile_SandGravel.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tiles/CX_Tile_SandGravel.mat",
+      "name": "CX_Tile_SandGravel",
+      "category": "Tiles"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/VFX/CX_VFX_CurseFold.jpg",
+      "material": "Assets/Concordia/Generated/Materials/VFX/CX_VFX_CurseFold.mat",
+      "name": "CX_VFX_CurseFold",
+      "category": "VFX"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/VFX/CX_VFX_FlowerStep.jpg",
+      "material": "Assets/Concordia/Generated/Materials/VFX/CX_VFX_FlowerStep.mat",
+      "name": "CX_VFX_FlowerStep",
+      "category": "VFX"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/VFX/CX_VFX_HitSparks.jpg",
+      "material": "Assets/Concordia/Generated/Materials/VFX/CX_VFX_HitSparks.mat",
+      "name": "CX_VFX_HitSparks",
+      "category": "VFX"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P2/VFX/CX_VFX_ParryRing.jpg",
+      "material": "Assets/Concordia/Generated/Materials/VFX/CX_VFX_ParryRing.mat",
+      "name": "CX_VFX_ParryRing",
+      "category": "VFX"
+    }
+  ],
+  "P3": [
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_AsbirThelane.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_AsbirThelane.mat",
+      "name": "CX_Guest_AsbirThelane",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_Brackish.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_Brackish.mat",
+      "name": "CX_Guest_Brackish",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_EliasVoss.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_EliasVoss.mat",
+      "name": "CX_Guest_EliasVoss",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_JaxRivera.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_JaxRivera.mat",
+      "name": "CX_Guest_JaxRivera",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_KaelZero.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_KaelZero.mat",
+      "name": "CX_Guest_KaelZero",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_Lamplighter.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_Lamplighter.mat",
+      "name": "CX_Guest_Lamplighter",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_LyraSilentchant.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_LyraSilentchant.mat",
+      "name": "CX_Guest_LyraSilentchant",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_MamaIronRose.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_MamaIronRose.mat",
+      "name": "CX_Guest_MamaIronRose",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_MarenAshveil.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_MarenAshveil.mat",
+      "name": "CX_Guest_MarenAshveil",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_NyxTorres.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_NyxTorres.mat",
+      "name": "CX_Guest_NyxTorres",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_OldSeam.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_OldSeam.mat",
+      "name": "CX_Guest_OldSeam",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_SeraphineVoss.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_SeraphineVoss.mat",
+      "name": "CX_Guest_SeraphineVoss",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_ThorneBlackroot.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_ThorneBlackroot.mat",
+      "name": "CX_Guest_ThorneBlackroot",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_VesperKane.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_VesperKane.mat",
+      "name": "CX_Guest_VesperKane",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Guests/CX_Guest_WardenGale.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Guests/CX_Guest_WardenGale.mat",
+      "name": "CX_Guest_WardenGale",
+      "category": "Guests"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Concord.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Pillars/CX_Pillar_Concord.mat",
+      "name": "CX_Pillar_Concord",
+      "category": "Pillars"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Concordia.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Pillars/CX_Pillar_Concordia.mat",
+      "name": "CX_Pillar_Concordia",
+      "category": "Pillars"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Sovereign.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Pillars/CX_Pillar_Sovereign.mat",
+      "name": "CX_Pillar_Sovereign",
+      "category": "Pillars"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P3/Worlds/CX_NPC_SereTessera.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Worlds/CX_NPC_SereTessera.mat",
+      "name": "CX_NPC_SereTessera",
+      "category": "Worlds"
+    }
+  ],
+  "P4": [
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crime/CX_Civic_Crime_Cab.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crime/CX_Civic_Crime_Cab.mat",
+      "name": "CX_Civic_Crime_Cab",
+      "category": "Crime"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crime/CX_Civic_Crime_Dumpster.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crime/CX_Civic_Crime_Dumpster.mat",
+      "name": "CX_Civic_Crime_Dumpster",
+      "category": "Crime"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crime/CX_Civic_Crime_Hydrant.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crime/CX_Civic_Crime_Hydrant.mat",
+      "name": "CX_Civic_Crime_Hydrant",
+      "category": "Crime"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crime/CX_Civic_Crime_StreetSign.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crime/CX_Civic_Crime_StreetSign.mat",
+      "name": "CX_Civic_Crime_StreetSign",
+      "category": "Crime"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crucible/CX_Civic_Crucible_DriftMarker.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crucible/CX_Civic_Crucible_DriftMarker.mat",
+      "name": "CX_Civic_Crucible_DriftMarker",
+      "category": "Crucible"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Crucible/CX_Civic_Crucible_ShardTram.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Crucible/CX_Civic_Crucible_ShardTram.mat",
+      "name": "CX_Civic_Crucible_ShardTram",
+      "category": "Crucible"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Dawn/CX_Civic_Dawn_Gondola.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Dawn/CX_Civic_Dawn_Gondola.mat",
+      "name": "CX_Civic_Dawn_Gondola",
+      "category": "Dawn"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Dawn/CX_Civic_Dawn_LiftCage.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Dawn/CX_Civic_Dawn_LiftCage.mat",
+      "name": "CX_Civic_Dawn_LiftCage",
+      "category": "Dawn"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Dawn/CX_Civic_Dawn_SunDisc.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Dawn/CX_Civic_Dawn_SunDisc.mat",
+      "name": "CX_Civic_Dawn_SunDisc",
+      "category": "Dawn"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Frontier/CX_Civic_Frontier_Boxcar.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Frontier/CX_Civic_Frontier_Boxcar.mat",
+      "name": "CX_Civic_Frontier_Boxcar",
+      "category": "Frontier"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Frontier/CX_Civic_Frontier_Wagon.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Frontier/CX_Civic_Frontier_Wagon.mat",
+      "name": "CX_Civic_Frontier_Wagon",
+      "category": "Frontier"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Frontier/CX_Civic_Frontier_Windpump.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Frontier/CX_Civic_Frontier_Windpump.mat",
+      "name": "CX_Civic_Frontier_Windpump",
+      "category": "Frontier"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Grid/CX_Civic_Grid_Kiosk.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Grid/CX_Civic_Grid_Kiosk.mat",
+      "name": "CX_Civic_Grid_Kiosk",
+      "category": "Grid"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Grid/CX_Civic_Grid_Maglev.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Grid/CX_Civic_Grid_Maglev.mat",
+      "name": "CX_Civic_Grid_Maglev",
+      "category": "Grid"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Grid/CX_Civic_Grid_Pylon.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Grid/CX_Civic_Grid_Pylon.mat",
+      "name": "CX_Civic_Grid_Pylon",
+      "category": "Grid"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Hub/CX_Civic_Hub_Bench.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hub/CX_Civic_Hub_Bench.mat",
+      "name": "CX_Civic_Hub_Bench",
+      "category": "Hub"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Hub/CX_Civic_Hub_FlowerCart.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hub/CX_Civic_Hub_FlowerCart.mat",
+      "name": "CX_Civic_Hub_FlowerCart",
+      "category": "Hub"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Hub/CX_Civic_Hub_Waypost.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Hub/CX_Civic_Hub_Waypost.mat",
+      "name": "CX_Civic_Hub_Waypost",
+      "category": "Hub"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Ruins/CX_Civic_Ruins_AshTram.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Ruins/CX_Civic_Ruins_AshTram.mat",
+      "name": "CX_Civic_Ruins_AshTram",
+      "category": "Ruins"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Ruins/CX_Civic_Ruins_CatalogKiosk.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Ruins/CX_Civic_Ruins_CatalogKiosk.mat",
+      "name": "CX_Civic_Ruins_CatalogKiosk",
+      "category": "Ruins"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Ruins/CX_Civic_Ruins_GlyphMarker.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Ruins/CX_Civic_Ruins_GlyphMarker.mat",
+      "name": "CX_Civic_Ruins_GlyphMarker",
+      "category": "Ruins"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Sere/CX_Civic_Sere_OreTram.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Sere/CX_Civic_Sere_OreTram.mat",
+      "name": "CX_Civic_Sere_OreTram",
+      "category": "Sere"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Sere/CX_Civic_Sere_SmogLamp.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Sere/CX_Civic_Sere_SmogLamp.mat",
+      "name": "CX_Civic_Sere_SmogLamp",
+      "category": "Sere"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Sere/CX_Civic_Sere_TesseraPost.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Sere/CX_Civic_Sere_TesseraPost.mat",
+      "name": "CX_Civic_Sere_TesseraPost",
+      "category": "Sere"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Sundering/CX_Civic_Sundering_ForestCart.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Sundering/CX_Civic_Sundering_ForestCart.mat",
+      "name": "CX_Civic_Sundering_ForestCart",
+      "category": "Sundering"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Sundering/CX_Civic_Sundering_Wardpost.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Sundering/CX_Civic_Sundering_Wardpost.mat",
+      "name": "CX_Civic_Sundering_Wardpost",
+      "category": "Sundering"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Tunya/CX_Civic_Tunya_Irrigation.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tunya/CX_Civic_Tunya_Irrigation.mat",
+      "name": "CX_Civic_Tunya_Irrigation",
+      "category": "Tunya"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Tunya/CX_Civic_Tunya_OxCart.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tunya/CX_Civic_Tunya_OxCart.mat",
+      "name": "CX_Civic_Tunya_OxCart",
+      "category": "Tunya"
+    },
+    {
+      "plate": "Assets/Concordia/Generated/P4/Tunya/CX_Civic_Tunya_Waystone.jpg",
+      "material": "Assets/Concordia/Generated/Materials/Tunya/CX_Civic_Tunya_Waystone.mat",
+      "name": "CX_Civic_Tunya_Waystone",
+      "category": "Tunya"
+    }
+  ]
+}

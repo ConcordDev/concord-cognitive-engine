@@ -1,0 +1,541 @@
+{
+  "schema": "concordia.slice.ecology.v1",
+  "slice_id": "S01_hub_ecology_mobs",
+  "world_id": "Hub",
+  "display_world": "Unburned Court",
+  "facet": "ecology_mobs",
+  "title": "Unburned Court — plaza fauna, ambient mobs, Flower Law ecology",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs or volume density weights. Spawn caps here are the Hub instance budget for this facet.",
+  "canon_pins": {
+    "world_id": "Hub",
+    "canon_world_def_title": "The Unburned Court",
+    "hub_law_radius_m": 42,
+    "court_radius_m": 16,
+    "ring_radius_m": 34,
+    "wall_radius_m": 56,
+    "arena_anchor": { "x": 0, "y": 0, "z": 18, "steel_radius_m": 8 },
+    "law_text": "No live steel in the Court. Blades die as flowers except in the Arena.",
+    "steel_live_rule": "Canon.SteelLive: true inside the Arena disk; false on Hub when the point is inside the 42m disk and outside that Arena disk; true again past 42m.",
+    "pinewood_crossing": { "city_id": "pinewood_crossing", "x": 62, "z": -28, "lettering": "Pinewood Crossing" },
+    "humanoid_body": "CX only. This slice spawns no humanoid mobs.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "hub_canon_fauna_aliases": [],
+    "note": "Canon.WorldDef for Hub sets fauna to an empty list and steelLive false. Wildlife in the plaza are bible faun_ rows, not wolf, hound, griffin, or drone aliases."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/lore.json",
+    "cities": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/cities.json",
+    "creatures_seed": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/creatures.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/factions.json",
+    "animals": "native-bible/creatures/ANIMALS.json",
+    "hybrids": "native-bible/creatures/HYBRIDS.json",
+    "taxonomy": "native-bible/01_TAXONOMY.md",
+    "density": "native-bible/volume/DENSITY_TABLES.json Hub block",
+    "existing_quests_not_redone": [
+      "q_hub_pinewood_milepost",
+      "q_hub_flower_urn",
+      "q_hub_lamplighter_round",
+      "q_hub_three_notebooks",
+      "first_cycle_fight"
+    ]
+  },
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "This facet has no boss and no mini-boss. Hub combat lessons stay on Arena sand between people, or in the Training Hollow as the existing first-cycle sprite drill. A larger salt wyrm is not authored.",
+  "bands": [
+    {
+      "id": "band_inner_court",
+      "from_m": 0,
+      "to_m": 16,
+      "exclude": ["arena_disk"],
+      "law": "flower",
+      "what_lives_here": "Roof pigeons, dusk moths on lantern iron, one to three market mousers at crates and archive steps."
+    },
+    {
+      "id": "band_flower_law",
+      "from_m": 16,
+      "to_m": 42,
+      "exclude": ["arena_disk"],
+      "law": "flower",
+      "what_lives_here": "The same three plaza species. Hares, stags, horses, and the salt wyrm do not ambient-spawn here."
+    },
+    {
+      "id": "band_arena",
+      "anchor": "Canon.Arena",
+      "radius_m": 8,
+      "law": "steel_exception",
+      "what_lives_here": "No fauna land, perch, or path. A pigeon flock may arc above the sand with collision off. Gale's rack and the sand stay a people-fight."
+    },
+    {
+      "id": "band_gate_shoulder",
+      "from_m": 42,
+      "to_m": 56,
+      "law": "steel_live_road",
+      "what_lives_here": "Salt-road hares on the shoulders, two pigeons on the gatehouse roof only, the hitch rail for wagon horses. The wyrm's ditch starts past the mouth, not in the gate tunnel."
+    },
+    {
+      "id": "band_pinewood",
+      "from_m": 56,
+      "toward": "pinewood_crossing",
+      "law": "steel_live_road",
+      "what_lives_here": "Pinewood stag group on the verge, hare shoulders, hitch at the Crossing, one salt wyrm in the milepost ditch."
+    }
+  ],
+  "volume_weights_unchanged": [
+    { "id": "faun_court_pigeon", "weight": 6, "volume_note": "flock arc over the plaza" },
+    { "id": "faun_lantern_moth", "weight": 4, "volume_note": "dusk only, one warm diamond each" },
+    { "id": "faun_court_cat", "weight": 3, "volume_note": "market wedge, ears are the tell" },
+    { "id": "faun_saltroad_hare", "weight": 2, "volume_note": "outside the gate" },
+    { "id": "faun_pinewood_stag", "weight": 1, "volume_note": "salt road only, never the plaza" },
+    { "id": "faun_wagon_horse", "weight": 1, "volume_note": "hitch rail, tack optional" }
+  ],
+  "creatures": [
+    {
+      "id": "faun_court_pigeon",
+      "display_name": "Court Pigeon",
+      "role": "ambient_aerial",
+      "temperament": "ambient",
+      "player_aggro": false,
+      "light_hostile": false,
+      "topology": "winged_biped",
+      "gait": "flyer_flap",
+      "verbs": ["verb_fauna_perch", "verb_fauna_flock_arc"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [] },
+      "bible_social_range": "8-24",
+      "why_this_band": "They nest the lantern iron and eat the seed Concordia left in the cobble when the Year-38 flower tide carried the conspirators out. The plaza is their pantry and their rookery. They belong inside 42m because the ground that refuses steel is the ground that feeds them.",
+      "flower_law": "A swung blade in the Court becomes a flower before it meets a bird. Pigeons startle at the bloom and resettle. They take no health damage from that swing.",
+      "arena_exception": "They do not land on the sand. The Arena is the one disk where steel stays steel, so a perched bird would be a legal target. The flock arc passes overhead with collision disabled. Gale does not share the rack with a nest.",
+      "density": {
+        "alive_cap_court_and_law_roofs": 14,
+        "alive_cap_gatehouse_roof_only": 2,
+        "alive_cap_past_wall": 0,
+        "arena_landed": 0,
+        "night_perched_cap": 4,
+        "founding_day_reading_cap": 24,
+        "daypart": "Day and civil dusk: one flock arc. Night: perched on lantern iron, cap 4. Founding Day reading: the social range opens to 24 for that hour, then returns to 14."
+      },
+      "missing_mesh": "Spawn nothing. Do not seat a gull, a sparrow, or a plaza strider in this id."
+    },
+    {
+      "id": "faun_lantern_moth",
+      "display_name": "Lantern Moth",
+      "role": "ambient_critter",
+      "temperament": "ambient",
+      "player_aggro": false,
+      "light_hostile": false,
+      "deals_damage": false,
+      "topology": "winged_biped",
+      "gait": "flyer_flutter",
+      "verbs": ["verb_fauna_flutter", "verb_fauna_lamp_orbit"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [] },
+      "canon_seed_alias": "lamplighter_moth",
+      "alias_rule": "One species. The Canon creatures.json id lamplighter_moth is this row. Do not spawn both.",
+      "why_this_band": "Wing-scales hold leftover daylight and release it as one warm diamond on the Court lanterns. They orbit the lamps the Lamplighter walks. They are animals of the lit plaza, so their radii sit inside the law.",
+      "flower_law": "They do not strike. A player's swing still resolves as a flower and the orbit breaks for a breath, then reforms on the same post.",
+      "arena_exception": "No orbit on the Arena rack or over the sand. The rack is a steel lesson. Moths stay on civic lantern posts.",
+      "southern_arc": "Lore Year 89 dome collapse and the Year 91 southern weakening (Ren noticed, Nesha confirmed, the Speaker has not told the Assembly) show up here as thinner lamps. Southern posts, the quarter of the eight civic lanterns on the negative-Z side of the plaza, hold at most half the moths of a northern post. The thinness is a fact a player can count. It is not a quest license to announce a dome failure.",
+      "density": {
+        "day_alive": 0,
+        "dusk_and_night_cap_inside_42_excluding_arena": 24,
+        "southern_quarter_cap_inside_that": 6,
+        "per_lantern_typical": "3-5 on a healthy post, 1-2 on a southern post",
+        "past_42m": 0,
+        "daypart": "Dusk through the lamp hours. Gone at full day. Bible herd 12-40 is the species swarm; this plaza clamps to 24 so each diamond still reads."
+      },
+      "missing_mesh": "Spawn nothing. Do not use faun_lattice_moth. That moth is Crucible."
+    },
+    {
+      "id": "faun_court_cat",
+      "display_name": "Market Mouser",
+      "role": "light_vermin_predator",
+      "temperament": "vermin_only",
+      "player_aggro": false,
+      "light_hostile": true,
+      "hostile_scope": "Mice and a hand that grabs the cat. Never a player as a combat target inside the law.",
+      "bible_hostile_flag": true,
+      "flag_override": "ANIMALS.json sets unity_bind.hostile true because the row has a pounce. This slice's spawn contract sets player_aggro false. Binding Hostile.cs onto plaza players would put a fight in the flower disk. Bind the pounce to vermin only.",
+      "topology": "quadruped",
+      "gait": "quad_stalk",
+      "verbs": ["verb_fauna_stalk", "verb_fauna_pounce_mouse"],
+      "stats_hooks": { "health": "table:faun_small", "loot": [] },
+      "why_this_band": "Grain at the Bazaar Consortium stalls and paper-mice in the archive quarter are inside the walls. The mouser is the Court's working predator, small enough that the ground never has to treat it as a conquest.",
+      "flower_law": "A player who strikes a cat inside 42m blooms a flower, the cat bolts, and any mouser quest fails. The cat's own pounce does not apply a damage table to people. Cornered, it leaves under a stall.",
+      "arena_exception": "No cat on the sand. A steel disk with a market animal in it would make Gale's lesson about poise into a lesson about kicking a cat. The market wedge stays off the Arena lip.",
+      "politics": "A frayed crimson thread on some individuals is market dye from Velka's row, not a Crimson Court familiar and not a Voss mark. Scholars joke that the cats index mice. The cats do not comment. Asbir may file a sighting in the fact book and the joke in the inference book.",
+      "density": {
+        "alive_cap_market_and_archive": 3,
+        "inside_arena": 0,
+        "past_wall": 0,
+        "social": "solitary, bible herd 1; three individuals means three territories, not a pack",
+        "daypart": "Any hour. One is usually on the archive steps, two on the market wedge."
+      },
+      "missing_mesh": "Spawn nothing. Do not use a hound skeleton."
+    },
+    {
+      "id": "faun_saltroad_hare",
+      "display_name": "Salt-Road Hare",
+      "role": "road_prey",
+      "temperament": "flee",
+      "player_aggro": false,
+      "light_hostile": false,
+      "topology": "quadruped",
+      "gait": "quad_bound",
+      "verbs": ["verb_fauna_freeze", "verb_fauna_bolt"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": ["meat_small"] },
+      "loot_rule": "meat_small is a table hook for a road harvest outside 42m. Inside the law there is no harvest, because there is no ambient hare and a strike would be a flower anyway.",
+      "why_this_band": "The hare is the small life of the road between the Court gate and the Sundering verge. Volume weight puts it outside the gate. It freezes when it sees flowers and bolts when it sees steel, so the law disk is a trap for it: a wreath at the gate mouth locks it still, and a drawn blade sends it under a wheel. Ambient life stays on the shoulder where both signals are rarer.",
+      "flower_law": "Ambient count inside 42m is zero. A single hare inside the disk is the stray in q_hub_hare_empty_hands, quest-spawned, and it leaves with the quest. Empty hands and a slow walk move it. Flowers freeze it. Steel bolts it.",
+      "arena_exception": "The Arena sits inside the 42m disk at z=18. A hare never paths there. Steel on that sand would kill a frozen animal, which is the outcome the gate rule exists to prevent.",
+      "density": {
+        "ambient_inside_42": 0,
+        "quest_stray_inside_42": 1,
+        "alive_cap_42_to_56": 4,
+        "alive_cap_past_56_toward_pinewood": 6,
+        "bible_social_range": "1-3",
+        "daypart": "Dawn and dusk at full cap. Midday halves the caps. Night: 2 on the pinewood shoulder, the rest bedded and unspawned rather than glowing."
+      },
+      "missing_mesh": "Spawn nothing. Do not use faun_pollen_hare. That hare is Tunya."
+    },
+    {
+      "id": "faun_pinewood_stag",
+      "display_name": "Pinewood Stag",
+      "role": "road_herd_prey",
+      "temperament": "wary",
+      "player_aggro": false,
+      "light_hostile": true,
+      "hostile_scope": "antler_shove against a horse or the salt wyrm that crowds a fawn. Not a player hunt and not a boss.",
+      "topology": "quadruped",
+      "gait": "quad_trot",
+      "verbs": ["verb_fauna_graze", "verb_fauna_bolt", "verb_fauna_antler_shove"],
+      "stats_hooks": { "health": "table:faun_large_prey", "loot": ["hide_salt", "antler_pine"] },
+      "loot_rule": "Hooks only. q_hub_pinewood_milepost already forbids an arrow. This slice does not add a hunt.",
+      "why_this_band": "Salt-road herd of Pinewood Crossing, the hold at (62, -28), past WallRadius 56. The bible places them on the Hub ring past the wall and on the Fantasy pine verge, day. Antlers read as a tuning fork inside the body width. They are the Court's larder that the Court refuses to bring inside.",
+      "flower_law": "Alive cap inside the wall is zero. A stag in the plaza would be a conquest with hooves: the Year-38 lesson was that the heart is not owned, and a herd on the urn stones would own the sightline of Founding Day. If a shove or a bolt carries one across 42m, it turns at the cobble and the antler gesture resolves as a harmless flower-touch, then it leaves.",
+      "arena_exception": "The sand is inside the wall's law disk. A stag never enters it. There is no mounted duel and no beast fight on Gale's floor.",
+      "politics": "The Bazaar Consortium prices salt-hide. The Concordant Watch and the verge rangers keep the herd on the road. Kiren Owl treats the verge as a private collection with witnesses, not as Velka's stall. The existing milepost quest is the player's introduction: watch, do not loose an arrow.",
+      "density": {
+        "inside_wall_including_arena": 0,
+        "alive_cap_pinewood_verge": 5,
+        "bible_social_range": "4-9",
+        "group_when_the_slot_fires": "4 or 5, the lower end of the bible range, so the verge reads as a family and not a migration",
+        "weight_meaning": "Volume weight 1 means this group is rare in the Hub roll, not that a single deer stands alone when the mesh exists.",
+        "daypart": "Day graze. Dusk drift toward the pine line. Night: bedded, cap 0 rendered, tracks remain as a prop decal only if art already has one; this slice does not invent a track mesh."
+      },
+      "cross_world_note": "The same id may stand on the Fantasy pine verge under that world's density row. This slice does not retune Fantasy spawns.",
+      "missing_mesh": "Spawn nothing. The milepost quest already counts the post if the stag is unspawned. Do not substitute faun_blackroot_elk or faun_wagon_horse."
+    },
+    {
+      "id": "faun_wagon_horse",
+      "display_name": "Wagon Horse",
+      "role": "hitch_livestock",
+      "temperament": "working",
+      "player_aggro": false,
+      "light_hostile": false,
+      "topology": "quadruped",
+      "gait": "quad_gallop",
+      "canon_kind_alias": "horse",
+      "ride_state": "Mesh row and CX_Mount_Horse may exist. Riding logic does not. This slice hitches them. It does not mount the player.",
+      "verbs": ["verb_fauna_walk", "verb_fauna_trot", "verb_fauna_rear"],
+      "stats_hooks": { "health": "table:faun_mount", "loot": [] },
+      "why_this_band": "Taxonomy: horse at the stable outside the law. Cities put the salt-road hold at Pinewood Crossing. Orin Rede's stable serves the verge. Two horses at the hitch are ordinary draft, flower-braid as cloth when a delivery walks them to the gate and back out the same day.",
+      "flower_law": "Overnight cap inside 42m is zero. A led horse may cross the disk on a delivery and the braid stays cloth. They are not stabled on the urn stones.",
+      "arena_exception": "No horse on the sand. The Arena is not a pen.",
+      "honesty": "Orin's secret record of mounts returned exhausted past explanation is the Impossible Print chain (lore hub_impossible_print). These two hitch horses are not that rider and not that pattern. Do not hang the mystery on this cap.",
+      "density": {
+        "hitch_pinewood_or_gate_shoulder_past_42": 2,
+        "inside_42_overnight": 0,
+        "arena": 0
+      },
+      "missing_mesh": "Spawn nothing. A missing horse is an empty hitch, not a stag."
+    },
+    {
+      "id": "hyb_saltwyrm",
+      "display_name": "Salt Wyrm",
+      "role": "road_skirmisher",
+      "temperament": "territorial_ditch",
+      "player_aggro": false,
+      "light_hostile": true,
+      "bible_hostile_flag": false,
+      "flag_note": "HYBRIDS.json leaves hostile false. It holds a ditch and uses salt_spit when a body closes inside the tell. It does not roam the plaza hunting. Do not flip the bible flag in the catalog. The encounter verb is enough.",
+      "topology": "eel",
+      "gait": "eel_undulate",
+      "primary_plan": "primary_body:eel, thick, beached capable",
+      "secondary_trait": "secondary:brine crystal collar, chunky",
+      "combat_hook": "salt_spit",
+      "verbs": ["verb_mon_undulate", "verb_hyb_salt_spit"],
+      "audio_tell": "A wet inhale, like a tide in a pipe.",
+      "weak_point": { "id": "collar", "hint": "break the collar, spit stops" },
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "salt_slow", "loot": ["brine_crystal"] },
+      "why_this_band": "The only Hub hybrid, and the taxonomy's only Hub combat animal. Bible: outside Flower Law, does not enter the 42m plaza, spawn count 1 on the Pinewood road. Brine collar, thick eel, spit glob that slows. It keeps the ditch because the salt road is its food and its camouflage, and the Court cobble is not.",
+      "flower_law": "plaza_forbid is already on the row. If it crosses the 42m line it turns. A spit glob that would land inside the disk crusts as white flowers on the cobble and applies no slow. The law eats the attack the same way it eats a blade.",
+      "arena_exception": "Hard exclude Canon.InArena. The Arena is inside the disk, where steel is legal. A wyrm on that sand would be a boss-shaped accident. This facet refuses that spawn.",
+      "not_the_impossible_print": "Kiren Owl's uncatalogued print (lore hub_impossible_print) stays uncatalogued. The salt wyrm is a named hybrid with a mesh policy. Tracking the wyrm does not close his secret.",
+      "density": {
+        "alive_cap_ditch_past_42_toward_pinewood": 1,
+        "inside_42": 0,
+        "arena": 0,
+        "daypart": "Dusk and night in the open ditch. By day it stays in the culvert under the milepost, still the one creature, not a second spawn."
+      },
+      "cross_world_note": "Fantasy also lists this id. Fantasy density is not edited here.",
+      "missing_mesh": "Spawn nothing. q_hub_ditch_spit completes on an empty ditch the way the milepost quest completes on an unspawned stag. Do not drop a basilisk, a wolf, or an eel from another kit."
+    }
+  ],
+  "unspawned_canon_seeds": [
+    {
+      "canon_id": "plaza_strider",
+      "reason": "Canon creatures.json describes a long-legged civic bird. That is not the court pigeon. Taxonomy's Hub aerial is faun_court_pigeon. This slice does not mint faun_plaza_strider and does not retitle the pigeon."
+    },
+    {
+      "canon_id": "cistern_lurker",
+      "reason": "Pale cistern amphibian with no faun_ id and no Hub taxonomy row. Unspawned. Not reskinned onto the cat or the wyrm."
+    },
+    {
+      "canon_id": "lamplighter_moth",
+      "reason": "Alias of faun_lantern_moth, not a second spawn."
+    },
+    {
+      "canon_id": "ember_sprite",
+      "reason": "Training Hollow target of first_cycle_fight. Out of plaza ecology. Left on that quest."
+    }
+  ],
+  "explicitly_absent": [
+    "mon_road_watcher (taxonomy excludes Hub)",
+    "any mon_boss_*",
+    "Sundering wolf, ash wolf, dust wolf",
+    "griffin, basilisk, harpy, drone, sentinel",
+    "faun_grid_stray, faun_nil_sealie, faun_lattice_moth"
+  ],
+  "hit_resolution": {
+    "inside_flower_disk_outside_arena": "Player hits on fauna resolve through the flower override. No health table is applied. The animal bolts or resettles. Do not apply damage and a flower.",
+    "arena_disk": "No fauna, so the steel exception has no animal target.",
+    "past_42m": "Steel is live. Hare and stag still flee before they fight. The wyrm's spit applies salt_slow from its own verb, not a player weapon. Antler shove is space-making against horse or wyrm.",
+    "loot_inside_law": "None. Critter rows already have empty loot. Hare and stag loot hooks apply only past the wall, and this slice adds no hunt quest."
+  },
+  "quests": [
+    {
+      "id": "q_hub_moth_count",
+      "title": "Eastern Path — Count the Diamonds",
+      "world_id": "Hub",
+      "giver_npc_id": "lamplighter",
+      "canon_npc_note": "Hub guest lamplighter. Lore hub_lamplighter_eastern_path: one true sentence to a newcomer, and that newcomer does not see him again.",
+      "speech_rule": "If q_hub_lamplighter_round is neither accepted nor complete, this count is that one sentence, spoken once on the eastern path, and the round must not open a second meeting. If the round is already accepted or complete, he does not appear. The same three objectives are chalk ticks on the first eastern post, left before dawn. Maren still receives the paper. This does not replace the round, does not name a second lamplighter, and does not teach a ninth Refusal.",
+      "backstory": "The Lamplighter has walked lamps that were already lit since the hub had lamps. The lineage may once have been two people and one lantern; this quest does not name the other. He will not brief the Assembly. The sentence, when he still owes one, is the count of what the southern posts are holding, because a count is something Maren can file without making the Speaker speak. When the sentence is already spent, the chalk does the asking and he stays unseen.",
+      "objectives": [
+        {
+          "id": "obj_q_hub_moth_count_1",
+          "verb": "witness",
+          "target": "faun_lantern_moth",
+          "count": 1,
+          "text": "After the lamps are walked, count the moths on one northern civic post."
+        },
+        {
+          "id": "obj_q_hub_moth_count_2",
+          "verb": "witness",
+          "target": "faun_lantern_moth",
+          "count": 1,
+          "text": "Count the moths on one southern post. Write the two numbers. Do not explain them."
+        },
+        {
+          "id": "obj_q_hub_moth_count_3",
+          "verb": "deliver",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "Give Maren the two numbers as seen. If you add a cause, she puts the cause aside."
+        }
+      ],
+      "fail_states": [
+        "Striking a moth, or any fauna, inside 42m fails the count. The flower is not a specimen."
+      ],
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [{ "id": "item_lantern_oil", "count": 1 }],
+        "skill_ids": []
+      },
+      "faction_delta": [
+        { "faction_id": "court_witness", "delta": 1 },
+        { "canon_faction_id": "concordant_curators", "delta": 1, "note": "Maren files a fact. The volume board still speaks court_witness." }
+      ],
+      "world_hooks": {
+        "board_line": "Two moth counts are in the day book. No cause is written beside them.",
+        "gossip_on_complete": "The southern lamps were thinner. Nobody said the dome aloud.",
+        "prop_or_door": "prop_court_lantern_post"
+      },
+      "prerequisites": [],
+      "does_not_replace": "q_hub_lamplighter_round",
+      "turn_in": { "npc_id": "archivist_maren", "requires_all_objectives": true },
+      "loop": "If the one sentence is unspent, accept it from the Lamplighter on the eastern path after the lamps are walked, and do not open a second meeting. If Three Lanterns already has him, accept the chalk on the first eastern post and do not spawn him. Count. Turn in to Maren either way."
+    },
+    {
+      "id": "q_hub_mouser_third_crate",
+      "title": "Archive — The Third Crate",
+      "world_id": "Hub",
+      "giver_npc_id": "asbir",
+      "canon_npc_id": "lord_curator_asbir_thelane",
+      "backstory": "The archive's standing joke is that the market mousers index the mice. Asbir dislikes a joke that has migrated into the fact book. He wants one watched hour: where the cat went, what it struck, and the sentence that separates those from the joke.",
+      "objectives": [
+        {
+          "id": "obj_q_hub_mouser_third_crate_1",
+          "verb": "witness",
+          "target": "faun_court_cat",
+          "count": 1,
+          "text": "Follow one market mouser from the archive steps to the stall crates. Do not pick it up."
+        },
+        {
+          "id": "obj_q_hub_mouser_third_crate_2",
+          "verb": "witness",
+          "target": "verb_fauna_pounce_mouse",
+          "count": 1,
+          "text": "See the pounce. It is at a mouse, at the third crate or whichever crate is true. Remember the crate, not a moral."
+        },
+        {
+          "id": "obj_q_hub_mouser_third_crate_3",
+          "verb": "talk",
+          "target": "asbir",
+          "count": 1,
+          "text": "Give him the fact, then the inference, then the difference. He writes them in three books."
+        }
+      ],
+      "fail_states": [
+        "A strike inside the law blooms and the cat leaves. The hour is void.",
+        "Killing the mouse yourself skips the pounce and fails the second objective."
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": ["skill_presence_witness"]
+      },
+      "faction_delta": [
+        { "faction_id": "court_witness", "delta": 1 },
+        { "canon_faction_id": "concordant_curators", "delta": 1 }
+      ],
+      "world_hooks": {
+        "board_line": "Asbir's fact book has a crate number and no joke.",
+        "gossip_on_complete": "The mouser indexed nothing. It ate.",
+        "prop_or_door": "prop_market_crate"
+      },
+      "prerequisites": [],
+      "does_not_replace": "q_hub_three_notebooks",
+      "relation": "Same three-book habit, a different hour, a different object. Players who have done the plaza notebook still have this watch.",
+      "turn_in": { "npc_id": "asbir", "requires_all_objectives": true },
+      "loop": "Accept at the archive steps. Watch. Turn in to Asbir."
+    },
+    {
+      "id": "q_hub_hare_empty_hands",
+      "title": "Gate Mouth — Empty Hands",
+      "world_id": "Hub",
+      "giver_npc_id": "ranger_kiren_owl",
+      "canon_npc_id": "ranger_kiren_owl",
+      "backstory": "A salt-road hare froze just inside the gate because a carried flower wreath reads, to a hare, as the Court's whole law. Kiren will not loose an arrow inside the disk and he will not discuss the print he has not reported. This animal is in the catalogue. The other track is not this quest.",
+      "objectives": [
+        {
+          "id": "obj_q_hub_hare_empty_hands_1",
+          "verb": "reach",
+          "target": "hub_gate_mouth",
+          "count": 1,
+          "text": "Meet Kiren at the gate mouth. Sheathe. Pocket the wreath if you are carrying one."
+        },
+        {
+          "id": "obj_q_hub_hare_empty_hands_2",
+          "verb": "escort",
+          "target": "faun_saltroad_hare",
+          "count": 1,
+          "text": "Walk the hare back past 42m with empty hands. Flowers freeze it. Steel bolts it under the traffic."
+        },
+        {
+          "id": "obj_q_hub_hare_empty_hands_3",
+          "verb": "witness",
+          "target": "band_gate_shoulder",
+          "count": 1,
+          "text": "Watch it take the shoulder. Do not follow it to Pinewood."
+        }
+      ],
+      "fail_states": [
+        "Drawing steel inside the disk fails the escort.",
+        "Holding a flower wreath in hand freezes the hare and stalls the escort until the hands are empty."
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": ["skill_presence_flower_law"]
+      },
+      "faction_delta": [
+        { "faction_id": "iron_wardens", "delta": 1 },
+        { "canon_faction_id": "concordant_watch", "delta": 1, "note": "Gate kept. Verge rangers are Kiren's own faction; the board credit is the Watch because the disk is their law." }
+      ],
+      "world_hooks": {
+        "board_line": "A hare left the gate under its own feet.",
+        "gossip_on_complete": "Kiren walked something small out and did not name the other track.",
+        "prop_or_door": "gate mouth, no new door"
+      },
+      "prerequisites": [],
+      "spawn_override": "One quest hare inside the disk for the duration. Despawns on success, fail, or abandon. Does not raise the ambient cap.",
+      "turn_in": { "npc_id": "ranger_kiren_owl", "requires_all_objectives": true },
+      "loop": "Accept at the gate. Walk. Turn in to Kiren on the shoulder, still outside the sand."
+    },
+    {
+      "id": "q_hub_ditch_spit",
+      "title": "Milepost Ditch — Move the Wyrm",
+      "world_id": "Hub",
+      "giver_npc_id": "ranger_kiren_owl",
+      "canon_npc_id": "ranger_kiren_owl",
+      "backstory": "The salt wyrm has taken the culvert under the Pinewood milepost. Travelers hear the wet inhale and think the road is cursed. Kiren knows the catalogue name. He wants the animal shifted down the ditch with a lantern, collar intact, because a broken collar stops the spit by maiming the only honest tell the verge has.",
+      "objectives": [
+        {
+          "id": "obj_q_hub_ditch_spit_1",
+          "verb": "reach",
+          "target": "pinewood_crossing_milepost",
+          "count": 1,
+          "text": "Stand at the Pinewood Crossing milepost, outside 42m. Read the name if you have not already. Do not letter it anything else."
+        },
+        {
+          "id": "obj_q_hub_ditch_spit_2",
+          "verb": "use",
+          "target": "prop_court_lantern_post",
+          "count": 1,
+          "text": "Carry lantern light into the ditch until the wyrm undulates off the culvert. Stay out of spit range until it moves."
+        },
+        {
+          "id": "obj_q_hub_ditch_spit_3",
+          "verb": "witness",
+          "target": "hyb_saltwyrm",
+          "count": 1,
+          "text": "See it settle further down the salt road, still one animal, collar whole."
+        }
+      ],
+      "fail_states": [
+        "Chasing it back through the 42m line fails the quest: the spit dies as flowers and the wyrm is in the wrong country.",
+        "If the mesh is missing, the ditch is empty. Objective 2 and 3 complete as unspawned, and Kiren logs the post clear. That is success, not a substitute mesh."
+      ],
+      "branch": {
+        "id": "collar_broken",
+        "when": "Player breaks the collar before the wyrm moves.",
+        "result": "Spit stops. Quest still turns in. iron_wardens delta becomes 0 and verge reputation is not paid. Kiren records a maiming, not a move."
+      },
+      "rewards": {
+        "xp": 45,
+        "coin": 2,
+        "items": [],
+        "skill_ids": ["skill_presence_lantern_step"]
+      },
+      "faction_delta": [
+        { "faction_id": "iron_wardens", "delta": 1 },
+        { "canon_faction_id": "concordant_watch", "delta": 1 }
+      ],
+      "world_hooks": {
+        "board_line": "Pinewood culvert is empty. The wyrm is further down the ditch.",
+        "gossip_on_complete": "Someone moved the salt wyrm with a lamp and left the collar on.",
+        "prop_or_door": "prop_pine_milepost"
+      },
+      "prerequisites": ["q_hub_pinewood_milepost"],
+      "does_not_replace": "q_hub_pinewood_milepost",
+      "relation": "The milepost quest watches the stag and reads the name. This one starts after that reading and only moves the ditch.",
+      "turn_in": { "npc_id": "ranger_kiren_owl", "requires_all_objectives": true },
+      "loop": "Accept from Kiren after the milepost is read. Lantern. Witness. Turn in on the verge."
+    }
+  ]
+}

@@ -81,6 +81,8 @@ vi.mock('@/components/film-studios/FilmStackFeed', () => ({ FilmStackFeed: () =>
 vi.mock('@/components/film-studios/FilmStudioSection', () => ({ FilmStudioSection: () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }));
@@ -104,10 +106,17 @@ beforeEach(() => {
   constants.mockReset(); constants.mockImplementation(() => Promise.resolve({ data: {} }));
 });
 
+// The page's default active tab is "Production", not "Discover" — every
+// test below needs to switch tabs before the discover()-driven UI mounts.
+function goToDiscover(getByRole: (role: string, opts: { name: RegExp }) => HTMLElement) {
+  fireEvent.click(getByRole('button', { name: /Discover/i }));
+}
+
 describe('film-studios lens — Discover tab four UX states', () => {
   it('LOADING: shows a role=status indicator while discover is in flight', async () => {
     discover.mockImplementation(() => new Promise(() => {})); // never resolves
-    const { getByText, container } = renderPage();
+    const { getByText, getByRole, container } = renderPage();
+    await act(async () => { goToDiscover(getByRole); });
     await waitFor(() => expect(getByText(/Loading films/i)).toBeInTheDocument());
     expect(container.querySelector('[role="status"]')).toBeTruthy();
   });
@@ -115,6 +124,7 @@ describe('film-studios lens — Discover tab four UX states', () => {
   it('EMPTY: shows the honest empty CTA when the catalog is empty', async () => {
     discover.mockImplementation(() => Promise.resolve({ data: { films: [] } }));
     const { getByText, getByTestId, getByRole } = renderPage();
+    await act(async () => { goToDiscover(getByRole); });
     await waitFor(() => expect(getByTestId('film-discover-empty')).toBeInTheDocument());
     expect(getByText(/No films found/i)).toBeInTheDocument();
     // the CTA is a real, clickable button
@@ -127,7 +137,8 @@ describe('film-studios lens — Discover tab four UX states', () => {
       if (fail) return Promise.reject(new Error('discovery offline'));
       return Promise.resolve({ data: { films: [FILM] } });
     });
-    const { getByText, container } = renderPage();
+    const { getByText, getByRole, container } = renderPage();
+    await act(async () => { goToDiscover(getByRole); });
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/discovery offline/i)).toBeInTheDocument();
 
@@ -141,7 +152,8 @@ describe('film-studios lens — Discover tab four UX states', () => {
 
   it('POPULATED: renders the real film row from the discover route', async () => {
     discover.mockImplementation(() => Promise.resolve({ data: { films: [FILM] } }));
-    const { getByText } = renderPage();
+    const { getByText, getByRole } = renderPage();
+    await act(async () => { goToDiscover(getByRole); });
     await waitFor(() => expect(getByText('Neon Tide')).toBeInTheDocument());
     // the "Featured" badge marks the first row + Preview action is present
     expect(getByText(/Featured/i)).toBeInTheDocument();

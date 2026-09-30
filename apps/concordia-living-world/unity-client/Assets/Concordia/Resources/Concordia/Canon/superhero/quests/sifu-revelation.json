@@ -1,0 +1,118 @@
+[
+  {
+    "id": "superhero_sifu_01_tell",
+    "title": "The Skyline — Tell Champion About His Sifu",
+    "description": "His Sifu is alive in the hub. Champion does not know. Tell him.",
+    "giver_npc_id": "champion_kor_blackstar",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sifu1_visit",
+        "type": "reach_location",
+        "target": "superhero_skyline",
+        "required_count": 1,
+        "description": "Find Champion during his patrol."
+      },
+      {
+        "id": "obj_sifu1_tell",
+        "type": "talk_to",
+        "target": "champion_kor_blackstar",
+        "required_count": 1,
+        "description": "Tell him."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_sifu1",
+        "content": "Taro Sandren teaches in the hub brawling pit. The Sifu is the same one.",
+        "unlocks_after": "obj_sifu1_tell",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "superhero_sifu_02_carry"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "superhero",
+      "superhero_high"
+    ]
+  },
+  {
+    "id": "superhero_sifu_02_carry",
+    "title": "Cross-World — Take Him to His Sifu",
+    "description": "Champion will travel to the hub with you. Take him to Taro's pit at morning hours.",
+    "giver_npc_id": "champion_kor_blackstar",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sifu2_cross",
+        "type": "reach_location",
+        "target": "hub_brawling_pit",
+        "required_count": 1,
+        "description": "Arrive at the hub brawling pit during Stratus."
+      },
+      {
+        "id": "obj_sifu2_meet",
+        "type": "observe",
+        "target": "kor_taro_reunion",
+        "required_count": 1,
+        "description": "Witness the reunion."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "superhero_sifu_03_gift"
+    ],
+    "prerequisites": [
+      "superhero_sifu_01_tell"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_high"
+    ]
+  },
+  {
+    "id": "superhero_sifu_03_gift",
+    "title": "The Pit — A Gift",
+    "description": "Champion teaches you one move from the Sifu's hand. You will carry it.",
+    "giver_npc_id": "champion_kor_blackstar",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sifu3_learn",
+        "type": "interact",
+        "target": "sifu_combo_lesson",
+        "required_count": 1,
+        "description": "Train with Champion for a single combo."
+      }
+    ],
+    "rewards": {
+      "xp": 1000,
+      "skill_xp": {
+        "combat": 200
+      },
+      "items": [
+        "sifu_combo_dtu"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "superhero_sifu_02_carry"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_high"
+    ]
+  }
+]

@@ -25,7 +25,7 @@ export function validateDag(plan) {
   const errors = [];
   if (!plan || !Array.isArray(plan.steps)) {
     errors.push("plan.steps must be an array");
-    return { ok: false, errors };
+    return { ok: false, error: errors[0], errors };
   }
   const ids = new Set();
   for (let i = 0; i < plan.steps.length; i++) {
@@ -67,7 +67,12 @@ export function validateDag(plan) {
   }
   if (order.length < ids.size) errors.push("plan contains a cycle");
 
-  return { ok: errors.length === 0, errors, order };
+  return {
+    ok: errors.length === 0,
+    error: errors.length ? errors[0] : undefined,
+    errors,
+    order,
+  };
 }
 
 /**

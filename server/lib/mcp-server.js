@@ -91,6 +91,29 @@ function buildDescription(domain, action, manifestEntry) {
  * @param {Map} opts.lensArtifacts      — STATE.lensArtifacts map
  * @returns {{ handleRequest: Function, getToolCount: Function }}
  */
+
+// ── MCP advertise filter (2026-09-05) ──────────────────────────────────────
+// LENS_ACTIONS is ~30k because every domain gets analyze/generate/suggest plus
+// social-verb clones. Keep those in LENS_ACTIONS for /api/lens/run + chat.tools,
+// but do NOT mass-advertise them as first-class MCP tools.
+const MCP_BULK_UNIVERSAL = new Set(["analyze", "generate", "suggest"]);
+const MCP_BULK_SOCIAL = new Set([
+  "like", "bookmark", "share", "repost", "pin", "vote", "rate", "archive",
+  "publish", "save", "move", "follow", "unfollow", "react", "comment",
+]);
+export function mcpShouldAdvertiseTool(key) {
+  if (!key || typeof key !== "string") return false;
+  const i = key.indexOf(".");
+  if (i < 0) return true;
+  const action = key.slice(i + 1);
+  if (MCP_BULK_UNIVERSAL.has(action)) return false;
+  if (MCP_BULK_SOCIAL.has(action)) return false;
+  return true;
+}
+export function filterMcpAdvertisedKeys(keys) {
+  return keys.filter(mcpShouldAdvertiseTool);
+}
+
 export function createMCPServer({
   lensActions,
   actionManifest = {},
@@ -150,7 +173,7 @@ export function createMCPServer({
     const PAGE_SIZE = 200;
     const offset = params?.cursor ? parseInt(params.cursor, 10) || 0 : 0;
 
-    const keys = Array.from(lensActions.keys());
+    const keys = filterMcpAdvertisedKeys(Array.from(lensActions.keys()));
     const total = keys.length;
     const page = keys.slice(offset, offset + PAGE_SIZE);
 
@@ -232,6 +255,32 @@ export function createMCPServer({
     }
 
     try {
+      // F0.5: AuthGate composition layer for JSON-RPC tools/call path.
+      // Mirrors the same wrapping as server.js:36742 for the REST /mcp/call path.
+      // In observe-only mode (default), denials become OBSERVE and the call still proceeds.
+      try {
+        const { dispatchMCP } = await import("./auth-gate/dispatch.js");
+        const gateResult = await dispatchMCP(name, args || {}, {
+          actor: req?.user || null,
+          req,
+          db: globalThis.__concordDB || null,
+          STATE: globalThis.STATE || null,
+          trace_id: req?.headers?.['x-trace-id'] || null,
+        });
+        if (gateResult.decision === "DENY" && process.env.CONCORD_AUTH_GATE_MODE === "enforce") {
+          throw makeRPCError(INVALID_PARAMS, `auth_gate_denied: ${gateResult.reason_code}`);
+        }
+        if (gateResult.decision === "ESCALATE" && process.env.CONCORD_AUTH_GATE_MODE === "enforce") {
+          throw makeRPCError(INVALID_PARAMS, `auth_gate_escalate: ${gateResult.reason_code}`);
+        }
+      } catch (gateErr) {
+        // Don't block on auth-gate errors in observe mode
+        if (process.env.CONCORD_AUTH_GATE_MODE === "enforce" && gateErr?._rpcCode === INVALID_PARAMS) {
+          throw gateErr;
+        }
+        // Otherwise log and continue
+      }
+
       const startMs = Date.now();
       const result = await handler(ctx, artifact, toolParams);
       const durationMs = Date.now() - startMs;
@@ -404,7 +453,8 @@ export function createMCPServer({
   return {
     handleRequest,
     handleMCPRequest,
-    getToolCount: () => lensActions.size,
+    getToolCount: () => filterMcpAdvertisedKeys(Array.from(lensActions.keys())).length,
+    getRawLensActionCount: () => lensActions.size,
     getClientInfo: () => clientInfo,
     isInitialized: () => initialized,
   };

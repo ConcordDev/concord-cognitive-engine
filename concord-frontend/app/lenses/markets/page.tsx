@@ -23,6 +23,7 @@ import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardLi
 import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
 import { MarketsQuoteDetail } from '@/components/markets/MarketsQuoteDetail';
 import PredictionMarkets from '@/components/markets/PredictionMarkets';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 
 interface Market {
   id: number;
@@ -113,11 +114,20 @@ export default function MarketsPage() {
       <DepthBadge lensId="markets" size="sm" className="ml-2" />
       <LensVerticalHero lensId="markets" className="mx-6 mt-4" />
   <div className="p-6 sm:p-8 max-w-4xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Spectator Markets</h1>
-          <p className="mt-1 text-sm text-gray-400">
-            Wager <strong>⚡ Sparks</strong> on emergent outcomes. Non-extractive — no real money. Sparks are earned by playing; markets resolve via substrate signals.
-          </p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Spectator Markets</h1>
+            <p className="mt-1 text-sm text-gray-400">
+              Wager <strong>⚡ Sparks</strong> on emergent outcomes. Non-extractive — no real money. Sparks are earned by playing; markets resolve via substrate signals.
+            </p>
+          </div>
+          <DTUExportButton
+            domain="markets"
+            data={{ markets, positions, quotes: (realtimeData as { quotes?: QuoteCardItem[] } | null)?.quotes ?? null }}
+            title="Markets snapshot"
+            tags={['markets', 'betting', 'export']}
+            compact
+          />
         </header>
 
         {/* Live Yahoo Finance ticker list — CNBC mobile style */}
@@ -256,8 +266,7 @@ export default function MarketsPage() {
       >
         Markets Workbench
       </button>
-      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-          <CrossLensRecentsPanel lensId="markets" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
+      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />          <CrossLensRecentsPanel lensId="markets" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
+import { getApiBase } from '@/lib/api/base';
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = getApiBase();
 
 interface OAuthButtonsProps {
   /** Optional label prefix. Default: "Continue with" */

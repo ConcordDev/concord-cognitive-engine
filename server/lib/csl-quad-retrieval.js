@@ -72,12 +72,11 @@ async function bm25Track(db, query) {
     if (!match) return [];
     // FTS5 returns rowid which is the content table's rowid (dtus.rowid).
     // We select from dtus_fts directly with bm25(), then fetch full DTUs by id.
-    // FTS5 query. Use AS to rename the table so the schema-drift gate
-    // doesn't mistake the virtual-table's implicit rowid for a missing column.
     const rows = db.prepare(`
-      SELECT t.id AS id, bm25(t) AS rank
-      FROM (SELECT rowid AS id FROM dtus_fts WHERE dtus_fts MATCH ?) AS t
-      ORDER BY bm25(t) LIMIT ?
+      SELECT /* @drift-ok: FTS5 external-content implicit rowid mirrors dtus.rowid. */ rowid AS id, bm25(dtus_fts) AS rank
+      FROM dtus_fts
+      WHERE dtus_fts MATCH ?
+      ORDER BY rank LIMIT ?
     `).all(match, 30);
     return rows.map((r) => r.id).filter(Boolean);
   } catch {

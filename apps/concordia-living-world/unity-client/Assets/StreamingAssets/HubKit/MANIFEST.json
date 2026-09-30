@@ -1,0 +1,5625 @@
+{
+  "id": "unburned-court-hub-kit",
+  "title": "Unburned Court hub kit",
+  "note": "One piece. Shared by Unity, Godot, and the Vite KenneyField. Not the 118MB kenney-free tree.",
+  "files": [
+    {
+      "stem": "wall",
+      "file": "wall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/wall.glb"
+    },
+    {
+      "stem": "column",
+      "file": "column.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/column.glb"
+    },
+    {
+      "stem": "weapon-sword",
+      "file": "weapon-sword.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/weapon-sword.glb"
+    },
+    {
+      "stem": "banner",
+      "file": "banner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/banner.glb"
+    },
+    {
+      "stem": "tower-square-base",
+      "file": "tower-square-base.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "castle/tower-square-base.glb"
+    },
+    {
+      "stem": "crypt-small",
+      "file": "crypt-small.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "graveyard/crypt-small.glb"
+    },
+    {
+      "stem": "tent_detailedOpen",
+      "file": "tent_detailedOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/tent_detailedOpen.glb"
+    },
+    {
+      "stem": "tent_smallOpen",
+      "file": "tent_smallOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/tent_smallOpen.glb"
+    },
+    {
+      "stem": "tree_oak",
+      "file": "tree_oak.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_oak.glb"
+    },
+    {
+      "stem": "tree_default",
+      "file": "tree_default.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_default.glb"
+    },
+    {
+      "stem": "tree_simple",
+      "file": "tree_simple.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_simple.glb"
+    },
+    {
+      "stem": "tree_pineTallA",
+      "file": "tree_pineTallA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_pineTallA.glb"
+    },
+    {
+      "stem": "plant_bush",
+      "file": "plant_bush.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/plant_bush.glb"
+    },
+    {
+      "stem": "table",
+      "file": "table.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/table.glb"
+    },
+    {
+      "stem": "chair",
+      "file": "chair.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/chair.glb"
+    },
+    {
+      "stem": "barrel",
+      "file": "barrel.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/barrel.glb"
+    },
+    {
+      "stem": "crate",
+      "file": "crate.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "platformer/crate.glb"
+    },
+    {
+      "stem": "cart",
+      "file": "cart.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/cart.glb"
+    },
+    {
+      "stem": "desk",
+      "file": "desk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/desk.glb"
+    },
+    {
+      "stem": "books",
+      "file": "books.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/books.glb"
+    },
+    {
+      "stem": "bookcaseOpen",
+      "file": "bookcaseOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/bookcaseOpen.glb"
+    },
+    {
+      "stem": "bookcaseClosed",
+      "file": "bookcaseClosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/bookcaseClosed.glb"
+    },
+    {
+      "stem": "campfire_stones",
+      "file": "campfire_stones.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/campfire_stones.glb"
+    },
+    {
+      "stem": "campfire_logs",
+      "file": "campfire_logs.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/campfire_logs.glb"
+    },
+    {
+      "stem": "crops_wheatStageB",
+      "file": "crops_wheatStageB.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/crops_wheatStageB.glb"
+    },
+    {
+      "stem": "lantern",
+      "file": "lantern.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/lantern.glb"
+    },
+    {
+      "stem": "lampRoundFloor",
+      "file": "lampRoundFloor.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/lampRoundFloor.glb"
+    },
+    {
+      "stem": "character-skeleton",
+      "file": "character-skeleton.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "graveyard/character-skeleton.glb"
+    },
+    {
+      "stem": "road-straight",
+      "file": "road-straight.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-roads/road-straight.glb"
+    },
+    {
+      "stem": "loungeSofa",
+      "file": "loungeSofa.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/loungeSofa.glb"
+    },
+    {
+      "stem": "kitchenStove",
+      "file": "kitchenStove.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/kitchenStove.glb"
+    },
+    {
+      "stem": "burger-cheese",
+      "file": "burger-cheese.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/burger-cheese.glb"
+    },
+    {
+      "stem": "apple",
+      "file": "apple.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/apple.glb"
+    },
+    {
+      "stem": "bread",
+      "file": "bread.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/bread.glb"
+    },
+    {
+      "stem": "cheese-cut",
+      "file": "cheese-cut.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/cheese-cut.glb"
+    },
+    {
+      "stem": "detail-parasol-a",
+      "file": "detail-parasol-a.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-commercial/detail-parasol-a.glb"
+    },
+    {
+      "stem": "chairDesk",
+      "file": "chairDesk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/chairDesk.glb"
+    },
+    {
+      "stem": "log_large",
+      "file": "log_large.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/log_large.glb"
+    },
+    {
+      "stem": "flower_redA",
+      "file": "flower_redA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/flower_redA.glb"
+    },
+    {
+      "stem": "building-type-a",
+      "file": "building-type-a.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-a.glb"
+    },
+    {
+      "stem": "building-type-b",
+      "file": "building-type-b.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-b.glb"
+    },
+    {
+      "stem": "building-type-c",
+      "file": "building-type-c.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-c.glb"
+    },
+    {
+      "stem": "building-type-d",
+      "file": "building-type-d.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-d.glb"
+    },
+    {
+      "stem": "statue_head",
+      "file": "statue_head.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/statue_head.glb"
+    },
+    {
+      "stem": "statue_obelisk",
+      "file": "statue_obelisk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/statue_obelisk.glb"
+    },
+    {
+      "stem": "coatRackStanding",
+      "file": "coatRackStanding.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/coatRackStanding.glb"
+    },
+    {
+      "stem": "rock_smallA",
+      "file": "rock_smallA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/rock_smallA.glb"
+    },
+    {
+      "stem": "rock_smallB",
+      "file": "rock_smallB.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/rock_smallB.glb"
+    },
+    {
+      "stem": "grass",
+      "file": "grass.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/grass.glb"
+    },
+    {
+      "stem": "forge",
+      "file": "forge.glb",
+      "license": "CC0",
+      "author": "Kay Lousberg",
+      "source": "concord-frontend/public/models/building/forge.glb"
+    },
+    {
+      "stem": "tower",
+      "file": "tower.glb",
+      "license": "CC0",
+      "author": "Kay Lousberg",
+      "source": "concord-frontend/public/models/building/tower.glb"
+    },
+    {
+      "stem": "soldier",
+      "file": "soldier.glb",
+      "license": "Mixamo",
+      "author": "Mixamo",
+      "source": "apps/concordia-living-world/unity-client/Assets/Concordia/Models/humans/Soldier.glb"
+    },
+    {
+      "stem": "adjustable_wrench_1k",
+      "file": "adjustable_wrench_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/adjustable_wrench/adjustable_wrench_1k.fbx"
+    },
+    {
+      "stem": "all_purpose_cleaner_1k",
+      "file": "all_purpose_cleaner_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/all_purpose_cleaner/all_purpose_cleaner_1k.fbx"
+    },
+    {
+      "stem": "american_football_1k",
+      "file": "american_football_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/american_football/american_football_1k.fbx"
+    },
+    {
+      "stem": "ammo_box_1k",
+      "file": "ammo_box_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ammo_box/ammo_box_1k.fbx"
+    },
+    {
+      "stem": "anthurium_botany_01_1k",
+      "file": "anthurium_botany_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/anthurium_botany_01/anthurium_botany_01_1k.fbx"
+    },
+    {
+      "stem": "antique_ceramic_vase_01_1k",
+      "file": "antique_ceramic_vase_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/antique_ceramic_vase_01/antique_ceramic_vase_01_1k.fbx"
+    },
+    {
+      "stem": "antique_estoc_1k",
+      "file": "antique_estoc_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/antique_estoc/antique_estoc_1k.fbx"
+    },
+    {
+      "stem": "antique_katana_01_1k",
+      "file": "antique_katana_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/antique_katana_01/antique_katana_01_1k.fbx"
+    },
+    {
+      "stem": "bananas_1k",
+      "file": "bananas_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bananas/bananas_1k.fbx"
+    },
+    {
+      "stem": "bark_debris_01_1k",
+      "file": "bark_debris_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bark_debris_01/bark_debris_01_1k.fbx"
+    },
+    {
+      "stem": "barrel_01_1k",
+      "file": "barrel_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Barrel_01/Barrel_01_1k.fbx"
+    },
+    {
+      "stem": "barrel_02_1k",
+      "file": "barrel_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Barrel_02/Barrel_02_1k.fbx"
+    },
+    {
+      "stem": "barrel_03_1k",
+      "file": "barrel_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/barrel_03/barrel_03_1k.fbx"
+    },
+    {
+      "stem": "barrel_stove_1k",
+      "file": "barrel_stove_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/barrel_stove/barrel_stove_1k.fbx"
+    },
+    {
+      "stem": "baseball_01_1k",
+      "file": "baseball_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/baseball_01/baseball_01_1k.fbx"
+    },
+    {
+      "stem": "baseball_bat_1k",
+      "file": "baseball_bat_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/baseball_bat/baseball_bat_1k.fbx"
+    },
+    {
+      "stem": "basecharacter",
+      "file": "basecharacter.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/BaseCharacter.fbx"
+    },
+    {
+      "stem": "bed",
+      "file": "bed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bed.dae"
+    },
+    {
+      "stem": "bed_floor",
+      "file": "bed_floor.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bed_floor.dae"
+    },
+    {
+      "stem": "bench_vice_01_1k",
+      "file": "bench_vice_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bench_vice_01/bench_vice_01_1k.fbx"
+    },
+    {
+      "stem": "binoculars_1k",
+      "file": "binoculars_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/binoculars/binoculars_1k.fbx"
+    },
+    {
+      "stem": "bird",
+      "file": "bird.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/bird.fbx"
+    },
+    {
+      "stem": "bleach_bottle_1k",
+      "file": "bleach_bottle_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bleach_bottle/bleach_bottle_1k.fbx"
+    },
+    {
+      "stem": "bluesoldier_female",
+      "file": "bluesoldier_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/BlueSoldier_Female.fbx"
+    },
+    {
+      "stem": "bluesoldier_male",
+      "file": "bluesoldier_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/BlueSoldier_Male.fbx"
+    },
+    {
+      "stem": "bolt_cutters_01_1k",
+      "file": "bolt_cutters_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bolt_cutters_01/bolt_cutters_01_1k.fbx"
+    },
+    {
+      "stem": "boulder_01_1k",
+      "file": "boulder_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/boulder_01/boulder_01_1k.fbx"
+    },
+    {
+      "stem": "brass_blowtorch_1k",
+      "file": "brass_blowtorch_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_blowtorch/brass_blowtorch_1k.fbx"
+    },
+    {
+      "stem": "brass_goblets_1k",
+      "file": "brass_goblets_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_goblets/brass_goblets_1k.fbx"
+    },
+    {
+      "stem": "brass_pan_01_1k",
+      "file": "brass_pan_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_pan_01/brass_pan_01_1k.fbx"
+    },
+    {
+      "stem": "brass_pot_01_1k",
+      "file": "brass_pot_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_pot_01/brass_pot_01_1k.fbx"
+    },
+    {
+      "stem": "brass_pot_02_1k",
+      "file": "brass_pot_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_pot_02/brass_pot_02_1k.fbx"
+    },
+    {
+      "stem": "brass_vase_03_1k",
+      "file": "brass_vase_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_vase_03/brass_vase_03_1k.fbx"
+    },
+    {
+      "stem": "brass_vase_04_1k",
+      "file": "brass_vase_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/brass_vase_04/brass_vase_04_1k.fbx"
+    },
+    {
+      "stem": "bridge_center_stone",
+      "file": "bridge_center_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_center_stone.dae"
+    },
+    {
+      "stem": "bridge_center_stoneround",
+      "file": "bridge_center_stoneround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_center_stoneRound.dae"
+    },
+    {
+      "stem": "bridge_center_wood",
+      "file": "bridge_center_wood.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_center_wood.dae"
+    },
+    {
+      "stem": "bridge_center_woodround",
+      "file": "bridge_center_woodround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_center_woodRound.dae"
+    },
+    {
+      "stem": "bridge_side_stone",
+      "file": "bridge_side_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_side_stone.dae"
+    },
+    {
+      "stem": "bridge_side_stoneround",
+      "file": "bridge_side_stoneround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_side_stoneRound.dae"
+    },
+    {
+      "stem": "bridge_side_wood",
+      "file": "bridge_side_wood.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_side_wood.dae"
+    },
+    {
+      "stem": "bridge_side_woodround",
+      "file": "bridge_side_woodround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_side_woodRound.dae"
+    },
+    {
+      "stem": "bridge_stone",
+      "file": "bridge_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_stone.dae"
+    },
+    {
+      "stem": "bridge_stonenarrow",
+      "file": "bridge_stonenarrow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_stoneNarrow.dae"
+    },
+    {
+      "stem": "bridge_stoneround",
+      "file": "bridge_stoneround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_stoneRound.dae"
+    },
+    {
+      "stem": "bridge_stoneroundnarrow",
+      "file": "bridge_stoneroundnarrow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_stoneRoundNarrow.dae"
+    },
+    {
+      "stem": "bridge_wood",
+      "file": "bridge_wood.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_wood.dae"
+    },
+    {
+      "stem": "bridge_woodnarrow",
+      "file": "bridge_woodnarrow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_woodNarrow.dae"
+    },
+    {
+      "stem": "bridge_woodround",
+      "file": "bridge_woodround.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_woodRound.dae"
+    },
+    {
+      "stem": "bridge_woodroundnarrow",
+      "file": "bridge_woodroundnarrow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/bridge_woodRoundNarrow.dae"
+    },
+    {
+      "stem": "bunsen_burner_1k",
+      "file": "bunsen_burner_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/bunsen_burner/bunsen_burner_1k.fbx"
+    },
+    {
+      "stem": "cactus_short",
+      "file": "cactus_short.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cactus_short.dae"
+    },
+    {
+      "stem": "cactus_tall",
+      "file": "cactus_tall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cactus_tall.dae"
+    },
+    {
+      "stem": "caged_hanging_light_1k",
+      "file": "caged_hanging_light_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/caged_hanging_light/caged_hanging_light_1k.fbx"
+    },
+    {
+      "stem": "calathea_orbifolia_01_1k",
+      "file": "calathea_orbifolia_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/calathea_orbifolia_01/calathea_orbifolia_01_1k.fbx"
+    },
+    {
+      "stem": "campfire_bricks",
+      "file": "campfire_bricks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/campfire_bricks.dae"
+    },
+    {
+      "stem": "campfire_planks",
+      "file": "campfire_planks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/campfire_planks.dae"
+    },
+    {
+      "stem": "can_rusted_1k",
+      "file": "can_rusted_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/can_rusted/can_rusted_1k.fbx"
+    },
+    {
+      "stem": "cannon_01_1k",
+      "file": "cannon_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cannon_01/cannon_01_1k.fbx"
+    },
+    {
+      "stem": "canoe",
+      "file": "canoe.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/canoe.dae"
+    },
+    {
+      "stem": "canoe_paddle",
+      "file": "canoe_paddle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/canoe_paddle.dae"
+    },
+    {
+      "stem": "cardboard_box_01_1k",
+      "file": "cardboard_box_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cardboard_box_01/cardboard_box_01_1k.fbx"
+    },
+    {
+      "stem": "casual2_female",
+      "file": "casual2_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual2_Female.fbx"
+    },
+    {
+      "stem": "casual2_male",
+      "file": "casual2_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual2_Male.fbx"
+    },
+    {
+      "stem": "casual3_female",
+      "file": "casual3_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual3_Female.fbx"
+    },
+    {
+      "stem": "casual3_male",
+      "file": "casual3_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual3_Male.fbx"
+    },
+    {
+      "stem": "casual_bald",
+      "file": "casual_bald.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual_Bald.fbx"
+    },
+    {
+      "stem": "casual_female",
+      "file": "casual_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual_Female.fbx"
+    },
+    {
+      "stem": "casual_male",
+      "file": "casual_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Casual_Male.fbx"
+    },
+    {
+      "stem": "cat",
+      "file": "cat.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Cat.fbx"
+    },
+    {
+      "stem": "celandine_01_1k",
+      "file": "celandine_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/celandine_01/celandine_01_1k.fbx"
+    },
+    {
+      "stem": "cement_bag_1k",
+      "file": "cement_bag_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cement_bag/cement_bag_1k.fbx"
+    },
+    {
+      "stem": "ceramic_pot_1k",
+      "file": "ceramic_pot_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ceramic_pot/ceramic_pot_1k.fbx"
+    },
+    {
+      "stem": "ceramic_vase_01_1k",
+      "file": "ceramic_vase_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ceramic_vase_01/ceramic_vase_01_1k.fbx"
+    },
+    {
+      "stem": "ceramic_vase_02_1k",
+      "file": "ceramic_vase_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ceramic_vase_02/ceramic_vase_02_1k.fbx"
+    },
+    {
+      "stem": "ceramic_vase_03_1k",
+      "file": "ceramic_vase_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ceramic_vase_03/ceramic_vase_03_1k.fbx"
+    },
+    {
+      "stem": "ceramic_vase_04_1k",
+      "file": "ceramic_vase_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ceramic_vase_04/ceramic_vase_04_1k.fbx"
+    },
+    {
+      "stem": "chandelier_02_1k",
+      "file": "chandelier_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Chandelier_02/Chandelier_02_1k.fbx"
+    },
+    {
+      "stem": "cheesebox_01_1k",
+      "file": "cheesebox_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/CheeseBox_01/CheeseBox_01_1k.fbx"
+    },
+    {
+      "stem": "chef_female",
+      "file": "chef_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Chef_Female.fbx"
+    },
+    {
+      "stem": "chef_hat",
+      "file": "chef_hat.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Chef_Hat.fbx"
+    },
+    {
+      "stem": "chef_male",
+      "file": "chef_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Chef_Male.fbx"
+    },
+    {
+      "stem": "cheiridopsis_succulent_1k",
+      "file": "cheiridopsis_succulent_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cheiridopsis_succulent/cheiridopsis_succulent_1k.fbx"
+    },
+    {
+      "stem": "chemistry_set_1k",
+      "file": "chemistry_set_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/chemistry_set/chemistry_set_1k.fbx"
+    },
+    {
+      "stem": "chick",
+      "file": "chick.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/Chick.fbx"
+    },
+    {
+      "stem": "cigarette_case_1k",
+      "file": "cigarette_case_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cigarette_case/cigarette_case_1k.fbx"
+    },
+    {
+      "stem": "cigarette_pack_1k",
+      "file": "cigarette_pack_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cigarette_pack/cigarette_pack_1k.fbx"
+    },
+    {
+      "stem": "cleaner_tin_01_1k",
+      "file": "cleaner_tin_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cleaner_tin_01/cleaner_tin_01_1k.fbx"
+    },
+    {
+      "stem": "cleric",
+      "file": "cleric.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Cleric.fbx"
+    },
+    {
+      "stem": "cleric_staff",
+      "file": "cleric_staff.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Cleric_Staff.fbx"
+    },
+    {
+      "stem": "cliff_block_rock",
+      "file": "cliff_block_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_block_rock.dae"
+    },
+    {
+      "stem": "cliff_block_stone",
+      "file": "cliff_block_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_block_stone.dae"
+    },
+    {
+      "stem": "cliff_blockcave_rock",
+      "file": "cliff_blockcave_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockCave_rock.dae"
+    },
+    {
+      "stem": "cliff_blockcave_stone",
+      "file": "cliff_blockcave_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockCave_stone.dae"
+    },
+    {
+      "stem": "cliff_blockdiagonal_rock",
+      "file": "cliff_blockdiagonal_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockDiagonal_rock.dae"
+    },
+    {
+      "stem": "cliff_blockdiagonal_stone",
+      "file": "cliff_blockdiagonal_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockDiagonal_stone.dae"
+    },
+    {
+      "stem": "cliff_blockhalf_rock",
+      "file": "cliff_blockhalf_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockHalf_rock.dae"
+    },
+    {
+      "stem": "cliff_blockhalf_stone",
+      "file": "cliff_blockhalf_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockHalf_stone.dae"
+    },
+    {
+      "stem": "cliff_blockquarter_rock",
+      "file": "cliff_blockquarter_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockQuarter_rock.dae"
+    },
+    {
+      "stem": "cliff_blockquarter_stone",
+      "file": "cliff_blockquarter_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockQuarter_stone.dae"
+    },
+    {
+      "stem": "cliff_blockslope_rock",
+      "file": "cliff_blockslope_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlope_rock.dae"
+    },
+    {
+      "stem": "cliff_blockslope_stone",
+      "file": "cliff_blockslope_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlope_stone.dae"
+    },
+    {
+      "stem": "cliff_blockslopehalfwalls_rock",
+      "file": "cliff_blockslopehalfwalls_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlopeHalfWalls_rock.dae"
+    },
+    {
+      "stem": "cliff_blockslopehalfwalls_stone",
+      "file": "cliff_blockslopehalfwalls_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlopeHalfWalls_stone.dae"
+    },
+    {
+      "stem": "cliff_blockslopewalls_rock",
+      "file": "cliff_blockslopewalls_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlopeWalls_rock.dae"
+    },
+    {
+      "stem": "cliff_blockslopewalls_stone",
+      "file": "cliff_blockslopewalls_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_blockSlopeWalls_stone.dae"
+    },
+    {
+      "stem": "cliff_cave_rock",
+      "file": "cliff_cave_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cave_rock.dae"
+    },
+    {
+      "stem": "cliff_cave_stone",
+      "file": "cliff_cave_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cave_stone.dae"
+    },
+    {
+      "stem": "cliff_corner_rock",
+      "file": "cliff_corner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_corner_rock.dae"
+    },
+    {
+      "stem": "cliff_corner_stone",
+      "file": "cliff_corner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_corner_stone.dae"
+    },
+    {
+      "stem": "cliff_cornerinner_rock",
+      "file": "cliff_cornerinner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInner_rock.dae"
+    },
+    {
+      "stem": "cliff_cornerinner_stone",
+      "file": "cliff_cornerinner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInner_stone.dae"
+    },
+    {
+      "stem": "cliff_cornerinnerlarge_rock",
+      "file": "cliff_cornerinnerlarge_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInnerLarge_rock.dae"
+    },
+    {
+      "stem": "cliff_cornerinnerlarge_stone",
+      "file": "cliff_cornerinnerlarge_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInnerLarge_stone.dae"
+    },
+    {
+      "stem": "cliff_cornerinnertop_rock",
+      "file": "cliff_cornerinnertop_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInnerTop_rock.dae"
+    },
+    {
+      "stem": "cliff_cornerinnertop_stone",
+      "file": "cliff_cornerinnertop_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerInnerTop_stone.dae"
+    },
+    {
+      "stem": "cliff_cornerlarge_rock",
+      "file": "cliff_cornerlarge_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerLarge_rock.dae"
+    },
+    {
+      "stem": "cliff_cornerlarge_stone",
+      "file": "cliff_cornerlarge_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerLarge_stone.dae"
+    },
+    {
+      "stem": "cliff_cornertop_rock",
+      "file": "cliff_cornertop_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerTop_rock.dae"
+    },
+    {
+      "stem": "cliff_cornertop_stone",
+      "file": "cliff_cornertop_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_cornerTop_stone.dae"
+    },
+    {
+      "stem": "cliff_diagonal_rock",
+      "file": "cliff_diagonal_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_diagonal_rock.dae"
+    },
+    {
+      "stem": "cliff_diagonal_stone",
+      "file": "cliff_diagonal_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_diagonal_stone.dae"
+    },
+    {
+      "stem": "cliff_half_rock",
+      "file": "cliff_half_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_half_rock.dae"
+    },
+    {
+      "stem": "cliff_half_stone",
+      "file": "cliff_half_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_half_stone.dae"
+    },
+    {
+      "stem": "cliff_halfcorner_rock",
+      "file": "cliff_halfcorner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_halfCorner_rock.dae"
+    },
+    {
+      "stem": "cliff_halfcorner_stone",
+      "file": "cliff_halfcorner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_halfCorner_stone.dae"
+    },
+    {
+      "stem": "cliff_halfcornerinner_rock",
+      "file": "cliff_halfcornerinner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_halfCornerInner_rock.dae"
+    },
+    {
+      "stem": "cliff_halfcornerinner_stone",
+      "file": "cliff_halfcornerinner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_halfCornerInner_stone.dae"
+    },
+    {
+      "stem": "cliff_large_rock",
+      "file": "cliff_large_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_large_rock.dae"
+    },
+    {
+      "stem": "cliff_large_stone",
+      "file": "cliff_large_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_large_stone.dae"
+    },
+    {
+      "stem": "cliff_rock",
+      "file": "cliff_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_rock.dae"
+    },
+    {
+      "stem": "cliff_steps_rock",
+      "file": "cliff_steps_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_steps_rock.dae"
+    },
+    {
+      "stem": "cliff_steps_stone",
+      "file": "cliff_steps_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_steps_stone.dae"
+    },
+    {
+      "stem": "cliff_stepscorner_rock",
+      "file": "cliff_stepscorner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_stepsCorner_rock.dae"
+    },
+    {
+      "stem": "cliff_stepscorner_stone",
+      "file": "cliff_stepscorner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_stepsCorner_stone.dae"
+    },
+    {
+      "stem": "cliff_stepscornerinner_rock",
+      "file": "cliff_stepscornerinner_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_stepsCornerInner_rock.dae"
+    },
+    {
+      "stem": "cliff_stepscornerinner_stone",
+      "file": "cliff_stepscornerinner_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_stepsCornerInner_stone.dae"
+    },
+    {
+      "stem": "cliff_stone",
+      "file": "cliff_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_stone.dae"
+    },
+    {
+      "stem": "cliff_top_rock",
+      "file": "cliff_top_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_top_rock.dae"
+    },
+    {
+      "stem": "cliff_top_stone",
+      "file": "cliff_top_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_top_stone.dae"
+    },
+    {
+      "stem": "cliff_topdiagonal_rock",
+      "file": "cliff_topdiagonal_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_topDiagonal_rock.dae"
+    },
+    {
+      "stem": "cliff_topdiagonal_stone",
+      "file": "cliff_topdiagonal_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_topDiagonal_stone.dae"
+    },
+    {
+      "stem": "cliff_waterfall_rock",
+      "file": "cliff_waterfall_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_waterfall_rock.dae"
+    },
+    {
+      "stem": "cliff_waterfall_stone",
+      "file": "cliff_waterfall_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_waterfall_stone.dae"
+    },
+    {
+      "stem": "cliff_waterfalltop_rock",
+      "file": "cliff_waterfalltop_rock.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_waterfallTop_rock.dae"
+    },
+    {
+      "stem": "cliff_waterfalltop_stone",
+      "file": "cliff_waterfalltop_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/cliff_waterfallTop_stone.dae"
+    },
+    {
+      "stem": "coast_land_rocks_02_1k",
+      "file": "coast_land_rocks_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_land_rocks_02/coast_land_rocks_02_1k.fbx"
+    },
+    {
+      "stem": "coast_land_rocks_03_1k",
+      "file": "coast_land_rocks_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_land_rocks_03/coast_land_rocks_03_1k.fbx"
+    },
+    {
+      "stem": "coast_land_rocks_04_1k",
+      "file": "coast_land_rocks_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_land_rocks_04/coast_land_rocks_04_1k.fbx"
+    },
+    {
+      "stem": "coast_line_01_1k",
+      "file": "coast_line_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_line_01/coast_line_01_1k.fbx"
+    },
+    {
+      "stem": "coast_line_02_1k",
+      "file": "coast_line_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_line_02/coast_line_02_1k.fbx"
+    },
+    {
+      "stem": "coast_rocks_01_1k",
+      "file": "coast_rocks_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_rocks_01/coast_rocks_01_1k.fbx"
+    },
+    {
+      "stem": "coast_rocks_02_1k",
+      "file": "coast_rocks_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_rocks_02/coast_rocks_02_1k.fbx"
+    },
+    {
+      "stem": "coast_rocks_03_1k",
+      "file": "coast_rocks_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_rocks_03/coast_rocks_03_1k.fbx"
+    },
+    {
+      "stem": "coast_rocks_05_1k",
+      "file": "coast_rocks_05_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coast_rocks_05/coast_rocks_05_1k.fbx"
+    },
+    {
+      "stem": "coastal_cliff_01_1k",
+      "file": "coastal_cliff_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coastal_cliff_01/coastal_cliff_01_1k.fbx"
+    },
+    {
+      "stem": "coastal_cliff_02_1k",
+      "file": "coastal_cliff_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coastal_cliff_02/coastal_cliff_02_1k.fbx"
+    },
+    {
+      "stem": "coastal_cliff_04_1k",
+      "file": "coastal_cliff_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/coastal_cliff_04/coastal_cliff_04_1k.fbx"
+    },
+    {
+      "stem": "combination_wrench_1k",
+      "file": "combination_wrench_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/combination_wrench/combination_wrench_1k.fbx"
+    },
+    {
+      "stem": "compost_bag_02_1k",
+      "file": "compost_bag_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/compost_bag_02/compost_bag_02_1k.fbx"
+    },
+    {
+      "stem": "compost_bags_1k",
+      "file": "compost_bags_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/compost_bags/compost_bags_1k.fbx"
+    },
+    {
+      "stem": "concrete_road_barrier_02_1k",
+      "file": "concrete_road_barrier_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/concrete_road_barrier_02/concrete_road_barrier_02_1k.fbx"
+    },
+    {
+      "stem": "concrete_road_barrier_1k",
+      "file": "concrete_road_barrier_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/concrete_road_barrier/concrete_road_barrier_1k.fbx"
+    },
+    {
+      "stem": "covered_car_1k",
+      "file": "covered_car_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/covered_car/covered_car_1k.fbx"
+    },
+    {
+      "stem": "cow",
+      "file": "cow.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Cow.fbx"
+    },
+    {
+      "stem": "cowboy_female",
+      "file": "cowboy_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Cowboy_Female.fbx"
+    },
+    {
+      "stem": "cowboy_hair",
+      "file": "cowboy_hair.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Cowboy_Hair.fbx"
+    },
+    {
+      "stem": "cowboy_male",
+      "file": "cowboy_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Cowboy_Male.fbx"
+    },
+    {
+      "stem": "crop_carrot",
+      "file": "crop_carrot.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crop_carrot.dae"
+    },
+    {
+      "stem": "crop_melon",
+      "file": "crop_melon.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crop_melon.dae"
+    },
+    {
+      "stem": "crop_pumpkin",
+      "file": "crop_pumpkin.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crop_pumpkin.dae"
+    },
+    {
+      "stem": "crop_turnip",
+      "file": "crop_turnip.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crop_turnip.dae"
+    },
+    {
+      "stem": "crops_bamboostagea",
+      "file": "crops_bamboostagea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_bambooStageA.dae"
+    },
+    {
+      "stem": "crops_bamboostageb",
+      "file": "crops_bamboostageb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_bambooStageB.dae"
+    },
+    {
+      "stem": "crops_cornstagea",
+      "file": "crops_cornstagea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_cornStageA.dae"
+    },
+    {
+      "stem": "crops_cornstageb",
+      "file": "crops_cornstageb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_cornStageB.dae"
+    },
+    {
+      "stem": "crops_cornstagec",
+      "file": "crops_cornstagec.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_cornStageC.dae"
+    },
+    {
+      "stem": "crops_cornstaged",
+      "file": "crops_cornstaged.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_cornStageD.dae"
+    },
+    {
+      "stem": "crops_dirtdoublerow",
+      "file": "crops_dirtdoublerow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtDoubleRow.dae"
+    },
+    {
+      "stem": "crops_dirtdoublerowcorner",
+      "file": "crops_dirtdoublerowcorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtDoubleRowCorner.dae"
+    },
+    {
+      "stem": "crops_dirtdoublerowend",
+      "file": "crops_dirtdoublerowend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtDoubleRowEnd.dae"
+    },
+    {
+      "stem": "crops_dirtrow",
+      "file": "crops_dirtrow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtRow.dae"
+    },
+    {
+      "stem": "crops_dirtrowcorner",
+      "file": "crops_dirtrowcorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtRowCorner.dae"
+    },
+    {
+      "stem": "crops_dirtrowend",
+      "file": "crops_dirtrowend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtRowEnd.dae"
+    },
+    {
+      "stem": "crops_dirtsingle",
+      "file": "crops_dirtsingle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_dirtSingle.dae"
+    },
+    {
+      "stem": "crops_leafsstagea",
+      "file": "crops_leafsstagea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_leafsStageA.dae"
+    },
+    {
+      "stem": "crops_leafsstageb",
+      "file": "crops_leafsstageb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_leafsStageB.dae"
+    },
+    {
+      "stem": "crops_wheatstagea",
+      "file": "crops_wheatstagea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_wheatStageA.dae"
+    },
+    {
+      "stem": "crops_wheatstageb",
+      "file": "crops_wheatstageb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/crops_wheatStageB.dae"
+    },
+    {
+      "stem": "cross_pein_hammer_1k",
+      "file": "cross_pein_hammer_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/cross_pein_hammer/cross_pein_hammer_1k.fbx"
+    },
+    {
+      "stem": "crowbar_01_1k",
+      "file": "crowbar_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/crowbar_01/crowbar_01_1k.fbx"
+    },
+    {
+      "stem": "crystalline_iceplant_1k",
+      "file": "crystalline_iceplant_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/crystalline_iceplant/crystalline_iceplant_1k.fbx"
+    },
+    {
+      "stem": "dandelion_01_1k",
+      "file": "dandelion_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dandelion_01/dandelion_01_1k.fbx"
+    },
+    {
+      "stem": "dead_quiver_branch_01_1k",
+      "file": "dead_quiver_branch_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dead_quiver_branch_01/dead_quiver_branch_01_1k.fbx"
+    },
+    {
+      "stem": "dead_quiver_branch_02_1k",
+      "file": "dead_quiver_branch_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dead_quiver_branch_02/dead_quiver_branch_02_1k.fbx"
+    },
+    {
+      "stem": "dead_quiver_trunk_1k",
+      "file": "dead_quiver_trunk_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dead_quiver_trunk/dead_quiver_trunk_1k.fbx"
+    },
+    {
+      "stem": "dead_tree_trunk_02_1k",
+      "file": "dead_tree_trunk_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dead_tree_trunk_02/dead_tree_trunk_02_1k.fbx"
+    },
+    {
+      "stem": "dead_tree_trunk_1k",
+      "file": "dead_tree_trunk_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dead_tree_trunk/dead_tree_trunk_1k.fbx"
+    },
+    {
+      "stem": "desk_lamp_arm_01_1k",
+      "file": "desk_lamp_arm_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/desk_lamp_arm_01/desk_lamp_arm_01_1k.fbx"
+    },
+    {
+      "stem": "didelta_spinosa_1k",
+      "file": "didelta_spinosa_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/didelta_spinosa/didelta_spinosa_1k.fbx"
+    },
+    {
+      "stem": "dirty_football_1k",
+      "file": "dirty_football_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dirty_football/dirty_football_1k.fbx"
+    },
+    {
+      "stem": "doctor_female_old",
+      "file": "doctor_female_old.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Doctor_Female_Old.fbx"
+    },
+    {
+      "stem": "doctor_female_young",
+      "file": "doctor_female_young.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Doctor_Female_Young.fbx"
+    },
+    {
+      "stem": "doctor_male_old",
+      "file": "doctor_male_old.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Doctor_Male_Old.fbx"
+    },
+    {
+      "stem": "doctor_male_young",
+      "file": "doctor_male_young.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Doctor_Male_Young.fbx"
+    },
+    {
+      "stem": "dog",
+      "file": "dog.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Dog.fbx"
+    },
+    {
+      "stem": "drain_cleaner_1k",
+      "file": "drain_cleaner_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/drain_cleaner/drain_cleaner_1k.fbx"
+    },
+    {
+      "stem": "drill_01_1k",
+      "file": "drill_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Drill_01/Drill_01_1k.fbx"
+    },
+    {
+      "stem": "drill_press_01_1k",
+      "file": "drill_press_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/drill_press_01/drill_press_01_1k.fbx"
+    },
+    {
+      "stem": "dry_branches_medium_01_1k",
+      "file": "dry_branches_medium_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dry_branches_medium_01/dry_branches_medium_01_1k.fbx"
+    },
+    {
+      "stem": "dry_quiver_leaf_1k",
+      "file": "dry_quiver_leaf_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dry_quiver_leaf/dry_quiver_leaf_1k.fbx"
+    },
+    {
+      "stem": "dustpan_1k",
+      "file": "dustpan_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/dustpan/dustpan_1k.fbx"
+    },
+    {
+      "stem": "eagle",
+      "file": "eagle.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Eagle.fbx"
+    },
+    {
+      "stem": "elf",
+      "file": "elf.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Elf.fbx"
+    },
+    {
+      "stem": "exterior_aircon_unit_1k",
+      "file": "exterior_aircon_unit_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/exterior_aircon_unit/exterior_aircon_unit_1k.fbx"
+    },
+    {
+      "stem": "fence_bend",
+      "file": "fence_bend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_bend.dae"
+    },
+    {
+      "stem": "fence_bendcenter",
+      "file": "fence_bendcenter.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_bendCenter.dae"
+    },
+    {
+      "stem": "fence_corner",
+      "file": "fence_corner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_corner.dae"
+    },
+    {
+      "stem": "fence_gate",
+      "file": "fence_gate.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_gate.dae"
+    },
+    {
+      "stem": "fence_planks",
+      "file": "fence_planks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_planks.dae"
+    },
+    {
+      "stem": "fence_planksdouble",
+      "file": "fence_planksdouble.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_planksDouble.dae"
+    },
+    {
+      "stem": "fence_simple",
+      "file": "fence_simple.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simple.dae"
+    },
+    {
+      "stem": "fence_simplecenter",
+      "file": "fence_simplecenter.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simpleCenter.dae"
+    },
+    {
+      "stem": "fence_simplediagonal",
+      "file": "fence_simplediagonal.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simpleDiagonal.dae"
+    },
+    {
+      "stem": "fence_simplediagonalcenter",
+      "file": "fence_simplediagonalcenter.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simpleDiagonalCenter.dae"
+    },
+    {
+      "stem": "fence_simplehigh",
+      "file": "fence_simplehigh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simpleHigh.dae"
+    },
+    {
+      "stem": "fence_simplelow",
+      "file": "fence_simplelow.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/fence_simpleLow.dae"
+    },
+    {
+      "stem": "fern_02_1k",
+      "file": "fern_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fern_02/fern_02_1k.fbx"
+    },
+    {
+      "stem": "fir_sapling_1k",
+      "file": "fir_sapling_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fir_sapling/fir_sapling_1k.fbx"
+    },
+    {
+      "stem": "fire_alarm_1k",
+      "file": "fire_alarm_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fire_alarm/fire_alarm_1k.fbx"
+    },
+    {
+      "stem": "fire_hydrant_1k",
+      "file": "fire_hydrant_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fire_hydrant/fire_hydrant_1k.fbx"
+    },
+    {
+      "stem": "fish",
+      "file": "fish.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/Fish.fbx"
+    },
+    {
+      "stem": "fish_knife_1k",
+      "file": "fish_knife_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fish_knife/fish_knife_1k.fbx"
+    },
+    {
+      "stem": "fishermans_hat_1k",
+      "file": "fishermans_hat_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/fishermans_hat/fishermans_hat_1k.fbx"
+    },
+    {
+      "stem": "flathead_screwdriver_1k",
+      "file": "flathead_screwdriver_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flathead_screwdriver/flathead_screwdriver_1k.fbx"
+    },
+    {
+      "stem": "flower_empodium_1k",
+      "file": "flower_empodium_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flower_empodium/flower_empodium_1k.fbx"
+    },
+    {
+      "stem": "flower_gazania_1k",
+      "file": "flower_gazania_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flower_gazania/flower_gazania_1k.fbx"
+    },
+    {
+      "stem": "flower_heliophila_1k",
+      "file": "flower_heliophila_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flower_heliophila/flower_heliophila_1k.fbx"
+    },
+    {
+      "stem": "flower_purplea",
+      "file": "flower_purplea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_purpleA.dae"
+    },
+    {
+      "stem": "flower_purpleb",
+      "file": "flower_purpleb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_purpleB.dae"
+    },
+    {
+      "stem": "flower_purplec",
+      "file": "flower_purplec.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_purpleC.dae"
+    },
+    {
+      "stem": "flower_reda",
+      "file": "flower_reda.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_redA.dae"
+    },
+    {
+      "stem": "flower_redb",
+      "file": "flower_redb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_redB.dae"
+    },
+    {
+      "stem": "flower_redc",
+      "file": "flower_redc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_redC.dae"
+    },
+    {
+      "stem": "flower_stinkkruid_1k",
+      "file": "flower_stinkkruid_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flower_stinkkruid/flower_stinkkruid_1k.fbx"
+    },
+    {
+      "stem": "flower_ursinia_1k",
+      "file": "flower_ursinia_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/flower_ursinia/flower_ursinia_1k.fbx"
+    },
+    {
+      "stem": "flower_yellowa",
+      "file": "flower_yellowa.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_yellowA.dae"
+    },
+    {
+      "stem": "flower_yellowb",
+      "file": "flower_yellowb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_yellowB.dae"
+    },
+    {
+      "stem": "flower_yellowc",
+      "file": "flower_yellowc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/flower_yellowC.dae"
+    },
+    {
+      "stem": "food_apple_01_1k",
+      "file": "food_apple_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_apple_01/food_apple_01_1k.fbx"
+    },
+    {
+      "stem": "food_avocado_01_1k",
+      "file": "food_avocado_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_avocado_01/food_avocado_01_1k.fbx"
+    },
+    {
+      "stem": "food_ginger_01_1k",
+      "file": "food_ginger_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_ginger_01/food_ginger_01_1k.fbx"
+    },
+    {
+      "stem": "food_kiwi_01_1k",
+      "file": "food_kiwi_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_kiwi_01/food_kiwi_01_1k.fbx"
+    },
+    {
+      "stem": "food_lime_01_1k",
+      "file": "food_lime_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_lime_01/food_lime_01_1k.fbx"
+    },
+    {
+      "stem": "food_lychee_01_1k",
+      "file": "food_lychee_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_lychee_01/food_lychee_01_1k.fbx"
+    },
+    {
+      "stem": "food_pears_asian_01_1k",
+      "file": "food_pears_asian_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_pears_asian_01/food_pears_asian_01_1k.fbx"
+    },
+    {
+      "stem": "food_pomegranate_01_1k",
+      "file": "food_pomegranate_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/food_pomegranate_01/food_pomegranate_01_1k.fbx"
+    },
+    {
+      "stem": "football_1k",
+      "file": "football_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/football/football_1k.fbx"
+    },
+    {
+      "stem": "gamepad_1k",
+      "file": "gamepad_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/gamepad/gamepad_1k.fbx"
+    },
+    {
+      "stem": "garden_gloves_01_1k",
+      "file": "garden_gloves_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/garden_gloves_01/garden_gloves_01_1k.fbx"
+    },
+    {
+      "stem": "garden_hose_wall_mounted_01_1k",
+      "file": "garden_hose_wall_mounted_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/garden_hose_wall_mounted_01/garden_hose_wall_mounted_01_1k.fbx"
+    },
+    {
+      "stem": "garden_sprinkler_01_1k",
+      "file": "garden_sprinkler_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/garden_sprinkler_01/garden_sprinkler_01_1k.fbx"
+    },
+    {
+      "stem": "gate_latch_01_1k",
+      "file": "gate_latch_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/gate_latch_01/gate_latch_01_1k.fbx"
+    },
+    {
+      "stem": "goblin_female",
+      "file": "goblin_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Goblin_Female.fbx"
+    },
+    {
+      "stem": "goblin_male",
+      "file": "goblin_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Goblin_Male.fbx"
+    },
+    {
+      "stem": "grass_bermuda_01_1k",
+      "file": "grass_bermuda_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/grass_bermuda_01/grass_bermuda_01_1k.fbx"
+    },
+    {
+      "stem": "grass_large",
+      "file": "grass_large.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/grass_large.dae"
+    },
+    {
+      "stem": "grass_leafs",
+      "file": "grass_leafs.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/grass_leafs.dae"
+    },
+    {
+      "stem": "grass_leafslarge",
+      "file": "grass_leafslarge.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/grass_leafsLarge.dae"
+    },
+    {
+      "stem": "grass_medium_01_1k",
+      "file": "grass_medium_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/grass_medium_01/grass_medium_01_1k.fbx"
+    },
+    {
+      "stem": "grass_medium_02_1k",
+      "file": "grass_medium_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/grass_medium_02/grass_medium_02_1k.fbx"
+    },
+    {
+      "stem": "ground_grass",
+      "file": "ground_grass.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_grass.dae"
+    },
+    {
+      "stem": "ground_pathbend",
+      "file": "ground_pathbend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathBend.dae"
+    },
+    {
+      "stem": "ground_pathbendbank",
+      "file": "ground_pathbendbank.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathBendBank.dae"
+    },
+    {
+      "stem": "ground_pathcorner",
+      "file": "ground_pathcorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathCorner.dae"
+    },
+    {
+      "stem": "ground_pathcornersmall",
+      "file": "ground_pathcornersmall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathCornerSmall.dae"
+    },
+    {
+      "stem": "ground_pathcross",
+      "file": "ground_pathcross.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathCross.dae"
+    },
+    {
+      "stem": "ground_pathend",
+      "file": "ground_pathend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathEnd.dae"
+    },
+    {
+      "stem": "ground_pathendclosed",
+      "file": "ground_pathendclosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathEndClosed.dae"
+    },
+    {
+      "stem": "ground_pathopen",
+      "file": "ground_pathopen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathOpen.dae"
+    },
+    {
+      "stem": "ground_pathrocks",
+      "file": "ground_pathrocks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathRocks.dae"
+    },
+    {
+      "stem": "ground_pathside",
+      "file": "ground_pathside.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathSide.dae"
+    },
+    {
+      "stem": "ground_pathsideopen",
+      "file": "ground_pathsideopen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathSideOpen.dae"
+    },
+    {
+      "stem": "ground_pathsplit",
+      "file": "ground_pathsplit.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathSplit.dae"
+    },
+    {
+      "stem": "ground_pathstraight",
+      "file": "ground_pathstraight.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathStraight.dae"
+    },
+    {
+      "stem": "ground_pathtile",
+      "file": "ground_pathtile.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_pathTile.dae"
+    },
+    {
+      "stem": "ground_riverbend",
+      "file": "ground_riverbend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverBend.dae"
+    },
+    {
+      "stem": "ground_riverbendbank",
+      "file": "ground_riverbendbank.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverBendBank.dae"
+    },
+    {
+      "stem": "ground_rivercorner",
+      "file": "ground_rivercorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverCorner.dae"
+    },
+    {
+      "stem": "ground_rivercornersmall",
+      "file": "ground_rivercornersmall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverCornerSmall.dae"
+    },
+    {
+      "stem": "ground_rivercross",
+      "file": "ground_rivercross.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverCross.dae"
+    },
+    {
+      "stem": "ground_riverend",
+      "file": "ground_riverend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverEnd.dae"
+    },
+    {
+      "stem": "ground_riverendclosed",
+      "file": "ground_riverendclosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverEndClosed.dae"
+    },
+    {
+      "stem": "ground_riveropen",
+      "file": "ground_riveropen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverOpen.dae"
+    },
+    {
+      "stem": "ground_riverrocks",
+      "file": "ground_riverrocks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverRocks.dae"
+    },
+    {
+      "stem": "ground_riverside",
+      "file": "ground_riverside.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverSide.dae"
+    },
+    {
+      "stem": "ground_riversideopen",
+      "file": "ground_riversideopen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverSideOpen.dae"
+    },
+    {
+      "stem": "ground_riversplit",
+      "file": "ground_riversplit.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverSplit.dae"
+    },
+    {
+      "stem": "ground_riverstraight",
+      "file": "ground_riverstraight.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverStraight.dae"
+    },
+    {
+      "stem": "ground_rivertile",
+      "file": "ground_rivertile.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/ground_riverTile.dae"
+    },
+    {
+      "stem": "hand_plane_no4_1k",
+      "file": "hand_plane_no4_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/hand_plane_no4/hand_plane_no4_1k.fbx"
+    },
+    {
+      "stem": "hand_truck_1k",
+      "file": "hand_truck_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/hand_truck/hand_truck_1k.fbx"
+    },
+    {
+      "stem": "handsaw_wood_1k",
+      "file": "handsaw_wood_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/handsaw_wood/handsaw_wood_1k.fbx"
+    },
+    {
+      "stem": "hanging_industrial_lamp_1k",
+      "file": "hanging_industrial_lamp_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/hanging_industrial_lamp/hanging_industrial_lamp_1k.fbx"
+    },
+    {
+      "stem": "hanging_moss",
+      "file": "hanging_moss.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/hanging_moss.dae"
+    },
+    {
+      "stem": "hatchet_1k",
+      "file": "hatchet_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/hatchet/hatchet_1k.fbx"
+    },
+    {
+      "stem": "horse",
+      "file": "horse.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Horse.fbx"
+    },
+    {
+      "stem": "industrial_caged_sconce_1k",
+      "file": "industrial_caged_sconce_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_caged_sconce/industrial_caged_sconce_1k.fbx"
+    },
+    {
+      "stem": "industrial_microscope_1k",
+      "file": "industrial_microscope_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_microscope/industrial_microscope_1k.fbx"
+    },
+    {
+      "stem": "industrial_pastic_container_1k",
+      "file": "industrial_pastic_container_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_pastic_container/industrial_pastic_container_1k.fbx"
+    },
+    {
+      "stem": "industrial_pipe_lamp_1k",
+      "file": "industrial_pipe_lamp_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_pipe_lamp/industrial_pipe_lamp_1k.fbx"
+    },
+    {
+      "stem": "industrial_storage_cart_1k",
+      "file": "industrial_storage_cart_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_storage_cart/industrial_storage_cart_1k.fbx"
+    },
+    {
+      "stem": "industrial_wall_lamp_1k",
+      "file": "industrial_wall_lamp_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/industrial_wall_lamp/industrial_wall_lamp_1k.fbx"
+    },
+    {
+      "stem": "island_tree_01_1k",
+      "file": "island_tree_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/island_tree_01/island_tree_01_1k.fbx"
+    },
+    {
+      "stem": "island_tree_02_1k",
+      "file": "island_tree_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/island_tree_02/island_tree_02_1k.fbx"
+    },
+    {
+      "stem": "island_tree_03_1k",
+      "file": "island_tree_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/island_tree_03/island_tree_03_1k.fbx"
+    },
+    {
+      "stem": "jacaranda_tree_1k",
+      "file": "jacaranda_tree_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/jacaranda_tree/jacaranda_tree_1k.fbx"
+    },
+    {
+      "stem": "jug_01_1k",
+      "file": "jug_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/jug_01/jug_01_1k.fbx"
+    },
+    {
+      "stem": "kimono_female",
+      "file": "kimono_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Kimono_Female.fbx"
+    },
+    {
+      "stem": "kimono_male",
+      "file": "kimono_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Kimono_Male.fbx"
+    },
+    {
+      "stem": "kite_shield_1k",
+      "file": "kite_shield_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/kite_shield/kite_shield_1k.fbx"
+    },
+    {
+      "stem": "knight_golden_female",
+      "file": "knight_golden_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Knight_Golden_Female.fbx"
+    },
+    {
+      "stem": "knight_golden_male",
+      "file": "knight_golden_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Knight_Golden_Male.fbx"
+    },
+    {
+      "stem": "knight_male",
+      "file": "knight_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Knight_Male.fbx"
+    },
+    {
+      "stem": "korean_fire_extinguisher_01_1k",
+      "file": "korean_fire_extinguisher_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/korean_fire_extinguisher_01/korean_fire_extinguisher_01_1k.fbx"
+    },
+    {
+      "stem": "korean_public_payphone_01_1k",
+      "file": "korean_public_payphone_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/korean_public_payphone_01/korean_public_payphone_01_1k.fbx"
+    },
+    {
+      "stem": "ladder_sectioned_01_1k",
+      "file": "ladder_sectioned_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ladder_sectioned_01/ladder_sectioned_01_1k.fbx"
+    },
+    {
+      "stem": "lambis_shell_1k",
+      "file": "lambis_shell_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lambis_shell/lambis_shell_1k.fbx"
+    },
+    {
+      "stem": "lantern_01_1k",
+      "file": "lantern_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Lantern_01/Lantern_01_1k.fbx"
+    },
+    {
+      "stem": "lantern_chandelier_01_1k",
+      "file": "lantern_chandelier_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lantern_chandelier_01/lantern_chandelier_01_1k.fbx"
+    },
+    {
+      "stem": "large_castle_door_1k",
+      "file": "large_castle_door_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/large_castle_door/large_castle_door_1k.fbx"
+    },
+    {
+      "stem": "large_iron_gate_1k",
+      "file": "large_iron_gate_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/large_iron_gate/large_iron_gate_1k.fbx"
+    },
+    {
+      "stem": "lateral_sea_marker_1k",
+      "file": "lateral_sea_marker_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lateral_sea_marker/lateral_sea_marker_1k.fbx"
+    },
+    {
+      "stem": "leather_cleaner_can_1k",
+      "file": "leather_cleaner_can_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/leather_cleaner_can/leather_cleaner_can_1k.fbx"
+    },
+    {
+      "stem": "leipoldtia_schultzei_1k",
+      "file": "leipoldtia_schultzei_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/leipoldtia_schultzei/leipoldtia_schultzei_1k.fbx"
+    },
+    {
+      "stem": "life_jacket_1k",
+      "file": "life_jacket_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/life_jacket/life_jacket_1k.fbx"
+    },
+    {
+      "stem": "lifebuoy_1k",
+      "file": "lifebuoy_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lifebuoy/lifebuoy_1k.fbx"
+    },
+    {
+      "stem": "lightbulb_01_1k",
+      "file": "lightbulb_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lightbulb_01/lightbulb_01_1k.fbx"
+    },
+    {
+      "stem": "lily_large",
+      "file": "lily_large.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/lily_large.dae"
+    },
+    {
+      "stem": "lily_small",
+      "file": "lily_small.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/lily_small.dae"
+    },
+    {
+      "stem": "llama",
+      "file": "llama.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Llama.fbx"
+    },
+    {
+      "stem": "log",
+      "file": "log.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/log.dae"
+    },
+    {
+      "stem": "log_stack",
+      "file": "log_stack.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/log_stack.dae"
+    },
+    {
+      "stem": "log_stacklarge",
+      "file": "log_stacklarge.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/log_stackLarge.dae"
+    },
+    {
+      "stem": "long_life_food_1k",
+      "file": "long_life_food_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/long_life_food/long_life_food_1k.fbx"
+    },
+    {
+      "stem": "lubricant_spray_1k",
+      "file": "lubricant_spray_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/lubricant_spray/lubricant_spray_1k.fbx"
+    },
+    {
+      "stem": "machete_1k",
+      "file": "machete_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/machete/machete_1k.fbx"
+    },
+    {
+      "stem": "magnifying_glass_01_1k",
+      "file": "magnifying_glass_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/magnifying_glass_01/magnifying_glass_01_1k.fbx"
+    },
+    {
+      "stem": "measuring_tape_01_1k",
+      "file": "measuring_tape_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/measuring_tape_01/measuring_tape_01_1k.fbx"
+    },
+    {
+      "stem": "medical_box_1k",
+      "file": "medical_box_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/medical_box/medical_box_1k.fbx"
+    },
+    {
+      "stem": "medical_tape_1k",
+      "file": "medical_tape_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/medical_tape/medical_tape_1k.fbx"
+    },
+    {
+      "stem": "megaphone_01_1k",
+      "file": "megaphone_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/Megaphone_01/Megaphone_01_1k.fbx"
+    },
+    {
+      "stem": "metal_jerrycan_1k",
+      "file": "metal_jerrycan_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_jerrycan/metal_jerrycan_1k.fbx"
+    },
+    {
+      "stem": "metal_jerrycan_green_1k",
+      "file": "metal_jerrycan_green_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_jerrycan_green/metal_jerrycan_green_1k.fbx"
+    },
+    {
+      "stem": "metal_jug_1k",
+      "file": "metal_jug_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_jug/metal_jug_1k.fbx"
+    },
+    {
+      "stem": "metal_tool_chest_1k",
+      "file": "metal_tool_chest_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_tool_chest/metal_tool_chest_1k.fbx"
+    },
+    {
+      "stem": "metal_toolbox_1k",
+      "file": "metal_toolbox_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_toolbox/metal_toolbox_1k.fbx"
+    },
+    {
+      "stem": "metal_trash_can_1k",
+      "file": "metal_trash_can_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/metal_trash_can/metal_trash_can_1k.fbx"
+    },
+    {
+      "stem": "modern_ceiling_lamp_01_1k",
+      "file": "modern_ceiling_lamp_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.fbx"
+    },
+    {
+      "stem": "modified_thermos_1k",
+      "file": "modified_thermos_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modified_thermos/modified_thermos_1k.fbx"
+    },
+    {
+      "stem": "modular_airduct_circular_01_1k",
+      "file": "modular_airduct_circular_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_airduct_circular_01/modular_airduct_circular_01_1k.fbx"
+    },
+    {
+      "stem": "modular_airduct_rectangular_01_1k",
+      "file": "modular_airduct_rectangular_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_airduct_rectangular_01/modular_airduct_rectangular_01_1k.fbx"
+    },
+    {
+      "stem": "modular_chainlink_fence_1k",
+      "file": "modular_chainlink_fence_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_chainlink_fence/modular_chainlink_fence_1k.fbx"
+    },
+    {
+      "stem": "modular_electric_cables_1k",
+      "file": "modular_electric_cables_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_electric_cables/modular_electric_cables_1k.fbx"
+    },
+    {
+      "stem": "modular_electricity_poles_1k",
+      "file": "modular_electricity_poles_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_electricity_poles/modular_electricity_poles_1k.fbx"
+    },
+    {
+      "stem": "modular_factory_facade_1k",
+      "file": "modular_factory_facade_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_factory_facade/modular_factory_facade_1k.fbx"
+    },
+    {
+      "stem": "modular_fire_escape_1k",
+      "file": "modular_fire_escape_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_fire_escape/modular_fire_escape_1k.fbx"
+    },
+    {
+      "stem": "modular_fort_01_1k",
+      "file": "modular_fort_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_fort_01/modular_fort_01_1k.fbx"
+    },
+    {
+      "stem": "modular_industrial_pipes_01_1k",
+      "file": "modular_industrial_pipes_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_industrial_pipes_01/modular_industrial_pipes_01_1k.fbx"
+    },
+    {
+      "stem": "modular_metal_gutter_1k",
+      "file": "modular_metal_gutter_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_metal_gutter/modular_metal_gutter_1k.fbx"
+    },
+    {
+      "stem": "modular_pipes_1k",
+      "file": "modular_pipes_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_pipes/modular_pipes_1k.fbx"
+    },
+    {
+      "stem": "modular_pipes_plastic_01_1k",
+      "file": "modular_pipes_plastic_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_pipes_plastic_01/modular_pipes_plastic_01_1k.fbx"
+    },
+    {
+      "stem": "modular_urban_apartments_facade_1k",
+      "file": "modular_urban_apartments_facade_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_urban_apartments_facade/modular_urban_apartments_facade_1k.fbx"
+    },
+    {
+      "stem": "modular_wooden_pier_1k",
+      "file": "modular_wooden_pier_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/modular_wooden_pier/modular_wooden_pier_1k.fbx"
+    },
+    {
+      "stem": "monk",
+      "file": "monk.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Monk.fbx"
+    },
+    {
+      "stem": "moon_rock_01_1k",
+      "file": "moon_rock_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_01/moon_rock_01_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_02_1k",
+      "file": "moon_rock_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_02/moon_rock_02_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_03_1k",
+      "file": "moon_rock_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_03/moon_rock_03_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_04_1k",
+      "file": "moon_rock_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_04/moon_rock_04_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_05_1k",
+      "file": "moon_rock_05_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_05/moon_rock_05_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_06_1k",
+      "file": "moon_rock_06_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_06/moon_rock_06_1k.fbx"
+    },
+    {
+      "stem": "moon_rock_07_1k",
+      "file": "moon_rock_07_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moon_rock_07/moon_rock_07_1k.fbx"
+    },
+    {
+      "stem": "moss_01_1k",
+      "file": "moss_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/moss_01/moss_01_1k.fbx"
+    },
+    {
+      "stem": "mountainside_1k",
+      "file": "mountainside_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/mountainside/mountainside_1k.fbx"
+    },
+    {
+      "stem": "mounted_fluorescent_lights_1k",
+      "file": "mounted_fluorescent_lights_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/mounted_fluorescent_lights/mounted_fluorescent_lights_1k.fbx"
+    },
+    {
+      "stem": "mousetrap_1k",
+      "file": "mousetrap_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/mousetrap/mousetrap_1k.fbx"
+    },
+    {
+      "stem": "multi_cleaner_5_litre_1k",
+      "file": "multi_cleaner_5_litre_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/multi_cleaner_5_litre/multi_cleaner_5_litre_1k.fbx"
+    },
+    {
+      "stem": "multi_cleaner_bottle_1k",
+      "file": "multi_cleaner_bottle_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/multi_cleaner_bottle/multi_cleaner_bottle_1k.fbx"
+    },
+    {
+      "stem": "mushroom_red",
+      "file": "mushroom_red.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_red.dae"
+    },
+    {
+      "stem": "mushroom_redgroup",
+      "file": "mushroom_redgroup.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_redGroup.dae"
+    },
+    {
+      "stem": "mushroom_redtall",
+      "file": "mushroom_redtall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_redTall.dae"
+    },
+    {
+      "stem": "mushroom_tan",
+      "file": "mushroom_tan.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_tan.dae"
+    },
+    {
+      "stem": "mushroom_tangroup",
+      "file": "mushroom_tangroup.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_tanGroup.dae"
+    },
+    {
+      "stem": "mushroom_tantall",
+      "file": "mushroom_tantall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/mushroom_tanTall.dae"
+    },
+    {
+      "stem": "namaqualand_boulder_02_1k",
+      "file": "namaqualand_boulder_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulder_02/namaqualand_boulder_02_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_boulder_03_1k",
+      "file": "namaqualand_boulder_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulder_03/namaqualand_boulder_03_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_boulder_04_1k",
+      "file": "namaqualand_boulder_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulder_04/namaqualand_boulder_04_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_boulder_05_1k",
+      "file": "namaqualand_boulder_05_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulder_05/namaqualand_boulder_05_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_boulder_06_1k",
+      "file": "namaqualand_boulder_06_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulder_06/namaqualand_boulder_06_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_boulders_01_1k",
+      "file": "namaqualand_boulders_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_boulders_01/namaqualand_boulders_01_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_cliff_01_1k",
+      "file": "namaqualand_cliff_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_cliff_01/namaqualand_cliff_01_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_cliff_02_1k",
+      "file": "namaqualand_cliff_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_cliff_02/namaqualand_cliff_02_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_rocks_01_1k",
+      "file": "namaqualand_rocks_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_rocks_01/namaqualand_rocks_01_1k.fbx"
+    },
+    {
+      "stem": "namaqualand_stones_01_1k",
+      "file": "namaqualand_stones_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/namaqualand_stones_01/namaqualand_stones_01_1k.fbx"
+    },
+    {
+      "stem": "nettle_plant_1k",
+      "file": "nettle_plant_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/nettle_plant/nettle_plant_1k.fbx"
+    },
+    {
+      "stem": "ninja_female",
+      "file": "ninja_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Ninja_Female.fbx"
+    },
+    {
+      "stem": "ninja_male",
+      "file": "ninja_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Ninja_Male.fbx"
+    },
+    {
+      "stem": "ninja_male_hair",
+      "file": "ninja_male_hair.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Ninja_Male_Hair.fbx"
+    },
+    {
+      "stem": "ninja_sand",
+      "file": "ninja_sand.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Ninja_Sand.fbx"
+    },
+    {
+      "stem": "ninja_sand_female",
+      "file": "ninja_sand_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Ninja_Sand_Female.fbx"
+    },
+    {
+      "stem": "ocean_buoy_1k",
+      "file": "ocean_buoy_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ocean_buoy/ocean_buoy_1k.fbx"
+    },
+    {
+      "stem": "oil_tin_1k",
+      "file": "oil_tin_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/oil_tin/oil_tin_1k.fbx"
+    },
+    {
+      "stem": "old_drill_press_1k",
+      "file": "old_drill_press_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/old_drill_press/old_drill_press_1k.fbx"
+    },
+    {
+      "stem": "old_gas_mask_1k",
+      "file": "old_gas_mask_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/old_gas_mask/old_gas_mask_1k.fbx"
+    },
+    {
+      "stem": "old_military_compressor_1k",
+      "file": "old_military_compressor_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/old_military_compressor/old_military_compressor_1k.fbx"
+    },
+    {
+      "stem": "old_military_crate_1k",
+      "file": "old_military_crate_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/old_military_crate/old_military_crate_1k.fbx"
+    },
+    {
+      "stem": "old_tyre_1k",
+      "file": "old_tyre_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/old_tyre/old_tyre_1k.fbx"
+    },
+    {
+      "stem": "oldclassy_female",
+      "file": "oldclassy_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/OldClassy_Female.fbx"
+    },
+    {
+      "stem": "oldclassy_male",
+      "file": "oldclassy_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/OldClassy_Male.fbx"
+    },
+    {
+      "stem": "ornate_medieval_dagger_1k",
+      "file": "ornate_medieval_dagger_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ornate_medieval_dagger/ornate_medieval_dagger_1k.fbx"
+    },
+    {
+      "stem": "ornate_medieval_mace_1k",
+      "file": "ornate_medieval_mace_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ornate_medieval_mace/ornate_medieval_mace_1k.fbx"
+    },
+    {
+      "stem": "ornate_war_hammer_1k",
+      "file": "ornate_war_hammer_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ornate_war_hammer/ornate_war_hammer_1k.fbx"
+    },
+    {
+      "stem": "othonna_cerarioides_1k",
+      "file": "othonna_cerarioides_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/othonna_cerarioides/othonna_cerarioides_1k.fbx"
+    },
+    {
+      "stem": "overhead_crane_1k",
+      "file": "overhead_crane_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/overhead_crane/overhead_crane_1k.fbx"
+    },
+    {
+      "stem": "pachira_aquatica_01_1k",
+      "file": "pachira_aquatica_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pachira_aquatica_01/pachira_aquatica_01_1k.fbx"
+    },
+    {
+      "stem": "pastic_torch_6v_1k",
+      "file": "pastic_torch_6v_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pastic_torch_6v/pastic_torch_6v_1k.fbx"
+    },
+    {
+      "stem": "path_stone",
+      "file": "path_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_stone.dae"
+    },
+    {
+      "stem": "path_stonecircle",
+      "file": "path_stonecircle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_stoneCircle.dae"
+    },
+    {
+      "stem": "path_stonecorner",
+      "file": "path_stonecorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_stoneCorner.dae"
+    },
+    {
+      "stem": "path_stoneend",
+      "file": "path_stoneend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_stoneEnd.dae"
+    },
+    {
+      "stem": "path_wood",
+      "file": "path_wood.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_wood.dae"
+    },
+    {
+      "stem": "path_woodcorner",
+      "file": "path_woodcorner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_woodCorner.dae"
+    },
+    {
+      "stem": "path_woodend",
+      "file": "path_woodend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/path_woodEnd.dae"
+    },
+    {
+      "stem": "periwinkle_plant_1k",
+      "file": "periwinkle_plant_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/periwinkle_plant/periwinkle_plant_1k.fbx"
+    },
+    {
+      "stem": "picke_dirty_01_1k",
+      "file": "picke_dirty_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/picke_dirty_01/picke_dirty_01_1k.fbx"
+    },
+    {
+      "stem": "pig",
+      "file": "pig.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Pig.fbx"
+    },
+    {
+      "stem": "pine_roots_1k",
+      "file": "pine_roots_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pine_roots/pine_roots_1k.fbx"
+    },
+    {
+      "stem": "pine_sapling_small_1k",
+      "file": "pine_sapling_small_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pine_sapling_small/pine_sapling_small_1k.fbx"
+    },
+    {
+      "stem": "pipe_wrench_1k",
+      "file": "pipe_wrench_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pipe_wrench/pipe_wrench_1k.fbx"
+    },
+    {
+      "stem": "piranha",
+      "file": "piranha.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Piranha.fbx"
+    },
+    {
+      "stem": "pirate_female",
+      "file": "pirate_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Pirate_Female.fbx"
+    },
+    {
+      "stem": "pirate_male",
+      "file": "pirate_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Pirate_Male.fbx"
+    },
+    {
+      "stem": "plant_bushdetailed",
+      "file": "plant_bushdetailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_bushDetailed.dae"
+    },
+    {
+      "stem": "plant_bushlarge",
+      "file": "plant_bushlarge.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_bushLarge.dae"
+    },
+    {
+      "stem": "plant_bushlargetriangle",
+      "file": "plant_bushlargetriangle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_bushLargeTriangle.dae"
+    },
+    {
+      "stem": "plant_bushsmall",
+      "file": "plant_bushsmall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_bushSmall.dae"
+    },
+    {
+      "stem": "plant_bushtriangle",
+      "file": "plant_bushtriangle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_bushTriangle.dae"
+    },
+    {
+      "stem": "plant_flatshort",
+      "file": "plant_flatshort.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_flatShort.dae"
+    },
+    {
+      "stem": "plant_flattall",
+      "file": "plant_flattall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/plant_flatTall.dae"
+    },
+    {
+      "stem": "planter_box_01_1k",
+      "file": "planter_box_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/planter_box_01/planter_box_01_1k.fbx"
+    },
+    {
+      "stem": "planter_box_02_1k",
+      "file": "planter_box_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/planter_box_02/planter_box_02_1k.fbx"
+    },
+    {
+      "stem": "planter_box_03_1k",
+      "file": "planter_box_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/planter_box_03/planter_box_03_1k.fbx"
+    },
+    {
+      "stem": "planter_pot_clay_1k",
+      "file": "planter_pot_clay_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/planter_pot_clay/planter_pot_clay_1k.fbx"
+    },
+    {
+      "stem": "plastic_bottle_gallon_1k",
+      "file": "plastic_bottle_gallon_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_bottle_gallon/plastic_bottle_gallon_1k.fbx"
+    },
+    {
+      "stem": "plastic_broom_1k",
+      "file": "plastic_broom_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_broom/plastic_broom_1k.fbx"
+    },
+    {
+      "stem": "plastic_container_1k",
+      "file": "plastic_container_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_container/plastic_container_1k.fbx"
+    },
+    {
+      "stem": "plastic_crate_01_1k",
+      "file": "plastic_crate_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_crate_01/plastic_crate_01_1k.fbx"
+    },
+    {
+      "stem": "plastic_crate_02_1k",
+      "file": "plastic_crate_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_crate_02/plastic_crate_02_1k.fbx"
+    },
+    {
+      "stem": "plastic_crate_03_1k",
+      "file": "plastic_crate_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_crate_03/plastic_crate_03_1k.fbx"
+    },
+    {
+      "stem": "plastic_jerrycan_1k",
+      "file": "plastic_jerrycan_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_jerrycan/plastic_jerrycan_1k.fbx"
+    },
+    {
+      "stem": "plastic_thermos_1k",
+      "file": "plastic_thermos_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plastic_thermos/plastic_thermos_1k.fbx"
+    },
+    {
+      "stem": "platform_beach",
+      "file": "platform_beach.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/platform_beach.dae"
+    },
+    {
+      "stem": "platform_grass",
+      "file": "platform_grass.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/platform_grass.dae"
+    },
+    {
+      "stem": "platform_stone",
+      "file": "platform_stone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/platform_stone.dae"
+    },
+    {
+      "stem": "pliers_1k",
+      "file": "pliers_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pliers/pliers_1k.fbx"
+    },
+    {
+      "stem": "plunger_1k",
+      "file": "plunger_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/plunger/plunger_1k.fbx"
+    },
+    {
+      "stem": "pocket_watch_1k",
+      "file": "pocket_watch_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pocket_watch/pocket_watch_1k.fbx"
+    },
+    {
+      "stem": "portable_generator_1k",
+      "file": "portable_generator_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/portable_generator/portable_generator_1k.fbx"
+    },
+    {
+      "stem": "portable_searchlight_1k",
+      "file": "portable_searchlight_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/portable_searchlight/portable_searchlight_1k.fbx"
+    },
+    {
+      "stem": "portable_welding_cart_1k",
+      "file": "portable_welding_cart_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/portable_welding_cart/portable_welding_cart_1k.fbx"
+    },
+    {
+      "stem": "postcard_set_01_1k",
+      "file": "postcard_set_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/postcard_set_01/postcard_set_01_1k.fbx"
+    },
+    {
+      "stem": "pot_large",
+      "file": "pot_large.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/pot_large.dae"
+    },
+    {
+      "stem": "pot_small",
+      "file": "pot_small.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/pot_small.dae"
+    },
+    {
+      "stem": "potted_plant_01_1k",
+      "file": "potted_plant_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/potted_plant_01/potted_plant_01_1k.fbx"
+    },
+    {
+      "stem": "potted_plant_02_1k",
+      "file": "potted_plant_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/potted_plant_02/potted_plant_02_1k.fbx"
+    },
+    {
+      "stem": "potted_plant_04_1k",
+      "file": "potted_plant_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/potted_plant_04/potted_plant_04_1k.fbx"
+    },
+    {
+      "stem": "power_box_01_1k",
+      "file": "power_box_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/power_box_01/power_box_01_1k.fbx"
+    },
+    {
+      "stem": "propane_tank_1k",
+      "file": "propane_tank_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/propane_tank/propane_tank_1k.fbx"
+    },
+    {
+      "stem": "propane_torch_02_1k",
+      "file": "propane_torch_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/propane_torch_02/propane_torch_02_1k.fbx"
+    },
+    {
+      "stem": "propane_torch_1k",
+      "file": "propane_torch_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/propane_torch/propane_torch_1k.fbx"
+    },
+    {
+      "stem": "pug",
+      "file": "pug.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Pug.fbx"
+    },
+    {
+      "stem": "pull_chain_light_socket_1k",
+      "file": "pull_chain_light_socket_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/pull_chain_light_socket/pull_chain_light_socket_1k.fbx"
+    },
+    {
+      "stem": "quiver_tree_01_1k",
+      "file": "quiver_tree_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/quiver_tree_01/quiver_tree_01_1k.fbx"
+    },
+    {
+      "stem": "quiver_tree_02_1k",
+      "file": "quiver_tree_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/quiver_tree_02/quiver_tree_02_1k.fbx"
+    },
+    {
+      "stem": "ranger",
+      "file": "ranger.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Ranger.fbx"
+    },
+    {
+      "stem": "ranger_arrow",
+      "file": "ranger_arrow.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Ranger_Arrow.fbx"
+    },
+    {
+      "stem": "ranger_bow",
+      "file": "ranger_bow.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Ranger_Bow.fbx"
+    },
+    {
+      "stem": "ratchet_wrench_1k",
+      "file": "ratchet_wrench_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/ratchet_wrench/ratchet_wrench_1k.fbx"
+    },
+    {
+      "stem": "red fox",
+      "file": "red fox.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/Red Fox.fbx"
+    },
+    {
+      "stem": "retro_multimeter_1k",
+      "file": "retro_multimeter_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/retro_multimeter/retro_multimeter_1k.fbx"
+    },
+    {
+      "stem": "rock_07_1k",
+      "file": "rock_07_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_07/rock_07_1k.fbx"
+    },
+    {
+      "stem": "rock_09_1k",
+      "file": "rock_09_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_09/rock_09_1k.fbx"
+    },
+    {
+      "stem": "rock_face_01_1k",
+      "file": "rock_face_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_face_01/rock_face_01_1k.fbx"
+    },
+    {
+      "stem": "rock_face_02_1k",
+      "file": "rock_face_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_face_02/rock_face_02_1k.fbx"
+    },
+    {
+      "stem": "rock_largea",
+      "file": "rock_largea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeA.dae"
+    },
+    {
+      "stem": "rock_largeb",
+      "file": "rock_largeb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeB.dae"
+    },
+    {
+      "stem": "rock_largec",
+      "file": "rock_largec.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeC.dae"
+    },
+    {
+      "stem": "rock_larged",
+      "file": "rock_larged.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeD.dae"
+    },
+    {
+      "stem": "rock_largee",
+      "file": "rock_largee.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeE.dae"
+    },
+    {
+      "stem": "rock_largef",
+      "file": "rock_largef.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_largeF.dae"
+    },
+    {
+      "stem": "rock_moss_set_01_1k",
+      "file": "rock_moss_set_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_moss_set_01/rock_moss_set_01_1k.fbx"
+    },
+    {
+      "stem": "rock_moss_set_02_1k",
+      "file": "rock_moss_set_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rock_moss_set_02/rock_moss_set_02_1k.fbx"
+    },
+    {
+      "stem": "rock_smalla",
+      "file": "rock_smalla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallA.dae"
+    },
+    {
+      "stem": "rock_smallb",
+      "file": "rock_smallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallB.dae"
+    },
+    {
+      "stem": "rock_smallc",
+      "file": "rock_smallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallC.dae"
+    },
+    {
+      "stem": "rock_smalld",
+      "file": "rock_smalld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallD.dae"
+    },
+    {
+      "stem": "rock_smalle",
+      "file": "rock_smalle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallE.dae"
+    },
+    {
+      "stem": "rock_smallf",
+      "file": "rock_smallf.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallF.dae"
+    },
+    {
+      "stem": "rock_smallflata",
+      "file": "rock_smallflata.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallFlatA.dae"
+    },
+    {
+      "stem": "rock_smallflatb",
+      "file": "rock_smallflatb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallFlatB.dae"
+    },
+    {
+      "stem": "rock_smallflatc",
+      "file": "rock_smallflatc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallFlatC.dae"
+    },
+    {
+      "stem": "rock_smallg",
+      "file": "rock_smallg.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallG.dae"
+    },
+    {
+      "stem": "rock_smallh",
+      "file": "rock_smallh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallH.dae"
+    },
+    {
+      "stem": "rock_smalli",
+      "file": "rock_smalli.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallI.dae"
+    },
+    {
+      "stem": "rock_smalltopa",
+      "file": "rock_smalltopa.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallTopA.dae"
+    },
+    {
+      "stem": "rock_smalltopb",
+      "file": "rock_smalltopb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_smallTopB.dae"
+    },
+    {
+      "stem": "rock_talla",
+      "file": "rock_talla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallA.dae"
+    },
+    {
+      "stem": "rock_tallb",
+      "file": "rock_tallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallB.dae"
+    },
+    {
+      "stem": "rock_tallc",
+      "file": "rock_tallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallC.dae"
+    },
+    {
+      "stem": "rock_talld",
+      "file": "rock_talld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallD.dae"
+    },
+    {
+      "stem": "rock_talle",
+      "file": "rock_talle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallE.dae"
+    },
+    {
+      "stem": "rock_tallf",
+      "file": "rock_tallf.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallF.dae"
+    },
+    {
+      "stem": "rock_tallg",
+      "file": "rock_tallg.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallG.dae"
+    },
+    {
+      "stem": "rock_tallh",
+      "file": "rock_tallh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallH.dae"
+    },
+    {
+      "stem": "rock_talli",
+      "file": "rock_talli.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallI.dae"
+    },
+    {
+      "stem": "rock_tallj",
+      "file": "rock_tallj.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/rock_tallJ.dae"
+    },
+    {
+      "stem": "rogue",
+      "file": "rogue.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Rogue.fbx"
+    },
+    {
+      "stem": "rogue_dagger",
+      "file": "rogue_dagger.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Rogue_Dagger.fbx"
+    },
+    {
+      "stem": "rollershutter_door_1k",
+      "file": "rollershutter_door_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rollershutter_door/rollershutter_door_1k.fbx"
+    },
+    {
+      "stem": "rollershutter_window_01_1k",
+      "file": "rollershutter_window_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rollershutter_window_01/rollershutter_window_01_1k.fbx"
+    },
+    {
+      "stem": "rollershutter_window_02_1k",
+      "file": "rollershutter_window_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rollershutter_window_02/rollershutter_window_02_1k.fbx"
+    },
+    {
+      "stem": "rollershutter_window_03_1k",
+      "file": "rollershutter_window_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rollershutter_window_03/rollershutter_window_03_1k.fbx"
+    },
+    {
+      "stem": "root_cluster_01_1k",
+      "file": "root_cluster_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/root_cluster_01/root_cluster_01_1k.fbx"
+    },
+    {
+      "stem": "root_cluster_02_1k",
+      "file": "root_cluster_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/root_cluster_02/root_cluster_02_1k.fbx"
+    },
+    {
+      "stem": "round_spectacles_1k",
+      "file": "round_spectacles_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/round_spectacles/round_spectacles_1k.fbx"
+    },
+    {
+      "stem": "rubber_boots_1k",
+      "file": "rubber_boots_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rubber_boots/rubber_boots_1k.fbx"
+    },
+    {
+      "stem": "russian_food_cans_01_1k",
+      "file": "russian_food_cans_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/russian_food_cans_01/russian_food_cans_01_1k.fbx"
+    },
+    {
+      "stem": "rusted_hacksaw_1k",
+      "file": "rusted_hacksaw_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rusted_hacksaw/rusted_hacksaw_1k.fbx"
+    },
+    {
+      "stem": "rusted_spade_01_1k",
+      "file": "rusted_spade_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rusted_spade_01/rusted_spade_01_1k.fbx"
+    },
+    {
+      "stem": "rusted_wheel_rim_01_1k",
+      "file": "rusted_wheel_rim_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rusted_wheel_rim_01/rusted_wheel_rim_01_1k.fbx"
+    },
+    {
+      "stem": "rusted_wheel_rim_02_1k",
+      "file": "rusted_wheel_rim_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/rusted_wheel_rim_02/rusted_wheel_rim_02_1k.fbx"
+    },
+    {
+      "stem": "sand_rocks_small_01_1k",
+      "file": "sand_rocks_small_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/sand_rocks_small_01/sand_rocks_small_01_1k.fbx"
+    },
+    {
+      "stem": "screwdriver_1k",
+      "file": "screwdriver_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/screwdriver/screwdriver_1k.fbx"
+    },
+    {
+      "stem": "screwdrivers_02_1k",
+      "file": "screwdrivers_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/screwdrivers_02/screwdrivers_02_1k.fbx"
+    },
+    {
+      "stem": "seadogs_compass_1k",
+      "file": "seadogs_compass_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/seadogs_compass/seadogs_compass_1k.fbx"
+    },
+    {
+      "stem": "searsia_burchellii_1k",
+      "file": "searsia_burchellii_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/searsia_burchellii/searsia_burchellii_1k.fbx"
+    },
+    {
+      "stem": "searsia_lucida_1k",
+      "file": "searsia_lucida_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/searsia_lucida/searsia_lucida_1k.fbx"
+    },
+    {
+      "stem": "security_camera_01_1k",
+      "file": "security_camera_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/security_camera_01/security_camera_01_1k.fbx"
+    },
+    {
+      "stem": "security_camera_02_1k",
+      "file": "security_camera_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/security_camera_02/security_camera_02_1k.fbx"
+    },
+    {
+      "stem": "security_light_1k",
+      "file": "security_light_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/security_light/security_light_1k.fbx"
+    },
+    {
+      "stem": "seeding_tray_01_1k",
+      "file": "seeding_tray_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/seeding_tray_01/seeding_tray_01_1k.fbx"
+    },
+    {
+      "stem": "service_pistol_1k",
+      "file": "service_pistol_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/service_pistol/service_pistol_1k.fbx"
+    },
+    {
+      "stem": "sheep",
+      "file": "sheep.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Sheep.fbx"
+    },
+    {
+      "stem": "shrub_01_1k",
+      "file": "shrub_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/shrub_01/shrub_01_1k.fbx"
+    },
+    {
+      "stem": "shrub_02_1k",
+      "file": "shrub_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/shrub_02/shrub_02_1k.fbx"
+    },
+    {
+      "stem": "shrub_03_1k",
+      "file": "shrub_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/shrub_03/shrub_03_1k.fbx"
+    },
+    {
+      "stem": "shrub_04_1k",
+      "file": "shrub_04_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/shrub_04/shrub_04_1k.fbx"
+    },
+    {
+      "stem": "shrub_sorrel_01_1k",
+      "file": "shrub_sorrel_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/shrub_sorrel_01/shrub_sorrel_01_1k.fbx"
+    },
+    {
+      "stem": "sign",
+      "file": "sign.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/sign.dae"
+    },
+    {
+      "stem": "single_root_1k",
+      "file": "single_root_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/single_root/single_root_1k.fbx"
+    },
+    {
+      "stem": "sledgehammer_01_1k",
+      "file": "sledgehammer_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/sledgehammer_01/sledgehammer_01_1k.fbx"
+    },
+    {
+      "stem": "small_lpg_tank_1k",
+      "file": "small_lpg_tank_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/small_lpg_tank/small_lpg_tank_1k.fbx"
+    },
+    {
+      "stem": "small_oil_can_01_1k",
+      "file": "small_oil_can_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/small_oil_can_01/small_oil_can_01_1k.fbx"
+    },
+    {
+      "stem": "small_plastic_torch_1k",
+      "file": "small_plastic_torch_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/small_plastic_torch/small_plastic_torch_1k.fbx"
+    },
+    {
+      "stem": "soldier_female",
+      "file": "soldier_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Soldier_Female.fbx"
+    },
+    {
+      "stem": "soldier_male",
+      "file": "soldier_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Soldier_Male.fbx"
+    },
+    {
+      "stem": "spinning_wheel_01_1k",
+      "file": "spinning_wheel_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/spinning_wheel_01/spinning_wheel_01_1k.fbx"
+    },
+    {
+      "stem": "spray_paint_bottles_02_1k",
+      "file": "spray_paint_bottles_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/spray_paint_bottles_02/spray_paint_bottles_02_1k.fbx"
+    },
+    {
+      "stem": "spray_paint_bottles_1k",
+      "file": "spray_paint_bottles_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/spray_paint_bottles/spray_paint_bottles_1k.fbx"
+    },
+    {
+      "stem": "statue_block",
+      "file": "statue_block.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/statue_block.dae"
+    },
+    {
+      "stem": "statue_column",
+      "file": "statue_column.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/statue_column.dae"
+    },
+    {
+      "stem": "statue_columndamaged",
+      "file": "statue_columndamaged.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/statue_columnDamaged.dae"
+    },
+    {
+      "stem": "statue_ring",
+      "file": "statue_ring.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/statue_ring.dae"
+    },
+    {
+      "stem": "steel_frame_shelves_01_1k",
+      "file": "steel_frame_shelves_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/steel_frame_shelves_01/steel_frame_shelves_01_1k.fbx"
+    },
+    {
+      "stem": "steel_frame_shelves_02_1k",
+      "file": "steel_frame_shelves_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/steel_frame_shelves_02/steel_frame_shelves_02_1k.fbx"
+    },
+    {
+      "stem": "stone_01_1k",
+      "file": "stone_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/stone_01/stone_01_1k.fbx"
+    },
+    {
+      "stem": "stone_fire_pit_1k",
+      "file": "stone_fire_pit_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/stone_fire_pit/stone_fire_pit_1k.fbx"
+    },
+    {
+      "stem": "stone_largea",
+      "file": "stone_largea.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeA.dae"
+    },
+    {
+      "stem": "stone_largeb",
+      "file": "stone_largeb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeB.dae"
+    },
+    {
+      "stem": "stone_largec",
+      "file": "stone_largec.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeC.dae"
+    },
+    {
+      "stem": "stone_larged",
+      "file": "stone_larged.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeD.dae"
+    },
+    {
+      "stem": "stone_largee",
+      "file": "stone_largee.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeE.dae"
+    },
+    {
+      "stem": "stone_largef",
+      "file": "stone_largef.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_largeF.dae"
+    },
+    {
+      "stem": "stone_smalla",
+      "file": "stone_smalla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallA.dae"
+    },
+    {
+      "stem": "stone_smallb",
+      "file": "stone_smallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallB.dae"
+    },
+    {
+      "stem": "stone_smallc",
+      "file": "stone_smallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallC.dae"
+    },
+    {
+      "stem": "stone_smalld",
+      "file": "stone_smalld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallD.dae"
+    },
+    {
+      "stem": "stone_smalle",
+      "file": "stone_smalle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallE.dae"
+    },
+    {
+      "stem": "stone_smallf",
+      "file": "stone_smallf.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallF.dae"
+    },
+    {
+      "stem": "stone_smallflata",
+      "file": "stone_smallflata.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallFlatA.dae"
+    },
+    {
+      "stem": "stone_smallflatb",
+      "file": "stone_smallflatb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallFlatB.dae"
+    },
+    {
+      "stem": "stone_smallflatc",
+      "file": "stone_smallflatc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallFlatC.dae"
+    },
+    {
+      "stem": "stone_smallg",
+      "file": "stone_smallg.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallG.dae"
+    },
+    {
+      "stem": "stone_smallh",
+      "file": "stone_smallh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallH.dae"
+    },
+    {
+      "stem": "stone_smalli",
+      "file": "stone_smalli.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallI.dae"
+    },
+    {
+      "stem": "stone_smalltopa",
+      "file": "stone_smalltopa.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallTopA.dae"
+    },
+    {
+      "stem": "stone_smalltopb",
+      "file": "stone_smalltopb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_smallTopB.dae"
+    },
+    {
+      "stem": "stone_talla",
+      "file": "stone_talla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallA.dae"
+    },
+    {
+      "stem": "stone_tallb",
+      "file": "stone_tallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallB.dae"
+    },
+    {
+      "stem": "stone_tallc",
+      "file": "stone_tallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallC.dae"
+    },
+    {
+      "stem": "stone_talld",
+      "file": "stone_talld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallD.dae"
+    },
+    {
+      "stem": "stone_talle",
+      "file": "stone_talle.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallE.dae"
+    },
+    {
+      "stem": "stone_tallf",
+      "file": "stone_tallf.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallF.dae"
+    },
+    {
+      "stem": "stone_tallg",
+      "file": "stone_tallg.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallG.dae"
+    },
+    {
+      "stem": "stone_tallh",
+      "file": "stone_tallh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallH.dae"
+    },
+    {
+      "stem": "stone_talli",
+      "file": "stone_talli.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallI.dae"
+    },
+    {
+      "stem": "stone_tallj",
+      "file": "stone_tallj.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stone_tallJ.dae"
+    },
+    {
+      "stem": "street_lamp_01_1k",
+      "file": "street_lamp_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/street_lamp_01/street_lamp_01_1k.fbx"
+    },
+    {
+      "stem": "street_lamp_02_1k",
+      "file": "street_lamp_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/street_lamp_02/street_lamp_02_1k.fbx"
+    },
+    {
+      "stem": "street_rat_1k",
+      "file": "street_rat_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/street_rat/street_rat_1k.fbx"
+    },
+    {
+      "stem": "stump_old",
+      "file": "stump_old.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_old.dae"
+    },
+    {
+      "stem": "stump_oldtall",
+      "file": "stump_oldtall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_oldTall.dae"
+    },
+    {
+      "stem": "stump_round",
+      "file": "stump_round.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_round.dae"
+    },
+    {
+      "stem": "stump_rounddetailed",
+      "file": "stump_rounddetailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_roundDetailed.dae"
+    },
+    {
+      "stem": "stump_square",
+      "file": "stump_square.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_square.dae"
+    },
+    {
+      "stem": "stump_squaredetailed",
+      "file": "stump_squaredetailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_squareDetailed.dae"
+    },
+    {
+      "stem": "stump_squaredetailedwide",
+      "file": "stump_squaredetailedwide.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/stump_squareDetailedWide.dae"
+    },
+    {
+      "stem": "suit_female",
+      "file": "suit_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Suit_Female.fbx"
+    },
+    {
+      "stem": "suit_male",
+      "file": "suit_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Suit_Male.fbx"
+    },
+    {
+      "stem": "sweet_potato_1k",
+      "file": "sweet_potato_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/sweet_potato/sweet_potato_1k.fbx"
+    },
+    {
+      "stem": "tent_detailedclosed",
+      "file": "tent_detailedclosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tent_detailedClosed.dae"
+    },
+    {
+      "stem": "tent_detailedopen",
+      "file": "tent_detailedopen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tent_detailedOpen.dae"
+    },
+    {
+      "stem": "tent_smallclosed",
+      "file": "tent_smallclosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tent_smallClosed.dae"
+    },
+    {
+      "stem": "tent_smallopen",
+      "file": "tent_smallopen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tent_smallOpen.dae"
+    },
+    {
+      "stem": "tire_pump_1k",
+      "file": "tire_pump_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tire_pump/tire_pump_1k.fbx"
+    },
+    {
+      "stem": "tongue_groove_pliers_1k",
+      "file": "tongue_groove_pliers_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tongue_groove_pliers/tongue_groove_pliers_1k.fbx"
+    },
+    {
+      "stem": "tool_cart_1k",
+      "file": "tool_cart_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tool_cart/tool_cart_1k.fbx"
+    },
+    {
+      "stem": "trashbag_1k",
+      "file": "trashbag_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/trashbag/trashbag_1k.fbx"
+    },
+    {
+      "stem": "treasure_chest_1k",
+      "file": "treasure_chest_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/treasure_chest/treasure_chest_1k.fbx"
+    },
+    {
+      "stem": "tree_blocks",
+      "file": "tree_blocks.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_blocks.dae"
+    },
+    {
+      "stem": "tree_blocks_dark",
+      "file": "tree_blocks_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_blocks_dark.dae"
+    },
+    {
+      "stem": "tree_blocks_fall",
+      "file": "tree_blocks_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_blocks_fall.dae"
+    },
+    {
+      "stem": "tree_cone",
+      "file": "tree_cone.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_cone.dae"
+    },
+    {
+      "stem": "tree_cone_dark",
+      "file": "tree_cone_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_cone_dark.dae"
+    },
+    {
+      "stem": "tree_cone_fall",
+      "file": "tree_cone_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_cone_fall.dae"
+    },
+    {
+      "stem": "tree_default_dark",
+      "file": "tree_default_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_default_dark.dae"
+    },
+    {
+      "stem": "tree_default_fall",
+      "file": "tree_default_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_default_fall.dae"
+    },
+    {
+      "stem": "tree_detailed",
+      "file": "tree_detailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_detailed.dae"
+    },
+    {
+      "stem": "tree_detailed_dark",
+      "file": "tree_detailed_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_detailed_dark.dae"
+    },
+    {
+      "stem": "tree_detailed_fall",
+      "file": "tree_detailed_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_detailed_fall.dae"
+    },
+    {
+      "stem": "tree_fat",
+      "file": "tree_fat.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_fat.dae"
+    },
+    {
+      "stem": "tree_fat_darkh",
+      "file": "tree_fat_darkh.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_fat_darkh.dae"
+    },
+    {
+      "stem": "tree_fat_fall",
+      "file": "tree_fat_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_fat_fall.dae"
+    },
+    {
+      "stem": "tree_oak_dark",
+      "file": "tree_oak_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_oak_dark.dae"
+    },
+    {
+      "stem": "tree_oak_fall",
+      "file": "tree_oak_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_oak_fall.dae"
+    },
+    {
+      "stem": "tree_palm",
+      "file": "tree_palm.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palm.dae"
+    },
+    {
+      "stem": "tree_palmbend",
+      "file": "tree_palmbend.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palmBend.dae"
+    },
+    {
+      "stem": "tree_palmdetailedshort",
+      "file": "tree_palmdetailedshort.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palmDetailedShort.dae"
+    },
+    {
+      "stem": "tree_palmdetailedtall",
+      "file": "tree_palmdetailedtall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palmDetailedTall.dae"
+    },
+    {
+      "stem": "tree_palmshort",
+      "file": "tree_palmshort.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palmShort.dae"
+    },
+    {
+      "stem": "tree_palmtall",
+      "file": "tree_palmtall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_palmTall.dae"
+    },
+    {
+      "stem": "tree_pinedefaulta",
+      "file": "tree_pinedefaulta.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineDefaultA.dae"
+    },
+    {
+      "stem": "tree_pinedefaultb",
+      "file": "tree_pinedefaultb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineDefaultB.dae"
+    },
+    {
+      "stem": "tree_pinegrounda",
+      "file": "tree_pinegrounda.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineGroundA.dae"
+    },
+    {
+      "stem": "tree_pinegroundb",
+      "file": "tree_pinegroundb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineGroundB.dae"
+    },
+    {
+      "stem": "tree_pinerounda",
+      "file": "tree_pinerounda.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundA.dae"
+    },
+    {
+      "stem": "tree_pineroundb",
+      "file": "tree_pineroundb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundB.dae"
+    },
+    {
+      "stem": "tree_pineroundc",
+      "file": "tree_pineroundc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundC.dae"
+    },
+    {
+      "stem": "tree_pineroundd",
+      "file": "tree_pineroundd.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundD.dae"
+    },
+    {
+      "stem": "tree_pinerounde",
+      "file": "tree_pinerounde.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundE.dae"
+    },
+    {
+      "stem": "tree_pineroundf",
+      "file": "tree_pineroundf.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineRoundF.dae"
+    },
+    {
+      "stem": "tree_pinesmalla",
+      "file": "tree_pinesmalla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineSmallA.dae"
+    },
+    {
+      "stem": "tree_pinesmallb",
+      "file": "tree_pinesmallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineSmallB.dae"
+    },
+    {
+      "stem": "tree_pinesmallc",
+      "file": "tree_pinesmallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineSmallC.dae"
+    },
+    {
+      "stem": "tree_pinesmalld",
+      "file": "tree_pinesmalld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineSmallD.dae"
+    },
+    {
+      "stem": "tree_pinetalla",
+      "file": "tree_pinetalla.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallA.dae"
+    },
+    {
+      "stem": "tree_pinetalla_detailed",
+      "file": "tree_pinetalla_detailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallA_detailed.dae"
+    },
+    {
+      "stem": "tree_pinetallb",
+      "file": "tree_pinetallb.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallB.dae"
+    },
+    {
+      "stem": "tree_pinetallb_detailed",
+      "file": "tree_pinetallb_detailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallB_detailed.dae"
+    },
+    {
+      "stem": "tree_pinetallc",
+      "file": "tree_pinetallc.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallC.dae"
+    },
+    {
+      "stem": "tree_pinetallc_detailed",
+      "file": "tree_pinetallc_detailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallC_detailed.dae"
+    },
+    {
+      "stem": "tree_pinetalld",
+      "file": "tree_pinetalld.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallD.dae"
+    },
+    {
+      "stem": "tree_pinetalld_detailed",
+      "file": "tree_pinetalld_detailed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_pineTallD_detailed.dae"
+    },
+    {
+      "stem": "tree_plateau",
+      "file": "tree_plateau.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_plateau.dae"
+    },
+    {
+      "stem": "tree_plateau_dark",
+      "file": "tree_plateau_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_plateau_dark.dae"
+    },
+    {
+      "stem": "tree_plateau_fall",
+      "file": "tree_plateau_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_plateau_fall.dae"
+    },
+    {
+      "stem": "tree_simple_dark",
+      "file": "tree_simple_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_simple_dark.dae"
+    },
+    {
+      "stem": "tree_simple_fall",
+      "file": "tree_simple_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_simple_fall.dae"
+    },
+    {
+      "stem": "tree_small",
+      "file": "tree_small.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_small.dae"
+    },
+    {
+      "stem": "tree_small_02_1k",
+      "file": "tree_small_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tree_small_02/tree_small_02_1k.fbx"
+    },
+    {
+      "stem": "tree_small_dark",
+      "file": "tree_small_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_small_dark.dae"
+    },
+    {
+      "stem": "tree_small_fall",
+      "file": "tree_small_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_small_fall.dae"
+    },
+    {
+      "stem": "tree_stump_01_1k",
+      "file": "tree_stump_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tree_stump_01/tree_stump_01_1k.fbx"
+    },
+    {
+      "stem": "tree_stump_02_1k",
+      "file": "tree_stump_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/tree_stump_02/tree_stump_02_1k.fbx"
+    },
+    {
+      "stem": "tree_tall",
+      "file": "tree_tall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_tall.dae"
+    },
+    {
+      "stem": "tree_tall_dark",
+      "file": "tree_tall_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_tall_dark.dae"
+    },
+    {
+      "stem": "tree_tall_fall",
+      "file": "tree_tall_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_tall_fall.dae"
+    },
+    {
+      "stem": "tree_thin",
+      "file": "tree_thin.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_thin.dae"
+    },
+    {
+      "stem": "tree_thin_dark",
+      "file": "tree_thin_dark.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_thin_dark.dae"
+    },
+    {
+      "stem": "tree_thin_fall",
+      "file": "tree_thin_fall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "Assets/Concordia/FreePacks/Nature/Kenney_Nature_Kit_2.1/Models/DAE format/tree_thin_fall.dae"
+    },
+    {
+      "stem": "trowel_01_1k",
+      "file": "trowel_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/trowel_01/trowel_01_1k.fbx"
+    },
+    {
+      "stem": "ual1_standard",
+      "file": "ual1_standard.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/UAL1_Standard.fbx"
+    },
+    {
+      "stem": "ual1_standard_rm",
+      "file": "ual1_standard_rm.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/UAL1_Standard_RM.fbx"
+    },
+    {
+      "stem": "utility_box_01_1k",
+      "file": "utility_box_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/utility_box_01/utility_box_01_1k.fbx"
+    },
+    {
+      "stem": "utility_box_02_1k",
+      "file": "utility_box_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/utility_box_02/utility_box_02_1k.fbx"
+    },
+    {
+      "stem": "viking_female",
+      "file": "viking_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Viking_Female.fbx"
+    },
+    {
+      "stem": "viking_male",
+      "file": "viking_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Viking_Male.fbx"
+    },
+    {
+      "stem": "vikinghelmet",
+      "file": "vikinghelmet.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/VikingHelmet.fbx"
+    },
+    {
+      "stem": "vintage_crutches_01_1k",
+      "file": "vintage_crutches_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_crutches_01/vintage_crutches_01_1k.fbx"
+    },
+    {
+      "stem": "vintage_flashlight_1k",
+      "file": "vintage_flashlight_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_flashlight/vintage_flashlight_1k.fbx"
+    },
+    {
+      "stem": "vintage_hand_drill_1k",
+      "file": "vintage_hand_drill_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_hand_drill/vintage_hand_drill_1k.fbx"
+    },
+    {
+      "stem": "vintage_lighter_1k",
+      "file": "vintage_lighter_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_lighter/vintage_lighter_1k.fbx"
+    },
+    {
+      "stem": "vintage_microscope_1k",
+      "file": "vintage_microscope_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_microscope/vintage_microscope_1k.fbx"
+    },
+    {
+      "stem": "vintage_pocket_watch_1k",
+      "file": "vintage_pocket_watch_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_pocket_watch/vintage_pocket_watch_1k.fbx"
+    },
+    {
+      "stem": "vintage_spacecraft_instrument_1k",
+      "file": "vintage_spacecraft_instrument_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_spacecraft_instrument/vintage_spacecraft_instrument_1k.fbx"
+    },
+    {
+      "stem": "vintage_stapler_1k",
+      "file": "vintage_stapler_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/vintage_stapler/vintage_stapler_1k.fbx"
+    },
+    {
+      "stem": "warrior",
+      "file": "warrior.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Warrior.fbx"
+    },
+    {
+      "stem": "warrior_sword",
+      "file": "warrior_sword.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Warrior_Sword.fbx"
+    },
+    {
+      "stem": "water_manhole_cover_1k",
+      "file": "water_manhole_cover_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/water_manhole_cover/water_manhole_cover_1k.fbx"
+    },
+    {
+      "stem": "watering_can_metal_01_1k",
+      "file": "watering_can_metal_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/watering_can_metal_01/watering_can_metal_01_1k.fbx"
+    },
+    {
+      "stem": "weed_plant_02_1k",
+      "file": "weed_plant_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/weed_plant_02/weed_plant_02_1k.fbx"
+    },
+    {
+      "stem": "wetfloorsign_01_1k",
+      "file": "wetfloorsign_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/WetFloorSign_01/WetFloorSign_01_1k.fbx"
+    },
+    {
+      "stem": "whale",
+      "file": "whale.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/Whale.fbx"
+    },
+    {
+      "stem": "wheelchair_01_1k",
+      "file": "wheelchair_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wheelchair_01/wheelchair_01_1k.fbx"
+    },
+    {
+      "stem": "wicker_basket_01_1k",
+      "file": "wicker_basket_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wicker_basket_01/wicker_basket_01_1k.fbx"
+    },
+    {
+      "stem": "wicker_basket_02_1k",
+      "file": "wicker_basket_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wicker_basket_02/wicker_basket_02_1k.fbx"
+    },
+    {
+      "stem": "wild_rooibos_bush_1k",
+      "file": "wild_rooibos_bush_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wild_rooibos_bush/wild_rooibos_bush_1k.fbx"
+    },
+    {
+      "stem": "wine_barrel_01_1k",
+      "file": "wine_barrel_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wine_barrel_01/wine_barrel_01_1k.fbx"
+    },
+    {
+      "stem": "wine_bottles_01_1k",
+      "file": "wine_bottles_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wine_bottles_01/wine_bottles_01_1k.fbx"
+    },
+    {
+      "stem": "witch",
+      "file": "witch.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Witch.fbx"
+    },
+    {
+      "stem": "wizard",
+      "file": "wizard.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Wizard.fbx"
+    },
+    {
+      "stem": "wizard_staff",
+      "file": "wizard_staff.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/rpg_characters_-_nov_2020/RPG Characters - Nov 2020/FBX/Only Weapons/Wizard_Staff.fbx"
+    },
+    {
+      "stem": "wolf",
+      "file": "wolf.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Wolf.fbx"
+    },
+    {
+      "stem": "wooden_axe_02_1k",
+      "file": "wooden_axe_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_axe_02/wooden_axe_02_1k.fbx"
+    },
+    {
+      "stem": "wooden_axe_03_1k",
+      "file": "wooden_axe_03_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_axe_03/wooden_axe_03_1k.fbx"
+    },
+    {
+      "stem": "wooden_axe_1k",
+      "file": "wooden_axe_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_axe/wooden_axe_1k.fbx"
+    },
+    {
+      "stem": "wooden_barrels_01_1k",
+      "file": "wooden_barrels_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_barrels_01/wooden_barrels_01_1k.fbx"
+    },
+    {
+      "stem": "wooden_broom_1k",
+      "file": "wooden_broom_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_broom/wooden_broom_1k.fbx"
+    },
+    {
+      "stem": "wooden_bucket_01_1k",
+      "file": "wooden_bucket_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_bucket_01/wooden_bucket_01_1k.fbx"
+    },
+    {
+      "stem": "wooden_bucket_02_1k",
+      "file": "wooden_bucket_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_bucket_02/wooden_bucket_02_1k.fbx"
+    },
+    {
+      "stem": "wooden_crate_01_1k",
+      "file": "wooden_crate_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_crate_01/wooden_crate_01_1k.fbx"
+    },
+    {
+      "stem": "wooden_crate_02_1k",
+      "file": "wooden_crate_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_crate_02/wooden_crate_02_1k.fbx"
+    },
+    {
+      "stem": "wooden_hammer_01_1k",
+      "file": "wooden_hammer_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_hammer_01/wooden_hammer_01_1k.fbx"
+    },
+    {
+      "stem": "wooden_handle_saber_1k",
+      "file": "wooden_handle_saber_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_handle_saber/wooden_handle_saber_1k.fbx"
+    },
+    {
+      "stem": "wooden_ladder_02_1k",
+      "file": "wooden_ladder_02_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_ladder_02/wooden_ladder_02_1k.fbx"
+    },
+    {
+      "stem": "wooden_ladder_1k",
+      "file": "wooden_ladder_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_ladder/wooden_ladder_1k.fbx"
+    },
+    {
+      "stem": "wooden_lantern_01_1k",
+      "file": "wooden_lantern_01_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_lantern_01/wooden_lantern_01_1k.fbx"
+    },
+    {
+      "stem": "wooden_military_crate_1k",
+      "file": "wooden_military_crate_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/wooden_military_crate/wooden_military_crate_1k.fbx"
+    },
+    {
+      "stem": "worker_female",
+      "file": "worker_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Worker_Female.fbx"
+    },
+    {
+      "stem": "worker_male",
+      "file": "worker_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Worker_Male.fbx"
+    },
+    {
+      "stem": "worn_metal_rack_1k",
+      "file": "worn_metal_rack_1k.glb",
+      "license": "CC0",
+      "author": "Poly Haven",
+      "source": "Assets/Concordia/PolyHaven/Models/worn_metal_rack/worn_metal_rack_1k.fbx"
+    },
+    {
+      "stem": "zebra",
+      "file": "zebra.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Zebra.fbx"
+    },
+    {
+      "stem": "zombie_female",
+      "file": "zombie_female.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Zombie_Female.fbx"
+    },
+    {
+      "stem": "zombie_male",
+      "file": "zombie_male.glb",
+      "license": "CC0",
+      "author": "Quaternius",
+      "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Zombie_Male.fbx"
+    }
+  ],
+  "aliases": [
+    {
+      "from": "building-small-a",
+      "to": "building-type-a"
+    },
+    {
+      "from": "building-small-b",
+      "to": "building-type-b"
+    },
+    {
+      "from": "building-small-c",
+      "to": "building-type-c"
+    },
+    {
+      "from": "building-small-d",
+      "to": "building-type-d"
+    },
+    {
+      "from": "statue",
+      "to": "statue_head"
+    },
+    {
+      "from": "weapon-rack",
+      "to": "coatRackStanding"
+    },
+    {
+      "from": "trophy",
+      "to": "statue_obelisk"
+    },
+    {
+      "from": "market_crate",
+      "to": "crate"
+    },
+    {
+      "from": "market_barrel",
+      "to": "barrel"
+    },
+    {
+      "from": "building-garage",
+      "to": "building-type-d"
+    },
+    {
+      "from": "road-straight-lightposts",
+      "to": "road-straight"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+UNITY-CLIENT CHAT ONLY. Project-root already set (unity-client / ConcordiaHub).
+START NOW — do not idle, no Asset Store, no tutorial folder.
+
+## Mission
+Turn EVERY Grok CX concept plate under Assets/Concordia/Generated/P0–P4 into a playable in-game asset (mesh+mat+prefab OR bound material/sprite), then register it so Play shows it — not a folder of JPGs.
+
+Inventory (on disk, do not regenerate plates):
+- ~147 CX_*.jpg look plates in Generated/P0–P4 (skip P2/Tiles/_verify)
+- Bibles: Generated/CX_MANIFEST.md, CONCORDIA_ASSET_BIBLE.md, CONCORDIA_TEN_CONTINENT_VISUAL_BIBLE.md
+- Already baked: Prefabs/CX_Humanoid_Male, CX_Humanoid_Female, CX_Weapon_Longsword, CX_Weapon_Hatchet, CX_Mount_Horse + Rig FBX
+- Env kits OK to use as MESH ONLY (paint with CX plates): PolyHaven + FreePacks. Never ship Quaternius/Kenney as the final hero/bandit/guest look.
+
+## Conversion rule (every plate)
+For each CX_*.jpg (except _verify tiles):
+1) Classify: humanoid | creature | weapon | prop | civic | tile | HUD | VFX | create-kit
+2) Output under Assets/Concordia/Generated/Prefabs/<same P-folder>/CX_<Name>.prefab
+   + Materials under Generated/Materials/<same>/
+3) Method by class (honest — no fake photogrammetry claims):
+   - humanoid (Hero, Bandits, P0 NPCs, P2 NPCs, P3 Guests, P3 Worlds Tessera):
+     Instantiate CX_Humanoid_Male or Female; apply plate as primary albedo / outfit tint via CxDress / ModularPerson path; name prefab after plate; grip sockets stay CX_Grip_R/L.
+   - create-kit (P2/Create faces/hair/bodies): bake as Appearance variant assets wired to character-create, not orphan textures.
+   - weapon (remaining P0 weapons: Bow, PulseBaton, Switchblade): same bake path as Longsword/Hatchet (CxBake style) — grip socket, no float.
+   - creature (P1 Wildlife / Predators / Watchers): FreePacks/PolyHaven fauna mesh closest silhouette + CX plate albedo; if no mesh, temporary upright card billboard parented to a named empty with collider — mark TEMP in prefab name, replace when mesh exists. Do NOT invent harpy humanoid (moderation block; use Raptor).
+   - prop / civic (P2 Props, P2 Signs, P0 Spoils, P4 civic*): PolyHaven or FreePacks stem mesh + CX plate material; scale to metres; collider; save named prefab.
+   - tile (P2/Tiles, skip _verify): URP Lit materials; HubLook / WorldKit.Ground must LoadAsset them (CourtCobble already wired — do the rest: AshCinder, MossFloor, PackedEarth, SandGravel).
+   - HUD (P0/HUD Court+Steel): sprites for health / inventory / dialogue / questtoast; CxDress already prefixes CX_HUD_* — finish all eight panels live in Play.
+   - VFX (P2/VFX): particle or decal materials from plates; bind to combat (hit/parry) and Flower/Curse styles.
+4) After each wave: AssetDatabase.SaveAssets; fix magenta; csErrors must stay 0.
+
+## Wave order (do in order; finish bind before next)
+
+### WAVE 0 — Re-bake baseline (5 min)
+Concordia → Bake CX Humanoid Prefabs (or CxBake.Ensure). Confirm 5 base prefabs LoadAsset OK.
+
+### WAVE 1 — P0 Play cast (blocks alive Play)
+Prefabs + bind:
+- Hero: CX_Hero_Court_front, CX_Hero_Steel_front (+ grip plate informs sheath)
+- Bandits ×5: Sundering captain/dusk/hitch/marrow/nettle → RoadWorld / TrainingDummy Sundering spawn uses these, not primitives
+- Road NPCs: Court_guard, Road_merchant, Road_settler, Road_traveler
+- Weapons left: Bow, PulseBaton, Switchblade
+- Spoils: CX_Prop_Spoils_pouch (RoadWorld.DropSpoils parents this, not corpse)
+- Mount: already have horse — dress materials from CX_Mount_Horse_rideable plate
+- HUD: all Court + Steel panels live
+Prove: Play → walk Court → named Sundering fight → spoils visible → HUD themed.
+
+### WAVE 2 — P2 world dress + gear + VFX
+- All P2/Props → WorldKit / HubPlaza / RoadWorld scatter (crate, campfire, well, shrine, forge, market stall, lantern, wreck wagon, delve mouth, fishing kit, arena dummy)
+- P2/Signs RingPost + all P4 wayposts already mapped in CxDress — ensure prefabs spawn, not just texture face
+- P2/Gear ×5 → Appearance / CharacterGear slots (CourtTunic, SteelJerkin, BanditScrap, CrimsonCourt, NightMarket)
+- P2/Create ×9 → character-create presets
+- P2/Tiles ×5 materials → WorldKit.Ground
+- P2/VFX ×4 → combat + style FX
+Prove: Court clutter reads CX, not greybox; gear swaps visible; tiles not magenta.
+
+### WAVE 3 — P1 bestiary
+Wildlife: Wolf, Deer, Fox, Boar, Raven, LamplighterMoth, PlazaStrider
+Predators: ThornWolf, ManaDrake, BoneSentinel, GloomStalker, CrystalElemental
+Watchers: full P1/Watchers set (Basilisk, Griffin, Hound, Wraith, Drone, Sentinel, Construct, Drift, …)
+Bind into content/world creatures + road spawns per CX_MANIFEST world table.
+Prove: at least Sundering wolf + one watcher visible on Ring road; no Quaternius toy fauna as hero threat.
+
+### WAVE 4 — P3 named faces
+- All 15 HubGuests → GuestNpc spawn prefabs dressed from plates (Brackish = teen height ~1.42)
+- Pillars ×3 → Hub plaza pillar meshes with plate materials
+- CX_NPC_SereTessera → Sere clerk
+Prove: Hub guests recognizable from plates in Play (silhouette + outfit), not identical grey Rocketbox clones.
+
+### WAVE 5 — P4 civic per world
+For each world folder under P4 (Hub, Sundering, Ruins, Tunya, Crime, Grid, Frontier, Dawn, Crucible, Sere):
+- Build prefabs for every civic plate (wayfinding / transit / street furniture)
+- Register with WorldKit.Landmark / DressVocab / road scatter for that WorldId
+Prove: leaving Hub into one other world shows that world’s civic kit (sign + transit + one street object).
+
+## Bind checklist (must wire, not only create files)
+- ModularPerson / CxDress prefer Generated/Prefabs/CX_* over FreePacks heroes
+- RoadWorld RoleFor + bandit spawns → P0 bandit prefabs
+- GuestNpc → P3 guest prefabs
+- DropSpoils → spoils prefab
+- HubLook / WorldKit ground + sign faces → P2 tiles + P4 plates (CxDress paths already list several)
+- HUD drawer → CX_HUD_* sprites
+- Appearance outfits → P2 gear + create-kit
+
+## Constraints
+- Stay on unity-client / ConcordiaHub. Never /Users/dutch/Concordia tutorial.
+- Free packs + Poly Haven meshes OK; CX plates own the LOOK. No paid Asset Store.
+- Poly Haven maps are _2k.jpg.
+- Do not kill Concord backends. Do not wipe Library.
+- Do not claim unique photogrammetry FBX per plate — dress/composite + bind is the ship bar.
+- When blocked, fix blocker and continue same wave; report PASS/FAIL per wave with prefab counts.
+
+## Done when
+1) Every non-verify CX_*.jpg has a matching prefab or bound material/sprite in Generated/
+2) Play on ConcordiaHub shows: CX hero + Sundering bandit set + spoils + HUD + Court props from plates
+3) At least one non-Hub world shows its P4 civic kit
+4) Short report: plate→prefab count, still-TEMP billboards, magenta=0, csErrors=0

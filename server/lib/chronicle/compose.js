@@ -61,6 +61,27 @@ const COMPOSERS = {
     body: `${p.issued_by_id || "The ruler"} issued a ${p.kind || "decree"}. The people will feel it in the ledger.`,
     importance: 2,
   }),
+  settlement_founded: (p) => ({
+    title: `${p.name || "A settlement"} founded`,
+    body: `${p.name || "A settlement"} stands in ${p.world_id || "a region"}.`,
+    importance: 3,
+  }),
+  settlement_abandoned: (p) => ({
+    title: `${p.name || "A settlement"} abandoned`,
+    body: p.reason
+      ? `${p.name || "A settlement"} is empty after ${p.reason}. The row remains.`
+      : `${p.name || "A settlement"} is empty. The row remains.`,
+    importance: 4,
+  }),
+  place_event: (p) => {
+    const body = String(p.body || p.line || p.title || p.name || p.id || "").trim();
+    if (!body) throw new Error("empty_place_event");
+    return {
+      title: String(p.title || p.name || "At a place").slice(0, 200),
+      body,
+      importance: Number.isFinite(Number(p.importance)) ? Number(p.importance) : 1,
+    };
+  },
 };
 
 /**

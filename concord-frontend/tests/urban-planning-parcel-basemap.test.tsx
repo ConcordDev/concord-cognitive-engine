@@ -40,6 +40,8 @@ const markerInstances: any[] = [];
 
 function makeMockMap() {
   const listeners: Record<string, (() => void)[]> = {};
+  let routeSource: { setData: ReturnType<typeof vi.fn> } | null = null;
+  let routeLayerAdded = false;
   const map = {
     addControl: vi.fn(),
     remove: vi.fn(),
@@ -50,6 +52,19 @@ function makeMockMap() {
     easeTo: vi.fn(),
     fitBounds: vi.fn(),
     _fireOnce: (evt: string) => listeners[evt]?.forEach((fn) => fn()),
+    // Route-line source/layer — real MapLibre GL API, minimally stubbed so
+    // MapView's route effect (getSource/addSource/addLayer/getLayer/
+    // removeLayer/removeSource) can run without a real GL context (mirrors
+    // tests/components/MapView.test.tsx's makeMockMap).
+    getSource: vi.fn(() => routeSource),
+    addSource: vi.fn((_id: string, spec: { data: unknown }) => {
+      routeSource = { setData: vi.fn() };
+      (map as any)._lastSourceData = spec.data;
+    }),
+    addLayer: vi.fn(() => { routeLayerAdded = true; }),
+    getLayer: vi.fn(() => routeLayerAdded || undefined),
+    removeLayer: vi.fn(() => { routeLayerAdded = false; }),
+    removeSource: vi.fn(() => { routeSource = null; }),
   };
   mapInstances.push(map);
   return map;
@@ -74,10 +89,10 @@ function makeMockMarker() {
 // `typeof m.Map === 'function'`). MapView.tsx does `import * as maplibregl`
 // and reads maplibregl.Map directly, so the mock must match that shape.
 vi.mock('maplibre-gl', () => ({
-  Map: vi.fn().mockImplementation(() => makeMockMap()),
-  Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-  Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
-  NavigationControl: vi.fn().mockImplementation(() => ({})),
+  Map: vi.fn().mockImplementation(function () { return makeMockMap(); }),
+  Marker: vi.fn().mockImplementation(function () { return makeMockMarker(); }),
+  Popup: vi.fn().mockImplementation(function () { return { setHTML: vi.fn().mockReturnThis() }; }),
+  NavigationControl: vi.fn().mockImplementation(function () { return {}; }),
 }));
 
 // next/dynamic → real React.lazy + Suspense passthrough so the real MapView

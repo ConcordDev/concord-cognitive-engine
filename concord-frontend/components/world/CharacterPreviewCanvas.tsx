@@ -110,7 +110,15 @@ function appearanceFromSelections(
     };
   }
 
-  const carry: NonNullable<Accessories['carry']> = [...(base.accessories.carry ?? [])];
+  // Unlike `markings`/`augments` (below), `carry` is NOT seeded from
+  // `base.accessories.carry` here — generateAppearance() can attach a
+  // default item (e.g. a satchel) that reads as flavor at gameplay camera
+  // distance, but has no strap/anchor geometry connecting it to the body
+  // (enhanced-avatar-builder.ts positions it purely by hip offset), so up
+  // close in this preview it renders as an unexplained floating box for a
+  // slot ("Hand") the player hasn't touched yet. Only an explicit pick
+  // populates it here — same reasoning as the armor override below.
+  const carry: NonNullable<Accessories['carry']> = [];
   if (selections.hand?.startsWith('arm-')) {
     augments.push({ region: 'left-arm', material: selections.hand.slice(4) as 'chrome' | 'matte-black' | 'gold' });
   } else if (selections.hand) {
@@ -136,6 +144,21 @@ function appearanceFromSelections(
     facial,
     clothing,
     accessories: { ...base.accessories, augments, carry, markings },
+    // The customizer has no "Armor" slot (its tabs are Body/Hair/Face/Top/
+    // Bottom/Shoes/Hat/Glasses/Back/Hand/Particle) — generateAppearance()
+    // still assigns every character a deterministic procedural armor kit
+    // (armor-system.ts's createArmorSet), which would render gear the
+    // player never chose and can't see reflected in any control here.
+    // Worse, that kit's per-slot anchor points (armorAnchorY in
+    // enhanced-avatar-builder.ts) are tuned for in-world viewing distance,
+    // not this canvas's tight close-up framing — at this range the vest/
+    // sleeve/boot pieces visibly float clear of the body they're meant to
+    // sit on. 'exposed' is the one silhouette every build* function in
+    // armor-system.ts treats as "render nothing" (or, for torso, a single
+    // thin harness strap) — the closest this schema has to "no armor
+    // layer," so the preview shows exactly the body the player is
+    // actually customizing.
+    armor: { ...base.armor, silhouette: 'exposed' },
   };
 }
 

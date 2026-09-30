@@ -1,0 +1,374 @@
+{
+  "schema": "concordia-world-forge-pipeline/1.0",
+  "slice_id": "W09_world_forge_pipeline",
+  "phase": "G6",
+  "phase_note": "Bind contract for fields, geo, civ, physical stages, and Unity streaming. physicalize stays false. No grid, no meshes, no new prompt rows.",
+  "batch": "WF6_pipeline",
+  "title": "End-to-end World Forge pipeline and ORGANIC/Aura bind order. Living feedback loop specified. Unwritten stages stay empty.",
+  "consumes": [
+    { "schema": "concordia-world-forge-canon-graph/1.0", "slice_id": "W00_world_forge_canon_graph" },
+    { "schema": "concordia-world-forge-field/1.0", "slice_id": "W01_world_field_schema" },
+    { "schema": "concordia-world-forge-continental/1.0", "slice_id": "W02_continental_spec" },
+    { "schema": "concordia-world-forge-hydrology/1.0", "slice_id": "W03_hydrology_spec" },
+    { "schema": "concordia-world-forge-biome-resource/1.0", "slice_id": "W04_biome_resource_spec" },
+    { "schema": "concordia-world-forge-transport/1.0", "slice_id": "W05_transport_graph_spec" },
+    { "schema": "concordia-world-forge-suitability/1.0", "slice_id": "W06_settlement_suitability" },
+    { "schema": "concordia-world-forge-territory/1.0", "slice_id": "W07_civ_territory_physical" },
+    { "schema": "concordia-world-forge-settlement-layout/1.0", "slice_id": "W08_settlement_layout" }
+  ],
+  "writes": "pipeline_contract",
+  "writes_channels": [],
+  "grid_materialized": false,
+  "kingdoms_minted": 0,
+  "physicalize": false,
+  "population_assigned": false,
+  "parcel_count": null,
+  "pipeline": [
+    "Elevation",
+    "Hydrology",
+    "Climate",
+    "Biome",
+    "Resources",
+    "Mobility",
+    "Suitability",
+    "Civ",
+    "Pop",
+    "Economy",
+    "Growth",
+    "Infra",
+    "Physicalization"
+  ],
+  "bands": [
+    {
+      "id": "fields",
+      "order": 0,
+      "slices": ["W00_world_forge_canon_graph", "W01_world_field_schema"],
+      "product": "Constraint graph and channel contract. No cells."
+    },
+    {
+      "id": "geo",
+      "order": 1,
+      "slices": ["W02_continental_spec", "W03_hydrology_spec", "W04_biome_resource_spec", "W05_transport_graph_spec"],
+      "product": "Class bands, water bodies, transport cost graph.",
+      "apply_order_inside_w04": ["climate", "biome", "resources"]
+    },
+    {
+      "id": "civ",
+      "order": 2,
+      "slices": ["W06_settlement_suitability", "W07_civ_territory_physical", "W08_settlement_layout"],
+      "product": "Tiers, sites, district and road slots. physicalize false."
+    },
+    {
+      "id": "physical",
+      "order": 3,
+      "slices": [],
+      "stages": ["pop", "economy", "growth", "infra", "physicalization"],
+      "product": "Empty until a later slice. This file writes no rows."
+    },
+    {
+      "id": "unity_streaming",
+      "order": 4,
+      "slices": [],
+      "product": "WorldStreamManager jobs after physicalize is true. No enqueue in this slice."
+    }
+  ],
+  "stages": [
+    { "order": 0, "id": "canon", "slice_id": "W00_world_forge_canon_graph", "status": "authored_spec", "band": "fields" },
+    { "order": 0.5, "id": "field_contract", "slice_id": "W01_world_field_schema", "status": "authored_spec", "band": "fields", "writes_channels": [] },
+    { "order": 1, "id": "elevation", "slice_id": "W02_continental_spec", "status": "authored_spec", "band": "geo", "writes_channels": ["elevation", "slope", "geology"] },
+    { "order": 2, "id": "hydrology", "slice_id": "W03_hydrology_spec", "status": "authored_spec", "band": "geo", "writes_channels": ["drainage", "water"], "lakes": 0 },
+    { "order": 3, "id": "climate", "slice_id": "W04_biome_resource_spec", "status": "authored_spec", "band": "geo", "writes_channels": ["temperature", "rainfall", "humidity"] },
+    { "order": 4, "id": "biome", "slice_id": "W04_biome_resource_spec", "status": "authored_spec", "band": "geo", "writes_channels": ["biome", "soil"] },
+    { "order": 5, "id": "resources", "slice_id": "W04_biome_resource_spec", "status": "authored_spec", "band": "geo", "writes_channels": ["resource", "fertility"], "quantity": null },
+    { "order": 6, "id": "mobility", "slice_id": "W05_transport_graph_spec", "status": "authored_spec", "band": "geo", "writes": "transport_cost_graph", "edges": 31 },
+    { "order": 7, "id": "suitability", "slice_id": "W06_settlement_suitability", "status": "authored_spec", "band": "civ", "writes": "settlement_suitability_table", "regions": 44 },
+    { "order": 8, "id": "civ", "slice_id": "W07_civ_territory_physical", "status": "authored_spec", "band": "civ", "writes": "territory_site_table", "kingdoms_minted": 0 },
+    { "order": 8.5, "id": "layout_slots", "slice_id": "W08_settlement_layout", "status": "authored_spec", "band": "civ", "writes": "settlement_layout_table", "physicalize": false },
+    { "order": 9, "id": "pop", "slice_id": null, "status": "contract_only", "band": "physical", "writes": "population on an existing district_id" },
+    { "order": 10, "id": "economy", "slice_id": null, "status": "contract_only", "band": "physical", "writes": "price on an existing site_id or dist_hub_market" },
+    { "order": 11, "id": "growth", "slice_id": null, "status": "contract_only", "band": "physical", "writes": "parcel_count after a headcount" },
+    { "order": 12, "id": "infra", "slice_id": null, "status": "contract_only", "band": "physical", "writes": "paved on a legal layout road" },
+    { "order": 13, "id": "physicalization", "slice_id": null, "status": "contract_only", "band": "physical", "writes": "physicalize true only after headcount and parcel_count" },
+    { "order": 14, "id": "unity_streaming", "slice_id": null, "status": "consumer_exists", "band": "unity_streaming", "writes": "WorldStreamManager job" }
+  ],
+  "unwritten_stage_rules": {
+    "pop": {
+      "may": "Attach a headcount to a district_id on a layout whose tier is hamlet or above and cannot_found is false.",
+      "may_not": [
+        "Add a district.",
+        "Read WorldGeography.PopulationFor clamp 30-900 as this census.",
+        "Read a claim radius as a headcount.",
+        "Assign a kilometre census to a Sere role sketch."
+      ]
+    },
+    "economy": {
+      "may": [
+        "Price a district that cites a W07 site_id.",
+        "Price dist_hub_market as import food with no local yield."
+      ],
+      "may_not": [
+        "Price port_sere_pier while physicalize is false.",
+        "Price the breadlands.",
+        "Invent a quantity for mine_sangree_ore, mine_asbir_salt, or mine_crucible_scrap."
+      ]
+    },
+    "growth": {
+      "may": "Set parcel_count on a district that already has a headcount.",
+      "may_not": ["Invent a use.", "Invent a farm.", "Invent a mine.", "Set parcel_count in this slice."]
+    },
+    "infra": {
+      "paved_true_when": "Road class is ring, lane, terrace, wharf, or built_relief, or the cited W05 edge is already finished.",
+      "stays_unpaved": ["class unfinished", "road_crucible_end", "seam_crucible_cyber"],
+      "may_not": ["Add an edge id."]
+    },
+    "physicalization": {
+      "requires": ["headcount", "parcel_count", "district_id from W08"],
+      "mesh_source": "Existing asset-catalog batch ids. No new PROMPTS_INDEX row.",
+      "may_not": ["Call SettlementCompiler.Compile from a spec.", "Set physicalize true in this slice."]
+    }
+  },
+  "living_loop": {
+    "runs_when": "At least one district has physicalize true. Until then the heartbeats keep their current jobs.",
+    "field_channels_immutable_from_loop": ["elevation", "slope", "geology", "drainage", "water", "temperature", "rainfall", "humidity", "biome", "soil", "resource", "fertility"],
+    "ticks": [
+      {
+        "id": "npc-economy-cycle",
+        "frequency": 8,
+        "module": "server/emergent/npc-economy-cycle.js",
+        "symbols": ["runNpcEconomyCycle", "dispatchEconomicAction", "refreshScarcityCache"],
+        "kill_switch": "CONCORD_NPC_ECONOMY=0",
+        "later_forge_write": "price key is an existing site_id or dist_hub_market"
+      },
+      {
+        "id": "procgen-settlement-cycle",
+        "frequency": 240,
+        "module": "server/emergent/procgen-settlement-cycle.js",
+        "symbols": ["spawnSettlementForRegion"],
+        "cap": { "symbol": "MAX_NPCS_PER_REGION", "value": 5 },
+        "later_forge_write": "optional filter on an existing layout_id. Cap stays 5."
+      },
+      {
+        "id": "faction-strategy-cycle",
+        "frequency": 200,
+        "module": "server/emergent/faction-strategy-cycle.js",
+        "symbols": ["pickMove", "applyMove"],
+        "later_forge_write": "move target may be an existing layout_id or district_id. Expansion adds no district."
+      },
+      {
+        "id": "economy-anomaly-cycle",
+        "frequency": 240,
+        "scope": "global",
+        "module": "server/emergent/economy-anomaly-cycle.js",
+        "kill_switch": "CONCORD_ECON_ANOMALY=0",
+        "later_forge_write": "none. Observe-only."
+      }
+    ],
+    "pass": [
+      "Strategy and NPC economy read current site, district, and scarcity tables.",
+      "Pop writes a headcount on a W08 district_id.",
+      "Economy writes a price on a W07 site_id or dist_hub_market.",
+      "Growth writes parcel_count where a headcount exists.",
+      "Infra writes paved where the road rule allows it.",
+      "Physicalization sets physicalize true on that district.",
+      "Streaming enqueues that district on WorldStreamManager.",
+      "Field channels stay as W02-W04 left them."
+    ],
+    "local_exceptions_that_stay_local": [
+      "terrain-water.setWater is play-patch only and adds no W03 body.",
+      "terrain-deformation stays inside the 0-80 m play-patch clamp and is not added to continental veil datum."
+    ]
+  },
+  "unity_streaming": {
+    "scheduler": "Assets/Concordia/Scripts/WorldStreamManager.cs",
+    "symbols": ["WorldStreamManager", "StreamCellKind", "StreamLodBand", "StreamJob"],
+    "cell_meters_default": 64,
+    "budget_ms_default": 3.5,
+    "prefetch_ahead_m_default": 120,
+    "kinds": ["Settlement", "Road", "Wilderness", "Interior", "Impostor", "NavChunk", "Systems"],
+    "bands": ["Visual", "Abstract", "Simulation", "Full"],
+    "physicalize_false_max_band": "Abstract",
+    "full_band_requires": ["physicalize true", "player inside the existing ContinentStream window"],
+    "travel": {
+      "type": "Assets/Concordia/Scripts/ContinentStream.cs",
+      "travel_mode": "continent_stream",
+      "enter": "SoftEnter",
+      "stream_in_m": 175,
+      "stream_out_m": 360,
+      "l3_near_m": 55,
+      "chunk_radius_m": 52,
+      "hub_keep_m": 125
+    },
+    "presentation": {
+      "type": "Assets/Concordia/Scripts/WorldField.cs",
+      "civilization_radius_km": 400,
+      "hub_court_km": 12,
+      "hub_metro_km": 40,
+      "scene_metres_to_km": 0.4,
+      "w00_present_metres_per_km": 0.55,
+      "present_scale_rule": "Both published numbers stay. This slice does not replace either.",
+      "fantasy_gate": "pi/2",
+      "sere": "Offset from the Crime gate angle. Not a Canon.Gates entry."
+    },
+    "compilers_wait": [
+      "SettlementCompiler.Compile",
+      "SettlementCompiler.CompileOne",
+      "SettlementCompiler.CompileRoadsOnly",
+      "SettlementCompiler.DressBuilding",
+      "concord-frontend/lib/world-lens/procedural-buildings.ts#createBuilding",
+      "concord-frontend/components/world-lens/TreeLayer.tsx#TreeLayer"
+    ]
+  },
+  "aura_cursor_order": [
+    "Read-only loader for W00-W08 beside the live modules. No write into renderedElevationAt.",
+    "Apply geo in stage order as region class bands. Leave the 2 km grid unallocated.",
+    "Apply suitability, then territory sites, then layouts. Copy caps and refusals.",
+    "Fill Pop, Economy, Growth, Infra on one pilot place. W10 is Sangree. W11 is the Hub court degrade. Both are later slices.",
+    "Enqueue one WorldStreamManager job only for a district whose pilot set physicalize true.",
+    "Bind meshes from catalog ids that already exist. Add no PROMPTS_INDEX row."
+  ],
+  "organic_feed": {
+    "authority": "asset-catalog/ORGANIC_FEED_ORDER.md",
+    "rule": "Unchanged. World Forge does not re-prompt B19-B31.",
+    "prompts_index_rows_added": 0
+  },
+  "pilot_pointers": {
+    "next": ["W10_tunya_sangree_pilot", "W11_hub_court_pilot"],
+    "sangree": {
+      "layout_id": "layout_tunya_sangree",
+      "district_id": "dist_sangree_forge",
+      "unity_district_id": "sandrun_forge_quarter",
+      "mine_id": "mine_sangree_ore",
+      "quantity": null,
+      "crafting_forge": "GoldenSlice remains the only crafting forge."
+    },
+    "hub_court": {
+      "layout_id": "layout_hub_court",
+      "flower_law_radius_m": 42,
+      "door_ring_m": 34,
+      "wall_m": 56,
+      "arena": { "x_m": 0, "z_m": 18, "steel_radius_m": 8 },
+      "pinewood_crossing": { "x_m": 62, "z_m": -28, "lettering": "Pinewood Crossing" },
+      "walk_surface": "renderedElevationAt",
+      "local_water": "terrain-water.js"
+    }
+  },
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["renderedElevationAt", "generatePoughkeepsieHeightmap", "terrainSpec"],
+      "seed_hex": "0xc0ffee",
+      "terrain_size_m": 2000,
+      "max_elevation_m": 80,
+      "role": "Walk surface inside hub canon metres. Continental bands stay labels."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["solveFlowStep", "setWater", "tickWaterFlow"],
+      "role": "Play-patch flow. Does not add a W03 body."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "symbols": ["spawnSettlementForRegion", "MAX_NPCS_PER_REGION"],
+      "max_npcs_per_region": 5,
+      "heartbeat": "procgen-settlement-cycle",
+      "heartbeat_frequency": 240
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "symbols": ["pickMove", "applyMove"],
+      "heartbeat": "faction-strategy-cycle",
+      "heartbeat_frequency": 200
+    },
+    {
+      "id": "npc_economy",
+      "path": "server/lib/npc-economy.js",
+      "symbols": ["dispatchEconomicAction", "refreshScarcityCache"],
+      "heartbeat": "npc-economy-cycle",
+      "heartbeat_frequency": 8
+    },
+    {
+      "id": "settlement_compiler",
+      "path": "Assets/Concordia/Scripts/Settlement/SettlementCompiler.cs",
+      "symbols": ["Compile", "CompileOne", "CompileRoadsOnly", "DressBuilding", "IsHubHeartDistrict"]
+    },
+    {
+      "id": "procedural_buildings",
+      "path": "concord-frontend/lib/world-lens/procedural-buildings.ts",
+      "symbols": ["createBuilding"]
+    },
+    {
+      "id": "tree_layer",
+      "path": "concord-frontend/components/world-lens/TreeLayer.tsx",
+      "symbols": ["TreeLayer"],
+      "plaza": "no scatter inside the 42 m disk"
+    }
+  ],
+  "inherited_counts": {
+    "worlds": 10,
+    "regions": 44,
+    "edges": 31,
+    "cities": 4,
+    "towns": 5,
+    "villages": 17,
+    "hamlets": 10,
+    "none": 7,
+    "cannot_found": 8,
+    "capitals": 7,
+    "borders": 10,
+    "mines": 3,
+    "farms": 1,
+    "ports": 4,
+    "layouts": 28,
+    "role_sketches": 8,
+    "folded_regions": 1,
+    "refused_regions": 7,
+    "districts_on_layouts": 57,
+    "roads": 20,
+    "agricultural_districts": 1,
+    "lakes": 0,
+    "kingdoms_minted": 0,
+    "source": "Copied from W03, W05, W06, W07, and W08 counts. Not recomputed."
+  },
+  "pins": {
+    "flower_law_radius_m": 42,
+    "flower_law_axis": "horizontal radius, not elevation",
+    "fantasy_world_id": "Fantasy",
+    "fantasy_name": "Sundering",
+    "vinewood": "absent",
+    "sere_on_canon_gates": false,
+    "pathfinder_excluded": ["march_crucible_cyber"],
+    "refused_regions": [
+      "ruins_envoy_claim",
+      "tunya_fallback",
+      "tunya_unplaced",
+      "frontier_last_dome_unplaced",
+      "dawn_crown_stair_glue",
+      "sere_flooded",
+      "sere_delta"
+    ],
+    "hub_doors_fold": "layout_hub_court"
+  },
+  "do_not_build_yet": [
+    "No population table, prices, parcel_count, pavement, or physicalize true.",
+    "No 2 km raster, NavMesh, street spline, border mesh, building mesh, foliage scatter, or image.",
+    "No edits to world-terrain.js, terrain-water.js, terrain-deformation.js, procgen-settlements.js, faction-strategy.js, npc-economy.js, SettlementCompiler.cs, WorldBook.cs, WorldGeography.cs, ContinentStream.cs, WorldStreamManager.cs, WorldField.cs, or MegaworldMap.cs.",
+    "No PROMPTS_INDEX rows and no redo of batches B19-B31.",
+    "No ninth Link, no Sere gate, no closed Crucible capital, no Hub kingdom, no minted kingdom.",
+    "No retune of Flower Law, seed 0xc0ffee, heartbeat frequencies, or MAX_NPCS_PER_REGION.",
+    "No W10 or W11 pilot body in this slice."
+  ],
+  "honesty_pins": [
+    "writes is pipeline_contract. writes_channels is empty.",
+    "grid_materialized is false. physicalize is false. kingdoms_minted is 0.",
+    "Stage counts are copied from prior specs.",
+    "SceneMetresToKm 0.4 and W00 present_metres_per_km 0.55 both remain published.",
+    "Flower Law is 42 m horizontal. Fantasy is the Sundering.",
+    "The civic drain stays kind none. The Masond river stays the one realized Tunya river.",
+    "port_sere_pier stays physicalize false.",
+    "Heartbeat frequencies are the live server.js registrations."
+  ]
+}

@@ -54,11 +54,11 @@ const DEFAULT_MODELS = {
     multimodal: 'llama-3.2-90b-vision-preview',
   },
   gemini: {
-    conscious: 'gemini-2.0-flash',
-    subconscious: 'gemini-2.0-flash-lite',
-    utility: 'gemini-2.0-flash-lite',
-    repair: 'gemini-2.0-flash',
-    multimodal: 'gemini-2.0-flash',
+    conscious: 'gemini-3.6-flash',
+    subconscious: 'gemini-3.5-flash-lite',
+    utility: 'gemini-3.5-flash-lite',
+    repair: 'gemini-3.5-flash-lite',
+    multimodal: 'gemini-3.6-flash',
   },
   mistral: {
     conscious: 'mistral-large-latest',

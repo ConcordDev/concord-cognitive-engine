@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { DrumPattern, DrumPad } from '@/lib/daw/types';
-import { emitPatternDTU } from '@/lib/daw/dtu-hooks';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface DrumMachineProps {
   pattern: DrumPattern | null;
@@ -48,13 +48,6 @@ export function DrumMachine({
   const steps = pattern?.steps || 16;
   const tracks = pattern?.tracks || [];
 
-  const handleSave = useCallback(() => {
-    if (pattern) {
-      emitPatternDTU(pattern, bpm, genre);
-    }
-    onSavePattern();
-  }, [pattern, bpm, genre, onSavePattern]);
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
@@ -90,9 +83,19 @@ export function DrumMachine({
         >
           Velocity
         </button>
-        <button onClick={handleSave} className="text-[10px] px-2 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20">
-          Save as DTU
-        </button>
+        <SaveAsDtuButton
+          apiSource="studio-drum"
+          title={`Drum pattern — ${genre || 'untitled'} @ ${bpm} BPM`}
+          content={pattern
+            ? `Drum pattern (${pattern.steps} steps, ${pattern.tracks.length} tracks)\nBPM: ${bpm}\nGenre: ${genre}\nActive steps: ${pattern.tracks.reduce((sum, t) => sum + t.steps.filter(s => s.active).length, 0)}\n\n${JSON.stringify({ steps: pattern.steps, tracks: pattern.tracks }, null, 2)}`
+            : 'No drum pattern loaded'}
+          extraTags={['studio', 'drums', 'pattern', genre, `${bpm}bpm`].filter(Boolean) as string[]}
+          rawData={pattern ? { pattern, bpm, genre } : undefined}
+          compact
+          confirm
+          onSaved={() => onSavePattern()}
+          className="!bg-neon-cyan/10 !text-neon-cyan hover:!bg-neon-cyan/20"
+        />
       </div>
 
       <div className="flex-1 flex overflow-hidden">

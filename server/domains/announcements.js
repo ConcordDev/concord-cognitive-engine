@@ -42,9 +42,9 @@ export default function registerAnnouncementMacros(register) {
    */
   register("announcements", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
-    if (!db) return { ok: false, reason: "no_db" };
+    if (!db) return { ok: false, error: "no_db" };
     const badNum = badNumericField(input, ["limit"]);
-    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const kind = input.kind && VALID_KINDS.has(input.kind) ? input.kind : undefined;
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return { ok: true, announcements: listRecentAnnouncements(db, { kind, limit }) };
@@ -57,13 +57,13 @@ export default function registerAnnouncementMacros(register) {
    */
   register("announcements", "get", async (ctx, input = {}) => {
     const db = ctx?.db;
-    if (!db) return { ok: false, reason: "no_db" };
-    if (!input.id) return { ok: false, reason: "missing_id" };
+    if (!db) return { ok: false, error: "no_db" };
+    if (!input.id) return { ok: false, error: "missing_id" };
     // listRecentAnnouncements already applies the expiry filter; find by id
     // off the recent window (cap raised so id lookups don't miss).
     const all = listRecentAnnouncements(db, { limit: 200 });
     const found = all.find((a) => a.id === input.id);
-    if (!found) return { ok: false, reason: "unknown_announcement" };
+    if (!found) return { ok: false, error: "unknown_announcement" };
     return { ok: true, announcement: found };
   }, { note: "single operator announcement by id (public read)" });
 
@@ -75,7 +75,7 @@ export default function registerAnnouncementMacros(register) {
    */
   register("announcements", "post", async (ctx, input = {}) => {
     const db = ctx?.db;
-    if (!db) return { ok: false, reason: "no_db" };
+    if (!db) return { ok: false, error: "no_db" };
     const role = ctx?.actor?.role || "";
     if (role !== "admin") return { ok: false, error: "admin_only" };
     const authorUserId = ctx?.actor?.userId || ctx?.actor?.id || null;

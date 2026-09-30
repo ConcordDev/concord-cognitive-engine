@@ -309,6 +309,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "parenting.event-add",
+      "name": "event-add"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.event-delete",
+      "name": "event-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.event-ical",
+      "name": "event-ical"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.event-list",
+      "name": "event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.event-update",
+      "name": "event-update"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "parenting.expert-content",
       "name": "expert-content"
     },
@@ -926,5 +991,5 @@
   ],
   "domain": "parenting",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 71
+  "macroCount": 76
 }

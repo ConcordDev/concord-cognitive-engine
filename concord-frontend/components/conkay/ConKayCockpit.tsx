@@ -58,7 +58,7 @@ const CONKAY_PANEL_PREFIX = 'conkay.';
 // (what just happened / what's computing). Any registered `conkay.*` id not
 // listed here (present or future) falls through to the right lane instead
 // of being silently dropped.
-const PREFERRED_LEFT_IDS = ['conkay.provenance', 'conkay.forward-sim'];
+const PREFERRED_LEFT_IDS = ['conkay.provenance', 'conkay.forward-sim', 'conkay.feature-tree', 'conkay.erp-bom'];
 
 function conkayPanelIds(): string[] {
   return allPanels()

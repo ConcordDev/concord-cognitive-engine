@@ -134,6 +134,14 @@ export function hydrateDtuRow(row) {
     // !== "personal"`) treats a falsy scope as "no restriction", the same
     // convention already documented there for legacy/unowned DTUs.
     scope: undefined,
+    // Same "no column, don't invent one" rule for license: dtu-licenses.js's
+    // hasScope/dtuAssertScope read a top-level `dtu.license`, not
+    // `dtu.meta.license` — surface it here ONLY when a writer actually
+    // stored one in its data/metadata/body_json.meta blob (merged into
+    // `meta` above), so `dtuEnsureLicense` doesn't unconditionally default
+    // every raw-SQL DTU to license:{scopes:["private"]} and make
+    // marketplace_sale unreachable for writers that DID grant it honestly.
+    license: meta.license && typeof meta.license === "object" ? meta.license : undefined,
     createdAt: createdAtIso,
     updatedAt: updatedAtIso,
     authority: { model: "council", score: 0, votes: {} },

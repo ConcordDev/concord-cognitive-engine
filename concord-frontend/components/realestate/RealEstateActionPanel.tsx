@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -105,7 +106,7 @@ export function RealEstateActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Property — ${address.trim() || 'analysis'}`, tags: ['realestate', 'property', `price:${price}`], source: 'realestate:property:mint', meta: { visibility: 'private', consent: { allowCitations: false }, property: { address, price: parseFloat(price), cap: capResult, mortgage: mortgageResult, afford: affordResult, rentBuy: rentBuyResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Property — ${address.trim() || 'analysis'}`, tags: ['realestate', 'property', `price:${price}`], source: 'realestate:property:mint', meta: { visibility: 'private', consent: { allowCitations: false }, property: { address, price: parseFloat(price), cap: capResult, mortgage: mortgageResult, afford: affordResult, rentBuy: rentBuyResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('realestate.mintedDtuId', id, { label: `property ${id.slice(0, 8)}` }); ok(`Property DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -127,7 +128,7 @@ export function RealEstateActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

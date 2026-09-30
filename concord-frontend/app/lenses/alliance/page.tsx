@@ -7,7 +7,7 @@
  * a real app (Frontend Rebuild Program, Wave 2).
  *
  * Capability map: docs/lens-specs/alliance-capability-map.md. Generic
- * scaffold retired: ManifestActionBar, AutoActionStrip, RecentMineCard,
+ * scaffold retired: ManifestActionBar,
  * CrossLensRecentsPanel, UniversalActions, LensFeaturePanel — the
  * `compatibilityScore` / `networkAnalysis` / `riskAssessment` macros that
  * were only reachable through the raw auto-discovered-macro button wall

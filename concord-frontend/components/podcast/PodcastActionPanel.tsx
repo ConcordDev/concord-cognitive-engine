@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -103,7 +104,7 @@ export function PodcastActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Podcast — ${showTitle.trim() || 'show'}`, tags: ['podcast', monetizeResult?.tier ?? 'unknown'], source: 'podcast:show:mint', meta: { visibility: 'private', consent: { allowCitations: false }, podcast: { show: showTitle, analytics: analyticsResult, guest: guestResult, checklist: checklistResult, monetize: monetizeResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Podcast — ${showTitle.trim() || 'show'}`, tags: ['podcast', monetizeResult?.tier ?? 'unknown'], source: 'podcast:show:mint', meta: { visibility: 'private', consent: { allowCitations: false }, podcast: { show: showTitle, analytics: analyticsResult, guest: guestResult, checklist: checklistResult, monetize: monetizeResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('podcast.mintedDtuId', id, { label: `show ${id.slice(0, 8)}` }); ok(`Show DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -125,7 +126,7 @@ export function PodcastActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

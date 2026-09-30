@@ -70,7 +70,7 @@ export function RateQuoter() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-mono tabular-nums text-emerald-300">${q.rateUsd.toFixed(2)}</div>
+                    <div className="text-xl font-mono tabular-nums text-emerald-300">${Number(q.rateUsd ?? 0).toFixed(2)}</div>
                   </div>
                 </div>
               </li>

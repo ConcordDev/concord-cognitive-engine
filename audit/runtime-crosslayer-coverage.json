@@ -1,0 +1,552 @@
+{
+  "generatedAt": "2026-09-02T00:11:13.180Z",
+  "phase": "6-crosslayer",
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "contractPassed": 12
+  },
+  "probes": [
+    {
+      "lensId": "math",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "math.symbolicCompute",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens math"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 1
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "sentinel",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "sentinel.triage.list",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens sentinel"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 1
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "world",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "world.status",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens world"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 0
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "dtus",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "dtu.list",
+      "registry": "macros",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens dtus"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "macros"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 16
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "markets",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "betting.list_open",
+      "registry": "macros",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens markets"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "macros"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 1
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "code",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "code.status",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens code"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 0
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "healthcare",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "healthcare.status",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens healthcare"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 0
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "ops-telemetry",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "hlm.topology",
+      "registry": "macros",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens ops-telemetry"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "macros"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 145
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "personas",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "personas.browse",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens personas"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 0
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "housing",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "housing.public",
+      "registry": "macros",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens housing"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "macros"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 18
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "markets",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "betting.my_positions",
+      "registry": "macros",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens markets"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "macros"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 22
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    },
+    {
+      "lensId": "accounting",
+      "lensPageExists": true,
+      "lensInManifest": true,
+      "macroId": "accounting.status",
+      "registry": "lens_actions",
+      "contractStatus": "PASSED",
+      "failureType": null,
+      "crossLayerOk": true,
+      "stages": {
+        "load": {
+          "pass": true,
+          "note": "lens accounting"
+        },
+        "action_resolution": {
+          "pass": true,
+          "registry": "lens_actions"
+        },
+        "input_validation": {
+          "pass": true,
+          "note": "fixture: structured"
+        },
+        "dispatch": {
+          "pass": true,
+          "durationMs": 0
+        },
+        "backend_execution": {
+          "pass": true
+        },
+        "output_shape": {
+          "pass": true
+        },
+        "semantic_correctness": {
+          "pass": true
+        },
+        "error_path": {
+          "pass": true
+        },
+        "logging": {
+          "pass": true,
+          "skipped": true,
+          "note": "logging check disabled"
+        }
+      }
+    }
+  ]
+}

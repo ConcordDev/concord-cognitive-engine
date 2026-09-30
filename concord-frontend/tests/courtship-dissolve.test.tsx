@@ -15,16 +15,32 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act, fireEvent, waitFor } from '@testing-library/react';
 
 const addToastMock = vi.fn();
+// useLensNav() reads state.setActiveLens off this same store — include a
+// no-op or its effect throws "setActiveLens is not a function".
 vi.mock('@/store/ui', () => ({
-  useUIStore: (selector: (s: { addToast: typeof addToastMock }) => unknown) =>
-    selector({ addToast: addToastMock }),
+  useUIStore: (selector: (s: { addToast: typeof addToastMock; setActiveLens: () => void }) => unknown) =>
+    selector({ addToast: addToastMock, setActiveLens: vi.fn() }),
 }));
 
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 import CourtshipLensPage from '@/app/lenses/courtship/page';
+
+// The page defaults to the "Courtships" tab — MarriagesPanel (marriage-list)
+// and PastMarriagesPanel (past-marriage-list) each mount only on their own
+// separate tab ("Marriages" / "Past").
+function goToMarriages(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByText('Marriages'));
+}
+function goToPast(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByText('Past'));
+}
 
 const CONSTANTS_OK = {
   ok: true,
@@ -110,6 +126,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<CourtshipLensPage />); });
+    await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     expect(view!.getByLabelText('End marriage to npc_kel_999')).toBeInTheDocument();
@@ -122,6 +139,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<CourtshipLensPage />); });
+    await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
@@ -141,6 +159,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<CourtshipLensPage />); });
+    await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
@@ -165,6 +184,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<CourtshipLensPage />); });
+    await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
@@ -185,8 +205,10 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
     await waitFor(() => expect(view!.getByText(/no active marriages/i)).toBeInTheDocument());
 
-    // The dissolved marriage now surfaces in "Past marriages" (real backend
-    // data via courtship.marriages{activeOnly:false}, not fabricated).
+    // The dissolved marriage now surfaces in "Past marriages" — a separate
+    // tab (real backend data via courtship.marriages{activeOnly:false}, not
+    // fabricated).
+    await act(async () => { goToPast(view!); });
     await waitFor(() => expect(view!.getByTestId('past-marriage-list')).toBeInTheDocument());
     expect(view!.getByText(/npc:npc_kel_999/)).toBeInTheDocument();
   });
@@ -227,6 +249,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<CourtshipLensPage />); });
+    await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999')); });

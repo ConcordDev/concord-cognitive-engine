@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.aeroLoadCheck",
+      "name": "aeroLoadCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.archive",
       "name": "archive"
     },
@@ -145,8 +158,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.circuitSolve",
+      "name": "circuitSolve"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.comment",
       "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.connectionCheck",
+      "name": "connectionCheck"
     },
     {
       "_derived": true,
@@ -238,6 +277,32 @@
       ],
       "macro_id": "engineering.fea",
       "name": "fea"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.feaScene",
+      "name": "feaScene"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.fsiCheck",
+      "name": "fsiCheck"
     },
     {
       "_derived": true,
@@ -512,8 +577,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.mint-and-list",
+      "name": "mint-and-list"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.move",
       "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.multiPhysicsCheck",
+      "name": "multiPhysicsCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.nonNewtonianFlow",
+      "name": "nonNewtonianFlow"
     },
     {
       "_derived": false,
@@ -931,6 +1035,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.thermalStressCheck",
+      "name": "thermalStressCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.toleranceAnalysis",
       "name": "toleranceAnalysis"
     },
@@ -1028,6 +1145,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.transformerSizing",
+      "name": "transformerSizing"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.unitConvert",
       "name": "unitConvert"
     },
@@ -1047,5 +1177,5 @@
   ],
   "domain": "engineering",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 49
+  "macroCount": 59
 }

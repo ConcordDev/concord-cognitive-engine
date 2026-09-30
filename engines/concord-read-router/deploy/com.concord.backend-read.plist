@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.backend-read</string>
+
+	<!--
+	  Concurrency Refactor — read-only replica (horizontal read scale-out).
+	  CONCORD_READ_REPLICA=1: opens SQLite read-only, skips heartbeat + migrations
+	  + seeders + world shards, serves ONLY the vetted GET allowlist
+	  (server/lib/read-replica-allowlist.js). The writer (com.concord.backend) is
+	  BYTE-IDENTICAL to before — this is purely additive.
+	  NOT installed by default. See engines/concord-read-router/RUNBOOK.md.
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/node</string>
+		<string>--max-old-space-size=4096</string>
+		<string>--expose-gc</string>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/server/server.js</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>NODE_ENV</key>
+		<string>production</string>
+		<key>PORT</key>
+		<string>5053</string>
+		<key>CONCORD_READ_REPLICA</key>
+		<string>1</string>
+		<key>CONCORD_DISABLE_GHOST_FLEET</key>
+		<string>true</string>
+		<key>CONCORD_SKIP_SEED</key>
+		<string>1</string>
+		<key>DATA_DIR</key>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/server/data</string>
+		<key>ENV_PATH</key>
+		<string>/Users/dutch/concord/.env</string>
+		<key>CONCORD_DTU_SIDECAR</key>
+		<string>1</string>
+		<key>CONCORD_DTU_SIDECAR_SOCK</key>
+		<string>/Users/dutch/concord/run/concord-dtu-sidecar.sock</string>
+		<key>CONCORD_OCC_DAEMON_DISABLE</key>
+		<string>1</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/dutch/concord vs code/concord-cognitive-engine/server</string>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/backend-read.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/backend-read.err</string>
+</dict>
+</plist>

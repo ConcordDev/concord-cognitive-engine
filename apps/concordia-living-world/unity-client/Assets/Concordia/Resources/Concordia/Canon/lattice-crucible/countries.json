@@ -1,0 +1,265 @@
+{
+  "countries": [
+    {
+      "country_id": "crucible_witnesses",
+      "faction_id": "crucible_witnesses",
+      "name": "The Witnesses",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Document every drift alert and every lattice-born quest in real time, building a corpus the federation can use to teach the lattice better discrimination.",
+      "capital": {
+        "name": "The Witnesses",
+        "x": -62.76,
+        "z": 5.49
+      },
+      "anchors": [
+        {
+          "id": "crucible_witnesses_gate",
+          "name": "The Witnesses Gate",
+          "x": -62.76,
+          "z": 5.49,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_witnesses_district",
+          "name": "central_crucible",
+          "x": -54.76,
+          "z": -0.51,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "crucible_lattice_engineers"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crucible_drift_cultists",
+      "faction_id": "crucible_drift_cultists",
+      "name": "The Drift Cultists",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Worship the contradictions the lattice surfaces. Believe each drift event is a divine message about the substrate's true shape. Resist the engineers' attempts to 'stabilize' what should be revered.",
+      "capital": {
+        "name": "The Drift Cultists",
+        "x": 28.29,
+        "z": -17.0
+      },
+      "anchors": [
+        {
+          "id": "crucible_drift_cultists_gate",
+          "name": "The Drift Cultists Gate",
+          "x": 28.29,
+          "z": -17.0,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_drift_cultists_district",
+          "name": "temple_of_six_drifts",
+          "x": 36.29,
+          "z": -23.0,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "crucible_lattice_engineers"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crucible_lattice_engineers",
+      "faction_id": "crucible_lattice_engineers",
+      "name": "The Lattice Engineers",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Patch every active drift event before it cascades, and codify the patches into substrate-level corrections the federation can adopt across all worlds.",
+      "capital": {
+        "name": "The Lattice Engineers",
+        "x": 48.72,
+        "z": -36.71
+      },
+      "anchors": [
+        {
+          "id": "crucible_lattice_engineers_gate",
+          "name": "The Lattice Engineers Gate",
+          "x": 48.72,
+          "z": -36.71,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_lattice_engineers_district",
+          "name": "engineering_workshop",
+          "x": 56.72,
+          "z": -42.71,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "crucible_drift_cultists",
+        "crucible_witnesses"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "crucible_drift_refugees",
+      "faction_id": "crucible_drift_refugees",
+      "name": "The Drift Refugees",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Survive. Find others from collapsed drift-zones. Build a settlement that won't itself become a drift target.",
+      "capital": {
+        "name": "The Drift Refugees",
+        "x": 44.99,
+        "z": 9.56
+      },
+      "anchors": [
+        {
+          "id": "crucible_drift_refugees_gate",
+          "name": "The Drift Refugees Gate",
+          "x": 44.99,
+          "z": 9.56,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_drift_refugees_district",
+          "name": "refugee_camp_outer",
+          "x": 52.99,
+          "z": 3.56,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crucible_procgen_collective",
+      "faction_id": "crucible_procgen_collective",
+      "name": "The Procgen Collective",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Self-aware procgen NPCs banding together. Their existence is unique to the Crucible \u2014 every other world's NPCs are either authored or unaware. Here, the procgen entities know what they are. Some seek meaning; some seek revenge against their generation parameters.",
+      "capital": {
+        "name": "The Procgen Collective",
+        "x": -24.55,
+        "z": -26.33
+      },
+      "anchors": [
+        {
+          "id": "crucible_procgen_collective_gate",
+          "name": "The Procgen Collective Gate",
+          "x": -24.55,
+          "z": -26.33,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_procgen_collective_district",
+          "name": "procgen_assembly_hall",
+          "x": -16.55,
+          "z": -32.33,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "crucible_lattice_engineers"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crucible_meta_witnesses",
+      "faction_id": "crucible_meta_witnesses",
+      "name": "The Meta-Witnesses",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Document the Crucible's awareness of itself. Provide a stable bridge between the self-aware procgen NPCs, the cult, the engineers, and the original Witnesses \u2014 without forcing any of them into a single ontology.",
+      "capital": {
+        "name": "The Meta-Witnesses",
+        "x": 35.64,
+        "z": -18.16
+      },
+      "anchors": [
+        {
+          "id": "crucible_meta_witnesses_gate",
+          "name": "The Meta-Witnesses Gate",
+          "x": 35.64,
+          "z": -18.16,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crucible_meta_witnesses_district",
+          "name": "meta_observatory",
+          "x": 43.64,
+          "z": -24.16,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "lattice-crucible",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [],
+      "territory_radius": 23.0
+    }
+  ]
+}

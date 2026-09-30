@@ -9,7 +9,7 @@
  * which would lead to unsafe aliasing in rust" (the WASM heap is corrupted
  * once the first fault lands).
  *
- * Root cause: `app/lenses/world/page.tsx` passed TerrainRenderer two
+ * Root cause: `components/world/WorldOsSurface.tsx` passed TerrainRenderer two
  * unstable-identity props — `lodCenter={{ x: 0, z: 0 }}` (a fresh object
  * literal every render) and `districts={deriveTerrainZones(worldBuildings)}`
  * (recomputed every render even when `worldBuildings` hadn't changed). Both

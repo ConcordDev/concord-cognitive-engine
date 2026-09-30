@@ -1,0 +1,5716 @@
+{
+  "generatedAt": "2026-09-01T23:22:23.416Z",
+  "phase": "4B",
+  "baseline": {
+    "frozenAt": "2026-09-01T22:45:00.000Z",
+    "phase": "4B",
+    "gitHead": "26d9acc94d5a1d134f61253c0b8ee38a27ae69b1",
+    "lensWiring": {
+      "WIRED": 262,
+      "PARTIAL": 0,
+      "NO_BACKEND_CALL": 4,
+      "total": 266,
+      "exemptLensIds": [
+        "ar",
+        "art",
+        "narrative-walk",
+        "ux-suite"
+      ]
+    },
+    "runtimeSurfaces": {
+      "MACROS_pairs": 3166,
+      "MACROS_domains": 486,
+      "LENS_ACTIONS_raw": 30423,
+      "unique_runtime_pairs": 15155,
+      "brain_backed_skipped": 964
+    },
+    "protectedProofs": {
+      "substrate_oracles": "12/12",
+      "sentinel_domain_tests": "13/13",
+      "sentinel_lens_actions": "40/40"
+    },
+    "note": "Passing behavior is protected — do not modify passing domains unless a test exposes regression."
+  },
+  "summary": {
+    "totalLenses": 1,
+    "wiredLenses": 1,
+    "partialLenses": 0,
+    "intentionalNoBackend": 0,
+    "exemptLensIds": [],
+    "behaviorallyInspected": 1,
+    "lensesComplete": 1,
+    "lensesFailed": 0,
+    "actionsDiscovered": 40,
+    "actionsPassed": 40,
+    "actionsFailed": 0,
+    "actionsSkipped": 0,
+    "byStatus": {
+      "PASSED": 40
+    },
+    "failureByType": {},
+    "failureByPriority": {},
+    "coverageDenominator": {
+      "note": "Never claim all wired lenses were deterministically proven",
+      "totalWiredLenses": 1,
+      "behaviorallyTested": 1,
+      "deterministicPassed": 40,
+      "deterministicFailed": 0,
+      "headlessTestableRuntimePairs": 1464,
+      "brainBackedSkipped": 0,
+      "externalDependencySkipped": 0,
+      "destructiveSkipped": 0,
+      "runtimeUniquePairs": 15420,
+      "runtimeClassification": {
+        "A": 1736,
+        "B": 13296,
+        "C": 325,
+        "D": 36,
+        "E": 27
+      }
+    },
+    "beforeAfter": {
+      "baselineWired": 262,
+      "currentWired": 1,
+      "baselinePartial": 0,
+      "currentPartial": 0
+    }
+  },
+  "byFailureCategory": {},
+  "byCapabilityClass": {
+    "A": 1,
+    "B": 39,
+    "C": 0,
+    "D": 0,
+    "E": 0
+  },
+  "byDomain": {
+    "shield": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "actions": [
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 2
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "A",
+          "classificationReason": "read_only",
+          "headlessSafe": true,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 2,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "threats",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "metrics",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "firewall",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "predictions",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "scan",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Provide content or hash to scan"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "surgeon",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Threat DTU not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "guardian",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Threat DTU not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "prophet",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": "insufficient_data"
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "report",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 3
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 3,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "sweep",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    "sentinel": {
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "actions": [
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.open",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "case",
+              "created"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "cases",
+              "total",
+              "byState"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.update",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "caseId required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "intel.correlate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "caseId required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "intel.uncorrelate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "case not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "monitors",
+              "active"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "alerts.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "alerts",
+              "total",
+              "unacknowledged"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.create",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "monitor"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.toggle",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "monitor not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.delete",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "deleted"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.run",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "monitor not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "alerts.acknowledge",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "alert not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "metrics.series",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "chart",
+              "severityBreakdown",
+              "openCases"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "timeline.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "events",
+              "total"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.config.get",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.config.set",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.rule.add",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "rule",
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.rule.remove",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config",
+              "removed"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.evaluate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "content required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "timeline.record",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "label required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "queries"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.touch",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "query not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.save",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "query required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.delete",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "deleted"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.export",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "format",
+              "filename",
+              "rowCount",
+              "payload",
+              "generatedAt"
+            ]
+          }
+        }
+      ]
+    },
+    "intel": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "actions": [
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "classifier.status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "application_not_found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.apply",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.review",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "applicationId required"
+          }
+        }
+      ]
+    }
+  },
+  "lenses": [
+    {
+      "lensId": "sentinel",
+      "staticVerdict": "WIRED",
+      "behavioralStatus": "COMPLETE",
+      "complete": true,
+      "macroActionCount": 40,
+      "actionsPassed": 40,
+      "actionsFailed": 0,
+      "actionsSkipped": 0,
+      "actions": [
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 2
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "A",
+          "classificationReason": "read_only",
+          "headlessSafe": true,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 2,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "threats",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "metrics",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "firewall",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "predictions",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "scan",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Provide content or hash to scan"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.open",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "case",
+              "created"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "surgeon",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Threat DTU not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "guardian",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "Threat DTU not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "prophet",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": "insufficient_data"
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "report",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 3
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 3,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "shield",
+          "action": "sweep",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "cases",
+              "total",
+              "byState"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "triage.update",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "caseId required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "intel.correlate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "caseId required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "intel.uncorrelate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "case not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "monitors",
+              "active"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "alerts.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "alerts",
+              "total",
+              "unacknowledged"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.create",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "monitor"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.toggle",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "monitor not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.delete",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "deleted"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "monitor.run",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "monitor not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "alerts.acknowledge",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "alert not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "metrics.series",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "chart",
+              "severityBreakdown",
+              "openCases"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "timeline.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "events",
+              "total"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.config.get",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.config.set",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.rule.add",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "rule",
+              "config"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.rule.remove",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "config",
+              "removed"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "scan.evaluate",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "content required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "timeline.record",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "label required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.list",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "queries"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.touch",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "query not found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.save",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": false,
+            "error": "query required"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.delete",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "deleted"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "sentinel",
+          "action": "query.export",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "lens_actions"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: structured"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 0
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 0,
+          "rawSample": {
+            "ok": true,
+            "resultKeys": [
+              "format",
+              "filename",
+              "rowCount",
+              "payload",
+              "generatedAt"
+            ]
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "classifier.status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.status",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "application_not_found"
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.apply",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": true
+          }
+        },
+        {
+          "lensId": "sentinel",
+          "domain": "intel",
+          "action": "research.review",
+          "status": "PASSED",
+          "ok": true,
+          "stages": {
+            "load": {
+              "pass": true,
+              "note": "lens sentinel"
+            },
+            "action_resolution": {
+              "pass": true,
+              "registry": "macros"
+            },
+            "input_validation": {
+              "pass": true,
+              "note": "fixture: default"
+            },
+            "dispatch": {
+              "pass": true,
+              "durationMs": 1
+            },
+            "backend_execution": {
+              "pass": true
+            },
+            "output_shape": {
+              "pass": true
+            },
+            "semantic_correctness": {
+              "pass": true
+            },
+            "error_path": {
+              "pass": true
+            },
+            "logging": {
+              "pass": true,
+              "skipped": true,
+              "note": "macro_call_log unavailable"
+            }
+          },
+          "failureType": null,
+          "classification": "B",
+          "classificationReason": "default_structured",
+          "headlessSafe": false,
+          "failureTaxonomy": [
+            "REGISTRATION_FAILURE",
+            "DISCOVERY_FAILURE",
+            "IMPORT_FAILURE",
+            "DISPATCH_FAILURE",
+            "ARGUMENT_FAILURE",
+            "RUNTIME_FAILURE",
+            "CORRECTNESS_FAILURE",
+            "VERIFICATION_FAILURE",
+            "LOGGING_FAILURE",
+            "LENS_WIRING_FAILURE",
+            "EXTERNAL_DEPENDENCY_FAILURE",
+            "STATE_FAILURE",
+            "PERMISSION_FAILURE",
+            "TIMEOUT",
+            "UNKNOWN"
+          ],
+          "priority": null,
+          "durationMs": 1,
+          "rawSample": {
+            "ok": false,
+            "error": "applicationId required"
+          }
+        }
+      ],
+      "deterministicCoverage": "40/40"
+    }
+  ],
+  "exempt": [],
+  "unresolvedFailures": []
+}

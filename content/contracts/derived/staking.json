@@ -373,7 +373,8 @@
         },
         {
           "expect": {
-            "ok": true
+            "error": "insufficient_balance",
+            "ok": false
           },
           "input": {
             "months": 6,

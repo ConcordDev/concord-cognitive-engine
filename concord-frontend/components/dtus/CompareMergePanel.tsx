@@ -17,6 +17,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { GitMerge, Loader2, ArrowRight, Check, X, Save, Trash2 } from 'lucide-react';
 
 export interface CompareDtu extends Record<string, unknown> {
@@ -100,12 +101,12 @@ export function CompareMergePanel({
     setSaving(true);
     setSaveError(null);
     const m = merge.merged as { title?: string; summary?: string; tags?: string[] };
-    const res = await lensRun<{ dtu?: { id?: string } }>('dtu', 'create', {
+    const res = await lensRun<{ dtu?: { id?: string } }>('dtu', 'create', withContentLicense({
       title: m.title || 'Merged DTU',
       content: m.summary || '',
       tags: Array.isArray(m.tags) ? m.tags : [],
       meta: { mergedFrom: merge.merged.mergedFrom || [], mergeStrategy: merge.strategy },
-    });
+    }, 'knowledge', ['private']));
     setSaving(false);
     if (res.data.ok && res.data.result?.dtu?.id) {
       setSavedId(res.data.result.dtu.id);

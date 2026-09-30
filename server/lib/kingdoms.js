@@ -122,28 +122,44 @@ export function recomputeCitizenLoyalty(db, kingdomId) {
     `).all(k.faction_id || "");
   } catch { /* table absent */ }
 
+  // Batched into one transaction — up to 500 citizens, each previously doing
+  // 2 separate synchronous round-trips (an opinion SELECT + a loyalty
+  // upsert), unbatched, and this function runs for EVERY kingdom in the
+  // caller's loop (kingdom-decree-cycle.js, no cap on kingdom count) every
+  // ~4 minutes. Same anti-pattern class found and fixed elsewhere this
+  // audit (npc-knowledge-bridge.js, affect-trace-cycle.js et al.) — worst
+  // case here was potentially thousands of unbatched writes in one
+  // heartbeat tick. Statements prepared once outside the loop, per-citizen
+  // try/catch preserved so one bad row can't take down the whole batch.
+  const selectOpinion = db.prepare(`
+    SELECT score FROM character_opinions WHERE npc_id = ? AND target_kind = ? AND target_id = ?
+  `);
+  const upsertLoyalty = db.prepare(`
+    INSERT INTO realm_citizens (npc_id, kingdom_id, loyalty)
+    VALUES (?, ?, ?)
+    ON CONFLICT(npc_id, kingdom_id) DO UPDATE SET loyalty = excluded.loyalty, last_review_at = unixepoch()
+  `);
+  const taxPenalty = Math.max(0, (Number(k.tax_rate) - 0.20) * 100);
+
   let refreshed = 0;
-  for (const c of citizens) {
-    // Citizen's opinion of the ruler (if NPC ruler) is the strongest signal.
-    let opinionOfRuler = 0;
-    if (k.ruler_id) {
+  const flush = db.transaction((citizenList) => {
+    for (const c of citizenList) {
+      // Citizen's opinion of the ruler (if NPC ruler) is the strongest signal.
+      let opinionOfRuler = 0;
+      if (k.ruler_id) {
+        try {
+          const r = selectOpinion.get(c.id, k.ruler_kind === "player" ? "player" : "npc", k.ruler_id);
+          opinionOfRuler = r?.score ?? 0;
+        } catch { /* opinions optional */ }
+      }
+      const loyalty = Math.max(0, Math.min(100, 50 + Math.round(opinionOfRuler / 2) - taxPenalty));
       try {
-        const r = db.prepare(`
-          SELECT score FROM character_opinions WHERE npc_id = ? AND target_kind = ? AND target_id = ?
-        `).get(c.id, k.ruler_kind === "player" ? "player" : "npc", k.ruler_id);
-        opinionOfRuler = r?.score ?? 0;
-      } catch { /* opinions optional */ }
+        upsertLoyalty.run(c.id, kingdomId, loyalty);
+        refreshed++;
+      } catch { /* per-citizen skip */ }
     }
-    // Tax pressure: high tax_rate (>0.20) drags loyalty.
-    const taxPenalty = Math.max(0, (Number(k.tax_rate) - 0.20) * 100);
-    const loyalty = Math.max(0, Math.min(100, 50 + Math.round(opinionOfRuler / 2) - taxPenalty));
-    db.prepare(`
-      INSERT INTO realm_citizens (npc_id, kingdom_id, loyalty)
-      VALUES (?, ?, ?)
-      ON CONFLICT(npc_id, kingdom_id) DO UPDATE SET loyalty = excluded.loyalty, last_review_at = unixepoch()
-    `).run(c.id, kingdomId, loyalty);
-    refreshed++;
-  }
+  });
+  flush(citizens);
   return { ok: true, refreshed, count: citizens.length };
 }
 

@@ -74,6 +74,7 @@ export function BillsList() {
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <SaveAsDtuButton
+                  defaultContentClass="dataset"
                   compact
                   apiSource="congress-gov"
                   apiUrl={b.url}

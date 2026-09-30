@@ -3,12 +3,13 @@
 import { useUIStore } from '@/store/ui';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { Search, Command, Menu, Activity } from 'lucide-react';
+import { Search, Command, Menu } from 'lucide-react';
 import { SyncStatusDot, useOnlineStatus } from '@/components/common/OfflineIndicator';
 import { HeartbeatBar } from '@/components/live/HeartbeatBar';
 import { XPWidget } from '@/components/gamification/XPWidget';
 import { WalletBadge } from '@/components/economy/WalletBadge';
 import { LensTitle } from './topbar/LensTitle';
+import { SovereignHealthRibbon } from './SovereignHealthRibbon';
 import { NotificationBell } from '@/components/social/NotificationBell';
 import { DMIndicator } from '@/components/social/DMIndicator';
 import { UserMenu } from './topbar/UserMenu';
@@ -52,17 +53,8 @@ export function Topbar() {
     retry: false,
   });
 
-  // Fetch system health for the pulse indicator — that indicator only
-  // renders under `powerMode &&` below, so this poll is gated the same way
-  // (shell-diet: this was running a 60s background poll for every user on
-  // every page even though ~all of them never see its output).
-  const { data: healthData } = useQuery({
-    queryKey: ['system-health'],
-    queryFn: () => api.get('/api/system/health').then((r) => r.data).catch(() => null),
-    refetchInterval: 60000,
-    enabled: powerMode,
-    retry: false,
-  });
+  // System health is now surfaced for everyone via <SovereignHealthRibbon />
+  // (its own gated poll of /api/system/health) — no separate powerMode poll here.
 
   // Fetch affect state for the mood indicator — same story, `powerMode &&`-only
   // consumer below.
@@ -75,8 +67,6 @@ export function Topbar() {
   });
 
   const userName = userData?.username || userData?.displayName || userData?.name || userData?.email?.split('@')[0] || null;
-  const systemHealthy = healthData?.status === 'ok' || healthData?.healthy === true;
-  const systemDegraded = healthData && !systemHealthy;
 
   const affectLabel = affectData?.state?.label as string | undefined;
   const affectSummary = affectData?.state?.summary as string | undefined;
@@ -129,28 +119,8 @@ export function Topbar() {
           <Search className="w-5 h-5" />
         </button>
 
-        {/* System Pulse Indicator (Power Mode only) */}
-        {powerMode && (
-          <div
-            className="flex items-center gap-1.5 px-2 py-1"
-            title={systemDegraded ? 'System degraded' : 'System healthy'}
-          >
-            <Activity
-              className={`w-3.5 h-3.5 ${
-                systemDegraded
-                  ? 'text-amber-400'
-                  : systemHealthy
-                    ? 'text-green-400'
-                    : 'text-gray-400 animate-pulse'
-              }`}
-            />
-            <span className={`hidden lg:inline text-xs ${
-              systemDegraded ? 'text-amber-400' : systemHealthy ? 'text-green-400' : 'text-gray-400'
-            }`}>
-              {systemDegraded ? 'Degraded' : systemHealthy ? 'Healthy' : 'Checking'}
-            </span>
-          </div>
-        )}
+        {/* Sovereign health ribbon — metabolic status for everyone */}
+        <SovereignHealthRibbon />
 
         {/* Affect mood indicator (Power Mode only) */}
         {powerMode && affectLabel && (

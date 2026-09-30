@@ -21,6 +21,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { addRunParticipant, findActivePartyRun, findActiveRunForUser } from "./run-coop.js";
 import { grantRunMeta } from "./run-difficulty.js";
 import { rollDraft, recordPick, getRunModifiers, nearSynergyHints } from "./run-draft.js";
 
@@ -56,20 +57,38 @@ export function spawnRateAtWave(wave) {
 
 export function startHorde(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
-  const { worldId } = opts;
+  const { worldId, partyId = null } = opts;
   if (!worldId) return { ok: false, error: "missing_worldId" };
   try {
     const active = db.prepare(`
       SELECT id FROM horde_runs WHERE user_id = ? AND ended_at IS NULL
     `).get(userId);
-    if (active) return { ok: true, runId: active.id, alreadyActive: true };
+    if (active) {
+      addRunParticipant(db, "horde", active.id, userId);
+      return { ok: true, runId: active.id, alreadyActive: true, partyId };
+    }
+
+    if (partyId) {
+      const partyRun = findActivePartyRun(db, "horde_runs", partyId);
+      if (partyRun) {
+        addRunParticipant(db, "horde", partyRun, userId);
+        logger.info?.("horde-mode", "run_joined", { runId: partyRun, userId, partyId });
+        return { ok: true, runId: partyRun, joined: true, partyId };
+      }
+    }
 
     const id = `hrd_${crypto.randomBytes(6).toString("hex")}`;
-    db.prepare(`
-      INSERT INTO horde_runs (id, user_id, world_id) VALUES (?, ?, ?)
-    `).run(id, userId, worldId);
-    logger.info?.("horde-mode", "run_started", { runId: id, userId });
-    return { ok: true, runId: id, alreadyActive: false };
+    const hasPartyCol = db.prepare(`PRAGMA table_info(horde_runs)`).all().some((c) => c.name === "party_id");
+    if (hasPartyCol) {
+      db.prepare(`INSERT INTO horde_runs (id, user_id, world_id, party_id) VALUES (?, ?, ?, ?)`)
+        .run(id, userId, worldId, partyId);
+    } else {
+      db.prepare(`INSERT INTO horde_runs (id, user_id, world_id) VALUES (?, ?, ?)`)
+        .run(id, userId, worldId);
+    }
+    addRunParticipant(db, "horde", id, userId);
+    logger.info?.("horde-mode", "run_started", { runId: id, userId, partyId });
+    return { ok: true, runId: id, alreadyActive: false, partyId };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -174,13 +193,8 @@ export function endHorde(db, runId, opts = {}) {
 export function getActiveHorde(db, userId) {
   if (!db || !userId) return null;
   try {
-    const run = db.prepare(`
-      SELECT id, world_id, started_at, wave_reached, kills, score, auto_attack
-      FROM horde_runs WHERE user_id = ? AND ended_at IS NULL
-    `).get(userId) || null;
+    const run = findActiveRunForUser(db, "horde_runs", "horde", userId);
     if (!run) return null;
-    // Wave 4 — surface the live accumulated modifier bundle alongside the run
-    // so the HUD can show real "damage +X%" numbers without a second request.
     try {
       const bundle = getRunModifiers(db, "horde", run.id);
       run.modifiers = bundle.modifiers;

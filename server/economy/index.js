@@ -18,7 +18,7 @@ export function registerEconomyEndpoints(app, db, opts = {}) {
 }
 
 // Re-export core modules for direct use by other server modules
-export { getBalance, hasSufficientBalance, getSystemBalanceSummary } from "./balances.js";
+export { getBalance, getBalancePreferSidecar, hasSufficientBalance, getSystemBalanceSummary } from "./balances.js";
 export { calculateFee, FEES, PLATFORM_ACCOUNT_ID, FEE_SPLIT, UNIVERSAL_FEE_RATE } from "./fees.js";
 export { executeTransfer, executePurchase, executeMarketplacePurchase, executeReversal } from "./transfer.js";
 export { recordTransaction, recordTransactionBatch, getTransactions, generateTxId, checkRefIdProcessed } from "./ledger.js";

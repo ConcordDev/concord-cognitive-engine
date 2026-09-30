@@ -1,0 +1,66 @@
+[
+  {
+    "id": "brackish_01_notice",
+    "title": "Plaza Urchin — Notice the Watcher",
+    "description": "An eleven-year-old has been watching you since you arrived in the hub. She's quick, dirty, sleeps in the bell-tower. Her name is Brackish. She has not decided about you yet.",
+    "giver_npc_id": null,
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "5m",
+    "objectives": [
+      { "id": "obj_brackish1_spot_her", "type": "observe", "target": "child_mira_brackish", "required_count": 1, "description": "Spot Brackish in the great plaza or bell-tower." }
+    ],
+    "rewards": { "xp": 30 },
+    "breadcrumbs": [
+      { "id": "bc_brackish1_who", "content": "She's eleven, watches the plaza, knows every alley. She decides about people in the first hour. The first hour ends soon.", "unlocks_after": "obj_brackish1_spot_her", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["brackish_02_choice"],
+    "prerequisites": [],
+    "tags": ["hub", "brackish", "first_hour"]
+  },
+  {
+    "id": "brackish_02_choice",
+    "title": "Plaza Urchin — Be Kind or Be Sharp",
+    "description": "Brackish needs to know which kind of person you are. Approach her with food and patience, or with a chase and a threat. Choose.",
+    "giver_npc_id": null,
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_brackish2_approach", "type": "any_of", "target": "brackish_approach", "required_count": 1, "description": "Approach Brackish: kindly or sharply." }
+    ],
+    "rewards": { "xp": 80 },
+    "moral_branch": {
+      "description": "How does Brackish remember you?",
+      "options": [
+        { "id": "be_kind", "trigger": "obj_brackish2_approach:bread", "consequence": "Brackish accepts bread. Becomes hub-wide intelligence source for the player. Will share what she sees in the plaza, including the comings and goings of every faction lieutenant.", "reputation_change": { "child_mira_brackish": 0.8 } },
+        { "id": "be_sharp", "trigger": "obj_brackish2_approach:chase", "consequence": "Brackish becomes a recurring thief. Lifts a small item from the player every 4 hours of game time. Cannot be apprehended.", "reputation_change": { "child_mira_brackish": -0.5 } }
+      ]
+    },
+    "breadcrumbs": [
+      { "id": "bc_brackish2_known", "content": "Brackish has decided. Whichever way, the hub knows now.", "unlocks_after": "obj_brackish2_approach", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["brackish_03_intelligence"],
+    "prerequisites": ["brackish_01_notice"],
+    "tags": ["hub", "brackish", "moral_branch"]
+  },
+  {
+    "id": "brackish_03_intelligence",
+    "title": "Plaza Urchin — What She's Seen",
+    "description": "Brackish has been keeping mental notes. If she trusts you, she'll share three. If she doesn't, you have to earn each by guess.",
+    "giver_npc_id": "child_mira_brackish",
+    "difficulty": "intermediate",
+    "domain": "hub_side_arc",
+    "estimated_time": "15m",
+    "objectives": [
+      { "id": "obj_brackish3_three_tips", "type": "any_of", "target": "brackish_tips", "required_count": 3, "description": "Receive three intelligence tips from Brackish (kind path) or pry three out (sharp path)." }
+    ],
+    "rewards": { "xp": 200, "items": ["brackish_intelligence_token"] },
+    "breadcrumbs": [
+      { "id": "bc_brackish3_three_tips", "content": "Tip 1: Asbir's cavity. Tip 2: Velka's off-ledger fence. Tip 3: Ren's southern arc.", "unlocks_after": "obj_brackish3_three_tips", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["brackish_02_choice"],
+    "tags": ["hub", "brackish", "intelligence"]
+  }
+]

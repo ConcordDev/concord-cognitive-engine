@@ -21,15 +21,12 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { DecisionToolkit, TOOL_TABS, type ToolTab } from '@/components/ethics/DecisionToolkit';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { Scale, ChevronDown, ChevronRight } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -54,9 +51,7 @@ export default function EthicsLensPage() {
 
   return (
     <LensShell lensId="ethics" asMain={false}>
-      <FirstRunTour lensId="ethics" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ethics" size="sm" className="ml-2" />
+      <FirstRunTour lensId="ethics" />      <DepthBadge lensId="ethics" size="sm" className="ml-2" />
       <LensPageShell
         domain="ethics"
         title="Ethics"
@@ -84,10 +79,7 @@ export default function EthicsLensPage() {
         </section>
       </LensPageShell>
 
-      <SessionRail lensId="ethics" hideWhenEmpty className="mt-4" />
-      <RecentMineCard domain="ethics" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="ethics" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="ethics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <SessionRail lensId="ethics" hideWhenEmpty className="mt-4" />      <CrossLensRecentsPanel lensId="ethics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

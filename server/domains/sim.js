@@ -218,7 +218,9 @@ function evalExpr(src, vars) {
 
 // ─── Deterministic seeded RNG (mulberry32) ───────────────────────────────────
 // Lets Monte-Carlo-style stochastic macros be reproducible when a seed is given.
-function makeRng(seed) {
+// Exported so other domains (e.g. predict.js's Monte Carlo convergence
+// wrapper) reuse the same seeded primitives instead of a second copy.
+export function makeRng(seed) {
   let a = (seed >>> 0) || 0x9e3779b9;
   return function rng() {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -227,7 +229,7 @@ function makeRng(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function gaussian(rng) {
+export function gaussian(rng) {
   let u = 0, v = 0;
   while (u === 0) u = rng();
   while (v === 0) v = rng();

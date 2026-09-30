@@ -87,6 +87,7 @@ export function CmaBrowser() {
                       }}
                     />
                     <SaveAsDtuButton
+                      defaultContentClass="media"
                       compact
                       apiSource="cleveland-museum-of-art"
                       apiUrl={w.url}

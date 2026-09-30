@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -122,7 +123,7 @@ export function DilemmaPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Philosophy work — ${(dilemma || thesis || conclusion).slice(0, 60)}…`,
           tags: ['philosophy', 'dilemma', 'work-in-progress'],
           source: 'philosophy:mint',
@@ -134,7 +135,7 @@ export function DilemmaPanel() {
             dialectic: { thesis: thesis.trim(), antithesis: antithesis.trim() },
             results: { argumentMap: argResult, ethics: ethicsResult, dialectic: dialecticResult },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -171,7 +172,7 @@ export function DilemmaPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Public dilemma — ${(dilemma || thesis || conclusion).slice(0, 60)}…`,
           tags: ['philosophy', 'public', 'community-review'],
           source: 'philosophy:publish',
@@ -182,7 +183,7 @@ export function DilemmaPanel() {
             argument: { premises: premisesList, conclusion: conclusion.trim() },
             dialectic: { thesis: thesis.trim(), antithesis: antithesis.trim() },
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

@@ -152,10 +152,13 @@ describe('sub-worlds lens — four UX states', () => {
 
   it('a11y: the kind filter, sort, and capacity controls carry accessible names', async () => {
     lensRun.mockImplementation(() => reply({ worlds: [] }));
-    const { getByLabelText } = render(<SubWorldsPage />);
+    const { getByLabelText, getByRole } = render(<SubWorldsPage />);
     await waitFor(() => expect(getByLabelText('Filter by kind')).toBeInTheDocument());
     expect(getByLabelText('Sort')).toBeInTheDocument();
-    expect(getByLabelText('Capacity')).toBeInTheDocument();
+    // Capacity is a SpawnPanel control, a separate tab from the Discover
+    // gallery's Filter/Sort controls above.
+    await act(async () => { fireEvent.click(getByRole('button', { name: /Spawn/i })); });
+    await waitFor(() => expect(getByLabelText('Capacity')).toBeInTheDocument());
   });
 
   it('drives a real spawn round-trip then routes to the My Worlds list', async () => {
@@ -167,6 +170,14 @@ describe('sub-worlds lens — four UX states', () => {
     });
     const { getByPlaceholderText, getByRole, getByTestId } = render(<SubWorldsPage />);
     await waitFor(() => expect(getByTestId('lens-shell')).toBeInTheDocument());
+
+    // The spawn form (World name + Spawn Sub-World button) lives on the
+    // Spawn tab, not the default Discover tab. AnimatePresence mode="wait"
+    // defers the new tab's mount until the outgoing one's exit finishes —
+    // wait for the input to actually appear rather than querying right after
+    // the click.
+    await act(async () => { fireEvent.click(getByRole('button', { name: /Spawn/i })); });
+    await waitFor(() => expect(getByPlaceholderText('World name')).toBeInTheDocument());
 
     await act(async () => {
       fireEvent.change(getByPlaceholderText('World name'), { target: { value: 'Ocean Sim' } });

@@ -2292,11 +2292,13 @@ function init({ register, STATE, helpers }) {
   }, { description: "Recompute epistemic status for a DTU", public: false });
 
   register("emergent", "evidence.deprecate", (_ctx, input = {}) => {
-    return deprecateDtu(STATE, input.dtuId, input.reason, input.supersededBy);
+    const r = deprecateDtu(STATE, input.dtuId, input.reason, input.supersededBy);
+    return { ...r, result: { dtuId: input.dtuId, status: "deprecated" } };
   }, { description: "Deprecate a DTU's epistemic status", public: false });
 
   register("emergent", "evidence.retract", (_ctx, input = {}) => {
-    return retractDtu(STATE, input.dtuId, input.reason, input.evidenceId);
+    const r = retractDtu(STATE, input.dtuId, input.reason, input.evidenceId);
+    return { ...r, result: { dtuId: input.dtuId, status: "retracted" } };
   }, { description: "Retract a DTU (evidence proved it wrong)", public: false });
 
   register("emergent", "evidence.history", (_ctx, input = {}) => {
@@ -2451,11 +2453,13 @@ function init({ register, STATE, helpers }) {
   }, { description: "Analyze user for suspicious patterns", public: false });
 
   register("emergent", "threat.block", (_ctx, input = {}) => {
-    return blockUser(STATE, input.userId, input.reason);
+    const r = blockUser(STATE, input.userId, input.reason);
+    return { ...r, result: { userId: input.userId, blocked: true } };
   }, { description: "Temporarily block a user", public: false });
 
   register("emergent", "threat.unblock", (_ctx, input = {}) => {
-    return unblockUser(STATE, input.userId);
+    const r = unblockUser(STATE, input.userId);
+    return { ...r, result: { userId: input.userId, blocked: false } };
   }, { description: "Unblock a user", public: false });
 
   register("emergent", "threat.config", (_ctx, input = {}) => {

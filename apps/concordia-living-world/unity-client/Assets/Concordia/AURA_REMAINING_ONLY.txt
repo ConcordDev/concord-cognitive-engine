@@ -1,0 +1,82 @@
+UNITY-CLIENT CHAT ONLY. Project-root already set (unity-client / ConcordiaHub).
+START NOW — unfinished work ONLY. Do not redo completed steps.
+
+## DONE — skip entirely
+- 147 CX plates + 147 Materials (Generated/Materials/P0–P4)
+- Base prefabs: CX_Humanoid_Male/Female, CX_Weapon_Longsword/Hatchet, CX_Mount_Horse
+- Cascade code already on disk (NoteKill “fell”, SoftEnter won’t clobber kill, spoils off corpse, GossipEar)
+- AuraRefs pack + Reference Pack + Poly Haven/FreePacks present
+- Do NOT regenerate plates or materials. Do NOT re-litigate HDRI/import unless Play is magenta/empty sky.
+
+## READ (for quality bar only)
+Assets/Concordia/AuraRefs/AURA_OPENWORLD_REFERENCE_PACK.md
+AuraRefs/north-star/court-tree-plate.jpg
+AuraRefs/north-star/city-vinewood-density.jpg
+AuraRefs/hub-vistas/HUB-VISTA-crown-spoke-out-2026-09-20.png
+AuraRefs/world-tours/tour-HUB.png + tour-SUNDERING.png
+AuraRefs/CX_PLATE_INDEX.json
+
+## NOT DONE — do these waves in order
+
+### W1 — Prefab factory (biggest gap: 5 prefabs vs 147 mats)
+For EVERY material in Generated/Materials/P0–P4, create:
+  Generated/Prefabs/<P#>/<Category>/CX_<Name>.prefab
+using that .mat (see CX_PLATE_INDEX.json).
+- humanoid (Hero/Bandits/NPCs/Guests/Tessera): clone CX_Humanoid_Male or Female + mat; keep grips; Brackish ~1.42
+- weapons left (Bow, PulseBaton, Switchblade): CxBake-style grip
+- creatures: FreePacks/PolyHaven fauna + mat OR TEMP_ billboard collider
+- props/civic/spoils/signs: FreePacks/PolyHaven stem + mat + collider
+- HUD: sprites from P0/HUD mats
+- VFX: particle/decal mats bound to combat/styles
+- tiles: wire WorldKit.Ground / HubLook (AshCinder, MossFloor, PackedEarth, SandGravel; CourtCobble already)
+After W1: SaveAssets; csErrors=0; report prefab count vs 147 (list TEMP_).
+
+### W2 — Bind so Play actually uses them
+- ModularPerson/CxDress → CX hero Court/Steel
+- RoadWorld/TrainingDummy → all 5 P0 Sundering bandit prefabs
+- GuestNpc/RealmFill → all 15 P3 HubGuest prefabs
+- DropSpoils → spoils pouch prefab
+- Pillars ×3 on Hub plaza
+- P2 props → HubPlaza/RoadWorld/WorldKit scatter
+- P4 civic → WorldKit/DressVocab/CxDress wayposts per WorldId
+- P1 wolf + one watcher on Fantasy roads
+- Appearance ← P2 gear
+Magenta=0. LoadAsset-spot-check each class.
+
+### W3 — Travel delight Hub → Sundering (worth walking)
+Against north-star + hub-vistas + vinewood density:
+1) Court tree weenie readable from ring
+2) Canon.Gates gatehouses dressed (not Prim cubes)
+3) Crown Road breadcrumbs every ~40–80m: P4 waypost, cart/crate, traveler or wildlife, shrine/sign
+4) Horizon ≥3 different POI types
+5) SoftEnter Fantasy: look/civic shift toward tour-SUNDERING
+Ban: PlazaPad tile hell, identical house spam, floating cloth, Quaternius as hero identity.
+Screenshot: mid-spoke road + gate approach.
+
+### W4 — Living loop proof (mandatory PASS/FAIL)
+Play ConcordiaHub and write BOTH:
+  ~/.zuko/AURA_LIFE_PROOF.txt
+  Assets/Concordia/Generated/AURA_LIFE_PROOF.txt
+
+| Step | Action | PASS if |
+| A | Hub walk 10s | CX hero; sky not magenta |
+| B | Approach HubGuest | Canon name + CX plate dress |
+| C | SoftEnter Fantasy | WorldId+look shift; Sundering civic/wardpost |
+| D | Kill named bandit | corpse dead; spoils>0; LastEvent contains "fell"; player valid |
+| E | Gossip/feed | kill remembered (not journey-home stamp) |
+| F | SoftEnter Hub | Court still knows the kill |
+
+Screenshot each step. Stop and fix blockers before claiming done.
+
+### W5 — Only if A–F all PASS (optional polish)
+CINEMATIC breath: idle 10s motion; Court/Steel HUD live; ten eye-shots; list remaining fails. No new continents until loop PASSes.
+
+## Constraints
+unity-client / ConcordiaHub only. Free packs = MESH; CX/north-star = LOOK. Poly Haven = _2k.jpg. SoftEnter walks, not teleports. No Concord kill, no Library wipe. Prefer bind existing systems.
+
+## Done when
+1) Prefabs ≈ plates (or TEMP_ list)
+2) Guests + bandits + spoils bound
+3) Hub→Sundering road not empty
+4) AURA_LIFE_PROOF.txt filled A–F
+5) Brief report: counts, TEMP_, A–F, which AuraRefs images used, csErrors=0

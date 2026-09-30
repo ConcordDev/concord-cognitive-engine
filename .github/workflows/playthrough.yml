@@ -30,6 +30,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # playthrough.spec.ts reads two hero GLBs, which are Git LFS objects: a
+      # plain checkout leaves 130-byte pointer files and the "real GLB bytes"
+      # assertions fail. Pull only those two (~5 MB), not the 330 MB hero set,
+      # to stay inside the LFS bandwidth quota.
+      - name: Fetch the LFS meshes the playthrough spec reads
+        run: git lfs pull --include="concord-frontend/public/meshes/heroes/_archetype_warrior__concord-link-frontier.glb,concord-frontend/public/meshes/heroes/sovereign_first_refusal.glb"
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:

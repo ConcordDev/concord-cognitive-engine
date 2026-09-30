@@ -1,0 +1,32 @@
+{
+  "frozenAt": "2026-09-01T23:13:35.879Z",
+  "phase": "5",
+  "gitHead": "26d9acc94d5a1d134f61253c0b8ee38a27ae69b1",
+  "runtimeUniquePairs": 15420,
+  "coverage": {
+    "registered": 15420,
+    "invoked": 14427,
+    "deterministicVerified": 14147,
+    "failed": 59,
+    "brainBackedSkipped": 1021,
+    "externalDependencySkipped": 130,
+    "interactiveSkipped": 36,
+    "destructiveSkipped": 27
+  },
+  "byCompletionStatus": {
+    "VERIFIED": 14147,
+    "UNEXERCISED": 1021,
+    "BLOCKED_EXTERNAL_DEPENDENCY": 130,
+    "INTENTIONALLY_DISABLED": 27,
+    "FAILED_INCORRECT_RESULT": 46,
+    "FAILED_BUG": 13,
+    "BLOCKED_REQUIRES_INTERACTIVE_STATE": 36
+  },
+  "protectedProofs": {
+    "phase4b_lenses": "262/262",
+    "sentinel_lens_actions": "40/40",
+    "substrate_oracles": "12/12"
+  },
+  "reportPath": "audit/runtime-capability-coverage.json",
+  "note": "Every runtime pair has a known completion status. 59 failures are the Phase-5 remediation backlog."
+}

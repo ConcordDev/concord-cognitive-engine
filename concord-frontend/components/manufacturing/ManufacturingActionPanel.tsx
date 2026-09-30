@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -118,7 +119,7 @@ export function ManufacturingActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Shop-floor — ${oeeResult?.rating ?? 'shift'}`, tags: ['manufacturing', 'shopfloor', oeeResult?.rating].filter((t): t is string => !!t), source: 'manufacturing:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mfg: { oee: oeeResult, bom: bomResult, safe: safeResult, sched: schedResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Shop-floor — ${oeeResult?.rating ?? 'shift'}`, tags: ['manufacturing', 'shopfloor', oeeResult?.rating].filter((t): t is string => !!t), source: 'manufacturing:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mfg: { oee: oeeResult, bom: bomResult, safe: safeResult, sched: schedResult } } }, 'software', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('mfg.mintedDtuId', id, { label: `Shift DTU ${id.slice(0, 8)}…` }); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -147,7 +148,7 @@ export function ManufacturingActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `OEE benchmark`, tags: ['manufacturing', 'oee', 'benchmark', 'public'], source: 'manufacturing:oee:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, oee: oeeResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `OEE benchmark`, tags: ['manufacturing', 'oee', 'benchmark', 'public'], source: 'manufacturing:oee:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, oee: oeeResult } }, 'software', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

@@ -62,6 +62,17 @@ export default function registerAuctionMacros(register) {
     return { ok: true, auctions: listActiveAuctions(db, { limit }) };
   }, { note: "list active auctions (ends-soonest first)" });
 
+
+  /** auctions.list — alias of active for generic lens shells / manifest list callers. */
+  register("auctions", "list", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
+    return { ok: true, auctions: listActiveAuctions(db, { limit }) };
+  }, { note: "alias of active for generic list callers" });
+
   /** auctions.get — one auction + recent bids. input: { auctionId } */
   register("auctions", "get", async (ctx, input = {}) => {
     const db = ctx?.db;

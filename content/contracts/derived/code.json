@@ -1011,8 +1011,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "code.propose-verified-patch",
+      "name": "propose-verified-patch"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "code.publish",
       "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code.push-proposal-approve",
+      "name": "push-proposal-approve"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code.push-proposal-create",
+      "name": "push-proposal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code.push-proposal-list",
+      "name": "push-proposal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code.push-proposal-reject",
+      "name": "push-proposal-reject"
     },
     {
       "_derived": true,
@@ -1342,5 +1407,5 @@
   ],
   "domain": "code",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 103
+  "macroCount": 108
 }

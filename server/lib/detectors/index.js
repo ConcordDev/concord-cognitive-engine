@@ -63,6 +63,7 @@ import { runMoneyTxnHygieneDetector } from "./money-txn-hygiene-detector.js";
 import { runRealtimeEmitSignatureDetector } from "./realtime-emit-signature-detector.js";
 import { runStaleLyingTestDetector } from "./stale-lying-test-detector.js";
 import { runDeadMacroCallDetector } from "./dead-macro-call-detector.js";
+import { runMacroStubDetector } from "./macro-stub-detector.js";
 import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-prop-detector.js";
 import { runDomainReachabilityDetector } from "./domain-reachability-detector.js";
 import { runLensManifestCapabilityDetector } from "./lens-manifest-capability-detector.js";
@@ -646,6 +647,23 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "A frontend call site invokes a macro/action name that no domain registers — dead buttons that always hit the unknown_macro fallback.",
   run: runDeadMacroCallDetector,
+});
+// "Is this registered macro actually doing something?" — the gap between
+// dead-macro-call (nobody registered it), macro-usage (nobody calls it), and
+// fabrication-mechanism (fake data in a *render* path). This one reads the
+// HANDLER BODY of every register()/registerLensAction() call and flags the
+// ones that present `{ ok: true }` while returning hardcoded / simulated /
+// Math.random() / no-op data — a stub disguised as working. Seeded by
+// ConKay's agent loop hitting exactly these while trying to build against
+// run_lens_action. Honest `{ ok:false, reason:'roadmap' }` stubs are
+// inventoried at info level, never flagged as bugs.
+registerDetector({
+  id: "macro-stub",
+  label: "MacroStubDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Reads every registered macro's handler body and flags stubs disguised as working — a comment-form incompleteness marker or an effectively-empty `return { ok: true }` (no db/ctx/input read, no computation, no delegation). Inventories honest `{ ok:false, reason:'roadmap' }` stubs separately at info level.",
+  run: runMacroStubDetector,
 });
 registerDetector({
   id: "hardcoded-literal-data-prop",

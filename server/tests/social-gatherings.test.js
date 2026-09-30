@@ -82,6 +82,10 @@ describe("gatherAttendees — db-reader (SL5 caller)", () => {
     assert.ok(names.includes("Sprout"), "bereaved kin attends");
     assert.ok(names.includes("Kel the Spurned"), "rival attends a funeral");
     assert.ok(g.beats.some((b) => b.includes("Old Seam")), "eulogy names the deceased");
+    const sprout = g.attendees.find((a) => a.name === "Sprout");
+    assert.equal(sprout.id, "n_kid", "Unity matches mourners by kernel id, not a fabricated crowd");
+    const rival = g.attendees.find((a) => a.name === "Kel the Spurned");
+    assert.equal(rival.id, "n_rival");
   });
 
   it("degrades to a sparse-but-valid gathering with no relations", () => {

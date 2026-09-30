@@ -50,8 +50,26 @@ export default function registerCodeSubstrateMacros(register) {
   }, { note: "list members of a code-substrate cluster" });
 
   register("code", "refresh", async (ctx, _input = {}) => {
-    if (!ctx?.db) return { ok: false, reason: "no_db" };
-    const r = await emitCodeDtus(ctx.db, REPO_ROOT);
-    return { ok: r.ok, ...r };
+    // Honest envelope: never let schema/walk throws become macro_uncaught_throw.
+    try {
+      if (!ctx?.db) return { ok: false, error: "no_db", reason: "no_db" };
+      const r = await emitCodeDtus(ctx.db, REPO_ROOT);
+      if (!r?.ok) {
+        return {
+          ok: false,
+          error: r?.reason || r?.error || "emit_failed",
+          reason: r?.reason || r?.error || "emit_failed",
+          ...r,
+        };
+      }
+      return { ok: true, ...r };
+    } catch (e) {
+      return {
+        ok: false,
+        error: "code_refresh_failed",
+        reason: "code_refresh_failed",
+        message: String(e?.message || e).slice(0, 400),
+      };
+    }
   }, { note: "re-emit code-artifact DTUs (idempotent)" });
 }

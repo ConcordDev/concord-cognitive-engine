@@ -28,6 +28,11 @@ import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { Bookmark, BookmarkCheck, X, Loader2, Globe2, Lock, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ContentClassLicenseFields,
+  buildContentLicensePayload,
+  type ContentClass,
+} from '@/components/dtu/ContentClassLicenseFields';
 
 export interface SaveAsDtuButtonProps {
   /**
@@ -85,6 +90,10 @@ export interface SaveAsDtuButtonProps {
    * highlighting the saved row, refreshing a "my DTUs" sidebar, etc.
    */
   onSaved?: (dtuId: string) => void;
+  /** Optional initial content class (default: dataset for real-data saves). */
+  defaultContentClass?: ContentClass | string;
+  /** Optional initial license scopes (default: private). */
+  defaultLicenseScopes?: string[];
 }
 
 const RAW_SNAPSHOT_BUDGET = 8000;
@@ -110,12 +119,16 @@ export function SaveAsDtuButton({
   confirm = true,
   className = '',
   onSaved,
+  defaultContentClass = 'dataset',
+  defaultLicenseScopes,
 }: SaveAsDtuButtonProps) {
   const [open, setOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState(title);
   const [editTags, setEditTags] = useState([apiSource, ...extraTags].join(', '));
   const [isGlobal, setIsGlobal] = useState(false);
+  const [contentClass, setContentClass] = useState<ContentClass>((defaultContentClass as ContentClass) || 'dataset');
+  const [licenseScopes, setLicenseScopes] = useState<string[]>(defaultLicenseScopes?.length ? [...defaultLicenseScopes] : ['private']);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
@@ -123,7 +136,13 @@ export function SaveAsDtuButton({
   useEffect(() => { setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags]);
 
   const createMutation = useMutation({
-    mutationFn: async (opts: { title: string; tags: string[]; isGlobal: boolean }) => {
+    mutationFn: async (opts: {
+      title: string;
+      tags: string[];
+      isGlobal: boolean;
+      contentClass: string;
+      licenseScopes: string[];
+    }) => {
       const allTags = ['real-data', apiSource, ...opts.tags.filter((t) => t !== 'real-data' && t !== apiSource)];
       const meta: Record<string, unknown> = {
         apiProvider: apiSource,
@@ -133,13 +152,23 @@ export function SaveAsDtuButton({
       const snapshot = truncateForSnapshot(rawData);
       if (snapshot) meta.rawSnapshot = snapshot;
 
+      const licensePayload = buildContentLicensePayload(
+        opts.contentClass,
+        opts.licenseScopes,
+        meta,
+      );
+
       return apiHelpers.dtus.create({
         title: opts.title || title,
         content,
         tags: allTags,
         source: apiSource,
         isGlobal: opts.isGlobal,
-        meta,
+        contentClass: licensePayload.contentClass,
+        licenseScopes: licensePayload.licenseScopes,
+        scopes: licensePayload.scopes,
+        license: licensePayload.license,
+        meta: licensePayload.meta,
       });
     },
     onSuccess: (resp) => {
@@ -168,13 +197,15 @@ export function SaveAsDtuButton({
       title,
       tags: [apiSource, ...extraTags],
       isGlobal: false,
+      contentClass,
+      licenseScopes,
     });
   };
 
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
-    createMutation.mutate({ title: editTitle, tags, isGlobal });
+    createMutation.mutate({ title: editTitle, tags, isGlobal, contentClass, licenseScopes });
   };
 
   return (
@@ -218,6 +249,10 @@ export function SaveAsDtuButton({
         setEditTags={setEditTags}
         isGlobal={isGlobal}
         setIsGlobal={setIsGlobal}
+        contentClass={contentClass}
+        setContentClass={setContentClass}
+        licenseScopes={licenseScopes}
+        setLicenseScopes={setLicenseScopes}
         content={content}
         onCancel={() => setOpen(false)}
         onSubmit={handleConfirm}
@@ -236,6 +271,10 @@ interface ModalProps {
   setEditTags: (v: string) => void;
   isGlobal: boolean;
   setIsGlobal: (v: boolean) => void;
+  contentClass: ContentClass | string;
+  setContentClass: (v: ContentClass) => void;
+  licenseScopes: string[];
+  setLicenseScopes: (v: string[]) => void;
   content: string;
   onCancel: () => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -325,6 +364,15 @@ function SaveModal(props: ModalProps) {
                 {props.content || <span className="italic text-zinc-600">(empty)</span>}
               </div>
             </div>
+
+            <ContentClassLicenseFields
+              contentClass={props.contentClass}
+              onContentClassChange={props.setContentClass}
+              licenseScopes={props.licenseScopes}
+              onLicenseScopesChange={props.setLicenseScopes}
+              variant="compact"
+              idPrefix="save-as-dtu"
+            />
 
             <div className="flex items-center gap-3">
               <button

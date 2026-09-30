@@ -1,0 +1,33 @@
+{
+  "task_id": "3d9b2b99-a77e-4364-a466-77435500ccc3",
+  "original_generation_task_id": "eb7f6f24-051d-4adc-98fa-7a373b00adf2",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260918/eb7f6f24-051d-4adc-98fa-7a373b00adf2/tripo_pbr_model_eb7f6f24-051d-4adc-98fa-7a373b00adf2.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MTgvZWI3ZjZmMjQtMDUxZC00YWRjLTk4ZmEtN2EzNzNiMDBhZGYyL3RyaXBvX3Bicl9tb2RlbF9lYjdmNmYyNC0wNTFkLTRhZGMtOThmYS03YTM3M2IwMGFkZjIuZ2xiIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzg5ODAyNDU1fX19XX0_&Signature=I0FOWzxVQoLOdFELEiCphVoEMYPsi13OuGI4i4l5gsB485pSqbMlO6~2hjZz10AoJBDXqESDBYt7rvN9nQpqTgYgxgmc1JuvJhK8kZmSKao0RGfF41V~HvYLVDSn6QbCD4NrlV~Y4MGtd5Q-ITr6Bu-Z1o9f5h9LuOSuoVemTjxTEzE5QHbKEqKUbYhB0u1MlgD~5JxlPA-601o28ClRYypmSblfht2ek45emT68dccxeqOl1AjCAugDUWIQqYcCSfPD6u~T2EYokekGwYDA5~u38a8TFG1I~kJsm7KdonC9tgAvUsOluu7dMuk4laO8Uyf36NiRVVvgLDTX8biQjg__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-18T03:21:04.970914",
+  "description": "A realistic, game-ready medieval pack horse mount for Concordia: anatomically plausible adult horse, sturdy compact build, natural brown coat with subtle variation, leather bridle and fitted saddle, functional panniers and blanket, believable proportions, grounded hooves, clean topology suitable for real-time Unity use, physically based material response, neutral standing pose with clear saddle and reins, standing upright in A-pose, arms extended diagonally downward at 45 degrees from body, palms facing inward toward thighs, legs straight, feet shoulder-width apart, A-pose",
+  "negative_prompt": "cartoon, toon shading, exaggerated proportions, fantasy armor, glowing effects, extra limbs, malformed anatomy, floating gear, rider, scenery, text, logo, palms facing forward, palms facing outward",
+  "pose_type": "A-pose",
+  "model_version": "P1-20260311",
+  "pbr": true,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_PackHorse/Concordia_PackHorse_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "MetallicRoughness",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_PackHorse/Concordia_PackHorse_MetallicRoughness.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "Normal",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_PackHorse/Concordia_PackHorse_Normal.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_PackHorse/Concordia_PackHorse.fbx"
+}

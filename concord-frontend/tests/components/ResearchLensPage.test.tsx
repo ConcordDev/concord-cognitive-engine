@@ -48,9 +48,12 @@ vi.mock('@/components/lens/PullToSubstrate', () => ({ PullToSubstrate: () => nul
 vi.mock('@/components/lens/FeedBanner', () => ({ FeedBanner: () => null }));
 vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/common/EmptyState', () => ({ ErrorState: () => null }));
+// The page imports the NAMED export and renders <ResearchWorkbench embedded />
+// with no `open` prop (defaults to true) — the panel only mounts at all once
+// the view state switches to 'workbench', so mounting IS the open signal.
 vi.mock('@/components/research/ResearchWorkbench', () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? React.createElement('div', { 'data-testid': 'research-workbench' }, 'Workbench open') : null,
+  ResearchWorkbench: () =>
+    React.createElement('div', { 'data-testid': 'research-workbench' }, 'Workbench open'),
 }));
 
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: vi.fn() }));
@@ -94,19 +97,19 @@ describe('research lens page — ManifestActionBar removed + Workbench shortcut'
 
   it('renders no dead ManifestActionBar quick-trigger row', async () => {
     renderPage();
-    await screen.findByText('Research');
+    await screen.findAllByText('Research');
     expect(screen.queryByTitle(/quick trigger, runs with no parameters/i)).not.toBeInTheDocument();
   });
 
   it('the Lens Features panel is collapsed by default (removed generic noise ahead of the real workbench)', async () => {
     renderPage();
-    await screen.findByText('Research');
+    await screen.findAllByText('Research');
     expect(screen.queryByTestId('lens-feature-panel')).not.toBeInTheDocument();
   });
 
   it('pressing "n" opens the real Research Workbench (a genuine keyboard-driven state change)', async () => {
     renderPage();
-    await screen.findByText('Research');
+    await screen.findAllByText('Research');
     expect(screen.queryByTestId('research-workbench')).not.toBeInTheDocument();
     fireEvent.keyDown(document.body, { key: 'n', code: 'KeyN' });
     expect(await screen.findByTestId('research-workbench')).toBeInTheDocument();

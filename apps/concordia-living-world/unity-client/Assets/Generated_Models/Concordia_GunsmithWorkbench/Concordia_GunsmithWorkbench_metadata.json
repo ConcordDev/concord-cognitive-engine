@@ -1,0 +1,33 @@
+{
+  "task_id": "f2d80970-f8b5-4ea9-93d6-8c3b5d89e4ec",
+  "original_generation_task_id": "c448b1e2-2921-402c-88c7-fdb0ed02d2b8",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260918/c448b1e2-2921-402c-88c7-fdb0ed02d2b8/tripo_pbr_model_c448b1e2-2921-402c-88c7-fdb0ed02d2b8.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MTgvYzQ0OGIxZTItMjkyMS00MDJjLTg4YzctZmRiMGVkMDJkMmI4L3RyaXBvX3Bicl9tb2RlbF9jNDQ4YjFlMi0yOTIxLTQwMmMtODhjNy1mZGIwZWQwMmQyYjguZ2xiIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzg5ODAyNzMwfX19XX0_&Signature=OZxXVi-bDywqjLYpSmfxXyNR8rEMRwbxKehnaGMuYMhLvIILzz-qurcghD9AhpkdfzSpzrsu9H-aLMTG99Ex9lWvEYeMvbp9Fm6zX5mZd0DbHhKCsP594GXuMtkvjxkJEJ~DveduJjijrM7DbbGgWDKy0t0x6p0EqvsU~S3s9ft-XxsZ2O9s2GUJ5dpylfx2nHEuulXQtk8McBudHQDmfkqYWZow9L-re65zGY3PeUmynY0EWE1zDkEv4oMLKeYAKQPwmFaD35wtKvoZTEg9S6~4CY3FBLq5Y-sFvlP~F0-iWsA3IlajVn8k~eSqcFAQL2N9PpeFK7mrsM1z7BJKcw__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-18T03:26:08.383056",
+  "description": "A realistic game-ready gunsmith workbench for Concordia: heavy scarred hardwood bench with steel vise, compact hand tools, firearm assembly fixtures, oil bottles, calipers, cleaning rod, small parts trays, believable industrial wear and contact grime, physically based materials, grounded scale, suitable for an active workshop interior in a modern or frontier settlement.",
+  "negative_prompt": "cartoon, toy-like, sci-fi holograms, floating tools, excessive clutter, plastic materials, text, logo, scenery",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": true,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_GunsmithWorkbench/Concordia_GunsmithWorkbench_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "MetallicRoughness",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_GunsmithWorkbench/Concordia_GunsmithWorkbench_MetallicRoughness.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "Normal",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_GunsmithWorkbench/Concordia_GunsmithWorkbench_Normal.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_GunsmithWorkbench/Concordia_GunsmithWorkbench.fbx"
+}

@@ -1,0 +1,1063 @@
+{
+  "batch": "B29_ui",
+  "slice": "A11_ui_chrome_icons",
+  "count": 21,
+  "rule": "Icon meshes only where the silhouette is the chrome law. Panel fills stay hex nine-slices. No bitmap atlas.",
+  "entries": [
+    {
+      "id": "ui_court_brass_pin",
+      "display_name": "Court Brass Pin",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "court",
+        "icon"
+      ],
+      "triangle_budget": 64,
+      "aura_prompt": "One worn brass pin with a round head and no screw slot. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A round head on a short pin. Not a screw.",
+      "palette": [
+        "#f3e6d0",
+        "#c4b49a",
+        "#3a3428",
+        "#c8721a"
+      ],
+      "lore_blurb": "Corner of the Court parchment skin. InHubCourt only, and not on arena sand.",
+      "scale_vs_player": "0.04 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 64,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_court_brass_pin/",
+        "kit_id": "ui_kit_court",
+        "skin": "court",
+        "skin_gate": "Canon.InHubCourt and not arena sand",
+        "element": "pin",
+        "runtime_label": "none",
+        "place": "HUD corner on the parchment panel. Not a world clutter pin.",
+        "flower_law": "inside_42m_court_only"
+      },
+      "prompt": "One worn brass pin with a round head and no screw slot. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_court_brass_chip",
+      "display_name": "Court Brass Chip",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "court",
+        "icon",
+        "keyboard"
+      ],
+      "triangle_budget": 80,
+      "aura_prompt": "One small brass rectangle chip, face blank, edges worn. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short brass bar. The face stays empty for a runtime shortcut.",
+      "palette": [
+        "#f3e6d0",
+        "#c4b49a",
+        "#3a3428",
+        "#c8721a"
+      ],
+      "lore_blurb": "Keyboard chip while the Court skin is up. The shortcut is type, not albedo.",
+      "scale_vs_player": "0.06 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 80,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_court_brass_chip/",
+        "kit_id": "ui_kit_court",
+        "skin": "court",
+        "skin_gate": "Canon.InHubCourt and not arena sand",
+        "element": "chip",
+        "runtime_label": "shortcut",
+        "place": "Beside a lens or combat prompt. Blank face.",
+        "flower_law": "inside_42m_court_only"
+      },
+      "prompt": "One small brass rectangle chip, face blank, edges worn. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_court_pressed_note",
+      "display_name": "Pressed Note",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "court",
+        "memory"
+      ],
+      "triangle_budget": 160,
+      "aura_prompt": "One folded cream paper note with a clean gap cut through the middle, no writing. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A folded note and a real gap. The gap is empty.",
+      "palette": [
+        "#f3e6d0",
+        "#c4b49a",
+        "#3a3428",
+        "#c8721a"
+      ],
+      "lore_blurb": "Memory card. Fact is runtime type on one side. The UI does not fill the gap.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 160,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_court_pressed_note/",
+        "kit_id": "ui_kit_court",
+        "skin": "court",
+        "skin_gate": "Canon.InHubCourt and not arena sand",
+        "element": "note",
+        "runtime_label": "fact_only",
+        "place": "Memory toast. Gap stays blank.",
+        "flower_law": "inside_42m_court_only"
+      },
+      "prompt": "One folded cream paper note with a clean gap cut through the middle, no writing. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_court_lantern_toast",
+      "display_name": "Lantern Toast",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "court",
+        "toast"
+      ],
+      "triangle_budget": 180,
+      "aura_prompt": "One short warm paper card with a single cream petal nub on the top edge, no writing. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short card and one petal. Not a lantern mesh and not a health frame.",
+      "palette": [
+        "#f3e6d0",
+        "#c8721a",
+        "#3a3428"
+      ],
+      "lore_blurb": "Court toast. It rises warm, then dims. A flowered blade shows the petal, then the steel name in quiet type.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 180,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_court_lantern_toast/",
+        "kit_id": "ui_kit_court",
+        "skin": "court",
+        "skin_gate": "Canon.InHubCourt and not arena sand",
+        "element": "toast",
+        "runtime_label": "quiet_name",
+        "place": "HUD toast. Not vfx_hub_flame_pool.",
+        "flower_law": "inside_42m_court_only"
+      },
+      "prompt": "One short warm paper card with a single cream petal nub on the top edge, no writing. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_steel_screw",
+      "display_name": "Steel Screw",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "steel",
+        "icon"
+      ],
+      "triangle_budget": 48,
+      "aura_prompt": "One worn dark metal screw, slot head, oil sheen. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One screw head. Not a brass pin.",
+      "palette": [
+        "#2a2622",
+        "#8a7a68",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Corner of the steel skin. Spokes, Sere, Hub outside 42 m, and arena sand.",
+      "scale_vs_player": "0.04 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 48,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_steel_screw/",
+        "kit_id": "ui_kit_steel",
+        "skin": "steel",
+        "skin_gate": "not Court parchment",
+        "element": "screw",
+        "runtime_label": "none",
+        "place": "HUD corner on the steel panel.",
+        "flower_law": "outside_42m_or_spoke"
+      },
+      "prompt": "One worn dark metal screw, slot head, oil sheen. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_steel_blank_plate",
+      "display_name": "Blank Stamp Plate",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "steel",
+        "plate"
+      ],
+      "triangle_budget": 200,
+      "aura_prompt": "One oiled dark metal plate, stamped rim, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A rectangle with a stamped rim. The face has no letters.",
+      "palette": [
+        "#2a2622",
+        "#8a7a68",
+        "#efe6d4"
+      ],
+      "lore_blurb": "The plate carries the WorldId display name as runtime type. Albedo stays blank.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 200,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_steel_blank_plate/",
+        "kit_id": "ui_kit_steel",
+        "skin": "steel",
+        "skin_gate": "not Court parchment",
+        "element": "plate",
+        "runtime_label": "world_display_name",
+        "place": "HUD name plate. Not a quest-board prop.",
+        "flower_law": "outside_42m_or_spoke"
+      },
+      "prompt": "One oiled dark metal plate, stamped rim, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_steel_stamped_chip",
+      "display_name": "Stamped Chip",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "steel",
+        "icon",
+        "keyboard"
+      ],
+      "triangle_budget": 80,
+      "aura_prompt": "One small dark metal rectangle chip, face blank, edges stamped. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short dark bar with a stamped edge. Face empty.",
+      "palette": [
+        "#2a2622",
+        "#8a7a68",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Keyboard chip on the steel skin. Shortcut is type.",
+      "scale_vs_player": "0.06 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 80,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_steel_stamped_chip/",
+        "kit_id": "ui_kit_steel",
+        "skin": "steel",
+        "skin_gate": "not Court parchment",
+        "element": "chip",
+        "runtime_label": "shortcut",
+        "place": "Beside a lens or combat prompt.",
+        "flower_law": "outside_42m_or_spoke"
+      },
+      "prompt": "One small dark metal rectangle chip, face blank, edges stamped. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_steel_slide_toast",
+      "display_name": "Slide Toast",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "steel",
+        "toast"
+      ],
+      "triangle_budget": 220,
+      "aura_prompt": "One long oiled metal plate on a shallow slide track, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A plate in a track. It reads as a slide, not a parchment card.",
+      "palette": [
+        "#2a2622",
+        "#8a7a68",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Steel toast. It slides in. A failure stays on the plate. It does not turn into a green success.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 220,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_steel_slide_toast/",
+        "kit_id": "ui_kit_steel",
+        "skin": "steel",
+        "skin_gate": "not Court parchment",
+        "element": "toast",
+        "runtime_label": "result_stays",
+        "place": "HUD toast. Failure does not auto-dismiss.",
+        "flower_law": "outside_42m_or_spoke"
+      },
+      "prompt": "One long oiled metal plate on a shallow slide track, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_gossip_torn_margin",
+      "display_name": "Torn Margin",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "gossip"
+      ],
+      "triangle_budget": 140,
+      "aura_prompt": "One paper scrap with a single ragged edge and no speech tail. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A scrap with one rough edge. No bubble and no tail.",
+      "palette": [
+        "#efe6d4",
+        "#8a7a68",
+        "#2a2622"
+      ],
+      "lore_blurb": "Gossip chrome. A torn margin or, on the Coast, the world chalk stroke. Never a chat bubble.",
+      "scale_vs_player": "0.10 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 140,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_gossip_torn_margin/",
+        "kit_id": "ui_kit_steel",
+        "skin": "steel",
+        "skin_gate": "gossip line",
+        "element": "scrap",
+        "runtime_label": "gossip_line",
+        "place": "HUD margin. Coast chalk stays vfx_crime_chalk_tick in the world.",
+        "flower_law": "n/a"
+      },
+      "prompt": "One paper scrap with a single ragged edge and no speech tail. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_arena_sand_insert",
+      "display_name": "Arena Sand Insert",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "arena",
+        "court"
+      ],
+      "triangle_budget": 120,
+      "aura_prompt": "One sand-colored steel strip set into a warm paper corner. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A sand strip in paper. The exception reads before a swing.",
+      "palette": [
+        "#f3e6d0",
+        "#c4a574",
+        "#8a7a68",
+        "#2a2622"
+      ],
+      "lore_blurb": "Arena sand keeps parchment chrome and shows this steel insert. About 8 m around Hub local (0, 18).",
+      "scale_vs_player": "0.14 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 120,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_arena_sand_insert/",
+        "kit_id": "ui_kit_court",
+        "skin": "arena_insert",
+        "skin_gate": "Hub arena sand",
+        "element": "insert",
+        "runtime_label": "none",
+        "place": "Parchment HUD while the player stands on arena sand.",
+        "flower_law": "arena_sand_exception"
+      },
+      "prompt": "One sand-colored steel strip set into a warm paper corner. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_poise_tick_notch",
+      "display_name": "Poise Tick",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "poise"
+      ],
+      "triangle_budget": 60,
+      "aura_prompt": "One small notch cut into the edge of a dark metal plate. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One notch. Not a bar and not a screen frame.",
+      "palette": [
+        "#2a2622",
+        "#8a7a68",
+        "#efe6d4"
+      ],
+      "lore_blurb": "A poise hit ticks the active plate. No health bar replaces the world's own tell.",
+      "scale_vs_player": "0.05 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 60,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_poise_tick_notch/",
+        "kit_id": "ui_kit_steel",
+        "skin": "shared",
+        "skin_gate": "poise hit on the active plate",
+        "element": "notch",
+        "runtime_label": "none",
+        "place": "Edge of the active toast or plate. Not a full-screen frame.",
+        "flower_law": "n/a"
+      },
+      "prompt": "One small notch cut into the edge of a dark metal plate. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_hub_urn_tab",
+      "display_name": "Urn Wood Tab",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "hub"
+      ],
+      "triangle_budget": 180,
+      "aura_prompt": "One small urn-wood plaque tab, top edge scooped like an urn lip, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A wood tab with an urn lip. No letters.",
+      "palette": [
+        "#6a5340",
+        "#c4b49a",
+        "#c8721a"
+      ],
+      "lore_blurb": "Hub quest-board icon inside the Court. Rule #c8721a is a 2 px edge, not a fill. The hall notice prop stays prop_hub_se_notice_blank.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 180,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_hub_urn_tab/",
+        "kit_id": "ui_kit_board",
+        "skin": "court",
+        "skin_gate": "Canon.InHubCourt",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. Not a second plaque in the hall.",
+        "flower_law": "inside_42m_court_only",
+        "rule_hex": "#c8721a"
+      },
+      "prompt": "One small urn-wood plaque tab, top edge scooped like an urn lip, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_fantasy_fold",
+      "display_name": "Fold Slate",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "fantasy"
+      ],
+      "triangle_budget": 180,
+      "aura_prompt": "One slate rectangle with a single corner folded over, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Slate with one folded corner. The fold is the read.",
+      "palette": [
+        "#4a463f",
+        "#c8a060",
+        "#2a2622"
+      ],
+      "lore_blurb": "Sundering board icon. Fold-offer slate. Rule #c8a060 is 2 px.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 180,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_fantasy_fold/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Fantasy",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token.",
+        "flower_law": "n/a",
+        "rule_hex": "#c8a060"
+      },
+      "prompt": "One slate rectangle with a single corner folded over, face blank. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_tunya_slat",
+      "display_name": "Terrace Slat",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "tunya"
+      ],
+      "triangle_budget": 140,
+      "aura_prompt": "One fruit-wood slat with a thin warm edge, no fruit. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One slat. No fruit cluster and no tree.",
+      "palette": [
+        "#6a5340",
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Tunya board icon. Fruit-not-tree wood. Rule #c8721a is 2 px. No fruit mesh.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 140,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_tunya_slat/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Tunya",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token.",
+        "flower_law": "n/a",
+        "rule_hex": "#c8721a"
+      },
+      "prompt": "One fruit-wood slat with a thin warm edge, no fruit. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_ruins_chip",
+      "display_name": "Unfinished Limestone",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "ruins"
+      ],
+      "triangle_budget": 160,
+      "aura_prompt": "One limestone chip with a groove that stops before the far edge. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A chip and a groove that does not finish. No letters.",
+      "palette": [
+        "#c4b49a",
+        "#b89060",
+        "#3a3428"
+      ],
+      "lore_blurb": "Sovereign Ruins board icon. An unfinished line. Rule #b89060 is 2 px.",
+      "scale_vs_player": "0.10 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 160,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_ruins_chip/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Ruins",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token.",
+        "flower_law": "n/a",
+        "rule_hex": "#b89060"
+      },
+      "prompt": "One limestone chip with a groove that stops before the far edge. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_crime_bill",
+      "display_name": "Posted Bill",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "crime"
+      ],
+      "triangle_budget": 170,
+      "aura_prompt": "One blank paper bill held by a single iron nail at the top. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Paper and one nail. No words and no seal crest.",
+      "palette": [
+        "#efe6d4",
+        "#c8a060",
+        "#2a2622"
+      ],
+      "lore_blurb": "Iron Coast board icon. A posted bill. Rule #c8a060 is 2 px. The bill text is runtime, one line.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 170,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_crime_bill/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Crime",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. Not a chat bill.",
+        "flower_law": "n/a",
+        "rule_hex": "#c8a060"
+      },
+      "prompt": "One blank paper bill held by a single iron nail at the top. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_cyber_hole",
+      "display_name": "Missing-Number Plate",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "cyber"
+      ],
+      "triangle_budget": 200,
+      "aura_prompt": "One dark metal plate with a single round hole through the face, no digit. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A plate and a hole. The hole is the missing number. No glyph.",
+      "palette": [
+        "#2a2622",
+        "#3dffa0",
+        "#8a7a68"
+      ],
+      "lore_blurb": "Grid board icon. The number stays missing. Rule #3dffa0 is 2 px around the hole, not a fill.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 200,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_cyber_hole/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Cyber",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. No numeral.",
+        "flower_law": "n/a",
+        "rule_hex": "#3dffa0"
+      },
+      "prompt": "One dark metal plate with a single round hole through the face, no digit. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_frontier_canvas",
+      "display_name": "Road Canvas",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "frontier"
+      ],
+      "triangle_budget": 180,
+      "aura_prompt": "One hemmed canvas rectangle, stitching on the edge, no words. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Canvas with a stitched hem. No lettering.",
+      "palette": [
+        "#c4b49a",
+        "#4a3828",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Frontier board icon. The road-is-our-door line is runtime type if a quest exists. Rule #4a3828 is 2 px.",
+      "scale_vs_player": "0.14 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 180,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_frontier_canvas/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Frontier",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. Not the Frontier plaque mesh.",
+        "flower_law": "n/a",
+        "rule_hex": "#4a3828"
+      },
+      "prompt": "One hemmed canvas rectangle, stitching on the edge, no words. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_dawn_mercy",
+      "display_name": "Mercy Card",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "dawn"
+      ],
+      "triangle_budget": 150,
+      "aura_prompt": "One plain rounded card, warm and blank, no crest and no word. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A plain card. No victory mark.",
+      "palette": [
+        "#f3e6d0",
+        "#ffd0a0",
+        "#3a3428"
+      ],
+      "lore_blurb": "Permanent Dawn board icon. A mercy card that does not say victory. Rule #ffd0a0 is 2 px.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 150,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_dawn_mercy/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Superhero",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. Do not fill the mercy plaza heart.",
+        "flower_law": "n/a",
+        "rule_hex": "#ffd0a0"
+      },
+      "prompt": "One plain rounded card, warm and blank, no crest and no word. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_crucible_bracket",
+      "display_name": "Unclosed Bracket",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "crucible"
+      ],
+      "triangle_budget": 160,
+      "aura_prompt": "One dark metal bracket whose two arms do not meet. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two arms and a gap. The bracket does not close.",
+      "palette": [
+        "#2a2622",
+        "#20ffd0",
+        "#8a7a68"
+      ],
+      "lore_blurb": "Crucible board icon. Same open law as the Gap Bracket. Rule #20ffd0 is 2 px in the gap, not a fill.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 160,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_crucible_bracket/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Crucible",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. Do not close the gap. Construct cap stays 0.",
+        "flower_law": "n/a",
+        "rule_hex": "#20ffd0"
+      },
+      "prompt": "One dark metal bracket whose two arms do not meet. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "ui_board_sere_frame",
+      "display_name": "Furnace Frame",
+      "batch": "B29_ui",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "ui",
+        "chrome",
+        "board",
+        "sere"
+      ],
+      "triangle_budget": 200,
+      "aura_prompt": "One small dark window frame with one ember notch in the sill, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A frame and a notch of ember. No flame tongue.",
+      "palette": [
+        "#2a2622",
+        "#e07030",
+        "#8a7a68"
+      ],
+      "lore_blurb": "Sere board icon. Furnace-eye window frame. Rule #e07030 is the notch, 2 px, not a jet. Not vfx_sere_coal_dark.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "nine_slice": false,
+        "bitmap": false,
+        "snap_grid_m": 1,
+        "lod0_tris": 200,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/ui_board_sere_frame/",
+        "kit_id": "ui_kit_board",
+        "skin": "steel",
+        "skin_gate": "Sere",
+        "element": "board",
+        "runtime_label": "one_board_line",
+        "place": "HUD board token. No flame mesh.",
+        "flower_law": "n/a",
+        "rule_hex": "#e07030"
+      },
+      "prompt": "One small dark window frame with one ember notch in the sill, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain dark studio, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn surface, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    }
+  ]
+}

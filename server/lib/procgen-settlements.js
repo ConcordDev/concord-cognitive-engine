@@ -9,7 +9,9 @@
 //
 // When `spawnSettlementForRegion(db, region)` runs, it samples 3-5
 // NPC archetypes deterministically from sha1(regionId), drops them
-// inside the region radius, and tags them with the region id. NPCs
+// inside the region radius, and tags them with the region id. MEGAWORLD W1:
+// the same call founds or joins a Living Society `settlements` row (no second
+// identity table). Decay tombstones NPCs AND abandons the settlement row.
 // fade if the region itself decays (the lattice-quest-composer's
 // realiseLatticeBornQuest cascades into decayRegion → cascades into
 // decaySettlementForRegion below).
@@ -20,6 +22,11 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import {
+  foundSettlement,
+  abandonSettlement,
+  findSettlementByRegion,
+} from "./concordia-megaworld.js";
 
 const MAX_NPCS_PER_REGION = 5;
 const MIN_NPCS_PER_REGION = 3;
@@ -77,18 +84,68 @@ function seededRng(seed) {
   };
 }
 
+function settlementNameForRegion(region) {
+  if (region?.name) return String(region.name).slice(0, 80);
+  if (region?.region_kind) return String(region.region_kind).replace(/_/g, " ");
+  return `region ${region.id}`;
+}
+
+function tableExists(db, name) {
+  try {
+    return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+  } catch { return false; }
+}
+
+/**
+ * Found or join the Living Society row for this region. Missing settlements
+ * table → null (procgen NPC packs still work). Never invents a mill/spring.
+ */
+function joinOrFoundSettlement(db, region) {
+  if (!db || !region?.id || !region?.world_id) return null;
+  if (!tableExists(db, "settlements")) return null;
+  try {
+    const existing = findSettlementByRegion(db, region.id);
+    if (existing) {
+      if (existing.status === "abandoned") {
+        try {
+          db.prepare(`UPDATE settlements SET status = 'active', abandoned_at = NULL WHERE id = ?`)
+            .run(existing.id);
+        } catch { /* status col optional */ }
+      }
+      return { ok: true, action: "joined", id: existing.id };
+    }
+    return foundSettlement(db, {
+      worldId: region.world_id,
+      name: settlementNameForRegion(region),
+      centerX: Number(region.anchor_x) || 0,
+      centerZ: Number(region.anchor_z) || 0,
+      radius: Math.max(20, Number(region.radius_m) || 100),
+      regionId: region.id,
+      actorKind: "system",
+      actorId: "procgen-region",
+    });
+  } catch (err) {
+    try { logger.warn?.("procgen-settlements", "found_failed", { regionId: region.id, error: err?.message }); }
+    catch { /* best-effort */ }
+    return null;
+  }
+}
+
 /**
  * Spawn (or return existing) settlement NPCs around the given region.
  *
  * @param {import("better-sqlite3").Database} db
- * @param {{ id: string, world_id: string, anchor_x: number, anchor_z: number, radius_m: number, region_kind?: string }} region
- * @returns {{ ok: boolean, action: 'created' | 'already_exists' | 'noop', npcs: Array }}
+ * @param {{ id: string, world_id: string, anchor_x: number, anchor_z: number, radius_m: number, region_kind?: string, name?: string }} region
+ * @returns {{ ok: boolean, action: 'created' | 'already_exists' | 'noop', npcs: Array, settlementId?: string }}
  */
 export function spawnSettlementForRegion(db, region) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!region?.id || !region?.world_id) return { ok: false, reason: "invalid_region" };
 
   ensureSchema(db);
+
+  const identity = joinOrFoundSettlement(db, region);
+  const settlementId = identity?.id || null;
 
   // Idempotency: if any non-decayed NPC already exists for this region,
   // return them.
@@ -97,7 +154,7 @@ export function spawnSettlementForRegion(db, region) {
      WHERE region_id = ? AND decayed_at IS NULL
   `).all(region.id);
   if (existing.length > 0) {
-    return { ok: true, action: "already_exists", npcs: existing };
+    return { ok: true, action: "already_exists", npcs: existing, settlementId };
   }
 
   const rng = seededRng(`pgs_${region.id}`);
@@ -141,7 +198,7 @@ export function spawnSettlementForRegion(db, region) {
     }
   }
 
-  return { ok: true, action: "created", npcs: created };
+  return { ok: true, action: "created", npcs: created, settlementId };
 }
 
 /**
@@ -153,13 +210,18 @@ export function spawnSettlementForRegion(db, region) {
 export function decaySettlementForRegion(db, regionId, reason = "region_decayed") {
   if (!db || !regionId) return { ok: false, reason: "missing_args" };
   ensureSchema(db);
+  let abandoned = null;
+  try {
+    const row = findSettlementByRegion(db, regionId);
+    if (row?.id) abandoned = abandonSettlement(db, row.id, { reason });
+  } catch { /* settlements table optional */ }
   try {
     const result = db.prepare(`
       UPDATE procgen_settlement_npcs
          SET decayed_at = unixepoch()
        WHERE region_id = ? AND decayed_at IS NULL
     `).run(regionId);
-    return { ok: true, decayed: result.changes ?? 0, reason };
+    return { ok: true, decayed: result.changes ?? 0, reason, abandoned: abandoned?.ok === true, settlementId: abandoned?.id || null };
   } catch (err) {
     try { logger.warn?.("procgen-settlements", "decay_failed", { regionId, error: err?.message }); }
     catch { /* logger best-effort */ }

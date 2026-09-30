@@ -38,6 +38,7 @@ import {
   Eye,
   Hammer,
 } from 'lucide-react';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { cn } from '@/lib/utils';
 import type { ChatMode } from './ChatModeTypes';
 
@@ -474,14 +475,15 @@ interface MessageActionsProps {
 export function MessageActions({ messageContent, onSendMessage }: MessageActionsProps) {
   return (
     <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/30">
-      <button
-        onClick={() => onSendMessage(`Save this as a DTU: "${messageContent.slice(0, 100)}..."`)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-colors"
-        title="Save as DTU"
-      >
-        <FileText className="w-2.5 h-2.5" />
-        Save as DTU
-      </button>
+      <SaveAsDtuButton
+        apiSource="chat-message"
+        title={(messageContent || 'Chat message').slice(0, 80)}
+        content={messageContent || ''}
+        extraTags={['chat', 'message']}
+        compact
+        confirm
+        className="!text-zinc-400 hover:!text-neon-cyan hover:!bg-neon-cyan/10"
+      />
       <button
         onClick={() => onSendMessage(`Explore this topic deeper: "${messageContent.slice(0, 80)}"`)}
         className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
@@ -511,11 +513,6 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
       case 'assist':
         return [
           {
-            label: 'Create DTU from this',
-            prompt: `Create a DTU from this response in ${currentLens}: "${responseContent.slice(0, 120)}"`,
-            icon: FileText,
-          },
-          {
             label: 'What\'s next?',
             prompt: 'Based on what we just discussed, what should I do next?',
             icon: Zap,
@@ -543,21 +540,27 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
           },
         ];
       default:
-        return [
-          {
-            label: 'Save as DTU',
-            prompt: `Save this as a DTU: "${responseContent.slice(0, 120)}"`,
-            icon: FileText,
-          },
-        ];
+        return [];
     }
   };
 
   const actions = getActions();
-  if (actions.length === 0) return null;
+  const showSaveAsDtu = Boolean(responseContent) && (mode === 'assist' || mode === 'chat' || !['assist', 'explore', 'connect'].includes(mode));
+  if (!showSaveAsDtu && actions.length === 0 && !onViewContext && !onForgeDTU) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/30">
+      {showSaveAsDtu && (
+        <SaveAsDtuButton
+          apiSource="chat-message"
+          title={(responseContent || 'Chat response').slice(0, 80)}
+          content={responseContent}
+          extraTags={['chat', 'response', mode, currentLens].filter(Boolean)}
+          compact
+          confirm
+          className="!text-zinc-400 hover:!text-zinc-300 hover:!bg-lattice-elevated"
+        />
+      )}
       {actions.map((action, i) => {
         const Icon = action.icon;
         return (

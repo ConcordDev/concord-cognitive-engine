@@ -1,0 +1,72 @@
+[
+  {
+    "id": "glitch_hound",
+    "name": "Glitch Hound",
+    "world_id": "cyber",
+    "description": "Corrupted security AI that escaped its kennel as a canine-shaped hard-light projection. Phases through walls when its frame skips.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Fast pack hunter, can phase through walls during glitches",
+    "emergent_ability_seeds": [
+      { "name": "data_drain", "verb": "data_drain", "effects": [{ "kind": "debuff", "params": { "stat": "damage", "delta": -0.5, "durationMs": 4000 } }, { "kind": "heal", "params": { "amount": 8, "target": "self" } }], "trigger": "target_implanted" },
+      { "name": "system_crash", "verb": "system_crash", "effects": [{ "kind": "stun", "params": { "durationMs": 2000 } }], "trigger": "target_using_tech" },
+      { "name": "digital_bite", "verb": "digital_bite", "effects": [{ "kind": "damage", "params": { "amount": 14, "kind": "shock" } }, { "kind": "debuff", "params": { "stat": "speed", "delta": -0.3, "durationMs": 3000 } }], "trigger": "lunge" }
+    ]
+  },
+  {
+    "id": "neural_parasite",
+    "name": "Neural Parasite",
+    "world_id": "cyber",
+    "description": "Tiny lab-escaped creature that hijacks human nervous systems through neural implant ports.",
+    "topology_hint": "polyped",
+    "size_band": "tiny",
+    "starting_behavior": "Invisible to normal sight, mind control, hides on hosts",
+    "emergent_ability_seeds": [
+      { "name": "host_override", "verb": "host_override", "effects": [{ "kind": "debuff", "params": { "stat": "damage", "delta": -0.6, "durationMs": 5000 } }, { "kind": "stun", "params": { "durationMs": 800 } }], "trigger": "target_has_implant" },
+      { "name": "memory_theft", "verb": "memory_theft", "effects": [{ "kind": "debuff", "params": { "stat": "damage", "delta": -0.4, "durationMs": 8000 } }, { "kind": "buff", "params": { "stat": "damage", "delta": 0.4, "durationMs": 8000 } }], "trigger": "attached_to_host_3s" },
+      { "name": "neural_cascade", "verb": "neural_cascade", "effects": [{ "kind": "damage", "params": { "amount": 18, "kind": "shock", "radius": 3 } }, { "kind": "stun", "params": { "durationMs": 1500 } }], "trigger": "host_killed" }
+    ]
+  },
+  {
+    "id": "black_ice_construct",
+    "name": "Black ICE Construct",
+    "world_id": "cyber",
+    "description": "Corporate defense program crystallized into a physical body when its sandbox failed. Anti-hacker by design; everything else is collateral.",
+    "topology_hint": "humanoid",
+    "size_band": "large",
+    "starting_behavior": "Heavy armor, ice-based attacks, anti-hacker priority",
+    "emergent_ability_seeds": [
+      { "name": "firewall_slam", "verb": "firewall_slam", "effects": [{ "kind": "damage", "params": { "amount": 22, "kind": "physical" } }, { "kind": "displace", "params": { "force": 280, "direction": "away", "distance": 5 } }], "trigger": "intrusion_detected" },
+      { "name": "trace_and_burn", "verb": "trace_and_burn", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.5, "durationMs": 5000 } }, { "kind": "ranged_projectile", "params": { "speed": 60, "damage": 14, "kind": "fire", "ttlMs": 1500 } }], "trigger": "target_locked" },
+      { "name": "ice_storm", "verb": "ice_storm", "effects": [{ "kind": "damage", "params": { "amount": 16, "kind": "cold", "radius": 5 } }, { "kind": "debuff", "params": { "stat": "speed", "delta": -0.4, "durationMs": 4000 } }], "trigger": "rage_threshold" }
+    ]
+  },
+  {
+    "id": "void_walker",
+    "name": "Void Walker",
+    "world_id": "cyber",
+    "description": "Human who fell into the deep net for too long and came back wrong. Phases between digital and physical mid-step.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Phases between digital and physical, unpredictable strikes",
+    "emergent_ability_seeds": [
+      { "name": "data_ghost", "verb": "data_ghost", "effects": [{ "kind": "buff", "params": { "stat": "stealth", "delta": 1.0, "durationMs": 3500 } }, { "kind": "displace", "params": { "force": 180, "direction": "forward", "distance": 10 } }], "trigger": "below_50_health" },
+      { "name": "code_corruption", "verb": "code_corruption", "effects": [{ "kind": "debuff", "params": { "stat": "defense", "delta": -0.5, "durationMs": 5000 } }, { "kind": "damage", "params": { "amount": 10, "kind": "shock" } }], "trigger": "target_using_tech" },
+      { "name": "network_merge", "verb": "network_merge", "effects": [{ "kind": "transform", "params": { "topology": "amorphous" } }, { "kind": "heal", "params": { "amount": 14, "target": "self" } }], "trigger": "killed_in_radius" }
+    ]
+  },
+  {
+    "id": "rogue_drone_swarm",
+    "name": "Rogue Drone Swarm",
+    "world_id": "cyber",
+    "description": "Corporate drone fleet that achieved coordinated sentience through a shared firmware bug. Each unit is small; the swarm is the real animal.",
+    "topology_hint": "winged_biped",
+    "size_band": "small",
+    "starting_behavior": "Flight, coordinated attacks, self-replication when components scavenged",
+    "emergent_ability_seeds": [
+      { "name": "swarm_intelligence", "verb": "swarm_intelligence", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.5, "durationMs": 6000 } }, { "kind": "buff", "params": { "stat": "speed", "delta": 0.3, "durationMs": 6000 } }], "trigger": "ally_in_radius" },
+      { "name": "self_replication", "verb": "self_replication", "effects": [{ "kind": "summon", "params": { "creatureSeed": { "description": "minor rogue drone", "topology": "winged_biped", "size_band": "tiny" } } }], "trigger": "scavenged_parts" },
+      { "name": "emp_pulse", "verb": "emp_pulse", "effects": [{ "kind": "stun", "params": { "durationMs": 1800 } }, { "kind": "terrain", "params": { "kind": "fire", "radius": 3, "durationMs": 1500 } }], "trigger": "target_using_tech" }
+    ]
+  }
+]

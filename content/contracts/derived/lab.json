@@ -205,6 +205,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "lab.label-generate",
+      "name": "label-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.label-list",
+      "name": "label-list"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "lab.like",
       "name": "like"
     },
@@ -298,6 +324,84 @@
       ],
       "macro_id": "lab.notebook-update",
       "name": "notebook-update"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-create",
+      "name": "org-create"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-join",
+      "name": "org-join"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-leave",
+      "name": "org-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-list-mine",
+      "name": "org-list-mine"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-members",
+      "name": "org-members"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lab.org-set-role",
+      "name": "org-set-role"
     },
     {
       "_derived": true,
@@ -601,5 +705,5 @@
   ],
   "domain": "lab",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 54
 }

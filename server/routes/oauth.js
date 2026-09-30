@@ -200,8 +200,8 @@ export default function registerOAuthRoutes(app, {
     const refreshToken = createRefreshToken(user.id);
 
     // Set httpOnly cookies
-    if (token) setAuthCookie(res, token);
-    if (refreshToken) setRefreshCookie(res, refreshToken);
+    if (token) setAuthCookie(res, token, req);
+    if (refreshToken) setRefreshCookie(res, refreshToken, req);
 
     // Track refresh token family
     if (refreshToken && jwt) {

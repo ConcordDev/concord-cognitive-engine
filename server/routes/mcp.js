@@ -212,7 +212,8 @@ export default function createMCPRouter({
           tools: response?.result?.tools || [],
           nextCursor: response?.result?.nextCursor,
           externalTools,
-          totalLocal: LENS_ACTIONS.size,
+          totalLocal: (() => { try { return [...LENS_ACTIONS.keys()].filter(k => { const a=k.split(".").slice(1).join("."); return !["analyze","generate","suggest","like","bookmark","share","repost","pin","vote","rate","archive","publish","save","move","follow","unfollow","react","comment"].includes(a); }).length; } catch(_){ return LENS_ACTIONS.size; } })(),
+          rawLensActionCount: LENS_ACTIONS.size,
           totalExternal: externalTools.length,
         });
       } catch (err) {
@@ -445,7 +446,7 @@ export default function createMCPRouter({
       res.write(`data: ${JSON.stringify({
         type: "connected",
         serverName: "concord-mcp",
-        toolCount: LENS_ACTIONS.size,
+        toolCount: (() => { try { return [...LENS_ACTIONS.keys()].filter(k => { const a=k.split(".").slice(1).join("."); return !["analyze","generate","suggest","like","bookmark","share","repost","pin","vote","rate","archive","publish","save","move","follow","unfollow","react","comment"].includes(a); }).length; } catch(_){ return LENS_ACTIONS.size; } })(),
         externalServerCount: externalServers.size,
         timestamp: new Date().toISOString(),
       })}\n\n`);
@@ -479,7 +480,8 @@ export default function createMCPRouter({
         protocol: "MCP",
         protocolVersion: "2024-11-05",
         server: "concord-cognitive-engine",
-        localToolCount: LENS_ACTIONS.size,
+        localToolCount: (() => { try { return [...LENS_ACTIONS.keys()].filter(k => { const a=k.split(".").slice(1).join("."); return !["analyze","generate","suggest","like","bookmark","share","repost","pin","vote","rate","archive","publish","save","move","follow","unfollow","react","comment"].includes(a); }).length; } catch(_){ return LENS_ACTIONS.size; } })(),
+        rawLensActionCount: LENS_ACTIONS.size,
         externalServers: externalServers.size,
         sseClients: sseClients.size,
         endpoints: {

@@ -25,7 +25,7 @@ describe('power-cluster 3D pickup layer', () => {
     expect(src).toMatch(/disposeGroup/);
   });
   it('is mounted in the world lens 3D view', () => {
-    const page = read('app/lenses/world/page.tsx');
+    const page = read('components/world/WorldOsSurface.tsx');
     expect(page).toMatch(/import\('@\/components\/world\/PowerClusterLayer'\)/);
     expect(page).toMatch(/<PowerClusterLayer worldId=/);
   });

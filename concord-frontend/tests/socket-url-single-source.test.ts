@@ -2,10 +2,9 @@
  * Regression test: every socket.io client must connect to the RESOLVED
  * SOCKET_URL, never same-origin.
  *
- * `lib/realtime/socket.ts` documents at length that defaulting the socket URL
- * to '' makes socket.io connect same-origin — the Next dev server, which has
- * no socket server, because `next.config.js`'s rewrites proxy HTTP but not
- * WebSocket upgrades. It fixed that for itself. But SOCKET_URL was module-
+ * `lib/realtime/socket.ts` now resolves SOCKET_URL to the page origin in the
+ * browser (same-origin /socket.io via Next HTTP rewrite + polling-first).
+ * Direct `io({ path })` without that shared URL is still forbidden. SOCKET_URL was module-
  * private, so `lib/hooks/useYjsDoc.ts` had independently written
  * `io({ path: '/socket.io' })` — no URL — and reintroduced exactly that bug.
  *

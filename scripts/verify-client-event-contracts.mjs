@@ -141,6 +141,45 @@ function walk(dir, opts, acc = []) {
   return acc;
 }
 
+// Regex literals. Without this, a quote inside a regex literal — e.g.
+// server.js's `/act\s+as\s+(if|though)\s+you\s+(have\s+no|don't\s+have)/i` —
+// was read as the start of a string, which flipped string/code parity for
+// the rest of the file: comments stopped being stripped and later brace
+// matching failed at random (an apostrophe in a comment inside
+// emitToWorld hid it, so walker:dispatched looked dead). A `/` begins a
+// regex only where an expression can start; after an identifier, number,
+// `)` or `]` it is division.
+const REGEX_KEYWORDS = new Set(['return', 'typeof', 'case', 'in', 'of', 'void', 'delete', 'throw', 'new', 'instanceof', 'else', 'do', 'yield', 'await']);
+function regexLiteralEnd(src, i, before, beforeEnd) {
+  if (src[i] !== '/' || src[i + 1] === '/' || src[i + 1] === '*') return -1;
+  let j = beforeEnd - 1;
+  while (j >= 0 && /\s/.test(before[j])) j--;
+  if (j >= 0) {
+    const prev = before[j];
+    if (/[\w$]/.test(prev)) {
+      let k = j;
+      while (k >= 0 && /[\w$]/.test(before[k])) k--;
+      if (!REGEX_KEYWORDS.has(before.slice(k + 1, j + 1))) return -1;
+    } else if (prev === ')' || prev === ']') {
+      return -1;
+    }
+  }
+  let inClass = false;
+  for (let p = i + 1; p < src.length; p++) {
+    const c = src[p];
+    if (c === '\\') { p++; continue; }
+    if (c === '\n') return -1;
+    if (inClass) { if (c === ']') inClass = false; continue; }
+    if (c === '[') { inClass = true; continue; }
+    if (c === '/') {
+      let e = p + 1;
+      while (e < src.length && /[a-z]/i.test(src[e])) e++;
+      return e;
+    }
+  }
+  return -1;
+}
+
 // Character-by-character, string/template-literal-aware comment stripper.
 // Same shape as server/tests/invariants/realtime-lens-event-liveness.test.js
 // (itself modeled on server/lib/detectors/*): tracks whether we're inside a
@@ -171,6 +210,10 @@ function stripComments(src) {
       i += 2;
       continue;
     }
+    if (ch === '/') {
+      const end = regexLiteralEnd(src, i, out, out.length);
+      if (end > 0) { out += src.slice(i, end); i = end; continue; }
+    }
     out += ch;
     i++;
   }
@@ -193,6 +236,10 @@ function matchBracket(src, openIdx, openCh, closeCh) {
       continue;
     }
     if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
+    if (ch === '/') {
+      const end = regexLiteralEnd(src, i, src, i);
+      if (end > 0) { i = end - 1; continue; }
+    }
     if (ch === openCh) depth++;
     else if (ch === closeCh) {
       depth--;
@@ -219,6 +266,10 @@ function splitTopLevelArgs(raw) {
       continue;
     }
     if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; cur += ch; continue; }
+    if (ch === '/') {
+      const end = regexLiteralEnd(raw, i, raw, i);
+      if (end > 0) { cur += raw.slice(i, end); i = end - 1; continue; }
+    }
     if (ch === '(' || ch === '[' || ch === '{') { depth++; cur += ch; continue; }
     if (ch === ')' || ch === ']' || ch === '}') { depth--; cur += ch; continue; }
     if (ch === ',' && depth === 0) { args.push(cur.trim()); cur = ''; continue; }
@@ -391,6 +442,15 @@ function resolveHelperCallSites(files, helpers) {
 
       const argsRaw = stripped.slice(openIdx + 1, closeIdx);
       const argList = splitTopLevelArgs(argsRaw);
+      // emitWorldEvent({ event: "boss:state", ... }) — destructured object
+      // helper. Positional paramIndex cannot see the property; harvest
+      // event: "literal" from the first object argument.
+      const firstArg = (argList[0] || "").trim();
+      if (fnName === "emitWorldEvent" && firstArg.startsWith("{")) {
+        const objEventRe = /\bevent\s*:\s*(['"`])([a-zA-Z][\w:.-]*?)\1/g;
+        let om;
+        while ((om = objEventRe.exec(firstArg)) != null) live.add(om[2]);
+      }
       for (const paramIndex of helpers.get(fnName)) {
         const arg = argList[paramIndex];
         if (!arg) continue;
@@ -747,6 +807,7 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve
 if (isMain) main();
 
 export {
+  regexLiteralEnd,
   stripComments,
   matchBracket,
   splitTopLevelArgs,

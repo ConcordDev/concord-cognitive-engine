@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 type RecipeKind = 'fighting_style_recipe' | 'spell_recipe' | 'blueprint';
 
@@ -172,13 +173,13 @@ export default function RecipeAuthorPanel({ onPublished, onClose }: Props) {
     setSubmitting(true);
     try {
       const meta = buildMeta();
-      const body = {
+      const body = withContentLicense({
         title: title.trim(),
         content: `Personal ${tab.replace(/_/g, ' ')}`,
         tags: [tab, 'concordia'],
         scope: 'personal',
         meta,
-      };
+      }, 'world_asset', ['private']);
       const res = await api.post('/api/dtus', body);
       const dtuId = res.data?.dtu?.id || res.data?.id;
       if (!dtuId) {

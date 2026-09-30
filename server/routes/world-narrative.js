@@ -19,6 +19,25 @@ import { getAuthoredNPC } from "../lib/content-seeder.js";
 const _loreCache = new Map();
 const LORE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Negative cache: worldId → timestamp of last FAILED synthesis. When the brain
+// is degraded (A40 down, Ollama mid-model-swap) every `synthesizeArcLore` call
+// runs the full narrative-bridge → oracle-brain → fetch(ollama) chain and fails,
+// and `history-engine.js` re-triggers `buildLore("concordia-hub")` every 20
+// civilization ticks — so a down brain turns into a steady storm of failing
+// synthesis chains + `oracle_brain_call_failed` / `lore_synthesis_failed` log
+// triplets. This backs the background trigger off for a cooldown after a
+// failure; the admin force-refresh route bypasses it.
+const _loreFailAt = new Map();
+const LORE_FAIL_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+// In-flight de-dupe: worldId → the pending buildLore promise. A slow/degraded
+// brain makes each synthesis attempt take tens of seconds; without this,
+// history-engine's every-20-tick trigger + the 10-min interval + any HTTP GET
+// all fire concurrently BEFORE the first attempt completes and records its
+// failure, so the negative cache above never gets a chance to short-circuit
+// them. Coalesce concurrent callers onto one attempt per world.
+const _loreInflight = new Map();
+
 function getCachedLore(worldId) {
   const entry = _loreCache.get(worldId);
   if (!entry) return null;
@@ -33,17 +52,38 @@ function setCachedLore(worldId, lore) {
   _loreCache.set(worldId, { lore, generatedAt: Date.now() });
 }
 
-async function buildLore(worldId) {
+async function buildLore(worldId, { force = false } = {}) {
   // Use narrative bridge so authored lore events (Founding Compact, Purge, etc.)
   // flow into the synthesis prompt as world history context.
-  const result = await synthesizeArcLore(worldId);
-  if (result.ok) {
-    setCachedLore(worldId, result.lore);
-    logger.info({ worldId }, "lore_synthesized");
-  } else {
-    logger.warn({ worldId, error: result.error }, "lore_synthesis_failed");
+  if (!force) {
+    const failedAt = _loreFailAt.get(worldId);
+    if (failedAt && Date.now() - failedAt < LORE_FAIL_COOLDOWN_MS) {
+      return { ok: false, error: "lore_synthesis_cooldown", cooldown: true };
+    }
+    // Coalesce concurrent callers onto the single pending attempt for this world.
+    const pending = _loreInflight.get(worldId);
+    if (pending) return pending;
   }
-  return result;
+
+  const run = (async () => {
+    const result = await synthesizeArcLore(worldId);
+    if (result.ok) {
+      setCachedLore(worldId, result.lore);
+      _loreFailAt.delete(worldId);
+      logger.info({ worldId }, "lore_synthesized");
+    } else {
+      _loreFailAt.set(worldId, Date.now());
+      logger.warn({ worldId, error: result.error }, "lore_synthesis_failed");
+    }
+    return result;
+  })();
+
+  _loreInflight.set(worldId, run);
+  try {
+    return await run;
+  } finally {
+    _loreInflight.delete(worldId);
+  }
 }
 
 /**
@@ -106,7 +146,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
   router.post("/lore/refresh", admin, wrap(async (req, res) => {
     const worldId = String(req.body?.worldId || req.query.worldId || "concordia-hub");
     _loreCache.delete(worldId);
-    const result = await buildLore(worldId);
+    const result = await buildLore(worldId, { force: true });
     if (!result.ok) {
       return res.status(503).json({ ok: false, error: result.error });
     }

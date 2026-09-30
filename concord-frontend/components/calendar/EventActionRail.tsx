@@ -41,6 +41,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface EventLite {
   id: string;
@@ -96,7 +97,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
       const r = await lensRun({
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `[Calendar] ${event.title}`,
           tags: ['calendar', event.eventType, 'event'],
           source: 'calendar:mint',
@@ -112,7 +113,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
               calendarArtifactId: event.id,
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

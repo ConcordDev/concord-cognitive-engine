@@ -1,0 +1,317 @@
+{
+  "countries": [
+    {
+      "country_id": "ghost_network",
+      "faction_id": "ghost_network",
+      "name": "The Ghost Network",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the most feared assassin-and-extraction network on the eastern seaboard. Selective contracts only \u2014 no children, no civilians, no work for the corporations who ran the betrayal.",
+      "capital": {
+        "name": "The Ghost Network",
+        "x": 2.72,
+        "z": 38.9
+      },
+      "anchors": [
+        {
+          "id": "ghost_network_gate",
+          "name": "The Ghost Network Gate",
+          "x": 2.72,
+          "z": 38.9,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "ghost_network_district",
+          "name": "dockside_warehouses",
+          "x": 10.72,
+          "z": 32.9,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "iron_rose_syndicate"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "iron_rose_syndicate",
+      "faction_id": "iron_rose_syndicate",
+      "name": "The Iron Rose Syndicate",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Run the largest organized-crime operation on the eastern seaboard through information, loyalty, and selective violence. Long-term: legitimize enough holdings that the next generation doesn't need a shotgun.",
+      "capital": {
+        "name": "The Iron Rose Syndicate",
+        "x": -6.41,
+        "z": 40.5
+      },
+      "anchors": [
+        {
+          "id": "iron_rose_syndicate_gate",
+          "name": "The Iron Rose Syndicate Gate",
+          "x": -6.41,
+          "z": 40.5,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "iron_rose_syndicate_district",
+          "name": "uptown_blocks",
+          "x": 1.59,
+          "z": 34.5,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "ghost_network"
+      ],
+      "territory_radius": 28.0
+    },
+    {
+      "country_id": "crime_corrupt_precinct",
+      "faction_id": "crime_corrupt_precinct",
+      "name": "The 14th Precinct",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain operational control of the 14th as the largest dirty-precinct in the city. Take Iron Rose protection money quietly; cover for the Ghost Network when it suits.",
+      "capital": {
+        "name": "The 14th Precinct",
+        "x": 23.05,
+        "z": -54.31
+      },
+      "anchors": [
+        {
+          "id": "crime_corrupt_precinct_gate",
+          "name": "The 14th Precinct Gate",
+          "x": 23.05,
+          "z": -54.31,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crime_corrupt_precinct_district",
+          "name": "14th_precinct_house",
+          "x": 31.05,
+          "z": -60.31,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "crime_federal_task_force",
+        "crime_pi_agency"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crime_white_collar_ring",
+      "faction_id": "crime_white_collar_ring",
+      "name": "The Hexshore Holdings Ring",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Run a multi-shell embezzlement operation through Hexshore Holdings. Move 30M annually through three layers of legitimate-looking business.",
+      "capital": {
+        "name": "The Hexshore Holdings Ring",
+        "x": -49.17,
+        "z": -16.93
+      },
+      "anchors": [
+        {
+          "id": "crime_white_collar_ring_gate",
+          "name": "The Hexshore Holdings Ring Gate",
+          "x": -49.17,
+          "z": -16.93,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crime_white_collar_ring_district",
+          "name": "hexshore_holdings_office",
+          "x": -41.17,
+          "z": -22.93,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [
+        "crime_federal_task_force"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "crime_federal_task_force",
+      "faction_id": "crime_federal_task_force",
+      "name": "The Federal Organized-Crime Task Force",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Build a multi-year RICO case across the corrupt 14th, the Iron Rose Syndicate, and the Hexshore Ring. Secure indictments before any one party realizes the others are also being investigated.",
+      "capital": {
+        "name": "The Federal Organized-Crime Task Force",
+        "x": 38.81,
+        "z": 43.1
+      },
+      "anchors": [
+        {
+          "id": "crime_federal_task_force_gate",
+          "name": "The Federal Organized-Crime Task Force Gate",
+          "x": 38.81,
+          "z": 43.1,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crime_federal_task_force_district",
+          "name": "federal_field_office_secure_floor",
+          "x": 46.81,
+          "z": 37.1,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "iron_rose_syndicate",
+        "crime_corrupt_precinct",
+        "crime_white_collar_ring"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crime_pi_agency",
+      "faction_id": "crime_pi_agency",
+      "name": "Halloran & Greer Investigations",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain a small principled PI agency that takes cases the police won't and the federal task force can't. Protect Halloran's daughter from the Iron Rose. Quietly feed evidence to Agent Navarro when it serves.",
+      "capital": {
+        "name": "Halloran & Greer Investigations",
+        "x": 24.0,
+        "z": -53.9
+      },
+      "anchors": [
+        {
+          "id": "crime_pi_agency_gate",
+          "name": "Halloran & Greer Investigations Gate",
+          "x": 24.0,
+          "z": -53.9,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crime_pi_agency_district",
+          "name": "halloran_greer_office",
+          "x": 32.0,
+          "z": -59.9,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [
+        "iron_rose_syndicate",
+        "crime_corrupt_precinct"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "crime_north_market_gang",
+      "faction_id": "crime_north_market_gang",
+      "name": "The North Market Gang",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Hold the North Market neighborhood. Run small-scale street operations. Resist the Iron Rose's slow encroachment. Protect kids from being recruited too young.",
+      "capital": {
+        "name": "The North Market Gang",
+        "x": 13.45,
+        "z": -43.99
+      },
+      "anchors": [
+        {
+          "id": "crime_north_market_gang_gate",
+          "name": "The North Market Gang Gate",
+          "x": 13.45,
+          "z": -43.99,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "crime_north_market_gang_district",
+          "name": "north_market_main_block",
+          "x": 21.45,
+          "z": -49.99,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "crime",
+      "preferred_visit_order": 7,
+      "climate_warning": null,
+      "disputed_border": [
+        "iron_rose_syndicate",
+        "crime_corrupt_precinct"
+      ],
+      "territory_radius": 23.0
+    }
+  ]
+}

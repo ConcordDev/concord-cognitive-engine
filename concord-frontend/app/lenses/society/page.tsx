@@ -17,12 +17,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -143,9 +140,7 @@ export default function SocietyLensPage() {
 
   return (
     <LensShell lensId="society" asMain={false}>
-      <FirstRunTour lensId="society" />
-      <ManifestActionBar />
-      <DepthBadge lensId="society" size="sm" className="ml-2" />
+      <FirstRunTour lensId="society" />      <DepthBadge lensId="society" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-amber-50">
       <header className="sticky top-0 z-10 border-b border-amber-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -218,11 +213,7 @@ export default function SocietyLensPage() {
           </div>
         )}
       </section>
-    </div>
-
-          <RecentMineCard domain="society" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="society" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="society" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="society" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

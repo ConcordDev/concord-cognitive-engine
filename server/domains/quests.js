@@ -19,6 +19,7 @@ import {
   claimQuestRewards,
   addQuestObjectives,
   addQuestRewards,
+  acceptQuest,
 } from "../lib/quests/quest-engine.js";
 
 const DEFAULT_WORLD = "concordia-hub";
@@ -92,6 +93,22 @@ function reshapeQuestForLens(db, userId, worldId, q) {
 }
 
 export default function registerQuestsMacros(register) {
+  /**
+   * quests.accept — write a player_quests row for an authored world_quests
+   * catalog id. Does NOT flip world_quests.status (multiplayer: catalog stays
+   * available). Second accept is idempotent.
+   * input: { questId, userId?, worldId? } → { ok, already?, status, worldStatus }
+   */
+  register("quests", "accept", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctxUser(ctx, input);
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.questId) return { ok: false, reason: "no_quest_id" };
+    const worldId = ctxWorld(ctx, input);
+    return acceptQuest(db, userId, worldId, input.questId);
+  }, { note: "accept an authored quest into player_quests without flipping the catalog row" });
+
   /**
    * quests.active — list a player's active quests (objectives + rewards merged).
    * input: { userId?, worldId? }  → { ok, quests }

@@ -49,6 +49,18 @@ describe("request-admission — classifyRequest", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/lens/run", authed: false })), PRIORITY.SHEDDABLE);
   });
 
+  it("login/register/refresh/csrf-token are PROTECTED even with no session (real prod bug, 2026-08-23)", () => {
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/login", authed: false })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/register", authed: false })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/refresh", authed: false })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/csrf-token", authed: false })), PRIORITY.PROTECTED);
+  });
+
+  it("other /api/auth/* paths (e.g. logout, password-reset) are NOT swept into the auth-critical carve-out", () => {
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/logout", authed: false })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/auth/forgot-password", authed: false })), PRIORITY.SHEDDABLE);
+  });
+
   it("bulk-shaped paths are SHEDDABLE even when authenticated", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/export/my-data", authed: true })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/api/ingest/bulk-upload", authed: true })), PRIORITY.SHEDDABLE);

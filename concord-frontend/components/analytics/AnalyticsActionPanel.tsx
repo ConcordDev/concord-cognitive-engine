@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -109,7 +110,7 @@ export function AnalyticsActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Analytics report`, tags: ['analytics', 'report', trendResult?.trend].filter((t): t is string => !!t), source: 'analytics:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, an: { funnel: funnelResult, cohort: cohortResult, anom: anomResult, trend: trendResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Analytics report`, tags: ['analytics', 'report', trendResult?.trend].filter((t): t is string => !!t), source: 'analytics:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, an: { funnel: funnelResult, cohort: cohortResult, anom: anomResult, trend: trendResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('analytics.mintedDtuId', id, { label: `Report DTU ${id.slice(0, 8)}…` }); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -138,7 +139,7 @@ export function AnalyticsActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Analytics benchmark`, tags: ['analytics', 'benchmark', 'public'], source: 'analytics:bench:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, funnel: funnelResult, trend: trendResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Analytics benchmark`, tags: ['analytics', 'benchmark', 'public'], source: 'analytics:bench:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, funnel: funnelResult, trend: trendResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

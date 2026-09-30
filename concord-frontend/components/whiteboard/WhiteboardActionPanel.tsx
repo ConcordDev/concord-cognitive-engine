@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -218,12 +219,12 @@ export function WhiteboardActionPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Whiteboard — ${boardName.trim() || 'session'}`,
           tags: ['whiteboard', 'board'],
           source: 'whiteboard:board:mint',
           meta: { visibility: 'private', consent: { allowCitations: false }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), boardId: savedBoardId, voteResult: tallyResult } },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -257,12 +258,12 @@ export function WhiteboardActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Public whiteboard — ${boardName.trim() || 'session'}`,
             tags: ['whiteboard', 'public'],
             source: 'whiteboard:board:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), tally: tallyResult } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

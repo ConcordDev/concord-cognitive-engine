@@ -608,19 +608,6 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "studio.master",
-      "name": "master"
-    },
-    {
-      "_derived": true,
-      "domain": "studio",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
       "macro_id": "studio.midi-map-add",
       "name": "midi-map-add"
     },
@@ -701,19 +688,6 @@
       ],
       "macro_id": "studio.midi-quantize",
       "name": "midi-quantize"
-    },
-    {
-      "_derived": true,
-      "domain": "studio",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "studio.mix",
-      "name": "mix"
     },
     {
       "_derived": true,
@@ -961,19 +935,6 @@
       ],
       "macro_id": "studio.record-config-set",
       "name": "record-config-set"
-    },
-    {
-      "_derived": true,
-      "domain": "studio",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "studio.render",
-      "name": "render"
     },
     {
       "_derived": true,
@@ -1303,5 +1264,5 @@
   ],
   "domain": "studio",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 100
+  "macroCount": 97
 }

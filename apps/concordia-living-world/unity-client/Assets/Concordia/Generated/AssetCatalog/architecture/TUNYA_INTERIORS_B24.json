@@ -1,0 +1,1199 @@
+{
+  "batch": "B24_arch_tunya",
+  "count": 25,
+  "parent_hall": "arch_hero_tunya_terrace_hall",
+  "kit_id": "arch_kit_tunya_veil",
+  "entries": [
+    {
+      "id": "arch_int_tunya_terrace_floor",
+      "display_name": "Terrace Floor Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One interior floor bay of limestone with a living-wood border. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap, soil and pollen in the joints, worn boards, a single module. No loose fruit, no tree, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior floor bay of limestone with a living-wood border. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap, soil and pollen in the joints, worn boards, a single module. No loose fruit, no tree, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat rectangle with a heavier timber border. Reads as floor.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior floor of the terrace hall. Four metre module.",
+      "scale_vs_player": "4 m module",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_terrace_floor/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 4000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_wood_ceiling",
+      "display_name": "Living-Wood Ceiling Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One living-wood ceiling bay, thick joists and a single board run, pollen on the wood. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap, warm timber, seen from below as the subject. No solar tile, no ceiling eye, no chandelier. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood ceiling bay, thick joists and a single board run, pollen on the wood. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap, warm timber, seen from below as the subject. No solar tile, no ceiling eye, no chandelier. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Parallel thick joists. One dark direction.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Ceiling module. Solar tile stays its own prop.",
+      "scale_vs_player": "4 m module",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_wood_ceiling/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 5000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_seed_table",
+      "display_name": "Seed Table",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 3500,
+      "aura_prompt": "One long terrace table, living-wood top, limestone trestles, empty top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn edge, pollen dust, one table. No fruit, no papers, no chairs in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long terrace table, living-wood top, limestone trestles, empty top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn edge, pollen dust, one table. No fruit, no papers, no chairs in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long plank on two stone blocks. Horizontal mass.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Set dressing inside the hall. Seats stay a later bench.",
+      "scale_vs_player": "2.4 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_seed_table/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 3500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_dye_shelf",
+      "display_name": "Dye Shelf Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 4500,
+      "aura_prompt": "One dye shelf bay, living wood, a few unlettered pots as color blocks. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen dust, pots are solid color only, a single bay. No labels, no loose fruit, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One dye shelf bay, living wood, a few unlettered pots as color blocks. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen dust, pots are solid color only, a single bay. No labels, no loose fruit, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall rectangle with horizontal shelf cuts.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior shelf. Unlettered pots. Fruit stays on the terrace tree.",
+      "scale_vs_player": "2.2 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_dye_shelf/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 4500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_shutter_leaf",
+      "display_name": "Terrace Shutter Leaf",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 1500,
+      "aura_prompt": "One living-wood shutter leaf, closed, thick graft pintles. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Soil on the boards, limestone hinge block, a single leaf. No pair in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood shutter leaf, closed, thick graft pintles. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Soil on the boards, limestone hinge block, a single leaf. No pair in frame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall board rectangle with two pintle dots.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Window dressing. One leaf so the subject stays single.",
+      "scale_vs_player": "1.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_shutter_leaf/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_terrace_stair",
+      "display_name": "Terrace Stair Flight",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One short interior stair, limestone treads, one living-wood rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Six treads, terrace wear, snap still four metres at the landing. No carpet, no cliff face, no second flight. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short interior stair, limestone treads, one living-wood rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Six treads, terrace wear, snap still four metres at the landing. No carpet, no cliff face, no second flight. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A diagonal wedge. Rail is one line.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior step of the hall. The Masond cliff stair and the canopy stair stay.",
+      "scale_vs_player": "2.4 m rise",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_terrace_stair/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 5000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_hold_sconce",
+      "display_name": "Hold-Lamp Wall Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 3000,
+      "aura_prompt": "One interior wall bite of limestone with a single empty brass hold-hook. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen above the hook, warm stone, a single hook. No flame mesh, no glowing wire. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior wall bite of limestone with a single empty brass hold-hook. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen above the hook, warm stone, a single hook. No flame mesh, no glowing wire. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A wall rectangle. The hook is the only projection.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Set dressing. The hold-lamp practical is later. This mesh is empty.",
+      "scale_vs_player": "2 m wall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_hold_sconce/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 3000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_door_leaf",
+      "display_name": "Terrace Door Leaf",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One living-wood hall door leaf, brass ring, limestone frame cropped tight, closed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Door clear about 1.2 by 2.2 m, pollen on the boards, one door. No crest, no lettering, no second door. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood hall door leaf, brass ring, limestone frame cropped tight, closed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Door clear about 1.2 by 2.2 m, pollen on the boards, one door. No crest, no lettering, no second door. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall rectangle with a ring on one side.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior door for the terrace hall. The ark rib door stays on the rib.",
+      "scale_vs_player": "2.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_door_leaf/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 2500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_solar_tile",
+      "display_name": "Interior Solar Tile",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One matte solar tile, a single dull rectangle on a short timber stand. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust on the face, one tile, stand is a low block. No circuit lines, no terminal box, no eave, no glow in the albedo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One matte solar tile, a single dull rectangle on a short timber stand. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust on the face, one tile, stand is a low block. No circuit lines, no terminal box, no eave, no glow in the albedo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat square on a short block. Reads as a loose tile.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Set dressing. The exterior solar eave stays env_tunya_solar_eave.",
+      "scale_vs_player": "0.6 m tile",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_solar_tile/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "place": "inside the terrace hall, off the three-fruit tree"
+      }
+    },
+    {
+      "id": "arch_int_tunya_door_jamb",
+      "display_name": "Terrace Door Jamb",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "door_kit"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One living-wood door jamb with a limestone shoe and a worn rebate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf in frame. No fruit. No people. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood door jamb with a limestone shoe and a worn rebate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf in frame. No fruit. No people. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall narrow timber upright on a stone shoe. The rebate is the dark slot.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Opening kit. The door leaf stays arch_int_tunya_door_leaf.",
+      "scale_vs_player": "2.4 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_door_jamb/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "door_jamb",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_door_head",
+      "display_name": "Terrace Door Head",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "door_kit"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One short living-wood door head with limestone ends, spanning one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No hall body. No solar tile. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short living-wood door head with limestone ends, spanning one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No hall body. No solar tile. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short horizontal timber bar on two stone ends.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Head of one opening. Not the lintel on arch_hero_tunya_terrace_hall.",
+      "scale_vs_player": "1.6 m span",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_door_head/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "door_head",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_thresh",
+      "display_name": "Terrace Threshold",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "door_kit"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One limestone threshold slab with a living-wood nosing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No mat. No door leaf. No terrace lip. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone threshold slab with a living-wood nosing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No mat. No door leaf. No terrace lip. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low stone slab. The wood nosing is the dark front edge.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Tread of the clear. Not env_tunya_terrace_lip.",
+      "scale_vs_player": "1.2 m wide",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_thresh/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "threshold",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_reveal",
+      "display_name": "Terrace Door Reveal",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "door_kit"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One living-wood reveal, the wall thickness beside one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No window. The clear stays empty. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood reveal, the wall thickness beside one opening. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No door leaf. No window. The clear stays empty. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thick timber return. Reads as wall depth.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Wall depth beside the 1.2 x 2.2 m clear.",
+      "scale_vs_player": "0.4 m deep",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_reveal/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "reveal",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_window_frame",
+      "display_name": "Terrace Window Frame",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "window_kit"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One empty living-wood window frame, four sides and an open hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No shutter leaf. No mullion in frame. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty living-wood window frame, four sides and an open hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No shutter leaf. No mullion in frame. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A timber rectangle and a hole.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Empty surround. The shutter stays arch_int_tunya_shutter_leaf.",
+      "scale_vs_player": "1.4 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_window_frame/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "window_frame",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_mullion",
+      "display_name": "Terrace Mullion",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "window_kit"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One living-wood window mullion, a single vertical bar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No shutter. No second bar. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood window mullion, a single vertical bar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No glass. No shutter. No second bar. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One narrow upright. Dark against the hole.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "One bar. Not the shutter leaf.",
+      "scale_vs_player": "1.2 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_mullion/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "mullion",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_window_sill",
+      "display_name": "Terrace Window Sill",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "window_kit"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One limestone window sill with pollen caught in the front joint. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No plant. No solar tile. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone window sill with pollen caught in the front joint. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No plant. No solar tile. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A projecting stone lip. One dark joint.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior sill. Not env_tunya_solar_eave and not arch_int_tunya_solar_tile.",
+      "scale_vs_player": "1.4 m wide",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_window_sill/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "window_sill",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_reed_leaf",
+      "display_name": "Terrace Reed Screen",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "window_kit"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One open reed screen, rails bound, gaps empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Not a living plant. Not a shutter board. No glass. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open reed screen, rails bound, gaps empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Not a living plant. Not a shutter board. No glass. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin rectangle of vertical reeds. Light through the gaps.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Screen leaf. Not flora_tunya_cliff_reed and not the dye reed.",
+      "scale_vs_player": "1.4 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_reed_leaf/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "screen_leaf",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_wainscot",
+      "display_name": "Terrace Wainscot Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "wall_bay"
+      ],
+      "triangle_budget": 3200,
+      "aura_prompt": "One living-wood wainscot bay, vertical boards to chair height on a limestone base. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No floor bay. No banner. No lettering. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One living-wood wainscot bay, vertical boards to chair height on a limestone base. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No floor bay. No banner. No lettering. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low timber band. Horizontal mass.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Wall bay. Not arch_int_tunya_terrace_floor.",
+      "scale_vs_player": "4 m module",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_wainscot/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 3200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "wainscot",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_gallery_rail",
+      "display_name": "Terrace Gallery Rail",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "arch_kit_tunya_veil",
+        "wall_bay"
+      ],
+      "triangle_budget": 2800,
+      "aura_prompt": "One interior gallery rail, a living-wood handrail on two limestone posts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No stair flight. No canopy. No cliff stair. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior gallery rail, a living-wood handrail on two limestone posts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. No stair flight. No canopy. No cliff stair. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long rail on two short posts.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Interior rail. Not arch_hero_tunya_canopy_stair and not env_tunya_masond_cliff_stair.",
+      "scale_vs_player": "4 m module",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_gallery_rail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 2800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "gallery_rail",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_seed_bench",
+      "display_name": "Seed Bench",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One long empty bench, living-wood seat, limestone legs. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No person. No cushion. No fruit on the seat. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long empty bench, living-wood seat, limestone legs. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No person. No cushion. No fruit on the seat. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long low plank on two stone blocks.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "The seat the seed table left open. Not prop_hub_se_bench and not prop_tunya_cl_palm_rest.",
+      "scale_vs_player": "2.2 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_seed_bench/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "bench",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_planter_bay",
+      "display_name": "Empty Planter Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One empty limestone planter trough with a living-wood rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No soil mound. No plant. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty limestone planter trough with a living-wood rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No soil mound. No plant. No fruit. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low stone box. The rim is the dark lip.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Empty trough. Not prop_tunya_cl_dye_bowl and not flora_tunya_terrace_tree.",
+      "scale_vs_player": "1.6 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_planter_bay/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "planter",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_soffit",
+      "display_name": "Interior Soffit Bay",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 3400,
+      "aura_prompt": "One interior soffit bay of living-wood boards, seen from below, with no tile. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. Not the ceiling joist bay. Not the exterior solar eave. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior soffit bay of living-wood boards, seen from below, with no tile. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Four metre snap. Not the ceiling joist bay. Not the exterior solar eave. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat board field. One darker edge board.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Under-eave boards inside the hall. Not env_tunya_solar_eave and not arch_int_tunya_wood_ceiling.",
+      "scale_vs_player": "4 m module",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_soffit/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 3400,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 4,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "soffit",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_niche",
+      "display_name": "Empty Wall Niche",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One empty limestone wall niche, a square recess with a living-wood lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No pot. No tile. No shelf of jars. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty limestone wall niche, a square recess with a living-wood lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No pot. No tile. No shelf of jars. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A square hole in a stone block.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Empty recess. Not arch_int_tunya_dye_shelf and not the solar tile.",
+      "scale_vs_player": "0.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_niche/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "niche",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_loom_frame",
+      "display_name": "Empty Loom Frame",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One empty interior loom frame of living wood, two posts and two beams, open middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No cloth. No warp. No fiber hank. No person. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty interior loom frame of living wood, two posts and two beams, open middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No cloth. No warp. No fiber hank. No person. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall open rectangle. The middle stays a hole.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "Frame only. Not prop_tunya_cl_fiber_hank and not a held tool.",
+      "scale_vs_player": "1.8 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_loom_frame/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "loom_frame",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    },
+    {
+      "id": "arch_int_tunya_graft_post",
+      "display_name": "Interior Graft Post",
+      "batch": "B24_arch_tunya",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "interior",
+        "set_dress",
+        "arch_kit_tunya_veil"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One interior post of living wood with one healed graft scar and a limestone foot. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No fruit. No facade. No peg in the scar. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior post of living wood with one healed graft scar and a limestone foot. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No fruit. No facade. No peg in the scar. A single module. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A single upright. The scar is a short diagonal.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ],
+      "lore_blurb": "One post. Not arch_hero_tunya_graft_facade and not prop_tunya_cl_graft_peg.",
+      "scale_vs_player": "2.6 m tall",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_int_tunya_graft_post/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "interior": true,
+        "parent_hall": "arch_hero_tunya_terrace_hall",
+        "snap_grid_m": 1,
+        "softenter_adjacent": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "no_lettering": true,
+        "flower_law": "outside_hub_disk",
+        "pattern_slot": "graft_post",
+        "place": "inside the terrace hall, off the three-fruit tree and off the 1.2 x 2.2 m door clear",
+        "rifle": "forbidden"
+      }
+    }
+  ],
+  "cycle2_count": 16,
+  "cycle2_file": "batches/B24_arch_tunya_cycle2.json"
+}

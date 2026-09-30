@@ -1,0 +1,1621 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "npc_roles",
+  "count": 23,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "npc_role_court_labor",
+      "display_name": "Court Laborer",
+      "lore_blurb": "Unburned Court worker: sweeper, mason, lamp assistant. Soft silhouette, tool in hand, no steel inside 42m.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "scholars_guild",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Soft shoulders, broom or hod taller than the head so the tool is the silhouette.",
+      "palette": [
+        "#c4b49a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "cloth cap",
+          "chest": "undyed tunic, limestone dust",
+          "legs": "wrapped trousers",
+          "cloak": "none",
+          "prop": "prop_tool_broom"
+        },
+        "weapon_id": null,
+        "fight_style": "Karate",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_court_labor.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, court laborer, cloth cap, dusty tunic, broom, warm limestone, Flower Law plaza, no sword.",
+      "stats_hooks": {
+        "faction_id": "scholars_guild",
+        "schedule": [
+          "sleep",
+          "work",
+          "eat",
+          "gather"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "scholars_guild",
+      "labor": "labor",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_court_merchant",
+      "display_name": "Court Stallkeeper",
+      "lore_blurb": "Market District seller under the Merchant Collective's Hub license. Scales on the belt, flower in the buttonhole because steel is illegal here.",
+      "taxonomy_tags": [
+        "npc_role",
+        "merchant",
+        "merchant_collective",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Apron rectangle over a round belly or a narrow frame; the scale pan is a circle at the hip.",
+      "palette": [
+        "#8a6a48",
+        "#efe6d4",
+        "#c8721a"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "soft brim",
+          "chest": "market apron",
+          "legs": "dark trousers",
+          "cloak": "short stall drape",
+          "prop": "prop_scale_pan"
+        },
+        "weapon_id": "wpn_1h_court_flower",
+        "fight_style": "MuayThai",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_court_merchant.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, market stallkeeper, apron, brass scale pan, flower at the collar, Unburned Court, GTA wear on the cloth.",
+      "stats_hooks": {
+        "faction_id": "merchant_collective",
+        "schedule": [
+          "work",
+          "eat",
+          "work",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_court_flower"
+      ],
+      "faction_id": "merchant_collective",
+      "labor": "merchant",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_iron_warden",
+      "display_name": "Iron Warden",
+      "lore_blurb": "Gate and Arena guard. Sword style. Inside the plaza the blade is a flower; in the Arena it is steel. Readable at range by the ash-gray fauld and the open helm.",
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "iron_wardens",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open helm, shoulder line wider than the merchant, flower or sword held down.",
+      "palette": [
+        "#6a6860",
+        "#c4b49a",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "open warden helm",
+          "chest": "CX_Gear_ChestPlate gray",
+          "legs": "fauld",
+          "cloak": "none",
+          "prop": "arena whistle"
+        },
+        "weapon_id": "wpn_1h_court_flower",
+        "fight_style": "Sword",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_iron_warden.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Iron Warden, open helm, gray plate on a CX body, Concordia face visible, flower-blade at rest, Arena sand or court gate.",
+      "stats_hooks": {
+        "faction_id": "iron_wardens",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_court_flower"
+      ],
+      "faction_id": "iron_wardens",
+      "labor": "guard",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_scholar",
+      "display_name": "Archive Scholar",
+      "lore_blurb": "Scholars' Guild. Wing Chun. Notebook chain, ink on the cuff, no armor. Asbir's house style without his height.",
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "scholars_guild",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Narrow, a book as a rectangle under the arm, chain glint at the sternum.",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none or soft hood down",
+          "chest": "archive robe, ink cuff",
+          "legs": "dark",
+          "cloak": "short hood",
+          "prop": "prop_notebook"
+        },
+        "weapon_id": null,
+        "fight_style": "WingChun",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_scholar.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, archive scholar, ink-stained cuff, notebook, soft hood down, Concordia face, cool north light of the Archive.",
+      "stats_hooks": {
+        "faction_id": "scholars_guild",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "scholars_guild",
+      "labor": "mystic",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_shadow_courier",
+      "display_name": "Shadow Courier",
+      "lore_blurb": "Shadow Network runner. Capoeira. A satchel and soft shoes, not a black ninja costume. The network is ordinary clothes that can move.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "shadow_network",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low center, satchel as a square on the hip, no mask.",
+      "palette": [
+        "#1a1028",
+        "#2a241c",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "wrapped hair or short",
+          "chest": "dark work shirt, worn",
+          "legs": "soft trousers",
+          "cloak": "none",
+          "prop": "prop_satchel"
+        },
+        "weapon_id": "wpn_throw_court_lantern",
+        "fight_style": "Capoeira",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_shadow_courier.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, courier in worn dark clothes, hip satchel, soft shoes, no mask, night court or Grid alley, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "shadow_network",
+        "schedule": [
+          "work",
+          "hide",
+          "work",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_throw_court_lantern"
+      ],
+      "faction_id": "shadow_network",
+      "labor": "labor",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_sunder_guard",
+      "display_name": "Sundering Ward",
+      "lore_blurb": "Ward-steel guard of the Sundering. The blade is live. Curse-mark is a cloth braid they refuse to pull tight.",
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "wildwood_circle",
+        "visual"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Spear or ward-blade vertical, green cloak that stops at the knee so legs read.",
+      "palette": [
+        "#1a3028",
+        "#3a6a48",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "leather cap",
+          "chest": "studded leather, not full plate",
+          "legs": "wrapped",
+          "cloak": "knee green",
+          "prop": "loose curse braid"
+        },
+        "weapon_id": "wpn_1h_sunder_wardblade",
+        "fight_style": "Sword",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_sunder_guard.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Sundering guard, knee-length green cloak, leather cap, ward-blade, loose dark braid, pine forest, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "wildwood_circle",
+        "schedule": [
+          "work",
+          "eat",
+          "work",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_sunder_wardblade"
+      ],
+      "faction_id": "wildwood_circle",
+      "labor": "guard",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_sunder_mystic",
+      "display_name": "Curse-Bearer",
+      "lore_blurb": "Someone holding a curse inward, Thorne's vocation at street scale. Not a necromancer. Hands wrapped, eyes tired.",
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "wildwood_circle",
+        "visual"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wrapped hands as white blocks, otherwise ordinary travel clothes. No skull staff.",
+      "palette": [
+        "#1a3028",
+        "#efe6d4",
+        "#c8a060"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none",
+          "chest": "travel coat",
+          "legs": "muddy",
+          "cloak": "short",
+          "prop": "wrapped hands"
+        },
+        "weapon_id": "wpn_focus_sunder_cursefold",
+        "fight_style": "WingChun",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_sunder_mystic.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, tired traveler, hands wrapped in clean cloth, muddy coat, Sundering, no skull, no glow, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "wildwood_circle",
+        "schedule": [
+          "work",
+          "gather",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_focus_sunder_cursefold"
+      ],
+      "faction_id": "wildwood_circle",
+      "labor": "mystic",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_tunya_labor",
+      "display_name": "Terrace Laborer",
+      "lore_blurb": "Verdant Veil worker. Grafting, irrigation, fruit. Tool is a reed knife that is a tool, sheathed when idle.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "verdant_veil",
+        "visual"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sun hat as a wide disc, basket on the back.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "wide straw hat",
+          "chest": "sleeveless, sun-browned cloth",
+          "legs": "short wrap",
+          "cloak": "none",
+          "prop": "prop_basket"
+        },
+        "weapon_id": "wpn_imp_grove_knife",
+        "fight_style": "Capoeira",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_tunya_labor.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Tunya terrace worker, wide straw hat, back basket, sun, living wood and solar tile, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "verdant_veil",
+        "schedule": [
+          "work",
+          "gather",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_imp_grove_knife"
+      ],
+      "faction_id": "verdant_veil",
+      "labor": "labor",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_tunya_merchant",
+      "display_name": "Grove Factor",
+      "lore_blurb": "Sells fruit and refuses lumber. Scales are wood. A red thread means the Collective; a green thread means the Veil.",
+      "taxonomy_tags": [
+        "npc_role",
+        "merchant",
+        "merchant_collective",
+        "visual"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wooden scale, green sash as one diagonal.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "straw",
+          "chest": "linen, green sash",
+          "legs": "linen",
+          "cloak": "none",
+          "prop": "prop_scale_wood"
+        },
+        "weapon_id": null,
+        "fight_style": "MuayThai",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_tunya_merchant.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, grove merchant, green sash, wooden scale, fruit crates, Tunya sun, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "merchant_collective",
+        "schedule": [
+          "work",
+          "eat",
+          "work",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "merchant_collective",
+      "labor": "merchant",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_ruins_keeper",
+      "display_name": "Catalogue Keeper",
+      "lore_blurb": "Glyph Keeper of the Sovereign Ruins. They record, they do not conquer. Ash on the hem, iron stylus, no scythe.",
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "catalogue_keepers",
+        "visual"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall hood as a soft bell, stylus as a thin line, book chained.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "ash hood",
+          "chest": "keeper coat",
+          "legs": "wrapped",
+          "cloak": "hood",
+          "prop": "prop_stylus"
+        },
+        "weapon_id": "wpn_focus_ruins_stylus",
+        "fight_style": "Sword",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_ruins_keeper.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Ruins keeper, ash hood, iron stylus, chained book, fossil city, Concordia face half in hood shadow.",
+      "stats_hooks": {
+        "faction_id": "catalogue_keepers",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_focus_ruins_stylus"
+      ],
+      "faction_id": "catalogue_keepers",
+      "labor": "mystic",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_ruins_elite",
+      "display_name": "Unburial Elite",
+      "lore_blurb": "The armed exception in the Ruins: they pull falls back. Heavy remnant, cold iron, maskless.",
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "catalogue_keepers",
+        "visual"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cold iron gorget as a bright ring at the neck, two-hander on the back.",
+      "palette": [
+        "#2a1c14",
+        "#8aa0b4",
+        "#5a5044"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none",
+          "chest": "partial iron",
+          "legs": "ash cloth",
+          "cloak": "short",
+          "prop": "gorget"
+        },
+        "weapon_id": "wpn_2h_ruins_unburial",
+        "fight_style": "Sword",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_ruins_elite.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Ruins elite, cold iron gorget, great weapon on the back, ash cloth, Concordia face bare, no skull mask.",
+      "stats_hooks": {
+        "faction_id": "catalogue_keepers",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_2h_ruins_unburial"
+      ],
+      "faction_id": "catalogue_keepers",
+      "labor": "elite",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_coast_labor",
+      "display_name": "Dock Laborer",
+      "lore_blurb": "Iron Coast muscle. Crates, rain, sodium light. A hook is a tool.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "delgado_syndicate",
+        "visual"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hook at the belt as a comma, shoulders rounded from work, cap.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "flat cap",
+          "chest": "wet shirt, suspenders",
+          "legs": "heavy trousers",
+          "cloak": "none",
+          "prop": "prop_dock_hook"
+        },
+        "weapon_id": "wpn_imp_dock_hook",
+        "fight_style": "WingChun",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_coast_labor.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, dock laborer, flat cap, wet shirt, cargo hook, rain, sodium lamp, Iron Coast, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "delgado_syndicate",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_imp_dock_hook"
+      ],
+      "faction_id": "delgado_syndicate",
+      "labor": "labor",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_coast_bandit",
+      "display_name": "Ledger Bandit",
+      "lore_blurb": "Kitbash: dock clothes plus one stolen warden plate or a syndicate rose pin. Not a full armor set. The bill always arrives, so they wear hoods they think will help.",
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "delgado_syndicate",
+        "visual"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hood up, one mismatched plate on a single shoulder, knife low.",
+      "palette": [
+        "#2a241c",
+        "#5c3038",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "hood",
+          "chest": "dock shirt plus one pauldron",
+          "legs": "stolen boots",
+          "cloak": "hood",
+          "prop": "rose pin or nothing"
+        },
+        "weapon_id": "wpn_1h_coast_switchknife",
+        "fight_style": "WingChun",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_coast_bandit.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, bandit kitbash, dock clothes, one mismatched pauldron, hood, switchknife, rain alley, Concordia face in shadow.",
+      "stats_hooks": {
+        "faction_id": "delgado_syndicate",
+        "schedule": [
+          "hide",
+          "work",
+          "eat",
+          "hide"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_coast_switchknife"
+      ],
+      "faction_id": "delgado_syndicate",
+      "labor": "bandit",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_grid_labor",
+      "display_name": "Uncounted Tech",
+      "lore_blurb": "Grid worker who keeps their name off the Census. Cable coil, acrylic visor up on the forehead, not a full helmet.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "zero_collective",
+        "visual"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Visor as a horizontal bar on the brow, coil over one shoulder.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "visor up",
+          "chest": "work jacket, scratched",
+          "legs": "utilitarian",
+          "cloak": "none",
+          "prop": "prop_cable_coil"
+        },
+        "weapon_id": null,
+        "fight_style": "Capoeira",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_grid_labor.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Grid technician, visor pushed up, cable coil, scratched jacket, neon rain, Concordia face visible.",
+      "stats_hooks": {
+        "faction_id": "zero_collective",
+        "schedule": [
+          "work",
+          "hide",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "zero_collective",
+      "labor": "labor",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_grid_officer",
+      "display_name": "Census Officer",
+      "lore_blurb": "Human officer, not a sentinel. Bar visor DOWN, cloth shoulders so you never confuse them with mon_grid_sentinel. They count.",
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "census_authority",
+        "visual"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Visor down as a black bar, long coat, no door-shoulder armor.",
+      "palette": [
+        "#14101c",
+        "#3dffa0",
+        "#d8d4dc"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "visor down",
+          "chest": "long coat over light plate",
+          "legs": "coat",
+          "cloak": "coat",
+          "prop": "count slate"
+        },
+        "weapon_id": "wpn_1h_grid_pulseblade",
+        "fight_style": "Capoeira",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_grid_officer.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, human Census officer, black bar visor down, long coat, no giant shoulders, cyan edge light, Concordia jaw visible under the bar.",
+      "stats_hooks": {
+        "faction_id": "census_authority",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_grid_pulseblade"
+      ],
+      "faction_id": "census_authority",
+      "labor": "elite",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_frontier_guard",
+      "display_name": "Road Warden",
+      "lore_blurb": "Frontier escort. Dust, wagon iron, no dome. Muay Thai because the world default is close and windy; they still carry iron.",
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "open_road",
+        "visual"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide hat, rifle-length iron that is a spear not a gun (firearms coverage is 0%; this kit does not pretend otherwise).",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "wide hat",
+          "chest": "duster",
+          "legs": "chaps",
+          "cloak": "duster",
+          "prop": "prop_canteen"
+        },
+        "weapon_id": "wpn_pole_frontier_wagoniron",
+        "fight_style": "MuayThai",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_frontier_guard.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Frontier road warden, wide hat, dust duster, long wagon-iron spear, no rifle, wind, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "open_road",
+        "schedule": [
+          "work",
+          "eat",
+          "work",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_pole_frontier_wagoniron"
+      ],
+      "faction_id": "open_road",
+      "labor": "guard",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_frontier_bandit",
+      "display_name": "Dome Bandit",
+      "lore_blurb": "People who want the dome back. Kitbash of pronghorn hunter clothes and a stolen yoke collar worn as a necklace.",
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "open_road",
+        "visual"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Yoke collar as a ring at the neck, hat, blade.",
+      "palette": [
+        "#8a7048",
+        "#2a241c",
+        "#c8b070"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "battered hat",
+          "chest": "hunter shirt",
+          "legs": "dust trousers",
+          "cloak": "none",
+          "prop": "yoke collar"
+        },
+        "weapon_id": "wpn_1h_frontier_skinner",
+        "fight_style": "MuayThai",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_frontier_bandit.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Frontier bandit, battered hat, wooden yoke collar as a necklace, skinner knife, dust.",
+      "stats_hooks": {
+        "faction_id": "open_road",
+        "schedule": [
+          "hide",
+          "work",
+          "eat",
+          "hide"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_1h_frontier_skinner"
+      ],
+      "faction_id": "open_road",
+      "labor": "bandit",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_dawn_elite",
+      "display_name": "Aegis",
+      "lore_blurb": "Permanent Dawn elite. White marble composite cracked at the edges, one chrome pauldron, no cape that hides the arms. They do not take the final win.",
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "aegis",
+        "visual"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One pauldron only, bright, fist wraps, halo is a thin brass circlet not a glow.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "thin circlet",
+          "chest": "white composite, cracked",
+          "legs": "fitted",
+          "cloak": "none",
+          "prop": "fist wraps"
+        },
+        "weapon_id": "wpn_2h_dawn_shockmaul",
+        "fight_style": "Karate",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_dawn_elite.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Dawn elite, cracked white armor, one chrome pauldron, thin brass circlet, fist wraps, Concordia face, bright sun.",
+      "stats_hooks": {
+        "faction_id": "aegis",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_2h_dawn_shockmaul"
+      ],
+      "faction_id": "aegis",
+      "labor": "elite",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_dawn_mystic",
+      "display_name": "Luminary Adept",
+      "lore_blurb": "Street-level Luminary. Feeds people, keeps them honest, Vesper's vocation without her coat. No laser eyes.",
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "luminary",
+        "visual"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Pale coat, bread basket or ledger, soft shoes.",
+      "palette": [
+        "#e8e4dc",
+        "#ffd0a0",
+        "#3a78ff"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none",
+          "chest": "pale coat",
+          "legs": "clean",
+          "cloak": "coat",
+          "prop": "prop_bread"
+        },
+        "weapon_id": null,
+        "fight_style": "Karate",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_dawn_mystic.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Luminary adept, pale worn coat, bread, bright city, Concordia face, no energy aura.",
+      "stats_hooks": {
+        "faction_id": "luminary",
+        "schedule": [
+          "work",
+          "gather",
+          "eat",
+          "work"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "luminary",
+      "labor": "mystic",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_crucible_mystic",
+      "display_name": "Lattice Walker",
+      "lore_blurb": "Crucible mystic. Clothes are ordinary with one unfinished stitch left on purpose. Staff is a focus, not a rifle.",
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "open_lattice",
+        "visual"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric hem, shard at the belt that does not match its setting.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none",
+          "chest": "dark coat, unfinished hem",
+          "legs": "dark",
+          "cloak": "short",
+          "prop": "prop_unclosed_shard"
+        },
+        "weapon_id": "wpn_focus_crucible_unend",
+        "fight_style": "Sword",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_crucible_mystic.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Crucible walker, coat with one unfinished hem stitch, loose shard, teal practical light, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "open_lattice",
+        "schedule": [
+          "work",
+          "gather",
+          "hide",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_focus_crucible_unend"
+      ],
+      "faction_id": "open_lattice",
+      "labor": "mystic",
+      "animation_profile": "civilian"
+    },
+    {
+      "id": "npc_role_sere_enforcer",
+      "display_name": "Tessera Enforcer",
+      "lore_blurb": "Sere debt muscle. The Mark is a tile sewn to the coat, a compound interest you can see. Close and paid-for.",
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "tessera_hold",
+        "visual"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tile on the chest as a square, chimney-soot, invoice knife.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "soot cap",
+          "chest": "coat with one brand tile",
+          "legs": "heavy",
+          "cloak": "none",
+          "prop": "brand tile"
+        },
+        "weapon_id": "wpn_throw_sere_marktile",
+        "fight_style": "WingChun",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_sere_enforcer.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, Sere enforcer, soot, one iron brand tile on the coat, invoice knife, furnace light, Concordia face.",
+      "stats_hooks": {
+        "faction_id": "tessera_hold",
+        "schedule": [
+          "work",
+          "work",
+          "eat",
+          "sleep"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_throw_sere_marktile"
+      ],
+      "faction_id": "tessera_hold",
+      "labor": "elite",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_road_bandit",
+      "display_name": "Road Bandit",
+      "lore_blurb": "RoadWorld hostile title 'road bandit', id pattern road-bandit-{SHORTNAME}. Visual is this kit skinned per spoke, not a unique body per gate. TrainingDummy is not this role.",
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "road",
+        "visual"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Civilian silhouette plus one scavenged armor piece and a weapon of that world.",
+      "palette": [
+        "#5c3038",
+        "#2a241c",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "world hood or hat",
+          "chest": "local labor kit plus one plate",
+          "legs": "local",
+          "cloak": "optional",
+          "prop": "stolen token"
+        },
+        "weapon_id": "wpn_by_world_skin",
+        "fight_style": "Sword",
+        "animator_profile": "combatant",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_road_bandit.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, road bandit, local labor clothes with one scavenged plate, world weapon, CX face, not a monster.",
+      "stats_hooks": {
+        "faction_id": "road",
+        "schedule": [
+          "hide",
+          "work",
+          "eat",
+          "hide"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work",
+        "wpn_by_world_skin"
+      ],
+      "faction_id": "road",
+      "labor": "bandit",
+      "animation_profile": "combatant"
+    },
+    {
+      "id": "npc_role_plaza_urchin",
+      "display_name": "Plaza Urchin",
+      "lore_blurb": "Brackish's cohort. Short, 1.42m band, fast, no steel, pockets full of legal flowers and illegal rumors.",
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "none",
+        "visual"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. CX humanoid body and Concordia face. Wardrobe is plates and cloth on CX sockets (CX_Chest, CX_Head, CX_Shoulder, CX_Hip). Never replace the body with a Quaternius mesh. Clips may come from Kevin Iglesias / ExplosiveLLC if retargeted onto CX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Smaller scale, bare head, one bright scrap.",
+      "palette": [
+        "#6a5a40",
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale humanoid, height from Canon guest band 1.42\u20131.96m; this role defaults 1.78m",
+      "unity_bind": {
+        "body": "CX_Humanoid_Male or CX_Humanoid_Female",
+        "dress": "CxDress",
+        "sockets": [
+          "CX_Head",
+          "CX_Chest",
+          "CX_Shoulder_L",
+          "CX_Shoulder_R",
+          "CX_Hip",
+          "CX_Grip_R",
+          "CX_Back"
+        ],
+        "culture": null,
+        "wardrobe": {
+          "head": "none",
+          "chest": "oversized shirt",
+          "legs": "bare or short",
+          "cloak": "none",
+          "prop": "flower scrap"
+        },
+        "weapon_id": null,
+        "fight_style": "Capoeira",
+        "animator_profile": "civilian",
+        "person_kit": "PersonKit faction preferred_weapon",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/npc_role_plaza_urchin.prefab"
+      },
+      "aura_prompt": "CX humanoid, Concordia face, child-height urchin, oversized dusty shirt, flower scrap, Unburned Court, Concordia face, no weapon.",
+      "stats_hooks": {
+        "faction_id": "none",
+        "schedule": [
+          "gather",
+          "hide",
+          "eat",
+          "gather"
+        ],
+        "hail": true,
+        "bonds": true,
+        "standing_book": "FactionStandingBook",
+        "event_log": "WorldEventLog"
+      },
+      "verb_ids": [
+        "verb_social_hail",
+        "verb_social_work"
+      ],
+      "faction_id": "none",
+      "labor": "labor",
+      "animation_profile": "civilian"
+    }
+  ]
+}

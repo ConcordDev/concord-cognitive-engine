@@ -4,7 +4,7 @@
  * Sprint 60+: Token efficiency layer that intercepts chat prompts BEFORE
  * the LLM call and substitutes compact preset templates + cached DTU refs.
  *
- * Target: 33:1 compression ratio on context blocks.
+ * Design target: up to ~33:1 on HASH-mode DTU ref blocks (live executive IR ~1.2×).
  *
  * Architecture:
  *   1. PATTERN DETECTION (compileRegexes): regex match against 20 common
@@ -132,10 +132,10 @@ class DTUBlockCache {
    * - INLINE (dtus ≤ 5): titles inline, ~30 chars each
    * - HASH (dtus > 5): single SHA hash + tier summary, 8 chars
    *
-   * The HASH mode achieves the 33:1 ratio:
+   * HASH mode design target (not kitchen IR avg — live executive IR ~1.2×):
    * 33 DTUs × 30 chars inline = 990 chars
    * 33 DTUs × hash (8 chars) = 8 chars
-   * Ratio: 990/8 ≈ 124x → still compresses to 33:1 even with overhead
+   * Ratio: 990/8 ≈ 124× on the ref-string alone (design math; not measured IR avg)
    *
    * The LLM can decode via the hash → fetch full DTUs when needed.
    */
@@ -320,10 +320,10 @@ export function applyDHTP(opts) {
 
   const compactPrompt = `${preset.template}${dtuRefsString ? "\n\n" + dtuRefsString : ""}`;
 
-  // 33:1 metric: DTU compression at TOKEN level
+  // Design-target metric (HASH DTU refs): TOKEN-level estimate — not live IR avg
   // 33 raw DTUs × 60 tokens/DTU formatted = 1980 tokens uncompressed
   // DHTP compressed: 250 chars / 4 chars/token ≈ 62 tokens
-  // Ratio: 1980/62 ≈ 32x — close to 33:1
+  // Design estimate: 1980/62 ≈ 32× on HASH DTU path — not live IR avg (~1.2×)
   const originalChars = baseSystemPrompt.length + workingSetDtus.length * 240;  // 240 chars/DTU formatted
   const compressedChars = compactPrompt.length;
   // Token estimate: 4 chars/token typical for qwen/llama tokenizers
@@ -358,6 +358,74 @@ export function decompressDTUBlock(compressed) {
 /**
  * Get DHTP statistics (cache + preset hit rate).
  */
+
+/**
+ * Measured HASH-mode DTU ref compression bench (design path).
+ * Scope: HASH DTU refs only — NOT live executive IR avg (~1.2×).
+ * Builds N synthetic DTUs, matches a compact preset, returns measured ratio.
+ * Target: ≥30× on the HASH path (design math ~32–124× depending on denominator).
+ */
+export function measureHashModeDtuBench({ dtuCount = 33, prompt = "summarize these DTUs", baseSystemPrompt } = {}) {
+  resetBlockCache();
+  const n = Math.max(6, Number(dtuCount) || 33); // HASH mode requires >5
+  const dtus = Array.from({ length: n }, (_, i) => ({
+    id: `hash_bench_${i}`,
+    tier: i % 3 === 0 ? "mega" : i % 3 === 1 ? "hyper" : "regular",
+    title: `Bench DTU Title ${i} with representative body text for formatting`,
+    updatedAt: String(1_700_000_000 + i),
+  }));
+  const base =
+    baseSystemPrompt ||
+    ("You are Concord, a cognitive operating system with full world context. " .repeat(20));
+  const result = applyDHTP({ prompt, workingSetDtus: dtus, baseSystemPrompt: base });
+  const hashMode = n > 5 && typeof result.dtuRefs === "string" && result.dtuRefs.startsWith("#");
+  return {
+    ok: !!(result.compressed && hashMode && result.ratio >= 30),
+    scope: "HASH_DTU_refs",
+    not_scope: "live_executive_IR_avg",
+    dtuCount: n,
+    presetId: result.presetId,
+    hashMode,
+    dtuRefs: result.dtuRefs,
+    dtuHash: result.dtuHash,
+    originalChars: result.originalChars,
+    compressedChars: result.compressedChars,
+    ratio: result.ratio,
+    threshold: 30,
+    passes: !!(result.compressed && hashMode && result.ratio >= 30),
+  };
+}
+
+/**
+ * Record a HASH-mode bench row into dhtp_metrics (path=hash_dtu_refs).
+ * Call with kitchen or test db after migrations.
+ */
+export function recordHashModeBenchMetric(db, bench, recordFn) {
+  if (!db || !bench || typeof recordFn !== "function") return { ok: false, reason: "missing_args" };
+  const fullTokens = Math.ceil((bench.originalChars || 0) / 4);
+  const dhtpTokens = Math.ceil((bench.compressedChars || 0) / 4);
+  const row = recordFn(db, {
+    missionId: "hash_dtu_bench",
+    stepIndex: 0,
+    taskClass: "hash_dtu_refs",
+    fullContextTokens: fullTokens,
+    dhtpTokens,
+    taskSuccess: !!bench.passes,
+    verificationSuccess: !!bench.hashMode,
+    latencyMs: 0,
+    cacheHit: false,
+    recoveryRequired: false,
+    compressionRatio: bench.ratio,
+    presetId: bench.presetId || "hash_bench",
+    path: "hash_dtu_refs",
+    dtuCandidates: bench.dtuCount,
+    dtuSelected: bench.dtuCount,
+    tokensAfterDtu: dhtpTokens,
+    totalTokensAvoided: Math.max(0, fullTokens - dhtpTokens),
+  });
+  return { ok: !!row?.ok, path: "hash_dtu_refs", ratio: bench.ratio, record: row };
+}
+
 export function getDHTPStats() {
   return {
     cache: getBlockCache().stats(),

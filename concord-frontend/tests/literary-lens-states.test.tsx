@@ -257,7 +257,8 @@ describe('literary lens — four UX states', () => {
     annotationItems = [{ id: 'a1', title: 'Note: Hamlet', data: { title: 'Hamlet', author: 'William Shakespeare', note: 'Conscience as a brake.' } }];
     lensRun.mockImplementation((_d: string, name: string) =>
       name === 'stats' ? reply({ ok: true, sources: 1, chunks: 2, embedded: 2 }) : reply({ ok: true, nodes: [], edges: [] }));
-    const { getByText } = render(<LiteraryLensPage />);
+    const { getByText, getByRole } = render(<LiteraryLensPage />);
+    await act(async () => { fireEvent.click(getByRole('button', { name: /^Annotations$/i })); });
     await waitFor(() => expect(getByText('Your annotations')).toBeInTheDocument());
     expect(getByText(/Conscience as a brake/i)).toBeInTheDocument();
   });
@@ -269,13 +270,14 @@ describe('literary lens — four UX states', () => {
   const CRYSTAL_B = { chunkId: 'c10', dtuId: 'dtu_lit_10', heading: null, title: 'Macbeth', author: 'William Shakespeare', edgeCount: 2, avgScore: 0.5, salience: 0.42 };
 
   describe('CRYSTALLIZE: resonance-salience ranking panel', () => {
-    it('calls literary.crystallize on mount with the expected input shape', async () => {
+    it('calls literary.crystallize when Crystals view opens with the expected input shape', async () => {
       lensRun.mockImplementation((_d: string, name: string) => {
         if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
         if (name === 'crystallize') return reply({ ok: true, crystals: [CRYSTAL_A, CRYSTAL_B] });
         return reply({ ok: true, nodes: [], edges: [] });
       });
-      render(<LiteraryLensPage />);
+      const { getByRole } = render(<LiteraryLensPage />);
+      await act(async () => { fireEvent.click(getByRole('button', { name: /^Crystals$/i })); });
       await waitFor(() => expect(lensRun).toHaveBeenCalledWith('literary', 'crystallize', { limit: 8 }));
     });
 
@@ -285,11 +287,12 @@ describe('literary lens — four UX states', () => {
         if (name === 'crystallize') return reply({ ok: true, crystals: [CRYSTAL_A, CRYSTAL_B] });
         return reply({ ok: true, nodes: [], edges: [] });
       });
-      const { getByText, getAllByText } = render(<LiteraryLensPage />);
+      const { getByText, getAllByText, getByRole } = render(<LiteraryLensPage />);
+      await act(async () => { fireEvent.click(getByRole('button', { name: /^Crystals$/i })); });
       await waitFor(() => expect(getByText('Crystallization candidates')).toBeInTheDocument());
+      await waitFor(() => expect(getAllByText('Hamlet').length).toBeGreaterThan(0));
 
       // Ranked (highest salience first): Hamlet (93%) before Macbeth (42%).
-      expect(getAllByText('Hamlet').length).toBeGreaterThan(0);
       expect(getByText('Macbeth')).toBeInTheDocument();
       expect(getByText('93%')).toBeInTheDocument();
       expect(getByText('42%')).toBeInTheDocument();
@@ -304,7 +307,8 @@ describe('literary lens — four UX states', () => {
         if (name === 'crystallize') return reply({ ok: true, crystals: [] });
         return reply({ ok: true, nodes: [], edges: [] });
       });
-      const { getByText } = render(<LiteraryLensPage />);
+      const { getByText, getByRole } = render(<LiteraryLensPage />);
+      await act(async () => { fireEvent.click(getByRole('button', { name: /^Crystals$/i })); });
       await waitFor(() => expect(getByText(/No cross-domain resonance edges yet/i)).toBeInTheDocument());
     });
 
@@ -318,7 +322,8 @@ describe('literary lens — four UX states', () => {
         }
         return reply({ ok: true, nodes: [], edges: [] });
       });
-      const { getByText, container } = render(<LiteraryLensPage />);
+      const { getByText, getByRole, container } = render(<LiteraryLensPage />);
+      await act(async () => { fireEvent.click(getByRole('button', { name: /^Crystals$/i })); });
       await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
       expect(getByText(/Couldn.t rank passages/i)).toBeInTheDocument();
 
@@ -340,7 +345,8 @@ describe('literary lens — four UX states', () => {
         }
         return reply({ ok: true, nodes: [], edges: [] });
       });
-      const { getByText, getByTestId } = render(<LiteraryLensPage />);
+      const { getByText, getByTestId, getByRole } = render(<LiteraryLensPage />);
+      await act(async () => { fireEvent.click(getByRole('button', { name: /^Crystals$/i })); });
       await waitFor(() => expect(getByText('Hamlet')).toBeInTheDocument());
 
       await act(async () => { fireEvent.click(getByText('Hamlet')); });

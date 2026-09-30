@@ -88,6 +88,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mining.compliance-list",
+      "name": "compliance-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mining.compliance-log",
+      "name": "compliance-log"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mining.compliance-update",
+      "name": "compliance-update"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mining.dislike",
       "name": "dislike"
     },
@@ -387,6 +426,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mining.pit-optimize",
+      "name": "pit-optimize"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mining.priority",
       "name": "priority"
     },
@@ -441,6 +493,32 @@
       ],
       "macro_id": "mining.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mining.reclamation-list",
+      "name": "reclamation-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mining",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mining.reclamation-update",
+      "name": "reclamation-update"
     },
     {
       "_derived": true,
@@ -653,5 +731,5 @@
   ],
   "domain": "mining",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 50
+  "macroCount": 56
 }

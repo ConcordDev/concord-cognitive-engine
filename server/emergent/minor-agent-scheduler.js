@@ -11,10 +11,13 @@ export class MinorAgentScheduler {
    * @param {Function} [realtimeEmit]
    * @param {number} [tickIntervalMs]
    */
-  constructor(db, realtimeEmit, tickIntervalMs = 60000) {
+  constructor(db, realtimeEmit, tickIntervalMs) {
     this.db = db;
     this.realtimeEmit = realtimeEmit;
-    this.tickIntervalMs = tickIntervalMs;
+    // Default 60s tick was starving A40 / 14B. Allow env override
+    // (CONCORD_MINOR_AGENT_TICK_MS) so the user can dial NPC cadence
+    // down when running on smaller GPU capacity.
+    this.tickIntervalMs = Number(process.env.CONCORD_MINOR_AGENT_TICK_MS) || (tickIntervalMs ?? 60000);
     this.agents = new Map(); // emergentId → EmergentMinorAgent
     this._timer = null;
     // Bumped 5 → 32 for 32GB / RTX PRO 4500 deployments. The previous

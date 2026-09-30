@@ -41,6 +41,33 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# --- Single-instance lock (2026-09-08) -------------------------------------
+# A `sqlite3 .backup` of a multi-GB DB can take longer than the backup cron's
+# interval (5 min on the pod). Without a lock, a second run starts before the
+# first finishes and they stack — each holding a read lock and each needing
+# ~DB-size of free disk for its staging copy. On a near-full disk this wedges
+# the box (observed 2026-09-08: two stacked .backup procs, 14 and 20 min old,
+# disk at 0 bytes free, backend boots stalled to 2+ minutes). Fail fast and
+# quiet if another run holds the lock.
+_LOCK_FILE="${TMPDIR:-/tmp}/concord-db-backup.lock"
+exec 9>"$_LOCK_FILE" || { echo "[db-backup] cannot open lock $_LOCK_FILE"; exit 0; }
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || { echo "[db-backup] another backup is running — skipping this run"; exit 0; }
+  _LOCK_DIR=""
+else
+  # macOS has no flock(1) — fall back to an atomic mkdir lock with a stale sweep.
+  _LOCK_DIR="${TMPDIR:-/tmp}/concord-db-backup.lock.d"
+  if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+    if [ -n "$(find "$_LOCK_DIR" -maxdepth 0 -mmin +90 2>/dev/null)" ]; then
+      rmdir "$_LOCK_DIR" 2>/dev/null && mkdir "$_LOCK_DIR" 2>/dev/null || { echo "[db-backup] lock held — skipping"; exit 0; }
+    else
+      echo "[db-backup] another backup is running — skipping this run"; exit 0
+    fi
+  fi
+fi
+_cleanup() { [ -n "${STAGING_DIR:-}" ] && rm -rf "$STAGING_DIR"; [ -n "${_LOCK_DIR:-}" ] && rmdir "$_LOCK_DIR" 2>/dev/null; return 0; }
+trap _cleanup EXIT
+
 DATA_DIR="${DATA_DIR:-$PROJECT_ROOT/data}"
 
 # --- Resolve the live DB path (respect the real DB_PATH the server uses) ---
@@ -73,8 +100,17 @@ fi
 
 echo "[db-backup] $TIMESTAMP  src=$SRC_DB  dest=$BACKUP_DIR"
 
-STAGING_DIR=$(mktemp -d)
-trap 'rm -rf "$STAGING_DIR"' EXIT
+STAGING_DIR=$(mktemp -d)   # cleaned by the _cleanup EXIT trap set above
+
+# --- Disk-space guard: `.backup` writes a full staging copy of the DB. ---
+# Refuse if free space on the staging volume is < 1.2× the DB size — a
+# half-written .backup on a full disk is worse than a skipped run.
+_db_bytes=$(wc -c < "$SRC_DB" 2>/dev/null || echo 0)
+_free_bytes=$(df -k "$(dirname "$STAGING_DIR")" 2>/dev/null | awk 'NR==2{print $4*1024}')
+if [ -n "$_free_bytes" ] && [ "$_db_bytes" -gt 0 ] && [ "$_free_bytes" -lt "$(( _db_bytes * 12 / 10 ))" ]; then
+  echo "[db-backup] SKIP: free space $((_free_bytes/1048576))MB < 1.2× DB $((_db_bytes/1048576))MB — not safe to stage a copy"
+  exit 0
+fi
 
 # --- WAL-safe consistent snapshot (NEVER a raw cp of a live WAL DB) ---
 if command -v sqlite3 &>/dev/null; then

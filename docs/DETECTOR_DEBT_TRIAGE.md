@@ -23,6 +23,64 @@ kept for provenance and should not be read as current counts.
 
 # CURRENT STATE — live run 2026-07-25T12:11:32Z
 
+> **SUPERSEDED (2026-09-10).** The live picture is the **2026-09-10
+> owner-authorized refresh** entry immediately below (`## 2026-09-10 —
+> owner-authorized refresh`): `BASELINE.json` 2026-09-10T15:20Z, **579
+> fingerprints, 0 critical / 24 high / 71 medium / 31 low / 460 info (586)**;
+> `BUDGET.json` v14 `maxTotal` 620 unchanged (586 < 620); `--diff --ci` green
+> (added 0 / removed 0). The 2026-09-08 entry ("owner-authorized BASELINE +
+> BUDGET refresh", 565 fingerprints / 572 total) it points to is now history.
+
+---
+
+## 2026-09-10 — owner-authorized refresh (branch `concurrency-refactor`)
+
+User instruction: "Do the remaining 3 things you flagged" — one of the three
+was "`audit/detectors/BASELINE.json` refresh for the new detector."
+
+**New since the 2026-09-08 baseline:** one new detector — `macro-stub`
+(`server/lib/detectors/macro-stub-detector.js`, added this branch): reads
+every `register()` / `registerLensAction()` handler body and flags stubs
+disguised as working (comment-form incompleteness markers, effectively-empty
+`return { ok: true }`) — inventories honest `{ ok:false, reason:'roadmap' }`
+stubs separately at info. It contributes **11 info fingerprints** (its
+summary row + the honest-roadmap-stub inventory: `mounts.*` x10, personas
+publish/install) and **0 high/medium/low** — the 3 real findings it first
+surfaced (`thread.best-time` hardcoded slots, `scope.overrides` permanent
+`[]`, `personas.versions` hardcoded) were all fixed before this capture (see
+commit `9370fc2d6` — thread.best-time now derives the user's real
+posting-time distribution or returns a labelled generic guideline; personas
+versions/publish/install delegate to the real `personas.js` LENS_ACTIONS;
+scope.overrides is a verified constant, `@macro-stub-ok`-annotated).
+
+**8 gate highs cleared before the refresh** (they were "new vs baseline"
+because the 2026-09-08 baseline predated ~2 weeks of `concurrency-refactor`
+work — the frontend thin-shell rebuild, the Unity-first world shell, and the
+ConKay tool-use work):
+
+| finding | disposition |
+|---|---|
+| 1× `performance-hotspot` / `perf_uncaught_sql_loop` @ `server/lib/chat-agent.js` | **FIXED.** The `callerRole` / `ctx` block (committed on this branch, `e5411c883`) sat inside the agent turn loop, re-running `SELECT role FROM users` every turn (≤ `AGENT_MAX_TURNS` = 5 per request). It is fully loop-invariant — hoisted to once before the loop (`291a355c8`). perf detector: 0 chat-agent highs after. |
+| 6× `lens-health` / `lens_no_default_export` (`code` / `council` / `crypto` / `fitness` / `game` / `music` pages) | **DETECTOR FALSE POSITIVE, fixed bidirectionally.** Those pages are thin-shell re-exports landed by the frontend thin-shell workstream — `export { default } from '@/…'`, `export { XWorkspace as default } from '@/…'`, `export * from '@/…'`. That IS a valid Next.js page default export; it just has no local `export default` token and no local JSX. `lens-health-detector.js` now recognises the re-export shape and skips both the default-export AND jsx-return checks for it. Pinning tests added (`lens-health-detector.test.js`): re-export shells pass, a genuinely-exportless page still fails high. |
+| 1× `ux-broken-link` / `broken_link` @ `concord-frontend/components/world/WorldUnityShell.tsx` | **REAL, fixed.** `router.push('/lenses')` — there is no bare `/lenses` index route (only the dynamic per-lens segment). Changed to `/hub` (the actual front door; onboarding routes there too). One follow-up self-inflicted flag: the explanatory comment then contained the literal `router.push('/lenses')` and `ux-broken-link` (raw text matching, no comment-awareness — CLAUDE.md documents this class) re-flagged it; comment reworded to prose (`a946ea667`). |
+
+**BUDGET.json** unchanged at v14 `maxTotal` 620 — the new total 586 sits
+comfortably under it (586 vs 620 = 5.5% headroom). The `perDetector` map in
+BUDGET.json remains stale-and-informational-only (the v14 rationale already
+notes this); `ciDecision` gates on `maxTotal` alone.
+
+**Baselined highs: still 24, the same reviewed FP / by-design set** documented
+in the 2026-09-08 entry — no NEW highs were baselined this cycle (the 8 above
+were all fixed or corrected, not blessed). Low went 29 → 31 (+2:
+`resource-leak` on a frontend timer-count sanity note + one `env-config-drift`
+line, both pre-existing drift, info-adjacent). Info went 448 → 460 (+12:
+macro-stub's 11 + one macro-usage telemetry line — that detector's info tier
+is documented as run-to-run volatile).
+
+Post-refresh verification: `node scripts/run-detectors.js --consumer
+code-quality --diff --ci` → `added 0 / removed 0`, gate green.
+> Everything below is a 2026-07-25 snapshot kept for provenance.
+
 Produced by exactly one invocation of `cd server && node scripts/run-detectors.js`
 at HEAD `9ea23642` (branch `claude/game-systems-audit-continuation-cobe3q`).
 46 detectors registered, all reported `ok` — no `no_db`, no `detector_threw`.
@@ -505,6 +563,84 @@ document's own historical section says "**44 detectors**"; the live run
 registers and executes **46**. (CLAUDE.md's "~30 detectors" is a correct
 historical statement about the state at PR #808, not a current count, and
 does not need changing.)
+
+---
+
+## 2026-09-08 — `concurrency-refactor` owner-authorized BASELINE + BUDGET refresh
+
+User instruction: "Do the baseline refresh". Executed:
+`node scripts/run-detectors.js --rewrite-baseline` on the current tree →
+**`BASELINE.json` 2026-09-08T21:35Z, 565 fingerprints, 0 critical / 24 high /
+71 medium / 29 low / 448 info (572)**. `--diff --ci` against it:
+**`added 0 / removed 0 / unchanged 565`** — the baseline exactly matches the
+tree. `BUDGET.json` → **v14 `maxTotal` 620** (threshold 651; 572 fits with ~8%
+headroom, wider than the usual 5% to absorb `macro-usage`'s run-to-run
+telemetry swing — info went 196→448 this cycle as the db-backed probing pass
+exercised more macros).
+
+**Fixed before the capture (real defects, committed):**
+- `critical` **1 → 0** — `maintenance-gates` / schema-drift gate:
+  `evo_assets.asset_id` → `id` (`world-asset-composition.js:85`),
+  `macro_call_log.created_at` → `ts` (`lens-behavioral-contract.js:173`).
+  `verify-schema-drift.mjs --ci` now DRIFT 0.
+- 3× `duplicate_route_registration` — `/api/runtime/{capabilities,
+  capabilities/:capability/health,events/recent}` each registered twice in
+  `server.js`; removed the earlier block.
+- 2× `perf_uncaught_sql_loop` — `pce/pattern-regression.js#updateRegressionBaselines`
+  and `pce/ast-cache.js#invalidateAstCache` re-prepared statements per loop
+  iteration; hoisted.
+- `invariant-guardian` + `observability-gap` on `usb-lease-cycle.js` — wrapped
+  the heartbeat handler in try/catch. invariant-guardian now 0 findings.
+- `perf_empty_catch` on `mcp.js:483` — dead no-op try-block removed.
+- 2× `perf_sync_fs_in_handler` on `occ-bridge.js:237,291` — the STEP-file
+  `readFileSync`s (real event-loop blocks proportional to geometry size) →
+  `await readFile`.
+- Pre-existing RED test — `pce-concord-bench` "verifies Dila empirical macros
+  are wired": `domains/dila.js` now registers `concord_bench` /
+  `pce_improvement_cycle` / `pce_metrics` / `coding_pipeline` as thin
+  delegations to `lib/pce/index.js`. Bench suite 45/45.
+
+**Cleared by the fresh scan (28 stale highs, in `removed`):**
+27× `dead-macro-call` + 1× `lens-manifest-capability`, all on
+`components/sentinel/*`. The old baseline predated `server/domains/sentinel.js`
+registering its 26 `sentinel.*` pairs (`triage.*`, `monitor.*`, `alerts.*`,
+`scan.*`, `query.*`, `intel.*`, `metrics.series`, `timeline.*`) — verified
+`buildRegisteredMacroPairs` now finds all 26 (`has sentinel triage.open? true`).
+Also the phantom `command-injection` on `.claude/worktrees/w1/...` — detector
+`_framework.js` walk now skips `.claude/` (git worktrees on other branches).
+
+**24 highs baselined — all reviewed, genuine false-positive or by-design:**
+- **15× `perf_sync_fs_in_handler`** — `occ-bridge.js` 26/29/30/66/74/317
+  (one-time `existsSync` Python-CLI / binary path resolution, microseconds);
+  `conkay/verticals/prosthetics.js` 199/217/227/228 (a deliberately-synchronous
+  CAD g-code + telemetry generator writing small artifacts once per run —
+  making it async ripples to every caller for no measurable gain);
+  `lease-system.js` 31/32/41 (sub-KB JSON lock-file reads at 60s heartbeat
+  cadence); `capability-registry.js:190` (one health-check `existsSync`).
+- **7× `money_txn_untransacted_writes`** — `creditWallet` / `debitWallet` /
+  `handleWebhook` / `ledger.js#recordTransaction` are the detector's own
+  documented control-flow-blind mutually-exclusive-branch class (a `try` INSERT
+  + a `catch` fallback INSERT for a pre-migration column — only one ever runs);
+  `account-lifecycle.js#requestAccountDeletion` writes `account_deletion_requests`
+  (an audit/scheduling table, `balance_at_request` is a snapshot column, no CC
+  moves) via a single `INSERT ... ON CONFLICT DO UPDATE`;
+  `routes/wagers.js#createWagersRouter` is a router-factory aggregation artifact
+  — every real wager handler (lines 190/201/209/219) IS `db.transaction`-wrapped.
+- **~2-4× `authz_write_auth_bypass`** — `/api/welding/portal`, `/api/spectate`,
+  `/api/metrics/vitals` (unauth telemetry beacon by design), `/api/auth/refresh`
+  (token refresh must work without a valid access token). All intentional
+  public-write paths; welding + spectate were already reviewed in prior passes.
+
+**Not fixed (pre-existing, out of scope for this refresh):** 5× `low`
+`stale-code` — `dhtp-rs-{freeze,human-export,ollama-provider}.js`,
+`adaptive-field-compression.js`, `world-asset-composition.js`. The DHTP-RS
+cluster is paused work; `world-asset-composition.js` is reachable via
+`composeFromRegistry` but not currently imported by a live path. Left baselined
+for a future dedicated pass. Also: the `perDetector` map in `BUDGET.json` v14 is
+stale (v13 values, informational only — `ciDecision` gates on `maxTotal` alone).
+
+**Disposition: refresh done, gate green.** The old `CURRENT STATE` section
+below (2026-07-25) is superseded by this entry.
 
 ---
 ---
@@ -1177,4 +1313,89 @@ Net effect: the ratchet (`--diff --ci`) goes from RED at 3 to green — by
 triage and a reviewed, authorized refresh, not by softening a checker. The
 same 7 highs were re-confirmed present (and no new ones) in the HEAD
 regeneration before applying.
+Reproduce with `cd server && node scripts/run-detectors.js --rewrite-baseline`.
+
+---
+
+## 2026-08-28 — BASELINE.json v2 refresh: REVIEWED and **APPLIED** (human-authorized)
+
+Owner-authorized refresh closing 3 findings that had been sitting reviewed-but-
+unapplied since an earlier session (`guard.mjs` correctly blocked the
+unauthorized attempt; the review below is what the owner then authorized).
+One of the three was fixed at the code level instead of baselined once the
+review showed a trivial, strictly-better fix existed — baselining was only
+used for the two that have no code-level fix by their nature.
+
+**Fixed at the code level, not baselined — `command-injection` on
+`server/lib/cpu-self-pin.js:148`.** `execSync(\`taskset -cp ${spec} ${process.pid}\`, …)`
+matched the detector's real "template interpolation into a shell" pattern.
+Review confirmed `spec` is provably digits/commas/hyphens only (built by
+`toRangeSpec()` from integers parsed via `Number()` out of `/proc/*/status`
+and `pgrep` output — no path for shell metacharacters to reach it), so this
+was a live false positive, not a live vulnerability. Rather than baseline a
+detector-verified shell-injection *shape*, switched to
+`execFileSync("taskset", ["-cp", spec, String(process.pid)], …)` — an argv
+array, no shell, which removes the injection shape entirely instead of
+resting on the numeric-only proof holding forever. Confirmed post-fix: the
+detector no longer flags the file at all (0 findings), and
+`tests/cpu-self-pin.test.js` stays 18/18 green. This is the detector's own
+`fixHint` (`use_execfile_with_args_array_no_shell`) applied literally.
+
+**Baselined — `secret-leak` × 2 on `.env:498` and `.env:501` (JWT bearer
+tokens).** `.env` is listed in `.gitignore` (`git check-ignore -v .env` →
+`.gitignore:5:.env`) and has never been a tracked file (`git ls-files` shows
+only `.env.example` and `.env.runpod` under that prefix) — it is the
+machine-local secrets file by design, not committed source. A "secret found
+in `.env`" finding is the detector correctly identifying a real secret in a
+file whose entire purpose is holding real secrets; there is no code fix for
+this class because the fix would be "don't put secrets in the secrets file,"
+which defeats the file's purpose. Baselining is the correct disposition, not
+a workaround — same category as `.env.example` being exempt by convention,
+just not yet reflected in the detector's own file-scope allowlist.
+
+**Baselined — `performance-hotspot` (`perf_sync_fs_in_handler`) on
+`server/lib/cpu-self-pin.js:100`, discovered incidentally while fixing the
+command-injection finding above (this file postdates the prior baseline
+snapshot, so every finding in it read as "new").** `readCpusAllowedList()`'s
+`fs.readFileSync(procStatusPath, "utf8")` is flagged as a sync fs call "inside
+an async path." Traced the actual call chain: `selfPinAwayFromOllama()` is
+invoked exactly once, at `server.js:43`, at module-eval time before the HTTP
+server starts listening — not inside any request handler, not on any
+periodic/heartbeat schedule, never called a second time. The detector's
+static heuristic has no way to see "this call graph only ever runs once at
+boot," so a genuine live-hotspot check reads a one-time boot cost as if it
+were per-request. Making the call chain actually async would mean top-level
+`await`-ing a boot step in `server.js` right next to the file's own
+documented TDZ-hazard boot-order landmines (`const app = express()` /
+`LENS_ACTIONS` ordering) for a call site that costs nothing at request time —
+not a trade worth making for a false positive. Baselined instead.
+
+Post-refresh: `node scripts/run-detectors.js --diff --ci` → `added: 0
+(critical=0, high=0, medium=0, low=0, info=0)`, `CI check PASSED`. New
+baseline: 234 fingerprints, totals `0 critical / 11 high / 20 medium / 11 low
+/ 196 info / 238 total` (well under `BUDGET.json` v13's 483 threshold at
+1.05× `maxTotal`). The jump in raw counts vs the 2026-08-01 snapshot cited in
+CLAUDE.md is mostly `macro-usage`'s expected runtime-telemetry churn
+(CLAUDE.md already documents this detector's info tier as varying run-to-run)
+plus organic drift from unrelated work landing on the branch between
+snapshots — not a new problem introduced by this refresh.
+
+**Found but explicitly NOT touched in this pass (out of scope for the
+authorized 3-item refresh, flagged rather than silently absorbed or
+silently fixed):** two new `resource-leak` mediums (`setInterval` with no
+matching `clearInterval` in `server/lib/dtu-archive.js:247` and
+`server/lib/presence-idle.js:214`), one new `world-shard-write-boundary`
+medium (`affect-trace-cycle` heartbeat, `scope:"global"`, writing to the
+per-world `world_npcs` table — the exact race class documented in
+CLAUDE.md's "DB write-ownership rules"), one new `performance-hotspot` low
+(module-level unbounded `Map`/`Set` in `server/lib/lazy-module.js:44`), and
+8 `stale-code` lows for modules that are never imported
+(`adaptive-brain-router.js`, `cerebras-provider.js`, `cloudflare-ai-provider.js`,
+`hud-engine.js`, `save-load-system.js`, `stale-wiring.js`,
+`test-mistral-worker.js`, `world-bridge.js`). None are high/critical so none
+block the ratchet, and the refresh above captured them into the new baseline
+as "known" the same way it captured everything else currently in the tree —
+but per CLAUDE.md §8 ("pre-existing is an explanation, never an excuse"),
+baselined-as-known is not the same claim as reviewed-and-accepted for these;
+they simply weren't part of what this pass was authorized to fix.
 Reproduce with `cd server && node scripts/run-detectors.js --rewrite-baseline`.

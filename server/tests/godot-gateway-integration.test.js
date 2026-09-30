@@ -375,6 +375,35 @@ test("player:move round-trips through real cityPresence anti-cheat over /godot-w
   } finally { ws.close(); }
 });
 
+test("a returning player who spawns somewhere new is not locked out (gateway close releases presence)", async () => {
+  // Reproduced on a GPU pod 2026-09-27: gateway disconnects never removed the
+  // presence entry, so on return the first move was judged against where the
+  // player LEFT — spawning elsewhere read as a teleport, every move was
+  // rejected, and the anti-cheat dropped them in about a second.
+  const { token } = await registerUser(`godotit_${TS}_ret`);
+  const world = "godot-it-return-world";
+  const first = await connect(WS_URL);
+  sendMsg(first, "auth", { token });
+  await nextFrame(first);
+  sendMsg(first, "player:move", { cityId: world, x: 1, y: 0, z: 1, direction: 0 });
+  assert.equal((await waitForEvt(first, "player:move:ack")).data.ok, true);
+  first.close();
+  await new Promise((r) => { setTimeout(r, 900); }); // close handled; past the login grace window
+
+  const back = await connect(WS_URL);
+  try {
+    sendMsg(back, "auth", { token });
+    await nextFrame(back);
+    await new Promise((r) => { setTimeout(r, 650); });
+    sendMsg(back, "player:move", { cityId: world, x: 800, y: 0, z: 800, direction: 0 }); // new spawn, far away
+    const a = await waitForEvt(back, "player:move:ack");
+    assert.equal(a.data.ok, true);
+    await new Promise((r) => { setTimeout(r, 120); });
+    sendMsg(back, "player:move", { cityId: world, x: 800.4, y: 0, z: 800, direction: 0 }); // and keeps walking
+    assert.equal((await waitForEvt(back, "player:move:ack")).data.ok, true);
+  } finally { back.close(); }
+});
+
 test("player:mode round-trips through the shared core over /godot-ws", async () => {
   const { token } = await registerUser(`godotit_${TS}_g`);
   const ws = await connect(WS_URL);

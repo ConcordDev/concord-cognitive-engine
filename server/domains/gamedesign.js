@@ -2077,6 +2077,18 @@ export default function registerGameDesignActions(registerLensAction) {
         feature,
         withInterior,
         dimensions: { x: width, z: depth, height },
+        // This DTU exists to be listable on the marketplace (the whole
+        // point of an authored blueprint is that other players can buy it)
+        // but is minted via a raw `INSERT INTO dtus`, not the `dtu.create`
+        // macro that would otherwise set a `.license` for it. Without this,
+        // `marketplace.list`'s `dtuAssertScope(dtu, "marketplace_sale")`
+        // gate (added `ea3dc18ba`) refuses every building blueprint with
+        // `license_scope_denied` — read back by
+        // `lib/dtu-shadow-hydrate.js#hydrateDtuRow` (merges `meta.license`
+        // into the hydrated DTU's top-level `license`). Same fix already
+        // applied to `lib/forge-marketplace.js#mintForgeAppAsDtu` for the
+        // identical gap.
+        license: { scopes: ["private", "marketplace_sale"] },
       },
       human: { summary: `${name} — an authored ${archetype} building${feature ? ` with a ${feature}` : ""}.` },
     };
@@ -2221,6 +2233,10 @@ export default function registerGameDesignActions(registerLensAction) {
         archetype,
         feature,
         dimensions: hasDims ? { x: width, z: depth, height } : null,
+        // Same marketplace-listability gap + fix as building-publish above
+        // — a fused blueprint is also meant to be sellable, and is minted
+        // the same raw-SQL way, so it needs the same license grant.
+        license: { scopes: ["private", "marketplace_sale"] },
       },
       lineage: { parents: parentDtuIds },
       human: { summary: `${name} — a fused asset composed from ${parentDtuIds.length} source assets.` },

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -103,7 +104,7 @@ export function RoboticsActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Robot — ${kinResult?.workspace ?? 'spec'}`, tags: ['robotics', 'spec', kinResult?.type].filter((t): t is string => !!t), source: 'robotics:spec:mint', meta: { visibility: 'private', consent: { allowCitations: false }, robotics: { kin: kinResult, path: pathResult, fuse: fuseResult, bat: batResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Robot — ${kinResult?.workspace ?? 'spec'}`, tags: ['robotics', 'spec', kinResult?.type].filter((t): t is string => !!t), source: 'robotics:spec:mint', meta: { visibility: 'private', consent: { allowCitations: false }, robotics: { kin: kinResult, path: pathResult, fuse: fuseResult, bat: batResult } } }, 'software', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('robotics.mintedDtuId', id, { label: `Robot DTU ${id.slice(0, 8)}…` }); ok(`Robot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -132,7 +133,7 @@ export function RoboticsActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Robot spec — ${kinResult.degreesOfFreedom}-DOF`, tags: ['robotics', 'spec', 'public'], source: 'robotics:spec:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, bat: batResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Robot spec — ${kinResult.degreesOfFreedom}-DOF`, tags: ['robotics', 'spec', 'public'], source: 'robotics:spec:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, bat: batResult } }, 'software', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

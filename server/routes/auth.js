@@ -82,6 +82,7 @@ export default function createAuthRouter({
   _REFRESH_FAMILIES,
   REFRESH_TOKEN_COOKIE,
   NODE_ENV,
+  resolveCookieSecure,
   validate,
   hashPassword,
   verifyPassword,
@@ -110,7 +111,19 @@ export default function createAuthRouter({
 
   // ── Bot Prevention: per-IP daily registration cap ──────────────────
   const _regIpDaily = new Map(); // ip → { count, day }
-  const MAX_REGISTRATIONS_PER_IP_PER_DAY = 3;
+  // Raised from a hardcoded 3 (2026-08-24, live growth-readiness pass): 3/IP/day
+  // is fine for a single bad actor but false-positives hard on any real launch-
+  // day traffic pattern — corporate/campus NAT and mobile-carrier CGNAT
+  // routinely put dozens to hundreds of distinct real people behind one public
+  // IP. At that cap, the 4th+ legitimate signup behind a shared IP silently
+  // 429s with a message ("try again tomorrow") that reads as a broken site,
+  // not a rate limit — exactly the kind of thing that would undermine a real
+  // "get to 1000 signups on day one" push. This cap is also NOT the only bot
+  // defense here — the honeypot field + 2-second minimum-fill-time checks
+  // above already catch naive scripted registration attempts independently
+  // of IP, so this layer can afford to be a coarser backstop rather than the
+  // primary defense. Env-overridable so it can be tuned without a redeploy.
+  const MAX_REGISTRATIONS_PER_IP_PER_DAY = Number(process.env.CONCORD_REG_CAP_PER_IP_PER_DAY) || 25;
   // CI / e2e jobs register many fresh test users from one runner IP and
   // would exhaust the daily cap mid-suite (the Phase Z playthrough's
   // beforeAll registers a user per run). CONCORD_RATE_LIMIT_BYPASS=1 is
@@ -130,7 +143,7 @@ export default function createAuthRouter({
   _regIpCleanupInterval.unref();
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
+  router.post("/register", authRateLimitMiddleware, validate("userRegister"), async (req, res) => {
     const { username, email, password, dateOfBirth } = req.validated || req.body;
 
     // ── Age gate (18+) ──────────────────────────────────────────────
@@ -215,11 +228,12 @@ export default function createAuthRouter({
 
     const userId = crypto.randomUUID();
     const userCount = AuthDB.getUserCount();
+    const _passwordHash = await hashPassword(password);
     const user = {
       id: userId,
       username,
       email,
-      passwordHash: hashPassword(password),
+      passwordHash: _passwordHash,
       role: userCount === 0 ? "owner" : "member",
       scopes: userCount === 0 ? ["*"] : ["read", "write"],
       emailVerified: false,
@@ -254,8 +268,8 @@ export default function createAuthRouter({
     const refreshToken = createRefreshToken(userId);
 
     // SECURITY: Set httpOnly cookies for browser auth
-    if (token) setAuthCookie(res, token);
-    if (refreshToken) setRefreshCookie(res, refreshToken);
+    if (token) setAuthCookie(res, token, req);
+    if (refreshToken) setRefreshCookie(res, refreshToken, req);
 
     // Track refresh token family
     try {
@@ -279,7 +293,7 @@ export default function createAuthRouter({
   });
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/login", authRateLimitMiddleware, validate("userLogin"), (req, res) => {
+  router.post("/login", authRateLimitMiddleware, validate("userLogin"), async (req, res) => {
     // Defense-in-depth: per-IP AND per-account rate limiting so NAT
     // doesn't defeat the IP bucket and a botnet can't target one account.
     const ip = req.ip || req.connection.remoteAddress;
@@ -301,7 +315,7 @@ export default function createAuthRouter({
       user = AuthDB.getUserByEmail(email);
     }
 
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       // Audit failed login attempt
       auditLog("auth", "login_failed", {
         attemptedUser: username || email,
@@ -329,8 +343,8 @@ export default function createAuthRouter({
     const refreshToken = createRefreshToken(user.id);
 
     // SECURITY: Set httpOnly cookies for browser auth
-    if (token) setAuthCookie(res, token);
-    if (refreshToken) setRefreshCookie(res, refreshToken);
+    if (token) setAuthCookie(res, token, req);
+    if (refreshToken) setRefreshCookie(res, refreshToken, req);
 
     // Track refresh token family
     try {
@@ -575,6 +589,7 @@ export default function createAuthRouter({
 
       const now = Math.floor(Date.now() / 1000);
       db.prepare(`UPDATE users SET brain_mode = ?, brain_mode_set_at = ? WHERE id = ?`).run(brainMode, now, req.user.id);
+      globalThis.__concordBustUserCache?.(req.user.id);
 
       auditLog("auth", "choose_brain_mode", {
         userId: req.user.id,
@@ -627,22 +642,49 @@ export default function createAuthRouter({
     if (clearLockerKey && req.user?.id) clearLockerKey(req.user.id);
 
     // Clear auth cookies
-    clearAuthCookie(res);
+    clearAuthCookie(res, req);
 
     res.json({ ok: true, message: "Logged out successfully" });
   });
 
   // ---- Refresh Token Endpoint (Tier 1: Auth Hardening) ----
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/refresh", authRateLimitMiddleware, (req, res) => {
-    const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
-    if (!refreshCookie) {
+  // No-token-at-all short-circuits BEFORE authRateLimitMiddleware (2026-08-24,
+  // found live during a real-browser load test). authRateLimiter is keyed on
+  // IP + identity, and a refresh call carries no username/email — so identity
+  // is always blank, meaning EVERY anonymous visitor sharing an IP (any
+  // corporate/campus NAT, any mobile carrier CGNAT) shares one 5-per-15-min
+  // bucket for this route. The frontend's own background pollers legitimately
+  // attempt one refresh per fresh anonymous page load to check for an
+  // existing session — that's correct behavior, not abuse — but with no
+  // refresh cookie at all it was guaranteed to 401 and (skipSuccessfulRequests
+  // counts failures) burn one of the 5 slots anyway. A handful of ordinary
+  // anonymous visitors landing on any page from the same shared IP could
+  // exhaust the whole budget before any of them ever tried to log in or
+  // register — verified live: a fresh browser session with zero prior auth
+  // activity hit 429 "Too many authentication attempts" on THIS route within
+  // a few page loads. Skipping the limiter entirely for the "nothing to even
+  // attempt" case is both more correct (no credentials were tried, so it
+  // isn't a failed *attempt* in the sense the limiter exists to catch) and
+  // cheaper (skips the limiter's bookkeeping for what is, in practice, the
+  // single most common call this route ever receives).
+  // The auth here is the httpOnly refresh-token COOKIE itself (same pattern as
+  // the reset-token routes below): the inline guard rejects a missing cookie
+  // with 401, and the handler calls verifyRefreshToken() before issuing a new
+  // access token. There is no session to present at refresh time — that is the
+  // point of the endpoint.
+  // AUTH: token
+  router.post("/refresh", (req, res, next) => {
+    if (!req.cookies?.[REFRESH_TOKEN_COOKIE]) {
       return res.status(401).json({ ok: false, error: "No refresh token provided", code: "REFRESH_MISSING" });
     }
+    next();
+  }, authRateLimitMiddleware, (req, res) => {
+    const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
 
     const decoded = verifyToken(refreshCookie);
     if (!decoded || decoded.type !== "refresh") {
-      clearAuthCookie(res);
+      clearAuthCookie(res, req);
       return res.status(401).json({ ok: false, error: "Invalid or expired refresh token", code: "REFRESH_INVALID" });
     }
 
@@ -653,7 +695,7 @@ export default function createAuthRouter({
       // Revoke the entire family and force re-login.
       _TOKEN_BLACKLIST.revokeAllForUser(decoded.userId);
       _REFRESH_FAMILIES.delete(decoded.family);
-      clearAuthCookie(res);
+      clearAuthCookie(res, req);
       auditLog("security", "refresh_token_reuse", {
         userId: decoded.userId,
         family: decoded.family,
@@ -669,15 +711,15 @@ export default function createAuthRouter({
     // Issue new token pair (rotation)
     const user = AuthDB.getUser(decoded.userId);
     if (!user) {
-      clearAuthCookie(res);
+      clearAuthCookie(res, req);
       return res.status(401).json({ ok: false, error: "User not found" });
     }
 
     const newAccessToken = createToken(user.id);
     const newRefreshToken = createRefreshToken(user.id);
 
-    setAuthCookie(res, newAccessToken);
-    if (newRefreshToken) setRefreshCookie(res, newRefreshToken);
+    setAuthCookie(res, newAccessToken, req);
+    if (newRefreshToken) setRefreshCookie(res, newRefreshToken, req);
 
     // Update family tracking
     try {
@@ -713,7 +755,7 @@ export default function createAuthRouter({
       userAgent: req.headers["user-agent"]
     });
 
-    clearAuthCookie(res);
+    clearAuthCookie(res, req);
     res.json({ ok: true, message: "All sessions revoked. Please log in again." });
   });
 
@@ -726,9 +768,13 @@ export default function createAuthRouter({
     // present whenever auth cookies are. "lax" ensures it's sent on same-site
     // navigations + fetch requests.
     const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+    // Same Secure resolution as concord_auth / refresh — never bare NODE_ENV.
+    // Missing helper must NOT default to Secure on local HTTP prod builds.
     res.cookie("csrf_token", csrfToken, {
       httpOnly: false, // JS needs to read this
-      secure: NODE_ENV === "production",
+      secure: typeof resolveCookieSecure === "function"
+        ? resolveCookieSecure(req)
+        : false,
       sameSite: process.env.COOKIE_SAME_SITE || "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
@@ -892,7 +938,7 @@ export default function createAuthRouter({
   });
 
   // Password change endpoint
-  router.post("/change-password", authRateLimitMiddleware, validate("changePassword"), (req, res) => {
+  router.post("/change-password", authRateLimitMiddleware, validate("changePassword"), async (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
 
     const { currentPassword, newPassword } = req.validated || req.body;
@@ -907,7 +953,7 @@ export default function createAuthRouter({
 
     // Verify current password
     const user = AuthDB.getUser(req.user.id);
-    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+    if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
       auditLog("auth", "password_change_failed", {
         userId: req.user.id,
         reason: "invalid_current_password",
@@ -918,13 +964,15 @@ export default function createAuthRouter({
     }
 
     // Update password in database
+    const _newHash = await hashPassword(newPassword);
     if (db) {
       const stmt = db.prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-      stmt.run(hashPassword(newPassword), req.user.id);
+      stmt.run(_newHash, req.user.id);
     } else {
-      user.passwordHash = hashPassword(newPassword);
+      user.passwordHash = _newHash;
       saveAuthData();
     }
+    globalThis.__concordBustUserCache?.(req.user.id);
 
     auditLog("auth", "password_changed", {
       userId: req.user.id,
@@ -975,7 +1023,7 @@ export default function createAuthRouter({
   });
 
   // AUTH: public — auth here is the single-use reset token itself (verifyResetToken), not a session; protected by authRateLimitMiddleware.
-  router.post("/reset-password", authRateLimitMiddleware, (req, res) => {
+  router.post("/reset-password", authRateLimitMiddleware, async (req, res) => {
     const token = String(req.body?.token || "");
     const newPassword = String(req.body?.newPassword || "");
     if (!token) return res.status(400).json({ ok: false, error: "Reset token required" });
@@ -988,12 +1036,14 @@ export default function createAuthRouter({
       // Same message for expired/unknown token and vanished user — no oracle.
       return res.status(400).json({ ok: false, error: "Invalid or expired reset link — request a new one" });
     }
+    const _resetHash = await hashPassword(newPassword);
     if (db) {
-      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(newPassword), user.id);
+      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(_resetHash, user.id);
     } else {
-      user.passwordHash = hashPassword(newPassword);
+      user.passwordHash = _resetHash;
       saveAuthData();
     }
+    globalThis.__concordBustUserCache?.(user.id);
     consumeResetToken(token); // single-use — a leaked link dies on first redemption
     // Security best practice: a password reset invalidates every outstanding
     // session (the attacker who prompted the reset may hold one).

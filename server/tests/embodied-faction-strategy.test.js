@@ -301,6 +301,23 @@ describe("applyMove", () => {
     assert.equal(rel.kind, "war");
     assert.ok(Math.abs(rel.score + 1) < 0.0001);
   });
+
+  it("DECLARE_WAR stamps the world consequence graph when the table exists", async () => {
+    const { up: up416 } = await import("../migrations/416_world_consequences.js");
+    const { listConsequences } = await import("../lib/world-consequence.js");
+    await up416(db);
+    const allStates = db.prepare(`SELECT * FROM faction_strategy_state`).all();
+    applyMove(db, "f1", {
+      move: "DECLARE_WAR", target: "f2",
+      summary: "test war declaration",
+      deltaMomentum: 0.05, newStance: "war",
+      newKind: "war", newScore: -1,
+    }, allStates);
+    const wars = listConsequences(db, { action: "war" });
+    assert.equal(wars.length, 1);
+    assert.equal(wars[0].actorId, "f1");
+    assert.equal(wars[0].targetId, "f2");
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@ describe('Sere satire frame banner', () => {
     expect(src).toMatch(/never a claim about any real individual or organization/i);
   });
   it('is mounted in the world lens', () => {
-    expect(read('app/lenses/world/page.tsx')).toMatch(/<SereFrameBanner worldId=/);
+    expect(read('components/world/WorldOsSurface.tsx')).toMatch(/<SereFrameBanner worldId=/);
   });
 });
 
@@ -35,7 +35,7 @@ describe('Curtain dossier', () => {
     expect(src).toMatch(/e\.discovered \?/);
   });
   it('is mounted in the world lens', () => {
-    expect(read('app/lenses/world/page.tsx')).toMatch(/<CurtainDossier worldId=/);
+    expect(read('components/world/WorldOsSurface.tsx')).toMatch(/<CurtainDossier worldId=/);
   });
 });
 

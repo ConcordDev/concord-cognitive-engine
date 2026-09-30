@@ -68,7 +68,7 @@ function tableExists(db, table) {
 //   • The formula rewards real structural signals already meaningful
 //     elsewhere in this codebase: `tier` (regular/mega/hyper — the DTU
 //     consolidation pipeline's own quality ladder, see CLAUDE.md "DTU
-//     substrate" — a HYPER DTU is 33:1-compressed synthesized knowledge,
+//     substrate" — a HYPER DTU is HASH-mode design target (live IR ~1.2×)-compressed synthesized knowledge,
 //     objectively a stronger signal than an unconsolidated regular DTU),
 //     content depth (log-scaled so one long DTU can't dominate — this is a
 //     BREADTH-of-synthesis metric, not a word-count contest), tag diversity

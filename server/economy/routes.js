@@ -3,7 +3,7 @@
 // All routes are mounted under /api/economy and /api/stripe.
 
 import express from "express";
-import { getBalance, CREDIT_ROW_PREDICATE } from "./balances.js";
+import { getBalance, getBalancePreferSidecar, CREDIT_ROW_PREDICATE } from "./balances.js";
 import { getTransactions, getAllTransactions } from "./ledger.js";
 import { FEES, PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { executeTransfer, executePurchase, executeMarketplacePurchase, executeReversal } from "./transfer.js";
@@ -65,12 +65,13 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   // ── Balance ────────────────────────────────────────────────────────────────
 
-  app.get("/api/economy/balance", (req, res) => {
+  app.get("/api/economy/balance", async (req, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
-      const result = getBalance(db, userId);
+      // CONCORD_WALLET_SIDECAR=1 → Rust UDS sums; else sync SQLite (fail-soft).
+      const result = await getBalancePreferSidecar(db, userId);
       res.json({ ok: true, userId, ...result });
     } catch (err) {
       log("error", "economy_balance_fetch_failed", { error: err.message });

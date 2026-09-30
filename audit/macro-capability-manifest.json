@@ -1,0 +1,1279 @@
+{
+  "generatedAt": "2026-09-01T22:33:15.015Z",
+  "mode": "static",
+  "summary": {
+    "registeredPairs": 10490,
+    "registeredDomains": 552,
+    "lensDirectories": 266,
+    "lensesWired": 261,
+    "lensesNoBackend": 4,
+    "darkDomainRegistrars": 0,
+    "oracleCases": 12,
+    "macroCallLogUniquePairs": null,
+    "classification": {
+      "A": 870,
+      "B": 9456,
+      "C": 117,
+      "D": 22,
+      "E": 25
+    },
+    "domainsCompleteAF": 0,
+    "phase3": "CLOSED — 0 dark domain registrars (all wired via index.js or server.js)"
+  },
+  "surfaces": {
+    "note": "MACROS, LENS_ACTIONS, reflection catalog, and macro_call_log are distinct — do not sum counts",
+    "macrosPath": "runMacro / MACROS map",
+    "lensActionsPath": "dispatchLensRun / LENS_ACTIONS map",
+    "discoveryCatalog": "reflection / cartographer (not executable surface)",
+    "observability": "macro_call_log (post Phase-1 LENS_ACTION billing)"
+  },
+  "domainReachability": {
+    "unreachableRegistrars": 0,
+    "unreachableFiles": [],
+    "totalDomainFiles": 429,
+    "registrarCount": 426,
+    "helperCount": 3,
+    "unreachableHelpers": 0,
+    "evidence": {
+      "totalFiles": 429,
+      "registrarCount": 426,
+      "unreachableRegistrars": 0,
+      "helperCount": 3,
+      "unreachableHelpers": 0
+    }
+  },
+  "lensWiring": {
+    "wired": 261,
+    "noBackend": 4,
+    "total": 266,
+    "rawTail": "NO-BACKEND-CALL  ar                     \nNO-BACKEND-CALL  art                    \nNO-BACKEND-CALL  narrative-walk         \nPARTIAL          sentinel               macro?:sentinel\nNO-BACKEND-CALL  ux-suite"
+  },
+  "oracleDomains": [
+    "math",
+    "engineering",
+    "physics",
+    "chem",
+    "accounting"
+  ],
+  "domainAcceptanceSample": [
+    {
+      "domain": "accounting",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "118 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (trialBalance, budgetVariance)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "trialBalance",
+        "budgetVariance"
+      ],
+      "actionCount": 118
+    },
+    {
+      "domain": "achievements",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "4 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, list, recent)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "list",
+        "recent"
+      ],
+      "actionCount": 4
+    },
+    {
+      "domain": "admin",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "23 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (featureFlagList, featureFlagSet, alertEvaluate)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "featureFlagList",
+        "featureFlagSet",
+        "alertEvaluate"
+      ],
+      "actionCount": 23
+    },
+    {
+      "domain": "affect",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "14 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (checkin, checkinHistory, exportReport)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "checkin",
+        "checkinHistory",
+        "exportReport"
+      ],
+      "actionCount": 14
+    },
+    {
+      "domain": "agent",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "6 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (list, list_persistent, create)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "list",
+        "list_persistent",
+        "create"
+      ],
+      "actionCount": 6
+    },
+    {
+      "domain": "agent_marathon",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "8 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, list, abandon)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "list",
+        "abandon"
+      ],
+      "actionCount": 8
+    },
+    {
+      "domain": "agent_projects",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "6 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, list, similar_outcomes)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "list",
+        "similar_outcomes"
+      ],
+      "actionCount": 6
+    },
+    {
+      "domain": "agents",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "47 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, getBudget, getRunTrace)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "getBudget",
+        "getRunTrace"
+      ],
+      "actionCount": 47
+    },
+    {
+      "domain": "agriculture",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "69 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (analyze, analyze-soil, profit-analysis)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "analyze",
+        "analyze-soil",
+        "profit-analysis"
+      ],
+      "actionCount": 69
+    },
+    {
+      "domain": "all",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "10 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (recentActivity, command-index)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "recentActivity",
+        "command-index"
+      ],
+      "actionCount": 10
+    },
+    {
+      "domain": "alliance",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "25 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (alliance-create)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "alliance-create"
+      ],
+      "actionCount": 25
+    },
+    {
+      "domain": "analytics",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "32 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (alert-delete)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "alert-delete"
+      ],
+      "actionCount": 32
+    },
+    {
+      "domain": "animation",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "56 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (export-list, export-manifest, export-record)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "export-list",
+        "export-manifest",
+        "export-record"
+      ],
+      "actionCount": 56
+    },
+    {
+      "domain": "announcements",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "3 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, list, post)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "list",
+        "post"
+      ],
+      "actionCount": 3
+    },
+    {
+      "domain": "anon",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "20 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (listConversations, anonymize)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "listConversations",
+        "anonymize"
+      ],
+      "actionCount": 20
+    },
+    {
+      "domain": "answers",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "31 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (search, answer-accept)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "search",
+        "answer-accept"
+      ],
+      "actionCount": 31
+    },
+    {
+      "domain": "app-maker",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "51 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (previewRender, connectorDelete)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "previewRender",
+        "connectorDelete"
+      ],
+      "actionCount": 51
+    },
+    {
+      "domain": "appearance",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "7 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (faction_visual)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "faction_visual"
+      ],
+      "actionCount": 7
+    },
+    {
+      "domain": "apps",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "9 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, list, validate)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "list",
+        "validate"
+      ],
+      "actionCount": 9
+    },
+    {
+      "domain": "ar",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "18 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (animationTimeline)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "animationTimeline"
+      ],
+      "actionCount": 18
+    },
+    {
+      "domain": "arc",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "2 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (heal_twin_pact)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "heal_twin_pact"
+      ],
+      "actionCount": 2
+    },
+    {
+      "domain": "art",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "74 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (aic-search)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "aic-search"
+      ],
+      "actionCount": 74
+    },
+    {
+      "domain": "artistry",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "43 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (search, analyticsHistory)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "search",
+        "analyticsHistory"
+      ],
+      "actionCount": 43
+    },
+    {
+      "domain": "ascension",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "2 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, spend_point)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "spend_point"
+      ],
+      "actionCount": 2
+    },
+    {
+      "domain": "ask",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "1 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (answer)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "answer"
+      ],
+      "actionCount": 1
+    },
+    {
+      "domain": "astronomy",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "57 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (catalog-import, catalog-list, apod)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "catalog-import",
+        "catalog-list",
+        "apod"
+      ],
+      "actionCount": 57
+    },
+    {
+      "domain": "atlas",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "52 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (lists-add-place, lists-create, lists-delete)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "lists-add-place",
+        "lists-create",
+        "lists-delete"
+      ],
+      "actionCount": 52
+    },
+    {
+      "domain": "attention",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "28 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (list_threads, status, add_background)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "list_threads",
+        "status",
+        "add_background"
+      ],
+      "actionCount": 28
+    },
+    {
+      "domain": "attention_alloc",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "6 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (budget, history, run)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "budget",
+        "history",
+        "run"
+      ],
+      "actionCount": 6
+    },
+    {
+      "domain": "auctions",
+      "complete": false,
+      "gates": {
+        "A_registration": {
+          "pass": true,
+          "reason": "11 action(s) registered"
+        },
+        "B_discovery": {
+          "pass": true,
+          "reason": "discovery not checked (static pass)"
+        },
+        "C_invocation": {
+          "pass": false,
+          "reason": "no representative invoked (get, active)",
+          "failureType": "DISPATCH_FAILURE"
+        },
+        "D_correctness": {
+          "pass": false,
+          "reason": "no verified representative output",
+          "failureType": "CORRECTNESS_FAILURE"
+        },
+        "E_logging": {
+          "pass": false,
+          "reason": "no macro_call_log row for representatives",
+          "failureType": "LOGGING_FAILURE"
+        },
+        "F_error_behavior": {
+          "pass": false,
+          "reason": "error-behavior probe not run",
+          "failureType": "VERIFICATION_FAILURE"
+        }
+      },
+      "status": "REGISTERED_ONLY",
+      "representativeActions": [
+        "get",
+        "active"
+      ],
+      "actionCount": 11
+    }
+  ],
+  "completionStatuses": [
+    "VERIFIED",
+    "BLOCKED_EXTERNAL_DEPENDENCY",
+    "BLOCKED_REQUIRES_INTERACTIVE_STATE",
+    "FAILED_BUG",
+    "FAILED_INCORRECT_RESULT",
+    "DEPRECATED",
+    "INTENTIONALLY_DISABLED",
+    "UNEXERCISED",
+    "REGISTERED_ONLY"
+  ]
+}

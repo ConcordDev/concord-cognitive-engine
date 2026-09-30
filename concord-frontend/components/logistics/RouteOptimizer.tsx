@@ -92,9 +92,9 @@ export function RouteOptimizer() {
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-2 bg-white/[0.02] rounded">
-                  <div className="text-lg font-bold tabular-nums text-white">{result.totalDistanceMi.toFixed(1)} mi</div>
+                  <div className="text-lg font-bold tabular-nums text-white">{Number(result.totalDistanceMi ?? 0).toFixed(1)} mi</div>
                   <div className="text-[9px] uppercase text-gray-400">Distance</div>
-                  {result.totalDistanceSavedMi > 0 && <div className="text-[9px] text-green-400">−{result.totalDistanceSavedMi.toFixed(1)} saved</div>}
+                  {Number(result.totalDistanceSavedMi ?? 0) > 0 && <div className="text-[9px] text-green-400">−{Number(result.totalDistanceSavedMi ?? 0).toFixed(1)} saved</div>}
                 </div>
                 <div className="p-2 bg-white/[0.02] rounded">
                   <div className="text-lg font-bold tabular-nums text-white">{Math.round(result.totalDurationMin)} min</div>
@@ -102,7 +102,7 @@ export function RouteOptimizer() {
                   {result.totalDurationSavedMin > 0 && <div className="text-[9px] text-green-400">−{Math.round(result.totalDurationSavedMin)} saved</div>}
                 </div>
                 <div className="p-2 bg-white/[0.02] rounded">
-                  <div className="text-lg font-bold tabular-nums text-yellow-300">${result.fuelCostUsd.toFixed(2)}</div>
+                  <div className="text-lg font-bold tabular-nums text-yellow-300">${Number(result.fuelCostUsd ?? 0).toFixed(2)}</div>
                   <div className="text-[9px] uppercase text-gray-400">Fuel cost</div>
                 </div>
               </div>
@@ -113,13 +113,13 @@ export function RouteOptimizer() {
                     <MapPin className="w-3 h-3 text-gray-400" />
                     <span className="text-white flex-1 truncate">{s.address}</span>
                     <span className="text-[10px] text-cyan-300 inline-flex items-center gap-0.5"><Clock className="w-3 h-3" /> {s.arrivalTime}</span>
-                    <span className="text-[10px] text-gray-400 tabular-nums">{s.distanceMi.toFixed(1)}mi · {Math.round(s.durationMin)}m</span>
+                    <span className="text-[10px] text-gray-400 tabular-nums">{Number(s.distanceMi ?? 0).toFixed(1)}mi · {Math.round(Number(s.durationMin ?? 0))}m</span>
                   </li>
                 ))}
               </ol>
               {result.totalDistanceSavedMi > 0 && (
                 <div className="text-[10px] text-green-300 inline-flex items-center gap-1">
-                  <TrendingDown className="w-3 h-3" /> Saved {result.totalDistanceSavedMi.toFixed(1)} mi vs entered order
+                  <TrendingDown className="w-3 h-3" /> Saved {Number(result.totalDistanceSavedMi ?? 0).toFixed(1)} mi vs entered order
                 </div>
               )}
             </div>
@@ -136,7 +136,7 @@ export function RouteOptimizer() {
                 lat: s.lat,
                 lng: s.lng,
                 label: `${s.order}. ${s.address}`,
-                popup: `Arrive ${s.arrivalTime} · ${s.distanceMi.toFixed(1)} mi leg`,
+                popup: `Arrive ${s.arrivalTime} · ${Number(s.distanceMi ?? 0).toFixed(1)} mi leg`,
               }))}
               route={located.map((s) => ({ lat: s.lat, lng: s.lng }))}
               className="h-[320px]"

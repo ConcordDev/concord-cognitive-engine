@@ -1,0 +1,37 @@
+{
+  "auditDate": "2026-04-28",
+  "status": "PARTIAL",
+  "summary": "Lens context is transmitted with every message and tracked in the session. The chat lens recommender suggests transitions. However, lens context does not reshape DTU priority or system prompt tone in the context pipeline.",
+  "transmission": {
+    "frontend_sends": "lens: currentLens in POST /api/chat body",
+    "file": "concord-frontend/app/lenses/chat/page.tsx:546-549",
+    "websocket_also": "concord-frontend/components/chat/PersistentChatRail.tsx:539-543"
+  },
+  "backend_handling": {
+    "session_tracking": "sess.currentLens and sess.lensHistory updated on every lens change",
+    "file": "server/server.js:17718-17731",
+    "context_pipeline": "opts.lens passed to runContextHarvest() but not used to filter or boost DTUs",
+    "context_file": "server/lib/chat-context-pipeline.js:264-305"
+  },
+  "lens_recommender": {
+    "file": "concord-frontend/lib/lenses/chat-lens-recommender.ts:24-100",
+    "intent_classes": 8,
+    "direction": "One-way: recommends transitions but does not change chat behavior based on current lens"
+  },
+  "gaps": [
+    {
+      "severity": "P2",
+      "id": "LENS-001",
+      "description": "DTU scoring does not apply lens-based affinity boosting. A user working in 'studio' lens and a user working in 'code' lens receive identical DTU ranking for the same query.",
+      "suggested_fix": "Add LENS_DOMAIN_AFFINITY map (studio→music/audio/creative, code→programming/algorithms, board→planning/tasks, etc.) and apply 1.3x score multiplier for matching DTUs. Fixed in Phase 3.",
+      "fix_file": "server/server.js:18347-18350"
+    },
+    {
+      "severity": "P2",
+      "id": "LENS-002",
+      "description": "System prompt does not mention the current lens, so the LLM doesn't know which domain context to emphasize.",
+      "suggested_fix": "When currentLens is set (and not 'chat'), append a one-line lens context hint to the _baseSystem prompt. Fixed in Phase 3.",
+      "fix_file": "server/server.js:18650"
+    }
+  ]
+}

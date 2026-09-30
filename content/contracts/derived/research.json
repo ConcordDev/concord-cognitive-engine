@@ -283,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.cross-domain-scan",
+      "name": "cross-domain-scan"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.daily-note",
       "name": "daily-note"
     },
@@ -972,6 +985,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.synthesize",
+      "name": "synthesize"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.tag",
       "name": "tag"
     },
@@ -1056,5 +1082,5 @@
   ],
   "domain": "research",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 81
+  "macroCount": 83
 }

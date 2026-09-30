@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -99,7 +100,7 @@ export function AviationActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Flight prep — ${aptResult?.airport?.ident ?? ident}`, tags: ['aviation', 'preflight', aptResult?.airport?.ident].filter((t): t is string => !!t), source: 'aviation:preflight:mint', meta: { visibility: 'private', consent: { allowCitations: false }, aviation: { airport: aptResult, wx: wxResult, takeoff: toResult, landing: ldgResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Flight prep — ${aptResult?.airport?.ident ?? ident}`, tags: ['aviation', 'preflight', aptResult?.airport?.ident].filter((t): t is string => !!t), source: 'aviation:preflight:mint', meta: { visibility: 'private', consent: { allowCitations: false }, aviation: { airport: aptResult, wx: wxResult, takeoff: toResult, landing: ldgResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('av.mintedDtuId', id, { label: `Prep DTU ${id.slice(0, 8)}…` }); ok(`Prep DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -129,7 +130,7 @@ export function AviationActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

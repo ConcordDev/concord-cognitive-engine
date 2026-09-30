@@ -1,0 +1,23 @@
+{
+  "task_id": "403ba133-2c78-4779-aa05-bde655fcaf05",
+  "original_generation_task_id": "1d153bea-7a37-4085-a766-56a3f504a25b",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/1d153bea-7a37-4085-a766-56a3f504a25b/tripo_model_1d153bea-7a37-4085-a766-56a3f504a25b.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvMWQxNTNiZWEtN2EzNy00MDg1LWE3NjYtNTZhM2Y1MDRhMjViL3RyaXBvX21vZGVsXzFkMTUzYmVhLTdhMzctNDA4NS1hNzY2LTU2YTNmNTA0YTI1Yi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzcxMzl9fX1dfQ__&Signature=V5y~492MjXHzWCF8RTDRyzlCcwpKFnsJ27pS1G3mr3lpXV2HkprwWud2rGfdbn0btMwK5j9dl9toddAuUoRpMFzStVDt83yJ3DCdkxBfepQ4Z5zUAAz9BuSlwhXgGPT4CyoEwN0uY1zkfCzgz37XcnhhXfUTDxvNJCGxmHLEuN61Ea1ZrZPPPj5AEEOQ-8C53hu8~Z1O2EbT8QEVCyFBtrbmN3Okffq0YlEvJP30x3p9sJs9unWqsnvccpZYD~f2TWeWAQnBi5vmE5FNJowlp~PX5HPXsMJMVz8AABPuj97FkrDM4mNLDa0W1pZ-~KktaFsify2odZ9lwoB6xrrTfA__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:52:25.269685",
+  "description": "Provisional, non-canon generation brief: compose the First Launch Cradle as the grounded terminal landmark for the Ark Exodus, linking the open ledger's last manifests to the seven-ark departure and the Sere/Tunya umbilical. Use the Open Table versus Tessera pressure and the Clearing Spire / furnace-belt visual vocabulary only as authored context. Reserve binding at Chunk_Sere/VisualFidelity/FirstLaunchCradle; preserve the rule that Deep Watcher evidence is shipped, not pictured or resolved.",
+  "negative_prompt": "No pictured Deep Watcher, no invented verdict about the Quiet Fall, no generic launchpad sci-fi, no new Refusal gate, no clean heroic escape narrative, no invented ark manifest names, and no claim that Sere's machine has an author.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/FirstLaunchCradle/FirstLaunchCradle_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/FirstLaunchCradle/FirstLaunchCradle.fbx"
+}

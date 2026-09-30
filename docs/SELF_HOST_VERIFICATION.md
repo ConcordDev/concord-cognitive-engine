@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Self-Host Verification — R7
 
 A start-to-finish, runnable proof that a self-hosted Concord instance

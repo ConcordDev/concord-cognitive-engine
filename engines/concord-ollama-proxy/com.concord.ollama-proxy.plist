@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.ollama-proxy</string>
+
+	<!--
+	  Concurrency Refactor Phase 4 — fail-fast reverse proxy in front of Ollama.
+	  NOT installed by default: activation is gated on A40 return (NEED_DUTCH).
+	  To activate:
+	    1. cp engines/concord-ollama-proxy/com.concord.ollama-proxy.plist ~/Library/LaunchAgents/
+	       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.concord.ollama-proxy.plist
+	    2. add  OLLAMA_PROXY_URL = http://127.0.0.1:11480  to com.concord.backend's
+	       EnvironmentVariables, then kickstart -k com.concord.backend
+	  Set OLLAMA_UPSTREAM to whatever the brains point at today (Mac-local :11434,
+	  or the A40 tunnel once it is back).
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-ollama-proxy/bin/concord-ollama-proxy</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CONCORD_OLLAMA_PROXY_ADDR</key>
+		<string>127.0.0.1:11480</string>
+		<key>OLLAMA_UPSTREAM</key>
+		<string>http://127.0.0.1:11434</string>
+		<key>CONCORD_OLLAMA_PROXY_CONNECT_TIMEOUT_MS</key>
+		<string>2000</string>
+		<key>CONCORD_OLLAMA_PROXY_GEN_TIMEOUT_MS</key>
+		<string>300000</string>
+		<key>CONCORD_OLLAMA_PROXY_MAX_QUEUE_PER_MODEL</key>
+		<string>24</string>
+		<key>CONCORD_OLLAMA_PROXY_BREAK_THRESHOLD</key>
+		<string>5</string>
+		<key>CONCORD_OLLAMA_PROXY_BREAK_COOLDOWN_MS</key>
+		<string>15000</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/ollama-proxy.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/ollama-proxy.err</string>
+</dict>
+</plist>

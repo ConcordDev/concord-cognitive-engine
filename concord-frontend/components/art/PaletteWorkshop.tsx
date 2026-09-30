@@ -64,6 +64,7 @@ export function PaletteWorkshop() {
         </div>
         {palette.length > 0 && (
           <SaveAsDtuButton
+            defaultContentClass="media"
             compact
             apiSource="concord-art-palette"
             title={`Palette — ${harmony} from ${baseColor} (${palette.length} colors)`}

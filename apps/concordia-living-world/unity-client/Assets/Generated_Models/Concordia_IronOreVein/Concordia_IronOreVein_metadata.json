@@ -1,0 +1,33 @@
+{
+  "task_id": "e83ed661-71c3-4bb8-a7e5-81b995481d8d",
+  "original_generation_task_id": "3dd1b821-63a7-4fa6-8907-b3b192561cc7",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260918/3dd1b821-63a7-4fa6-8907-b3b192561cc7/tripo_pbr_model_3dd1b821-63a7-4fa6-8907-b3b192561cc7.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MTgvM2RkMWI4MjEtNjNhNy00ZmE2LTg5MDctYjNiMTkyNTYxY2M3L3RyaXBvX3Bicl9tb2RlbF8zZGQxYjgyMS02M2E3LTRmYTYtODkwNy1iM2IxOTI1NjFjYzcuZ2xiIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzg5ODAyNTY0fX19XX0_&Signature=lczwSlpXePKF7cT-~G0jp8KSehVIO-7~AIJdntCgug07ZoW3ZPZJIFqlefkFcYtLnVDAtn1IurJiMDZhJpArKNCCCIKZ1avFgmvnaSyqGXPa1USk5Qc51hXMe7B2tx9goqa0F-9hERuu3b7EyYguZQ35IGivnA6YOQVAvlX38MafZr5VY0qPsrBaJxRlVtjlT3yYcBGmlZGFz-hRJg0Spucq~qRV8icas-4CqWqEz~PhqBmCwBoDmDn-g7jxlISw6Zh2sGKkby3oP74MU7UPcMjojDV3yCGqZZqdbRfqk78E~MJ3E9-OkqSDSfqqEW-ftsFnAw6Byxm9AFpFU9APIQ__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-18T03:23:09.761984",
+  "description": "A realistic, game-ready mineable iron ore outcrop for Concordia: irregular dark stone vein emerging from compact earth, visible metallic iron-rich mineral faces, fractured rock, believable scale for a player mining site, PBR materials, grounded contact, optimized static mesh suitable for Unity placement in a rural or mountain settlement supply chain.",
+  "negative_prompt": "cartoon, toy-like rock, crystal fantasy cluster, floating pieces, excessive glow, smooth plastic, text, logo, scenery",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": true,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_IronOreVein/Concordia_IronOreVein_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "MetallicRoughness",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_IronOreVein/Concordia_IronOreVein_MetallicRoughness.jpg",
+      "mime_type": "image/jpeg"
+    },
+    {
+      "role": "Normal",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_IronOreVein/Concordia_IronOreVein_Normal.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/Concordia_IronOreVein/Concordia_IronOreVein.fbx"
+}

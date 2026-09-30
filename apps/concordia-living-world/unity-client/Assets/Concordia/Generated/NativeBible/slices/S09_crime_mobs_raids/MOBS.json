@@ -1,0 +1,605 @@
+{
+  "schema": "concordia.slice.mobs.v1",
+  "slice_id": "S09_crime_mobs_raids",
+  "world_id": "Crime",
+  "canon_world_id": "crime",
+  "display_world": "Iron Coast",
+  "facet": "mobs_raids",
+  "title": "Iron Coast — street mobs, mini-bosses, raid stubs",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, the enc_outstanding clock, Canon lore, countries.json, factions, or prior slices S01–S08.",
+  "canon_pins": {
+    "world_id": "Crime",
+    "canon_world_def_title": "Crime World",
+    "display_name": "Iron Coast",
+    "refusal": "Refusal of Consequence",
+    "the_no": "Delay is not cancellation.",
+    "refusal_line": "What we do will not catch up to us.",
+    "law_text": "The bill always arrives. Witnesses remember.",
+    "style_id": "ghost",
+    "style_name": "Ghost Contracts",
+    "style_verbs": ["Switch", "Iron", "Delay the bill", "Invoice"],
+    "steel_live": true,
+    "fight_style_for_people": "WingChun",
+    "combat": "close knives",
+    "weather": "rain",
+    "traversal": "streets and roofs",
+    "humanoid_body": "CX male or CX female. Concordia face. Wardrobe on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_R, CX_Back. People in this slice are npc_role_coast_labor and npc_role_coast_bandit.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. It does not govern the Iron Coast. Steel carried inside that disk and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 3.926991,
+    "gate_short_name": "CRIME",
+    "gate_name_in_canon": "Crime World",
+    "palette": ["#3a342c", "#8a6a48", "#c8a060", "#5c3038"],
+    "kit": "arch_kit_crime_coast",
+    "named_sets_without_canon_point": ["tenement", "armored_warehouse", "foundry_steam", "wharf"],
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "Every id in this slice has cap 0 on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": [
+      "hellfire hound",
+      "rifle in ambient hands",
+      "Quaternius body",
+      "Kenney body",
+      "CX body as the bill hound",
+      "CX body as the billdrone",
+      "Grid drone disc as a coast ambient"
+    ],
+    "canon_fauna_aliases": ["hound", "drone"],
+    "alias_resolution": "hound resolves to faun_dock_hound at the cap in this file. drone resolves to hyb_billdrone only inside enc_rotor_saddle. It does not resolve to mon_grid_drone, mon_boss_census, or the Canon seed ash_hound."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/crime/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/crime/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/crime/factions.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/crime/creatures.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/crime/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/crime/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json",
+    "monsters": "native-bible/creatures/MONSTERS.json",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_billdrone",
+    "roles": ["npc_role_coast_labor", "npc_role_coast_bandit"],
+    "taxonomy": "native-bible/01_TAXONOMY.md Crime row",
+    "kit": "native-bible/architecture/KITS.json arch_kit_crime_coast",
+    "density": "native-bible/volume/DENSITY_TABLES.json Crime block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_outstanding",
+    "tokens": ["item_rem_invoice_stamp", "item_invoice_slip"],
+    "skills_cited": ["skill_steel_invoice", "skill_presence_witness", "skill_presence_bargain"],
+    "geography": "WorldGeography.CountryCenter reads capital x,z when abs(x) or abs(z) exceeds 2"
+  },
+  "existing_quests_not_redone": [
+    "q_crime_bell_tip",
+    "q_crime_maddox_mark",
+    "q_crime_invoice_lands",
+    "q_crime_gull_drop",
+    "q_crime_folded_knife",
+    "q_crime_dahlia_cup",
+    "q_crime_morgue_cross",
+    "q_crime_rose_errand",
+    "crime_thorpe_01_bell",
+    "crime_thorpe_02_maddox",
+    "crime_dahlia_01_meet",
+    "crime_ada_02_cross"
+  ],
+  "unique_npcs_do_not_clone": [
+    "jax",
+    "mama",
+    "bell",
+    "dahlia",
+    "maddox",
+    "jax_rivera",
+    "cipher_marks",
+    "mama_delgado",
+    "tomas_reyes",
+    "captain_marquez_14th",
+    "accountant_iris_hexshore",
+    "agent_navarro_federal",
+    "pi_lead_halloran",
+    "gang_lead_dom_north_market",
+    "barkeep_old_lou",
+    "informant_silas_bell",
+    "fence_maddox_kray"
+  ],
+  "politics_left_for_S10": [
+    "14th Precinct",
+    "Hexshore Holdings",
+    "Federal field office",
+    "Halloran & Greer",
+    "North Market Gang as a faction",
+    "Iron Rose estate and uptown blocks",
+    "Ghost Network capital",
+    "vendors",
+    "Thorpe chain past the two volume extensions"
+  ],
+  "geography": {
+    "method": "Floors are a placed country anchor or a gap derived from CountryCenter circles. A faction capital is a rim. A kit named set with no Canon point is not a floor.",
+    "ghost_rose_overlap": {
+      "ghost_capital": { "x": 2.72, "z": 38.9, "radius": 23.0, "country_id": "ghost_network" },
+      "rose_capital": { "x": -6.41, "z": 40.5, "radius": 28.0, "country_id": "iron_rose_syndicate" },
+      "center_distance_m": 9.27,
+      "note": "The circles overlap. The country file already marks the border disputed. This overlap is not a hunt paddock. Both capitals stay empty of this slice's mobs."
+    },
+    "warehouse_floor": {
+      "id": "floor_dockside_warehouses",
+      "kind": "placed_anchor",
+      "anchor_id": "ghost_network_district",
+      "district_name": "dockside_warehouses",
+      "point": { "x": 10.72, "z": 32.9 },
+      "distance_to_ghost_capital_m": 10.0,
+      "distance_to_rose_capital_m": 18.74,
+      "inside": ["ghost_network", "iron_rose_syndicate"],
+      "what": "The only placed dock-and-warehouse coordinate. Ghost lists the district as controlled. The point also sits inside the Rose radius. The shift works here. The two capitals stay empty.",
+      "holds": ["npc_role_coast_labor", "faun_dock_hound", "enc_hook_shift", "raid_unpaid_shift"],
+      "kit_rule": "arch_kit_crime_coast named set armored_warehouse has no Canon point. The anchor is the floor. A loading-dock module is used only when that set is actually placed on this point."
+    },
+    "tenement_gap": {
+      "id": "floor_unclaimed_street",
+      "kind": "derived_gap",
+      "what": "The tenement alley is the clear run on the line between the Ghost circle and the North Market circle. Hoods and rats stand at the midpoint, which no country radius covers.",
+      "inputs": {
+        "ghost_capital": { "x": 2.72, "z": 38.9, "radius": 23.0 },
+        "north_market_capital": { "x": 13.45, "z": -43.99, "radius": 23.0, "country_id": "crime_north_market_gang" }
+      },
+      "derived": {
+        "center_distance_m": 83.58,
+        "gap_along_centers_m": 37.58,
+        "gap_meaning": "Ghost rim to North Market rim along the two capitals. This pair-gap is not a claim that every meter of it is outside every other circle.",
+        "ghost_edge_toward_north": { "x": 5.67, "z": 16.09 },
+        "ghost_edge_also_inside": "iron_rose_syndicate",
+        "ghost_edge_distance_to_rose_center_m": 27.24,
+        "rose_still_covers_first_m": 0.81,
+        "clear_run_starts": { "x": 5.78, "z": 15.29 },
+        "clear_run_m": 36.78,
+        "north_edge_toward_ghost": { "x": 10.5, "z": -21.18 },
+        "floor_midpoint": { "x": 8.09, "z": -2.55 },
+        "midpoint_distance_from_crime_origin_m": 8.48,
+        "midpoint_inside_any_country_circle": false,
+        "midpoint_clearance_m": { "iron_rose_syndicate": 17.42, "ghost_network": 18.79, "crime_north_market_gang": 18.79 },
+        "floor_not_moved": "S10 stands Bell on this midpoint. The Rose bite is recorded. The point stays."
+      },
+      "holds": ["npc_role_coast_bandit", "faun_sodium_rat", "enc_stair_switch", "enc_rotor_saddle"],
+      "kit_rule": "Named set tenement has no Canon point. The gap is legal ground. A fire-escape climb exists only when that set is placed. Until then the hood stands in the alley at the midpoint."
+    },
+    "empty_of_this_facet": [
+      { "id": "uptown_blocks", "point": { "x": 1.59, "z": 34.5 }, "why": "Inside both syndicate circles. Politics and vendors, S10." },
+      { "id": "14th_and_halloran", "why": "Precinct capital (23.05, -54.31) and Halloran & Greer (24.0, -53.9) are 1.03 m apart. Badge work stays with S10." },
+      { "id": "hexshore", "point": { "x": -49.17, "z": -16.93 }, "why": "White-collar ring. No street mobs." },
+      { "id": "federal_floor", "point": { "x": 46.81, "z": 37.1 }, "why": "RICO office. Federal circle overlaps Ghost by 9.67 m along the capitals and still receives cap 0." },
+      { "id": "north_market_block", "point": { "x": 21.45, "z": -49.99 }, "why": "Dom's block. Ledger bandits are not that gang." },
+      { "id": "morgue", "why": "Density already keeps bandits out. Ada's cause stays on q_crime_morgue_cross." },
+      { "id": "foundry_steam", "why": "Steampunk sub-set, unplaced, and outside this facet." },
+      { "id": "wharf_named_set", "why": "enc_outstanding and the gull line name pilings. The set has no coordinate, so those spawns stay dark until it is placed." },
+      { "id": "pinewood_crossing", "point": { "x": 62, "z": -28 }, "why": "Hub salt road. Cap 0." }
+    ]
+  },
+  "density_budgets_cited_not_edited": {
+    "npc_role_coast_labor": { "budget": 6, "where": "wharf in the volume note; this slice spends the budget on the placed warehouse first" },
+    "npc_role_coast_bandit": { "budget": 3, "where": "alleys, not the morgue" },
+    "faun_dock_hound_weight": 3,
+    "faun_sodium_rat_weight": 5,
+    "faun_rain_gull_weight": 6,
+    "mon_coast_billhound_weight": 0
+  },
+  "archetypes": [
+    {
+      "id": "arch_dock_labor",
+      "body": "npc_role_coast_labor",
+      "display": "Dock laborer",
+      "weapon_id": "wpn_imp_dock_hook",
+      "fight_style": "WingChun",
+      "animator_profile": "civilian",
+      "law": "A hook is a tool until the shift tries to lose a bill. Hail stays on for every laborer except the one window lead.",
+      "alive_cap": {
+        "floor_dockside_warehouses": 3,
+        "wharf_when_placed": 2,
+        "reserved_unspawned": 1,
+        "sum_max": 6
+      },
+      "health": "No creature table on the role. This slice adds no hit points."
+    },
+    {
+      "id": "arch_ledger_bandit",
+      "body": "npc_role_coast_bandit",
+      "display": "Ledger bandit",
+      "weapon_id": "wpn_1h_coast_switchknife",
+      "fight_style": "WingChun",
+      "animator_profile": "combatant",
+      "law": "One mismatched shoulder plate, hood up, knife low. The hood is a theory. The bill still arrives.",
+      "alive_cap": {
+        "floor_unclaimed_street_ambient": 1,
+        "quest_giver_hail": 1,
+        "window_or_raid_adds": 2,
+        "sum_max": 3,
+        "morgue": 0,
+        "north_market_block": 0
+      },
+      "health": "No creature table on the role. This slice adds no hit points."
+    },
+    {
+      "id": "arch_dock_hound",
+      "body": "faun_dock_hound",
+      "display": "Wharf hound",
+      "scale": "0.6× player height",
+      "catalog_hostile": true,
+      "law": "Working dog. Rope collar stays on. Herd on the animal row is 1, so ambient hounds are spaced solos. Two together exist only inside the unpaid shift.",
+      "alive_cap": {
+        "floor_dockside_warehouses": 3,
+        "during_raid_unpaid_shift": 0,
+        "wharf_when_placed_extra": 1,
+        "pinewood": 0,
+        "morgue": 0
+      },
+      "health": "table:faun_med",
+      "verbs": ["verb_fauna_heel", "verb_fauna_bay"]
+    },
+    {
+      "id": "arch_sodium_rat",
+      "body": "faun_sodium_rat",
+      "display": "Sodium rat",
+      "catalog_hostile": false,
+      "law": "The yellow is the lamp. Eyes stay dark. Floor movement, not a fight.",
+      "alive_cap": {
+        "floor_unclaimed_street_night": 6,
+        "floor_unclaimed_street_day": 2,
+        "sere_added_by_this_slice": 0,
+        "morgue": 0
+      },
+      "health": "table:faun_critter",
+      "verbs": ["verb_fauna_scuttle", "verb_fauna_swarm_floor"]
+    },
+    {
+      "id": "arch_rain_gull",
+      "body": "faun_rain_gull",
+      "display": "Rain gull",
+      "catalog_hostile": false,
+      "law": "Low ragged line over water. They mark a crate and they mark a shift. They are not adds.",
+      "alive_cap": {
+        "wharf_when_placed_day": 8,
+        "wharf_when_placed_night": 2,
+        "unplaced_wharf": 0
+      },
+      "health": "table:faun_small",
+      "verbs": ["verb_fauna_glide", "verb_fauna_scream"],
+      "volume_quest_left_alone": "q_crime_gull_drop"
+    },
+    {
+      "id": "arch_bill_hound",
+      "body": "mon_coast_billhound",
+      "display": "Bill hound",
+      "scale": "1.15× player height at the shoulder",
+      "catalog_hostile": true,
+      "law": "Ambient weight stays 0. One body, and only inside enc_outstanding. Ledger plates on the ribs. One coin tooth. No flame.",
+      "alive_cap": { "ambient": 0, "enc_outstanding": 1 },
+      "health": "table:mon_brute",
+      "verbs": ["verb_mon_invoice_bark", "verb_mon_charge", "verb_mon_jaw_clamp"]
+    },
+    {
+      "id": "arch_billdrone",
+      "body": "hyb_billdrone",
+      "display": "Billdrone",
+      "scale": "1.1× player height",
+      "catalog_hostile": false,
+      "law": "Bill-hound body, one thick spinal rotor, invoice beam from the mouth. Census skin from the taxonomy row. Cyber cap added by this slice is 0. Instance aggro exists only inside enc_rotor_saddle.",
+      "alive_cap": { "ambient": 0, "cyber": 0, "enc_rotor_saddle": 1 },
+      "health": "table:mon_brute",
+      "verbs": ["verb_mon_charge", "verb_hyb_invoice_bark"]
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_outstanding",
+      "name": "The Outstanding Invoice",
+      "status": "volume clock, law deepened here, schedule not edited",
+      "creature_ids": ["mon_coast_billhound"],
+      "count": 1,
+      "adds": [],
+      "schedule_citation": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 21,
+        "every_nth_day": 2,
+        "cron": "0 18 */2 * *",
+        "label": "Rain evening, every second day",
+        "source": "native-bible/volume/BOSSES_AND_RAIDS.json"
+      },
+      "spawn_rule": "Volume anchor is the wharf pilings under the gull line. Named set wharf has no coordinate. Until that set is placed, this encounter spawns nothing. Do not move the hound onto floor_dockside_warehouses or onto a capital.",
+      "telegraph_citation": {
+        "board": "Bell's corner chalks a sum that is not yours until you pick it up.",
+        "scout": "Billhound on the wharf, invoice in the teeth, oil on the chest.",
+        "sound": "Paper snap, then claws on wet wood."
+      },
+      "phases_citation": ["Presentment", "Collection", "Stamp"],
+      "law_deepened": "Read the invoice in Presentment. In Collection, pay, fight, or witness. Stuffing the paper, burning it, or calling the sum a mistake fails the Refusal of Consequence. The stamp is taken only after the sum is acknowledged. A kill before the reading suppresses item_rem_invoice_stamp. Dock hounds do not join this roster.",
+      "loot_conditions": {
+        "item_rem_invoice_stamp": "Phase Stamp, after acknowledgment. Suppressed if the paper was unread or destroyed.",
+        "coin_tooth": "Only if the invoice was read. Otherwise the tooth leaves with the body.",
+        "ledger_plate": "Only if a plate was the piece that broke. Intact plates despawn on the body."
+      },
+      "weak_point": "ledger_plate — plates are the armor, the bare shoulder is flesh"
+    },
+    {
+      "id": "enc_stair_switch",
+      "name": "The Hood on the Escape",
+      "status": "new window, existing role, no new mesh",
+      "creature_ids": ["npc_role_coast_bandit"],
+      "count": 1,
+      "named_unique": false,
+      "floor": "floor_unclaimed_street",
+      "point": { "x": 8.09, "z": -2.55 },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 10,
+        "close_hour": 13,
+        "day_index_mod": 2,
+        "day_index_equals": 1,
+        "label": "Late morning, the days the invoice evening is shut"
+      },
+      "suppressed_when": ["raid_unpaid_shift active"],
+      "ambient_during": "Bandit ambient on the gap drops to 0. The hail giver for q_crime_paper_stays_dry stays hail and is not this lieutenant.",
+      "telegraph": {
+        "board": "A sum in chalk at the alley midpoint, arrow aimed up the brick.",
+        "scout": "Hood and one pauldron at 100 m. Knife still low.",
+        "sound": "Switch, once, not a flick in a shop."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Reading",
+          "tell": "The chalk is the whole offer.",
+          "player_response": "Read it from the ground. Climbing the escape before the reading treats the hood as erasure."
+        },
+        {
+          "index": 2,
+          "name": "Escape",
+          "tell": "The hood takes the stair.",
+          "player_response": "If the tenement set is placed, follow by fire escape, rebar stub, or pipe. If it is not placed, this phase stays on the ground. Do not invent a stair."
+        },
+        {
+          "index": 3,
+          "name": "Switch",
+          "tell": "Wing Chun, knife from the hip, one shoulder plate forward.",
+          "player_response": "skill_steel_invoice or a witnessed disarm. Killing the hood before the chalk is read fails q_crime_hood_reading."
+        }
+      ],
+      "loot_conditions": {
+        "items": "None minted. The switchknife stays the role weapon. It is not a second item_wpn_switchknife."
+      }
+    },
+    {
+      "id": "enc_hook_shift",
+      "name": "The Hook That Stopped Being a Tool",
+      "status": "new window, existing role, no new mesh",
+      "creature_ids": ["npc_role_coast_labor"],
+      "count": 1,
+      "named_unique": false,
+      "floor": "floor_dockside_warehouses",
+      "point": { "x": 10.72, "z": 32.9 },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 14,
+        "close_hour": 17,
+        "day_index_mod": 3,
+        "day_index_equals": 0,
+        "label": "Afternoon shift, every third day"
+      },
+      "suppressed_when": ["raid_unpaid_shift active"],
+      "ambient_during": "Replaces one of the three warehouse laborers. The other two stay on hail, including the giver of q_crime_hood_reading.",
+      "telegraph": {
+        "board": "A crate stenciled with a sum, hook laid across the stencil.",
+        "scout": "Flat cap, wet shirt, hook off the belt and in the hand.",
+        "sound": "Iron on wet timber, one strike."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Stencil",
+          "tell": "The sum is on the crate, not in a speech.",
+          "player_response": "Read the stencil. Denial does not clear it."
+        },
+        {
+          "index": 2,
+          "name": "Hook",
+          "tell": "Windup is the hook raised past the shoulder. Wing Chun heavy, not a spear.",
+          "player_response": "Step the arc. The other laborers are witnesses, not adds."
+        },
+        {
+          "index": 3,
+          "name": "Tool again",
+          "tell": "If the stencil has been read, the hook lowers.",
+          "player_response": "Leave the laborer standing. A corpse here is a bill of its own and calls raid_unpaid_shift's foreman the same body on a later night, still one instance."
+        }
+      ],
+      "loot_conditions": {
+        "items": "None. prop_dock_hook stays a tool prop."
+      }
+    },
+    {
+      "id": "enc_rotor_saddle",
+      "name": "The Rotor Saddle",
+      "status": "new window, existing hybrid, no new mesh",
+      "creature_ids": ["hyb_billdrone"],
+      "count": 1,
+      "floor": "floor_unclaimed_street",
+      "point": { "x": 8.09, "z": -2.55 },
+      "height_rule": "On a placed tenement roof if the set exists. On the gap ground if it does not. Never on a Grid junction.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "day_index_mod": 3,
+        "day_index_equals": 1,
+        "label": "Rain dawn, every third day offset from the hook"
+      },
+      "suppressed_when": ["raid_unpaid_shift active"],
+      "catalog_note": "hostile is false on the hybrid row. This window sets aggro. The file is not edited.",
+      "telegraph": {
+        "board": "A counting tick chalked as a row of marks with one mark missing.",
+        "scout": "Wide hound head, one disc on the spine, readable at 100 m.",
+        "sound": "Paper-tear bark, then a tick."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Count",
+          "tell": "The tick tries to finish a number for you.",
+          "player_response": "Do not complete the count. Giving the missing mark lets the beam treat you as filed."
+        },
+        {
+          "index": 2,
+          "name": "Beam",
+          "tell": "Mouth opens, cyan-sodium line, rotor is the windup.",
+          "player_response": "Break the rotor hub. The beam becomes a bark. skill_presence_witness keeps the missing mark missing."
+        },
+        {
+          "index": 3,
+          "name": "Saddle off",
+          "tell": "Disc hangs. The body is a hound again and still not the dock dog.",
+          "player_response": "Leave it. Do not skin it into faun_dock_hound and do not haul it to Cyber."
+        }
+      ],
+      "loot_conditions": {
+        "rotor": "Only if the hub broke.",
+        "coin_tooth": "Suppressed. That tooth belongs to enc_outstanding."
+      },
+      "cyber_cap": 0
+    }
+  ],
+  "raid": {
+    "id": "raid_unpaid_shift",
+    "name": "The Unpaid Shift",
+    "kind": "small",
+    "world_id": "Crime",
+    "floor": "floor_dockside_warehouses",
+    "point": { "x": 10.72, "z": 32.9 },
+    "law": "A crew tries to lose one invoice under a crate in the rain so the evening presentment never has a paper. Losing the paper is delay. Delay is not cancellation. Witnesses remember the attempt.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 22,
+      "close_hour": 24,
+      "day_index_mod": 4,
+      "day_index_equals": 3,
+      "label": "Late rain, every fourth day"
+    },
+    "hard_gates": [
+      "If enc_outstanding is active, skip. The bill is already being presented.",
+      "If enc_hook_shift or enc_stair_switch or enc_rotor_saddle is active, those windows are suppressed for the night and their bodies are not double-spawned.",
+      "Named set wharf is not required. The paper's spot is the warehouse anchor. A placed loading-dock edge replaces the bare point when the kit sits on it."
+    ],
+    "roster": [
+      { "id": "npc_role_coast_labor", "count": 1, "role_in_raid": "foreman, same archetype as enc_hook_shift, one instance" },
+      { "id": "npc_role_coast_bandit", "count": 2, "role_in_raid": "hoods off the gap. The quest giver stays on the gap and does not join." },
+      { "id": "faun_dock_hound", "count": 2, "role_in_raid": "the only hounds on the anchor that night. Ambient cap drops to 0." }
+    ],
+    "not_on_roster": ["mon_coast_billhound", "hyb_billdrone", "faun_sodium_rat", "faun_rain_gull", "mon_grid_drone"],
+    "telegraph": {
+      "board": "The sodium bracket on the warehouse ticks twice and goes dark. A chalk sum on the anchor is smeared toward a crate.",
+      "scout": "Two hoods and a cap at the crate. Two hounds, ropes still on, spaced one body apart. If the wharf set is placed, the gull line lifts and screams once, and that scream is the far scout.",
+      "sound": "Hook on wet timber, three taps, then a paper slap."
+    },
+    "phases": [
+      {
+        "index": 1,
+        "name": "Dark lamp",
+        "tell": "The bracket is out. The chalk is still readable.",
+        "player_response": "Read the sum before the smear finishes. The two hail laborers who are not the foreman stay witnesses."
+      },
+      {
+        "index": 2,
+        "name": "Bay",
+        "tell": "The two hounds bay a name that is on the paper.",
+        "player_response": "Witness the bay. Killing a hound does not clear the sum and fails q_crime_collar_stays if that collar comes off."
+      },
+      {
+        "index": 3,
+        "name": "Under the crate",
+        "tell": "The foreman puts the slip under the crate in the rain.",
+        "player_response": "skill_presence_witness or skill_steel_invoice on the slip, not on a bystander. Keep the paper on the anchor. A sunk or hidden slip fails the Refusal."
+      },
+      {
+        "index": 4,
+        "name": "Lamp back",
+        "tell": "The bracket lights. The sum is either on the wood or gone.",
+        "player_response": "If the paper is on the wood, the shift ends with the crew standing. item_invoice_slip count 1. item_rem_invoice_stamp does not drop here."
+      }
+    ],
+    "rewards": {
+      "item_invoice_slip": "Count 1, only when the slip is still on the anchor at phase 4.",
+      "item_rem_invoice_stamp": "Never. That stamp is enc_outstanding."
+    }
+  },
+  "side_quests": [
+    {
+      "id": "q_crime_collar_stays",
+      "title": "Sunken Anchor — The Collar Stays",
+      "giver_npc_id": "barkeep_old_lou",
+      "giver_role_id": null,
+      "backstory_public": "crime_anchor_disaster. Eleven sailors at the main pier. Lou pulled three out. The hounds on the dockside learned the unpaid by who never came back for the line.",
+      "withheld": ["Lou's back room", "Thorpe détente"],
+      "objectives": [
+        { "id": "obj_q_crime_collar_stays_1", "verb": "talk", "target": "barkeep_old_lou", "count": 1, "text": "Let Lou talk about the rain. Ask about the dogs, not the back room." },
+        { "id": "obj_q_crime_collar_stays_2", "verb": "reach", "target": "floor_dockside_warehouses", "count": 1, "text": "Stand at the dockside warehouse anchor where a hound can see you." },
+        { "id": "obj_q_crime_collar_stays_3", "verb": "witness", "target": "faun_dock_hound", "count": 1, "text": "Watch one hound heel to a door. Leave the rope collar on the neck." }
+      ],
+      "fail": "Removing a collar, or killing a hound during raid_unpaid_shift phase Bay.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "prerequisites": [],
+      "spawn_rule": "If barkeep_old_lou has no transform, the quest does not start. Do not clone Lou onto the warehouse point."
+    },
+    {
+      "id": "q_crime_hood_reading",
+      "title": "Alley — Read It From the Ground",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_coast_labor",
+      "backstory_public": "The ledger bandit's own line: the bill always arrives, so they wear hoods they think will help. A laborer on the warehouse shift wants the alley sum read by someone who does not have to climb into the hood.",
+      "objectives": [
+        { "id": "obj_q_crime_hood_reading_1", "verb": "talk", "target": "npc_role_coast_labor", "count": 1, "text": "Take the reading from a laborer who is still on hail." },
+        { "id": "obj_q_crime_hood_reading_2", "verb": "reach", "target": "floor_unclaimed_street", "count": 1, "text": "Stand at the alley midpoint during enc_stair_switch, or at the chalk if the window is shut and the marks are still there." },
+        { "id": "obj_q_crime_hood_reading_3", "verb": "witness", "target": "alley_chalk", "count": 1, "text": "Read the sum from the ground. Bring the reading back. Leave the hood standing." }
+      ],
+      "fail": "Killing the lieutenant before the chalk is read.",
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "iron_rose_syndicate", "delta": 1 }],
+      "faction_alias_note": "The role row writes delgado_syndicate. Canon country id is iron_rose_syndicate. Apply this +1 to whichever book already tracks Mama's syndicate. Do not open a third book.",
+      "prerequisites": [],
+      "budget": "The giver is one of the three warehouse laborers."
+    },
+    {
+      "id": "q_crime_paper_stays_dry",
+      "title": "Shift — The Paper Stays on the Wood",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_coast_bandit",
+      "backstory_public": "One hood on the unclaimed street will not join the crate. They have watched sums disappear under rain and come back as a larger bill with no witness left to argue the first number.",
+      "objectives": [
+        { "id": "obj_q_crime_paper_stays_dry_1", "verb": "talk", "target": "npc_role_coast_bandit", "count": 1, "text": "Accept from the hail bandit on the gap. That body does not walk to the warehouse." },
+        { "id": "obj_q_crime_paper_stays_dry_2", "verb": "reach", "target": "raid_unpaid_shift", "count": 1, "text": "Be on the warehouse anchor while the unpaid shift is up." },
+        { "id": "obj_q_crime_paper_stays_dry_3", "verb": "witness", "target": "item_invoice_slip", "count": 1, "text": "See the slip still on the wood at phase Lamp back. Tell the hail bandit. Do not wear a rose pin for this." }
+      ],
+      "fail": "The slip under the crate at phase 4.",
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "item_note": "The slip itself is the raid reward, count 1, not a second grant from this quest.",
+      "faction_delta": [{ "faction_id": "ghost_network", "delta": 1 }],
+      "faction_alias_note": "Volume quests write ghost_contracts. Canon faction id is ghost_network. Apply this +1 to whichever book already tracks Jax's network. Do not open a third book.",
+      "prerequisites": [],
+      "budget": "The giver is the one bandit slot held out of the raid's two adds."
+    }
+  ],
+  "unspawned": [
+    { "id": "rage_junkie", "source": "Canon/crime/creatures.json", "reason": "No bible mesh. Humanoid seed stays a sentence." },
+    { "id": "scrap_golem", "source": "Canon/crime/creatures.json", "reason": "No bible mesh. The warehouse does not grow a junk titan." },
+    { "id": "night_crawler", "source": "Canon/crime/creatures.json", "reason": "No bible mesh. Alley work is the ledger bandit and the sodium rat." },
+    { "id": "chrome_enforcer", "source": "Canon/crime/creatures.json", "reason": "No bible mesh. Cyber bodies stay on the Grid for S11." },
+    { "id": "ash_hound", "source": "Canon/crime/creatures.json", "reason": "Fire breath and an on-death blast. Art forbids a hellfire hound. The dock hound and the bill hound are the dogs." },
+    { "id": "mon_grid_drone", "reason": "Grid ambient. Coast drone alias is the one rotor on hyb_billdrone." },
+    { "id": "mon_boss_census", "reason": "Grid boss. Out of this facet." },
+    { "id": "hyb_nullhound", "reason": "Cyber only." },
+    { "id": "luminary_strike_drones", "reason": "lore_drone_swarm_aftermath is history. This slice does not restage the eleven dead as a spawn." }
+  ]
+}

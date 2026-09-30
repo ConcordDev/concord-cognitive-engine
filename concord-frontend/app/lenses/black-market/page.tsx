@@ -23,7 +23,6 @@ import axios from 'axios';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { SaelStall } from '@/components/black-market/SaelStall';
 import { UndergroundExchange } from '@/components/black-market/UndergroundExchange';
 interface Listing {
@@ -178,9 +177,7 @@ export default function BlackMarketPage() {
 
   return (
     <LensShell lensId="black-market" asMain={false}>
-      <FirstRunTour lensId="black-market" />
-      <ManifestActionBar />
-      <DepthBadge lensId="black-market" size="sm" className="ml-2" />
+      <FirstRunTour lensId="black-market" />      <DepthBadge lensId="black-market" size="sm" className="ml-2" />
       <LensVerticalHero lensId="black-market" className="mx-6 mt-4" />
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-4xl px-4 py-8">

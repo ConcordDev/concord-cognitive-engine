@@ -1,0 +1,28 @@
+{
+  "schema": "concordia-anim-mobility/1.0",
+  "slice": "A01_anim_master",
+  "cycle": 2,
+  "batch": "B21_anim_mobility",
+  "generate": false,
+  "mesh": false,
+  "source": "world-forge/W05_transport_graph_spec/SPEC.json",
+  "controllers": ["ConcordiaLocomotion", "CreatureGraph", "VehicleRoll"],
+  "clocks_are_not_clips": true,
+  "modes": [
+    {"kind": "gate", "n": 8, "minutes": 2, "clip": "Walk_Formal_Loop", "then": "softenter.idle", "radius_m": 34, "inside_flower_law": true},
+    {"kind": "road", "speed_kmh": 5, "clip": "Walk_Loop", "jog_is_atlas_clock": false},
+    {"kind": "walker", "speed_kmh": 3.5, "clip": "Walk_Loop", "stride_scale": 0.7, "mount": false, "edges": ["walk_tunya_frontier", "walk_frontier_crime", "seam_crucible_cyber"]},
+    {"kind": "sea", "clip": null, "hull": false, "oar": false, "driving_loop": "unbound"},
+    {"kind": "weak", "speed_kmh": 3, "clip": "Crouch_Fwd_Loop", "climb": "MISSING", "link_gate": false, "edge": "waystone_crime_sere"}
+  ],
+  "blocks": [
+    {"id": "tunya_nil", "wheels": "v=0", "feet": "Walk_Loop"},
+    {"id": "march_crucible_cyber", "pathfinder": false, "play": "seam_crucible_cyber"},
+    {"id": "house_voss", "clip": "Walk_Loop", "fly": false},
+    {"id": "sea_crime_superhero", "hull": false},
+    {"id": "sere_gate", "exists": false}
+  ],
+  "pistol_policy": "unbound",
+  "rifle": "forbidden",
+  "flower_law_m": 42
+}

@@ -634,6 +634,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.myListings",
+      "name": "myListings"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.orders-create",
       "name": "orders-create"
     },
@@ -803,6 +816,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.purchasePlugin",
+      "name": "purchasePlugin"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.purchaseWithRoyalties",
       "name": "purchaseWithRoyalties"
     },
@@ -831,6 +857,19 @@
       ],
       "macro_id": "marketplace.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.relist",
+      "name": "relist"
     },
     {
       "_derived": true,
@@ -1180,6 +1219,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.unlist",
+      "name": "unlist"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.updateListing",
+      "name": "updateListing"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.variations-list",
       "name": "variations-list"
     },
@@ -1225,5 +1290,5 @@
   ],
   "domain": "marketplace",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 94
+  "macroCount": 99
 }

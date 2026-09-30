@@ -1,8 +1,6 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -29,7 +27,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function CreativeWritingPage() {
   useLensNav('creative-writing');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative-writing');
-  const [showGutendex, setShowGutendex] = useState(false);
+  const [desk, setDesk] = useState<'studio' | 'gutenberg'>('studio');
 
   return (
     <LensShell lensId="creative-writing" asMain={false}>
@@ -57,22 +55,18 @@ export default function CreativeWritingPage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
             type="button"
-            onClick={() => setShowGutendex(v => !v)}
+            onClick={() => setDesk(d => d === 'gutenberg' ? 'studio' : 'gutenberg')}
             className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
           >
-            <span>Public-domain literature search (Project Gutenberg)</span>
-            {showGutendex ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span>{desk === 'gutenberg' ? 'Back to studio' : 'Project Gutenberg'}</span>
           </button>
-          {showGutendex && (
+          {desk === 'gutenberg' && (
             <div className="mt-3">
               <GutendexSearch />
             </div>
           )}
         </section>
-
-        <RecentMineCard domain="creative-writing" limit={10} hideWhenEmpty />
-        <AutoActionStrip domain="creative-writing" hideWhenEmpty />
-        <CrossLensRecentsPanel lensId="creative-writing" sinceDays={7} limit={6} hideWhenEmpty />
+          <CrossLensRecentsPanel lensId="creative-writing" sinceDays={7} limit={6} hideWhenEmpty />
       </div>
     </LensShell>
   );

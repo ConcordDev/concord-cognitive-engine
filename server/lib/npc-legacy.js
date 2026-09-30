@@ -24,10 +24,13 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { inheritHooks } from "./hooks.js";
 import { handleNpcDeathVacancy } from "./settlements.js";
+import { recordConsequence, recordLeaderDeath } from "./world-consequence.js";
+import { inheritMemories } from "./npc-memory.js";
 import { birthTemperament } from "./ecosystem/temperament.js";
 import { DRIVE_KINDS } from "./ecosystem/drives.js";
 import { appraiseExperience } from "./felt-per.js";
 import { qualeOf } from "./qualia-space.js";
+import { gatherAttendees } from "./social-gatherings.js";
 
 // Living Society Phase 1.5c — open a settlement vacancy when a role-holder dies.
 function _openSettlementVacancyOnDeath(db, npc, opts) {
@@ -362,6 +365,29 @@ export function onNpcDeath(db, npc, opts = {}) {
     _openSettlementVacancyOnDeath(db, npc, opts);
   } catch { /* settlements optional */ }
 
+  try {
+    const isLeader = !!(npc.settlement_role || npc.role === "leader" || opts.asLeader);
+    const payload = {
+      worldId: npc.world_id || "concordia-hub",
+      actorKind: opts.killerKind || (opts.killerId ? "player" : "world"),
+      actorId: String(opts.killerId || opts.killer || "unknown"),
+      targetKind: "npc",
+      targetId: npc.id,
+      factionId: npc.faction || null,
+      location: npc.world_id,
+    };
+    if (isLeader) {
+      recordLeaderDeath(db, {
+        ...payload,
+        importance: 0.95,
+        immediate: { factionId: npc.faction || null, succession: true },
+        longTerm: { factionId: npc.faction || null },
+      });
+    } else {
+      recordConsequence(db, { ...payload, action: "kill", importance: 0.7 });
+    }
+  } catch { /* consequence bus optional until mig 416 */ }
+
   const cause = opts.cause || "unknown";
   const lastWords = composeLastWords(npc, cause);
 
@@ -413,7 +439,51 @@ export function onNpcDeath(db, npc, opts = {}) {
       const hres = inheritHooks(db, npc.id, primary.id);
       inherited.hooks = (hres?.transferredOver || 0) + (hres?.transferredHeld || 0);
     } catch { inherited.hooks = 0; }
+    try {
+      inherited.memories = inheritMemories(db, npc.id, primary.id);
+    } catch { inherited.memories = 0; }
   }
+
+  try {
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function" && heirs.length > 0) {
+      const primary = heirs[0];
+      const worldId = npc.world_id || "concordia-hub";
+      emit("npc:heir-rose", {
+        heirId: primary.id,
+        heirName: primary.name || primary.archetype || null,
+        deceasedId: npc.id,
+        deceasedName: npc.name || npc.archetype || null,
+        lastWords,
+        worldId,
+        inherited,
+      }, { worldId });
+    }
+  } catch { /* presentation optional */ }
+
+  // Thin emit of the existing funeral composition — not a new mourner engine.
+  // Empty attendees stay empty; Unity Attends matching GuestNpcs at the tomb.
+  try {
+    const gathering = gatherAttendees(db, { kind: "funeral", focalKind: "npc", focalId: npc.id });
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function") {
+      const worldId = npc.world_id || "concordia-hub";
+      emit("npc:funeral", {
+        deceasedId: npc.id,
+        deceasedName: npc.name || npc.archetype || gathering.focalName || null,
+        lastWords,
+        tombX,
+        tombZ,
+        worldId,
+        attendees: (gathering.attendees || []).map((a) => ({
+          id: a.id || null,
+          name: a.name || "",
+          role: a.role || "",
+        })),
+        beats: gathering.beats || [],
+      }, { worldId });
+    }
+  } catch { /* presentation optional */ }
 
   return { ok: true, legacyId, heirs: heirs.map(h => h.id), inherited };
 }

@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Concord Deployment Topology — Rendering, GPU, RunPod + Cloudflare
 
 **Date:** 2026-06-26 · Grounded in a read-only audit of the running stack (file paths inline).

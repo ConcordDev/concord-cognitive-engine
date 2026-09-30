@@ -1,0 +1,257 @@
+{
+  "batch": "B25_creatures_sere",
+  "world_ids": [
+    "Sere"
+  ],
+  "count": 4,
+  "entries": [
+    {
+      "id": "faun_sere_drowned_eel",
+      "display_name": "Drowned Eel",
+      "batch": "B25_creatures_sere",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "wound",
+        "native"
+      ],
+      "triangle_budget": 4800,
+      "aura_prompt": "One thick soot eel, body a single S, one dark oil lump just behind the head, flood-reed mud on the skin, no hood, no legs, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick soot eel, body a single S, one dark oil lump just behind the head, flood-reed mud on the skin, no hood, no legs, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thick S with one lump behind the head. Separate from the Fold Basilisk hood and from the furnace-eye brute.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ],
+      "lore_blurb": "Sere native of the drowned lowland. Lore parent is the bestiary eel. This mesh is not seated.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_sere_drowned_eel/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 4800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_serpent",
+        "anim_controller": "creature_serpent",
+        "clips": [
+          "eel.glide",
+          "eel.lunge",
+          "eel.hit",
+          "eel.death"
+        ],
+        "spawn_weight": 0,
+        "s19_caps": "unchanged",
+        "avoid": [
+          "verge_keshar_lip",
+          "aldermere_tally",
+          "dovrane_keshar",
+          "tally_hollowford",
+          "enc_chest_stamp",
+          "enc_one_tile",
+          "enc_empty_post",
+          "enc_compound_mark",
+          "furnace_belt",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_sere_flood_reed and env_sere_flood_pier, unplaced",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "S plus one lump"
+      }
+    },
+    {
+      "id": "faun_sere_lip_newt",
+      "display_name": "Lip Newt",
+      "batch": "B25_creatures_sere",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "wound",
+        "lip"
+      ],
+      "triangle_budget": 2800,
+      "aura_prompt": "One low soot newt, body a bar that ends in a closed hook tail, four stub legs, one pale throat patch of skin, no flame, no brand stamp. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low soot newt, body a bar that ends in a closed hook tail, four stub legs, one pale throat patch of skin, no flame, no brand stamp. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bar ending in a closed hook. Throat patch is skin. Separate from the smog roach oval and from the Ruins rod-tail newt.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ],
+      "lore_blurb": "Wound-lip basker. Does not sit the Verge-Keshar roach seat.",
+      "scale_vs_player": "0.07 m tall, 0.40 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_sere_lip_newt/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 2800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter",
+          "sprawl.hit",
+          "sprawl.death"
+        ],
+        "spawn_weight": 0,
+        "s19_caps": "unchanged",
+        "avoid": [
+          "verge_keshar_lip",
+          "aldermere_tally",
+          "dovrane_keshar",
+          "tally_hollowford",
+          "enc_chest_stamp",
+          "enc_one_tile",
+          "enc_empty_post",
+          "enc_compound_mark",
+          "furnace_belt",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced wound lip, not the seated Verge-Keshar roach lip",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "bar plus closed hook"
+      }
+    },
+    {
+      "id": "faun_sere_tar_crab",
+      "display_name": "Tar Crab",
+      "batch": "B25_creatures_sere",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "wound",
+        "shore"
+      ],
+      "triangle_budget": 4200,
+      "aura_prompt": "One low tar crab, body a wedge, one claw raised, the other side a closed stump, thick legs, tar film, no stamp, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low tar crab, body a wedge, one claw raised, the other side a closed stump, thick legs, tar film, no stamp, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wedge plus one raised claw. The stump stays closed. Separate from the smog roach pebble and from a brand tile.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ],
+      "lore_blurb": "Oil at the flood edge. The film is tar, not a stamped tile and not a flame.",
+      "scale_vs_player": "0.22 m tall, 0.55 m wide",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_sere_tar_crab/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 4200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_crab",
+        "anim_controller": "creature_crab",
+        "clips": [
+          "crab.idle",
+          "crab.sidle",
+          "crab.hit",
+          "crab.death"
+        ],
+        "spawn_weight": 0,
+        "s19_caps": "unchanged",
+        "avoid": [
+          "verge_keshar_lip",
+          "aldermere_tally",
+          "dovrane_keshar",
+          "tally_hollowford",
+          "enc_chest_stamp",
+          "enc_one_tile",
+          "enc_empty_post",
+          "enc_compound_mark",
+          "furnace_belt",
+          "wilds_90_126"
+        ],
+        "geography_hook": "oil seep beside the flood, unplaced, not env_sere_brand_tile",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "wedge plus one claw"
+      }
+    },
+    {
+      "id": "faun_sere_scrub_finch",
+      "display_name": "Scrub Finch",
+      "batch": "B25_creatures_sere",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "wound",
+        "ambient"
+      ],
+      "triangle_budget": 2600,
+      "aura_prompt": "One small soot finch perched, round body, wings closed, one dark bar across the wing, short tail, furnace-scrub dust, no lettering, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small soot finch perched, round body, wings closed, one dark bar across the wing, short tail, furnace-scrub dust, no lettering, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Round body plus one wing bar. Separate from the mark harpy, the catalogue crow, and the plane dove's square tail.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ],
+      "lore_blurb": "Perches on furnace scrub. Ambient. Does not enter the furnace belt seat.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_sere_scrub_finch/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 2600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bird.idle",
+          "bird.hop",
+          "bird.flap",
+          "bird.perch"
+        ],
+        "spawn_weight": 0,
+        "s19_caps": "unchanged",
+        "avoid": [
+          "verge_keshar_lip",
+          "aldermere_tally",
+          "dovrane_keshar",
+          "tally_hollowford",
+          "enc_chest_stamp",
+          "enc_one_tile",
+          "enc_empty_post",
+          "enc_compound_mark",
+          "furnace_belt",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_sere_furnace_scrub, unplaced, not furnace_belt",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "round plus one bar"
+      }
+    }
+  ]
+}

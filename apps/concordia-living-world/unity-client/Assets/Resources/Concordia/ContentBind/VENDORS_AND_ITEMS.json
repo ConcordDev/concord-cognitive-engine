@@ -1,0 +1,1227 @@
+{
+  "schema": "concordia.volume.vendors.v1",
+  "authored": "2026-09-22",
+  "notes": [
+    "No content/items JSON was found under Resources/Concordia/Canon. These ids are the extension surface Aura binds into that table when it exists, and into vendor slates now.",
+    "Standing tiers change price_multiplier and trusted quantity. They do not invent rarity colors.",
+    "Remembrance items are not default vendor stock.",
+    "Human sellers are CX. Quaternius is not a shopkeep body."
+  ],
+  "item_count": 52,
+  "vendor_count": 14,
+  "items": [
+    {
+      "id": "item_court_bread",
+      "display_name": "Court loaf",
+      "kind": "food",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "prop_bread",
+      "notes": "Vesper's loaf. Real bread, not a buff you invent.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_ember_core",
+      "display_name": "Ember core",
+      "kind": "material",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "first_cycle_fight drop",
+      "notes": "Drops after the Training Hollow. One per clear.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_lantern_oil",
+      "display_name": "Lantern oil",
+      "kind": "material",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "prop_court_lantern_post",
+      "notes": "Lamplighter issue. Burns, does not explode as a grenade.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_flower_wreath",
+      "display_name": "Flower wreath",
+      "kind": "quest",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "prop_flower_wreath",
+      "notes": "Proof you walked the urn. Not armor.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_notebook_asbir",
+      "display_name": "Difference notebook",
+      "kind": "quest",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "prop_notebook",
+      "notes": "Third book. Facts do not go in it.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_witness_slate",
+      "display_name": "Witness slate",
+      "kind": "quest",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Crucible"
+      ],
+      "extends": "prop_count_slate",
+      "notes": "Blank of totals unless a quest writes one line.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_moonleaf_cut",
+      "display_name": "Moonleaf cutting",
+      "kind": "material",
+      "world_ids": [
+        "Fantasy",
+        "Hub"
+      ],
+      "extends": "fantasy_lyra chain",
+      "notes": "A cutting, not the stool.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_wardblade",
+      "display_name": "Quenched ward-blade",
+      "kind": "weapon",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "extends": "wpn_1h_sunder_wardblade",
+      "notes": "Sold only if gold in the crack has closed.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rose_pin",
+      "display_name": "Rose pin",
+      "kind": "quest",
+      "world_ids": [
+        "Fantasy",
+        "Crime",
+        "Hub"
+      ],
+      "extends": "prop_rose_pin",
+      "notes": "Errand token. Wearing it is a faction claim.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_grove_fruit",
+      "display_name": "Fallen grove fruit",
+      "kind": "food",
+      "world_ids": [
+        "Tunya"
+      ],
+      "extends": "prop_basket",
+      "notes": "Fallen only. A tagged tree-cut fails vendor intake.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_pollen_vial",
+      "display_name": "Uneven pollen",
+      "kind": "material",
+      "world_ids": [
+        "Tunya"
+      ],
+      "extends": "skill_craft_pollen",
+      "notes": "Coat is patchy. A smooth glow is the wrong vial.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_grove_knife",
+      "display_name": "Grove knife",
+      "kind": "tool",
+      "world_ids": [
+        "Tunya"
+      ],
+      "extends": "wpn_imp_grove_knife",
+      "notes": "Tool. Not for reaping a trunk.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_lead_rope",
+      "display_name": "Lead rope",
+      "kind": "tack",
+      "world_ids": [
+        "Tunya",
+        "Frontier"
+      ],
+      "extends": "prop_yoke",
+      "notes": "Lead and hitch. No saddle seat.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_seed_not_tree",
+      "display_name": "Seed, not a tree",
+      "kind": "quest",
+      "world_ids": [
+        "Tunya",
+        "Sere"
+      ],
+      "extends": "Esha seed library / Tunya law",
+      "notes": "One seed. Planting a claim on a whole grove fails.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_ash_page",
+      "display_name": "Ash page",
+      "kind": "quest",
+      "world_ids": [
+        "Ruins",
+        "Sere",
+        "Tunya"
+      ],
+      "extends": "prop_stylus",
+      "notes": "One page. Catalogue, not conquest.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_stylus_ink",
+      "display_name": "Keeper ink",
+      "kind": "material",
+      "world_ids": [
+        "Ruins"
+      ],
+      "extends": "prop_stylus",
+      "notes": "Half-layer work. Will not mint a composite by itself.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_invoice_slip",
+      "display_name": "Invoice slip",
+      "kind": "quest",
+      "world_ids": [
+        "Crime"
+      ],
+      "extends": "wpn_throw_coast_invoice",
+      "notes": "The bill. Destroying it does not clear the sum.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_switchknife",
+      "display_name": "Folded switchknife",
+      "kind": "weapon",
+      "world_ids": [
+        "Crime"
+      ],
+      "extends": "wpn_1h_coast_switchknife",
+      "notes": "Folded in the shop. Flower Law still applies in the Court.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_canteen_salt",
+      "display_name": "Salt canteen",
+      "kind": "food",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "extends": "prop_canteen",
+      "notes": "Water. Pinewood salt on the lip if filled on that road.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_horse_tack",
+      "display_name": "Horse tack",
+      "kind": "tack",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "extends": "skill_craft_tack",
+      "notes": "Harness for faun_wagon_horse. Does not enable a ride controller.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wagon_pin",
+      "display_name": "Wagon pin",
+      "kind": "vehicle_part",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "skill_craft_wagon",
+      "notes": "Pins prop_wagon. No seated driver anim.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_verge_token",
+      "display_name": "Verge token",
+      "kind": "quest",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "frontier_zara chain",
+      "notes": "Mutual watch token. Not currency.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_dawn_chalk",
+      "display_name": "Launch chalk",
+      "kind": "material",
+      "world_ids": [
+        "Superhero"
+      ],
+      "extends": "prop_launch_chalk",
+      "notes": "Marks a lane. The winning mark is meant to be erased.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_mercy_circlet",
+      "display_name": "Mercy circlet",
+      "kind": "quest",
+      "world_ids": [
+        "Superhero"
+      ],
+      "extends": "prop_mercy_circlet",
+      "notes": "Worn only while a fight ended with them standing. Vendor display, not a stat stick.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_unclosed_shard",
+      "display_name": "Unclosed shard",
+      "kind": "material",
+      "world_ids": [
+        "Crucible"
+      ],
+      "extends": "prop_unclosed_shard",
+      "notes": "Seam open. skill_craft_unend keeps it that way.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_count_slate",
+      "display_name": "Blank count slate",
+      "kind": "quest",
+      "world_ids": [
+        "Cyber"
+      ],
+      "extends": "prop_count_slate",
+      "notes": "Names allowed. Totals fail the item.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_cable_coil",
+      "display_name": "Cable coil",
+      "kind": "material",
+      "world_ids": [
+        "Cyber"
+      ],
+      "extends": "prop_cable_coil",
+      "notes": "Fiber. Not a weapon.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_gunsmith_part",
+      "display_name": "Vise part",
+      "kind": "material",
+      "world_ids": [
+        "Cyber",
+        "Crime"
+      ],
+      "extends": "prop_gunsmith_vise",
+      "notes": "A gunsmith part. Firearm coverage is 0%. This is not a rifle and will not assemble into one.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_forge_hammer",
+      "display_name": "Forge hammer",
+      "kind": "tool",
+      "world_ids": [
+        "Fantasy",
+        "Hub"
+      ],
+      "extends": "wpn_imp_forge_hammer",
+      "notes": "Smith tool.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_dock_hook",
+      "display_name": "Dock hook",
+      "kind": "tool",
+      "world_ids": [
+        "Crime"
+      ],
+      "extends": "wpn_imp_dock_hook",
+      "notes": "Wharf tool.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_spade",
+      "display_name": "Road spade",
+      "kind": "tool",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "wpn_imp_frontier_spade",
+      "notes": "Clears a rut. Does not raise a dome.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_hitch_rope",
+      "display_name": "Hitch rope",
+      "kind": "tack",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "extends": "prop_hitching_rail",
+      "notes": "Rail lead.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_brand_tile",
+      "display_name": "Broken brand tile",
+      "kind": "quest",
+      "world_ids": [
+        "Sere"
+      ],
+      "extends": "prop_brand_tile",
+      "notes": "Half a recognition tile. Not a complete mark.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_satchel",
+      "display_name": "Courier satchel",
+      "kind": "quest",
+      "world_ids": [
+        "Hub",
+        "Frontier"
+      ],
+      "extends": "prop_satchel",
+      "notes": "Sealed letters only.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_reed",
+      "display_name": "Reed pole",
+      "kind": "weapon",
+      "world_ids": [
+        "Tunya"
+      ],
+      "extends": "wpn_pole_tunya_reed",
+      "notes": "Ward and harvest-of-fruit. Not a spear for trunks.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_skinner",
+      "display_name": "Frontier skinner",
+      "kind": "weapon",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "wpn_1h_frontier_skinner",
+      "notes": "Hide work. Elk calf quest forbids its use on faun_blackroot_elk young.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_pine_bow",
+      "display_name": "Pinewood bow",
+      "kind": "weapon",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "extends": "wpn_bow_pinewood",
+      "notes": "Salt-road bow. Do not loose it at the milepost stag.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_wpn_court_flower",
+      "display_name": "Court flower",
+      "kind": "weapon",
+      "world_ids": [
+        "Hub"
+      ],
+      "extends": "wpn_1h_court_flower",
+      "notes": "Flower inside 42m. Steel only on Arena sand. Same id, two states.",
+      "stack": 20,
+      "remembrance": false,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_crest_shard",
+      "display_name": "Crest shard",
+      "kind": "remembrance",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "extends": "mon_boss_held_curse loot crest_shard",
+      "notes": "Proof the offer was refused. Not a ride token.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_hood_scale",
+      "display_name": "Hood scale",
+      "kind": "remembrance",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "extends": "mon_sunder_basilisk",
+      "notes": "Scale from the hood-root, not a gaze trophy.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_milepost_splinter",
+      "display_name": "Milepost splinter",
+      "kind": "remembrance",
+      "world_ids": [
+        "Fantasy",
+        "Hub"
+      ],
+      "extends": "prop_pine_milepost",
+      "notes": "Splinter from the Fantasy side. The post name remains Pinewood Crossing.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_reap_talon",
+      "display_name": "Reap talon",
+      "kind": "remembrance",
+      "world_ids": [
+        "Tunya"
+      ],
+      "extends": "mon_tunya_harpy",
+      "notes": "Taken only after a reap was stopped. A theft does not drop it.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_unfinished_mask",
+      "display_name": "Unworn mask",
+      "kind": "remembrance",
+      "world_ids": [
+        "Ruins"
+      ],
+      "extends": "mon_boss_unfinished",
+      "notes": "The mask was not worn. If the player wore it, this item does not drop.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_catalogue_tooth",
+      "display_name": "Catalogue tooth",
+      "kind": "remembrance",
+      "world_ids": [
+        "Ruins"
+      ],
+      "extends": "mon_ruins_crawler",
+      "notes": "A line-break, not a conquered road.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_missing_number",
+      "display_name": "Missing number",
+      "kind": "remembrance",
+      "world_ids": [
+        "Cyber"
+      ],
+      "extends": "mon_boss_census",
+      "notes": "Dark token. Inking a digit destroys it.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_null_ring",
+      "display_name": "Null ring",
+      "kind": "remembrance",
+      "world_ids": [
+        "Cyber"
+      ],
+      "extends": "mon_grid_sentinel",
+      "notes": "A ring with no serial.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_invoice_stamp",
+      "display_name": "Invoice stamp",
+      "kind": "remembrance",
+      "world_ids": [
+        "Crime"
+      ],
+      "extends": "mon_coast_billhound",
+      "notes": "Stamp after the sum is acknowledged.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_dome_rivet",
+      "display_name": "Dome rivet",
+      "kind": "remembrance",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "mon_frontier_domebreaker",
+      "notes": "A rivet from a dome that did not close.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_watcher_nail",
+      "display_name": "Watcher nail",
+      "kind": "remembrance",
+      "world_ids": [
+        "Frontier"
+      ],
+      "extends": "mon_road_watcher",
+      "notes": "Nail from a false mile stake.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_mercy_band",
+      "display_name": "Unclaimed mercy band",
+      "kind": "remembrance",
+      "world_ids": [
+        "Superhero"
+      ],
+      "extends": "mon_dawn_mercy_sentinel",
+      "notes": "Band left on the sentinel's terms, then given because the win was refused.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_unclosed_seam",
+      "display_name": "Unclosed seam",
+      "kind": "remembrance",
+      "world_ids": [
+        "Crucible"
+      ],
+      "extends": "mon_boss_unender",
+      "notes": "Seam token. Completing it fails the drop.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    },
+    {
+      "id": "item_rem_furnace_eye",
+      "display_name": "Cooled furnace eye",
+      "kind": "remembrance",
+      "world_ids": [
+        "Sere"
+      ],
+      "extends": "mon_boss_compound_mark",
+      "notes": "Eye cooled. Does not name Esha's ledger.",
+      "stack": 1,
+      "remembrance": true,
+      "binds": "content/items row when that table is present; until then this id is the item"
+    }
+  ],
+  "vendors": [
+    {
+      "id": "vend_hub_vesper",
+      "name": "Vesper's kitchen slate",
+      "world_id": "Hub",
+      "npc_id": "vesper",
+      "role_id": "npc_role_court_merchant",
+      "stall_prop": "prop_scale_pan",
+      "stock": [
+        "item_court_bread",
+        "item_canteen_salt",
+        "item_lantern_oil"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "No steel on the slate. Flower Law stall."
+    },
+    {
+      "id": "vend_hub_gale",
+      "name": "Arena rack",
+      "world_id": "Hub",
+      "npc_id": "warden",
+      "role_id": "npc_role_iron_warden",
+      "stall_prop": "prop_arena_rack",
+      "stock": [
+        "item_wpn_court_flower",
+        "item_flower_wreath"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Purchase is allowed in the plaza as a flower. The steel state exists only after the buyer steps onto Arena sand."
+    },
+    {
+      "id": "vend_hub_maren",
+      "name": "Archive side stall",
+      "world_id": "Hub",
+      "npc_id": "archivist_maren",
+      "role_id": "npc_role_scholar",
+      "stall_prop": "prop_archive_lectern",
+      "stock": [
+        "item_notebook_asbir",
+        "item_witness_slate",
+        "item_ash_page"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "She will not buy inferences."
+    },
+    {
+      "id": "vend_hub_seam_oil",
+      "name": "Eastern oil",
+      "world_id": "Hub",
+      "npc_id": "lamplighter",
+      "role_id": "npc_role_court_labor",
+      "stall_prop": "prop_court_lantern_post",
+      "stock": [
+        "item_lantern_oil"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Oil only. He does not sell the heart of the Court."
+    },
+    {
+      "id": "vend_fantasy_smith",
+      "name": "Ward smith",
+      "world_id": "Fantasy",
+      "npc_id": null,
+      "role_id": "npc_role_sunder_guard",
+      "stall_prop": "prop_bench_forge",
+      "stock": [
+        "item_wpn_wardblade",
+        "item_forge_hammer",
+        "item_moonleaf_cut"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Refuses a blade whose crack is still gold."
+    },
+    {
+      "id": "vend_tunya_basket",
+      "name": "Grove basket",
+      "world_id": "Tunya",
+      "npc_id": null,
+      "role_id": "npc_role_tunya_merchant",
+      "stall_prop": "prop_basket",
+      "stock": [
+        "item_grove_fruit",
+        "item_pollen_vial",
+        "item_wpn_reed",
+        "item_grove_knife",
+        "item_seed_not_tree"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Will not buy a cut trunk. Fruit must be fallen."
+    },
+    {
+      "id": "vend_crime_bell",
+      "name": "Bell's corner",
+      "world_id": "Crime",
+      "npc_id": "bell",
+      "role_id": "npc_role_coast_labor",
+      "stall_prop": "prop_dock_crate",
+      "stock": [
+        "item_invoice_slip",
+        "item_wpn_switchknife",
+        "item_dock_hook",
+        "item_rose_pin"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Tips are quests, not stackable items. One purchase of a tip per slate."
+    },
+    {
+      "id": "vend_cyber_den",
+      "name": "Runners' den stair",
+      "world_id": "Cyber",
+      "npc_id": "kira",
+      "role_id": "npc_role_grid_labor",
+      "stall_prop": "prop_junction_box",
+      "stock": [
+        "item_count_slate",
+        "item_cable_coil",
+        "item_gunsmith_part"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "No rifles. The vise part stays a part. Slates with totals are bought back and wiped."
+    },
+    {
+      "id": "vend_ruins_keeper",
+      "name": "Keeper's stylus",
+      "world_id": "Ruins",
+      "npc_id": null,
+      "role_id": "npc_role_ruins_keeper",
+      "stall_prop": "prop_stylus",
+      "stock": [
+        "item_stylus_ink",
+        "item_ash_page",
+        "item_witness_slate"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Will buy remembrance only to catalogue it, not to arm a conquest."
+    },
+    {
+      "id": "vend_frontier_wright",
+      "name": "Wagonwright",
+      "world_id": "Frontier",
+      "npc_id": null,
+      "role_id": "npc_role_frontier_guard",
+      "stall_prop": "prop_hitching_rail",
+      "stock": [
+        "item_horse_tack",
+        "item_wagon_pin",
+        "item_hitch_rope",
+        "item_lead_rope",
+        "item_spade",
+        "item_wpn_skinner",
+        "item_canteen_salt"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Sells tack and pins. States out loud that the ride controller and seated clip are absent."
+    },
+    {
+      "id": "vend_dawn_chalk",
+      "name": "Dawn chalk stand",
+      "world_id": "Superhero",
+      "npc_id": null,
+      "role_id": "npc_role_dawn_mystic",
+      "stall_prop": "prop_launch_chalk",
+      "stock": [
+        "item_dawn_chalk",
+        "item_mercy_circlet"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Circlet only restocks for trusted standing after a mercy clear."
+    },
+    {
+      "id": "vend_crucible_cart",
+      "name": "Shard cart",
+      "world_id": "Crucible",
+      "npc_id": null,
+      "role_id": "npc_role_crucible_mystic",
+      "stall_prop": "prop_unclosed_shard",
+      "stock": [
+        "item_unclosed_shard"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Closed shards are refused at intake."
+    },
+    {
+      "id": "vend_sere_tessera_desk",
+      "name": "Mark desk",
+      "world_id": "Sere",
+      "npc_id": "officer_tomas_reib",
+      "role_id": "npc_role_sere_enforcer",
+      "stall_prop": "prop_brand_tile",
+      "stock": [
+        "item_brand_tile",
+        "item_gunsmith_part"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.8,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.3,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 1.1,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 2.2,
+          "stock_extra": [],
+          "stock_note": "Marked adds an interest line on the slate. No new item id."
+        }
+      ],
+      "law": "The Mark compounds. Trusted is a discount, not forgiveness. marked standing raises the price."
+    },
+    {
+      "id": "vend_sere_open_seed",
+      "name": "Open table seed jar",
+      "world_id": "Sere",
+      "npc_id": "esha_of_the_open_table",
+      "role_id": "npc_role_sere_enforcer",
+      "stall_prop": "prop_basket",
+      "stock": [
+        "item_seed_not_tree",
+        "item_grove_fruit"
+      ],
+      "standing_tiers": [
+        {
+          "standing": "stranger",
+          "price_multiplier": 1.25,
+          "stock_extra": []
+        },
+        {
+          "standing": "known",
+          "price_multiplier": 1.0,
+          "stock_extra": []
+        },
+        {
+          "standing": "trusted",
+          "price_multiplier": 0.85,
+          "stock_extra": [],
+          "stock_note": "Trusted unlocks one extra unit of each stocked id, not a new fictional item."
+        },
+        {
+          "standing": "marked",
+          "price_multiplier": 1.5,
+          "stock_extra": []
+        }
+      ],
+      "law": "Hidden stall. Does not appear on capital boards. Stock is one seed jar, not a grove."
+    }
+  ]
+}

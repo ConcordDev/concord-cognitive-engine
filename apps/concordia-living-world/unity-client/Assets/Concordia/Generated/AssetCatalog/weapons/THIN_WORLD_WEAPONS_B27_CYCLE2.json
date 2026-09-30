@@ -1,0 +1,780 @@
+{
+  "batch": "B27_weapons",
+  "slice": "A09_weapons_tools_gadgets",
+  "cycle": 2,
+  "count": 16,
+  "note": "Thin-world fill appended onto the first eighteen B27 weapon rows. Prior rows were not rewritten. No rifle. Court prompts are the flower form. Crucible gaps stay open.",
+  "entries": [
+    {
+      "id": "wpn_pole_court_budstaff",
+      "display_name": "Bud Staff",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_polearm_thrust",
+        "court",
+        "flower_steel"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One long pale-wood staff with a single closed cream bud at the tip, no drawn blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one cream bud, one brass ring, Court daylight. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long pale-wood staff with a single closed cream bud at the tip, no drawn blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one cream bud, one brass ring, Court daylight. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long line and one closed bud. Not the short petal sheath and not the drawn Court sword.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#6a5340",
+        "#c4b49a",
+        "#6a6860"
+      ],
+      "lore_blurb": "Garden staff. wpn_1h_court_flower stays the drawn sword. wpn_1h_court_petal_sheath stays the short bloom. Steel skin uses the same length on arena sand only.",
+      "scale_vs_player": "1.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_pole_court_budstaff/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_idle",
+        "clip": "Sword_Idle",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Flower Law disk, bud form, inside 42 m. Steel skin only on arena sand about 8 m around local (0, 18). Not plaza steel clutter.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "inside_42m_bud",
+        "cycle": 2,
+        "dual_state": {
+          "flower": "closed bud, Sword_Idle, inside 42 m",
+          "steel": "same bounds, arena sand only, procedural thrust"
+        },
+        "keeps": "wpn_1h_court_flower,wpn_1h_court_petal_sheath"
+      }
+    },
+    {
+      "id": "wpn_imp_court_petalrake",
+      "display_name": "Petal Rake",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_improvised_swing",
+        "court",
+        "flower_steel"
+      ],
+      "triangle_budget": 1300,
+      "aura_prompt": "One short wooden rake with three blunt teeth and a single petal on the head. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, three blunt teeth, one cream petal, brass pin with no steel shine. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short wooden rake with three blunt teeth and a single petal on the head. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, three blunt teeth, one cream petal, brass pin with no steel shine. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short head and three blunt teeth. Not the two-jaw pruner.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#6a5340",
+        "#c4b49a",
+        "#6a6860"
+      ],
+      "lore_blurb": "Bed rake. Wood inside the 42 m disk. Steel teeth are the same bounds on arena sand. wpn_imp_court_pruner stays the shear.",
+      "scale_vs_player": "0.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_court_petalrake/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1300,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "tool_down",
+        "clip": "Idle_Loop",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Flower beds inside the 42 m disk as wood. Steel skin only on arena sand about 8 m around local (0, 18). Not plaza steel clutter.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "inside_42m_wood",
+        "cycle": 2,
+        "dual_state": {
+          "flower": "wood teeth and one petal, tool down, inside 42 m",
+          "steel": "same bounds, arena sand only, procedural heavy"
+        },
+        "keeps": "wpn_imp_court_pruner"
+      }
+    },
+    {
+      "id": "wpn_focus_court_seedcup",
+      "display_name": "Seed Cup",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_focus_hold",
+        "court",
+        "flower_steel"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One small wooden cup holding a single closed seed, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one cream seed, warm grain, Court daylight. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small wooden cup holding a single closed seed, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one cream seed, warm grain, Court daylight. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cup and one seed. Not the thrown Court lantern.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#6a5340",
+        "#c4b49a",
+        "#6a6860"
+      ],
+      "lore_blurb": "Hold only. wpn_throw_court_lantern stays the throw. No flame mesh. Steel cup uses the same bounds on arena sand and stays a hold.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_court_seedcup/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "Idle_Loop",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Flower Law disk, inside 42 m. Steel skin only on arena sand about 8 m around local (0, 18). Not plaza steel clutter.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "inside_42m_wood",
+        "cycle": 2,
+        "dual_state": {
+          "flower": "wood cup and seed, hold, inside 42 m",
+          "steel": "same bounds, arena sand only, still a hold"
+        },
+        "keeps": "wpn_throw_court_lantern"
+      }
+    },
+    {
+      "id": "wpn_1h_court_thornpin",
+      "display_name": "Thorn Pin",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "court",
+        "flower_steel"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One short wooden pin with a single thorn and a petal washer, no drawn blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one thorn, one cream washer, brass collar with no steel shine. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short wooden pin with a single thorn and a petal washer, no drawn blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale wood, one thorn, one cream washer, brass collar with no steel shine. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short pin and one thorn. Not the round bloom sheath.",
+      "palette": [
+        "#efe6d4",
+        "#c8721a",
+        "#6a5340",
+        "#c4b49a",
+        "#6a6860"
+      ],
+      "lore_blurb": "Rest pin inside the disk. Sword_Attack is the steel skin on arena sand only. wpn_1h_court_petal_sheath stays the bloom.",
+      "scale_vs_player": "0.26 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_court_thornpin/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_idle",
+        "clip": "Sword_Idle",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Flower Law disk, wood pin, inside 42 m. Steel skin only on arena sand about 8 m around local (0, 18). Not plaza steel clutter.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "inside_42m_wood",
+        "cycle": 2,
+        "dual_state": {
+          "flower": "wood pin, Sword_Idle, inside 42 m",
+          "steel": "same bounds, arena sand only, Sword_Attack"
+        },
+        "keeps": "wpn_1h_court_petal_sheath,wpn_1h_court_flower"
+      }
+    },
+    {
+      "id": "wpn_imp_ruins_ashmallet",
+      "display_name": "Ash Mallet",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_improvised_swing",
+        "ash"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One short ash mallet with a round fossil head and a cloth wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cold iron, round fossil head, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short ash mallet with a round fossil head and a cloth wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cold iron, round fossil head, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A round head on a short haft. Not the fossil chisel and not the ash knife.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4",
+        "#2a1c14",
+        "#c4b49a"
+      ],
+      "lore_blurb": "Street mallet. Heavy swing is procedural. wpn_imp_ruins_fossil_chisel and wpn_1h_ruins_ashknife stay.",
+      "scale_vs_player": "0.38 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_ruins_ashmallet/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "tool_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Ash streets on arch_kit_ruins_ash. Not the Hub disk.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_imp_ruins_fossil_chisel,wpn_1h_ruins_ashknife"
+      }
+    },
+    {
+      "id": "wpn_2h_ruins_slabbar",
+      "display_name": "Slab Bar",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "ash",
+        "cold_iron"
+      ],
+      "triangle_budget": 1700,
+      "aura_prompt": "One long flat cold-iron bar with an ash-cloth wrap at the middle, no wide blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cold iron, flat bar, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long flat cold-iron bar with an ash-cloth wrap at the middle, no wide blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cold iron, flat bar, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long flat bar. Not the wide unburial cleaver and not the rib hook.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4",
+        "#2a1c14",
+        "#c4b49a"
+      ],
+      "lore_blurb": "Two-hand pry. wpn_2h_ruins_unburial stays the cleaver. wpn_pole_ruins_ribhook stays the hook. Heavy swing is procedural.",
+      "scale_vs_player": "1.15 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_2h_ruins_slabbar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 1700,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "heavy_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Ash streets on arch_kit_ruins_ash. Not the Hub disk.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_2h_ruins_unburial,wpn_pole_ruins_ribhook"
+      }
+    },
+    {
+      "id": "wpn_1h_ruins_bonepick",
+      "display_name": "Bone Pick",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "ash",
+        "fossil"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One short fossil-bone pick with a single downward point and an ash wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale fossil, one point, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short fossil-bone pick with a single downward point and an ash wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pale fossil, one point, ash cloth, Sovereign Ruins. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short L and one point. Not the ash knife wedge and not the stylus.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4",
+        "#2a1c14",
+        "#c4b49a"
+      ],
+      "lore_blurb": "Keeper pick. wpn_1h_ruins_ashknife stays the wedge. wpn_focus_ruins_stylus stays the long stylus.",
+      "scale_vs_player": "0.34 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_ruins_bonepick/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_slash",
+        "clip": "Sword_Attack",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Ash streets on arch_kit_ruins_ash. Not the Hub disk.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_1h_ruins_ashknife,wpn_focus_ruins_stylus"
+      }
+    },
+    {
+      "id": "wpn_imp_sere_sootrake",
+      "display_name": "Soot Rake",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_improvised_swing",
+        "furnace"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One short soot rake with a flat lip and no tines. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, flat iron lip, soot cloth, Sere. No flame. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short soot rake with a flat lip and no tines. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, flat iron lip, soot cloth, Sere. No flame. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat lip on a short haft. Not the one-tine brand hook and not the two-tine fork.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#3a3428",
+        "#8a3030"
+      ],
+      "lore_blurb": "Furnace rake. wpn_1h_sere_brandhook stays the comma. wpn_pole_sere_fork stays the fork. No flame mesh.",
+      "scale_vs_player": "0.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_sere_sootrake/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "tool_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Furnace mark kit. Not the Hub disk. Not a Link gate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_1h_sere_brandhook,wpn_pole_sere_fork",
+        "no_flame_mesh": true
+      }
+    },
+    {
+      "id": "wpn_1h_sere_cinderawl",
+      "display_name": "Cinder Awl",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_1h_slash",
+        "furnace"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One short soot awl with a darkened tip and a cloth wrap, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, darkened tip, soot cloth, Sere. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short soot awl with a darkened tip and a cloth wrap, no flame. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, darkened tip, soot cloth, Sere. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short spike. Not the brand-hook comma and not the wound-coal cup.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#3a3428",
+        "#8a3030"
+      ],
+      "lore_blurb": "Hand awl. wpn_focus_sere_woundcoal stays the cup. The glow on that cup stays VFX. This awl has no flame mesh.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_sere_cinderawl/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_slash",
+        "clip": "Sword_Attack",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Furnace mark kit. Not the Hub disk. Not a Link gate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_1h_sere_brandhook,wpn_focus_sere_woundcoal",
+        "no_flame_mesh": true
+      }
+    },
+    {
+      "id": "wpn_throw_sere_clinker",
+      "display_name": "Clinker Lump",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_throw",
+        "furnace"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One small closed clinker lump, a rough oval, no tile face. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, heat scale, closed lump, Sere. No flame. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small closed clinker lump, a rough oval, no tile face. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Furnace black, heat scale, closed lump, Sere. No flame. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A closed lump. Not the square mark tile and not the coal cup.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#3a3428",
+        "#8a3030"
+      ],
+      "lore_blurb": "Throw clip is missing. Do not use Sword_Attack as a throw. wpn_throw_sere_marktile stays the square tile.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_throw_sere_clinker/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "throw_holstered",
+        "clip": "unbound_throw",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Furnace mark kit. Not the Hub disk. Not a Link gate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "keeps": "wpn_throw_sere_marktile,wpn_focus_sere_woundcoal",
+        "clip_honesty": "throw MISSING",
+        "no_flame_mesh": true
+      }
+    },
+    {
+      "id": "wpn_focus_dawn_quietplate",
+      "display_name": "Quiet Plate",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_focus_hold",
+        "dawn"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One round chrome plate with no emblem and a white rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, white rim, platinum, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One round chrome plate with no emblem and a white rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, white rim, platinum, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat round plate. Not the small glass disc and not the mercy orb.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#8a8090"
+      ],
+      "lore_blurb": "Hold only. Blue is contact VFX. No killing beam. wpn_throw_dawn_glassdisc stays the disc. wpn_focus_dawn_mercy stays the orb. Street mobs stay empty-handed.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_dawn_quietplate/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "Idle_Loop",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Dawn ward kit, outside the mercy plaza heart. Not the Gap Lion. Not the Hub plaque at (0, -34). Alley finisher, arterial kicker, and pad grappler stay empty-handed.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "no_killing_beam": true,
+        "keeps": "wpn_throw_dawn_glassdisc,wpn_focus_dawn_mercy"
+      }
+    },
+    {
+      "id": "wpn_2h_dawn_stretcherpole",
+      "display_name": "Stretcher Pole",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_2h_heavy",
+        "dawn"
+      ],
+      "triangle_budget": 1500,
+      "aura_prompt": "One long chrome rescue pole with two blunt ends and a white wrap at the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, white wrap, both ends blunt, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long chrome rescue pole with two blunt ends and a white wrap at the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, white wrap, both ends blunt, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long straight pole, both ends blunt. Not the mercy maul and not the launch crook.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#8a8090"
+      ],
+      "lore_blurb": "Ward pole. wpn_2h_dawn_shockmaul stays the maul. wpn_pole_dawn_launchhook stays the crook. No killing beam. Street mobs stay empty-handed.",
+      "scale_vs_player": "1.40 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_2h_dawn_stretcherpole/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 1500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "heavy_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Dawn ward kit, outside the mercy plaza heart. Not the Gap Lion. Not the Hub plaque at (0, -34). Alley finisher, arterial kicker, and pad grappler stay empty-handed.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "no_killing_beam": true,
+        "keeps": "wpn_2h_dawn_shockmaul,wpn_pole_dawn_launchhook"
+      }
+    },
+    {
+      "id": "wpn_1h_dawn_padhook",
+      "display_name": "Pad Hook",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_1h_slash",
+        "dawn"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One short chrome hook with a single crook and a white wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, one crook, white wrap, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short chrome hook with a single crook and a white wrap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome, one crook, white wrap, Permanent Dawn. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short crook. Not the long launch hook and not the baton.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#8a8090"
+      ],
+      "lore_blurb": "Roof pad hook. wpn_pole_dawn_launchhook stays the long crook. wpn_1h_dawn_mercybaton stays the cylinder. No killing beam. Street mobs stay empty-handed.",
+      "scale_vs_player": "0.36 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_1h_dawn_padhook/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_superhero_dawn",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "sword_slash",
+        "clip": "Sword_Attack",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Dawn ward kit, outside the mercy plaza heart. Not the Gap Lion. Not the Hub plaque at (0, -34). Alley finisher, arterial kicker, and pad grappler stay empty-handed.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "no_killing_beam": true,
+        "keeps": "wpn_pole_dawn_launchhook,wpn_1h_dawn_mercybaton"
+      }
+    },
+    {
+      "id": "wpn_imp_crucible_seambrush",
+      "display_name": "Seam Brush",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_improvised_swing",
+        "drift"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One short chrome brush whose bristles stop before a visible gap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome body, teal only inside the gap, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short chrome brush whose bristles stop before a visible gap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome body, teal only inside the gap, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A bristle block and a gap that does not close. Not the flat quartz file.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Held brush. Gap stays open. wpn_imp_crucible_quartzfile stays the file. Not a construct. Construct cap stays 0.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_imp_crucible_seambrush/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "tool_swing",
+        "clip": "procedural_heavy",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Not seated on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0. The gap in this mesh stays open.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "gap": "open",
+        "construct_cap": 0,
+        "keeps": "wpn_imp_crucible_quartzfile,wpn_1h_crucible_seamchisel"
+      }
+    },
+    {
+      "id": "wpn_pole_crucible_reachrod",
+      "display_name": "Reach Rod",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_polearm_thrust",
+        "drift"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One long straight chrome rod with a ball tip and one unfinished ring that does not close. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome shaft, ball tip, teal only inside the open ring, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long straight chrome rod with a ball tip and one unfinished ring that does not close. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome shaft, ball tip, teal only inside the open ring, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long line, a ball, and an open ring. Not the open-V lattice pike.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Reach tool. The ring stays open and is smaller than wpn_focus_crucible_unend. wpn_pole_crucible_latticepike stays the open V. wpn_focus_crucible_brokenloop stays the small loop. Construct cap stays 0.",
+      "scale_vs_player": "1.50 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_pole_crucible_reachrod/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "pole_thrust",
+        "clip": "procedural_thrust",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Not seated on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0. The gap in this mesh stays open.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "gap": "open",
+        "construct_cap": 0,
+        "keeps": "wpn_pole_crucible_latticepike,wpn_focus_crucible_unend,wpn_focus_crucible_brokenloop"
+      }
+    },
+    {
+      "id": "wpn_focus_crucible_coolcube",
+      "display_name": "Cool Cube",
+      "batch": "B27_weapons",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "tool",
+        "verb_focus_hold",
+        "drift"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One chrome cube with a single groove that does not meet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome cube, teal only inside the groove, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One chrome cube with a single groove that does not meet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chrome cube, teal only inside the groove, Crucible. Empty of hands. No stock, no barrel, no trigger, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cube and one open groove. Not the two-slab gap block and not the open caliper.",
+      "palette": [
+        "#c8d0d4",
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Hold only. Groove stays open. wpn_focus_crucible_gapblock stays the two slabs. wpn_imp_crucible_opencaliper stays the C. Construct cap stays 0.",
+      "scale_vs_player": "0.14 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/wpn_focus_crucible_coolcube/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "hold",
+        "clip": "Idle_Loop",
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "place": "Lattice kit, outside the named gaps. Not seated on Rib Frame, Vent Jack, or Gap Bracket. Construct cap stays 0. The gap in this mesh stays open.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "flower_law": "n/a",
+        "cycle": 2,
+        "gap": "open",
+        "construct_cap": 0,
+        "keeps": "wpn_focus_crucible_gapblock,wpn_imp_crucible_opencaliper"
+      }
+    }
+  ]
+}

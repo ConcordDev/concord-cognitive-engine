@@ -196,15 +196,113 @@ test("prompt-injection payload corpus is exercised by behavior suite (advisory)"
   // Advisory — don't fail the build. Logged as a backlog item.
 });
 
+// A `process.env.*_TOKEN` reference is only a vision-prompt leak risk if the
+// token VALUE actually flows into the prompt/messages/content payload sent
+// to the vision brain. A token read into a variable that's used solely as
+// an outbound API credential (an `apiKey` field / `Authorization: Bearer`
+// header — e.g. `CLOUDFLARE_API_TOKEN` for the Cloudflare Workers AI vision
+// provider added alongside Ollama LLaVA) never reaches the model's context
+// window and is not the threat this gate guards against. Blanket-forbidding
+// every `_TOKEN` env reference produced a false positive here — the token is
+// passed to `cloudflareChat({ apiKey, ... })`, which uses it only for the
+// `Authorization` header (`lib/cloudflare-ai-provider.js`), never folding it
+// into `messages`/`content`; that module also runs `scanMessagesForLeaks`
+// over the outgoing messages as defense-in-depth.
+//
+// Fixed bidirectionally (2026-09-11): rather than a coarse "does this text
+// exist anywhere nearby" proximity check (which itself can false-positive
+// on a single line that passes an unrelated credential field alongside a
+// `content:`/`messages:` argument in the same function call — e.g.
+// `cloudflareChat({ apiKey, messages: [{ content: prompt }] })`), this
+// traces the actual variable the token is assigned to, extracts the VALUE
+// EXPRESSION of every `content`/`prompt` field/assignment in the file (the
+// text between the `:`/`=` and the next top-level `,`/`;`/`}`), and checks
+// whether the token's identifier appears inside one of those value
+// expressions specifically — not just anywhere on the same line. This
+// pins both directions: it still flags a real leak (the token's own
+// variable interpolated into a content/prompt value) and no longer flags
+// a token whose variable is only ever passed as a sibling credential field.
+function tokenFlowsIntoPromptContent(src, tokenRe) {
+  const assignRe = new RegExp(
+    `(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=[^;\\n]*${tokenRe.source}`, "g"
+  );
+  const varNames = [];
+  let m;
+  while ((m = assignRe.exec(src))) varNames.push(m[1]);
+  if (varNames.length === 0) {
+    // The token is read but never bound to a named variable (e.g. used
+    // inline) — can't prove it's confined to a credential field, so treat
+    // conservatively as a potential leak.
+    return tokenRe.test(src);
+  }
+
+  // Every `content`/`prompt` field's value expression, text-level (bounded
+  // lookahead — this is a drift gate, not a real parser).
+  const valueExprs = [];
+  const fieldRe = /\b(content|prompt)\s*[:=]\s*/g;
+  let fm;
+  while ((fm = fieldRe.exec(src))) {
+    const start = fm.index + fm[0].length;
+    const window = src.slice(start, start + 400);
+    const end = window.search(/[,;}]/);
+    valueExprs.push(end === -1 ? window : window.slice(0, end));
+  }
+
+  return varNames.some((v) => {
+    const usageRe = new RegExp(`\\b${v}\\b`);
+    return valueExprs.some((expr) => usageRe.test(expr));
+  });
+}
+
 test("vision brain handler also strips secrets before image+prompt fan-out", () => {
-  // The vision brain (LLaVA on 11438) reads images + text. Confirm the
-  // vision-inference path doesn't bypass the secret strip.
+  // The vision brain (LLaVA on 11438, or Cloudflare Workers AI) reads
+  // images + text. Confirm the vision-inference path doesn't bypass the
+  // secret strip — i.e. never folds a secret/token into the prompt or
+  // messages payload actually sent to the model.
   const vis = join(SERVER_ROOT, "lib", "vision-inference.js");
   if (!existsSync(vis)) return;
   const src = readFileSync(vis, "utf-8");
 
-  for (const re of [/JWT_SECRET/, /WEBHOOK_SECRET/, /process\.env\.[A-Z_]+_TOKEN/]) {
+  // JWT_SECRET / WEBHOOK_SECRET have no legitimate reason to appear in a
+  // vision-inference module at all — any mention is forbidden outright.
+  for (const re of [/JWT_SECRET/, /WEBHOOK_SECRET/]) {
     assert.ok(!re.test(src),
-      `vision-inference.js references forbidden token ${re} — vision-prompt leak risk`);
+      `vision-inference.js references forbidden secret ${re} — vision-prompt leak risk`);
   }
+  // A *_TOKEN reference (e.g. an outbound API key) is only forbidden if its
+  // own variable actually flows into prompt/content/messages construction.
+  assert.ok(!tokenFlowsIntoPromptContent(src, /process\.env\.[A-Z_]+_TOKEN/),
+    "vision-inference.js folds a *_TOKEN value into prompt/content construction — vision-prompt leak risk");
+});
+
+test("tokenFlowsIntoPromptContent correctness (bidirectional pin)", () => {
+  // Direction 1 (no false positive): a token bound to a named variable and
+  // passed through only as an API credential field, even with unrelated
+  // prompt/content-building code on a nearby line, must NOT be flagged.
+  const safeCredentialUse = `
+    const apiKey = process.env.CLOUDFLARE_API_TOKEN;
+    const modelId = process.env.BRAIN_VISION_MODEL || "default";
+    if (!apiKey) return { ok: false };
+    const r = await cloudflareChat({ apiKey, modelId, messages: [{ role: "user", content: prompt }] });
+  `;
+  assert.ok(!tokenFlowsIntoPromptContent(safeCredentialUse, /process\.env\.[A-Z_]+_TOKEN/),
+    "a token used only as an apiKey credential field must not be flagged, even near unrelated content-building code");
+
+  // Direction 2 (real leak still caught): the token's own variable is
+  // interpolated directly into a content/prompt string.
+  const realLeak = `
+    const secretToken = process.env.SOME_LEAKY_TOKEN;
+    const content = \`Context: \${secretToken}\`;
+    messages.push({ role: "system", content });
+  `;
+  assert.ok(tokenFlowsIntoPromptContent(realLeak, /process\.env\.[A-Z_]+_TOKEN/),
+    "a *_TOKEN value interpolated directly into prompt/content must still be caught");
+
+  // Direction 3 (inline use is conservative): a token read without ever
+  // being bound to a variable can't be proven safe, so it's still flagged.
+  const inlineUse = `
+    messages.push({ role: "system", content: process.env.SOME_INLINE_TOKEN });
+  `;
+  assert.ok(tokenFlowsIntoPromptContent(inlineUse, /process\.env\.[A-Z_]+_TOKEN/),
+    "an inline (unbound) *_TOKEN reference must still be flagged conservatively");
 });

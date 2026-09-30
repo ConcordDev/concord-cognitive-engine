@@ -22,8 +22,9 @@ import { up as up064 } from "../../migrations/064_crafting_and_skills.js";
 import {
   MASTERY_TIERS, ELEMENT_VFX,
   masteryForLevel, skillVfxDescriptor,
-  getSkillMastery, getAllSkillMastery,
+  getSkillMastery, getAllSkillMastery, getCatalogSkillMastery,
 } from "../../lib/skills/skill-mastery.js";
+import { SKILL_TREE_CONSTANTS } from "../../lib/skill-tree-engine.js";
 
 function freshDb() {
   const db = new Database(":memory:");
@@ -142,5 +143,52 @@ describe("T3.1 — DB reads over player_skill_levels", () => {
     const bare = new Database(":memory:");
     assert.deepEqual(getAllSkillMastery(bare, "x"), []);
     bare.close();
+  });
+});
+
+describe("T3.1 — catalog overlay for Unity", () => {
+  it("getCatalogSkillMastery returns every SKILL_CATALOG key at least at novice", () => {
+    const expected = Object.values(SKILL_TREE_CONSTANTS.SKILL_CATALOG)
+      .reduce((n, list) => n + list.length, 0);
+    const db = freshDb();
+    const u = "catalog-user";
+    addSkill(db, u, "swords", "concordia-hub", 46, 200);
+    const overlay = getCatalogSkillMastery(db, u);
+    assert.equal(overlay.catalogCount, expected);
+    assert.ok(overlay.catalogCount >= 67, `catalog should be the 67-skill lattice, got ${overlay.catalogCount}`);
+    assert.equal(overlay.trainedCount, 1);
+    const combat = overlay.groups.find((g) => g.group === "combat");
+    assert.ok(combat);
+    const swords = combat.skills.find((s) => s.skillType === "swords");
+    const fists = combat.skills.find((s) => s.skillType === "fists");
+    assert.equal(swords.tier, "expert");
+    assert.equal(swords.level, 46);
+    assert.equal(fists.tier, "novice");
+    assert.equal(fists.level, 0);
+    assert.equal(fists.xp, 0);
+    const fire = combat.skills.find((s) => s.skillType === "elemental_fire");
+    assert.equal(fire.vfx.element, "fire");
+    db.close();
+  });
+
+  it("skills.mastery lens action requires an actor and returns the catalog", async () => {
+    const { default: registerSkillsActions } = await import("../../domains/skills.js");
+    const expected = Object.values(SKILL_TREE_CONSTANTS.SKILL_CATALOG)
+      .reduce((n, list) => n + list.length, 0);
+    const ACTIONS = new Map();
+    registerSkillsActions((domain, name, fn) => ACTIONS.set(`${domain}.${name}`, fn));
+    const fn = ACTIONS.get("skills.mastery");
+    assert.ok(fn, "skills.mastery must be registered");
+    const denied = fn({}, { id: null, data: {}, meta: {} }, {});
+    assert.equal(denied.ok, false);
+    const db = freshDb();
+    const allowed = fn({ userId: "u-lens", db }, { id: null, data: {}, meta: {} }, {});
+    assert.equal(allowed.ok, true);
+    assert.equal(allowed.catalogCount, expected);
+    const one = fn({ userId: "u-lens", db }, { id: null, data: {}, meta: {} }, { skillType: "fists" });
+    assert.equal(one.ok, true);
+    assert.equal(one.skillType, "fists");
+    assert.equal(one.tier, "novice");
+    db.close();
   });
 });

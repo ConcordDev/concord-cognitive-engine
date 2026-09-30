@@ -80,7 +80,10 @@ describe("healthcare — photo notes (photo-notes-add/list/delete)", () => {
     assert.equal(r.result.ok, false);
     assert.equal(r.result.error, "vision analysis failed");
     assert.ok(r.result.detail, "carries the real connection-failure reason from callVision(), not a placeholder");
-    assert.equal(r.result.source, "ollama_llava");
+    // Which vision backend answers is deployment config (BRAIN_VISION_URL:
+    // local Ollama or Cloudflare Workers AI) — pin that it's a real provider
+    // label from callVision(), not which one this machine happens to use.
+    assert.ok(["ollama_llava", "cloudflare_workers_ai"].includes(r.result.source), r.result.source);
 
     // Honest-by-construction: the failed call must not fabricate a chart entry.
     const afterList = await lensRun("healthcare", "photo-notes-list", { params: { patientId: patientA } }, ctx);

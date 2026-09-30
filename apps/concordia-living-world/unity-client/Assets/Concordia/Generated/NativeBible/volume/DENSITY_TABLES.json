@@ -1,0 +1,553 @@
+{
+  "schema": "concordia.volume.density.v1",
+  "authored": "2026-09-22",
+  "silhouette_rule": "Every spawned mesh must read as a pure-black silhouette at 100m. If it only separates in color, do not spawn it. Missing native mesh: spawn nothing rather than a stand-in (no sealie as flamingo, no wolf as fox, no CX body as Quaternius).",
+  "worlds": [
+    {
+      "world_id": "Hub",
+      "law": "Flower Law 42m. No live steel in the plaza. Arena sand is the exception. Pinewood Crossing is outside the walls on the salt road.",
+      "fauna": [
+        {
+          "id": "faun_court_pigeon",
+          "weight": 6,
+          "note": "flock arc over the plaza"
+        },
+        {
+          "id": "faun_lantern_moth",
+          "weight": 4,
+          "note": "dusk only, one warm diamond each"
+        },
+        {
+          "id": "faun_court_cat",
+          "weight": 3,
+          "note": "market wedge, ears are the tell"
+        },
+        {
+          "id": "faun_saltroad_hare",
+          "weight": 2,
+          "note": "outside the gate"
+        },
+        {
+          "id": "faun_pinewood_stag",
+          "weight": 1,
+          "note": "salt road only, never the plaza"
+        },
+        {
+          "id": "faun_wagon_horse",
+          "weight": 1,
+          "note": "hitch rail, tack optional"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_court_labor",
+          "budget": 6,
+          "where": "eastern path and sweep"
+        },
+        {
+          "role_id": "npc_role_court_merchant",
+          "budget": 4,
+          "where": "stalls"
+        },
+        {
+          "role_id": "npc_role_iron_warden",
+          "budget": 2,
+          "where": "arena lip, not the urn"
+        },
+        {
+          "role_id": "npc_role_scholar",
+          "budget": 2,
+          "where": "archive steps"
+        },
+        {
+          "role_id": "npc_role_plaza_urchin",
+          "budget": 1,
+          "where": "brackish is unique; budget 1 means her, not a clone pack"
+        }
+      ],
+      "prop_clutter": {
+        "prop_court_lantern_post": 8,
+        "prop_market_crate": 6,
+        "prop_flower_law_urn": 1,
+        "prop_archive_lectern": 1,
+        "prop_arena_rack": 1,
+        "prop_pine_milepost": 1,
+        "prop_hitching_rail": 1,
+        "prop_bread": 3
+      },
+      "unique_npcs_do_not_clone": [
+        "brackish",
+        "lamplighter",
+        "vesper",
+        "warden",
+        "asbir",
+        "archivist_maren",
+        "preacher_old_seam"
+      ]
+    },
+    {
+      "world_id": "Fantasy",
+      "law": "Hostility turns inward. Gold in a wound is the curse trying to be used.",
+      "fauna": [
+        {
+          "id": "faun_sunder_wolf",
+          "weight": 4,
+          "note": "staggered chevrons"
+        },
+        {
+          "id": "faun_wardwood_boar",
+          "weight": 2,
+          "note": "off the path unless the quest herds one"
+        },
+        {
+          "id": "faun_cursefold_owl",
+          "weight": 2,
+          "note": "perch, tombstone read"
+        },
+        {
+          "id": "faun_blackroot_elk",
+          "weight": 1,
+          "note": "adult; calf is quest-only"
+        },
+        {
+          "id": "faun_grove_finch",
+          "weight": 3,
+          "note": "pine dust"
+        },
+        {
+          "id": "faun_pinewood_stag",
+          "weight": 1,
+          "note": "seam only"
+        },
+        {
+          "id": "mon_sunder_basilisk",
+          "weight": 0,
+          "note": "encounter enc_fold_basilisk, not ambient"
+        },
+        {
+          "id": "mon_sunder_griffin",
+          "weight": 0,
+          "note": "encounter enc_milepost_fold"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_sunder_guard",
+          "budget": 5,
+          "where": "ward path"
+        },
+        {
+          "role_id": "npc_role_sunder_mystic",
+          "budget": 2,
+          "where": "bog edge"
+        }
+      ],
+      "prop_clutter": {
+        "prop_bench_forge": 1,
+        "prop_pine_milepost": 0,
+        "broken_bristle": 4,
+        "ward_board": 1
+      },
+      "unique_npcs_do_not_clone": [
+        "thorne",
+        "witch_maeris",
+        "seraphine"
+      ]
+    },
+    {
+      "world_id": "Tunya",
+      "law": "Fruit, not the tree. Sealie is not a flamingo. Grove restores poise if you are not striking.",
+      "fauna": [
+        {
+          "id": "faun_nil_sealie",
+          "weight": 2,
+          "note": "shelf; native or nothing"
+        },
+        {
+          "id": "faun_veil_hound",
+          "weight": 3,
+          "note": "reed collar"
+        },
+        {
+          "id": "faun_terrace_goat",
+          "weight": 3,
+          "note": "lead, not ride"
+        },
+        {
+          "id": "faun_pollen_hare",
+          "weight": 3,
+          "note": "gold-tipped ears"
+        },
+        {
+          "id": "faun_ark_heron",
+          "weight": 1,
+          "note": "hold"
+        },
+        {
+          "id": "faun_grove_finch",
+          "weight": 4,
+          "note": "pollen dust"
+        },
+        {
+          "id": "mon_tunya_harpy",
+          "weight": 2,
+          "note": "theft altitude, not constant"
+        },
+        {
+          "id": "mon_tunya_reapjackal",
+          "weight": 2,
+          "note": "terrace, not the inner grove"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_tunya_labor",
+          "budget": 6,
+          "where": "terraces"
+        },
+        {
+          "role_id": "npc_role_tunya_merchant",
+          "budget": 3,
+          "where": "baskets"
+        }
+      ],
+      "prop_clutter": {
+        "prop_basket": 8,
+        "prop_yoke": 2,
+        "wood_bell": 3,
+        "boundary_stone": 2
+      },
+      "unique_npcs_do_not_clone": []
+    },
+    {
+      "world_id": "Crime",
+      "law": "The bill arrives. Witnesses remember. Rain.",
+      "fauna": [
+        {
+          "id": "faun_dock_hound",
+          "weight": 3,
+          "note": "oil chest, rope collar"
+        },
+        {
+          "id": "faun_sodium_rat",
+          "weight": 5,
+          "note": "no glow eyes"
+        },
+        {
+          "id": "faun_rain_gull",
+          "weight": 6,
+          "note": "low line over water"
+        },
+        {
+          "id": "mon_coast_billhound",
+          "weight": 0,
+          "note": "encounter enc_outstanding"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_coast_labor",
+          "budget": 6,
+          "where": "wharf"
+        },
+        {
+          "role_id": "npc_role_coast_bandit",
+          "budget": 3,
+          "where": "alleys, not the morgue"
+        }
+      ],
+      "prop_clutter": {
+        "prop_dock_crate": 8,
+        "prop_dock_hook": 3,
+        "prop_sodium_lamp": 6,
+        "prop_rose_pin": 0
+      },
+      "unique_npcs_do_not_clone": [
+        "jax",
+        "mama",
+        "bell",
+        "dahlia",
+        "maddox"
+      ]
+    },
+    {
+      "world_id": "Cyber",
+      "law": "Do not be counted. Dogs are not drones. No rifles in ambient hands.",
+      "fauna": [
+        {
+          "id": "faun_grid_stray",
+          "weight": 2,
+          "note": "one ear, scar is skin"
+        },
+        {
+          "id": "faun_cable_sparrow",
+          "weight": 4,
+          "note": "fiber nests"
+        },
+        {
+          "id": "mon_grid_drone",
+          "weight": 3,
+          "note": "disc silhouette, not a bird"
+        },
+        {
+          "id": "mon_grid_sentinel",
+          "weight": 1,
+          "note": "junction, not every corner"
+        },
+        {
+          "id": "mon_grid_construct",
+          "weight": 1,
+          "note": "hinge rooms"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_grid_labor",
+          "budget": 6,
+          "where": "cables"
+        },
+        {
+          "role_id": "npc_role_grid_officer",
+          "budget": 2,
+          "where": "counts they refuse to finish"
+        }
+      ],
+      "prop_clutter": {
+        "prop_cable_coil": 8,
+        "prop_junction_box": 5,
+        "prop_count_slate": 3,
+        "prop_gunsmith_vise": 1
+      },
+      "unique_npcs_do_not_clone": [
+        "nyx",
+        "kira",
+        "silver",
+        "lavren"
+      ]
+    },
+    {
+      "world_id": "Ruins",
+      "law": "Catalogue, do not conquer. Endings stay unfinished.",
+      "fauna": [
+        {
+          "id": "faun_ash_wolf",
+          "weight": 3,
+          "note": "material variant of the wolf rig"
+        },
+        {
+          "id": "faun_catalogue_crow",
+          "weight": 5,
+          "note": "commas over ribs"
+        },
+        {
+          "id": "faun_rib_lizard",
+          "weight": 3,
+          "note": "on the bone"
+        },
+        {
+          "id": "mon_ruins_wraith",
+          "weight": 2,
+          "note": "bell, do not finish ambient ones"
+        },
+        {
+          "id": "mon_ruins_crawler",
+          "weight": 1,
+          "note": "one walker"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_ruins_keeper",
+          "budget": 4,
+          "where": "cairns and court"
+        },
+        {
+          "role_id": "npc_role_ruins_elite",
+          "budget": 2,
+          "where": "tent, not a parade"
+        }
+      ],
+      "prop_clutter": {
+        "prop_ash_cairn": 5,
+        "prop_fossil_rib": 4,
+        "prop_stylus": 2
+      },
+      "unique_npcs_do_not_clone": [
+        "calla"
+      ]
+    },
+    {
+      "world_id": "Frontier",
+      "law": "The road is the door. No dome. Horse is led until a ride clip exists.",
+      "fauna": [
+        {
+          "id": "faun_dust_wolf",
+          "weight": 3,
+          "note": "lean chevron"
+        },
+        {
+          "id": "faun_wagon_horse",
+          "weight": 2,
+          "note": "hitches"
+        },
+        {
+          "id": "faun_wind_pronghorn",
+          "weight": 4,
+          "note": "one pale flag"
+        },
+        {
+          "id": "mon_frontier_domebreaker",
+          "weight": 0,
+          "note": "encounter only"
+        },
+        {
+          "id": "mon_road_watcher",
+          "weight": 0,
+          "note": "encounter only"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_frontier_guard",
+          "budget": 5,
+          "where": "miles"
+        },
+        {
+          "role_id": "npc_role_frontier_bandit",
+          "budget": 2,
+          "where": "off the main rut"
+        },
+        {
+          "role_id": "npc_role_road_bandit",
+          "budget": 1,
+          "where": "one camp, not a faction clone wave"
+        }
+      ],
+      "prop_clutter": {
+        "prop_wagon": 2,
+        "prop_hitching_rail": 2,
+        "prop_canteen": 3,
+        "mile_stake": 6
+      },
+      "unique_npcs_do_not_clone": [
+        "kel",
+        "zara",
+        "mira"
+      ]
+    },
+    {
+      "world_id": "Superhero",
+      "law": "Mercy. They stand. The dawn does not end.",
+      "fauna": [
+        {
+          "id": "faun_aegis_kestrel",
+          "weight": 2,
+          "note": "stoop is an anchor, not a drone"
+        },
+        {
+          "id": "mon_dawn_mercy_sentinel",
+          "weight": 0,
+          "note": "encounter only"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_dawn_elite",
+          "budget": 4,
+          "where": "roofs"
+        },
+        {
+          "role_id": "npc_role_dawn_mystic",
+          "budget": 2,
+          "where": "chalk lanes"
+        }
+      ],
+      "prop_clutter": {
+        "prop_launch_chalk": 4,
+        "prop_mercy_circlet": 0,
+        "roof_cable": 6
+      },
+      "unique_npcs_do_not_clone": [
+        "mira",
+        "champion",
+        "kor"
+      ]
+    },
+    {
+      "world_id": "Crucible",
+      "law": "If it would end, un-end it. No ninth Refusal. Moth wings stay asymmetric.",
+      "fauna": [
+        {
+          "id": "faun_lattice_moth",
+          "weight": 4,
+          "note": "asymmetric"
+        },
+        {
+          "id": "mon_crucible_drift",
+          "weight": 2,
+          "note": "ground instability, not a blob"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_crucible_mystic",
+          "budget": 4,
+          "where": "spans and cart"
+        }
+      ],
+      "prop_clutter": {
+        "prop_unclosed_shard": 5,
+        "prop_spell_basin": 1
+      },
+      "unique_npcs_do_not_clone": [
+        "lyra",
+        "emer",
+        "ono"
+      ]
+    },
+    {
+      "world_id": "Sere",
+      "law": "The Mark compounds. Flower Law does not apply. Live steel is allowed. Open ledger is not ambient gossip.",
+      "fauna": [
+        {
+          "id": "faun_mark_hound",
+          "weight": 2,
+          "note": "one tile brand"
+        },
+        {
+          "id": "faun_smog_roach",
+          "weight": 6,
+          "note": "furnace lip"
+        },
+        {
+          "id": "faun_sodium_rat",
+          "weight": 3,
+          "note": "shared with Crime, grease not neon"
+        }
+      ],
+      "npc_crowds": [
+        {
+          "role_id": "npc_role_sere_enforcer",
+          "budget": 4,
+          "where": "desks and belt"
+        },
+        {
+          "role_id": "npc_role_shadow_courier",
+          "budget": 1,
+          "where": "Wend's route, not a crowd of ferrymen"
+        }
+      ],
+      "prop_clutter": {
+        "prop_brand_tile": 3,
+        "prop_furnace_bellows": 2,
+        "prop_pipe_run": 8
+      },
+      "unique_npcs_do_not_clone": [
+        "the_ferryman_wend",
+        "esha_of_the_open_table",
+        "officer_tomas_reib",
+        "archivist_of_the_curtain"
+      ]
+    }
+  ]
+}

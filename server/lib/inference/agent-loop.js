@@ -135,7 +135,11 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
     steps.push(inferStep);
 
     if (!response.ok) {
-      return { steps, finalText: response.error || "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "brain_error", crystallizations: crystallizationCount };
+      // The error goes in `error`, never in finalText: callers read finalText
+      // as the model's answer, so an error there got recorded as real output
+      // (emergent "observations" reading "HTTP 404", a name like "The
+      // operation was aborted due ", found 2026-09-28).
+      return { steps, finalText: "", error: response.error || "brain_error", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "brain_error", crystallizations: crystallizationCount };
     }
 
     // No tool calls — done

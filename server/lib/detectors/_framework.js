@@ -71,6 +71,13 @@ export function makeError(id, reason, error, t0) {
 const SKIP_DIRS = new Set([
   "node_modules", ".git", ".next", "dist", "build", "data", "audit",
   "coverage", ".cache", ".turbo", "__pycache__", "out",
+  // .claude/worktrees/* are full git worktrees (separate branches) — scanning
+  // them double-counts every finding against stale copies of the tree and was
+  // the source of the phantom command-injection finding on
+  // .claude/worktrees/w1/server/lib/cpu-self-pin.js (fixed on this branch,
+  // still present on the worktree's branch). .claude also holds agents/skills
+  // config, not product source.
+  ".claude",
 ]);
 
 export async function walk(dir, exts = [".js"], skip = SKIP_DIRS) {

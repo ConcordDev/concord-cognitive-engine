@@ -57,8 +57,18 @@ describe('Sprint 15 — LensAgentPanel reusable', () => {
   });
 });
 
+// Several of these lenses were de-stacked (2026-09) into a thin
+// `export { default } from '@/components/...'` shell — LensAgentFab now
+// mounts in the extracted workspace component, not page.tsx itself.
+const LENS_SOURCE_OVERRIDE: Record<string, string> = {
+  studio: 'components/studio/StudioDawWorkspace.tsx',
+  code: 'components/code/CodeEditorWorkspacePanel.tsx',
+  music: 'components/music/MusicWorkspace.tsx',
+  marketplace: 'components/marketplace/MarketplaceApp.tsx',
+};
+
 describe.each(LENSES_TO_CHECK)('Sprint 15 — %s lens mounts LensAgentFab', (lens) => {
-  const pagePath = path.resolve(__dirname, '..', `app/lenses/${lens}/page.tsx`);
+  const pagePath = path.resolve(__dirname, '..', LENS_SOURCE_OVERRIDE[lens] || `app/lenses/${lens}/page.tsx`);
 
   test(`${lens} imports LensAgentFab`, () => {
     const src = fs.readFileSync(pagePath, 'utf8');
@@ -74,7 +84,7 @@ describe.each(LENSES_TO_CHECK)('Sprint 15 — %s lens mounts LensAgentFab', (len
 
 describe('Sprint 15 — Lighthouse bundle fix', () => {
   test('chat lens uses dynamic import for AgentModePanel + InitiativeBell', () => {
-    const chatPath = path.resolve(__dirname, '..', 'app/lenses/chat/page.tsx');
+    const chatPath = path.resolve(__dirname, '..', 'components/chat/ChatWorkspacePanel.tsx');
     const src = fs.readFileSync(chatPath, 'utf8');
     // Should NOT have static `import AgentModePanel from` anymore — only
     // dynamic via next/dynamic.

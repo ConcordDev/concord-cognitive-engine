@@ -815,3 +815,12 @@ Restaurant-Bits assets (ingredient props, plated food, more counter/table
 variants, paper-towel shelf) are the natural content for a future denser
 pass on this same archetype — this pass covers the 6 pieces that make the
 room read as a real kitchen, not the full catalog.
+
+### `hub/` — Unburned Court shared kit (2026-09-03)
+
+`public/models/hub/*.glb` is the **one starting piece** all three presenters
+share (Unity `StreamingAssets/HubKit`, Vite `/models/kenney/`, Godot
+`kind=hub` → `{base}/models/hub/{id}.glb`). Kenney CC0 props + KayKit
+`forge.glb`/`tower.glb` already credited above. Full provenance:
+`content/concordia-assets/hub/ATTRIBUTION.md`. Not the 118MB Kenney kitchen.
+

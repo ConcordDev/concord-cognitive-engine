@@ -36,6 +36,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "pharmacy.adherence-risk",
+      "name": "adherence-risk"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "pharmacy.adherence-streak",
       "name": "adherence-streak"
     },
@@ -51,6 +64,71 @@
       ],
       "macro_id": "pharmacy.adverse-events",
       "name": "adverse-events"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.appointment-add",
+      "name": "appointment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.appointment-delete",
+      "name": "appointment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.appointment-list",
+      "name": "appointment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.appointment-update",
+      "name": "appointment-update"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.appointments-due",
+      "name": "appointments-due"
     },
     {
       "_derived": true,
@@ -748,6 +826,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "pharmacy.locate",
+      "name": "locate"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "pharmacy.lock",
       "name": "lock"
     },
@@ -1275,5 +1366,5 @@
   ],
   "domain": "pharmacy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 77
+  "macroCount": 84
 }

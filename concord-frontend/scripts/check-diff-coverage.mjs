@@ -42,6 +42,13 @@ const SKIP = [
   // AR scene authoring studio — mounts an @react-three/fiber <Canvas> as its
   // 3D preview viewport (same rationale as the two exclusions above).
   /(^|\/)ar\/SceneStudio\.tsx$/,
+  // The world lens's top-level surface (owner-approved 2026-09-30): it hosts
+  // the three.js DistrictViewport and composes the world-lens/ components
+  // excluded above, plus the live world socket loop. Its render path is that
+  // WebGL + socket shell, which jsdom can't run, so whole-file statement
+  // coverage of its ~7.6k lines isn't meaningful. Its wiring is pinned instead
+  // by the source-level *-wired tests under tests/.
+  /(^|\/)world\/WorldOsSurface\.tsx$/,
   // ConKay's summonable surface + its holographic scene/backdrop + voice hook are
   // browser-only integration code: a socket subscriber, a getUserMedia STT/TTS
   // loop, and a three.js/<Canvas> world-tree. jsdom can't exercise the WebGL/mic

@@ -375,10 +375,15 @@ describe('E2E — Universal Move System Pillar 2/3 through the real combat/attac
     const res = await postJSON(base, '/api/worlds/cyber/combat/attack', { npcId, skillDtuId }, authHeaders);
     assert.equal(res.status, 200, 'a spell in cyber should be DAMPENED, not rejected outright: ' + JSON.stringify(res));
     assert.equal(res.body?.ok, true);
-    assert.equal(
-      res.body?.damageResult?.crossWorldPotency, predicted,
-      'the live route must echo back the EXACT crossWorldPotency() value computed on the same real world row: ' + JSON.stringify(res.body?.damageResult),
-    );
+    // W7: live damage samples geographicEffectiveness. Discrete crossWorldPotency
+    // remains the kill-switch fallback and is still unit-tested in
+    // tests/cross-world-potency.test.js.
+    const geo = res.body?.damageResult?.geographicEffectiveness;
+    assert.ok(geo, 'W7 stamps geographicEffectiveness on the live hit: ' + JSON.stringify(res.body?.damageResult));
+    assert.ok(Number(geo.multiplier) > 0 && Number(geo.multiplier) < 1,
+      'fantasy-native magic in cyber must sag: ' + JSON.stringify(geo));
+    assert.match(String(geo.because || ''), /physics/i);
+    assert.doesNotMatch(String(geo.because || ''), /-42%/);
   });
 
   it('Pillar 3 — a real world with FULL magic affinity (fantasy, magic affinity 1.0) is neither rejected nor dampened for a foreign novice caster, proving the live route does not apply a blanket cross-world penalty', async function () {

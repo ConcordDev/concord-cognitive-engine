@@ -18,6 +18,7 @@ import {
   useMeritCredit, useDTUSearch,
 } from '@/hooks/useConnectiveTissue';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface ConnectiveTissueBarProps {
   lensId: string;
@@ -140,12 +141,12 @@ export function ConnectiveTissueBar({ lensId, userId, className }: ConnectiveTis
           <button
             onClick={() => {
               if (!userId) return;
-              createDTUMutation.mutate({
+              createDTUMutation.mutate(withContentLicense({
                 lensId,
                 creatorId: userId,
                 title: 'New DTU',
                 content: 'New DTU',
-              });
+              }, 'knowledge', ['private']));
             }}
             disabled={createDTUMutation.isPending}
             className="mt-2 px-3 py-1 bg-neon-cyan/20 text-neon-cyan rounded text-sm hover:bg-neon-cyan/30 transition"

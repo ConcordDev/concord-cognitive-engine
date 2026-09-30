@@ -1,0 +1,859 @@
+{
+  "batch": "B22_npc_spoke",
+  "slice": "A07_npc_spoke_crime_cyber",
+  "cycle": 2,
+  "count": 16,
+  "note": "District density appended onto the first 18 Coast and Grid rows. Prior rows were not rewritten. Spawn weight 0. Mob caps unchanged.",
+  "entries": [
+    {
+      "id": "npc_coast_body_ghost_shoulder",
+      "display_name": "Ghost Shoulder",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "ghost_network"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast dock cloth, one small dark square on one shoulder, bare head, empty hands, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The square is a shoulder panel only. The torso stays a plain open coat, not a low tailored block. No hood, no cap, no rose, no folder. Sodium rim on wet wool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast dock cloth, one small dark square on one shoulder, bare head, empty hands, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The square is a shoulder panel only. The torso stays a plain open coat, not a low tailored block. No hood, no cap, no rose, no folder. Sodium rim on wet wool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Small dark square on one shoulder, bare head. Not the hooded bandit and not the low Delgado coat.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Ghost Network crowd cloth. Not a named guest. The shoulder panel is costume.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_body_ghost_shoulder/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "WingChun",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_crime_warehouse_door",
+        "place": "warehouse apron, outside the door clear, not the SoftEnter first frame"
+      }
+    },
+    {
+      "id": "npc_coast_body_block_diamond",
+      "display_name": "Block Diamond",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "crime_north_market_gang"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short street jacket, one cloth diamond centered on the back, fists hanging at the sides, empty hands, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Three-quarter rear so the diamond reads. Fists are down, not stacked on the centerline. No hood, no cap, no hook, no pauldron. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short street jacket, one cloth diamond centered on the back, fists hanging at the sides, empty hands, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Three-quarter rear so the diamond reads. Fists are down, not stacked on the centerline. No hood, no cap, no hook, no pauldron. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Cloth diamond on the back. Fists hang. Not the centerline chain hand.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "North Market block cloth. Not a named guest. The diamond is costume, not a bat.",
+      "scale_vs_player": "1.66 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_body_block_diamond/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "WingChun",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "tenement rise, off the stoop and off the escape tread"
+      }
+    },
+    {
+      "id": "npc_grid_body_cut_cuff",
+      "display_name": "Cut Cuff",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "blackout_resistance"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Grid matte jacket, one sleeve cut off at the wrist, the other sleeve full, empty hands, no cable, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The bare wrist is the mass. No neon, no visor, no coil, no high collar, no shoulder armor. Matte cloth. Weight on the back foot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Grid matte jacket, one sleeve cut off at the wrist, the other sleeve full, empty hands, no cable, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The bare wrist is the mass. No neon, no visor, no coil, no high collar, no shoulder armor. Matte cloth. Weight on the back foot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One bare wrist, one full sleeve. Not the thick rust wharf sleeve and not the two-tone cuff card.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Blackout crowd. Lights stay out on this cloth. Not a named guest. Hands stay empty.",
+      "scale_vs_player": "1.80 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_body_cut_cuff/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "Capoeira",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "alley mouth outside the bridge hall, off the sky floor, not the door clear",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_grid_body_clinic_roll",
+      "display_name": "Clinic Roll",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "cyber_street_docs"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Grid clinic cloth, one rolled cloth cylinder under one arm, the other hand empty, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The cylinder is a tight roll, not a soft folder and not a flat slate. No visor, no coil, no neon lamp. One pale cloth band on the roll. Matte. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Grid clinic cloth, one rolled cloth cylinder under one arm, the other hand empty, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The cylinder is a tight roll, not a soft folder and not a flat slate. No visor, no coil, no neon lamp. One pale cloth band on the roll. Matte. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Cylinder under the arm. Not the invoice folder and not the chest slate.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Street Docs crowd. The roll is costume. No surgical blade is equipped.",
+      "scale_vs_player": "1.64 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_body_clinic_roll/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "Capoeira",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "Grid alley beside the under hatch, off the sky floor, not a new clinic building",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_coast_outfit_walkup_belt",
+      "display_name": "Walk-Up Belt",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "crime_pi_agency"
+      ],
+      "triangle_budget": 8000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short coat, one plain belt, empty hands, no case, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. The belt is a horizontal band. No hip rectangle, no folder, no diagonal strap. Sodium on wet wool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short coat, one plain belt, empty hands, no case, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. The belt is a horizontal band. No hip rectangle, no folder, no diagonal strap. Sodium on wet wool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. A belt only. The hip case stays on the faction strip.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Walk-up belt card. Does not carry the case.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_outfit_walkup_belt/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 8000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "wardrobe_slot": "CX_Chest",
+        "fight_style": "WingChun",
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "tenement rise, off the stoop"
+      }
+    },
+    {
+      "id": "npc_coast_outfit_market_band",
+      "display_name": "Market Band",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "crime_north_market_gang"
+      ],
+      "triangle_budget": 8000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short jacket, one cloth band on one cuff, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. One cuff band. No diamond, no centerline fists, no hood. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short jacket, one cloth band on one cuff, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. One cuff band. No diamond, no centerline fists, no hood. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. One cuff band. The back diamond stays on the body.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "North Market cuff band. Costume only.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_outfit_market_band/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 8000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "wardrobe_slot": "CX_Chest",
+        "fight_style": "WingChun",
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "tenement rise, off the escape tread"
+      }
+    },
+    {
+      "id": "npc_grid_outfit_matte_wrap",
+      "display_name": "Matte Wrap",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "blackout_resistance"
+      ],
+      "triangle_budget": 8000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Grid matte short wrap, both sleeves full, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. No neon, no cyan seam, no high collar, no bare wrist. Matte cloth only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Grid matte short wrap, both sleeves full, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. No neon, no cyan seam, no high collar, no bare wrist. Matte cloth only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Matte wrap. The bare wrist stays on the cut-cuff body.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Blackout wrap. No neon on the cloth.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_outfit_matte_wrap/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 8000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "wardrobe_slot": "CX_Chest",
+        "fight_style": "Capoeira",
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "alley mouth, off the sky floor",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_grid_outfit_clinic_sleeve",
+      "display_name": "Clinic Sleeve",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "cyber_street_docs"
+      ],
+      "triangle_budget": 8000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Grid clinic shirt, one sleeve rolled to the elbow, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. The roll is a sleeve fold, not a cylinder under the arm. No blade, no neon, no slate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Grid clinic shirt, one sleeve rolled to the elbow, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wardrobe card. The roll is a sleeve fold, not a cylinder under the arm. No blade, no neon, no slate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Rolled sleeve. The under-arm cylinder stays on the clinic body.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Street Docs sleeve card. No tool in the hand.",
+      "scale_vs_player": "1.66 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_outfit_clinic_sleeve/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 8000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "wardrobe_slot": "CX_Chest",
+        "fight_style": "Capoeira",
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "Grid alley, off the sky floor",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_coast_face_cx_late_lid",
+      "display_name": "CX Face, Late Lid",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "crime_corrupt_precinct"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Iron Coast adult, one heavy lower lid, sodium under the eye, no cap, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The lid is the mark. No brow nick, no rain sheet, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Iron Coast adult, one heavy lower lid, sodium under the eye, no cap, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The lid is the mark. No brow nick, no rain sheet, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. One heavy lower lid. Not the rain face and not the split brow.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Coast face density. Not a new species. Not a named guest.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_face_cx_late_lid/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "face_only": true,
+        "fight_style": null,
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "tenement rise, bust only"
+      }
+    },
+    {
+      "id": "npc_coast_face_cx_salt_cheek",
+      "display_name": "CX Face, Salt Cheek",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "ghost_network"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Iron Coast adult, dry salt on one cheek, no cap, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. Salt is a pale patch on one cheek. No rain beads, no brow nick, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Iron Coast adult, dry salt on one cheek, no cap, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. Salt is a pale patch on one cheek. No rain beads, no brow nick, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Salt on one cheek. Not the rain face.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Coast face density. Not a new species. Not a named guest.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_face_cx_salt_cheek/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "face_only": true,
+        "fight_style": null,
+        "parent_landmark": "arch_hero_crime_warehouse_door",
+        "place": "warehouse apron, bust only, outside the door clear"
+      }
+    },
+    {
+      "id": "npc_grid_face_cx_clinic",
+      "display_name": "CX Face, Clinic Crescent",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "cyber_street_docs"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Grid adult, one pale crescent under one eye, no visor, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The crescent is skin, not a lamp and not a visor line. No digit, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Grid adult, one pale crescent under one eye, no visor, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The crescent is skin, not a lamp and not a visor line. No digit, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Pale crescent under one eye. Not the visor-tan line and not the split lamp.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Grid face density. Not a new species. Not a named guest.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_face_cx_clinic/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "face_only": true,
+        "fight_style": null,
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "Grid alley, bust only, off the sky floor",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_grid_face_cx_unlit",
+      "display_name": "CX Face, Unlit Socket",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "blackout_resistance"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Grid adult, one eye socket in matte shadow, no lamp, no visor, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The shadow is matte, not a cyan lamp and not a visor bar. No digit, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Grid adult, one eye socket in matte shadow, no lamp, no visor, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. The shadow is matte, not a cyan lamp and not a visor bar. No digit, no second head, no mask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. One unlit socket. Not the split-lamp face.",
+      "palette": [
+        "#1a1228",
+        "#2a2430",
+        "#8a8070",
+        "#14101c"
+      ],
+      "lore_blurb": "Blackout face density. Not a new species. Not a named guest.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_face_cx_unlit/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": false,
+        "face_only": true,
+        "fight_style": null,
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "alley mouth, bust only, off the sky floor",
+        "sky_floor": "do not park on the measured sky floor"
+      }
+    },
+    {
+      "id": "npc_coast_fac_blank_disc",
+      "display_name": "Blank Disc",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "crime_corrupt_precinct"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast knee-length rain coat, one small blank brass disc on the chest, empty hands, no baton, no pistol, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The disc is a circle with no numeral and no letter. It sits on the chest, not in a throat notch. The coat is long, not a low square torso. No rose, no folder. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast knee-length rain coat, one small blank brass disc on the chest, empty hands, no baton, no pistol, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The disc is a circle with no numeral and no letter. It sits on the chest, not in a throat notch. The coat is long, not a low square torso. No rose, no folder. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Blank brass disc on a long coat. Not the slate square, not the throat disc, not the Delgado rose.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "14th crowd cloth. The disc has no number. Not a named guest. No firearm.",
+      "scale_vs_player": "1.82 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_fac_blank_disc/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "WingChun",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "tenement rise, off the posted bill, not on the bill mesh",
+        "costume_prop": "blank brass disc, no numeral"
+      }
+    },
+    {
+      "id": "npc_coast_fac_case_hip",
+      "display_name": "Case Hip",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "crime_pi_agency"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short belted coat, one closed vertical rectangle at one hip, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The rectangle hangs at the hip. It is not under the arm and not on a diagonal strap. No lettering on the case. No pistol. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast short belted coat, one closed vertical rectangle at one hip, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The rectangle hangs at the hip. It is not under the arm and not on a diagonal strap. No lettering on the case. No pistol. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Vertical rectangle at the hip. Not the under-arm folder and not the bill strap.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Halloran walk-up cloth. The case stays closed and unlettered. Not a named guest.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_fac_case_hip/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "WingChun",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_crime_tenement_bay",
+        "place": "stoop lip, not on the step",
+        "costume_prop": "closed case, no lettering"
+      }
+    },
+    {
+      "id": "npc_coast_fac_cuff_bars",
+      "display_name": "Cuff Bars",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "crime_white_collar_ring"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast plain vest, two pale bars across the cuffs, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Both bars are pale cloth. Not rust and not cyan. The torso stays plain. No ledger square, no lettering, no folder. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Iron Coast plain vest, two pale bars across the cuffs, empty hands, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Both bars are pale cloth. Not rust and not cyan. The torso stays plain. No ledger square, no lettering, no folder. Sodium rim. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two pale cuff bars. Not the rust-and-cyan split cuff and not a chest slate.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "lore_blurb": "Hexshore crowd cloth. Bars carry no lettering. Not a named guest.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_coast_fac_cuff_bars/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "WingChun",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_crime_warehouse_door",
+        "place": "warehouse apron edge, outside the door clear"
+      }
+    },
+    {
+      "id": "npc_grid_fac_open_ring",
+      "display_name": "Open Ring",
+      "batch": "B22_npc_spoke",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "cyber_fixer_guild"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Grid short jacket, one open metal ring at the belt with the gap visible, empty hands, no digit, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The ring does not close. It is not a throat disc, not a clamp, and not a horseshoe. No neon numeral. One matte jacket. Weight on the back foot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Grid short jacket, one open metal ring at the belt with the gap visible, empty hands, no digit, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. The ring does not close. It is not a throat disc, not a clamp, and not a horseshoe. No neon numeral. One matte jacket. Weight on the back foot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open ring at the belt, gap visible. Not the closed throat disc.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#14101c"
+      ],
+      "lore_blurb": "Cordon Guild crowd. The ring is costume. It is not a B27 gadget. Not a named guest.",
+      "scale_vs_player": "1.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grid_fac_open_ring/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography.DeterministicOffset",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "named_plate": false,
+        "spawn_weight": 0,
+        "mob_cap": "unchanged",
+        "door_clear_m": "1.2 x 2.2",
+        "sky_bridge_named_set": "unplaced",
+        "crowd_strip": true,
+        "fight_style": "Capoeira",
+        "clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "parent_landmark": "arch_hero_cyber_bridge_hall",
+        "place": "mid-rise alley, off the sky floor, not the door clear",
+        "sky_floor": "do not park on the measured sky floor",
+        "costume_prop": "open belt ring, not wpn_imp_grid tools"
+      }
+    }
+  ]
+}

@@ -13,8 +13,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -171,10 +169,7 @@ export default function GalleryPage() {
       <div role="status" aria-live="polite" aria-busy="true" className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         Loading your gallery…
-      </div>
-          <RecentMineCard domain="gallery" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="gallery" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="gallery" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>          <CrossLensRecentsPanel lensId="gallery" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 

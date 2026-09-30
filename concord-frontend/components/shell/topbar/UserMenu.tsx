@@ -81,7 +81,7 @@ export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
           <button
             onClick={() => {
               setOpen(false);
-              router.push('/lenses/admin');
+              router.push('/settings');
             }}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-lattice-elevated transition-colors"
             role="menuitem"

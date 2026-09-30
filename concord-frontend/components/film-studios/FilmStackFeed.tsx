@@ -48,6 +48,7 @@ export function FilmStackFeed() {
           </select>
           {list.length > 0 && (
             <SaveAsDtuButton
+              defaultContentClass="media"
               compact
               apiSource="video-stackexchange"
               apiUrl={`https://api.stackexchange.com/2.3/questions?tagged=${tag}&site=video`}

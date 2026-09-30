@@ -74,10 +74,17 @@ export const PROFILES = Object.freeze({
   "32gb": {
     label: "32GB+ GPU — RTX PRO 4500 Blackwell / A6000 / H100",
     bandGb: 32,
+    // Background-brain contextWindows kept in lockstep with brain-config.js's
+    // BRAIN_CONFIG (subconscious 4096 / utility 2048). getActiveBrainConfig()
+    // returns the profile-merged config for some call paths while others read
+    // BRAIN_CONFIG directly — if the two disagree, the same Ollama model blob
+    // gets requested at two different num_ctx values and ollama's scheduler
+    // thrashes reloading it (observed on the shared A40). conscious stays large
+    // (user-facing); only it needs the window.
     conscious: { model: "qwen2.5:32b-instruct-q4_K_M", maxConcurrent: 8, contextWindow: 32768, maxTokens: 4096 },
-    subconscious: { model: "qwen2.5:7b-instruct-q5_K_M", maxConcurrent: 12, contextWindow: 8192, maxTokens: 1200 },
-    utility: { model: "qwen2.5:3b-instruct-q5_K_M", maxConcurrent: 16, contextWindow: 16384, maxTokens: 800 },
-    repair: { model: "qwen2.5:1.5b-instruct-q5_K_M", maxConcurrent: 4, contextWindow: 4096, maxTokens: 500 },
+    subconscious: { model: "qwen2.5:7b-instruct-q5_K_M", maxConcurrent: 12, contextWindow: 4096, maxTokens: 1200 },
+    utility: { model: "qwen2.5:3b-instruct-q5_K_M", maxConcurrent: 16, contextWindow: 2048, maxTokens: 800 },
+    repair: { model: "qwen2.5:1.5b-instruct-q5_K_M", maxConcurrent: 4, contextWindow: 2048, maxTokens: 500 },
     multimodal: { model: "qwen2.5vl:7b", maxConcurrent: 4 },
   },
 });

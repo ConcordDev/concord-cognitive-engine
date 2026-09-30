@@ -89,17 +89,17 @@ export function LandingPage(_props: LandingPageProps) {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
+            href="/explore"
+            className="px-8 py-4 border border-gray-700 rounded-xl text-gray-200 font-semibold text-lg hover:border-neon-cyan/50 hover:text-white transition-all"
+          >
+            Look around first
+          </a>
+          <a
             href="/register"
             className="group px-8 py-4 bg-gradient-to-r from-neon-cyan to-neon-blue rounded-xl text-white font-semibold text-lg hover:shadow-lg hover:shadow-neon-cyan/25 transition-all flex items-center gap-2"
           >
-            Get Started
+            Create account
             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </a>
-          <a
-            href="#features"
-            className="px-8 py-4 border border-gray-700 rounded-xl text-gray-300 font-semibold text-lg hover:border-gray-500 hover:text-white transition-all"
-          >
-            Learn More
           </a>
         </div>
 

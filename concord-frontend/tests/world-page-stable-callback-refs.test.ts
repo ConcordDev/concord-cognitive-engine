@@ -1,5 +1,5 @@
 // Regression coverage for two unstable-prop-identity bugs in
-// app/lenses/world/page.tsx, both found chasing a live "no game, just
+// components/world/WorldOsSurface.tsx, both found chasing a live "no game, just
 // panels" report: the World Lens's WorldEntryOverlay never reached
 // `sceneReady` because the page kept re-triggering child effects that
 // exist to run once (or on genuine data change), driving React's
@@ -42,7 +42,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx'), 'utf8');
+const src = readFileSync(path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx'), 'utf8');
 
 describe('world lens page — stable callback/prop identity into child effects', () => {
   it('passes the setWalkerNpcs setter directly to WalkerNpcInjector, not wrapped in a fresh arrow function', () => {

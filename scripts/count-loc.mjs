@@ -4,14 +4,16 @@
 // The single source of truth for "how big is Concord?" — so we stop quoting
 // 1.36M / 2M / 444k from memory. Run it; cite the number it prints.
 //
-// It walks the repo (excluding the things that aren't authored source — git,
-// dependencies, build output, generated artifacts, binaries) and reports lines
-// in three honest buckets:
+// It enumerates the tracked working tree via `git ls-files` (so node_modules,
+// build output, gitignored Unity Library/PackageCache, vendored asset packs,
+// scratch files are all excluded automatically — no FS-walk guesswork) and
+// reports lines in three honest buckets:
 //
-//   • source   — code we wrote (.js/.ts/.tsx/.jsx/.mjs/.cjs + .py/.sh/.sql/.css)
-//   • content  — authored data that ships (content/**, JSON/YAML/MD docs)
-//   • generated/excluded — node_modules, lockfiles, .next/dist/build, data DBs,
-//     min.js, maps, SVG/PNG — counted as SKIPPED, never folded into "source".
+//   • source   — code we wrote (.js/.ts/.tsx/.jsx/.mjs/.cjs + .py/.sh/.sql/.css
+//     + .rs/.go for the sidecars + .cs/.gd/.shader for the Unity & Godot clients)
+//   • content  — authored data that ships (content/**, audit/**, JSON/YAML/MD docs)
+//   • generated/excluded — lockfiles, min.js, maps, .d.ts, binaries — counted as
+//     SKIPPED, never folded into "source".
 //
 // Why this matters here specifically: the headline LOC number is one of the
 // claims people anchor on, and an inflated one (counting node_modules or
@@ -24,7 +26,8 @@
 //   node scripts/count-loc.mjs --json     # machine-readable
 //   node scripts/count-loc.mjs --by-area  # add per-top-level-dir breakdown
 
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,6 +49,11 @@ const DATA_DIRS = new Set(["data", "artifacts", "reports", "audit"]);
 const SOURCE_EXT = new Set([
   ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
   ".py", ".sh", ".bash", ".sql", ".css", ".scss", ".rs", ".go", ".java", ".kt", ".swift",
+  // game clients: Unity C# (apps/concordia-living-world) + Godot GDScript
+  // (world-lens-godot). These are authored source we wrote — Unity's own
+  // generated .cs (Library/PackageCache) and vendored asset-pack .cs are
+  // excluded automatically because enumeration is `git ls-files`, not a FS walk.
+  ".cs", ".gd", ".shader", ".gdshader", ".hlsl", ".cginc",
 ]);
 const CONTENT_EXT = new Set([".json", ".yml", ".yaml", ".md", ".mdx", ".toml", ".graphql", ".proto"]);
 
@@ -112,44 +120,52 @@ function classify(file, rel) {
   return "skipped";
 }
 
-function walk(dir) {
-  let entries;
-  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const e of entries) {
-    if (e.name.startsWith(".") && e.name !== ".github") {
-      // hidden files/dirs (except .github) are config/noise for LOC purposes
-      if (e.isDirectory()) continue;
-    }
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name)) continue;
-      walk(full);
-    } else if (e.isFile()) {
-      const rel = path.relative(REPO_ROOT, full);
-      let kind = classify(full, rel);
-      if (kind === "skipped") { totals.skipped.files++; continue; }
-      let lines = 0, codeDensity = 1;
-      try { ({ lines, codeDensity } = analyzeFile(full)); } catch { totals.skipped.files++; continue; }
-      // Reclassify a large, literal-dominated source file as a data module.
-      if (kind === "source" && lines >= DATA_MODULE_MIN_LINES && codeDensity < DATA_MODULE_MAX_CODE_DENSITY) {
-        reclassified.push({ file: rel, lines, codeDensity: Math.round(codeDensity * 1000) / 1000 });
-        kind = "content";
-      }
-      const ext = path.extname(full).toLowerCase() || "(none)";
-      totals[kind].files++;
-      totals[kind].lines += lines;
-      totals[kind].byExt[ext] = (totals[kind].byExt[ext] || 0) + lines;
-      if (BY_AREA) {
-        const a = areaOf(rel);
-        byArea[a] = byArea[a] || { sourceFiles: 0, sourceLines: 0, contentLines: 0 };
-        if (kind === "source") { byArea[a].sourceFiles++; byArea[a].sourceLines += lines; }
-        else byArea[a].contentLines += lines;
-      }
-    }
+// Enumerate authored files via `git ls-files` (tracked working tree). This is
+// strictly more honest than a filesystem walk: it excludes everything gitignored
+// or untracked automatically — node_modules, build output, Unity Library/ and
+// PackageCache/, Godot .godot/, vendored third-party asset packs (1,682 .cs
+// files of AssetStore/3rd-party code that a FS walk would count as ours), stray
+// scratch files. SKIP_DIRS / dotdir filtering below is now belt-and-suspenders
+// for anything tracked-but-not-source.
+function listTrackedFiles() {
+  const out = execFileSync(
+    "git",
+    ["-C", REPO_ROOT, "ls-files", "-z", "--cached", "--exclude-standard"],
+    { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
+  );
+  return out.split("\0").filter(Boolean);
+}
+
+function processFile(rel) {
+  const segs = rel.split("/");
+  // hidden dirs (except .github) and known non-source dirs
+  if (segs.some((s) => (s.startsWith(".") && s !== ".github") || SKIP_DIRS.has(s))) {
+    totals.skipped.files++;
+    return;
+  }
+  const full = path.join(REPO_ROOT, rel);
+  let kind = classify(full, rel);
+  if (kind === "skipped") { totals.skipped.files++; return; }
+  let lines = 0, codeDensity = 1;
+  try { ({ lines, codeDensity } = analyzeFile(full)); } catch { totals.skipped.files++; return; }
+  // Reclassify a large, literal-dominated source file as a data module.
+  if (kind === "source" && lines >= DATA_MODULE_MIN_LINES && codeDensity < DATA_MODULE_MAX_CODE_DENSITY) {
+    reclassified.push({ file: rel, lines, codeDensity: Math.round(codeDensity * 1000) / 1000 });
+    kind = "content";
+  }
+  const ext = path.extname(full).toLowerCase() || "(none)";
+  totals[kind].files++;
+  totals[kind].lines += lines;
+  totals[kind].byExt[ext] = (totals[kind].byExt[ext] || 0) + lines;
+  if (BY_AREA) {
+    const a = areaOf(rel);
+    byArea[a] = byArea[a] || { sourceFiles: 0, sourceLines: 0, contentLines: 0 };
+    if (kind === "source") { byArea[a].sourceFiles++; byArea[a].sourceLines += lines; }
+    else byArea[a].contentLines += lines;
   }
 }
 
-walk(REPO_ROOT);
+for (const rel of listTrackedFiles()) processFile(rel);
 
 const fmt = (n) => n.toLocaleString("en-US");
 const result = {

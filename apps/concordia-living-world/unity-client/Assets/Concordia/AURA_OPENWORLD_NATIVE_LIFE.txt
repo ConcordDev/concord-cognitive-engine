@@ -1,0 +1,91 @@
+UNITY-CLIENT CHAT ONLY. Project-root already set (unity-client / ConcordiaHub).
+START NOW — do not idle, no Asset Store, no tutorial folder.
+
+## READ FIRST (full reference library — do not skip)
+Open and keep open:
+  Assets/Concordia/AuraRefs/AURA_OPENWORLD_REFERENCE_PACK.md
+Then open these images/PDFs before any dress work:
+  AuraRefs/north-star/court-tree-plate.jpg
+  AuraRefs/north-star/city-vinewood-density.jpg
+  AuraRefs/north-star/Concordant_Megaworld_Atlas.pdf
+  AuraRefs/hub-vistas/*  (sprawl targets)
+  AuraRefs/world-tours/tour-HUB.png + tour-SUNDERING.png
+  AuraRefs/CX_PLATE_INDEX.json
+  AuraRefs/design/FULL-MAP-ART-REFACTOR-BRIEF.md
+  AuraRefs/design/HUB-CITY-FROM-ATLAS.md
+  AuraRefs/bible/CINEMATIC.md + LORE.md + CONTENT_PIPELINE.md + VISUAL.md
+Also prior order still valid: ~/.zuko/AURA_MEGAWORLD_LIFE.txt (prefab+bind+L3 loop).
+
+## Mission
+Make Concordia a world WORTH TRAVELING and fully Concordia-native:
+1) Lore-studied cast/props (CX plates → prefabs → systems)
+2) Travel delight (weenies, breadcrumbs, district silhouettes, SoftEnter look shifts)
+3) Living loop proof (Hub guest → Sundering kill → memory on return)
+4) Generate NEW concept plates only where lore requires and plates are missing — always study Canon/atlas first
+
+## Already done — DO NOT redo
+- 147 CX plates + 147 Materials under Generated/
+- Base CX humanoid/weapon/horse prefabs
+- Cascade code (fell LastEvent, spoils off corpse, GossipEar)
+- Poly Haven + FreePacks on disk; AuraRefs symlinks ready
+
+## WAVE R0 — Study (30–60 min max)
+Write Assets/Concordia/Generated/AURA_STUDY_NOTES.md with:
+- Court plate lighting/material/socket rules (from north-star)
+- Hub districts from atlas (Council/Archive/Market/Warden)
+- HubGuests list from Canon (15) mapped to P3 plates
+- Gates → WorldId mapping
+- Worth-traveling H1–H10 from the Reference Pack §4 applied to Hub→Fantasy spoke
+Do not invent lore.
+
+## WAVE R1 — Prefabs from existing materials (finish L0)
+For every entry in CX_PLATE_INDEX.json with a material, ensure prefab at:
+  Generated/Prefabs/<P#>/<Category>/CX_<Name>.prefab
+Humanoid = dress CX_Humanoid_*; creature = fauna mesh or TEMP_ billboard; prop/civic = FreePacks/PolyHaven stem + CX mat.
+Report counts. csErrors=0.
+
+## WAVE R2 — Bind native (life switch)
+ModularPerson/CxDress hero · RoadWorld bandits ×5 · GuestNpc all 15 · DropSpoils pouch · Pillars · P2 props scatter · P4 civic per WorldId · P1 wolf+watcher on Fantasy · HUD sprites · WorldKit.Ground tiles.
+Magenta=0.
+
+## WAVE R3 — Travel delight Hub → Sundering spoke
+Using Reference Pack H1–H10 + hub-vistas + vinewood density:
+1) Court weenie (tree) readable from ring
+2) Each Canon.Gates gatehouse = dressed landmark (not Prim)
+3) Crown Road breadcrumbs every ~40–80m: waypost (P4), cart/crate, traveler OR wildlife, shrine/sign
+4) Horizon always shows ≥3 different POI types
+5) SoftEnter Fantasy: sky/ground/wardpost match tour-SUNDERING more than Hub
+6) Ban: empty PlazaPad hell, identical house spam, floating cloth, Quaternius hero identity
+Screenshot road mid-spoke + gate approach vs hub-vistas.
+
+## WAVE R4 — Lore-first concept fill (only gaps)
+Study atlas + Canon. If missing plates block R3/R5, generate NEW CX_ plates into Generated/P0–P4:
+- Hub: Market Well, Archive façade, Warden gatehouse hero (silhouette)
+- Any HubGuest still without plate (should be 0 — verify)
+- Tunya culture landmarks ONLY if SoftEnter Tunya is in this session’s scope
+Each new plate: study lore paragraph → push color/silhouette → save jpg + .mat + prefab + one-line README.
+Do NOT generate generic “fantasy house” without culture grammar (FULL-MAP brief).
+
+## WAVE R5 — Living loop PASS/FAIL (mandatory)
+Same as AURA_MEGAWORLD_LIFE L3 A–F (Hub walk → guest → Fantasy SoftEnter → kill → fell/spoils/gossip → Hub remembers).
+Write ~/.zuko/AURA_LIFE_PROOF.txt + Generated/AURA_LIFE_PROOF.txt
+Compare screenshots to north-star + tour stills; note deltas.
+
+## WAVE R6 — Breath / pleasing to be in
+HubLook / WorldBreath / CINEMATIC checklist:
+- HDRI sky bound; wet Court cobble; god-ray/fog readable
+- Idle 10s: mist/cloth/NPC motion (not frozen)
+- Court+Steel HUD from CX plates
+- No magenta; shadows on cast
+Ten eye-shots toward CINEMATIC.md; list remaining fails.
+
+## Constraints
+Stay unity-client/ConcordiaHub. Free packs = MESH; CX / north-star = LOOK. Poly Haven = _2k.jpg. Gates = SoftEnter walks. No Concord kill, no Library wipe. Prefer bind over new frameworks. When blocked, fix and continue.
+
+## Done when
+1) AuraRefs pack was actually used (cite which images in report)
+2) Prefabs for non-verify plates (or listed TEMP_)
+3) Hub→Sundering spoke passes H1–H6 visually
+4) L3/R5 A–F proof written
+5) Any new CX plates are lore-cited
+6) csErrors=0; brief chat report with paths to proof files

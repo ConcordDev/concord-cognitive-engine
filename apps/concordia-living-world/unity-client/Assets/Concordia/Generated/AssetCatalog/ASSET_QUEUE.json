@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "created": "2026-09-24T17:17:36",
+  "purpose": "Rotating headless Grok asset-spec slices \u2014 TEXT/JSON only; organic pod + Aura later",
+  "output_root": "/Users/dutch/.zuko/asset-catalog",
+  "prompts_index": "/Users/dutch/.zuko/native-bible/aura/PROMPTS_INDEX.json",
+  "next_batch_floor": "B21",
+  "first_cycle_ids": [
+    "A01_anim_master",
+    "A02_npc_hub_density",
+    "A03_props_softenter_interiors",
+    "A04_arch_interiors_hub"
+  ],
+  "slices": [
+    {
+      "id": "A01_anim_master",
+      "category": "animations",
+      "world": "ALL",
+      "title": "Animation master + per-rig clip matrices",
+      "focus": "Write animations/ANIM_MASTER.md, humanoid biped / creature / vehicle clip matrices, Mixamo/retarget notes, organic/procedural alternatives. Add prompt rows only for animatable organic assets if mesh-bound. No mesh generation.",
+      "priority": 1,
+      "batch_hint": "B21_anim_specs"
+    },
+    {
+      "id": "A02_npc_hub_density",
+      "category": "characters",
+      "world": "Hub",
+      "title": "Hub NPC body/outfit/face density",
+      "focus": "Fill Hub crowd: body types, outfits, faces, faction kits beyond B7 roles. Merge NEW rows into PROMPTS_INDEX (never delete). SoftEnter plaza density.",
+      "priority": 1,
+      "batch_hint": "B22_npc_hub"
+    },
+    {
+      "id": "A03_props_softenter_interiors",
+      "category": "props",
+      "world": "Hub",
+      "title": "SoftEnter-adjacent props + Hub interiors set dressing",
+      "focus": "Props/interactables/clutter for SoftEnter heroes and interiors beyond SoftEnter shells. Bind to arch_hero kits. Compact JSON.",
+      "priority": 1,
+      "batch_hint": "B23_props_softenter"
+    },
+    {
+      "id": "A04_arch_interiors_hub",
+      "category": "architecture",
+      "world": "Hub",
+      "title": "Hub interiors + set dressing beyond SoftEnter",
+      "focus": "Interior modules, set dressing, doors/windows kits for Court halls. Extend B19; do not duplicate lookfeel wholesale.",
+      "priority": 1,
+      "batch_hint": "B24_arch_interior"
+    },
+    {
+      "id": "A05_creatures_thin_superhero",
+      "category": "creatures",
+      "world": "Superhero",
+      "title": "Permanent Dawn fauna/mobs fill",
+      "focus": "Superhero is thinnest on faun (1). Add fauna + street mobs + 1 mini-boss silhouette-honest.",
+      "priority": 2,
+      "batch_hint": "B25_creatures_dawn"
+    },
+    {
+      "id": "A06_creatures_thin_crucible",
+      "category": "creatures",
+      "world": "Crucible",
+      "title": "Crucible fauna/mobs fill",
+      "focus": "Crucible faun=1. Fill seam ecology, constructs, 1 mini-boss.",
+      "priority": 2,
+      "batch_hint": "B25_creatures_crucible"
+    },
+    {
+      "id": "A07_npc_spoke_crime_cyber",
+      "category": "characters",
+      "world": "Crime",
+      "title": "Iron Coast + Grid NPC density",
+      "focus": "Crime/Cyber NPC outfits, faces, faction bodies. world_ids may include Cyber on shared rows.",
+      "priority": 2,
+      "batch_hint": "B22_npc_spoke"
+    },
+    {
+      "id": "A08_vehicles_mounts_hub_frontier",
+      "category": "vehicles",
+      "world": "Frontier",
+      "title": "Mounts + travel props Hub/Frontier",
+      "focus": "Mounts (honest, no ridden-horse cheat if canon forbids), carts, travel props, Concord-Link perimeter vehicles.",
+      "priority": 2,
+      "batch_hint": "B26_vehicles"
+    },
+    {
+      "id": "A09_weapons_tools_gadgets",
+      "category": "weapons",
+      "world": "ALL",
+      "title": "Weapons/tools/gadgets fill thin worlds",
+      "focus": "Fill Ruins/Sere/Superhero/Crucible weapon thinness. No rifles. Flower/steel dual-state where Court.",
+      "priority": 2,
+      "batch_hint": "B27_weapons"
+    },
+    {
+      "id": "A10_vfx_skill_cues",
+      "category": "vfx",
+      "world": "ALL",
+      "title": "VFX/skill cue concepts + bind notes",
+      "focus": "Expand beyond B11 only where existing prefab cannot cover. Concept prompts + Aura bind notes.",
+      "priority": 3,
+      "batch_hint": "B28_vfx"
+    },
+    {
+      "id": "A11_ui_chrome_icons",
+      "category": "ui",
+      "world": "ALL",
+      "title": "UI chrome icons/plates text specs",
+      "focus": "Text specs for feel tied to FEEL_UI_CHROME; promptable icon rows where useful. No huge bitmaps.",
+      "priority": 3,
+      "batch_hint": "B29_ui"
+    },
+    {
+      "id": "A12_audio_cue_sheets",
+      "category": "audio",
+      "world": "ALL",
+      "title": "Audio visual cue sheets",
+      "focus": "Tie to FEEL_AUDIO_VISUAL_CUES. Cue sheets only \u2014 no audio binaries.",
+      "priority": 3,
+      "batch_hint": "B30_audio"
+    },
+    {
+      "id": "A13_terrain_hub_fantasy",
+      "category": "terrain",
+      "world": "Fantasy",
+      "title": "Hub+Fantasy biome dressing kits",
+      "focus": "Terrain/biome dressing kits (modules, not full maps). Pinewood/salt-road/ash grove.",
+      "priority": 3,
+      "batch_hint": "B31_terrain"
+    },
+    {
+      "id": "A14_props_crime_interiors",
+      "category": "props",
+      "world": "Crime",
+      "title": "Iron Coast interiors props/clutter",
+      "focus": "Tenement/warehouse clutter density kits. SoftEnter-adjacent to arch_hero_crime_tenement_bay.",
+      "priority": 3,
+      "batch_hint": "B23_props_crime"
+    },
+    {
+      "id": "A15_npc_fantasy_tunya",
+      "category": "characters",
+      "world": "Fantasy",
+      "title": "Sundering + Tunya NPC density",
+      "focus": "Grove/ash + terrace/ark NPC outfits and faces.",
+      "priority": 3,
+      "batch_hint": "B22_npc_fantasy"
+    },
+    {
+      "id": "A16_arch_interiors_spokes",
+      "category": "architecture",
+      "world": "Tunya",
+      "title": "Spoke interiors (Tunya focus) + set dressing",
+      "focus": "Interior modules for Tunya SoftEnter hall; pattern reusable.",
+      "priority": 3,
+      "batch_hint": "B24_arch_tunya"
+    },
+    {
+      "id": "A17_creatures_ruins_sere",
+      "category": "creatures",
+      "world": "Ruins",
+      "title": "Ruins + Sere creature fill",
+      "focus": "Ash underworld + Sere wound ecology. Bosses only if thin.",
+      "priority": 4,
+      "batch_hint": "B25_creatures_ruins"
+    },
+    {
+      "id": "A18_vehicles_cyber_crime",
+      "category": "vehicles",
+      "world": "Cyber",
+      "title": "Grid/Crime vehicles + travel props",
+      "focus": "Sky-bridge carts, drone sleds, dock loaders \u2014 travel props not full open-world traffic sim.",
+      "priority": 4,
+      "batch_hint": "B26_vehicles_urban"
+    },
+    {
+      "id": "A19_anim_creature_rigs",
+      "category": "animations",
+      "world": "ALL",
+      "title": "Creature/vehicle anim clip matrices deep pass",
+      "focus": "Deepen creature + vehicle matrices; organic procedural alternatives; controller needs.",
+      "priority": 4,
+      "batch_hint": "B21_anim_deep"
+    },
+    {
+      "id": "A20_terrain_crime_cyber_dawn",
+      "category": "terrain",
+      "world": "Crime",
+      "title": "Urban biome dressing Crime/Cyber/Dawn",
+      "focus": "Street modules, alleys, roof pads dressing kits.",
+      "priority": 4,
+      "batch_hint": "B31_terrain_urban"
+    },
+    {
+      "id": "A21_props_all_worlds_clutter",
+      "category": "props",
+      "world": "ALL",
+      "title": "Cross-world clutter density kits",
+      "focus": "Reusable clutter families per kit_id; six-per-sheet mindset in prompts.",
+      "priority": 4,
+      "batch_hint": "B23_props_global"
+    },
+    {
+      "id": "A22_npc_ruins_frontier_sere",
+      "category": "characters",
+      "world": "Frontier",
+      "title": "Ruins/Frontier/Sere NPC density",
+      "focus": "Thin NPC worlds fill \u2014 body/outfit/faction.",
+      "priority": 4,
+      "batch_hint": "B22_npc_edge"
+    },
+    {
+      "id": "A23_weapons_gadgets_cyber",
+      "category": "weapons",
+      "world": "Cyber",
+      "title": "Cyber gadgets + Crucible tools",
+      "focus": "Gadgets/tools not rifles. Bind notes for Aura.",
+      "priority": 5,
+      "batch_hint": "B27_gadgets"
+    },
+    {
+      "id": "A24_arch_interiors_remaining",
+      "category": "architecture",
+      "world": "ALL",
+      "title": "Remaining SoftEnter interiors all worlds",
+      "focus": "Finish interior/set-dressing specs for worlds not yet covered in B24.",
+      "priority": 5,
+      "batch_hint": "B24_arch_rest"
+    }
+  ]
+}

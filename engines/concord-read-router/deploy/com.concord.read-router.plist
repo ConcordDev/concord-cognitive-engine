@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.read-router</string>
+
+	<!--
+	  Front-door splitter: allowlisted GET → replica pool (fall back to writer
+	  on any error), everything else → writer. FAIL SAFE — the default target is
+	  always the writer. NOT installed by default.
+	  Activation: point the Cloudflare tunnel /api ingress (or the frontend
+	  BACKEND_URL) at 127.0.0.1:5057 instead of :5050. Revert = point it back.
+	  See engines/concord-read-router/RUNBOOK.md.
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-read-router/bin/concord-read-router</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CONCORD_READ_ROUTER_ADDR</key>
+		<string>127.0.0.1:5057</string>
+		<key>CONCORD_WRITER_URL</key>
+		<string>http://127.0.0.1:5050</string>
+		<key>CONCORD_REPLICA_URLS</key>
+		<string>http://127.0.0.1:5053</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-read-router</string>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/read-router.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/read-router.err</string>
+</dict>
+</plist>

@@ -55,6 +55,18 @@ jobs:
           # boot blocks ~75s on sequential cold probes. Heartbeat modules that
           # use a brain fall back to their deterministic path.
           CONCORD_DISABLE_BRAINS: 'true'
+          # Skip Ghost Fleet's staggered 28-module boot load. Its own header in
+          # ci-tick-slo.mjs documents the problem at length: the modules load
+          # SEQUENTIALLY over ~52-57s, each capable of a multi-second-to-~19s
+          # event-loop lag spike, and the test's load window lands squarely in
+          # that tail — starving the governor of ticks for reasons that have
+          # nothing to do with the heartbeat capacity contract this gate
+          # protects. The 4 hard binary gates (skipped_total / module_timeout /
+          # shard restarts / ticks-must-advance) are unaffected; the emergent/*
+          # MACROS Ghost Fleet registers are not exercised by this HTTP+world
+          # load. Same flag runtime-introspect already sets for the same reason
+          # (server.js:20996).
+          CONCORD_DISABLE_GHOST_FLEET: 'true'
           # Exercise the real per-world shard path — the guard also catches
           # shard crash-loops when the authored worlds seed.
           CONCORD_SHARD_WORLDS: 'true'

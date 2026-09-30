@@ -300,7 +300,7 @@ function PrefRow({
             className="w-32 accent-cyan-500"
           />
           <span className="text-[10px] text-gray-400 w-8 text-right tabular-nums">
-            {Number(value ?? def.default).toFixed(2)}
+            {Number(value ?? def.default ?? 0).toFixed(2)}
           </span>
         </div>
       )}

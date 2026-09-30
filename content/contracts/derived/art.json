@@ -155,6 +155,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "art.artwork-publish-as-concept",
+      "name": "artwork-publish-as-concept"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "art.artwork-rename",
       "name": "artwork-rename"
     },
@@ -493,6 +506,19 @@
       ],
       "macro_id": "art.compositionScore",
       "name": "compositionScore"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.concept-art-list",
+      "name": "concept-art-list"
     },
     {
       "_derived": true,
@@ -1579,5 +1605,5 @@
   ],
   "domain": "art",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 93
+  "macroCount": 95
 }

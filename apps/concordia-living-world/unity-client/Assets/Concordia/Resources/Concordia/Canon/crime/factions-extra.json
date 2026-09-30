@@ -1,0 +1,36 @@
+[
+  {
+    "id": "gen_crime_faction_0000",
+    "name": "Iron Racket",
+    "motto": "What is held is held in trust.",
+    "goal": "launder the district's grief into leverage",
+    "values": [
+      "memory",
+      "sacrifice",
+      "mercy"
+    ],
+    "fears": [
+      "the day their founding lie is spoken aloud",
+      "the loss of the one record that proves their claim"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "ghost_network"
+    ],
+    "allied_factions": [
+      "crime_federal_task_force"
+    ],
+    "npc_ids": [
+      "cipher_marks"
+    ],
+    "dialogue_style": "wry_evasive",
+    "reputation_currency": "markers",
+    "world_id": "crime",
+    "visual": {
+      "primary_color": "#53497b",
+      "secondary_color": "#f0aa94",
+      "accent_color": "#87c647"
+    },
+    "generated": true
+  }
+]

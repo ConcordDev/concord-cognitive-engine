@@ -52,7 +52,7 @@ async function collectAppRoutes(repoRoot) {
   const dynamicPatterns = []; // regex patterns for dynamic segments
   const appAbs = path.join(repoRoot, APP_DIR);
   for await (const rel of walk(appAbs)) {
-    if (!/page\.(tsx|ts|jsx|js)$/.test(rel)) continue;
+    if (!/(?:page|route)\.(tsx|ts|jsx|js)$/.test(rel)) continue;
     const segments = path.dirname(rel).split(path.sep);
     const urlSegments = [];
     let isDynamic = false;

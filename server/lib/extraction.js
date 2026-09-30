@@ -8,7 +8,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
-import { addRunParticipant, findActivePartyRun } from "./run-coop.js";
+import { addRunParticipant, findActivePartyRun, findActiveRunForUser } from "./run-coop.js";
 import { grantRunMeta } from "./run-difficulty.js";
 import { dreadFromDistance, tensionBand, TERROR_RADIUS_M } from "./horror-dread.js";
 
@@ -197,9 +197,7 @@ export function extractionDanger(db, runId, opts = {}) {
 export function getActiveRun(db, userId) {
   if (!db || !userId) return null;
   try {
-    return db.prepare(`
-      SELECT * FROM extraction_runs WHERE user_id = ? AND ended_at IS NULL
-    `).get(userId) || null;
+    return findActiveRunForUser(db, "extraction_runs", "extraction", userId);
   } catch { return null; }
 }
 

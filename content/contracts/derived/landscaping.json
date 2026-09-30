@@ -114,6 +114,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "landscaping.cert-add",
+      "name": "cert-add"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.cert-list",
+      "name": "cert-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.cert-remove",
+      "name": "cert-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.client-add",
+      "name": "client-add"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.client-list",
+      "name": "client-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "landscaping.climate-match",
       "name": "climate-match"
     },
@@ -222,6 +287,110 @@
       "name": "identify-plant"
     },
     {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.inspection-add",
+      "name": "inspection-add"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.inspection-list",
+      "name": "inspection-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.inspection-update",
+      "name": "inspection-update"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.invoice-accept",
+      "name": "invoice-accept"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.invoice-from-proposal",
+      "name": "invoice-from-proposal"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.invoice-record-payment",
+      "name": "invoice-record-payment"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.invoice-send",
+      "name": "invoice-send"
+    },
+    {
       "_derived": false,
       "domain": "landscaping",
       "fuzz_cases": [
@@ -304,6 +473,45 @@
       ],
       "macro_id": "landscaping.irrigationCalc",
       "name": "irrigationCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.job-complete",
+      "name": "job-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.job-list",
+      "name": "job-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.job-schedule",
+      "name": "job-schedule"
     },
     {
       "_derived": true,
@@ -569,6 +777,19 @@
       ],
       "macro_id": "landscaping.overlay-place",
       "name": "overlay-place"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.permit-reference",
+      "name": "permit-reference"
     },
     {
       "_derived": true,
@@ -940,5 +1161,5 @@
   ],
   "domain": "landscaping",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 51
+  "macroCount": 68
 }

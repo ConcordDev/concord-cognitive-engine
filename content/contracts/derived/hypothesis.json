@@ -270,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.generate",
+      "name": "generate"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.get",
       "name": "get"
     },
@@ -653,5 +666,5 @@
   ],
   "domain": "hypothesis",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 50
+  "macroCount": 51
 }

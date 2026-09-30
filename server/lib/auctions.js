@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { publish as publishRuntimeEvent } from "./runtime/event-bus.js";
 
 const SNIPE_WINDOW_S = Number(process.env.CONCORD_AUCTION_SNIPE_WINDOW_S) || 60;
 const SNIPE_EXTEND_S = Number(process.env.CONCORD_AUCTION_SNIPE_EXTEND_S) || 60;
@@ -186,6 +187,22 @@ export function settleAuction(db, auctionId, opts = {}) {
       reason: opts.reason || "expired",
     });
   } catch { /* emit best-effort */ }
+
+  // Concord Runtime — durable half, same gap class as marketplace.purchased
+  // and achievement.unlocked: the realtimeEmit above is real-time-only, so
+  // a seller or winning bidder offline at the exact settlement moment
+  // (very plausible here specifically — auctions settle on a sweep
+  // heartbeat, not a live user action) sees nothing, ever. Best-effort
+  // after the transaction committed.
+  try {
+    publishRuntimeEvent("auction.settled", {
+      auctionId,
+      sellerUserId: a.seller_user_id,
+      buyerUserId: a.leading_bidder_user_id,
+      winningBidCc: winningBid,
+      sellerPayout,
+    });
+  } catch { /* event-bus publish is best-effort — never affects a real, already-settled auction */ }
 
   return { ok: true, sold: true, winningBid, sellerPayout, platformFee };
 }

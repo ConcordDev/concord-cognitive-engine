@@ -30,6 +30,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface AqiObservation {
   dateObserved: string; hourObserved: number;
@@ -131,7 +132,7 @@ export function AirQualityActionStack() {
       const r = await lensRun({
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `AQI snapshot — ZIP ${zip} — ${dominant.parameterName} ${dominant.aqi}`,
           tags: ['environment', 'aqi', 'epa-airnow', `zip:${zip}`, `param:${dominant.parameterName.toLowerCase()}`],
           source: 'environment:aqi:snapshot',
@@ -150,7 +151,7 @@ export function AirQualityActionStack() {
               observations,
             },
           },
-        },
+        }, 'dataset', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -183,7 +184,7 @@ export function AirQualityActionStack() {
       const r = await lensRun({
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Community air report — ZIP ${zip} — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['environment', 'aqi', 'community-report', 'public', `zip:${zip}`],
           source: 'environment:aqi:report:public',
@@ -202,7 +203,7 @@ export function AirQualityActionStack() {
               guidance: buildGuidance(),
             },
           },
-        },
+        }, 'dataset', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

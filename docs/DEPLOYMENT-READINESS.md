@@ -1,3 +1,5 @@
+> See [`STACK_REALITY.md`](./STACK_REALITY.md) for measured LIVE vs OVERCLAIM (2026-09-05).
+
 # Concord — Deployment Readiness Audit
 **Date:** 2026-05-02
 **Branch:** `claude/plan-features-audit-alcTm`

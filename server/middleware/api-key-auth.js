@@ -62,12 +62,26 @@ const ROUTE_TO_DOMAIN = {
  * Resolve the domain for an incoming request path.
  *
  * @param {string} urlPath - req.path
+ * @param {string} [bodyDomain] - req.body?.domain, used only for the
+ *   generic macro dispatcher (see below)
  * @returns {string} domain name (or "unknown")
  */
-function resolveDomain(urlPath) {
+export function resolveDomain(urlPath, bodyDomain) {
   // Lens routes encode domain in the URL: /api/lens/:domain/...
   const lensMatch = urlPath.match(/^\/api\/lens\/([^/]+)/);
-  if (lensMatch) return lensMatch[1];
+  if (lensMatch) {
+    const seg = lensMatch[1];
+    // /api/lens/run is the generic macro dispatcher (POST {domain,name,input}
+    // — see server.js's "/api/lens/run" handler and CLAUDE.md's "macro
+    // system" section). "run" is a literal path token there, never a real
+    // domain, so a scoped key would otherwise NEVER match any domain on the
+    // one endpoint the whole macro system funnels through. Read the real
+    // domain from the body instead.
+    if (seg === "run" && bodyDomain && typeof bodyDomain === "string") {
+      return bodyDomain;
+    }
+    return seg;
+  }
 
   for (const [prefix, domain] of Object.entries(ROUTE_TO_DOMAIN)) {
     if (urlPath.startsWith(prefix) && domain) return domain;
@@ -113,7 +127,7 @@ export default function apiKeyAuth(options = {}) {
     const keyRecord = result.key;
 
     // ── Scope check ────────────────────────────────────────────────────────
-    const domain = resolveDomain(req.path);
+    const domain = resolveDomain(req.path, req.body && req.body.domain);
     if (!checkScope(keyRecord, domain)) {
       return res.status(403).json({
         ok: false,

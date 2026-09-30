@@ -49,6 +49,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "byo_keys.get_brain_mode",
+      "name": "get_brain_mode"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "byo_keys.health_list",
       "name": "health_list"
     },
@@ -153,6 +166,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "byo_keys.rate_limit_set",
+      "name": "rate_limit_set"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.rate_limit_status",
+      "name": "rate_limit_status"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "byo_keys.record_health",
       "name": "record_health"
     },
@@ -231,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "byo_keys.set_brain_mode",
+      "name": "set_brain_mode"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "byo_keys.set_budget",
       "name": "set_budget"
     },
@@ -289,5 +341,5 @@
   ],
   "domain": "byo_keys",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 22
+  "macroCount": 26
 }

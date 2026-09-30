@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -130,7 +131,7 @@ export function AgricultureActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Farm plan — ${crop} ${acres}ac`, tags: ['agriculture', 'farm', crop], source: 'agriculture:farm:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ag: { crop, acres, lat, lng, wx: wxResult, rot: rotResult, water: waterResult, yield: yieldResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Farm plan — ${crop} ${acres}ac`, tags: ['agriculture', 'farm', crop], source: 'agriculture:farm:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ag: { crop, acres, lat, lng, wx: wxResult, rot: rotResult, water: waterResult, yield: yieldResult } } }, 'dataset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('ag.mintedDtuId', id, { label: `Farm DTU ${id.slice(0, 8)}…` }); ok(`Farm DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -159,7 +160,7 @@ export function AgricultureActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Yield benchmark — ${crop}`, tags: ['agriculture', 'yield', 'benchmark', 'public'], source: 'agriculture:yield:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, crop, acres, yield: yieldResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Yield benchmark — ${crop}`, tags: ['agriculture', 'yield', 'benchmark', 'public'], source: 'agriculture:yield:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, crop, acres, yield: yieldResult } }, 'dataset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

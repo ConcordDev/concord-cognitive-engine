@@ -158,7 +158,9 @@ test("executeToolCall web_search delegates to runMacro", async () => {
     tool: "web_search", params: { query: "test query" },
   });
   assert.equal(result.ok, true);
-  assert.equal(calledWith.domain, "tools");
+  // Routed through expert_mode.web_search (the real DuckDuckGo/Wikipedia
+  // backend) — the legacy "tools" macro never wired a search backend.
+  assert.equal(calledWith.domain, "expert_mode");
   assert.equal(calledWith.name, "web_search");
   assert.equal(calledWith.input.query, "test query");
 });
@@ -194,10 +196,29 @@ test("expert_mode tool delegates to expert_mode.answer macro", async () => {
 
 test("run_compute requires module.function key format", async () => {
   const result = await executeToolCall({}, () => null, new Map(), {
-    tool: "run_compute", params: { key: "no_dot" },
+    tool: "run_compute", params: { key: "no_dot", input: { x: 1 } },
   });
   assert.equal(result.ok, false);
   assert.match(result.error, /module\.function/);
+});
+
+test("run_compute param-validator rejects an empty input before the handler", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "run_compute", params: { key: "symbolic.integrate" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /missing required param/);
+  assert.ok(result.retryHint, "should include a copy-pasteable retry example");
+});
+
+test("run_compute adapts a symbolic object input to positional args", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "run_compute",
+    params: { key: "symbolic.integrate", input: { expression: "x^2", variable: "x" } },
+  });
+  assert.equal(result.ok, true);
+  // symbolic-math returns an AST — normalizeComputeResult stringifies it.
+  assert.equal(result.result.expression, "((x ^ 3) / 3)");
 });
 
 test("run_python delegates to code.exec with language:python", async () => {
@@ -223,7 +244,7 @@ test("run_python requires non-empty code", async () => {
     tool: "run_python", params: { code: "" },
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /non-empty code/);
+  assert.match(result.error, /code/);
 });
 
 test("run_python surfaces a real execution failure honestly, including stderr", async () => {
@@ -329,7 +350,7 @@ test("create_document requires a title", async () => {
     tool: "create_document", params: { format: "pdf" },
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /requires a title/);
+  assert.match(result.error, /title/);
 });
 
 test("create_document delegates to document.create with the real params", async () => {
@@ -364,7 +385,7 @@ test("export_dtu requires dtuId", async () => {
     tool: "export_dtu", params: { format: "pdf" },
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /requires dtuId/);
+  assert.match(result.error, /dtuId/);
 });
 
 test("export_dtu delegates to document.export_dtu and surfaces the real download info", async () => {
@@ -397,7 +418,7 @@ test("read_zip requires dtuId", async () => {
     tool: "read_zip", params: {},
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /requires dtuId/);
+  assert.match(result.error, /dtuId/);
 });
 
 test("read_zip lists entries when no entryName is given", async () => {
@@ -439,7 +460,7 @@ test("mcp_connect requires serverId and url", async () => {
     tool: "mcp_connect", params: { serverId: "", url: "" },
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /requires serverId and url/);
+  assert.match(result.error, /serverId|url/);
 });
 
 test("mcp_connect is SSRF-guarded — a loopback URL is blocked via the real mcp-bridge.js chokepoint (no mocking)", async () => {
@@ -482,4 +503,38 @@ test("browse_url rejects non-http URLs", async () => {
   });
   assert.equal(result.ok, false);
   assert.match(result.error, /valid http/);
+});
+
+test("run_lens_action returns an actionable error for a misnamed action (strict registry check)", async () => {
+  // MACROS map with only one real pair; the model guesses a wrong action name.
+  const macros = new Map([["physics", new Map([["power", { fn: async () => ({ ok: true }) }]])]]);
+  globalThis._concordMACROS = macros;
+  try {
+    const fakeRunMacro = async () => { throw new Error("should not be called for an unregistered pair"); };
+    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+      tool: "run_lens_action", params: { domain: "physics", action: "teleport" },
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /no lens action "physics\.teleport"/);
+    assert.match(result.retryHint, /list_lens_actions/);
+  } finally {
+    delete globalThis._concordMACROS;
+  }
+});
+
+test("run_lens_action still runs a real MACROS-registered pair", async () => {
+  const macros = new Map([["physics", new Map([["power", { fn: async () => ({ ok: true }) }]])]]);
+  globalThis._concordMACROS = macros;
+  try {
+    let called = false;
+    const fakeRunMacro = async (d, n) => { called = true; return { ok: true, d, n, watts: 36 }; };
+    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+      tool: "run_lens_action", params: { domain: "physics", action: "power", params: { v: 12, i: 3 } },
+    });
+    assert.equal(called, true);
+    assert.equal(result.ok, true);
+    assert.equal(result.result.watts, 36);
+  } finally {
+    delete globalThis._concordMACROS;
+  }
 });

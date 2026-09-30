@@ -38,9 +38,14 @@ interface Props {
    * byo-keys lens page) can gray out the BYO slot cards without a
    * duplicate fetch of the same macro. */
   onModeChange?: (mode: BrainMode) => void;
+  /** Render as a single header pill (mode chip + click-to-toggle) instead
+   * of the full disclosure section. Used in the chat lens header, where the
+   * full wall was eating the whole mobile viewport. The full copy still
+   * lives in Settings / the byo-keys lens. */
+  compact?: boolean;
 }
 
-export function BrainModePanel({ onModeChange }: Props = {}) {
+export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
   const [mode, setMode] = useState<BrainMode>('private');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -87,6 +92,32 @@ export function BrainModePanel({ onModeChange }: Props = {}) {
   };
 
   const isPrivate = mode === 'private';
+
+  if (compact) {
+    const next: BrainMode = isPrivate ? 'high_power' : 'private';
+    const canToggle = next === 'private' || highPowerAllowed;
+    return (
+      <button
+        type="button"
+        data-testid="brain-mode-panel"
+        onClick={() => canToggle && choose(next)}
+        disabled={busy || !canToggle}
+        title={
+          isPrivate
+            ? 'Private — every response from Concord’s own brains; nothing leaves. Tap to switch to High Power.'
+            : 'High Power — messages may go to Google/Mistral/Groq. Tap to switch back to Private.'
+        }
+        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60 ${
+          isPrivate
+            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-500/70'
+            : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70'
+        }`}
+      >
+        {isPrivate ? <ShieldCheck className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+        <span className="hidden sm:inline">{isPrivate ? 'Private' : 'High Power'}</span>
+      </button>
+    );
+  }
 
   return (
     <section

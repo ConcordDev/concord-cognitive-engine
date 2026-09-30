@@ -54,6 +54,7 @@
 
 import logger from "../logger.js";
 import { isDtuProtected } from "./dtu-protection.js";
+import { packDtuData, unpackDtuData } from "./dtu-at-rest.js";
 
 const DEFAULT_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DEFAULT_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
@@ -137,7 +138,9 @@ export async function archiveOldDtuStore(db, opts = {}) {
         // Nothing in this batch was safe to archive. Yield + retry with
         // a fresh batch so we don't infinite-loop on a table that's
         // full of protected DTUs.
-        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => {
+          setImmediate(r);
+        });
         if (!hasMore) {
           remaining = 0;
           break;
@@ -159,7 +162,7 @@ export async function archiveOldDtuStore(db, opts = {}) {
             insert.run(
               r.id, r.title, r.tier, r.scope, r.tags, r.source,
               r.created_at, r.updated_at,
-              r.content_hash, r.compressed_size, r.rights_id, r.data,
+              r.content_hash, r.compressed_size, r.rights_id, packDtuData(r.data),
             );
             remove.run(r.id);
           }
@@ -180,7 +183,9 @@ export async function archiveOldDtuStore(db, opts = {}) {
       // Yield to the event loop between batches. setImmediate (not
       // setTimeout 0) keeps a tight loop on small workloads without
       // burning a 1ms timer per batch.
-      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => {
+        setImmediate(r);
+      });
     }
 
     // Record the run. duration_ms + rows_archived are the dashboard
@@ -220,7 +225,7 @@ export function getDtuIncludingArchive(db, id) {
   const archived = db.prepare(
     "SELECT * FROM dtu_store_archive WHERE id = ?"
   ).get(id);
-  if (archived) return { ...archived, _source: "archive" };
+  if (archived) return { ...archived, data: unpackDtuData(archived.data), _source: "archive" };
   return null;
 }
 

@@ -257,6 +257,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "math.polynomialRootsGeneral",
+      "name": "polynomialRootsGeneral"
+    },
+    {
+      "_derived": true,
+      "domain": "math",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "math.priority",
       "name": "priority"
     },
@@ -458,5 +471,5 @@
   ],
   "domain": "math",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 35
+  "macroCount": 36
 }

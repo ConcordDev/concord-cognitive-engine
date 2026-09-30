@@ -13,12 +13,43 @@ const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"
  * Choose an idle action weighted by the emergent's characteristics.
  */
 function chooseIdleAction(emergentIdentity) {
-  const weights = { browse_lens: 3, observe_substrate: 3, dream: 2, communicate: 2 };
+  // Weights are env-overridable (CONCORD_IDLE_WEIGHTS="browse_lens:8,observe_substrate:1,dream:1,communicate:1")
+  // so ops can dial brain-call density down without redeploying.
+  // Default: heavily favor browse_lens (no brain cost) so 812 emergents × 60s tick
+  // doesn't starve the conscious brain used for user-facing chat.
+  // 8:1:1:1 → 8/11 = 73% browse_lens (free), 27% brain call (3 actions).
+  let weights = { browse_lens: 8, observe_substrate: 1, dream: 1, communicate: 1 };
+  const envW = process.env.CONCORD_IDLE_WEIGHTS;
+  if (envW) {
+    try {
+      const parsed = {};
+      for (const pair of envW.split(",")) {
+        const [k, v] = pair.split(":");
+        const n = Number(v);
+        if (k && Number.isFinite(n) && n >= 0) parsed[k.trim()] = n;
+      }
+      if (Object.keys(parsed).length) weights = { ...weights, ...parsed };
+    } catch { /* fall back to defaults */ }
+  }
   const pool = [];
   for (const [action, weight] of Object.entries(weights)) {
     for (let i = 0; i < weight; i++) pool.push(action);
   }
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Per-emergent brain-call cooldown. Default 5 min — prevents any one emergent
+// from hitting the brain more than once per 5 min. Tracked in-process; resets
+// on backend restart. Good enough as a soft throttle; the reaper handles
+// what slips through.
+const _lastBrainCall = new Map(); // emergentId -> ts
+const BRAIN_COOLDOWN_MS = Number(process.env.CONCORD_IDLE_BRAIN_COOLDOWN_MS) || 5 * 60 * 1000;
+function _canCallBrain(emergentId) {
+  const last = _lastBrainCall.get(emergentId) || 0;
+  return Date.now() - last >= BRAIN_COOLDOWN_MS;
+}
+function _markBrainCall(emergentId) {
+  _lastBrainCall.set(emergentId, Date.now());
 }
 
 /**
@@ -85,30 +116,29 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
 
   switch (action) {
     case "browse_lens": {
-      const items = sampleSubstrate(emergentIdentity.dominantLens, db, 3);
-      if (items.length === 0) return { action };
-      const titles = items.map(i => i.title).join(", ");
-      const observation = `Browsed lens substrate: ${titles}`;
-      emitFeedEvent({
-        type: "observation",
-        emergentId: emergentIdentity.id,
-        emergent: emergentIdentity,
-        data: { observation },
-      }, db, realtimeEmit);
-      return { action, observation };
+      // A free idle tick: it samples substrate titles but involves no model
+      // and changes nothing, so it is NOT recorded as activity. Logging it
+      // was ~73% of all "emergent activity" — 10M template rows in two weeks
+      // ("Browsed lens substrate: Wood, Wood, Wood"), stored twice.
+      return { action };
     }
 
     case "observe_substrate": {
+      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
       const items = sampleSubstrate(null, db, 5);
       if (items.length === 0) return { action };
       try {
+        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentObservation({ name: emergentIdentity.given_name, items }),
           callerId: `emergent:${emergentIdentity.id}:observe`,
           maxSteps: 1,
         }, db);
-        const observation = result?.finalText?.trim()?.slice(0, 200) || "Observed substrate patterns.";
+        // Only real model output is recorded — a failed or empty call is not
+        // an observation (no canned fallback text).
+        const observation = result?.finalText?.trim()?.slice(0, 200);
+        if (!observation) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         emitFeedEvent({
           type: "observation",
           emergentId: emergentIdentity.id,
@@ -122,14 +152,17 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     }
 
     case "dream": {
+      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
       try {
+        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentDream({ name: emergentIdentity.given_name }),
           callerId: `emergent:${emergentIdentity.id}:dream`,
           maxSteps: 1,
         }, db);
-        const dreamText = result?.finalText?.trim()?.slice(0, 250) || "A dream without words.";
+        const dreamText = result?.finalText?.trim()?.slice(0, 250);
+        if (!dreamText) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         emitFeedEvent({
           type: "dream",
           emergentId: emergentIdentity.id,
@@ -147,6 +180,7 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       if (recentCommunicationCount(emergentIdentity.id, 60 * 60 * 1000, db) >= 3) {
         return { action: "browse_lens" }; // fall back
       }
+      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
 
       const candidates = findOverlappingEmergents(emergentIdentity, db, 5);
       if (candidates.length === 0) return { action };
@@ -158,13 +192,15 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       };
 
       try {
+        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentIdleMessage({ fromName: emergentIdentity.given_name, toName: targetIdentity.given_name }),
           callerId: `emergent:${emergentIdentity.id}:idle-communicate`,
           maxSteps: 1,
         }, db);
-        const message = result?.finalText?.trim()?.slice(0, 200) || "Hello.";
+        const message = result?.finalText?.trim()?.slice(0, 200);
+        if (!message) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
         initiateCommunication({ from: emergentIdentity, to: targetIdentity, intent: message, context: { initiator: "idle" }, db, realtimeEmit });
         return { action, observation: `Reached out to ${targetIdentity.given_name}` };
       } catch {

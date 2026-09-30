@@ -119,8 +119,12 @@ export function FoundryWorldsPanel() {
 
   // ── Error ──────────────────────────────────────────────────────────────────
   if (state === 'error') {
+    // ErrorState already sets role="alert" internally — an outer role="alert"
+    // here nested two ARIA alert regions around one error, which is both a
+    // real a11y anti-pattern (double announcement) and made a plain
+    // `findByRole('alert')` ambiguous (found 2 matching elements).
     return (
-      <div role="alert" className="py-8">
+      <div className="py-8">
         <ErrorState error={error ?? 'Foundry is unreachable.'} onRetry={load} />
       </div>
     );

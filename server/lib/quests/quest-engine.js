@@ -6,6 +6,54 @@ import { gainSkillXP } from '../skills/skill-engine.js';
 import { grantUnlock } from '../milestone-unlocks.js';
 
 /**
+ * Accept an authored world_quests row into player_quests only.
+ * Never flips world_quests.status — that catalog row stays 'available'
+ * so other players can still accept it.
+ */
+export function acceptQuest(db, userId, worldId, questId) {
+  if (!db) return { ok: false, reason: "no_db" };
+  if (!userId) return { ok: false, reason: "no_user" };
+  if (!worldId) return { ok: false, reason: "no_world" };
+  if (!questId) return { ok: false, reason: "no_quest_id" };
+  let quest;
+  try {
+    quest = db.prepare(
+      `SELECT id, status FROM world_quests WHERE id = ? AND world_id = ?`
+    ).get(questId, worldId);
+  } catch {
+    return { ok: false, reason: "no_world_quests" };
+  }
+  if (!quest) return { ok: false, reason: "quest_not_found" };
+  let existing;
+  try {
+    existing = db.prepare(
+      `SELECT id, status FROM player_quests WHERE user_id = ? AND world_id = ? AND quest_id = ?`
+    ).get(userId, worldId, questId);
+  } catch {
+    return { ok: false, reason: "no_player_quests" };
+  }
+  if (existing) {
+    return {
+      ok: true,
+      already: true,
+      status: existing.status || "active",
+      worldStatus: quest.status,
+    };
+  }
+  db.prepare(
+    `INSERT OR IGNORE INTO player_quests (id, user_id, quest_id, world_id, status)
+     VALUES (?, ?, ?, ?, 'active')`
+  ).run(crypto.randomUUID(), userId, questId, worldId);
+  const worldAfter = db.prepare(`SELECT status FROM world_quests WHERE id = ?`).get(questId);
+  return {
+    ok: true,
+    already: false,
+    status: "active",
+    worldStatus: worldAfter?.status ?? quest.status,
+  };
+}
+
+/**
  * Return all active quests for a player in a world, with objectives and rewards attached.
  */
 export function getActiveQuests(db, userId, worldId) {

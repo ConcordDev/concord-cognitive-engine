@@ -8,6 +8,9 @@
 // Spawned creatures are written to the existing world_npcs table with
 // archetype='creature' so the existing world rendering / proximity
 // queries see them. creature_population tracks counts per species.
+// MEGAWORLD W8: quota top-up still exists, but each insert is an organism
+// with a species_id. Birth writes world_consequences. Identity lives in
+// lib/concordia-organism.js — do not invent prey or unique GLBs here.
 //
 // Per CLAUDE.md heartbeat invariant: this module never throws.
 
@@ -21,6 +24,7 @@ import {
   gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange,
   spawnDensityFor, worldBoundsFor, radialWorldsEnabled,
 } from "../world-gradient.js";
+import { recordOrganismBirth } from "../concordia-organism.js";
 
 /**
  * WS2: deterministic per-species cluster center that sits in a specific danger
@@ -411,11 +415,29 @@ export function runFaunaSpawner({ state, db }) {
               level,
             );
             spawned++;
+            try {
+              recordOrganismBirth(db, {
+                id,
+                worldId,
+                speciesId: sp.id,
+                targetKind: "creature",
+                location: `${worldId}:${biome}`,
+              });
+            } catch { /* consequence table optional */ }
           } catch {
             // Stricter schema without a `level` column — retry the legacy shape.
             try {
               insertLegacy.run(id, worldId, `creature:${sp.id}`, sp.id, pos.x, 0, pos.z, 0);
               spawned++;
+              try {
+                recordOrganismBirth(db, {
+                  id,
+                  worldId,
+                  speciesId: sp.id,
+                  targetKind: "creature",
+                  location: `${worldId}:${biome}`,
+                });
+              } catch { /* consequence table optional */ }
             } catch {
               // world_npcs may have a stricter schema in some builds —
               // skip gracefully; spawner is best-effort.

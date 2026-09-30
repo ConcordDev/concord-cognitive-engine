@@ -135,8 +135,20 @@ export async function runLensHealthDetector({ root, opts = {} } = {}) {
         continue;
       }
 
-      // Heuristic: page must have a default export and JSX return
-      if (!/export\s+default\s+/.test(c)) {
+      // Heuristic: page must have a default export and JSX return.
+      //
+      // A thin-shell page is a pure re-export of a component that lives in
+      // components/<lens>/ — `export { default } from '@/…'`,
+      // `export { XWorkspace as default } from '@/…'`, `export * from '@/…'`.
+      // That IS a valid Next.js page default export; it just has no local
+      // `export default` token and no local JSX. Recognise the re-export
+      // shape and skip BOTH checks for it (the real component is scanned on
+      // its own if it's under a scanned dir, and a broken import would fail
+      // the frontend build, not this heuristic).
+      const _isReExportShell =
+        /export\s*\{[^}]*\bdefault\b[^}]*\}\s*from\s*['"]/.test(c) ||
+        /export\s*\*\s*from\s*['"]/.test(c);
+      if (!_isReExportShell && !/export\s+default\s+/.test(c)) {
         findings.push({
           id: "lens_no_default_export",
           severity: "high",
@@ -145,7 +157,7 @@ export async function runLensHealthDetector({ root, opts = {} } = {}) {
           location: relPath(root, pagePath),
         });
       }
-      if (!/return\s*\(?\s*</.test(c) && !/<[A-Za-z][^>]*\/?>/.test(c)) {
+      if (!_isReExportShell && !/return\s*\(?\s*</.test(c) && !/<[A-Za-z][^>]*\/?>/.test(c)) {
         findings.push({
           id: "lens_no_jsx_return",
           severity: "medium",

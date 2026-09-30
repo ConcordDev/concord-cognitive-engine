@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -19,7 +17,6 @@ import { CommsLog } from '@/components/defense/CommsLog';
 import { ResourceAllocationPanel } from '@/components/defense/ResourceAllocationPanel';
 import { DashboardStats } from '@/components/defense/DashboardStats';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
@@ -79,9 +76,7 @@ export default function DefenseLensPage() {
 
   return (
     <LensShell lensId="defense" asMain={false}>
-      <FirstRunTour lensId="defense" />
-      <ManifestActionBar />
-      <DepthBadge lensId="defense" size="sm" className="ml-2" />
+      <FirstRunTour lensId="defense" />      <DepthBadge lensId="defense" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'space-y-4')}>
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -164,10 +159,7 @@ export default function DefenseLensPage() {
           </div>
         )}
       </section>
-    </div>
-          <RecentMineCard domain="defense" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="defense" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="defense" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="defense" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

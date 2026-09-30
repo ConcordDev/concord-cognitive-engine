@@ -1,0 +1,137 @@
+[
+  {
+    "id": "superhero_hex_01_silas",
+    "title": "Silas's Garden — The Apprentice's Name",
+    "description": "Old Silas tells you what Champion does not yet know. Iron Hex is Avery — Silas's best student. The redemption is yours to broker.",
+    "giver_npc_id": "mentor_old_silas",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_hex1_visit",
+        "type": "reach_location",
+        "target": "superhero_silas_garden",
+        "required_count": 1,
+        "description": "Visit Silas during his afternoon gardening."
+      },
+      {
+        "id": "obj_hex1_listen",
+        "type": "talk_to",
+        "target": "mentor_old_silas",
+        "required_count": 1,
+        "description": "Hear what Silas has to say about Iron Hex."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_hex1",
+        "content": "Avery was the apprentice Champion failed to save. He believed harder than any of them. He still does.",
+        "unlocks_after": "obj_hex1_listen",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "superhero_hex_02_kor"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "superhero",
+      "superhero_main"
+    ]
+  },
+  {
+    "id": "superhero_hex_02_kor",
+    "title": "The Skyline — Champion's Conditions",
+    "description": "Champion will meet Iron Hex. Neutral ground, no mask, no suit. Rooftop above the noodle shop on 7th, midnight any Wednesday. Arrange it.",
+    "giver_npc_id": "champion_kor_blackstar",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_hex2_kor",
+        "type": "talk_to",
+        "target": "champion_kor_blackstar",
+        "required_count": 1,
+        "description": "Confirm Champion's conditions."
+      },
+      {
+        "id": "obj_hex2_arrange",
+        "type": "interact",
+        "target": "iron_hex_message_drop",
+        "required_count": 1,
+        "description": "Drop a message in the Iron Hex cell's known dead-letter box."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "superhero_hex_03_meeting"
+    ],
+    "prerequisites": [
+      "superhero_hex_01_silas"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_main"
+    ]
+  },
+  {
+    "id": "superhero_hex_03_meeting",
+    "title": "The Rooftop — Midnight",
+    "description": "Be there when they meet. The city's future hangs on whether either one of them puts a hand out first.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_hex3_attend",
+        "type": "reach_location",
+        "target": "superhero_rooftop_7th",
+        "required_count": 1,
+        "description": "Be on the rooftop at midnight."
+      },
+      {
+        "id": "obj_hex3_witness",
+        "type": "observe",
+        "target": "kor_avery_meeting",
+        "required_count": 1,
+        "description": "Witness the meeting."
+      }
+    ],
+    "rewards": {
+      "xp": 900,
+      "items": [
+        "silas_personal_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "superhero_hex_02_kor"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_main"
+    ],
+    "moral_branch": {
+      "description": "How did the meeting end?",
+      "options": [
+        {
+          "id": "reconciled",
+          "trigger": "obj_hex3_witness:reconciled",
+          "consequence": "Avery removes the armour. Iron Hex is over. Two heroes, one city."
+        },
+        {
+          "id": "broken",
+          "trigger": "obj_hex3_witness:broken",
+          "consequence": "Avery refuses. Champion's pursuit becomes lethal. The city catches fire."
+        }
+      ]
+    }
+  }
+]

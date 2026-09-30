@@ -45,7 +45,7 @@ try {
 // Fixed with a variable-width capture + a stable numeric sort, so this is
 // correct for any future migration count, not just the next 4.
 function listMigrationFiles() {
-  return fs
+  const listed = fs
     .readdirSync(MIGRATIONS_DIR)
     .map((f) => {
       const m = f.match(/^(\d+)_.*\.js$/);
@@ -53,6 +53,20 @@ function listMigrationFiles() {
     })
     .filter(Boolean)
     .sort((a, b) => a.version - b.version);
+
+  const seen = new Map();
+  for (const { file, version } of listed) {
+    const prev = seen.get(version);
+    if (prev) {
+      throw new Error(
+        `Duplicate migration version ${version}: ${prev} and ${file}. ` +
+          `schema_version.version is a PRIMARY KEY, so runMigrations would ` +
+          `silently skip the second file. Renumber one of them.`
+      );
+    }
+    seen.set(version, file);
+  }
+  return listed;
 }
 
 /**

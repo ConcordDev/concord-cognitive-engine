@@ -3,8 +3,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -17,7 +15,6 @@ import { AlgebraTutorial } from '@/components/root/AlgebraTutorial';
 import { ComputationNotebook } from '@/components/root/ComputationNotebook';
 import type { NotebookHandle, ReloadPayload } from '@/components/root/ComputationNotebook';
 import { SharedComputationBanner } from '@/components/root/SharedComputationBanner';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle, History, Share2 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -211,9 +208,7 @@ export default function RootLens() {
 
   return (
     <LensShell lensId="root" asMain={false}>
-      <FirstRunTour lensId="root" />
-      <ManifestActionBar />
-      <DepthBadge lensId="root" size="sm" className="ml-2" />
+      <FirstRunTour lensId="root" />      <DepthBadge lensId="root" size="sm" className="ml-2" />
       <LensVerticalHero lensId="root" className="mx-6 mt-4" />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">
@@ -395,10 +390,7 @@ export default function RootLens() {
 
       {/* The notebook's four UX states (loading role=status / error role=alert
           + Retry / empty / populated) are the genuine, tested data-bound states
-          for this lens — see ComputationNotebook above + tests/root-lens-states.test.tsx. */}
-          <RecentMineCard domain="root" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="root" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="root" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          for this lens — see ComputationNotebook above + tests/root-lens-states.test.tsx. */}          <CrossLensRecentsPanel lensId="root" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

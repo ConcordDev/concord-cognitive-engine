@@ -32,7 +32,7 @@ many faces**:
 
 Everything else — accounting, the game, the connectors, the science engines — is that
 substrate expressed through a different lens. That's why one developer could build
-**~2.16M lines** of it: it's composition, not 326 bespoke products. (Reproduce:
+**~2.8M lines** of it: it's composition, not 326 bespoke products. (Reproduce:
 `npm run count-loc`.)
 
 ---
@@ -202,7 +202,7 @@ stamped 266 times would be uniform; the actual size distribution (14 to 4,053 li
 
 | Claim | Verify with |
 |---|---|
-| Scale (~2.62M LOC, one dev) | `npm run count-loc` |
+| Scale (~2.8M LOC, one dev) | `npm run count-loc` |
 | Surface (266 lenses, 420 domains, 765 tables…) | `cd server && npm run cartograph:static` |
 | Wiring (every lens reaches a backend) | `node scripts/verify-lens-backends.mjs` |
 | Domain-file depth distribution | `wc -l server/domains/*.js` |

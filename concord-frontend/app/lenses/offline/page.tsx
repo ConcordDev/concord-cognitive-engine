@@ -4,13 +4,10 @@ import { useState, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
 import { StorageQuotaPanel } from '@/components/offline/StorageQuotaPanel';
 import { ReplicationPanel } from '@/components/offline/ReplicationPanel';
@@ -86,9 +83,7 @@ export default function OfflineLensPage() {
 
   return (
     <LensShell lensId="offline" asMain={false}>
-      <FirstRunTour lensId="offline" />
-      <ManifestActionBar />
-      <DepthBadge lensId="offline" size="sm" className="ml-2" />
+      <FirstRunTour lensId="offline" />      <DepthBadge lensId="offline" size="sm" className="ml-2" />
       <LensVerticalHero lensId="offline" className="mx-6 mt-4" />
 
       <div data-lens-theme="offline" className="space-y-6 p-6">
@@ -163,10 +158,7 @@ export default function OfflineLensPage() {
             </div>
           )}
         </section>
-
-        <RecentMineCard domain="offline" limit={10} hideWhenEmpty className="mt-4" />
-        <AutoActionStrip domain="offline" hideWhenEmpty className="mt-3" />
-        <CrossLensRecentsPanel lensId="offline" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="offline" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
   );

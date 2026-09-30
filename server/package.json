@@ -2,6 +2,7 @@
   "name": "concord-server",
   "private": true,
   "version": "5.0.0",
+  "license": "SEE LICENSE IN LICENSE.txt",
   "type": "module",
   "scripts": {
     "start": "MAX_OLD_SPACE_SIZE=32768 node --max-old-space-size=32768 --expose-gc server.js",
@@ -48,7 +49,25 @@
     "repair-cortex:apply": "node scripts/repair-cortex-apply.js",
     "cartograph:reason": "node scripts/cartograph-reason.js",
     "cartograph:reason:stress": "node scripts/cartograph-reason.js --stress-only",
-    "cartograph:reason:diff": "node scripts/cartograph-reason.js --diff"
+    "cartograph:reason:diff": "node scripts/cartograph-reason.js --diff",
+    "bench:dhtp-rs": "node scripts/run-dhtp-rs.mjs",
+    "bench:dhtp-rs:status": "node scripts/run-dhtp-rs.mjs status",
+    "bench:dhtp-rs:resume": "node scripts/run-dhtp-rs.mjs resume",
+    "bench:dhtp-rs:run-all": "node scripts/run-dhtp-rs.mjs run-all --provider ollama",
+    "bench:dhtp-rs:phase2": "node scripts/run-dhtp-rs.mjs phase2",
+    "bench:dhtp-rs:test": "node scripts/run-dhtp-rs.mjs test",
+    "substrate:invoke-oracles": "node ../scripts/substrate-invoke-oracles.mjs",
+    "substrate:invoke-covered": "node ../scripts/substrate-invoke-oracles.mjs --covered --json-out audit/substrate-invocation.json",
+    "capability:manifest": "node ../scripts/macro-capability-manifest.mjs",
+    "capability:manifest:live": "node ../scripts/macro-capability-manifest.mjs --live",
+    "lens:behavioral": "node ../scripts/lens-behavioral-harness.mjs",
+    "lens:behavioral:sentinel": "node ../scripts/lens-behavioral-harness.mjs --lens sentinel",
+    "lens:behavioral:fast": "node ../scripts/lens-behavioral-harness.mjs --no-check-logging",
+    "capability:coverage": "node ../scripts/runtime-capability-coverage.mjs",
+    "capability:coverage:fast": "node ../scripts/runtime-capability-coverage.mjs --class A --no-check-logging",
+    "capability:coverage:sample": "node ../scripts/runtime-capability-coverage.mjs --limit 50 --no-check-logging",
+    "capability:coverage:interactive": "node ../scripts/runtime-interactive-coverage.mjs",
+    "capability:coverage:crosslayer": "node ../scripts/runtime-crosslayer-coverage.mjs"
   },
   "lint-staged": {
     "*.{js,mjs,cjs}": [
@@ -58,10 +77,11 @@
   "dependencies": {
     "@gltf-transform/core": "^4.4.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@redis/client": "^1.6.0",
     "@sentry/node": "^10.69.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "acorn": "^8.16.0",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",
     "compression": "^1.7.4",
@@ -76,15 +96,19 @@
     "http-signature": "^1.4.0",
     "jsmidgen": "^0.1.8",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^9.0.4",
+    "meshoptimizer": "^1.1.1",
+    "nodemailer": "^10.0.12",
     "pdfkit": "^0.19.1",
+    "pg": "8.23.0",
     "playwright": "^1.62.0",
     "prom-client": "^15.1.0",
     "pyodide": "^314.0.3",
+    "redis": "^4.7.1",
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
     "stripe": "^22.4.0",
-    "undici": "7.29.0",
+    "typescript": "^5.9.3",
+    "undici": "7.30.0",
     "uuid": "^14.0.1",
     "web-push": "^3.6.7",
     "ws": "^8.21.2",
@@ -98,19 +122,16 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
     "eslint": "^10.8.0",
-    "globals": "^17.8.0",
-    "typescript": "^5.9.3"
+    "globals": "^17.8.0"
   },
   "optionalDependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "meilisearch": "^0.60.0",
-    "pg": "^8.11.3",
-    "redis": "^6.1.0"
+    "meilisearch": "^0.60.0"
   },
   "overrides": {
     "protobufjs": "^7.5.5",
     "sharp": "^0.35.0",
-    "adm-zip": "^0.6.0"
+    "adm-zip": "^0.6.1"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ConKay ↔ Unity WebGL bridge smoke</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px; background: #0b0f14; color: #d7e0ea; }
+    #meta { margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    #out { white-space: pre-wrap; background: #121820; border: 1px solid #243041; padding: 10px; min-height: 120px; font-size: 12px; }
+    iframe { width: 960px; height: 600px; border: 1px solid #243041; background: #000; display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="meta">ConKay bridge smoke — iframe /concordia-webgl/index.html → postMessage hello/ping → expect concordia:event</div>
+  <div id="out">boot…</div>
+  <iframe id="concordia-unity-webgl" src="/concordia-webgl/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+  <script>
+(function () {
+  var out = document.getElementById('out');
+  var iframe = document.getElementById('concordia-unity-webgl');
+  var events = [];
+  var posts = [];
+  var startedAt = Date.now();
+  var cmdsSent = false;
+  var state = {
+    events: events,
+    posts: posts,
+    ok: false,
+    startedAt: startedAt,
+    finishedAt: null,
+    reason: 'waiting'
+  };
+  window.__CONKAY_SMOKE__ = state;
+
+  function line(s) {
+    var t = ((Date.now() - startedAt) / 1000).toFixed(1) + 's  ' + s;
+    out.textContent += (out.textContent === 'boot…' ? '' : '\n') + t;
+    if (out.textContent === 'boot…') out.textContent = t;
+  }
+  out.textContent = '';
+
+  function markOk() {
+    var names = events.map(function (e) { return e && e.event; });
+    var hit = names.some(function (n) {
+      return n === 'pong' || n === 'ready' || n === 'ack' || n === 'hello' || n === 'spawned';
+    });
+    state.ok = hit;
+    if (hit && state.reason === 'waiting') state.reason = 'events-received';
+    state.eventNames = names;
+  }
+
+  function onMsg(ev) {
+    var data = ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'concordia:event') return;
+    events.push(data);
+    line('EVENT ' + JSON.stringify(data));
+    markOk();
+  }
+  window.addEventListener('message', onMsg);
+
+  function postCmd(cmd, payload) {
+    var win = iframe.contentWindow;
+    if (!win) {
+      line('post FAILED no contentWindow for ' + cmd);
+      return false;
+    }
+    var msg = {
+      type: 'concordia:cmd',
+      cmd: cmd,
+      payload: payload || { source: 'conkay-bridge-smoke' },
+      id: 'smoke-' + cmd + '-' + Date.now(),
+      ts: Date.now()
+    };
+    try {
+      win.postMessage(msg, window.location.origin);
+      posts.push(msg);
+      line('POST ' + JSON.stringify(msg));
+      return true;
+    } catch (e) {
+      line('post threw ' + (e && e.message));
+      return false;
+    }
+  }
+
+  function clickCanvas() {
+    try {
+      var doc = iframe.contentDocument;
+      var canvas = doc && doc.querySelector('#unity-canvas, canvas');
+      if (canvas) {
+        canvas.focus();
+        canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe.contentWindow }));
+        line('clicked/focused unity canvas');
+      } else {
+        iframe.focus();
+        line('no canvas yet; focused iframe');
+      }
+    } catch (e) {
+      iframe.focus();
+      line('canvas click skipped: ' + (e && e.message));
+    }
+  }
+
+  function sendCmds() {
+    if (cmdsSent) return;
+    cmdsSent = true;
+    clickCanvas();
+    postCmd('hello');
+    postCmd('ping');
+    postCmd('spawn_primitive', { kind: 'cube', position: { x: 0, y: 1.2, z: 0 }, scale: 0.4, color: '#3de0f5', source: 'conkay-bridge-smoke' });
+  }
+
+  iframe.addEventListener('load', function () {
+    line('iframe load');
+    // Unity WASM often needs 8–15s after iframe load before bridge Start().
+    setTimeout(function () { line('wait 8s — first cmd window'); sendCmds(); }, 8000);
+    setTimeout(function () { line('wait 12s — retry cmds + click'); clickCanvas(); postCmd('hello'); postCmd('ping'); }, 12000);
+    setTimeout(function () { line('wait 15s — final cmd burst'); clickCanvas(); postCmd('hello'); postCmd('ping'); }, 15000);
+  });
+
+  // Hard stop bookkeeping at 45s (runner may snapshot earlier once ok).
+  setTimeout(function () {
+    state.finishedAt = Date.now();
+    markOk();
+    if (!state.ok) state.reason = 'timeout-45s-no-concordia-event';
+    line('DONE ok=' + state.ok + ' events=' + events.length + ' reason=' + state.reason);
+  }, 45000);
+
+  line('listening for concordia:event; iframe src=' + iframe.src);
+})();
+  </script>
+</body>
+</html>

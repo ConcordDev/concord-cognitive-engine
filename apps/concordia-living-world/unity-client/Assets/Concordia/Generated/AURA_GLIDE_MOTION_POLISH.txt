@@ -1,0 +1,104 @@
+UNITY-CLIENT CHAT ONLY. ConcordiaHub / unity-client.
+GLIDE MOTION POLISH — START NOW. This is an addendum to AURA_SHIP_COMBAT_ANIM_LOOK_TRAVEL. Do not regenerate plates/materials/prefabs. Do not start motion-matching from scratch. Fix the current path first and PROVE it.
+
+## PLAYER COMPLAINT / ACCEPTANCE
+Current game feels choppy, stomp-y, snappy. Modern games glide: stable frametimes + inertial movement + clips that blend with trajectory.
+PASS is not “code exists.” PASS = 30 seconds of Play where idle→walk→run→turn→stop→light→heavy→dodge→hit-react is continuous on the CX hero with no pop, foot yank, frozen/T pose, sudden camera hitch, or repeated missing-trigger log.
+
+## AUDITED ROOT CAUSES (do not rediscover for an hour)
+1) ConcordiaLocomotion only has Ethan Idle/Walk/Run; Sprint = Run 1.35×.
+2) Dodge reuses HumanoidWalkTurnSharp. JumpLand reuses Idle. LightAttack controller state reuses Idle / no incoming Attack transition (AnimationLiveBindings.HonestyTraps).
+3) Live strike/dodge/weapon-arm are LateUpdate bone overlays (ModularPerson / MixamoAvatar) on top of Animator → pose fights/pops.
+4) `_clipsFit == false` disables Animator and falls back to sine/procedural gait → hinge/stomp.
+5) idle PlantFeet + idle weapon-arm override can yank clip pose; comments already warn moving PlantFeet reads as stomp.
+6) Performance profile targets 60/16.67ms but `applyTargetFrameRate=false`; performance audit says `inconclusive-until-play-run`.
+7) 16GB Mac / Editor: imports/streaming can spike; stable p95 matters more than average FPS.
+
+## RESEARCH BAR (use directly)
+- Unity: damp locomotion parameters every frame: `Animator.SetFloat("Speed", value, dampTime, Time.deltaTime)`; do not hard-set Speed.
+- Blend clips with matched foot-contact phases. Idle should be a separate state if cycle lengths fight.
+- Use code-driven movement for responsiveness; root motion selectively for committed attacks/dodge if clip displacement is consistent.
+- Use crossfade/inertialized overlays (short exponential decay) instead of instant bone multiplication.
+- Do not attempt full motion matching until a real mocap clip database exists.
+
+## G0 — FRAME PACING FIRST (MEASURE, don’t guess)
+1) Run existing `ConcordiaVisualBenchmarkController` in Play for 30s after 180 warmup frames.
+2) Capture JSON/result path and write summary to:
+   `Assets/Concordia/Generated/GLIDE_PERF_PROOF.txt`
+   Include average/p50/p95/p99/worst frame ms, GPU avg if available, managed heap delta, LeanPlay state.
+3) Apply target 60 for this proof (vSync or `Application.targetFrameRate=60`, not both fighting). Target: p95 ≤ 20ms, p99 ≤ 33ms, no repeated >50ms hitches after warmup.
+4) If FAIL: identify top spike source (stream/build/import/GC/shader) from profiler/log timing. Do the smallest fix: stagger work by frame, pool/reuse, stop per-frame FindObjects / allocations. Do NOT thin the world visually as first move.
+
+## G1 — LOCOMOTION INERTIA + BLEND (CX HERO FIRST)
+Files: ConcordiaPlayer, GameplayCore/Movement/Locomotion*, ModularPerson, MixamoAvatar, ConcordiaLocomotion.controller.
+1) Keep LocomotionKernel authority (walk 5.2, sprint 8.1, accel 8.2, brake 14) — tune only after visual binding is smooth.
+2) Feed Animator speed with dampTime 0.10–0.18s (`SetFloat` damp overload); grounded/jump bools same update path.
+3) Verify idle is a separate state; walk/run blend foot phases align. Add transition durations ~0.12–0.22s, no exit-time lag for locomotion.
+4) Turn smoothing: body faces velocity/intent with exponential yaw damping; no instant 180 snap. Camera stays LateUpdate with exponential follow; no FixedUpdate/Update fight.
+5) Stop behavior: deceleration + animation blends to idle; no foot plant until planar speed <0.2 for several frames.
+6) `_clipsFit` must be true on CX_Humanoid_Male/Female and hero prefab (valid Humanoid avatar + controller). If false, fix avatar/controller binding; do NOT accept procedural gait as PASS.
+
+## G2 — REMOVE POSE FIGHTS / POPS
+1) When real Animator clips are playing, do not apply full-body procedural gait.
+2) Gate idle PlantFeet and weapon-arm override behind stable idle only; fade weight in/out (0.15–0.25s), never hard on/off.
+3) Convert CombatMotion strike/dodge overlays from multiplicative one-frame rotations to weighted pose offsets driven by eased curves; decay/inertialize back to clip pose.
+4) Never have two authorities write hips/feet/rotation in same frame. Document ownership in code comments: LocomotionKernel moves root; Animator poses body; CombatMotion additive upper-body only; camera follows after.
+
+## G3 — HONEST ACTION CLIPS (NO IDLE-AS-ATTACK CLAIMS)
+Use existing legal FreePacks / Quaternius UAL / Kevin Iglesias clips if compatible and retargetable; do not use Quaternius mesh as identity.
+Bind real authored clips for at least:
+- light attack
+- heavy attack
+- dodge / sidestep
+- hit reaction
+- stagger
+- jump land
+- turn/pivot left + right if available
+Retarget to Unity Humanoid; bake root XZ into pose for code-driven locomotion unless the action deliberately owns displacement. Match root settings across blended clips.
+Update AnimationLiveBindings + Coverage truthfully. No `Reused` Idle/WalkTurnSharp for PASS actions. If a clip truly doesn’t exist: list FAIL in `ANIM_GAPS.txt`, don’t lie.
+
+## G4 — COMBAT FLOW (CLIP ↔ HIT WINDOWS)
+1) CombatMotion windup/contact/recovery must sync to visible authored action: HitResolver SphereCast at clip contact/apex.
+2) Short crossfade into attack (0.08–0.14s) and inertial recovery to locomotion.
+3) Dodge i-frames align with the visible dodge, not a hidden timer.
+4) Camera kick / trails / sparks stay additive; no camera teleport.
+5) Test button mash: ActionRunner buffers but does not pop immediately between incompatible poses.
+
+## G5 — NPC + CROWD COST
+After CX hero PASS:
+1) Apply same damp gait to one named Sundering bandit and one HubGuest.
+2) Offscreen/far NPC Animator culling / tick budget allowed, but near-camera hero/bandit/guest AlwaysAnimate.
+3) No per-frame AssetDatabase/FindObjects/Instantiate during normal Play. Pool repeated combat VFX.
+4) Crowd LOD transition must not visibly freeze within camera focus.
+
+## PROOF CAPTURE (mandatory)
+Write both:
+- `~/.zuko/AURA_GLIDE_PROOF.txt`
+- `Assets/Concordia/Generated/AURA_GLIDE_PROOF.txt`
+
+Lines:
+A PASS/FAIL — frame pacing (p50/p95/p99/worst)
+B PASS/FAIL — hero idle→walk→run→turn→stop
+C PASS/FAIL — light→heavy→dodge→hit→stagger
+D PASS/FAIL — bandit telegraph/attack + locomotion
+E PASS/FAIL — guest walk/idle near camera
+F PASS/FAIL — camera follow, no hitch/pop
+G PASS/FAIL — `_clipsFit` true + Animator controller on all 3 proof actors
+H PASS/FAIL — no missing-trigger / T-pose / procedural fallback in proof run
+
+Capture one 30s Game View video if Aura can; otherwise screenshots + timestamped log beats + benchmark JSON. Save stills under `Assets/Concordia/Generated/Proof/Glide/`.
+
+## DO NOT
+- Do not claim smooth because lerps exist in code.
+- Do not hide choppiness by slowing the entire game.
+- Do not turn LeanPlay on just to pass visuals.
+- Do not build a new locomotion framework; fix GameplayCore + Animator binding.
+- Do not expand continents until G0–G5 PASS.
+
+## DONE WHEN
+1) `AURA_GLIDE_PROOF.txt` A–H all PASS with benchmark numbers.
+2) Real clips replace the listed honesty traps or gaps are explicit.
+3) CX hero + named bandit + HubGuest glide through the proof sequence.
+4) LIFE_PROOF A–F still passes afterward (no regression).
+
+START G0 benchmark, then G1 on CX hero. Stop and fix the first FAIL before moving on.

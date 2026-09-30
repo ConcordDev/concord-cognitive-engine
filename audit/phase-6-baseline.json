@@ -1,0 +1,23 @@
+{
+  "frozenAt": "2026-09-02T00:11:13.180Z",
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "contractPassed": 12
+  },
+  "macroIds": [
+    "math.symbolicCompute",
+    "sentinel.triage.list",
+    "world.status",
+    "dtu.list",
+    "betting.list_open",
+    "code.status",
+    "healthcare.status",
+    "hlm.topology",
+    "personas.browse",
+    "housing.public",
+    "betting.my_positions",
+    "accounting.status"
+  ]
+}

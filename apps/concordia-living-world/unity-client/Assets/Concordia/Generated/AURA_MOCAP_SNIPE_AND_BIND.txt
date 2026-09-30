@@ -1,0 +1,86 @@
+UNITY-CLIENT CHAT ONLY. ConcordiaHub / unity-client.
+MOCAP-QUALITY WITHOUT A SUIT — START NOW. Addendum to AURA_GLIDE_MOTION_POLISH. Do not regenerate plates/prefabs. Do not use Quaternius **meshes** as CX hero/guest identity. Clips only. Do not start motion-matching.
+
+## FACTS (parent audited 2026-09-21 21:00 ET)
+We already have unused mocap-quality clips:
+  Assets/Concordia/FreePacks/Quaternius/Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/UAL1_Standard.fbx
+  + UAL1_Standard_RM.fbx
+Takes already in the FBX: Idle_Loop, Walk_Loop, Walk_Formal_Loop, Sprint_Loop, Jump_Start, Jump_Loop, Jump_Land, Roll, Sword_Attack, Sword_Idle, Hit_Chest, Hit_Head, Death01, Sitting_Enter/Exit/Idle/Talking, Swim_Fwd/Idle, Crouch_Idle_Loop, Push_Loop, Pistol_Idle_Loop, Spell_Simple_Idle_Loop, Idle_Talking_Loop.
+Unity import currently has clipAnimations: [] — clips are NOT extracted. ConcordiaLocomotion still plays Ethan Idle/Walk/Run. That’s the chop.
+
+Also on disk (fallback only): KCC Ethan HumanoidIdle/Walk/Run/turns/jump/crouch.
+
+NOT installed: Kevin Iglesias melee, Mixamo pack, Quaternius UAL2.
+
+## LICENSE (keep honest)
+- Quaternius UAL1/UAL2: CC0, commercial OK.
+- Mixamo: commercial inside the **finished game**; do not redistribute raw Mixamo FBX as a public pack. Adobe ID required to download.
+- Kevin Iglesias Human Melee FREE: Unity Asset Store EULA, commercial, no resale of the pack.
+- DeepMotion Freemium / Cascadeur Free: NOT commercial-safe. Skip unless Ramaj later buys a plan.
+
+## M0 — EXTRACT UAL1 (do first, 0 download)
+1) Select UAL1_Standard.fbx (in-place) and UAL1_Standard_RM.fbx (root-motion sibling).
+2) Import: Animation Type = Humanoid, Avatar Definition = Create From This Model or Copy From Other (UAL avatar).
+3) Split every take into named clips (Idle_Loop, Walk_Loop, Sprint_Loop, Jump_*, Roll, Sword_Attack, Sword_Idle, Hit_Chest, Hit_Head, Death01, Sitting_*, Swim_*, Crouch_Idle_Loop, Idle_Talking_Loop, Walk_Formal_Loop). Loop the Loop takes. Bake root XZ into pose on the in-place file.
+4) Save extracted clips under `Assets/Concordia/Anim/UAL1/` (or keep as sub-assets if Unity already split them — report which).
+5) Write `Assets/Concordia/Generated/UAL1_CLIP_INDEX.txt` (clip name → path → loop? → in-place/RM).
+
+## M1 — SNIPE FREE PACKS (Ramaj may need to click download/login)
+If a download needs an account, write the exact URL + dest folder into `~/.zuko/NEED_DUTCH.md` and keep going on M0/M2.
+
+A) Quaternius UAL2 Standard (CC0):
+   https://quaternius.itch.io/universal-animation-library-2
+   Dest: `Assets/Concordia/FreePacks/Quaternius/UAL2/`
+   Import Humanoid like UAL1. Index combat combos, parkour, extra locomotion into `UAL2_CLIP_INDEX.txt`.
+
+B) Kevin Iglesias Human Melee Animations FREE:
+   https://assetstore.unity.com/packages/3d/animations/human-melee-animations-free-165785
+   Dest: `Assets/Concordia/FreePacks/KevinIglesias/HumanMeleeFREE/`
+   Need: 1H attack L/R, 2H, polearm, combat idle, hit, death, 8-dir run if present.
+
+C) Mixamo (Adobe ID): download **in-place** Humanoid FBX, T-pose character optional.
+   Minimum set: Walking, Running, Jog Forward, Strafe, Idle, Sword And Shield Attack / Great Sword Slash, Rolling, Impact, Standing React, Turning.
+   Dest: `Assets/Concordia/Anim/Mixamo/` (project use only — not a redistributable pack).
+   Do not check Mixamo raw FBX into a public template.
+
+Do NOT download DeepMotion/Cascadeur outputs on free tiers.
+
+## M2 — RETARGET + BIND (this is the glide)
+1) All imported clips: Humanoid, valid avatar, consistent root settings.
+2) Rebuild ConcordiaLocomotion:
+   - Idle state = UAL Idle_Loop (or Mixamo Idle)
+   - Walk/Run/Sprint blend from UAL Walk_Loop + Sprint_Loop (+ Mixamo jog if better)
+   - JumpStart/Loop/Land from UAL (Ethan IdleJump is fallback only)
+   - Dodge/Roll = UAL Roll (not Ethan WalkTurnSharp)
+   - Sword_Idle / Sword_Attack as combat states
+   - Hit_Chest / Hit_Head as hit react
+   - Death01 available
+3) Feed Speed with `SetFloat("Speed", value, 0.12f, Time.deltaTime)`.
+4) When Animator plays these clips, disable ModularPerson full-body procedural gait and moving PlantFeet.
+5) CombatMotion windows sync to Sword_Attack / Kevin 1H contact frames.
+6) Update AnimationLiveBindings + Coverage so HonestyTraps no longer list Idle-as-Attack / WalkTurnSharp-as-Dodge.
+
+## M3 — CUSTOM “NO SUIT” MOCAP (only after M2 Play-smooth)
+Phone video of Ramaj or a reference performer (full body, 30+ fps, side/3q, even light) → Rokoko Create / Vision → Mixamo skeleton FBX → Humanoid retarget.
+Use this ONLY for Concordia-specific verbs (Court idle, Brackish gait, named guest fidgets). 30s/month free — don’t burn it on walk loops we already have.
+
+## PROOF
+Write both:
+  ~/.zuko/AURA_MOCAP_BIND_PROOF.txt
+  Assets/Concordia/Generated/AURA_MOCAP_BIND_PROOF.txt
+A PASS/FAIL — UAL1 clips extracted and listed
+B PASS/FAIL — UAL2 and/or Kevin imported OR honest NEED_DUTCH blocker
+C PASS/FAIL — ConcordiaLocomotion uses UAL walk/sprint/roll/sword/hit (not Ethan Idle-as-attack)
+D PASS/FAIL — CX hero Play: idle→walk→sprint→roll→sword→hit, no T-pose, `_clipsFit` true
+E PASS/FAIL — AnimationLiveBindings honesty updated
+F PASS/FAIL — Mixamo files (if any) stay inside Anim/Mixamo, not a public pack
+
+Screenshots / 20s Game View under `Assets/Concordia/Generated/Proof/Mocap/`.
+
+## DO NOT
+- Do not use Quaternius character meshes as identity.
+- Do not claim mocap until UAL clips actually drive the Animator.
+- Do not commercial-ship DeepMotion Freemium or Cascadeur Free exports.
+- Do not rebuild motion matching this pass.
+
+START M0 now.

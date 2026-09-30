@@ -24,10 +24,22 @@ import { updateClockOffset } from '../offline/db';
 // with "WebSocket is closed before the connection is established" (Next's
 // rewrites proxy HTTP but not WS upgrades), driving the "Disconnected" badge.
 // Any new socket consumer must import this rather than resolve its own.
-export const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV !== 'production' ? 'http://localhost:5050' : '');
+// Browser: always same-origin so engine.io hits Next :3000 (/socket.io rewrite
+// → :5050). NEXT_PUBLIC_SOCKET_URL is :5050 in local .env.local; using it from
+// the page Origin :3000 is cross-origin and CORP/CORS-flaky. Next 16 rewrites
+// proxy HTTP (engine.io polling) but NOT WebSocket upgrades (`next dest`).
+// getSocket() therefore prefers polling first, then websocket (upgrade may
+// fail locally; polling is the working loopback path). server-proxy.js exists
+// for production `next start` custom-server WS upgrades.
+export function resolveSocketUrl(): string {
+  if (typeof window !== 'undefined') return window.location.origin;
+  return (
+    process.env.NEXT_PUBLIC_SOCKET_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV !== 'production' ? 'http://localhost:5050' : '')
+  );
+}
+export const SOCKET_URL = resolveSocketUrl();
 
 // Tracked so a reconnect-exhaustion failure can tell "genuinely never
 // configured" apart from "was configured but the backend is unreachable" —
@@ -163,6 +175,7 @@ export function getSocket(): Socket {
     const auth = getAuthCredentials();
 
     socket = io(SOCKET_URL, {
+      path: '/socket.io',
       autoConnect: false,
       reconnection: true,
       // Never give up. A laptop that sleeps for an hour, a phone that loses
@@ -175,6 +188,10 @@ export function getSocket(): Socket {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      // Same-origin /socket.io. This Next 16 `next dest` checkout DOES
+      // proxy WS upgrades to :5050 (101 verified). Engine.io polling on
+      // this backend answers 400 Transport unknown (websocket-only), so
+      // websocket is first.
       transports: ['websocket', 'polling'],
       // SECURITY: Include cookies for httpOnly cookie auth
       withCredentials: true,

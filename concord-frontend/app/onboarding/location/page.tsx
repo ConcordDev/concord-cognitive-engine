@@ -11,6 +11,12 @@
  *
  * Users can skip this step — if they do, their content stays local
  * by default until they come back to Settings and declare later.
+ *
+ * This is the LAST signup step. It lands in /hub — NOT the World lens.
+ * Character creation + entering Concordia is deferred to when the user
+ * chooses to open the World lens (it has its own first-visit flow and
+ * renders a default avatar until then); it is no longer forced on
+ * every new account.
  */
 
 import { ChooseYourUniverse } from '@/components/onboarding/ChooseYourUniverse';
@@ -21,8 +27,8 @@ export default function OnboardingLocationPage() {
 
   return (
     <ChooseYourUniverse
-      onComplete={() => router.push('/onboarding/character')}
-      onSkip={() => router.push('/onboarding/character')}
+      onComplete={() => router.push('/hub')}
+      onSkip={() => router.push('/hub')}
     />
   );
 }

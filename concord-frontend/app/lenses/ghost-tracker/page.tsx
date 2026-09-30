@@ -22,12 +22,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
 import { ResidueDetail } from '@/components/ghost-tracker/ResidueDetail';
@@ -155,9 +152,7 @@ export default function GhostTrackerPage() {
 
   return (
     <LensShell lensId="ghost-tracker" asMain={false}>
-      <FirstRunTour lensId="ghost-tracker" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
+      <FirstRunTour lensId="ghost-tracker" />      <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-violet-300">Ghost Tracker</h1>
@@ -341,11 +336,7 @@ export default function GhostTrackerPage() {
           onClose={() => setSelected(null)}
           onChanged={bumpDependents}
         />
-      )}
-
-      <RecentMineCard domain="ghost-tracker" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="ghost-tracker" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="ghost-tracker" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      )}      <CrossLensRecentsPanel lensId="ghost-tracker" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -129,7 +129,12 @@ export default function configureMiddleware(app, deps) {
           upgradeInsecureRequests: NODE_ENV === "production" ? [] : null,
         },
       },
+      // Local next(:3000) -> api(:5050) is cross-origin. Helmet's default
+      // CORP same-origin makes those responses unreadable (net::ERR_FAILED)
+      // even when CORS ACAO is set. Prefer the Next /api proxy; this is the
+      // local/dev safety net for leftover absolute fetches.
       crossOriginEmbedderPolicy: NODE_ENV === "production",
+      crossOriginResourcePolicy: NODE_ENV === "production" ? { policy: "same-origin" } : { policy: "cross-origin" },
       hsts: NODE_ENV === "production" ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       permissionsPolicy: {
@@ -241,8 +246,10 @@ export default function configureMiddleware(app, deps) {
       if (!origin) {
         return callback(null, true);
       }
-      // In development, allow localhost
-      if (NODE_ENV !== "production" && (origin.includes("localhost") || origin.includes("127.0.0.1"))) {
+      // Loopback frontend (:3000) even when this API is launched with
+      // NODE_ENV=production (local launchd). Same-machine next.dev is still
+      // a distinct origin from :5050.
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
         return callback(null, true);
       }
       // Explicit allowlist takes priority
@@ -279,6 +286,15 @@ export default function configureMiddleware(app, deps) {
     exposedHeaders: ["X-Request-ID"],
   };
   app.use(cors(corsOptions));
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin || "";
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.removeHeader("Cross-Origin-Embedder-Policy");
+    }
+    next();
+  });
 
   // ---- Request Tracking & Logging ----
   app.use(requestIdMiddleware);       // Add request ID to all requests

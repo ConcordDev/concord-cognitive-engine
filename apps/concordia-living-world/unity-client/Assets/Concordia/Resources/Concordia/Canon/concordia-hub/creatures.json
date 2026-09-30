@@ -1,0 +1,59 @@
+[
+  {
+    "id": "plaza_strider",
+    "name": "Plaza Strider",
+    "world_id": "concordia-hub",
+    "description": "A long-legged civic bird that stalks the hub's market terraces, unbothered by crowds, snapping up dropped grain and stray coins it hoards in rooftop nests.",
+    "topology_hint": "winged_biped",
+    "size_band": "small",
+    "starting_behavior": "Curious scavenger, follows players carrying food, flees only when cornered",
+    "emergent_ability_seeds": [
+      {
+        "name": "coin_glint_dazzle",
+        "verb": "coin_glint_dazzle",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "speed", "delta": 0.4, "durationMs": 3000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  },
+  {
+    "id": "cistern_lurker",
+    "name": "Cistern Lurker",
+    "world_id": "concordia-hub",
+    "description": "A pale amphibious thing that lives in the hub's old water cisterns, surfacing at dusk. Harmless unless its pool is disturbed, then territorial.",
+    "topology_hint": "amorphous",
+    "size_band": "medium",
+    "starting_behavior": "Ambush guardian of water sources, retreats underwater when hurt",
+    "emergent_ability_seeds": [
+      {
+        "name": "douse",
+        "verb": "douse",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": -0.3, "durationMs": 4000 } }
+        ],
+        "trigger": "below_30_health"
+      }
+    ]
+  },
+  {
+    "id": "lamplighter_moth",
+    "name": "Lamplighter Moth",
+    "world_id": "concordia-hub",
+    "description": "A hand-sized moth whose wing-scales glow with stored daylight. Hub children chase them at night; they cluster on the great plaza lanterns.",
+    "topology_hint": "winged_biped",
+    "size_band": "tiny",
+    "starting_behavior": "Drifts toward light sources, swarms when threatened",
+    "emergent_ability_seeds": [
+      {
+        "name": "blinding_bloom",
+        "verb": "blinding_bloom",
+        "effects": [
+          { "kind": "channel", "params": { "stat": "light", "radius": 4, "durationMs": 2000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  }
+]

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.concord.go-sidecar</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-go-sidecar/bin/concord-go-sidecar</string>
+	</array>
+
+	<!--
+	  The sidecar must see the SAME WHISPER_CPP_BIN / PIPER_BIN / PIPER_VOICE /
+	  PIPER_VOICES_DIR values as com.concord.backend, or a request the Node process
+	  believes is configured will get "not_configured" from the sidecar and fall
+	  back to the inline spawnSync path (functional, just slower). Whisper/Piper
+	  are currently unset on this box, so only CONCORD_GO_SIDECAR_* is needed today.
+	  Add the whisper/piper keys here in lockstep with the backend plist when they
+	  are configured.
+	-->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CONCORD_GO_SIDECAR_SOCK</key>
+		<string>/Users/dutch/concord/run/concord-go-sidecar.sock</string>
+		<key>CONCORD_GO_SIDECAR_MAX_EXEC</key>
+		<string>4</string>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/dutch/concord vs code/concord-cognitive-engine/engines/concord-go-sidecar</string>
+
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/dutch/concord/logs/go-sidecar.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/dutch/concord/logs/go-sidecar.err</string>
+</dict>
+</plist>

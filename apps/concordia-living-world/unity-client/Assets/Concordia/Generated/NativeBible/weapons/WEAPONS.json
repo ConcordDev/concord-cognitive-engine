@@ -1,0 +1,1385 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "weapons",
+  "count": 31,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "wpn_1h_court_flower",
+      "display_name": "Court Flower",
+      "lore_blurb": "Hub one-hand blade. Inside Flower Law (42m, not the Arena) the mesh swaps to a cut flower and deals no steel damage. Outside, it is a short court sword with a petal-stamped guard.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "court",
+        "civic"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Worn steel, petal stamp almost rubbed away. Flower form is a real plant prop, not a particle sword.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Short leaf-shaped blade, round guard. Flower form is a single stem with one bloom, same grip.",
+      "palette": [
+        "#6a6860",
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "blade ~0.7m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_1h_slash",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_1h_court_flower.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_1h_court_flower",
+        "trail_vfx": "trail_none_or_petal",
+        "sound_set": "sfx_verb_1h_slash_court",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Worn short sword with a petal-stamped round guard, and a second view as a single cut flower on the same grip. Unburned Court.",
+      "stats_hooks": {
+        "damage_profile": "slash_or_none_under_flower_law",
+        "tier": "civic",
+        "culture": "court",
+        "flower_law": true
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ]
+    },
+    {
+      "id": "wpn_1h_sunder_wardblade",
+      "display_name": "Ward-Blade",
+      "lore_blurb": "Sundering one-hand. The edge is nicked where someone turned a curse inward and the steel paid.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "grove",
+        "steel"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Pine resin in the wrap, honest edge wear.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Slightly leaf-shaped, dark wrap, one notch a third from the tip.",
+      "palette": [
+        "#c8b48a",
+        "#1a3028",
+        "#6a5438"
+      ],
+      "scale_vs_player": "blade ~0.8m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_1h_slash",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_1h_sunder_wardblade.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_1h_sunder_wardblade",
+        "trail_vfx": "trail_faint_green",
+        "sound_set": "sfx_verb_1h_slash_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Leaf-shaped ward sword, dark wrap, one deep notch, pine resin, Sundering.",
+      "stats_hooks": {
+        "damage_profile": "slash",
+        "tier": "steel",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ]
+    },
+    {
+      "id": "wpn_1h_coast_switchknife",
+      "display_name": "Switch",
+      "lore_blurb": "Iron Coast one-hand. Ghost Contracts call it a switch. It is a knife the length of a forearm, not a gun.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "street",
+        "street"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Rain-dark handle, brass pin, edge stained.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thin but not a needle; handle is a fat rectangle so the silhouette reads in a fist.",
+      "palette": [
+        "#2a241c",
+        "#8a6a48",
+        "#c8a060"
+      ],
+      "scale_vs_player": "blade ~0.35m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_1h_slash",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_1h_coast_switchknife.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_1h_coast_switchknife",
+        "trail_vfx": "trail_none",
+        "sound_set": "sfx_verb_1h_slash_street",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Fat-handled switchknife, rain, brass pin, Iron Coast. Not a pistol.",
+      "stats_hooks": {
+        "damage_profile": "slash_pierce",
+        "tier": "street",
+        "culture": "street",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ]
+    },
+    {
+      "id": "wpn_1h_grid_pulseblade",
+      "display_name": "Pulse Blade",
+      "lore_blurb": "Grid one-hand. A short acrylic-edged tool that puts a cyan line on the cut. The line is the trail, the damage is still a hit-resolver slash.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "grid",
+        "pulse"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scratched acrylic, gunmetal spine.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cleaver rectangle with a glowing edge only while active.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ],
+      "scale_vs_player": "blade ~0.6m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_1h_slash",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_1h_grid_pulseblade.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_1h_grid_pulseblade",
+        "trail_vfx": "trail_cyan",
+        "sound_set": "sfx_verb_1h_slash_grid",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Short cleaver of scratched acrylic and gunmetal, cyan edge only while swung, Grid.",
+      "stats_hooks": {
+        "damage_profile": "slash_pulse",
+        "tier": "pulse",
+        "culture": "grid",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ]
+    },
+    {
+      "id": "wpn_1h_frontier_skinner",
+      "display_name": "Skinner",
+      "lore_blurb": "Frontier one-hand. A skinning knife promoted to a fight because the road is the door.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "frontier",
+        "iron"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust in the bolster.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Broad belly blade, wood handle worn to the tang.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "blade ~0.4m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_1h_slash",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_1h_frontier_skinner.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_1h_frontier_skinner",
+        "trail_vfx": "trail_dust",
+        "sound_set": "sfx_verb_1h_slash_frontier",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Broad skinning knife, dust-worn wood handle, Frontier.",
+      "stats_hooks": {
+        "damage_profile": "slash",
+        "tier": "iron",
+        "culture": "frontier",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ]
+    },
+    {
+      "id": "wpn_2h_warden_estoc",
+      "display_name": "Arena Estoc",
+      "lore_blurb": "Iron Warden two-hander for the Arena, where steel is always live. Long, narrow, for poise breaks. Poly Haven antique_estoc is the honest fallback mesh, not the final skin.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "court",
+        "arena"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Arena sand in the fuller, worn grip.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long needle with a visible bell guard so it is not a stick.",
+      "palette": [
+        "#6a6860",
+        "#efe6d4",
+        "#2a241c"
+      ],
+      "scale_vs_player": "blade ~1.3m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_2h_heavy",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_2h_warden_estoc.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_2h_warden_estoc",
+        "trail_vfx": "trail_sand",
+        "sound_set": "sfx_verb_2h_heavy_court",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Long estoc, bell guard, arena sand in the metal, gray steel, Unburned Court Arena.",
+      "stats_hooks": {
+        "damage_profile": "pierce_heavy",
+        "tier": "arena",
+        "culture": "court",
+        "flower_law": true
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ]
+    },
+    {
+      "id": "wpn_2h_ruins_unburial",
+      "display_name": "Unburial",
+      "lore_blurb": "Ruins two-hand slab. More cleaver than sword. Used to pull a fall back, which in practice means a heavy cut.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "ash",
+        "relic"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash pitting, fossil inlay that is stone not glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide rectangle, cold iron glint on the spine only.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4",
+        "#2a1c14"
+      ],
+      "scale_vs_player": "blade ~1.4m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_2h_heavy",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_2h_ruins_unburial.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_2h_ruins_unburial",
+        "trail_vfx": "trail_ash",
+        "sound_set": "sfx_verb_2h_heavy_ash",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Wide ash-pitted great cleaver, cold iron spine, fossil inlay, Sovereign Ruins.",
+      "stats_hooks": {
+        "damage_profile": "slash_heavy",
+        "tier": "relic",
+        "culture": "ash",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ]
+    },
+    {
+      "id": "wpn_2h_dawn_shockmaul",
+      "display_name": "Mercy Maul",
+      "lore_blurb": "Dawn two-hand. A maul with a capacitor in the head. Last hit on a yielding target converts to knockdown.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "dawn",
+        "impact"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cracked white composite head, chrome haft, blue only on impact.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Big head, short haft so the silhouette is a hammer not a staff.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "length ~1.2m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_2h_heavy",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_2h_dawn_shockmaul.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_2h_dawn_shockmaul",
+        "trail_vfx": "vfx_Lightning_impact",
+        "sound_set": "sfx_verb_2h_heavy_dawn",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Short-hafted maul, cracked white head, chrome handle, Dawn. Blue flash only on hit.",
+      "stats_hooks": {
+        "damage_profile": "blunt_shock",
+        "tier": "impact",
+        "culture": "dawn",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ]
+    },
+    {
+      "id": "wpn_2h_frontier_wagoniron",
+      "display_name": "Wagon Iron",
+      "lore_blurb": "Frontier two-hand bar, a wagon brace used as a sword. Slow commit.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "frontier",
+        "salvage"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Rust, rope wrap mid-haft.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Straight bar with one bent end. Reads as a tool.",
+      "palette": [
+        "#4a3828",
+        "#c8b070",
+        "#2a241c"
+      ],
+      "scale_vs_player": "length ~1.5m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_2h_heavy",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_2h_frontier_wagoniron.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_2h_frontier_wagoniron",
+        "trail_vfx": "trail_dust",
+        "sound_set": "sfx_verb_2h_heavy_frontier",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Bent wagon-iron bar, rope wrap, rust, Frontier dust.",
+      "stats_hooks": {
+        "damage_profile": "blunt_slash",
+        "tier": "salvage",
+        "culture": "frontier",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ]
+    },
+    {
+      "id": "wpn_pole_tunya_reed",
+      "display_name": "Reed",
+      "lore_blurb": "Tunya polearm. A living-wood shaft with a short iron tongue. Grove law: it is a tool until it is swung at a person.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "grove",
+        "wood"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Smooth wood, iron tongue, pollen in the grain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Very long vertical, small head. The length is the silhouette.",
+      "palette": [
+        "#6a7a3a",
+        "#c8b48a",
+        "#2a241c"
+      ],
+      "scale_vs_player": "length ~2.2m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_polearm_thrust",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_pole_tunya_reed.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_pole_tunya_reed",
+        "trail_vfx": "trail_pollen",
+        "sound_set": "sfx_verb_polearm_thrust_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Long reed polearm, small iron tongue, living wood, Tunya sun.",
+      "stats_hooks": {
+        "damage_profile": "pierce",
+        "tier": "wood",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_polearm_thrust"
+      ]
+    },
+    {
+      "id": "wpn_pole_sunder_glaive",
+      "display_name": "Curse Glaive",
+      "lore_blurb": "Sundering polearm. Sweep and thrust. The braid on the haft is tied loose.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_sweep",
+        "grove",
+        "steel"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Edge nicks, resin.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Curved head, long haft, tassel that is a loose braid.",
+      "palette": [
+        "#1a3028",
+        "#c8b48a",
+        "#6a5438"
+      ],
+      "scale_vs_player": "length ~2.0m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_polearm_sweep",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_pole_sunder_glaive.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_pole_sunder_glaive",
+        "trail_vfx": "trail_faint_green",
+        "sound_set": "sfx_verb_polearm_sweep_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Curved glaive, loose dark braid on the haft, Sundering pine.",
+      "stats_hooks": {
+        "damage_profile": "slash_reach",
+        "tier": "steel",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_polearm_sweep"
+      ]
+    },
+    {
+      "id": "wpn_pole_grid_countpike",
+      "display_name": "Count Pike",
+      "lore_blurb": "Grid polearm. A pike with a lens where the tongue meets the shaft. Ping is a light, hit is a thrust.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "grid",
+        "pulse"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scratched metal, lens chipped.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long, one disc at the head, not a spear with a gun taped on.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ],
+      "scale_vs_player": "length ~2.3m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_polearm_thrust",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_pole_grid_countpike.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_pole_grid_countpike",
+        "trail_vfx": "trail_cyan",
+        "sound_set": "sfx_verb_polearm_thrust_grid",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Long pike with a single chipped lens at the head, Grid, cyan only when pinging.",
+      "stats_hooks": {
+        "damage_profile": "pierce_pulse",
+        "tier": "pulse",
+        "culture": "grid",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_polearm_thrust"
+      ]
+    },
+    {
+      "id": "wpn_pole_sere_fork",
+      "display_name": "Clearing Fork",
+      "lore_blurb": "Sere polearm. A two-tine fork used to clear furnace slag and debts.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "street",
+        "iron"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot, one brand stamp on the haft.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two short tines, blackened shaft.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#1a140e"
+      ],
+      "scale_vs_player": "length ~1.8m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_polearm_thrust",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_pole_sere_fork.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_pole_sere_fork",
+        "trail_vfx": "trail_ember",
+        "sound_set": "sfx_verb_polearm_thrust_street",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Soot-black two-tine fork, brand stamp, Sere furnace.",
+      "stats_hooks": {
+        "damage_profile": "pierce",
+        "tier": "iron",
+        "culture": "street",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_polearm_thrust"
+      ]
+    },
+    {
+      "id": "wpn_bow_pinewood",
+      "display_name": "Salt Bow",
+      "lore_blurb": "Pinewood bow. Hunting the salt road. Upper body layered draw; feet stay in locomotion.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "court",
+        "hunt"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Salt crust on the tips.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Simple D recurve, pale string.",
+      "palette": [
+        "#6a5340",
+        "#c4b49a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "bow height ~1.4m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_bow_release",
+        "sockets": [
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_bow_pinewood.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_bow_pinewood",
+        "trail_vfx": "arrow_salt",
+        "sound_set": "sfx_verb_bow_release_court",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Simple hunting bow, salt on the tips, pine road.",
+      "stats_hooks": {
+        "damage_profile": "pierce",
+        "tier": "hunt",
+        "culture": "court",
+        "flower_law": true
+      },
+      "verb_ids": [
+        "verb_bow_release"
+      ]
+    },
+    {
+      "id": "wpn_bow_frontier_wind",
+      "display_name": "Wind Bow",
+      "lore_blurb": "Frontier bow. Shorter, meant to shoot from a wagon that does not yet have ride code. On foot it is a shortbow.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "frontier",
+        "hunt"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust, sinew wrap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Short, horn tips.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "bow height ~1.1m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_bow_release",
+        "sockets": [
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_bow_frontier_wind.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_bow_frontier_wind",
+        "trail_vfx": "arrow_dust",
+        "sound_set": "sfx_verb_bow_release_frontier",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Short frontier bow, horn tips, dust, sinew.",
+      "stats_hooks": {
+        "damage_profile": "pierce",
+        "tier": "hunt",
+        "culture": "frontier",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_bow_release"
+      ]
+    },
+    {
+      "id": "wpn_bow_veil_pollen",
+      "display_name": "Pollen Bow",
+      "lore_blurb": "Tunya bow. Arrows are wood with a pollen wad that marks, not explodes.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "grove",
+        "hunt"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Living wood, gold thread.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall longbow, slight, one gold wrap.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "bow height ~1.5m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_bow_release",
+        "sockets": [
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_bow_veil_pollen.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_bow_veil_pollen",
+        "trail_vfx": "arrow_pollen",
+        "sound_set": "sfx_verb_bow_release_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Tall grove longbow, one gold wrap, pollen-wad arrows, Tunya.",
+      "stats_hooks": {
+        "damage_profile": "pierce_mark",
+        "tier": "hunt",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_bow_release"
+      ]
+    },
+    {
+      "id": "wpn_bow_grid_rail",
+      "display_name": "Rail Bow",
+      "lore_blurb": "Grid crossbow-shaped launcher. Still the bow verb: aim, draw, release. Bolt is a pulse slug. Firearms coverage stays 0%; this is not an assault rifle.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "grid",
+        "pulse"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scratched acrylic stock.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Horizontal prod, stock against the shoulder, one lens.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ],
+      "scale_vs_player": "length ~0.7m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_bow_release",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Shoulder_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_bow_grid_rail.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_bow_grid_rail",
+        "trail_vfx": "slug_cyan",
+        "sound_set": "sfx_verb_bow_release_grid",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Compact rail crossbow, one lens, acrylic stock, cyan slug, not a rifle, Grid.",
+      "stats_hooks": {
+        "damage_profile": "pierce_pulse",
+        "tier": "pulse",
+        "culture": "grid",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_bow_release"
+      ]
+    },
+    {
+      "id": "wpn_throw_court_lantern",
+      "display_name": "Lantern Toss",
+      "lore_blurb": "Court thrown. A paper-and-brass hand lantern. In the plaza it is legal. Impact is light, fire is a small honest flame if the glass breaks.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "court",
+        "civic"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot, dented brass.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Box lantern, handle on top.",
+      "palette": [
+        "#c8721a",
+        "#ffe6c0",
+        "#6a5a40"
+      ],
+      "scale_vs_player": "fits one hand",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_thrown",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_throw_court_lantern.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_throw_court_lantern",
+        "trail_vfx": "impact_lantern",
+        "sound_set": "sfx_verb_thrown_court",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Dented brass hand lantern, warm paper panels, Court night.",
+      "stats_hooks": {
+        "damage_profile": "blunt_fire_small",
+        "tier": "civic",
+        "culture": "court",
+        "flower_law": true
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ]
+    },
+    {
+      "id": "wpn_throw_coast_invoice",
+      "display_name": "Invoice Weight",
+      "lore_blurb": "Crime thrown. A lead seal-stamp on a cord. Hitting someone with the bill is the joke and the weapon.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "street",
+        "street"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Lead, stamped numbers worn down.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Small heavy rectangle.",
+      "palette": [
+        "#8a6a48",
+        "#e0c040",
+        "#2a241c"
+      ],
+      "scale_vs_player": "palm-sized",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_thrown",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_throw_coast_invoice.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_throw_coast_invoice",
+        "trail_vfx": "impact_thud",
+        "sound_set": "sfx_verb_thrown_street",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Palm-sized lead invoice stamp, worn numbers, rain.",
+      "stats_hooks": {
+        "damage_profile": "blunt",
+        "tier": "street",
+        "culture": "street",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ]
+    },
+    {
+      "id": "wpn_throw_crucible_shard",
+      "display_name": "Unclosed Shard",
+      "lore_blurb": "Crucible thrown. A quartz shard that does not match any completed pattern. Breaks into two, never into a neat fan.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "drift",
+        "arcane"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Bevelled quartz, one unfinished face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Jagged but thick enough to read.",
+      "palette": [
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ],
+      "scale_vs_player": "dagger-sized",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_thrown",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_throw_crucible_shard.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_throw_crucible_shard",
+        "trail_vfx": "impact_shard",
+        "sound_set": "sfx_verb_thrown_drift",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Thick quartz throwing shard, one unfinished face, teal edge, Crucible.",
+      "stats_hooks": {
+        "damage_profile": "pierce_arcane",
+        "tier": "arcane",
+        "culture": "drift",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ]
+    },
+    {
+      "id": "wpn_throw_sere_marktile",
+      "display_name": "Mark Tile",
+      "lore_blurb": "Sere thrown. An iron brand tile. On hit it applies a visible mark debuff and witness heat, not a fireball.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "street",
+        "debt"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot, raised brand.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Square tile, one broken corner so it spins honestly.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#8a3030"
+      ],
+      "scale_vs_player": "palm-sized tile",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_thrown",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_throw_sere_marktile.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_throw_sere_marktile",
+        "trail_vfx": "impact_brand",
+        "sound_set": "sfx_verb_thrown_street",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Iron brand tile, one broken corner, soot, Sere.",
+      "stats_hooks": {
+        "damage_profile": "blunt_mark",
+        "tier": "debt",
+        "culture": "street",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ]
+    },
+    {
+      "id": "wpn_focus_lyra_staff",
+      "display_name": "Second-Hour Staff",
+      "lore_blurb": "Lyra's teaching staff and the court focus. It is wood and brass. It does not become a rifle of light. Casts are Presence and chant, legal inside Flower Law.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "court",
+        "civic"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Worn wood, quiet metal.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Straight staff, one brass ring that is not a halo.",
+      "palette": [
+        "#3a3850",
+        "#c8b48a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "length ~1.6m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_cast_release",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_focus_lyra_staff.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_focus_lyra_staff",
+        "trail_vfx": "vfx_Heal_or_impact",
+        "sound_set": "sfx_verb_cast_release_court",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Plain wooden staff, one brass ring, Archive light, no magic flame until the cast VFX.",
+      "stats_hooks": {
+        "damage_profile": "arcane_presence",
+        "tier": "civic",
+        "culture": "court",
+        "flower_law": true
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ]
+    },
+    {
+      "id": "wpn_focus_sunder_cursefold",
+      "display_name": "Cursefold",
+      "lore_blurb": "Sundering focus. A wrapped hand-weight, not a skull. Used to turn a curse inward. The fold is a VFX on the user, not a projectile by default.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "grove",
+        "curse"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Clean cloth over a dark stone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A wrapped stone in the fist. Silhouette is the fist.",
+      "palette": [
+        "#1a3028",
+        "#c8a060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "fist-sized",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_cast_release",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_focus_sunder_cursefold.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_focus_sunder_cursefold",
+        "trail_vfx": "vfx_self_gold_then_close",
+        "sound_set": "sfx_verb_cast_release_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Fist wrapped around a dark stone, clean cloth, Sundering, gold leak only during the fold.",
+      "stats_hooks": {
+        "damage_profile": "curse_inward",
+        "tier": "curse",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ]
+    },
+    {
+      "id": "wpn_focus_crucible_unend",
+      "display_name": "Un-End Focus",
+      "lore_blurb": "Crucible focus. A shard set in a ring that does not close. Cast refuses completion of a zone or a craft.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_loop",
+        "drift",
+        "arcane"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Polymer and chrome, gap is empty.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open ring, gap visible.",
+      "palette": [
+        "#20ffd0",
+        "#102828",
+        "#c8b4ff"
+      ],
+      "scale_vs_player": "palm ring",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_cast_loop",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_focus_crucible_unend.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_focus_crucible_unend",
+        "trail_vfx": "vfx_rewind",
+        "sound_set": "sfx_verb_cast_loop_drift",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Open chrome ring focus, visible gap, teal, Crucible, held in one hand.",
+      "stats_hooks": {
+        "damage_profile": "arcane_rewind",
+        "tier": "arcane",
+        "culture": "drift",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_cast_loop"
+      ]
+    },
+    {
+      "id": "wpn_focus_dawn_mercy",
+      "display_name": "Mercy Orb",
+      "lore_blurb": "Dawn focus. A cracked marble sphere. Cast is a shock that stops short of a kill.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "dawn",
+        "impact"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Chipped marble, no permanent glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sphere with one crack. Reads as a ball, not a sun god.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "palm sphere",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_cast_release",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_focus_dawn_mercy.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_focus_dawn_mercy",
+        "trail_vfx": "vfx_shockwave",
+        "sound_set": "sfx_verb_cast_release_dawn",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Cracked white marble sphere, palm-sized, Dawn, blue only when cast.",
+      "stats_hooks": {
+        "damage_profile": "shock_nonlethal",
+        "tier": "impact",
+        "culture": "dawn",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ]
+    },
+    {
+      "id": "wpn_focus_ruins_stylus",
+      "display_name": "Catalogue Stylus",
+      "lore_blurb": "Ruins focus. Iron stylus. The cast writes a short mark in ash that is a gameplay zone, not a novel.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "ash",
+        "relic"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cold iron, ink that is ash.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long pen, thick enough to see.",
+      "palette": [
+        "#8aa0b4",
+        "#5a5044",
+        "#2a1c14"
+      ],
+      "scale_vs_player": "length ~0.4m",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_cast_release",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_focus_ruins_stylus.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_focus_ruins_stylus",
+        "trail_vfx": "vfx_ash_glyph",
+        "sound_set": "sfx_verb_cast_release_ash",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Thick iron stylus, ash-stained, Ruins keeper hand.",
+      "stats_hooks": {
+        "damage_profile": "ash_mark",
+        "tier": "relic",
+        "culture": "ash",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ]
+    },
+    {
+      "id": "wpn_imp_forge_hammer",
+      "display_name": "Forge Hammer",
+      "lore_blurb": "Craft improvised. GameplayCore fabrication station hammer. Also a slow blunt verb.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "craft",
+        "tool"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scale on the cheek of the head.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Classic hammer, scarred face.",
+      "palette": [
+        "#4a3828",
+        "#c8a060",
+        "#2a241c"
+      ],
+      "scale_vs_player": "one-hand hammer",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_improvised_swing",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_imp_forge_hammer.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_imp_forge_hammer",
+        "trail_vfx": "impact_spark",
+        "sound_set": "sfx_verb_improvised_swing_craft",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Scarred forge hammer, scale on the face, bench context.",
+      "stats_hooks": {
+        "damage_profile": "blunt",
+        "tier": "tool",
+        "culture": "craft",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_improvised_swing"
+      ]
+    },
+    {
+      "id": "wpn_imp_dock_hook",
+      "display_name": "Dock Hook",
+      "lore_blurb": "Crime tool. Cargo hook. Same swing verb as the hammer, different trail (no spark, a rip).",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "street",
+        "tool"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Rust and rope.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Comma hook.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060"
+      ],
+      "scale_vs_player": "forearm hook",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_improvised_swing",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_imp_dock_hook.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_imp_dock_hook",
+        "trail_vfx": "impact_rip",
+        "sound_set": "sfx_verb_improvised_swing_street",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Rusted cargo hook, rope wrap, wet dock.",
+      "stats_hooks": {
+        "damage_profile": "pierce",
+        "tier": "tool",
+        "culture": "street",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_improvised_swing"
+      ]
+    },
+    {
+      "id": "wpn_imp_grove_knife",
+      "display_name": "Graft Knife",
+      "lore_blurb": "Tunya tool. Short curved knife for grafts. Illegal to reap a trunk; legal to prune.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "grove",
+        "tool"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sap on the spine.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Small curve.",
+      "palette": [
+        "#c8b48a",
+        "#3a4a28",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "small",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_improvised_swing",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_imp_grove_knife.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_imp_grove_knife",
+        "trail_vfx": "trail_sap",
+        "sound_set": "sfx_verb_improvised_swing_grove",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Small curved graft knife, sap, Tunya.",
+      "stats_hooks": {
+        "damage_profile": "slash_light",
+        "tier": "tool",
+        "culture": "grove",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_improvised_swing"
+      ]
+    },
+    {
+      "id": "wpn_imp_grid_cable",
+      "display_name": "Cable Whip",
+      "lore_blurb": "Grid improvised. A length of cut fiber used as a whip. Still the improvised swing verb, reach slightly longer.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "grid",
+        "salvage"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cut insulation, one sparking end only on hit.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A line, thick cable, not a chain of blades.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#2a241c"
+      ],
+      "scale_vs_player": "2m whip",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_improvised_swing",
+        "sockets": [
+          "CX_Grip_R"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_imp_grid_cable.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_imp_grid_cable",
+        "trail_vfx": "impact_spark",
+        "sound_set": "sfx_verb_improvised_swing_grid",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Thick cut fiber cable used as a whip, Grid, spark only on impact.",
+      "stats_hooks": {
+        "damage_profile": "slash_pulse",
+        "tier": "salvage",
+        "culture": "grid",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_improvised_swing"
+      ]
+    },
+    {
+      "id": "wpn_imp_frontier_spade",
+      "display_name": "Road Spade",
+      "lore_blurb": "Frontier tool. A spade. Settlement founding and a desperate swing share the verb.",
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "frontier",
+        "tool"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dirt, nicked edge.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Spade blade as a rectangle.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#8a8090"
+      ],
+      "scale_vs_player": "spade length",
+      "unity_bind": {
+        "dress_vocab_kind": "verb_improvised_swing",
+        "sockets": [
+          "CX_Grip_R",
+          "CX_Grip_L"
+        ],
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/wpn_imp_frontier_spade.prefab",
+        "character_gear": "CharacterGear / CxDress.HeldWeapon",
+        "kitbag_stem": "wpn_imp_frontier_spade",
+        "trail_vfx": "impact_dust",
+        "sound_set": "sfx_verb_improvised_swing_frontier",
+        "existing_fallback": "DressVocab.Weapon Kenney/MYFG until this prefab exists. Do not pretend the fallback is this culture skin."
+      },
+      "aura_prompt": "Dirt-caked spade, Frontier, nicked edge.",
+      "stats_hooks": {
+        "damage_profile": "blunt",
+        "tier": "tool",
+        "culture": "frontier",
+        "flower_law": false
+      },
+      "verb_ids": [
+        "verb_improvised_swing"
+      ]
+    }
+  ]
+}

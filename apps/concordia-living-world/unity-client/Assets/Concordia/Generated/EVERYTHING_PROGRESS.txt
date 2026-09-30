@@ -1,0 +1,29 @@
+AURA EVERYTHING / NO DEFERRALS — LIVE PROGRESS
+Date: 2026-09-22
+
+PHASE 0 — BRIDGE + COMPILE
+- Initial bridge recovered and answered editor-state requests.
+- Fresh compile check after the fixes: PASS — `No compile errors`.
+- Conflict-marker scan under `Assets/Concordia/Scripts`: PASS — no matches.
+- Full EditMode suite after the final HubKit fix: PASS — 106/106 passed, 0 failed, 0 skipped.
+- Real-kit focused test: PASS — `RealKitModule_PlacesWithCorrectGridSizeAndOrientation`.
+- Root cause fixed in `Assets/Concordia/Scripts/HubKit.cs`: GLTFast source templates were being deactivated, leaving imported MeshFilter/sharedMesh data unresolved in order-dependent EditMode runs. The cache is kept active, template renderers are disabled instead of the hierarchy, and placed instances explicitly activate child objects/renderers.
+- Proof: `Assets/Concordia/Generated/Proof/Everything/P0_BRIDGE_COMPILE.md`.
+
+PHASE 1 / R0 — ANIMATION AND MOTION
+- L0 PlayMode visible sequence: PASS.
+- Proof marker: `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof.md`.
+- Rendered evidence includes idle, walk, sprint, turn, stop, Dodge roll, SwordIdle, and HitChest using the authored CX/Rocketbox body and ConcordiaLocomotion controller.
+- Root cause fixed in `Assets/Concordia/Tests/PlayMode/L0Ual1SequenceProofTest.cs`: the sprint beat depleted `ConcordiaPlayer.stamina`, causing the real DodgeAction to reject the X input. The harness now refills the player stamina field before the dodge beat.
+- The first PlayMode initialization attempt still auto-failed because of MCP port churn/editor startup timing. A clean retry succeeded: 1/1 passed in 35.84 seconds.
+
+STREAMING / STALE-BUILD GATE
+- `ReleaseDuringFullBuild_DoesNotCommitStaleChunk` was retried, but the test job remained stuck with `blocked_reason=editor_unfocused`; no PASS is claimed for that test in this run.
+- This is a runner-focus/transport issue, not evidence that the stale-build guard is wrong. It remains unverified.
+
+PHASES 2–9
+- Not promoted. Runtime persistence, world-memory, quest, faction, gameplay-core, boss, NPC-life, travel/mount, companion, density, novelty, benchmark, and R13 evidence still require their own fresh PlayMode proofs.
+
+HONEST GATE
+- `FULL_RPG_REPORT.txt` remains `STATUS: BLOCKED`.
+- Compile, EditMode, real-kit, and L0 visible animation gates now have fresh PASS evidence. The remaining runtime gates are not being falsely upgraded.

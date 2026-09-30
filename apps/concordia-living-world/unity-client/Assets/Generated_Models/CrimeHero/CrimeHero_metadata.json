@@ -1,0 +1,23 @@
+{
+  "task_id": "ec3a6797-70dc-4d97-8f2a-b8ad364c6a8a",
+  "original_generation_task_id": "0fdfcd9b-50f8-4b37-8b49-25fe7ffe1f5b",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/0fdfcd9b-50f8-4b37-8b49-25fe7ffe1f5b/tripo_model_0fdfcd9b-50f8-4b37-8b49-25fe7ffe1f5b.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvMGZkZmNkOWItNTBmOC00YjM3LThiNDktMjVmZTdmZmUxZjViL3RyaXBvX21vZGVsXzBmZGZjZDliLTUwZjgtNGIzNy04YjQ5LTI1ZmU3ZmZlMWY1Yi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzcwMzV9fX1dfQ__&Signature=fS3lNwcoxuUiA0HzqSYggLMJzMH6npSXOUtuYGPD8lYtRqbXeW24Y-eb7nRmXl-xAjf24SDCO6YMfV9v90iI7wijsnyCHSt~QKzJrii4iV0U79jI1XNQFjZvIqElYiV3Ce84FAI5olMzKRyvEgPTGjneEOQiud28IuAAgPiJKdVD08bi0pn7JRDd7ujFwwiqdo9dk~w2wI77UePlyXLL0Eb0x2vRZikFC1OTAyEBJy-T7u~XxsyNehOHCbsDD3vNiXBbDtDIw6vdA7O-kvj7F0HRv8JZW1DesIU0mRvLAWR3GnJXQGi3YnXj~sWIVApsmFclz5OOGDt4rJhsgLRhDg__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:50:42.224649",
+  "description": "Provisional, non-canon generation brief: compose a grounded modern eastern-seaboard city landmark around the dockside/warehouse relationship and the unresolved evidence of lore_first_truce, crime_anchor_disaster, and lore_drone_swarm_aftermath. Visualize the Ghost Network versus Iron Rose Syndicate tension through the controlled-district vocabulary, without creating a new faction, event, or named landmark. Reserve binding at Chunk_Crime/VisualFidelity/CrimeHero and keep WorldVisualDirector/WorldHeroCatalog as the presentation path.",
+  "negative_prompt": "No cyberpunk megacity, fantasy keep, superhero skyline, invented faction symbols, invented canon names, clean generic noir alley, floating props, or fabricated resolution of the truce/drone evidence.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/CrimeHero/CrimeHero_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/CrimeHero/CrimeHero.fbx"
+}

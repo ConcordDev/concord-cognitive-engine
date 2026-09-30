@@ -388,7 +388,7 @@ export const MCP_TOOLS = [
     })
   },
   // DHTP — Dynamic Hybrid Tokenization Protocol (Sprint 60+)
-  // 33:1 context compression for chat prompts
+  // HASH-mode design target (~33:1 on DTU refs; live IR ~1.2×) context compression for chat prompts
   {
     name: "dhtp_detect",
     description: "Detect DHTP preset for prompt (greeting, explain, list, code, debug, etc). Returns preset id + template + compression stats.",
@@ -398,7 +398,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "dhtp_compress",
-    description: "Apply DHTP compression to prompt + DTU refs. 30-50x ratio. Hash refs let LLM fetch full DTUs on demand.",
+    description: "Apply DHTP compression to prompt + DTU refs. ~1.2× live IR (preset path may be higher) ratio. Hash refs let LLM fetch full DTUs on demand.",
     inputSchema: jsonSchema({
       prompt: textProp("User prompt"),
       dtu_refs: arrayProp("DTU IDs (max 33)", "string"),
@@ -408,6 +408,67 @@ export const MCP_TOOLS = [
   {
     name: "dhtp_stats",
     description: "DHTP cache stats + preset list (20 presets).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "tool_compile_universe",
+    description: "Compile task-relevant MCP tool subset from the full universe (hand + reflected macros). Bounds context by relevance score.",
+    inputSchema: jsonSchema({
+      task: textProp("Task description or intent"),
+      budget: intProp("Max tools to return (default 12)", 12),
+      include_reflected: boolProp("Include reflected macro tools (default true)", true),
+    }, ["task"])
+  },
+  {
+    name: "repo_graph_overview",
+    description: "Repository world model overview: file/symbol/edge counts, staleness, graph kinds.",
+    inputSchema: jsonSchema({
+      repo_root: textProp("Optional repo root (default cwd)"),
+    })
+  },
+  {
+    name: "repo_graph_index",
+    description: "Index or refresh the repository graph (imports, routes, migrations, tests).",
+    inputSchema: jsonSchema({
+      repo_root: textProp("Optional repo root (default cwd)"),
+    })
+  },
+  {
+    name: "repo_graph_context",
+    description: "Build task-scoped repo context: symbol hits, file neighborhoods, graph summary.",
+    inputSchema: jsonSchema({
+      intent: textProp("Task intent or goal"),
+      symbol: textProp("Optional symbol name to search"),
+      file: textProp("Optional file path hint"),
+      repo_root: textProp("Optional repo root"),
+    }, ["intent"])
+  },
+  {
+    name: "repo_graph_link_dtu",
+    description: "Link a DTU to a repository ref (file, route, migration, symbol).",
+    inputSchema: jsonSchema({
+      dtu_id: textProp("DTU id"),
+      repo_ref: textProp("Repository reference (e.g. server/lib/foo.js)"),
+      link_kind: textProp("Link kind (references, covers, implements)", "references"),
+    }, ["dtu_id", "repo_ref"])
+  },
+  {
+    name: "memory_benchmark_run",
+    description: "Run LoCoMo-style memory benchmark (factual, temporal, contradiction, stale, constraint, goal, corruption).",
+    inputSchema: jsonSchema({
+      case_ids: arrayProp("Optional subset of case ids", "string"),
+    })
+  },
+  {
+    name: "substrate_invoke_oracles",
+    description: "Invoke deterministic substrate oracles (CAS, FEA, engineering, physics, chem, accounting) through real dual-registry dispatch; logs macro_call_log rows.",
+    inputSchema: jsonSchema({
+      case_ids: arrayProp("Optional subset of oracle case ids", "string"),
+    })
+  },
+  {
+    name: "dtu_retrieval_eval",
+    description: "Run a deterministic DTU retrieval-quality evaluation (precision/recall, stale exclusion).",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
   {
@@ -430,6 +491,336 @@ export const MCP_TOOLS = [
     description: "Sprint 60+ Breakdown Structuring: ONE-SHOT factory. Decompose, parallel dispatch, mint DTUs, stitch, render to PDF/ZIP/MD. Returns real file artifact.",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
+  {
+    name: "browser_check_coins",
+    description: "Browser Organ: check coin balances, positions, and P&L (O001 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "browser_check_incidents",
+    description: "Browser Organ: check recent incidents and alerts (O001 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "browser_check_rate_limits",
+    description: "Browser Organ: check rate-limit status across providers (O001 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "sentinel_watch",
+    description: "Sentinel Organ: monitor system health + alert on anomalies (A organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "sentinel_review_alerts",
+    description: "Sentinel Organ: review pending alerts (A organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "sentinel_health_snapshot",
+    description: "Sentinel Organ: get current system health snapshot (A organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "sentinel_gate_diff",
+    description: "Sentinel Organ: get gate diff vs baseline (A organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_record",
+    description: "Trace Fabric: record a new trace event (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_lookup",
+    description: "Trace Fabric: lookup traces by id (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_recent",
+    description: "Trace Fabric: get recent traces (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_tool_history",
+    description: "Trace Fabric: get tool invocation history (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_root_cause",
+    description: "Trace Fabric: identify root cause of a failure (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "trace_backfill",
+    description: "Trace Fabric: backfill missing trace data (F3 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "incident_watch",
+    description: "Incident Engine: detect and report active incidents (B organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "incident_active",
+    description: "Incident Engine: list active incidents (B organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "incident_history",
+    description: "Incident Engine: get incident history (B organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "incident_classify",
+    description: "Incident Engine: classify an incident (B organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "incident_recover",
+    description: "Incident Engine: attempt recovery on an incident (B organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "research_filter",
+    description: "Research Frontier: filter signals by novelty/value (D organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "research_invoke",
+    description: "Research Frontier: invoke LLM research on a signal (D organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "research_findings",
+    description: "Research Frontier: list recent findings (D organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "research_pending",
+    description: "Research Frontier: list pending research items (D organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "research_get",
+    description: "Research Frontier: get full finding details (D organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "opportunity_scan",
+    description: "Opportunity Engine: scan upstream signals + propose opportunities (C organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "opportunity_list",
+    description: "Opportunity Engine: list proposals with filters (C organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "opportunity_get",
+    description: "Opportunity Engine: get proposal details (C organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "opportunity_approve",
+    description: "Opportunity Engine: approve a proposal (C organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "opportunity_reject",
+    description: "Opportunity Engine: reject a proposal (C organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "proactive_predict",
+    description: "Proactive Engine: scan upstream patterns + generate predictions + schedule reminders (C.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "proactive_list_predictions",
+    description: "Proactive Engine: list predictions with horizon/kind/outcome filters (C.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "proactive_list_reminders",
+    description: "Proactive Engine: list reminders with status filter (C.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "proactive_dismiss_reminder",
+    description: "Proactive Engine: dismiss a reminder (C.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "proactive_calibration",
+    description: "Proactive Engine: show prediction accuracy (confirmed/disproved/pending) (C.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_snapshot",
+    description: "Economic Controller: full unified snapshot — budget + costs + P&L + attribution (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_budget",
+    description: "Economic Controller: just budget state — CF daily/monthly, OpenCode quota (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_costs",
+    description: "Economic Controller: per-organ cost attribution for window (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_pnl",
+    description: "Economic Controller: trading P&L ex-airdrops with fee drag breakdown (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_attribution",
+    description: "Economic Controller: map specific costs to specific organs (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "economic_check",
+    description: "Economic Controller: budget gate — is it safe to proceed with new spend? (E organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_compose",
+    description: "Initiative Engine: read approved opportunities + proactive predictions, compose into initiatives (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_list",
+    description: "Initiative Engine: list initiatives with filters (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_get",
+    description: "Initiative Engine: get full initiative details (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_validate",
+    description: "Initiative Engine: validate a specific initiative (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_submit",
+    description: "Initiative Engine: submit initiative to F0 authority gate (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "initiative_record_execution",
+    description: "Initiative Engine: operator records execution outcome for a submitted initiative (F organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "capability_mine",
+    description: "Capability Forge: mine successful initiatives for patterns (F.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "capability_list_patterns",
+    description: "Capability Forge: list mined patterns with filters (F.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "capability_generate_template",
+    description: "Capability Forge: generate capability descriptor from a pattern (F.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "capability_list_templates",
+    description: "Capability Forge: list templates with status filter (F.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "capability_register",
+    description: "Capability Forge: operator approves/rejects a template (deploy risk, F0-gated) (F.5 organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_send",
+    description: "A2A Boundary: send a message with envelope + durable delivery log (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_list_messages",
+    description: "A2A Boundary: list sent messages with status/sender/recipient filters (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_get_message",
+    description: "A2A Boundary: get full message details including delivery history (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_ack",
+    description: "A2A Boundary: operator/recipient acknowledges a delivered message (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_list_routes",
+    description: "A2A Boundary: list available sender -> recipient routes (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "a2a_check_delivery",
+    description: "A2A Boundary: re-check status of pending/failed messages + retry (G organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_compress",
+    description: "Experience-to-Learning: scan all organ DBs and create compressed chunks (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_distill",
+    description: "Experience-to-Learning: group chunks and find recurring patterns (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_consolidate",
+    description: "Experience-to-Learning: distill + persist semantic memories (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_list_memories",
+    description: "Experience-to-Learning: list consolidated memories with filters (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_get_memory",
+    description: "Experience-to-Learning: get full memory + lineage (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "experience_stats",
+    description: "Experience-to-Learning: compression/distillation statistics (H organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "concordia_assemble",
+    description: "Concordia: build full fleet snapshot of all 13 organs (I organ, final integration).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "concordia_verify",
+    description: "Concordia: run health check on all organs + log per-organ verification (I organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "concordia_demonstrate",
+    description: "Concordia: execute end-to-end cross-organ workflow (non-destructive) (I organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  },
+  {
+    name: "concordia_list_assemblies",
+    description: "Concordia: list previous assemblies + verifications (I organ).",
+    inputSchema: SCHEMA_DESCRIPTION_BASE
+  }
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1302,64 +1693,11 @@ async function dilaStatus(db, args = {}) {
 }
 
 async function dilaWorkers(db, args = {}) {
-  // Lists worker fleet state by reading /tmp/llm-workers/<name>/status.log
-  // and counting alive processes per name.
-  const { exec } = await import('child_process');
-  const { promisify } = await import('util');
-  const execAsync = promisify(exec);
-  const familyFilter = args?.family || 'all';
-  const limit = Math.min(100, Number(args?.limit) || 50);
-
-  // Worker registry (subset of fleet)
-  const knownWorkers = {
-    claude: ['cc-haiku', 'cc-be'],
-    opencode: ['oc-pickle', 'oc-data', 'oc-frontend', 'oc-qa', 'oc-ops', 'oc-lightning', 'oc-vision'],
-    wr: ['wr-mistral-1', 'wr-mistral-2', 'wr-mistral-3', 'wr-mistral-4',
-         'wr-pickle', 'wr-frontend', 'wr-ops',
-         'wr-grok', 'wr-grok-reasoning', 'wr-grok-4.6'],
-  };
-  let workersToCheck = [];
-  if (familyFilter === 'all') {
-    for (const f of Object.keys(knownWorkers)) workersToCheck = workersToCheck.concat(knownWorkers[f].map(n => ({ name: n, family: f })));
-  } else {
-    workersToCheck = (knownWorkers[familyFilter] || []).map(n => ({ name: n, family: familyFilter }));
-  }
-
-  // Check alive state
-  const result = [];
-  for (const w of workersToCheck.slice(0, limit)) {
-    let alive = false;
-    let lastStatus = null;
-    try {
-      const { stdout } = await execAsync(`ps aux | grep "name ${w.name}" | grep -v grep | wc -l`);
-      alive = parseInt(stdout.trim()) > 0;
-    } catch { /* observed: ps may fail in restricted envs */ }
-    // Try reading status log (async fs)
-    try {
-      const fsp = await import('fs/promises');
-      const logPath = `/tmp/llm-workers/${w.name}/status.log`;
-      const text = await fsp.readFile(logPath, 'utf8').catch(() => null);
-      if (text) {
-        const lines = text.trim().split('\n');
-        if (lines.length) lastStatus = lines[lines.length - 1].replace(/\s+/g, ' ').slice(0, 140);
-      }
-    } catch { /* observed: status.log may be absent */ }
-    result.push({
-      name: w.name,
-      family: w.family,
-      alive,
-      last_status: lastStatus,
-    });
-  }
-  const aliveCount = result.filter(r => r.alive).length;
-  return {
-    ok: true,
-    family: familyFilter,
-    total: result.length,
-    alive: aliveCount,
-    workers: result,
-    ts: new Date().toISOString(),
-  };
+  const { listDilaWorkers } = await import("./dila-workers.js");
+  return listDilaWorkers({
+    family: args?.family || "all",
+    limit: args?.limit || 50,
+  });
 }
 
 async function dilaSkillList(db, args = {}) {
@@ -1464,7 +1802,7 @@ async function dilaCompress(db, args = {}) {
 
 // ═══════════════════════════════════════════════════════════════════════
 // DHTP — Dynamic Hybrid Tokenization Protocol (Sprint 60+)
-// 33:1 context compression for chat prompts
+// HASH-mode design target (~33:1 on DTU refs; live IR ~1.2×) context compression for chat prompts
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
@@ -1649,6 +1987,250 @@ async function dhtpStats(db, args = {}) {
   }
 }
 
+async function toolCompileUniverse(db, args = {}) {
+  try {
+    const { compileToolUniverse } = await import("./runtime/tool-universe-compiler.js");
+    return compileToolUniverse(args.task || args.intent || "", {
+      budget: args.budget || 12,
+      includeReflected: args.include_reflected !== false,
+      handTools: MCP_TOOLS,
+      alwaysInclude: args.always_include || [],
+    });
+  } catch (e) {
+    return { ok: false, error: `tool_compile_universe failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function repoGraphOverview(db, args = {}) {
+  try {
+    const { getRepositoryWorldModel } = await import("./runtime/repository-world-model.js");
+    const model = await getRepositoryWorldModel(db, { repoRoot: args.repo_root });
+    return { ok: true, overview: model.overview, refreshed: model.refreshed };
+  } catch (e) {
+    return { ok: false, error: `repo_graph_overview failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function repoGraphIndex(db, args = {}) {
+  try {
+    const { ensureRepoWorldModel } = await import("./runtime/repository-world-model.js");
+    return ensureRepoWorldModel(db, args.repo_root);
+  } catch (e) {
+    return { ok: false, error: `repo_graph_index failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function repoGraphContext(db, args = {}) {
+  try {
+    const { buildRepoContextForTask } = await import("./runtime/repository-world-model.js");
+    return buildRepoContextForTask(db, {
+      intent: args.intent,
+      symbol: args.symbol,
+      file: args.file,
+      keywords: args.keywords,
+    }, { repoRoot: args.repo_root });
+  } catch (e) {
+    return { ok: false, error: `repo_graph_context failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function repoGraphLinkDtu(db, args = {}) {
+  try {
+    const { linkDtuToRepo } = await import("./runtime/repository-world-model.js");
+    return linkDtuToRepo(db, args.dtu_id, args.repo_ref, args.link_kind || "references", args.meta);
+  } catch (e) {
+    return { ok: false, error: `repo_graph_link_dtu failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function memoryBenchmarkRun(db, args = {}) {
+  try {
+    const { runMemoryBenchmark } = await import("./runtime/memory-benchmark.js");
+    return runMemoryBenchmark(db, { caseIds: args.case_ids });
+  } catch (e) {
+    return { ok: false, error: `memory_benchmark_run failed: ${e?.message || String(e)}` };
+  }
+}
+
+/** Invoke CAS/FEA/engineering/physics/chem/accounting oracles — real dispatch + macro_call_log. */
+async function substrateInvokeOracles(db, args = {}) {
+  try {
+    const run = globalThis.__concordRunMcpTool;
+    if (typeof run !== "function") {
+      return { ok: false, error: "dispatch_unavailable", detail: "server not fully booted" };
+    }
+    const { runSubstrateOracles } = await import("./runtime/substrate-oracles.js");
+    const mod = await import("../server.js");
+    const T = mod.__TEST__;
+    const ctx = T?.makeInternalCtx ? T.makeInternalCtx("substrate-mcp") : { actor: { userId: "substrate-mcp" } };
+    return await runSubstrateOracles({
+      dispatch: (domain, name, input, c) => run(domain, name, input, c),
+      ctx,
+      db,
+      logCalls: true,
+      userId: "substrate-mcp",
+      caseIds: args.case_ids,
+    });
+  } catch (e) {
+    return { ok: false, error: `substrate_invoke_oracles failed: ${e?.message || String(e)}` };
+  }
+}
+
+async function dtuRetrievalEval(db, args = {}) {
+  try {
+    const { runDtuRetrievalEval } = await import("./runtime/dtu-retrieval-eval.js");
+    return runDtuRetrievalEval(db);
+  } catch (e) {
+    return { ok: false, error: `dtu_retrieval_eval failed: ${e?.message || String(e)}` };
+  }
+}
+
+/* ========================================================================
+ * ORGAN WRAPPERS — stdio JSON-RPC delegates to standalone Python organs.
+ * Each wrapper spawns the organ's Python entrypoint and forwards the call.
+ * ======================================================================== */
+
+export async function _organCallForTest(...a) { return organCall(...a); }
+
+async function organCall(organPath, toolName, args, organLabel) {
+  const { spawn } = await import("node:child_process");
+  const path = await import("node:path");
+  const python = process.env.ORGAN_PYTHON || "python3";
+  const target = process.env[organLabel + "_PATH"] || organPath;
+
+  const f0TraceId = (args && args.__trace_id) ||
+                    globalThis.__concordLastTraceId ||
+                    null;
+  const cleanArgs = { ...(args || {}) };
+  delete cleanArgs.__trace_id;
+
+  return new Promise((resolve) => {
+    try {
+      const init = JSON.stringify({
+        jsonrpc: "2.0", id: 1, method: "initialize",
+        params: { protocolVersion: "2024-11-05", capabilities: {},
+                  clientInfo: { name: "concord-mcp", version: "1.0.0" } },
+      });
+      const params = { name: toolName, arguments: cleanArgs };
+      if (f0TraceId) params._meta = { trace_id: f0TraceId };
+      const callMsg = JSON.stringify({
+        jsonrpc: "2.0", id: 2, method: "tools/call",
+        params,
+      });
+      const proc = spawn(python, [target]);
+      let out = "";
+      let err = "";
+      proc.stdout.on("data", d => out += d);
+      proc.stderr.on("data", d => err += d);
+      proc.on("close", () => {
+        try {
+          const lines = out.split("\n").filter(l => l.trim());
+          for (const line of lines) {
+            try {
+              const msg = JSON.parse(line);
+              if (msg.id === 2 && msg.result?.content?.[0]?.text) {
+                const text = msg.result.content[0].text;
+                try {
+                  const organResult = JSON.parse(text);
+                  if (f0TraceId) organResult.f0_trace_id = f0TraceId;
+                  resolve(organResult);
+                  return;
+                } catch {
+                  resolve({ ok: false, error: organLabel + ": unparseable text", raw: text.slice(0, 500), f0_trace_id: f0TraceId });
+                  return;
+                }
+              }
+            } catch { /* noop */ }
+          }
+          resolve({ ok: false, error: organLabel + ": no valid response", raw: out.slice(0, 500), stderr: err.slice(0, 200), f0_trace_id: f0TraceId });
+        } catch (e) {
+          resolve({ ok: false, error: organLabel + " parse failed: " + e.message });
+        }
+      });
+      proc.on("error", (e) => {
+        resolve({ ok: false, error: organLabel + " spawn failed: " + e.message });
+      });
+      // If the organ script is missing or exits before reading (any box that
+      // isn't the owner's Mac — the ORGANS paths below are local), the write
+      // hits a closed pipe and EPIPE arrives as an async stream 'error'. The
+      // try/catch can't see it, and with no listener it crashed the whole
+      // backend (seen on the GPU pod 2026-09-27). The close handler above
+      // already resolves an honest { ok:false }.
+      proc.stdin.on("error", () => { /* organ exited early; close handler reports it */ });
+      proc.stdin.write(init + "\n" + callMsg + "\n");
+      proc.stdin.end();
+    } catch (e) {
+      resolve({ ok: false, error: organLabel + " wrapper failed: " + e.message });
+    }
+  });
+}
+
+// Exported (2026-09-05) so lib/runtime/capability-registry.js's
+// MCP_ORGAN_OWNERS table can be drift-checked against this map by
+// tests/runtime/capability-registry-organ-paths.test.js, rather than the two
+// silently disagreeing if an organ script is ever relocated.
+export const ORGANS = {
+  BROWSER_ORGAN:  "/Users/dutch/.local/bin/browser-organ.py",
+  SENTINEL:       "/Users/dutch/.local/bin/sentinel-organ.py",
+  TRACE_FABRIC:   "/Users/dutch/.local/bin/trace-fabric.py",
+  INCIDENT_ENGINE:"/Users/dutch/.local/bin/incident-engine.py",
+  RESEARCH:       "/Users/dutch/.local/bin/research-frontier.py",
+  OPPORTUNITY:    "/Users/dutch/.local/bin/opportunity-engine.py",
+  PROACTIVE:      "/Users/dutch/.local/bin/proactive-engine.py",
+  ECONOMIC:       "/Users/dutch/.local/bin/economic-controller.py",
+  INITIATIVE:     "/Users/dutch/.local/bin/initiative-engine.py",
+  CAPABILITY_FORGE: "/Users/dutch/.local/bin/capability-forge.py",
+  A2A_BOUNDARY:    "/Users/dutch/.local/bin/a2a-boundary.py",
+  EXPERIENCE_LEARNER: "/Users/dutch/.local/bin/experience-learner.py",
+  CONCORDIA:        "/Users/dutch/.local/bin/concordia.py",
+};
+
+async function browserOrganCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.BROWSER_ORGAN, toolName, args, "browser-organ");
+}
+async function sentinelOrganCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.SENTINEL, toolName, args, "sentinel-organ");
+}
+async function traceFabricCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.TRACE_FABRIC, toolName, args, "trace-fabric");
+}
+async function incidentEngineCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.INCIDENT_ENGINE, toolName, args, "incident-engine");
+}
+async function researchFrontierCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.RESEARCH, toolName, args, "research-frontier");
+}
+async function opportunityEngineCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.OPPORTUNITY, toolName, args, "opportunity-engine");
+}
+async function proactiveEngineCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.PROACTIVE, toolName, args, "proactive-engine");
+}
+
+async function economicControllerCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.ECONOMIC, toolName, args, "economic-controller");
+}
+
+async function initiativeEngineCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.INITIATIVE, toolName, args, "initiative-engine");
+}
+
+async function capabilityForgeCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.CAPABILITY_FORGE, toolName, args, "capability-forge");
+}
+
+async function a2aBoundaryCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.A2A_BOUNDARY, toolName, args, "a2a-boundary");
+}
+
+async function experienceLearnerCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.EXPERIENCE_LEARNER, toolName, args, "experience-learner");
+}
+
+async function concordiaCall(db, args, STATE, toolName) {
+  return organCall(ORGANS.CONCORDIA, toolName, args, "concordia");
+}
+
 export async function callMCPTool(db, toolName, args, STATE) {
   switch (toolName) {
     case "dila_status":          return dilaStatus(db, args);
@@ -1661,6 +2243,14 @@ export async function callMCPTool(db, toolName, args, STATE) {
   case "dhtp_detect":          return dhtpDetect(db, args);
   case "dhtp_compress":        return dhtpCompress(db, args);
   case "dhtp_stats":           return dhtpStats(db, args);
+  case "tool_compile_universe": return toolCompileUniverse(db, args);
+  case "repo_graph_overview":  return repoGraphOverview(db, args);
+  case "repo_graph_index":     return repoGraphIndex(db, args);
+  case "repo_graph_context":   return repoGraphContext(db, args);
+  case "repo_graph_link_dtu":  return repoGraphLinkDtu(db, args);
+  case "memory_benchmark_run": return memoryBenchmarkRun(db, args);
+  case "substrate_invoke_oracles": return substrateInvokeOracles(db, args);
+  case "dtu_retrieval_eval":   return dtuRetrievalEval(db, args);
   case "breakdown_decompose":  return breakdownDecompose(db, args, STATE);
   case "breakdown_dispatch":   return breakdownDispatch(db, args, STATE);
   case "breakdown_stitch":     return breakdownStitch(db, args);
@@ -1695,6 +2285,85 @@ export async function callMCPTool(db, toolName, args, STATE) {
     case "vault_stats":        return vaultStats(db, args);
     case "vault_broadcast":    return vaultBroadcast(db, args);
     case "vault_inbox":        return vaultInbox(db, args);
+        // === 2026-08-31 BROWSER ORGAN (O001) ===
+    case "browser_check_coins":          return browserOrganCall(db, args, STATE, "browser_check_coins");
+    case "browser_check_incidents":      return browserOrganCall(db, args, STATE, "browser_check_incidents");
+    case "browser_check_rate_limits":    return browserOrganCall(db, args, STATE, "browser_check_rate_limits");
+    // === 2026-08-31 SENTINEL ORGAN (A) ===
+    case "sentinel_watch":               return sentinelOrganCall(db, args, STATE, "sentinel_watch");
+    case "sentinel_review_alerts":       return sentinelOrganCall(db, args, STATE, "sentinel_review_alerts");
+    case "sentinel_health_snapshot":     return sentinelOrganCall(db, args, STATE, "sentinel_health_snapshot");
+    case "sentinel_gate_diff":           return sentinelOrganCall(db, args, STATE, "sentinel_gate_diff");
+    // === 2026-08-31 TRACE FABRIC ORGAN (F3) ===
+    case "trace_record":                 return traceFabricCall(db, args, STATE, "trace_record");
+    case "trace_lookup":                 return traceFabricCall(db, args, STATE, "trace_lookup");
+    case "trace_recent":                 return traceFabricCall(db, args, STATE, "trace_recent");
+    case "trace_tool_history":           return traceFabricCall(db, args, STATE, "trace_tool_history");
+    case "trace_root_cause":             return traceFabricCall(db, args, STATE, "trace_root_cause");
+    case "trace_backfill":               return traceFabricCall(db, args, STATE, "trace_backfill");
+    // === 2026-08-31 INCIDENT ENGINE ORGAN (B) ===
+    case "incident_watch":               return incidentEngineCall(db, args, STATE, "incident_watch");
+    case "incident_active":              return incidentEngineCall(db, args, STATE, "incident_active");
+    case "incident_history":             return incidentEngineCall(db, args, STATE, "incident_history");
+    case "incident_classify":            return incidentEngineCall(db, args, STATE, "incident_classify");
+    case "incident_recover":             return incidentEngineCall(db, args, STATE, "incident_recover");
+    // === 2026-08-31 RESEARCH FRONTIER ORGAN (D) ===
+    case "research_filter":              return researchFrontierCall(db, args, STATE, "research_filter");
+    case "research_invoke":              return researchFrontierCall(db, args, STATE, "research_invoke");
+    case "research_findings":            return researchFrontierCall(db, args, STATE, "research_findings");
+    case "research_pending":             return researchFrontierCall(db, args, STATE, "research_pending");
+    case "research_get":                 return researchFrontierCall(db, args, STATE, "research_get");
+    // === 2026-08-31 OPPORTUNITY ENGINE ORGAN (C) ===
+    case "opportunity_scan":             return opportunityEngineCall(db, args, STATE, "opportunity_scan");
+    case "opportunity_list":             return opportunityEngineCall(db, args, STATE, "opportunity_list");
+    case "opportunity_get":              return opportunityEngineCall(db, args, STATE, "opportunity_get");
+    case "opportunity_approve":          return opportunityEngineCall(db, args, STATE, "opportunity_approve");
+    case "opportunity_reject":           return opportunityEngineCall(db, args, STATE, "opportunity_reject");
+    // === 2026-08-31 PROACTIVE ENGINE ORGAN (C.5) ===
+    case "proactive_predict":            return proactiveEngineCall(db, args, STATE, "proactive_predict");
+    case "proactive_list_predictions":   return proactiveEngineCall(db, args, STATE, "proactive_list_predictions");
+    case "proactive_list_reminders":     return proactiveEngineCall(db, args, STATE, "proactive_list_reminders");
+    case "proactive_dismiss_reminder":   return proactiveEngineCall(db, args, STATE, "proactive_dismiss_reminder");
+    case "proactive_calibration":        return proactiveEngineCall(db, args, STATE, "proactive_calibration");
+    // === 2026-08-31 ECONOMIC CONTROLLER ORGAN (E) ===
+    case "economic_snapshot":            return economicControllerCall(db, args, STATE, "economic_snapshot");
+    case "economic_budget":              return economicControllerCall(db, args, STATE, "economic_budget");
+    case "economic_costs":               return economicControllerCall(db, args, STATE, "economic_costs");
+    case "economic_pnl":                 return economicControllerCall(db, args, STATE, "economic_pnl");
+    case "economic_attribution":         return economicControllerCall(db, args, STATE, "economic_attribution");
+    case "economic_check":               return economicControllerCall(db, args, STATE, "economic_check");
+    // === 2026-08-31 INITIATIVE ENGINE ORGAN (F) ===
+    case "initiative_compose":            return initiativeEngineCall(db, args, STATE, "initiative_compose");
+    case "initiative_list":               return initiativeEngineCall(db, args, STATE, "initiative_list");
+    case "initiative_get":                return initiativeEngineCall(db, args, STATE, "initiative_get");
+    case "initiative_validate":           return initiativeEngineCall(db, args, STATE, "initiative_validate");
+    case "initiative_submit":             return initiativeEngineCall(db, args, STATE, "initiative_submit");
+    case "initiative_record_execution":   return initiativeEngineCall(db, args, STATE, "initiative_record_execution");
+    // === 2026-08-31 CAPABILITY FORGE ORGAN (F.5) ===
+    case "capability_mine":                return capabilityForgeCall(db, args, STATE, "capability_mine");
+    case "capability_list_patterns":       return capabilityForgeCall(db, args, STATE, "capability_list_patterns");
+    case "capability_generate_template":   return capabilityForgeCall(db, args, STATE, "capability_generate_template");
+    case "capability_list_templates":      return capabilityForgeCall(db, args, STATE, "capability_list_templates");
+    case "capability_register":            return capabilityForgeCall(db, args, STATE, "capability_register");
+    // === 2026-08-31 A2A BOUNDARY ORGAN (G) ===
+    case "a2a_send":                       return a2aBoundaryCall(db, args, STATE, "a2a_send");
+    case "a2a_list_messages":              return a2aBoundaryCall(db, args, STATE, "a2a_list_messages");
+    case "a2a_get_message":                return a2aBoundaryCall(db, args, STATE, "a2a_get_message");
+    case "a2a_ack":                        return a2aBoundaryCall(db, args, STATE, "a2a_ack");
+    case "a2a_list_routes":                return a2aBoundaryCall(db, args, STATE, "a2a_list_routes");
+    case "a2a_check_delivery":             return a2aBoundaryCall(db, args, STATE, "a2a_check_delivery");
+    // === 2026-08-31 EXPERIENCE-TO-LEARNING ORGAN (H) ===
+    case "experience_compress":            return experienceLearnerCall(db, args, STATE, "experience_compress");
+    case "experience_distill":             return experienceLearnerCall(db, args, STATE, "experience_distill");
+    case "experience_consolidate":         return experienceLearnerCall(db, args, STATE, "experience_consolidate");
+    case "experience_list_memories":       return experienceLearnerCall(db, args, STATE, "experience_list_memories");
+    case "experience_get_memory":          return experienceLearnerCall(db, args, STATE, "experience_get_memory");
+    case "experience_stats":               return experienceLearnerCall(db, args, STATE, "experience_stats");
+    // === 2026-08-31 CONCORDIA INTEGRATION ORGAN (I) ===
+    case "concordia_assemble":             return concordiaCall(db, args, STATE, "concordia_assemble");
+    case "concordia_verify":               return concordiaCall(db, args, STATE, "concordia_verify");
+    case "concordia_demonstrate":          return concordiaCall(db, args, STATE, "concordia_demonstrate");
+    case "concordia_list_assemblies":      return concordiaCall(db, args, STATE, "concordia_list_assemblies");
     default:
       return { ok: false, error: "Unknown tool: " + toolName };
   }

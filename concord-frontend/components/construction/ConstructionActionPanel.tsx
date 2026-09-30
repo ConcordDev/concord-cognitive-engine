@@ -23,6 +23,7 @@ import {
   useRecallableAction,
   RecallSlot,
 } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -173,7 +174,7 @@ export function ConstructionActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Job report — ${progResult?.projectStatus ?? 'project'}`, tags: ['construction', 'jobsite', progResult?.projectStatus].filter((t): t is string => !!t), source: 'construction:job:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gc: { takeoff: takeoffResult, cpm: cpmResult, safety: safetyResult, prog: progResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Job report — ${progResult?.projectStatus ?? 'project'}`, tags: ['construction', 'jobsite', progResult?.projectStatus].filter((t): t is string => !!t), source: 'construction:job:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gc: { takeoff: takeoffResult, cpm: cpmResult, safety: safetyResult, prog: progResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('construction.mintedDtuId', id, { label: `Job DTU ${id.slice(0, 8)}…` }); ok(`Job DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -202,7 +203,7 @@ export function ConstructionActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Cost benchmark`, tags: ['construction', 'cost', 'benchmark', 'public'], source: 'construction:cost:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, takeoff: takeoffResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Cost benchmark`, tags: ['construction', 'cost', 'benchmark', 'public'], source: 'construction:cost:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, takeoff: takeoffResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

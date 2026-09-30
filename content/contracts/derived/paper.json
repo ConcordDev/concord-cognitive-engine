@@ -660,6 +660,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "paper.paper-version-diff",
+      "name": "paper-version-diff"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-version-list",
+      "name": "paper-version-list"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-version-save",
+      "name": "paper-version-save"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "paper.pin",
       "name": "pin"
     },
@@ -887,5 +926,5 @@
   ],
   "domain": "paper",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 68
+  "macroCount": 71
 }
