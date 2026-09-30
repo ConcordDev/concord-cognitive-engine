@@ -146,7 +146,7 @@ func apply_segment(segment: String) -> Dictionary:
 func apply_hour(hour: int) -> Dictionary:
 	if schedule == null:
 		return {}
-	var seg := schedule.segment_for_hour(hour)
+	var seg: String = schedule.segment_for_hour(hour)
 	return apply_segment(seg)
 
 
