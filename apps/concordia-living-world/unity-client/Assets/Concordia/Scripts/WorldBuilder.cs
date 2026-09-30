@@ -704,8 +704,7 @@ System.Collections.IEnumerator DressHubPostReadyStaged()
             try { ConcordiaHUD.Announce(wdef.title, wdef.refusal); }
             catch (System.Exception ex) { Debug.LogException(ex); }
             MarkStage("staged hub phase=arena");
-            try { DressArena(); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
+            TimedStep("DressArena", DressArena);
             yield return null;
 
             if (Canon.Gates != null)
@@ -716,7 +715,7 @@ System.Collections.IEnumerator DressHubPostReadyStaged()
                     {
                         var gp = new Vector3(Mathf.Cos(gate.angle) * Canon.RingRadius, 0, Mathf.Sin(gate.angle) * Canon.RingRadius);
                         var yaw = -gate.angle * Mathf.Rad2Deg;
-                        DressEmbassy(gate, gp, yaw);
+                        TimedStep("DressEmbassy " + gate.world, () => DressEmbassy(gate, gp, yaw));
                     }
                     catch (System.Exception ex) { Debug.LogException(ex); }
                     yield return null;
@@ -729,23 +728,19 @@ System.Collections.IEnumerator DressHubPostReadyStaged()
             MarkStage("staged hub phase=guests_done");
 
             MarkStage("staged hub phase=lore");
-            try { DressLore(); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
+            TimedStep("DressLore", DressLore);
             yield return null;
             MarkStage("staged hub phase=city_ring");
-            try { DressCityRing(); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
+            TimedStep("DressCityRing", DressCityRing);
             yield return null;
             MarkStage("staged hub phase=forest");
             yield return DressForestStaged();
 
             MarkStage("staged hub phase=realmfill");
             Debug.Log("[Concordia] LeanPlay: RealmFill.Populate + StoreDress.Hub staged");
-            try { RealmFill.Populate(root, WorldId.Hub, false); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
-            yield return null;
-            try { StoreDress.Hub(root); }
-            catch (System.Exception ex) { Debug.LogException(ex); }
+            // Staged: one-frame Populate held the frame 3.4 s (editor) and froze WebGL.
+            yield return RealmFill.PopulateStaged(root, WorldId.Hub);
+            TimedStep("StoreDress.Hub", () => StoreDress.Hub(root));
             yield return null;
             yield return RealmFill.PeopleStaged(root, WorldId.Hub);
             MarkStage("staged hub phase=crowd");
@@ -763,6 +758,20 @@ System.Collections.IEnumerator DressHubPostReadyStaged()
             yield return null;
         }
 
+
+        /// Runs one synchronous Hub-dressing step and logs it when it holds the
+        /// frame for more than 30 ms: each step runs inside a coroutine frame,
+        /// so a long one is a visible stall (seconds on WebGL). Exceptions are
+        /// logged, never thrown, as before.
+        static void TimedStep(string name, System.Action step)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try { step(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            sw.Stop();
+            if (sw.ElapsedMilliseconds > 30)
+                Debug.Log($"[HubStageCost] {name} held the frame {sw.ElapsedMilliseconds} ms");
+        }
 
         System.Collections.IEnumerator DressGuestsStaged()
         {

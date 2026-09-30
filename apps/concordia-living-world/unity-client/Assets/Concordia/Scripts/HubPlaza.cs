@@ -74,13 +74,15 @@ namespace Concordia
             const float step = 5.6f;
             const float extent = 32f;
             const int batch = 6;
-            for (float x = -extent; x <= extent; x += step)
+            bool havePanel = FreePacks.Mesh("granite_panel") != null;
+            for (float x = -extent; havePanel && x <= extent; x += step)
             for (float z = -extent; z <= extent; z += step)
             {
                 if (x * x + z * z > (extent + 1f) * (extent + 1f)) continue;
-                var tile = FreePacks.SpawnStore("granite_panel", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false)
-                           ?? FreePacks.SpawnStore("platform.001", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false)
-                           ?? FreePacks.SpawnStore("platform", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false);
+                // Only a thin panel tiles well. The old fallbacks ("platform",
+                // "platform.001") are 1.05 m plinths — ~130 of them turned the
+                // Court into a checkerboard of raised blocks with gaps.
+                var tile = FreePacks.SpawnStore("granite_panel", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false);
                 if (!tile) continue;
                 tile.name = "CourtTile_" + placed;
                 PaintCourt(tile, court);
@@ -89,7 +91,8 @@ namespace Concordia
             }
             if (placed == 0)
             {
-                var floor = FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: true, byHeight: false);
+                var floor = FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: false, byHeight: false)
+                            ?? ContinuousFloor(root, court);
                 PaintCourt(floor, court);
             }
             var arena = FreePacks.SpawnStore("granite_panel", root, Canon.Arena, 0f, 8f, required: false, byHeight: false)
@@ -122,13 +125,15 @@ namespace Concordia
             int placed = 0;
             const float step = 5.6f;
             const float extent = 32f;
-            for (float x = -extent; x <= extent; x += step)
+            bool havePanel = FreePacks.Mesh("granite_panel") != null;
+            for (float x = -extent; havePanel && x <= extent; x += step)
             for (float z = -extent; z <= extent; z += step)
             {
                 if (x * x + z * z > (extent + 1f) * (extent + 1f)) continue;
-                var tile = FreePacks.SpawnStore("granite_panel", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false)
-                           ?? FreePacks.SpawnStore("platform.001", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false)
-                           ?? FreePacks.SpawnStore("platform", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false);
+                // Only a thin panel tiles well. The old fallbacks ("platform",
+                // "platform.001") are 1.05 m plinths — ~130 of them turned the
+                // Court into a checkerboard of raised blocks with gaps.
+                var tile = FreePacks.SpawnStore("granite_panel", root, new Vector3(x, 0f, z), 0f, 5.4f, required: false, byHeight: false);
                 if (!tile) continue;
                 tile.name = "CourtTile_" + placed;
                 PaintCourt(tile, court);
@@ -136,7 +141,8 @@ namespace Concordia
             }
             if (placed == 0)
             {
-                var floor = FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: true, byHeight: false);
+                var floor = FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: false, byHeight: false)
+                            ?? ContinuousFloor(root, court);
                 PaintCourt(floor, court);
             }
             var arena = FreePacks.SpawnStore("granite_panel", root, Canon.Arena, 0f, 8f, required: false, byHeight: false)
@@ -148,6 +154,13 @@ namespace Concordia
                 PaintCourt(arena, court);
             }
         }
+
+        /// One flat paved disc over the tile grid's footprint (radius ~33 m).
+        /// Named CourtTile_* so CourtGroundDress still re-materials it;
+        /// PrimSurface gives it world-sized texture tiling.
+        static GameObject ContinuousFloor(Transform root, Material court)
+            => HubLook.PrimSurface(root, PrimitiveType.Cylinder, new Vector3(0f, 0.03f, 0f),
+                new Vector3(66f, 0.03f, 66f), court, "CourtTile_Floor", true);
 
         static void PaintCourt(GameObject go, Material court)
         {
