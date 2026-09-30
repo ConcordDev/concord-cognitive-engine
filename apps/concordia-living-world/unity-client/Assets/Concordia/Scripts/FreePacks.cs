@@ -904,6 +904,26 @@ namespace Concordia
                 BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_normal"));
         }
 
+        /// Bind the Rocketbox maps for a material NAME (e.g. "m002_body") onto dst —
+        /// editor: global exact-name search; builds: the BuildAssets registry.
+        /// For bodies whose slots no longer carry the Rocketbox material names.
+        public static bool SkinByName(Material dst, string matName)
+        {
+            if (dst == null || string.IsNullOrEmpty(matName)) return false;
+#if UNITY_EDITOR
+            Texture2D Load(string wanted)
+            {
+                var p = FindSkinPath(wanted);
+                return p != null ? RecordSkin(wanted, AssetDatabase.LoadAssetAtPath<Texture2D>(p)) : null;
+            }
+            return ApplySkin(dst, Load(matName + "_color"), Load(matName + "_normal"));
+#else
+            return ApplySkin(dst,
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_color"),
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_normal"));
+#endif
+        }
+
         static bool ApplySkin(Material dst, Texture2D color, Texture2D nrm)
         {
             if (!color) return false;

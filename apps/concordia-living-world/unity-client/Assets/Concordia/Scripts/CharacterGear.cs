@@ -49,6 +49,11 @@ namespace Concordia
             if (!socket) return null;
             var go = Object.Instantiate(mesh);
             go.name = "CX_Gear_" + slot + "_" + stem;
+            // Generated gear prefabs (CxDress.GeneratedGearPrefabPath) bypass the
+            // spawn funnel, so a glTFast Shader Graph material (the staff) and an
+            // empty material slot (the back longsword) both drew magenta.
+            // PaintIfBlank upgrades to URP and paints empty slots.
+            FreePacks.PaintIfBlank(go, generatedPath);
             bool shield = stem.ToLowerInvariant().Contains("shield");
             if (slot == Slot.HandR || slot == Slot.HandL)
             {

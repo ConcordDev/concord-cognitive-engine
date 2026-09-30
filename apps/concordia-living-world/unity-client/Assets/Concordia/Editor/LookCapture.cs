@@ -63,6 +63,11 @@ namespace Concordia.Editor
             double elapsed = EditorApplication.timeSinceStartup - _playStarted;
             float wait = SessionState.GetFloat(WaitKey, 45f);
             if (elapsed < wait) return;
+            // A fixed wait isn't enough: after a script recompile or asset reimport
+            // the world (player, Court, its people) can still be building at 45 s,
+            // which once looked like "Linear color space removes the Court". Wait
+            // until the player and the Court's people exist, up to 180 s more.
+            if (!WorldReady() && elapsed < wait + 180f) return;
             // Pin the time of day so runs are comparable (the clock comes
             // from the server and moves between runs), then let lighting settle.
             if (_hourPinnedAt < 0)
@@ -103,10 +108,79 @@ namespace Concordia.Editor
                 t.position = pos; t.rotation = rot;
             }
             File.WriteAllText(Path.Combine(dir, "settings.txt"),
-                $"colorSpace={PlayerSettings.colorSpace}\nhour={WorldClock.Hour}\nshots={shots}\ncamera-pose={poseUsed}\ncamera={(cam ? cam.name : "none")}\ntime={System.DateTime.Now:O}\n");
+                $"colorSpace={PlayerSettings.colorSpace}\nhour={WorldClock.Hour}\nworldReady={WorldReady()}\nwaitedSeconds={EditorApplication.timeSinceStartup - _playStarted:F0}\nshots={shots}\ncamera-pose={poseUsed}\ncamera={(cam ? cam.name : "none")}\ntime={System.DateTime.Now:O}\n");
+            try { File.WriteAllText(Path.Combine(dir, "scene-dump.txt"), DumpScene(cam)); }
+            catch (System.Exception e) { File.WriteAllText(Path.Combine(dir, "scene-dump.txt"), "dump failed: " + e); }
             Debug.Log($"[LookCapture] {shots} shots -> {dir}");
             EditorApplication.ExitPlaymode();
             EditorApplication.delayCall += () => EditorApplication.Exit(0);
+        }
+
+        /// Runtime facts for diagnosing the look: renderers near the camera with
+        /// their shader (missing shaders render magenta), texture tiling, the
+        /// object under the camera, fog and volume state.
+        static string DumpScene(Camera cam)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"fog={RenderSettings.fog} mode={RenderSettings.fogMode} density={RenderSettings.fogDensity} start={RenderSettings.fogStartDistance} end={RenderSettings.fogEndDistance} color={RenderSettings.fogColor}");
+            sb.AppendLine($"ambientMode={RenderSettings.ambientMode} ambientIntensity={RenderSettings.ambientIntensity} sky={RenderSettings.ambientSkyColor}");
+            foreach (var v in Object.FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None))
+            {
+                sb.Append($"volume {v.name} global={v.isGlobal} weight={v.weight} profile={(v.sharedProfile ? v.sharedProfile.name : "none")}:");
+                if (v.sharedProfile) foreach (var c in v.sharedProfile.components) sb.Append(" " + c.GetType().Name + (c.active ? "" : "(off)"));
+                sb.AppendLine();
+            }
+            if (!cam) return sb.ToString();
+            var cp = cam.transform.position;
+            if (Physics.Raycast(cp, Vector3.down, out var hit, 200f))
+                sb.AppendLine($"under-camera: {HierPath(hit.collider.transform)} y={hit.point.y:F2}");
+            var rows = new System.Collections.Generic.List<(float d, string line)>();
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                float d = Vector3.Distance(cp, r.bounds.ClosestPoint(cp));
+                if (d > 40f) continue;
+                var mats = r.sharedMaterials;
+                var parts = new System.Collections.Generic.List<string>();
+                foreach (var m in mats)
+                {
+                    if (!m) { parts.Add("<null material>"); continue; }
+                    var sh = m.shader;
+                    string shn = sh ? sh.name : "<no shader>";
+                    bool broken = !sh || !sh.isSupported || shn.Contains("InternalErrorShader");
+                    string tex = "";
+                    if (m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap")) tex = $" base={m.GetTexture("_BaseMap").name} tile={m.GetTextureScale("_BaseMap")}";
+                    else if (m.HasProperty("_MainTex") && m.GetTexture("_MainTex")) tex = $" main={m.GetTexture("_MainTex").name} tile={m.GetTextureScale("_MainTex")}";
+                    parts.Add($"{m.name}[{shn}{(broken ? " BROKEN" : "")}]{tex}");
+                }
+                var mf = r.GetComponent<MeshFilter>();
+                string mesh = mf && mf.sharedMesh ? $"{mf.sharedMesh.name}({mf.sharedMesh.vertexCount}v)" : (r is SkinnedMeshRenderer smr && smr.sharedMesh ? $"{smr.sharedMesh.name}(skinned)" : "-");
+                rows.Add((d, $"{d,6:F1}m  {HierPath(r.transform)}  mesh={mesh} size={r.bounds.size}  {string.Join(" | ", parts)}"));
+            }
+            rows.Sort((a, b) => a.d.CompareTo(b.d));
+            sb.AppendLine($"renderers within 40m: {rows.Count}");
+            foreach (var row in rows.Take(160)) sb.AppendLine(row.line);
+            return sb.ToString();
+        }
+
+        static bool WorldReady()
+        {
+            // The hero's body attaches only after the Hub finishes staging
+            // ("defer ModularPerson.AttachHero until Hub staged"), so require the
+            // player's own body, not just the Player shell, plus the Court's people.
+            var player = GameObject.Find("Player");
+            if (!player || !player.GetComponentInChildren<SkinnedMeshRenderer>()) return false;
+            int people = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                if (t.name == "AuthoredPerson" && ++people >= 8) return true;
+            return false;
+        }
+
+        static string HierPath(Transform t)
+        {
+            var s = t.name;
+            for (var p = t.parent; p != null; p = p.parent) s = p.name + "/" + s;
+            return s;
         }
 
         static int Render(Camera cam, string path)
