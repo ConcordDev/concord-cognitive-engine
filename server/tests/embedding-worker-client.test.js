@@ -1,4 +1,4 @@
-// lib/embedding-worker-client.js — request/response over a worker thread.
+// lib/embedding-worker-client.js — request/response with the embedding child process.
 // Uses small fake workers so the tests never download the real model.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,19 +11,18 @@ import { startEmbeddingWorker } from "../lib/embedding-worker-client.js";
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "embed-worker-"));
 function fakeWorker(name, body) {
   const f = path.join(dir, `${name}.mjs`);
-  fs.writeFileSync(f, `import { parentPort } from "node:worker_threads";\n${body}\n`);
+  fs.writeFileSync(f, `process.on("disconnect", () => process.exit(0));\n${body}\n`);
   return pathToFileURL(f);
 }
 
 const echo = fakeWorker("echo", `
-parentPort.on("message", (m) => {
-  if (m.type === "init") return parentPort.postMessage({ type: "ready", threads: m.threads });
+process.on("message", (m) => {
+  if (m.type === "init") return process.send({ type: "ready" });
   if (m.type === "embed") {
-    if (m.text === "boom") return parentPort.postMessage({ type: "error", id: m.id, error: "bad input" });
+    if (m.text === "boom") return process.send({ type: "error", id: m.id, error: "bad input" });
     if (m.text === "hang") return;
     if (m.text === "die") process.exit(3);
-    const e = Float32Array.from([m.text.length, 1, 2]);
-    parentPort.postMessage({ type: "result", id: m.id, embedding: e }, [e.buffer]);
+    process.send({ type: "result", id: m.id, embedding: Float32Array.from([m.text.length, 1, 2]) });
   }
 });`);
 
@@ -60,7 +59,7 @@ test("a worker that dies fails its pending and later requests", async () => {
 });
 
 test("init failure rejects startup (so the server can fall back)", async () => {
-  const bad = fakeWorker("bad", `parentPort.on("message", (m) => { if (m.type === "init") parentPort.postMessage({ type: "init_error", error: "no model" }); });`);
+  const bad = fakeWorker("bad", `process.on("message", (m) => { if (m.type === "init") process.send({ type: "init_error", error: "no model" }); });`);
   await assert.rejects(startEmbeddingWorker({ workerUrl: bad }), /no model/);
 });
 

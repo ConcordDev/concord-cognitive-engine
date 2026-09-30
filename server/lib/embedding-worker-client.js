@@ -1,18 +1,25 @@
 // server/lib/embedding-worker-client.js
 //
-// Main-thread side of workers/embedding-worker.js: one worker, requests
-// matched by id, a per-request timeout, and failure of every pending request
-// if the worker dies. The worker is unref'd so it never keeps the process
-// (or a test run) alive on its own; terminate() stops it explicitly.
+// Parent side of workers/embedding-worker.js (a child process — see that file
+// for why not a worker thread). One child, requests matched by id, a
+// per-request timeout, and failure of every pending request if the child
+// dies.
+//
+// Lifetime: the child (and its IPC channel) is referenced only while startup
+// or a request is outstanding, and unreferenced when idle, so it never keeps
+// the server — or a test run — alive on its own, yet a caller awaiting it is
+// never stranded by the event loop winding down first. The child is killed
+// when this process exits.
 
-import { Worker } from "node:worker_threads";
+import { fork } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const DEFAULT_WORKER = new URL("../workers/embedding-worker.js", import.meta.url);
 
 /**
- * Start the worker and load the model in it.
+ * Start the child and load the model in it.
  * @returns {Promise<{ embed(text: string): Promise<Float32Array>, terminate(): Promise<void>, pending(): number }>}
- *   Rejects if the worker can't start or the model fails to load.
+ *   Rejects if the child can't start or the model fails to load.
  */
 export function startEmbeddingWorker({
   model = "Xenova/all-MiniLM-L6-v2",
@@ -21,33 +28,53 @@ export function startEmbeddingWorker({
   requestTimeoutMs = 60_000,
   workerUrl = DEFAULT_WORKER,
 } = {}) {
-  const worker = new Worker(workerUrl);
-  worker.unref();
+  const child = fork(fileURLToPath(workerUrl), [], {
+    serialization: "advanced", // Float32Array crosses IPC intact
+    stdio: ["ignore", "inherit", "inherit", "ipc"],
+  });
+  const killOnExit = () => { try { child.kill(); } catch { /* already gone */ } };
+  process.once("exit", killOnExit);
 
   const pending = new Map(); // id -> { resolve, reject, timer }
   let nextId = 1;
+  let starting = true;
   let dead = null;
+
+  const hold = () => { child.ref(); child.channel?.ref?.(); };
+  const release = () => {
+    if (starting || pending.size > 0) return;
+    child.unref(); child.channel?.unref?.();
+  };
+  hold();
 
   const failAll = (err) => {
     for (const { reject, timer } of pending.values()) { clearTimeout(timer); reject(err); }
     pending.clear();
   };
+  const markDead = (err) => {
+    if (dead) return;
+    dead = err;
+    starting = false;
+    process.removeListener("exit", killOnExit);
+    failAll(err);
+  };
 
   return new Promise((resolveReady, rejectReady) => {
     const initTimer = setTimeout(() => {
       rejectReady(new Error("embedding_worker_init_timeout"));
-      worker.terminate().catch(() => {});
+      killOnExit();
     }, initTimeoutMs);
-    initTimer.unref?.();
 
-    worker.on("message", (msg) => {
+    child.on("message", (msg) => {
       if (msg?.type === "ready") {
         clearTimeout(initTimer);
+        starting = false;
+        release();
         resolveReady(client);
       } else if (msg?.type === "init_error") {
         clearTimeout(initTimer);
         rejectReady(new Error(msg.error || "embedding_worker_init_failed"));
-        worker.terminate().catch(() => {});
+        killOnExit();
       } else if (msg?.type === "result" || msg?.type === "error") {
         const p = pending.get(msg.id);
         if (!p) return;
@@ -55,19 +82,19 @@ export function startEmbeddingWorker({
         clearTimeout(p.timer);
         if (msg.type === "result") p.resolve(msg.embedding);
         else p.reject(new Error(msg.error || "embedding_failed"));
+        release();
       }
     });
-    worker.on("error", (err) => {
-      dead = err;
+    child.on("error", (err) => {
       clearTimeout(initTimer);
+      markDead(err);
       rejectReady(err);
-      failAll(err);
     });
-    worker.on("exit", (code) => {
-      if (!dead) dead = new Error(`embedding_worker_exited_${code}`);
+    child.on("exit", (code, signal) => {
       clearTimeout(initTimer);
-      rejectReady(dead);
-      failAll(dead);
+      const err = dead || new Error(`embedding_worker_exited_${code ?? signal}`);
+      markDead(err);
+      rejectReady(err);
     });
 
     const client = {
@@ -78,20 +105,28 @@ export function startEmbeddingWorker({
           const timer = setTimeout(() => {
             pending.delete(id);
             reject(new Error("embedding_timeout"));
+            release();
           }, requestTimeoutMs);
-          timer.unref?.();
           pending.set(id, { resolve, reject, timer });
-          worker.postMessage({ type: "embed", id, text: String(text) });
+          hold();
+          child.send({ type: "embed", id, text: String(text) });
         });
       },
       pending: () => pending.size,
-      async terminate() {
-        dead = dead || new Error("embedding_worker_terminated");
-        failAll(dead);
-        await worker.terminate();
+      terminate() {
+        if (dead && child.exitCode !== null) return Promise.resolve();
+        markDead(new Error("embedding_worker_terminated"));
+        return new Promise((resolve) => {
+          if (child.exitCode !== null || child.signalCode !== null) {
+            resolve();
+            return;
+          }
+          child.once("exit", () => resolve());
+          killOnExit();
+        });
       },
     };
 
-    worker.postMessage({ type: "init", model, threads });
+    child.send({ type: "init", model, threads });
   });
 }
