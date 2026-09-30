@@ -199,9 +199,9 @@ const REVIEWED = {
   "lib/lattice-seed.js": 1,
   "lib/lfg.js": 1,
   "lib/literary-vec.js": 1,
-  // lib/log-retention.js (2) — table/tsColumn/keyColumn come only from the
-  // frozen RETAINED_LOGS constant (no caller-supplied names); the cutoff and
-  // row id are bound with `?`.
+  // lib/log-retention.js (2) — table/tsColumn/keyColumn and the extraWhere
+  // literal come only from the frozen RETAINED_LOGS constant (no
+  // caller-supplied SQL); the cutoff, limit and row id are bound with `?`.
   "lib/log-retention.js": 2,
   "lib/long-horizon-planner.js": 1,
   "lib/macro-billing.js": 1,
