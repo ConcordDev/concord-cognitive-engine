@@ -58344,6 +58344,11 @@ async function pollFeeds() {
           continue;
         }
 
+        // Yield between items: each one below is a dedup query plus a full
+        // DTU write, and a feed of ~50 items processed back to back held the
+        // event loop ~1s at a time in the CI load profile (2026-09-30).
+        await new Promise((r) => { setImmediate(r); });
+
         // Slow path: ask the DB. This is the line that fixes the 13x
         // re-ingestion — every prior DTU whose data contained this link
         // is a duplicate, regardless of how many times the process has
