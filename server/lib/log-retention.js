@@ -26,10 +26,10 @@ const DAY_MS = 86_400_000;
 // tsKind: how created/recorded timestamps are stored in that table.
 //   "ms"   — integer epoch milliseconds
 //   "text" — datetime('now') / ISO text (compared lexically at day precision)
-export const RETAINED_LOGS = [
+export const RETAINED_LOGS = Object.freeze([
   { table: "emergent_activity_feed", tsColumn: "created_at", tsKind: "ms", keyColumn: "id", envDays: "CONCORD_EMERGENT_FEED_RETENTION_DAYS" },
   { table: "inference_spans", tsColumn: "recorded_at", tsKind: "text", keyColumn: "id", envDays: "CONCORD_INFERENCE_SPANS_RETENTION_DAYS" },
-];
+].map((spec) => Object.freeze(spec)));
 
 const DEFAULT_DAYS = 14;
 

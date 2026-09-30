@@ -180,7 +180,11 @@ const TEST_FILE_RE = /\.test\.(js|ts)$/;
  */
 export async function indexRepo(db, repoRoot, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
-  const root = repoRoot || defaultRepoRoot();
+  // The only function here that reads files, so the allowlist lives here:
+  // callers pass repoRoot from HTTP bodies, macros, MCP tool args and mission
+  // steps. Tests that index a temp dir add it to CONCORD_REPO_GRAPH_ROOTS.
+  const root = allowedRepoRoot(repoRoot);
+  if (!root) return { ok: false, reason: "repo_root_not_allowed" };
   let files = [];
   for (const sub of DEFAULT_ROOTS) {
     await walkDir(join(root, sub), files);

@@ -59380,11 +59380,14 @@ app.get("/api/runtime/marathon-links", requireRole("owner", "admin", "sovereign"
 app.post("/api/runtime/coding-loop/iterate", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
   const { runCodingLoopIteration } = await import("./lib/coding-loop.js");
   const { dispatchMCP } = await import("./lib/auth-gate/dispatch.js");
+  const { allowedRepoRoot } = await import("./lib/runtime/repo-graph.js");
+  const root = allowedRepoRoot(req.body?.repoRoot);
+  if (!root) return res.status(400).json({ ok: false, reason: "repo_root_not_allowed" });
   res.json(await runCodingLoopIteration({
     db,
     goal: req.body?.goal,
     dispatchMCP,
-    repoRoot: req.body?.repoRoot,
+    repoRoot: root,
   }));
 }));
 

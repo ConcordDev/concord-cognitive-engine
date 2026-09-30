@@ -23,6 +23,8 @@ function repo(nFiller = 0) {
   w("server/migrations/001_core.js", `export function up() {}\n`);
   w("server/migrations/002_more.js", `export function up() {}\n`);
   for (let i = 0; i < nFiller; i++) w(`server/lib/gen/f${i}.js`, `import { x } from "../util.js";\nimport { y } from "./f${(i + 1) % nFiller}.js";\nexport function fn${i}() { return ${i}; }\n`);
+  // indexRepo only reads allowlisted roots.
+  process.env.CONCORD_REPO_GRAPH_ROOTS = [process.env.CONCORD_REPO_GRAPH_ROOTS, root].filter(Boolean).join(":");
   return root;
 }
 function db() { const d = new Database(":memory:"); up424(d); up427(d); return d; }
@@ -75,4 +77,10 @@ test("allowedRepoRoot: only the workspace root or configured roots, never an arb
   } finally {
     if (prev === undefined) delete process.env.CONCORD_REPO_GRAPH_ROOTS; else process.env.CONCORD_REPO_GRAPH_ROOTS = prev;
   }
+});
+
+test("indexRepo refuses a root that is not allowlisted, without reading it", async () => {
+  const d = db();
+  const r = await indexRepo(d, "/etc");
+  assert.deepEqual(r, { ok: false, reason: "repo_root_not_allowed" });
 });

@@ -163,7 +163,10 @@ export default function registerMissionRuntimeMacros(rawRegistrar) {
     if (!db || !input?.goal) return { ok: false, reason: "missing_goal" };
     const dispatchMCP = await getDispatch();
     const { runCodingLoopIteration } = await import("../lib/coding-loop.js");
-    return runCodingLoopIteration({ db, goal: input.goal, dispatchMCP, repoRoot: input.repoRoot });
+    const { allowedRepoRoot } = await import("../lib/runtime/repo-graph.js");
+    const repoRoot = allowedRepoRoot(input.repoRoot);
+    if (!repoRoot) return { ok: false, reason: "repo_root_not_allowed" };
+    return runCodingLoopIteration({ db, goal: input.goal, dispatchMCP, repoRoot });
   }, { note: "Run one coding-loop iteration (index → search → verify)." });
 
   register("mission", "spawn_marathon", async (ctx, input = {}) => {
