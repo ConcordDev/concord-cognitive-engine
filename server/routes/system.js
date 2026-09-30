@@ -332,28 +332,33 @@ export default function registerSystemRoutes(app, {
       // tick loop would not have paged. The legacy singular name is still
       // emitted for one release as an alias so existing Grafana dashboards
       // don't blank out — remove once dashboards are updated.
-      const tickCount = STATE.__bgTickCounter || 0;
-      lines.push(`# HELP concord_heartbeat_ticks_total Total heartbeat ticks`);
-      lines.push(`# TYPE concord_heartbeat_ticks_total counter`);
-      lines.push(`concord_heartbeat_ticks_total ${tickCount}`);
-      lines.push(`# HELP concord_heartbeat_tick_total DEPRECATED alias for concord_heartbeat_ticks_total — remove in next minor release`);
-      lines.push(`# TYPE concord_heartbeat_tick_total counter`);
-      lines.push(`concord_heartbeat_tick_total ${tickCount}`);
+      //
+      // concord_heartbeat_ticks_total itself comes only from the prom-client
+      // counter below (incremented in governorTick). This route used to also
+      // print a hand-written line under the same name from
+      // STATE.__bgTickCounter — which counts kernelTick, a different loop —
+      // so every scrape carried two families with one name, and a reader
+      // taking the first saw the wrong loop (found 2026-09-30: the CI tick-SLO
+      // guard read 0 while the governor had ticked). kernelTick keeps its own
+      // name now.
+      lines.push(`# HELP concord_kernel_ticks_total Total kernelTick loop iterations`);
+      lines.push(`# TYPE concord_kernel_ticks_total counter`);
+      lines.push(`concord_kernel_ticks_total ${STATE.__bgTickCounter || 0}`);
+      try {
+        const hb = await globalThis._concordPromMetrics?.heartbeatTicks?.get?.();
+        const governorTicks = hb?.values?.[0]?.value ?? 0;
+        lines.push(`# HELP concord_heartbeat_tick_total DEPRECATED alias for concord_heartbeat_ticks_total — remove in next minor release`);
+        lines.push(`# TYPE concord_heartbeat_tick_total counter`);
+        lines.push(`concord_heartbeat_tick_total ${governorTicks}`);
+      } catch { /* metrics best-effort */ }
 
-      // Heartbeat skipped + module errors + per-block latency live on the
-      // prom-client registry inside server.js. Expose them here so a
+      // Heartbeat ticks/skipped + module errors + per-block latency live on
+      // the prom-client registry inside server.js. Expose them here so a
       // single /metrics scrape covers the whole picture without needing
       // to also configure a second endpoint.
       try {
         const promRegistry = globalThis._concordMETRICS?.registry;
-        if (promRegistry) {
-          const promText = await promRegistry.metrics();
-          // Strip the top "# HELP / TYPE" headers from prom-client output
-          // for metrics whose name we've already declared above to avoid
-          // duplicate `# HELP` lines (Prometheus parsers tolerate, but
-          // some scrapers warn).
-          lines.push(promText.replace(/(^|\n)#[^\n]*concord_heartbeat_ticks_total[^\n]*/g, ""));
-        }
+        if (promRegistry) lines.push(await promRegistry.metrics());
       } catch { /* metrics best-effort */ }
 
       // Session metrics

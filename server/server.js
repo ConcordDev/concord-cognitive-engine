@@ -18831,13 +18831,27 @@ async function initLocalEmbeddings() {
       const { getRealCpuCount } = await import("./lib/cgroup-cpu.js");
       _onnxThreads = Math.max(1, Math.min(Number(process.env.CONCORD_EMBED_THREADS) || 4, getRealCpuCount() - 1));
     } catch { /* keep 2 */ }
-    EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
-      session_options: { intraOpNumThreads: _onnxThreads, interOpNumThreads: 1 },
-    });
+    // Run the model in a worker thread: onnxruntime-node's run() is synchronous
+    // native code, so in-process every embedding held the event loop ~1s on a
+    // small box (see workers/embedding-worker.js). In-process stays only as a
+    // logged fallback if the worker can't start.
+    try {
+      const { startEmbeddingWorker } = await import("./lib/embedding-worker-client.js");
+      const embedWorker = await startEmbeddingWorker({ model: "Xenova/all-MiniLM-L6-v2", threads: _onnxThreads });
+      EMBEDDINGS.worker = embedWorker;
+      EMBEDDINGS.model = async (text) => ({ data: await embedWorker.embed(text) });
+      EMBEDDINGS.inWorker = true;
+    } catch (workerErr) {
+      structuredLog("warn", "embeddings_worker_unavailable", { error: String(workerErr?.message || workerErr), fallback: "in_process" });
+      EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+        session_options: { intraOpNumThreads: _onnxThreads, interOpNumThreads: 1 },
+      });
+      EMBEDDINGS.inWorker = false;
+    }
     EMBEDDINGS.backend = "xenova";
     EMBEDDINGS.enabled = true;
     EMBEDDINGS.dim = 384;
-    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2" });
+    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2", inWorker: EMBEDDINGS.inWorker });
     return { ok: true, backend: "xenova" };
   } catch (e) {
     structuredLog("error", "embeddings_load_failed", { error: e.message });
