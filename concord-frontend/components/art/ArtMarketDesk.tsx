@@ -12,6 +12,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
+import { ArtGenerateFromText } from '@/components/art/ArtGenerateFromText';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/ui';
 import {
@@ -23,7 +24,6 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-  Wand2,
   Download,
   Heart,
   Share2,
@@ -319,12 +319,6 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
     lastPosRef.current = null;
   }, []);
 
-  // AI generation state
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-
   // Upload form
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
@@ -468,34 +462,6 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to save artwork' });
     }
   }, [canvasTitle]);
-
-  const handleAiGenerate = useCallback(async () => {
-    if (!aiPrompt.trim()) return;
-    setAiGenerating(true);
-    setAiError(null);
-    setAiResult(null);
-    try {
-      const res = await api.post('/api/lens/run', {
-        domain: 'art',
-        action: 'generate',
-        input: { prompt: aiPrompt.trim(), type: 'text-to-image' },
-      });
-      const data = res.data;
-      const content = typeof data?.result === 'string'
-        ? data.result
-        : typeof data?.result?.content === 'string'
-          ? data.result.content
-          : typeof data?.result?.url === 'string'
-            ? data.result.url
-            : JSON.stringify(data?.result ?? data, null, 2);
-      setAiResult(content);
-      useUIStore.getState().addToast({ type: 'success', message: 'AI generation complete' });
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : 'Generation failed');
-    } finally {
-      setAiGenerating(false);
-    }
-  }, [aiPrompt]);
 
   const handleCanvasExport = useCallback(() => {
     const canvas = canvasRef.current;
@@ -806,48 +772,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
           <div>
             <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">AI Assist</h3>
             <div className="space-y-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAiGenerate()}
-                placeholder="Describe artwork to generate..."
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:border-neon-purple/50"
-              />
-              <button
-                onClick={handleAiGenerate}
-                disabled={aiGenerating || !aiPrompt.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 bg-neon-purple/10 text-neon-purple rounded-lg text-xs hover:bg-neon-purple/20 disabled:opacity-50"
-              >
-                {aiGenerating ? (
-                  <span className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Wand2 className="w-4 h-4" />
-                )}
-                {aiGenerating ? 'Generating...' : 'Generate from Text'}
-              </button>
-              {aiError && (
-                <p className="text-xs text-red-400 px-1">{aiError}</p>
-              )}
-              {aiResult && (
-                <div className="p-2 rounded-lg bg-neon-purple/5 border border-neon-purple/20">
-                  <p className="text-xs text-gray-300 whitespace-pre-wrap max-h-32 overflow-auto">{aiResult}</p>
-                  <button
-                    onClick={() => {
-                      const blob = new Blob([aiResult], { type: 'text/plain' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'ai-art-result.txt';
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    className="flex items-center gap-1 mt-2 px-2 py-1 text-xs text-neon-purple hover:bg-neon-purple/10 rounded"
-                  >
-                    <Download className="w-3 h-3" /> Download
-                  </button>
-                </div>
-              )}
+              <ArtGenerateFromText compact />
               <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Style transfer initiated' })} className="w-full flex items-center gap-2 px-3 py-2 bg-white/5 text-gray-300 rounded-lg text-xs hover:bg-white/10">
                 <Palette className="w-4 h-4" />
                 Style Transfer

@@ -231,6 +231,7 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/signup', destination: '/register', permanent: true },
+      { source: '/conkay', destination: '/lenses/chat?mode=conkay', permanent: false },
       { source: '/chat', destination: '/lenses/chat', permanent: false },
       { source: '/dashboard', destination: '/hub', permanent: false },
       { source: '/marketplace', destination: '/lenses/marketplace', permanent: false },
