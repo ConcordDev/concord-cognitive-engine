@@ -72,23 +72,33 @@ export function useBrainHealth() {
           repair: brains.repair ? { ...brains.repair, online: brains.repair.enabled } : offlineBrain,
         });
       } else {
-        setBrainStatus({
-          mode: 'offline',
-          onlineCount: 0,
-          conscious: offlineBrain,
-          subconscious: offlineBrain,
-          utility: offlineBrain,
-          repair: offlineBrain,
+        // Transient admission/shed 503s are common under load. Do NOT sticky-mark
+        // every brain offline — that painted a permanent yellow GracefulFallback
+        // strip even while chat could still send. Keep last-known-good status.
+        setBrainStatus((prev) => {
+          if (prev.conscious || prev.utility || prev.subconscious || prev.repair) return prev;
+          return {
+            mode: 'unknown',
+            onlineCount: 0,
+            conscious: null,
+            subconscious: null,
+            utility: null,
+            repair: null,
+          };
         });
       }
     } catch {
-      setBrainStatus({
-        mode: 'offline',
-        onlineCount: 0,
-        conscious: offlineBrain,
-        subconscious: offlineBrain,
-        utility: offlineBrain,
-        repair: offlineBrain,
+      // Network blip / aborted poll — preserve last-known-good; never sticky all-offline.
+      setBrainStatus((prev) => {
+        if (prev.conscious || prev.utility || prev.subconscious || prev.repair) return prev;
+        return {
+          mode: 'unknown',
+          onlineCount: 0,
+          conscious: null,
+          subconscious: null,
+          utility: null,
+          repair: null,
+        };
       });
     } finally {
       setIsLoading(false);

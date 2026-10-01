@@ -46,9 +46,25 @@ export default function registerArtActions(registerLensAction) {
   // guaranteed unknown_macro. Wired to the same real Pollinations
   // text-to-image capability chat.image-generate already uses.
   registerLensAction("art", "generate", async (_ctx, _artifact, params = {}) => {
-    const gen = await generatePollinationsImage({ prompt: params.prompt, width: params.width, height: params.height, seed: params.seed });
+    const prompt = params.prompt || params.text || params.description || "";
+    const gen = await generatePollinationsImage({
+      prompt,
+      width: params.width,
+      height: params.height,
+      seed: params.seed,
+    });
     if (!gen.ok) return gen;
     const { ok, ...result } = gen;
+    // Normalize fields the FE chat / Artifact viewer look for:
+    // - url / imageB64 from GPU helper
+    // - image_b64 for ConKayOverlay agent image markdown path
+    if (result.imageB64 && !result.image_b64) result.image_b64 = result.imageB64;
+    if (result.url && String(result.url).startsWith("data:image/") && !result.image_b64) {
+      const m = String(result.url).match(/^data:image\/[^;]+;base64,(.+)$/);
+      if (m) result.image_b64 = m[1];
+    }
+    result.kind = result.kind || "image";
+    result.prompt = prompt;
     return { ok, result };
   });
 
