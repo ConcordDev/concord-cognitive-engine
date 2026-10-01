@@ -65050,29 +65050,39 @@ app.get("/api/social/dm/conversations", requireAuth(), (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+function respondSocialDm(res, result) {
+  if (result && result.ok === false && Number.isInteger(result.status)) {
+    return res.status(result.status).json({ ok: false, error: result.error || "Not found" });
+  }
+  return res.json(result);
+}
+
 app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
-  try { res.json(socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0), userId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/social/dm/read", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Param-path variant: frontend calls POST /api/social/dm/:conversationId/read
 app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
