@@ -18,7 +18,13 @@ import {
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
-const ARCHETYPE_RE = /\b(sword|spear|staff|mace|shield)\b/i;
+// Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
+// users to type the bare archetype token (common ConKay cockpit asks).
+const ARCHETYPE_RE = /\b(longsword|shortsword|greatsword|sword|spear|quarterstaff|staff|warhammer|mace|roundshield|shield)\b/i;
+const ARCHETYPE_ALIAS = Object.freeze({
+  longsword: 'sword', shortsword: 'sword', greatsword: 'sword',
+  quarterstaff: 'staff', warhammer: 'mace', roundshield: 'shield',
+});
 
 /** Fail-closed archetype parse from free text (keywords only — not full CAD NLP). */
 export function parseArchetypeFromText(text) {
@@ -32,7 +38,9 @@ export function parseArchetypeFromText(text) {
       code: 'NO_ARCHETYPE',
     };
   }
-  return { ok: true, archetype: m[1].toLowerCase(), text: raw };
+  const token = m[1].toLowerCase();
+  const archetype = ARCHETYPE_ALIAS[token] || token;
+  return { ok: true, archetype, text: raw };
 }
 
 /** Known-robust seed params so FEA converges quickly (mirrors e2e macro test). */

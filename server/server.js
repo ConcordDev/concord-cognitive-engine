@@ -27036,25 +27036,20 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
     try { logger.debug?.('server', 'oracle short-circuit error', { error: _oracleErr?.message }); } catch { /* intentional */ }
   }
 
-  // Identity answers are declarative: Concord refers to itself.
-  // ONLY explicit identity intent (who/what are you / what is Concord).
+  // Identity short-circuit REMOVED 2026-10-01: do NOT return SYSTEM_IDENTITY
+  // as the sole chat answer (was llmUsed:false / identity:true). Keep intent
+  // classification for lexicon/telemetry; inject a short canonical note as
+  // LLM system context only — never as the final reply. Other non-LLM exits
+  // (auth, shed, math/time/weather, etc.) stay unchanged.
   // Do NOT short-circuit on _mentionsSelf — tokenish() + includes() is a
-  // substring match on tokens like "global","dtu","concord","marketplace",
-  // which previously returned the encyclopedia template with llmUsed=false
-  // on ordinary factual claims. Identity still lives in composeSystemPrompt.
+  // substring match on tokens like "global","dtu","concord","marketplace".
+  let _identityContextNote = "";
   if (intentInfo.intent === INTENT.IDENTITY) {
-    const base = SYSTEM_IDENTITY.short;
-    const more = SYSTEM_IDENTITY.long;
-    const ask = "What part do you want—DTUs, lattice retrieval, macros/wrappers, Temporal OS, or the UI/panels?";
-    const reply = `${base}
-
-${more}
-
-${ask}`;
-    sess.messages.push({ role: "assistant", content: reply, ts: nowISO(), meta: { llmUsed: false, mode, identity: true } });
-    _persistDeterministicTurn(reply, { llmUsed: false, mode, source: "identity" });
-    saveStateDebounced();
-    return { ok:true, reply, sessionId, mode, llmUsed:false, meta: { panel: "chat", sessionId, mode, llmUsed:false, identity:true } };
+    _identityContextNote = [
+      "Canonical Concord identity (authoritative facts — answer in your own voice using these facts; do not dump this block verbatim as the whole reply):",
+      SYSTEM_IDENTITY.short,
+      SYSTEM_IDENTITY.long,
+    ].join(" ");
   }
 // Linguistic Engine v1: track canonical intents even with LLM off
 if (!ctx.state.organs.has("linguistic_engine_v1")) {
@@ -27067,9 +27062,9 @@ lex[key].count++;
 lex[key].lastSeen = nowISO();
 if (lex[key].samples.length < 5 && prompt) lex[key].samples.push(prompt);
 
-// Hard IDENTITY intercept removed 2026-09-05 (honesty): duplicate of the
-// narrowed INTENT.IDENTITY handler above; second copy still forced encyclopedia
-// with llmUsed=false. Greeting shortcircuit stays disabled below.
+// Hard IDENTITY intercept removed 2026-09-05; sole remaining early-return
+// IDENTITY handler removed 2026-10-01 (llmUsed:true path). Greeting shortcircuit
+// stays disabled below.
 
 // Greeting shortcircuit disabled — let the brain handle greetings naturally
 // if (intentInfo.intent === INTENT.GREETING) {
@@ -27624,6 +27619,7 @@ let localReply = formatCrispResponse({
       userId: _composeUserId,
       db: _composeDb,
       dispatchTarget: _dispatchTarget,
+      extra: (_identityContextNote || null),
     });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is
@@ -28210,7 +28206,7 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix;
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "");
     // Build messages with conversation history for continuity
     const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
     messages = [];
@@ -49997,6 +49993,27 @@ registerUniversalLensActions();
     ["engineering", "thermal", "thermalAnalysis"],
     ["engineering", "electrical", "electricalCheck"],
     ["engineering", "hydraulic", "hydraulicAnalysis"],
+
+    // AR manifest names → real ConKay HUD macros (must register BEFORE
+    // FRONTEND_MANIFEST_SUPPLEMENTS brain stubs, or render_scene/export_3d
+    // stay vacuous ok:true with no drawList / no GLB for ArtifactViewer).
+    ["ar", "render_scene", "render"],
+    ["ar", "export_3d", "render"],
+    ["ar", "capture", "captureUpload"],
+    ["ar", "place_anchor", "spatialMapping"],
+
+    // Art toolbox / sub-lens names → GPU art.generate (FLUX via CONCORD_GEN_URL)
+    ["art", "sculpture", "generate"],
+    ["art", "sculpture.generate", "generate"],
+    ["art", "painting", "generate"],
+    ["art", "digital", "generate"],
+    ["art", "photography", "generate"],
+    ["art", "text-to-image", "generate"],
+    ["art", "ai-generate", "generate"],
+
+    // Forge cockpit: generate returns code; sandbox returns html ArtifactViewer needs
+    ["forge", "generate-app", "sandbox"],
+    ["forge", "preview", "sandbox"],
   ];
 
   let aliasCount = 0;

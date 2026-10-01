@@ -128,7 +128,7 @@ export default function registerSystemRoutes(app, {
     const heapLimitMB = Number(process.env.MAX_OLD_SPACE_SIZE) || 32768;
     if (heapUsedMB > heapLimitMB * 0.9) checks.memoryPressure = true;
     const dbStatus = typeof getDbStatus === 'function' ? getDbStatus() : {};
-    checks.postgres = { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'in-memory-fallback' };
+    checks.postgres = { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'sqlite-primary', optional: true };
     checks.redis = { connected: !!dbStatus.redisClient, status: dbStatus.redisClient ? 'connected' : 'in-memory-fallback' };
     checks.saveFailures = STATE._saveFailures || 0;
 
