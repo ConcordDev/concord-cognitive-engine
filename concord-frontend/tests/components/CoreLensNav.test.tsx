@@ -105,11 +105,11 @@ describe('CoreLensNav', () => {
     expect(financeLink).not.toHaveAttribute('aria-current');
   });
 
-  it('renders icons for each tab', () => {
+  it('renders text-only pill tabs (lens north stars: no per-tab icons)', () => {
     render(<CoreLensNav coreLensId={'chat' as CoreLensId} />);
-    const icons = screen.getAllByTestId('mock-icon');
+    expect(screen.queryAllByTestId('mock-icon')).toHaveLength(0);
     // 3 tabs: chat, finance, health
-    expect(icons.length).toBe(3);
+    expect(screen.getAllByRole('link')).toHaveLength(3);
   });
 
   it('highlights absorbed lens when it is the active path', () => {
