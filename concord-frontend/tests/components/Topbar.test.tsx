@@ -3,9 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
-// Mock next/navigation
+// Mock next/navigation — the title derives from the pathname.
 const mockPush = vi.fn();
+const nav = vi.hoisted(() => ({ pathname: '/lenses/chat' }));
 vi.mock('next/navigation', () => ({
+  usePathname: () => nav.pathname,
   useRouter: () => ({
     push: mockPush,
     back: vi.fn(),
@@ -103,6 +105,7 @@ describe('Topbar', () => {
     vi.clearAllMocks();
     mockUIStoreState.sidebarCollapsed = false;
     mockUIStoreState.activeLens = 'chat';
+    nav.pathname = '/lenses/chat';
   });
 
   it('renders the topbar with banner role', () => {
@@ -110,21 +113,29 @@ describe('Topbar', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
-  it('displays the active lens name from registry', () => {
+  it('displays the lens name from the registry for /lenses/<id>', () => {
     render(<Topbar />, { wrapper: createWrapper() });
     expect(screen.getByText('Chat')).toBeInTheDocument();
   });
 
-  it('falls back to capitalized activeLens when not in registry', () => {
-    mockUIStoreState.activeLens = 'custom';
+  it('falls back to the capitalized slug when the lens is not in the registry', () => {
+    nav.pathname = '/lenses/custom';
     render(<Topbar />, { wrapper: createWrapper() });
     expect(screen.getByText('Custom')).toBeInTheDocument();
   });
 
-  it('shows "Dashboard" when activeLens is empty', () => {
-    mockUIStoreState.activeLens = '';
+  it('shows "Dashboard" at the root', () => {
+    nav.pathname = '/';
     render(<Topbar />, { wrapper: createWrapper() });
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('does not keep the last lens title on a non-lens page', () => {
+    mockUIStoreState.activeLens = 'agriculture'; // stale store value
+    nav.pathname = '/hub';
+    render(<Topbar />, { wrapper: createWrapper() });
+    expect(screen.getByText('Hub')).toBeInTheDocument();
+    expect(screen.queryByText('Agriculture')).not.toBeInTheDocument();
   });
 
   it('opens command palette when search button is clicked', () => {
