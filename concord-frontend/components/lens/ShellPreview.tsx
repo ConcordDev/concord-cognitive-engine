@@ -58,9 +58,9 @@ const SHELL_TITLES: Record<SupportedLens, string> = {
 const PLACEHOLDER_ONLY = ['code', 'legal', 'message', 'healthcare'] as const;
 // These lenses' own body renders the same KPIs/board right below the preview
 // (checked by screenshot 2026-10-02), so the preview was a duplicate block at
-// the top of the page. Crypto (wallet), retail (storefront), studio and
-// whiteboard keep theirs — there it IS the primary surface.
-const DUPLICATES_BODY = ['education', 'agriculture', 'logistics', 'government', 'aviation', 'environment', 'realestate', 'trades'] as const;
+// the top of the page. Crypto (wallet), retail (storefront) and studio
+// keep theirs — there it IS the primary surface.
+const DUPLICATES_BODY = ['education', 'agriculture', 'logistics', 'government', 'aviation', 'environment', 'realestate', 'trades', 'whiteboard'] as const;
 
 export interface ShellPreviewProps {
   lensId: string;

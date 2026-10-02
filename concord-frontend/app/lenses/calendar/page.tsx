@@ -68,7 +68,7 @@ export default function CalendarLensPage() {
             <div className="min-w-0">
               <h1 className="text-sm font-semibold tracking-tight">Calendar</h1>
               <p className="text-[11px] text-gray-400 truncate">
-                Fantastical density — month, week, day, agenda.
+                Month, week, day, agenda.
                 <kbd className="ml-2 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">G</kbd> grid
                 <kbd className="ml-1 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">N</kbd> new
               </p>

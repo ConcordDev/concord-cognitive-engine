@@ -103,7 +103,7 @@ export default function DatabaseLensPage() {
                 )}
               </div>
               <p className="text-sm text-gray-400">
-                Query editor, schema browser, and performance monitoring — DBeaver density.
+                Query editor, schema browser, and performance monitoring.
               </p>
             </div>
           </div>

@@ -121,7 +121,7 @@ export default function HistoryLensPage() {
                 <DepthBadge lensId="history" size="sm" />
               </h1>
               <p className="text-sm text-gray-400">
-                A Wikipedia-grounded, user-authored timeline research tool — TimelineJS-shape substrate,
+                A Wikipedia-grounded, user-authored timeline research tool —
                 real On This Day + article search, source-reliability scoring.
               </p>
             </div>

@@ -237,7 +237,7 @@ export function CollabHub() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--lens-accent)' }}>Files &amp; Rooms</h1>
-            <p className="text-sm text-gray-400">Figma-style live docs, session rooms, and presence</p>
+            <p className="text-sm text-gray-400">Live docs, session rooms, and presence</p>
           </div>
 
           {/* Real-time Enhancement Toolbar */}

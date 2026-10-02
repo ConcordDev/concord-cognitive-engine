@@ -33,7 +33,7 @@ type ImportView = 'desk' | 'restore' | 'parity' | 'tools';
 const VIEWS: { id: ImportView; label: string; keys: string; hint: string; icon: typeof Upload }[] = [
   { id: 'desk', label: 'Import', keys: '1', hint: 'Drop · validate · jobs', icon: Upload },
   { id: 'restore', label: 'Restore', keys: '2', hint: 'import.json · markdown', icon: Archive },
-  { id: 'parity', label: 'Workbench', keys: '3', hint: 'Flatfile / Airbyte shape', icon: Layers },
+  { id: 'parity', label: 'Workbench', keys: '3', hint: 'Map, validate and transform imports', icon: Layers },
   { id: 'tools', label: 'Tooling', keys: '4', hint: 'External ETL reference', icon: Wrench },
 ];
 

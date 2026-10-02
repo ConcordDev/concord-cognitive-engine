@@ -28,7 +28,7 @@ export default function LegacyLensPage() {
           <h1 className="text-xl font-bold">Legacy Lens</h1>
           <p className="text-sm text-gray-400">
             Legacy code modernization — technical debt, dependency graphs, migration roadmaps and
-            cloud-readiness for real, aging systems (SonarQube / CAST Highlight parity).
+            cloud-readiness for real, aging systems.
           </p>
         </div>
 

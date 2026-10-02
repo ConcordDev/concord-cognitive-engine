@@ -82,7 +82,7 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
       <header className="space-y-1">
         <h1 className="text-xl font-bold text-amber-300">Inheritance</h1>
         <p className="text-sm text-zinc-400">
-          Estate planner + heir-slot market — Trust &amp; Will density.
+          Estate planner + heir-slot market.
         </p>
         {status && <p className="text-xs text-amber-200/80 font-mono">{status}</p>}
       </header>

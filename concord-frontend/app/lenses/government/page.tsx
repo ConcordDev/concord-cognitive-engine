@@ -251,7 +251,7 @@ export default function GovernmentLensPage() {
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
               </div>
               <p className={cn(ds.textMuted, 'font-mono text-xs tracking-wide')}>
-                {activeLabel} · USAspending density · kbd g o / p / 3
+                {activeLabel} · kbd g o / p / 3
               </p>
             </div>
           </div>

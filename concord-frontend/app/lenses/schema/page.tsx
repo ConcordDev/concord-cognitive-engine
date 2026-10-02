@@ -34,7 +34,7 @@ export default function SchemaLensPage() {
             <p className="text-sm text-gray-400">
               A versioned schema registry, visual editor, sample-data generator, migration
               codegen, breaking-change diff, evolution planning, live-data conformance, ER
-              diagrams, and schema inference — dbdiagram.io / DataGrip parity.
+              diagrams, and schema inference.
             </p>
           </div>
         </div>

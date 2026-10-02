@@ -1058,7 +1058,7 @@ export function SportsSpectatorHub() {
         <Trophy className="h-5 w-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Spectator Center</h2>
         <span className="text-[11px] text-zinc-400">
-          ESPN shape — play-by-play, schedules, standings, news, rosters, brackets
+          Play-by-play, schedules, standings, news, rosters, brackets
         </span>
       </header>
       <nav className="flex gap-1 overflow-x-auto border-b border-zinc-800 px-2 pt-2">

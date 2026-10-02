@@ -996,7 +996,7 @@ export function DataControlsPanel() {
       <div className="flex items-center gap-2">
         <h2 className="text-base font-semibold text-white">Data Controls</h2>
         <span className="text-xs text-gray-400">
-          OneTrust / Apple Privacy parity — the controls you actually exercise.
+          The controls you actually exercise.
         </span>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
