@@ -34,8 +34,6 @@ import {
   MessageSquare, Shield,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { WhatsMoving } from '@/components/social/WhatsMoving';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -81,7 +79,7 @@ interface FollowingActivityItem {
   dtuId?: string;
 }
 
-export function SocialHubPage() {
+export default function SocialHubPage() {
   const [activeTab, setActiveTab] = useState<TabId>('feed');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   // Phase 12 — Spaces stage modal target. RoomList sets this when the
@@ -438,15 +436,5 @@ function SocialPresenceRail() {
         />
       )}
     </div>
-  );
-}
-
-export default function SocialPage() {
-  return (
-    <NorthGate
-      backLabel="Social"
-      desk={<SocialHubPage />}
-      star={(openDesk) => <WhatsMoving onOpenDesk={openDesk} />}
-    />
   );
 }

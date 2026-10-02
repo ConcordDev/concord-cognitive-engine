@@ -47,7 +47,7 @@ vi.mock('@/components/message/MessageWorkbench', () => ({ default: () => null })
 vi.mock('@/components/message/SlackSection', () => ({ SlackSection: () => null }));
 vi.mock('@/components/message/GmailSection', () => ({ GmailSection: () => null }));
 
-import { MessageLensPage } from '@/app/lenses/message/page';
+import MessageLensPage from '@/app/lenses/message/page';
 
 const CONVERSATIONS = [
   {

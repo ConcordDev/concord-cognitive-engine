@@ -48,7 +48,7 @@ vi.mock('@/lib/frontier-engines', async (importActual) => {
   return { ...actual, FRONTIER_ENGINES: [...actual.FRONTIER_ENGINES, synthetic] };
 });
 
-import { FrontierDesk as FrontierPage } from './page';
+import FrontierPage from './page';
 import { FRONTIER_ENGINES, DEFAULT_FRONTIER_ENGINE_ID } from '@/lib/frontier-engines';
 
 describe('Frontier destination page', () => {

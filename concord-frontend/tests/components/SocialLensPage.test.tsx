@@ -70,7 +70,7 @@ vi.mock('@/components/social/NotificationCenter', () => ({
 
 // NotificationBell itself is left REAL (not mocked) — that's the fix under test.
 
-import { SocialHubPage } from '@/app/lenses/social/page';
+import SocialHubPage from '@/app/lenses/social/page';
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

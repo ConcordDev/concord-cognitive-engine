@@ -26,8 +26,6 @@
 
 import { useCallback, useMemo, useState, type ComponentType } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { TheBeam } from '@/components/frontier/TheBeam';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -75,7 +73,7 @@ const PANEL_BY_ENGINE_ID: Partial<Record<string, EnginePanel>> = {
 // requirement for scoped keyboard commands.
 const DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
-export function FrontierDesk() {
+export default function FrontierPage() {
   const [activeId, setActiveId] = useState<string>(DEFAULT_FRONTIER_ENGINE_ID);
 
   const activeEngine = useMemo(
@@ -114,15 +112,5 @@ export function FrontierDesk() {
         <Panel key={activeEngine.id} engine={activeEngine} />
       </FrontierEngineShell>
     </LensShell>
-  );
-}
-
-export default function FrontierPage() {
-  return (
-    <NorthGate
-      backLabel="Frontier"
-      desk={<FrontierDesk />}
-      star={(openDesk) => <TheBeam onOpenDesk={openDesk} />}
-    />
   );
 }

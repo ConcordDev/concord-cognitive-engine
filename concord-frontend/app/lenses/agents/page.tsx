@@ -12,8 +12,6 @@ import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Bot, GitFork, Users } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { WhoIsWorking } from '@/components/agents/WhoIsWorking';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -44,7 +42,7 @@ const PANELS: Record<AgentsView, ComponentType> = {
   fork: ForkPreviewPanel,
 };
 
-export function AgentsLensPage() {
+export default function AgentsLensPage() {
   useLensNav('agents');
   useLensIdentity('agents');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
@@ -149,15 +147,5 @@ export function AgentsLensPage() {
         <CrossLensRecentsPanel lensId="agents" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function AgentsPage() {
-  return (
-    <NorthGate
-      backLabel="Agents"
-      desk={<AgentsLensPage />}
-      star={(openDesk) => <WhoIsWorking onOpenDesk={openDesk} />}
-    />
   );
 }

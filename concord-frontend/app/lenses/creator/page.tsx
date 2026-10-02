@@ -8,8 +8,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { WhatYouMade } from '@/components/creator/WhatYouMade';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -74,7 +72,7 @@ function CreatorChrome() {
   );
 }
 
-export function CreatorDesk() {
+export default function CreatorDashboardPage() {
   const [view, setView] = useState<CreatorView>('home');
   return (
     <LensShell lensId="creator" asMain={false} disableAgentFab={true}>
@@ -82,15 +80,5 @@ export function CreatorDesk() {
         <CreatorChrome />
       </CreatorProvider>
     </LensShell>
-  );
-}
-
-export default function CreatorDashboardPage() {
-  return (
-    <NorthGate
-      backLabel="Creator"
-      desk={<CreatorDesk />}
-      star={(openDesk) => <WhatYouMade onOpenDesk={openDesk} />}
-    />
   );
 }
