@@ -32991,7 +32991,8 @@ register("settings", "status", (ctx, _input) => {
     try {
       if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
       const limit = Math.min(Number(input.limit || 200), 1000);
-      const edges = Array.from(GRAPH_INDEX?.edges?.values?.() || []).slice(0, limit);
+      const viewer = _graphViewer(ctx);
+      const edges = Array.from(GRAPH_INDEX?.edges?.values?.() || []).filter(e => _graphVisibleEdge(e, viewer)).slice(0, limit);
       return { ok: true, edges, count: edges.length, total: GRAPH_INDEX?.edges?.size || 0 };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -33003,8 +33004,11 @@ register("settings", "status", (ctx, _input) => {
       const id = input.id || input.nodeId || input.centerNode;
       if (!id) return { ok: false, error: "id_required", reason: "id_required" };
       if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      const viewer = _graphViewer(ctx);
+      if (!_graphCanSeeId(id, viewer)) return { ok: false, error: "not_found", reason: "not_found" };
       const neighbors = [];
       for (const e of (GRAPH_INDEX?.edges?.values?.() || [])) {
+        if (!_graphVisibleEdge(e, viewer)) continue;
         if (e.source === id) neighbors.push({ id: e.target, edge: e, direction: "out" });
         else if (e.target === id) neighbors.push({ id: e.source, edge: e, direction: "in" });
       }
@@ -45319,6 +45323,28 @@ structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, 
 // ============================================================================
 const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true };
 
+// Graph reads must respect DTU privacy: GRAPH_INDEX holds every DTU, and the
+// graph domain is public-read. A private / user-scoped / followers-only DTU is
+// shown only to its owner (same rule as userVisibleDTUs); internal ones never.
+// Seed and feed DTUs stay visible — the graph is the shared lattice.
+function _graphViewer(ctx) {
+  const id = ctx?.actor?.userId;
+  return id && id !== "anon" ? id : null;
+}
+function _graphCanSeeId(id, viewerId) {
+  if (typeof id === "string" && id.startsWith("tag:")) return true;
+  const d = STATE.dtus.get(id);
+  if (!d) return true; // dangling lineage ids carry no content
+  if (d.visibility === "internal") return false;
+  const isPrivate = d.privacy === "private" || d.privacy === "followers-only" || d.scope === "user" || d.visibility === "private";
+  if (!isPrivate) return true;
+  const owner = d.author || d.ownerId || d.userId || d.createdBy;
+  return !!viewerId && owner === viewerId;
+}
+function _graphVisibleEdge(e, viewerId) {
+  return _graphCanSeeId(e.source, viewerId) && _graphCanSeeId(e.target, viewerId);
+}
+
 function rebuildGraphIndex() {
   GRAPH_INDEX.nodes.clear();
   GRAPH_INDEX.edges.clear();
@@ -45349,7 +45375,7 @@ function rebuildGraphIndex() {
   GRAPH_INDEX.dirty = false;
 }
 
-register("graph", "query", (ctx, input) => {
+function _graphQueryRaw(ctx, input) {
   if (GRAPH_INDEX.dirty) rebuildGraphIndex();
   const { dsl } = input;
   const results = [];
@@ -45411,12 +45437,20 @@ register("graph", "query", (ctx, input) => {
   }
 
   return { ok: true, results, query: dsl, hint: "Use: 'DTUs linked to tag:X with lineage depth > 2' or 'descendants of dtu_xxx'" };
+}
+
+register("graph", "query", (ctx, input) => {
+  const r = _graphQueryRaw(ctx, input);
+  const viewer = _graphViewer(ctx);
+  if (r && Array.isArray(r.results)) r.results = r.results.filter(x => _graphCanSeeId(x?.id, viewer));
+  return r;
 });
 
 register("graph", "visualData", (ctx, input) => {
   if (GRAPH_INDEX.dirty) rebuildGraphIndex();
   const { tier, limit, includeEdges } = input;
-  let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => !n.type || n.type !== "tag");
+  const viewer = _graphViewer(ctx);
+  let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer));
   if (tier) nodes = nodes.filter(n => n.tier === tier);
   nodes = nodes.slice(0, Number(limit) || 200);
   const nodeIds = new Set(nodes.map(n => n.id));
@@ -45428,6 +45462,7 @@ register("graph", "forceGraph", (ctx, input) => {
   try {
   if (GRAPH_INDEX.dirty) rebuildGraphIndex();
   const { centerNode, depth, maxNodes } = input;
+  const viewer = _graphViewer(ctx);
   let nodes = [], links = [];
   if (centerNode) {
     const visited = new Set(), queue = [{ id: centerNode, d: 0 }], maxDepth = Number(depth) || 2;
@@ -45436,16 +45471,17 @@ register("graph", "forceGraph", (ctx, input) => {
       if (visited.has(id) || d > maxDepth) continue;
       visited.add(id);
       const dtu = STATE.dtus.get(id);
-      if (!dtu) continue;
+      if (!dtu || !_graphCanSeeId(id, viewer)) continue;
       nodes.push({ id, label: dtu.title, tier: dtu.tier, tags: dtu.tags, depth: d });
       for (const parentId of (dtu.lineage?.parents || [])) { links.push({ source: parentId, target: id, type: "parent" }); if (!visited.has(parentId)) queue.push({ id: parentId, d: d + 1 }); }
       for (const childId of (dtu.lineage?.children || [])) { links.push({ source: id, target: childId, type: "child" }); if (!visited.has(childId)) queue.push({ id: childId, d: d + 1 }); }
     }
   } else {
-    nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => !n.type || n.type !== "tag").slice(0, Number(maxNodes) || 100);
+    nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer)).slice(0, Number(maxNodes) || 100);
     const nodeIds = new Set(nodes.map(n => n.id));
     links = Array.from(GRAPH_INDEX.edges.values()).filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
+  links = links.filter(l => _graphVisibleEdge(l, viewer));
   return { ok: true, nodes, links };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
