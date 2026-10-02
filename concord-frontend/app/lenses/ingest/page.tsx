@@ -89,7 +89,7 @@ export default function IngestLensPage() {
               )}
             </div>
             <p className="text-sm text-gray-400">
-              Airbyte-shaped ELT + document intake — one workbench.
+              ELT pipelines + document intake — one workbench.
             </p>
           </div>
         </header>

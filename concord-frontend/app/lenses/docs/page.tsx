@@ -122,7 +122,7 @@ export default function DocsLensPage() {
                 )}
               </div>
               <p className={ds.textMuted}>
-                Notion workspace + handbook — one documentation desk.
+                Workspace pages + handbook — one documentation desk.
               </p>
             </div>
           </div>

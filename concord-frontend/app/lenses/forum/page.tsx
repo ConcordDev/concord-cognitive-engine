@@ -98,7 +98,7 @@ export default function ForumLensPage() {
                 )}
               </div>
               <p className={ds.textMuted}>
-                Reddit board + Discourse topics — one community desk.
+                Boards and topics — one community desk.
               </p>
             </div>
           </div>
