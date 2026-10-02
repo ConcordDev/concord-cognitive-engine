@@ -54680,6 +54680,10 @@ register("collab", "unlock", (ctx, input) => {
 });
 
 // Whiteboard with Excalidraw integration
+// Whiteboards are owner-scoped: list/get/update only see the caller's boards.
+// Boards created before ownerId was recorded have none and stay reachable.
+const _wbVisible = (dtu, ctx) => !dtu.ownerId || dtu.ownerId === ctx?.actor?.userId;
+
 register("whiteboard", "create", (ctx, input) => {
   const { title, linkedDtus } = input;
   const whiteboard = { id: uid("wb"), title: title || "Untitled Whiteboard", elements: [], linkedDtus: linkedDtus || [], collaborators: [], createdAt: nowISO(), updatedAt: nowISO() };
@@ -54692,6 +54696,8 @@ register("whiteboard", "create", (ctx, input) => {
     machine: { kind: "whiteboard", data: whiteboard },
     lineage: { parents: whiteboard.linkedDtus, children: [] },
     source: "whiteboard",
+    ownerId: ctx?.actor?.userId || undefined,
+    visibility: "private",
     createdAt: whiteboard.createdAt
   };
   STATE.dtus.set(wbDtu.id, wbDtu);
@@ -54702,7 +54708,7 @@ register("whiteboard", "create", (ctx, input) => {
 register("whiteboard", "update", (ctx, input) => {
   const { whiteboardId, elements, linkedDtus } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
   const wb = dtu.machine.data;
   if (elements) wb.elements = elements;
   if (linkedDtus) { wb.linkedDtus = linkedDtus; dtu.lineage.parents = linkedDtus; }
@@ -54717,12 +54723,15 @@ register("whiteboard", "update", (ctx, input) => {
 register("whiteboard", "get", (ctx, input) => {
   const { whiteboardId } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
   return { ok: true, whiteboard: dtu.machine.data, linkedDtus: dtu.lineage?.parents || [] };
 });
 
-register("whiteboard", "list", (_ctx, _input) => {
-  const whiteboards = dtusArray().filter(d => d.machine?.kind === "whiteboard").map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt }));
+register("whiteboard", "list", (ctx, _input) => {
+  const whiteboards = dtusArray()
+    .filter(d => d.machine?.kind === "whiteboard" && _wbVisible(d, ctx))
+    .map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt, updatedAt: d.updatedAt || d.createdAt }))
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   return { ok: true, whiteboards, count: whiteboards.length };
 });
 
