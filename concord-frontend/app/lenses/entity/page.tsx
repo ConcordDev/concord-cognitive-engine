@@ -10,7 +10,8 @@
 
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Bot, Network, Search, Users } from 'lucide-react';
+import { ArrowLeft, Bot, Network, Search, Users } from 'lucide-react';
+import { EntityNorthStar } from '@/components/entity/EntityNorthStar';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -64,7 +65,7 @@ const PANELS: Record<EntityView, ComponentType> = {
   agents: AgentsPanel,
 };
 
-export default function EntityLensPage() {
+function EntityDesk({ onBack }: { onBack: () => void }) {
   useLensNav('entity');
   useLensIdentity('entity');
   const reduceMotion = useReducedMotion();
@@ -95,7 +96,11 @@ export default function EntityLensPage() {
   );
 
   return (
-    <LensShell lensId="entity" asMain={false}>
+    <LensShell lensId="entity" asMain={false} disableAgentFab>
+      <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 text-[14px] text-zinc-500 hover:text-zinc-200">
+        <ArrowLeft className="h-4 w-4" />
+        Entities
+      </button>
       <FirstRunTour lensId="entity" />
       <DepthBadge lensId="entity" size="sm" className="ml-2" />
       <div data-lens-theme="entity" className={ds.pageContainer}>
@@ -153,4 +158,10 @@ export default function EntityLensPage() {
       </div>
     </LensShell>
   );
+}
+
+export default function EntityLensPage() {
+  const [desk, setDesk] = useState(false);
+  if (!desk) return <EntityNorthStar onOpenDesk={() => setDesk(true)} />;
+  return <EntityDesk onBack={() => setDesk(false)} />;
 }

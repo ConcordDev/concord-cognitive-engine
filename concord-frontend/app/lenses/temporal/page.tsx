@@ -18,16 +18,21 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ForecastWorkbench } from '@/components/temporal/ForecastWorkbench';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 import { ds } from '@/lib/design-system';
-import { Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { TemporalNorthStar } from '@/components/temporal/TemporalNorthStar';
 
-export default function TemporalLensPage() {
+function TemporalDesk({ onBack }: { onBack: () => void }) {
   const [desk, setDesk] = useState<'series' | 'tools'>('series');
   return (
-    <LensShell lensId="temporal" asMain={false}>
+    <LensShell lensId="temporal" asMain={false} disableAgentFab>
       <FirstRunTour lensId="temporal" />      <DepthBadge lensId="temporal" size="sm" className="ml-2" />
       <div data-lens-theme="temporal" className={ds.pageContainer}>
         <header className={ds.sectionHeader}>
+          <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-1.5 text-[14px] text-zinc-500 hover:text-zinc-200">
+            <ArrowLeft className="h-4 w-4" />
+            Temporal
+          </button>
           <div className="flex items-center gap-3">
             <Clock className="w-7 h-7 text-sky-400" />
             <div>
@@ -67,4 +72,10 @@ export default function TemporalLensPage() {
       </a>      <CrossLensRecentsPanel lensId="temporal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
+}
+
+export default function TemporalLensPage() {
+  const [desk, setDesk] = useState(false);
+  if (!desk) return <TemporalNorthStar onOpenDesk={() => setDesk(true)} />;
+  return <TemporalDesk onBack={() => setDesk(false)} />;
 }

@@ -7,24 +7,29 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench } from '@/components/schema/SchemaWorkbench';
-import { FileCode, Database, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileCode, Database, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
+import { SchemaNorthStar } from '@/components/schema/SchemaNorthStar';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-export default function SchemaLensPage() {
+function SchemaDesk({ onBack }: { onBack: () => void }) {
   useLensNav('schema');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('schema');
   const [showRepos, setShowRepos] = useState(false);
 
   return (
-    <LensShell lensId="schema" asMain={false}>
+    <LensShell lensId="schema" asMain={false} disableAgentFab>
       <FirstRunTour lensId="schema" />      <DepthBadge lensId="schema" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
+          <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 hover:text-zinc-200">
+            <ArrowLeft className="h-4 w-4" />
+            Schema
+          </button>
           <FileCode className="w-8 h-8 text-neon-cyan" />
           <div>
             <div className="flex items-center gap-2">
@@ -78,4 +83,10 @@ export default function SchemaLensPage() {
     </div>          <CrossLensRecentsPanel lensId="schema" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
+}
+
+export default function SchemaLensPage() {
+  const [desk, setDesk] = useState(false);
+  if (!desk) return <SchemaNorthStar onOpenDesk={() => setDesk(true)} />;
+  return <SchemaDesk onBack={() => setDesk(false)} />;
 }
