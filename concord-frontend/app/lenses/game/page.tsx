@@ -1,4 +1,4 @@
 'use client';
 
-/** One quest. The gamification desk opens from More. */
-export { GameNorthStar as default } from '@/components/game/GameNorthStar';
+/** Thin shell — one MainTab view-SM in components/game/GameApp.tsx */
+export { default } from '@/components/game/GameApp';

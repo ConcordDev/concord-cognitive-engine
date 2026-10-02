@@ -1,4 +1,4 @@
 'use client';
 
-/** Arrangement first. The DAW workspace opens from More. */
-export { StudioNorthStar as default } from '@/components/studio/StudioNorthStar';
+/** Thin shell — DAW workspace lives in components/studio/StudioDawWorkspace.tsx */
+export { StudioDawWorkspace as default } from '@/components/studio/StudioDawWorkspace';

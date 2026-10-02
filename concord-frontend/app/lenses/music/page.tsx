@@ -1,4 +1,4 @@
 'use client';
 
-/** Library first. The music desks open from More. */
-export { MusicNorthStar as default } from '@/components/music/MusicNorthStar';
+/** Thin shell — single MusicAppView view-SM in components/music/MusicWorkspace.tsx */
+export { MusicWorkspace as default } from '@/components/music/MusicWorkspace';
