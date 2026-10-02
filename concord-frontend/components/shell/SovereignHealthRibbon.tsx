@@ -104,9 +104,11 @@ export function SovereignHealthRibbon() {
   const overallLabel = !reachable ? 'Status unknown' : overall === 'live' ? 'All systems live' : overall === 'warn' ? 'Degraded' : 'Starting';
 
   return (
-    <div
+    <button
+      type="button"
       role="status"
-      aria-label={`System health: ${overallLabel}`}
+      aria-label={`System health: ${overallLabel}. Show details`}
+      onClick={() => window.dispatchEvent(new Event('concord:system-status-open'))}
       className="hidden sm:flex h-8 items-center gap-1.5 rounded-md px-2 hover:bg-white/[0.04]"
       title={[brainTitle, hbTitle, subTitle].join('\n')}
     >
@@ -118,7 +120,7 @@ export function SovereignHealthRibbon() {
       </span>
       <span className={`hidden xl:inline text-[12px] ${text[overall]}`}>{overallLabel}</span>
       <span className="sr-only">{brainLabel} · {hbLabel} · {subLabel}</span>
-    </div>
+    </button>
   );
 }
 

@@ -39,9 +39,17 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
 }
 
+// Mutable so widget tests can render off-lens: inside /lenses/* the widget
+// steps aside for the lens header toolbar's Kay button.
+const nav = vi.hoisted(() => ({ pathname: '/lenses/creatures' }));
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/lenses/creatures',
+  usePathname: () => nav.pathname,
 }));
+
+/** Open the overlay the way the lens toolbar / widget / palette do. */
+function summonKay() {
+  act(() => { window.dispatchEvent(new Event('conkay:summon')); });
+}
 
 // The WebGL world-tree backdrop + the AR exploded-view inspector are irrelevant
 // here and have no WebGL context under jsdom.
@@ -123,6 +131,9 @@ describe('widgetStateFromAttention — pure derivation (no fabrication)', () => 
 });
 
 describe('ConKayWidgetLayer — renders the real store-derived state by default', () => {
+  beforeEach(() => { nav.pathname = '/hub'; });
+  afterEach(() => { nav.pathname = '/lenses/creatures'; });
+
   it('reflects a real busy=true as "thinking", and returns to idle when it clears', () => {
     render(<ConKayWidgetLayer />);
     expect(getWidget()).toHaveAttribute('data-conkay-widget-state', 'idle');
@@ -156,7 +167,7 @@ describe('ConKayOverlay — the real writer of the attention store', () => {
     render(<ConKayOverlay />);
     expect(attention().open).toBe(false);
 
-    fireEvent.click(screen.getByLabelText('Summon ConKay (⌘/Ctrl+J)'));
+    summonKay();
     await waitFor(() => expect(screen.getByLabelText('Message ConKay')).toBeInTheDocument());
     expect(attention().open).toBe(true);
 
@@ -175,7 +186,7 @@ describe('ConKayOverlay — the real writer of the attention store', () => {
     });
 
     render(<ConKayOverlay />);
-    fireEvent.click(screen.getByLabelText('Summon ConKay (⌘/Ctrl+J)'));
+    summonKay();
     await waitFor(() => expect(screen.getByLabelText('Message ConKay')).toBeInTheDocument());
     expect(attention().busy).toBe(false);
 
@@ -194,6 +205,9 @@ describe('ConKayOverlay — the real writer of the attention store', () => {
 });
 
 describe('Promote round-trip — the ambient widget genuinely opens ConKayOverlay', () => {
+  beforeEach(() => { nav.pathname = '/hub'; });
+  afterEach(() => { nav.pathname = '/lenses/creatures'; });
+
   it('clicking the widget dispatches conkay:summon and the real overlay opens in response', async () => {
     render(
       <>
@@ -202,7 +216,7 @@ describe('Promote round-trip — the ambient widget genuinely opens ConKayOverla
       </>,
     );
 
-    // Overlay starts closed (its own closed-state summon button, not the widget).
+    // Overlay starts closed.
     expect(screen.queryByLabelText('Message ConKay')).not.toBeInTheDocument();
 
     fireEvent.click(getWidget());
@@ -213,6 +227,9 @@ describe('Promote round-trip — the ambient widget genuinely opens ConKayOverla
 });
 
 describe('Dismiss round-trip — clicking the widget again closes an already-open overlay', () => {
+  beforeEach(() => { nav.pathname = '/hub'; });
+  afterEach(() => { nav.pathname = '/lenses/creatures'; });
+
   it('dispatches conkay:dismiss (not another conkay:summon) when the real store already says open=true, and the overlay actually closes', async () => {
     render(
       <>
@@ -251,7 +268,7 @@ describe('Collapse round-trip — closing preserves conversation continuity', ()
   it('a message sent before closing is still in the transcript after reopening (ConKayOverlay never unmounts across open/close)', async () => {
     render(<ConKayOverlay />);
 
-    fireEvent.click(screen.getByLabelText('Summon ConKay (⌘/Ctrl+J)'));
+    summonKay();
     await waitFor(() => expect(screen.getByLabelText('Message ConKay')).toBeInTheDocument());
 
     // "what can you do" is a fully local, deterministic ConKay skill (no

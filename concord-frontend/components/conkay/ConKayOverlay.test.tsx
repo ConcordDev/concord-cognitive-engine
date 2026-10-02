@@ -19,7 +19,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 
 // jsdom doesn't implement scrollIntoView (ConKayOverlay auto-scrolls the
 // transcript on every new message) — stub it, irrelevant to this unit's
@@ -78,7 +78,8 @@ import { ConKayOverlay } from './ConKayOverlay';
 
 async function openConKay() {
   render(<ConKayOverlay />);
-  fireEvent.click(screen.getByLabelText('Summon ConKay (⌘/Ctrl+J)'));
+  // Same contract the lens toolbar's Kay button uses.
+  act(() => { window.dispatchEvent(new Event('conkay:summon')); });
   await waitFor(() => expect(screen.getByLabelText('Message ConKay')).toBeInTheDocument());
 }
 

@@ -28,7 +28,10 @@ export function WorkspaceTabs({
   label: string;
 }) {
   return (
-    <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar" aria-label={label}>
+    <nav
+      className="flex min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]"
+      aria-label={label}
+    >
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activePath === tab.path;

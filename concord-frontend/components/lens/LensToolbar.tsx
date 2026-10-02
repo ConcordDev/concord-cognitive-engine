@@ -13,7 +13,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentType } from 'react';
-import { Bot, History, LayoutPanelLeft, MessageCircle, Network, Plus, Sparkles } from 'lucide-react';
+import { Bot, CircleDot, History, LayoutPanelLeft, MessageCircle, Network, Plus, Sparkles } from 'lucide-react';
+import { useConkayInitiativeStore } from '@/components/conkay/conkayInitiativeStore';
 import { apiHelpers } from '@/lib/api/client';
 import { openLensTool, useAvailableLensTools, type LensTool } from '@/lib/lens-dock';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
@@ -44,22 +45,31 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
     retry: 0,
   });
   const dtuCount = data?.total || data?.items?.length || 0;
+  const kayPending = useConkayInitiativeStore((s) => s.pending.length);
 
   return (
     <div className="flex flex-shrink-0 items-center gap-0.5">
-      {dtuCount > 0 && (
-        <span className="mr-2 hidden font-mono text-[11px] text-zinc-500 md:inline" title={`${dtuCount} DTUs in ${domainLabel}`}>
-          {dtuCount.toLocaleString()} DTUs
-        </span>
-      )}
       <a
         href={`/lenses/chat?context=${encodeURIComponent(domain)}`}
         className="mr-1 flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[12px] text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-zinc-50"
-        title={`Ask about ${domainLabel} in chat`}
+        title={dtuCount > 0 ? `Ask about ${domainLabel} in chat (${dtuCount.toLocaleString()} DTUs here)` : `Ask about ${domainLabel} in chat`}
       >
         <MessageCircle className="h-3.5 w-3.5" />
         Ask
       </a>
+      {domain !== 'chat' && <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('conkay:summon'))}
+        className={`${iconBtn} relative`}
+        title={kayPending > 0 ? `Kay — ${kayPending} waiting (Ctrl+J)` : 'Kay (Ctrl+J)'}
+        aria-label={kayPending > 0 ? `Open Kay, ${kayPending} waiting` : 'Open Kay'}
+        data-testid="lens-tool-kay"
+      >
+        <CircleDot className="h-4 w-4" />
+        {kayPending > 0 && (
+          <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" />
+        )}
+      </button>}
       {TOOLS.filter((t) => available.has(t.tool)).map(({ tool, icon: Icon, label, shortcut }) => (
         <button
           key={tool}
