@@ -2407,9 +2407,12 @@ async function tryLoadDotenv() {
       for (const [key, fileValue] of Object.entries(result.parsed)) {
         const preexisting = preDotenvSnapshot[key];
         if (preexisting !== undefined && preexisting !== fileValue) {
+          // Never echo secret values into logs — name the key, redact the value.
+          const secret = /(SECRET|TOKEN|PASSWORD|PASS|KEY|PRIVATE|CREDENTIAL|DSN|_URL$)/i.test(key);
+          const show = (v) => (secret ? `<redacted ${String(v).length} chars>` : v);
           console.warn(
-            `[ENV_CONFLICT] ${key}: the .env file says "${fileValue}" but a pre-existing ` +
-            `process.env value ("${preexisting}", likely injected by pm2's ecosystem.config.cjs) ` +
+            `[ENV_CONFLICT] ${key}: the .env file says "${show(fileValue)}" but a pre-existing ` +
+            `process.env value ("${show(preexisting)}", likely injected by pm2's ecosystem.config.cjs) ` +
             `silently won — the .env value was ignored. If this wasn't intentional, fix the ` +
             `losing side rather than assume the .env file's value is what's actually running.`
           );
