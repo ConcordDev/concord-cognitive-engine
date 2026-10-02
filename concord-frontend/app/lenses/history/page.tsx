@@ -67,9 +67,7 @@ import { WikipediaExplorer } from '@/components/history/WikipediaExplorer';
 import { TimelineSourceTools } from '@/components/history/TimelineSourceTools';
 import { PeriodCauseEffectTools } from '@/components/history/PeriodCauseEffectTools';
 import { FiguresNotebook } from '@/components/history/FiguresNotebook';
-import { TheRecord } from '@/components/history/TheRecord';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 
 type GroupId = 'timelines' | 'wikipedia' | 'tools' | 'notebook';
 
@@ -80,7 +78,7 @@ const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof Layers;
   { id: 'notebook', label: 'Figures Notebook', hotkey: '4', icon: Users, description: 'Personal notes on historical figures' },
 ];
 
-export function HistoryDesk() {
+export default function HistoryLensPage() {
   useLensNav('history');
 
   const [group, setGroup] = useState<GroupId>('timelines');
@@ -192,15 +190,5 @@ export function HistoryDesk() {
         </div>
       </div>
     </LensShell>
-  );
-}
-
-export default function HistoryLensPage() {
-  return (
-    <NorthGate
-      backLabel="History"
-      desk={<HistoryDesk />}
-      star={(openDesk) => <TheRecord onOpenDesk={openDesk} />}
-    />
   );
 }

@@ -23,8 +23,6 @@ import { cn } from '@/lib/utils';
 import { AnswersOraclePanel } from '@/components/answers/AnswersOraclePanel';
 import { QaWorkbenchPanel } from '@/components/answers/QaWorkbenchPanel';
 import { StackOverflowPanel } from '@/components/answers/StackOverflowPanel';
-import { TheQuestion } from '@/components/answers/TheQuestion';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 
 type AnswersView = 'oracle' | 'qa' | 'stackoverflow';
 
@@ -34,7 +32,7 @@ const VIEWS: { id: AnswersView; label: string; keys: string; hint: string; icon:
   { id: 'stackoverflow', label: 'Stack Overflow', keys: 's', hint: 'External search', icon: Search },
 ];
 
-export function AnswersDesk() {
+export default function AnswersLensPage() {
   // Preserve prior artifact hooks (view-event logging wiring).
   const viewLog = useArtifacts<{ at: string }>('answers', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('answers');
@@ -126,15 +124,5 @@ export function AnswersDesk() {
         <CrossLensRecentsPanel lensId="answers" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function AnswersLensPage() {
-  return (
-    <NorthGate
-      backLabel="The Answers"
-      desk={<AnswersDesk />}
-      star={(openDesk) => <TheQuestion onOpenDesk={openDesk} />}
-    />
   );
 }

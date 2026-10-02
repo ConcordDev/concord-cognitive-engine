@@ -27,8 +27,6 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ScoresPanel, DistributionPanel } from '@/components/cri/ScoresPanel';
 import { QualityLoopPanel } from '@/components/cri/QualityLoopPanel';
 import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
-import { TheIndex } from '@/components/cri/TheIndex';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 
 type CriView = 'scores' | 'distribution' | 'loop' | 'crisis';
 
@@ -54,7 +52,7 @@ const PANELS: Record<CriView, ComponentType> = {
   crisis: CrisisPanel,
 };
 
-export function CriDesk() {
+export default function CRILensPage() {
   useLensNav('cri');
   useLensIdentity('cri');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('cri');
@@ -158,15 +156,5 @@ export function CriDesk() {
         <CrossLensRecentsPanel lensId="cri" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function CRILensPage() {
-  return (
-    <NorthGate
-      backLabel="CRI"
-      desk={<CriDesk />}
-      star={(openDesk) => <TheIndex onOpenDesk={openDesk} />}
-    />
   );
 }
