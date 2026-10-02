@@ -23,9 +23,7 @@ import { HourlyBreakdown } from '@/components/forecast/HourlyBreakdown';
 import { RegionalForecast } from '@/components/forecast/RegionalForecast';
 import { ForecastAccuracy } from '@/components/forecast/ForecastAccuracy';
 import { ForecastArchive } from '@/components/forecast/ForecastArchive';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { AlertSubscriptions } from '@/components/forecast/AlertSubscriptions';
-import { TheNextReading } from '@/components/forecast/TheNextReading';
 
 interface Forecast {
   window_hours: number;
@@ -49,7 +47,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'alerts', label: 'Alerts' },
 ];
 
-export function ForecastDesk() {
+export default function ForecastPage() {
   const [worldId, setWorldId] = useState('concordia-hub');
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,15 +262,5 @@ export function ForecastDesk() {
         </section>
       </div>      <CrossLensRecentsPanel lensId="forecast" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-export default function ForecastPage() {
-  return (
-    <NorthGate
-      backLabel="Forecast"
-      desk={<ForecastDesk />}
-      star={(openDesk) => <TheNextReading onOpenDesk={openDesk} />}
-    />
   );
 }

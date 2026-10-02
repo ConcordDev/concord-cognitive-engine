@@ -56,7 +56,7 @@ vi.mock('@/components/classroom/ClassroomWorkspace', () => ({ ClassroomWorkspace
 vi.mock('@/components/classroom/OpenLibrarySearch', () => ({ OpenLibrarySearch: () => null }));
 
 // Import AFTER mocks are registered.
-import { ClassroomDesk as ClassroomPage } from '@/app/lenses/classroom/page';
+import ClassroomPage from '@/app/lenses/classroom/page';
 
 // ── fetch stub helpers ──────────────────────────────────────────────────────
 // `envelope()` mirrors the REAL /api/lens/run transport shape: the outer

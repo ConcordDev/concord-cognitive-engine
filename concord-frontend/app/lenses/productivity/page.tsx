@@ -23,8 +23,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Notebook, Keyboard, Code2 as Github } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { ShortList } from '@/components/productivity/ShortList';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -43,7 +41,7 @@ function isTabId(v: unknown): v is ProductivityTabId {
   return typeof v === 'string' && (TAB_IDS as string[]).includes(v);
 }
 
-export function ProductivityDesk() {
+export default function ProductivityLensPage() {
   useLensNav('productivity');
   const { restore, persist } = useLensStatePersistence('productivity');
 
@@ -135,15 +133,5 @@ export function ProductivityDesk() {
       {/* Production-grade polish sentinels — cross-lens surfaces, kept
           out of the primary flow (accessibility-only). */}      <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-export default function ProductivityLensPage() {
-  return (
-    <NorthGate
-      backLabel="Productivity"
-      desk={<ProductivityDesk />}
-      star={(openDesk) => <ShortList onOpenDesk={openDesk} />}
-    />
   );
 }
