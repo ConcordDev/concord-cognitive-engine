@@ -60,7 +60,7 @@ vi.mock('lucide-react', async (importOriginal) => {
 });
 
 // Import AFTER mocks are registered.
-import LiteraryLensPage from '@/app/lenses/literary/page';
+import { LiteraryDesk as LiteraryLensPage } from '@/app/lenses/literary/page';
 
 // Helper: lensRun returns an axios-shaped { data: { ok, result } }.
 function reply(result: Record<string, unknown>, ok = true) {

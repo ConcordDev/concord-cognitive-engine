@@ -34,7 +34,9 @@ import { WorkspacePanel } from '@/components/docs/WorkspacePanel';
 import { GuidePanel } from '@/components/docs/GuidePanel';
 import { AnalysisPanel } from '@/components/docs/AnalysisPanel';
 import { ApiHubPanel } from '@/components/docs/ApiHubPanel';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { DocsToolingGallery } from '@/components/docs/DocsToolingGallery';
+import { TheDocument } from '@/components/docs/TheDocument';
 
 type DocsView = 'workspace' | 'guide' | 'analysis' | 'hub' | 'tooling';
 
@@ -62,7 +64,7 @@ const PANELS: Record<DocsView, ComponentType> = {
   tooling: ToolingPanel,
 };
 
-export default function DocsLensPage() {
+export function DocsDesk() {
   useLensNav('docs');
   useLensIdentity('docs');
   const {
@@ -181,5 +183,15 @@ export default function DocsLensPage() {
         <CrossLensRecentsPanel lensId="docs" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function DocsLensPage() {
+  return (
+    <NorthGate
+      backLabel="Docs"
+      desk={<DocsDesk />}
+      star={(openDesk) => <TheDocument onOpenDesk={openDesk} />}
+    />
   );
 }

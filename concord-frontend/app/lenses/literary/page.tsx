@@ -16,7 +16,9 @@ import { cn } from '@/lib/utils';
 import { SearchPanel } from '@/components/literary/SearchPanel';
 import { CrystalsPanel } from '@/components/literary/CrystalsPanel';
 import { AnnotationsPanel } from '@/components/literary/AnnotationsPanel';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { LatticePanel } from '@/components/literary/LatticePanel';
+import { ThePassage } from '@/components/literary/ThePassage';
 
 type LiteraryView = 'search' | 'crystals' | 'annotations' | 'lattice';
 
@@ -34,7 +36,7 @@ const PANELS: Record<LiteraryView, ComponentType> = {
   lattice: LatticePanel,
 };
 
-export default function LiteraryLensPage() {
+export function LiteraryDesk() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<LiteraryView>('search');
 
@@ -94,5 +96,15 @@ export default function LiteraryLensPage() {
         </AnimatePresence>
       </main>
     </LensShell>
+  );
+}
+
+export default function LiteraryLensPage() {
+  return (
+    <NorthGate
+      backLabel="Literary"
+      desk={<LiteraryDesk />}
+      star={(openDesk) => <ThePassage onOpenDesk={openDesk} />}
+    />
   );
 }

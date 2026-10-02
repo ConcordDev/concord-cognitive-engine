@@ -31,6 +31,8 @@ import { BrowsePanel } from '@/components/understanding/BrowsePanel';
 import { ComposePanel } from '@/components/understanding/ComposePanel';
 import { EvolutionPanel } from '@/components/understanding/EvolutionPanel';
 import { LineagePanel } from '@/components/understanding/LineagePanel';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { StartFromDtu } from '@/components/understanding/StartFromDtu';
 import { StatsStrip } from '@/components/understanding/StatsStrip';
 import {
   understandingMacro,
@@ -91,7 +93,7 @@ function UnderstandingPane({
   return <LineagePanel />;
 }
 
-export default function UnderstandingPage() {
+export function UnderstandingDesk() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<View>('notes');
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
@@ -208,5 +210,15 @@ export default function UnderstandingPage() {
       </main>
       <CrossLensRecentsPanel lensId="understanding" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+export default function UnderstandingPage() {
+  return (
+    <NorthGate
+      backLabel="Understanding"
+      desk={<UnderstandingDesk />}
+      star={(openDesk) => <StartFromDtu onOpenDesk={openDesk} />}
+    />
   );
 }
