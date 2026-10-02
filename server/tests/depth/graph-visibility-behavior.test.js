@@ -48,6 +48,36 @@ describe("graph macros respect DTU privacy", () => {
     assert.equal(e.edges.some((x) => x.source === PRIV || x.target === PRIV), false);
   });
 
+  it("search finds shared nodes by title and hides private ones from others", async () => {
+    const b = await runMacro("graph", "search", { q: "lattice note" }, bob);
+    assert.ok(b.results.some((x) => x.id === PUB));
+    assert.equal((await runMacro("graph", "search", { q: "alice private" }, bob)).results.length, 0);
+    const a = await runMacro("graph", "search", { q: "alice private" }, alice);
+    assert.ok(a.results.some((x) => x.id === PRIV));
+    assert.equal((await runMacro("graph", "search", { q: "a" }, alice)).results.length, 0);
+  });
+
+  it("a child that only names its parent is reachable from the parent", async () => {
+    const KID = "dtu_graphvis_kid";
+    // dtu.create sets only the child's lineage.parents; the parent's children stay unset.
+    STATE.dtus.set(KID, { id: KID, title: "Kid note", tier: "regular", tags: [], lineage: { parents: [PUB] }, createdAt: new Date().toISOString() });
+    await runMacro("autotag", "apply", { dtuId: PUB, tags: ["graphvis"] }, alice); // mark index dirty
+    const r = await runMacro("graph", "forceGraph", { centerNode: PUB, depth: 1, maxNodes: 50 }, bob);
+    assert.ok(ids(r).includes(KID));
+    assert.ok(r.links.some((l) => l.source === PUB && l.target === KID));
+    STATE.dtus.delete(KID);
+  });
+
+  it("DTUs written after the index was built show up without a manual dirty flag", async () => {
+    const LATE = "dtu_graphvis_late";
+    await runMacro("graph", "visualData", { limit: 10 }, bob); // build now
+    STATE.dtus.set(LATE, { id: LATE, title: "Late arrival", tier: "regular", tags: [], lineage: { parents: [] }, createdAt: new Date().toISOString() });
+    await new Promise((r) => setTimeout(r, 5100)); // rebuild throttle window
+    const r = await runMacro("graph", "search", { q: "late arrival" }, bob);
+    assert.ok(r.results.some((x) => x.id === LATE));
+    STATE.dtus.delete(LATE);
+  });
+
   it("query results drop the private node for others", async () => {
     const b = await runMacro("graph", "query", { dsl: `descendants of ${PUB}` }, bob);
     assert.equal(b.results.some((x) => x.id === PRIV), false);

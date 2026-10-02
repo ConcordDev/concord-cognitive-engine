@@ -14150,7 +14150,7 @@ async function runMacro(domain, name, input, ctx) {
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
-    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors"]),
+    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
     events: new Set(["list", "recent", "log", "paginated"]),
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
     // "create"/"update"/"delete" removed (public-read-write-verb-detector,
@@ -32973,7 +32973,7 @@ register("settings", "status", (ctx, _input) => {
 
   register("graph", "stats", (ctx, _input = {}) => {
     try {
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
       return {
         ok: true,
         stats: {
@@ -32989,7 +32989,7 @@ register("settings", "status", (ctx, _input) => {
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
       const limit = Math.min(Number(input.limit || 200), 1000);
       const viewer = _graphViewer(ctx);
       const edges = Array.from(GRAPH_INDEX?.edges?.values?.() || []).filter(e => _graphVisibleEdge(e, viewer)).slice(0, limit);
@@ -33003,7 +33003,7 @@ register("settings", "status", (ctx, _input) => {
     try {
       const id = input.id || input.nodeId || input.centerNode;
       if (!id) return { ok: false, error: "id_required", reason: "id_required" };
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
       const viewer = _graphViewer(ctx);
       if (!_graphCanSeeId(id, viewer)) return { ok: false, error: "not_found", reason: "not_found" };
       const neighbors = [];
@@ -45321,7 +45321,21 @@ structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, 
 // ============================================================================
 // WAVE 2: GRAPH-BASED RELATIONAL QUERIES (Surpassing Logseq)
 // ============================================================================
-const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true };
+const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true, builtVersion: -1, builtAt: 0 };
+
+// Only a few write paths set GRAPH_INDEX.dirty, so DTUs created after boot
+// never reached the graph. Also rebuild when the DTU store's version moved —
+// throttled, since feeds write continuously and a rebuild walks every DTU.
+const _GRAPH_REBUILD_MIN_MS = 5000;
+function _ensureGraphIndex() {
+  const ver = _dtuStoreVersion();
+  const moved = ver >= 0 && ver !== GRAPH_INDEX.builtVersion && Date.now() - GRAPH_INDEX.builtAt >= _GRAPH_REBUILD_MIN_MS;
+  if (GRAPH_INDEX.dirty || moved) {
+    rebuildGraphIndex();
+    GRAPH_INDEX.builtVersion = ver;
+    GRAPH_INDEX.builtAt = Date.now();
+  }
+}
 
 // Graph reads must respect DTU privacy: GRAPH_INDEX holds every DTU, and the
 // graph domain is public-read. A private / user-scoped / followers-only DTU is
@@ -45376,7 +45390,7 @@ function rebuildGraphIndex() {
 }
 
 function _graphQueryRaw(ctx, input) {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+  _ensureGraphIndex();
   const { dsl } = input;
   const results = [];
   const dslLower = (dsl || "").toLowerCase();
@@ -45447,7 +45461,7 @@ register("graph", "query", (ctx, input) => {
 });
 
 register("graph", "visualData", (ctx, input) => {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+  _ensureGraphIndex();
   const { tier, limit, includeEdges } = input;
   const viewer = _graphViewer(ctx);
   let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer));
@@ -45460,12 +45474,23 @@ register("graph", "visualData", (ctx, input) => {
 
 register("graph", "forceGraph", (ctx, input) => {
   try {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+  _ensureGraphIndex();
   const { centerNode, depth, maxNodes } = input;
   const viewer = _graphViewer(ctx);
   let nodes = [], links = [];
   if (centerNode) {
-    const visited = new Set(), queue = [{ id: centerNode, d: 0 }], maxDepth = Number(depth) || 2;
+    // Walk lineage edges from the index in both directions: a child that
+    // names its parent is reachable even when the parent's own children list
+    // was never updated (dtu.create sets only the child's lineage.parents).
+    const adj = new Map();
+    for (const e of GRAPH_INDEX.edges.values()) {
+      if (e.type !== "parent" && e.type !== "child") continue;
+      if (!adj.has(e.source)) adj.set(e.source, []);
+      if (!adj.has(e.target)) adj.set(e.target, []);
+      adj.get(e.source).push(e);
+      adj.get(e.target).push(e);
+    }
+    const visited = new Set(), seenLinks = new Set(), queue = [{ id: centerNode, d: 0 }], maxDepth = Number(depth) || 2;
     while (queue.length > 0 && nodes.length < (Number(maxNodes) || 100)) {
       const { id, d } = queue.shift();
       if (visited.has(id) || d > maxDepth) continue;
@@ -45473,9 +45498,15 @@ register("graph", "forceGraph", (ctx, input) => {
       const dtu = STATE.dtus.get(id);
       if (!dtu || !_graphCanSeeId(id, viewer)) continue;
       nodes.push({ id, label: dtu.title, tier: dtu.tier, tags: dtu.tags, depth: d });
-      for (const parentId of (dtu.lineage?.parents || [])) { links.push({ source: parentId, target: id, type: "parent" }); if (!visited.has(parentId)) queue.push({ id: parentId, d: d + 1 }); }
-      for (const childId of (dtu.lineage?.children || [])) { links.push({ source: id, target: childId, type: "child" }); if (!visited.has(childId)) queue.push({ id: childId, d: d + 1 }); }
+      for (const e of adj.get(id) || []) {
+        const key = `${e.source}->${e.target}`;
+        if (!seenLinks.has(key)) { seenLinks.add(key); links.push({ source: e.source, target: e.target, type: e.type }); }
+        const other = e.source === id ? e.target : e.source;
+        if (!visited.has(other)) queue.push({ id: other, d: d + 1 });
+      }
     }
+    const kept = new Set(nodes.map(n => n.id));
+    links = links.filter(l => kept.has(l.source) && kept.has(l.target));
   } else {
     nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer)).slice(0, Number(maxNodes) || 100);
     const nodeIds = new Set(nodes.map(n => n.id));
@@ -45494,6 +45525,37 @@ app.get("/api/graph/visual", async (req, res) => {
     res.status(500).json({ ok: false, error: String(e?.message || e), nodes: [], links: [], edges: [] });
   }
 });
+// Title search over the same (visibility-filtered) nodes the graph renders,
+// so "find a node" finds what the field can show — dtus/paginated hides
+// seed/system-owned lattice DTUs that the graph includes.
+register("graph", "search", (ctx, input = {}) => {
+  try {
+    _ensureGraphIndex();
+    const q = String(input.q || "").trim().toLowerCase();
+    const limit = Math.min(Math.max(Number(input.limit) || 8, 1), 50);
+    if (q.length < 2) return { ok: true, results: [], total: 0 };
+    const viewer = _graphViewer(ctx);
+    const hits = [];
+    for (const n of GRAPH_INDEX.nodes.values()) {
+      if (n.type === "tag") continue;
+      const title = String(n.title || "").toLowerCase();
+      const at = title.indexOf(q);
+      if (at < 0 || !_graphCanSeeId(n.id, viewer)) continue;
+      hits.push({ id: n.id, title: n.title, tier: n.tier, rank: at === 0 ? 0 : 1 });
+    }
+    hits.sort((a, b) => a.rank - b.rank || String(a.title).length - String(b.title).length);
+    return { ok: true, results: hits.slice(0, limit).map(({ rank: _r, ...h }) => h), total: hits.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+app.get("/api/graph/search", async (req, res) => {
+  try {
+    res.json(await runMacro("graph", "search", { q: req.query.q, limit: req.query.limit }, makeCtx(req)));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e), results: [] });
+  }
+});
+
 app.get("/api/graph/force", async (req, res) => {
   try {
     res.json(await runMacro("graph", "forceGraph", { centerNode: req.query.centerNode, depth: req.query.depth, maxNodes: req.query.maxNodes }, makeCtx(req)));
