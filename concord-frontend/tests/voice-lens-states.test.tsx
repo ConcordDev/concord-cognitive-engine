@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act, within, screen } from '@testing-library/react';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react';
 import React from 'react';
 
 // ── main list channel: useLensData (controls loading/error/empty/populated) ──
@@ -147,12 +147,6 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import VoiceLensPage from '@/app/lenses/voice/page';
 
-/** The booth stays one click under More. These contracts cover that desk. */
-function openVoiceDesk() {
-  fireEvent.click(screen.getByRole('button', { name: 'More' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Booth' }));
-}
-
 const TAKE = {
   id: 'take_1',
   title: 'Take 1',
@@ -191,7 +185,6 @@ describe('voice lens — four UX states', () => {
     // mechanism this rebuilt lens uses (no useRunArtifact hook call exists
     // anywhere in this lens's components).
     const { getByRole, getByText, container } = render(<VoiceLensPage />);
-    openVoiceDesk();
     // The nav tab and the in-panel action button are both literally labeled
     // "Analyze" — scope the tab click to the nav landmark to disambiguate.
     const nav = getByRole('navigation', { name: 'Voice views' });
@@ -213,14 +206,12 @@ describe('voice lens — four UX states', () => {
   it('LOADING: an in-flight feed shows a role=status indicator', async () => {
     lensDataState.isLoading = true;
     const { container } = render(<VoiceLensPage />);
-    openVoiceDesk();
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
   });
 
   it('EMPTY: an empty feed shows the honest "No takes yet" booth prompt', async () => {
     lensDataState.items = [];
     const { getByText } = render(<VoiceLensPage />);
-    openVoiceDesk();
     await waitFor(() => expect(getByText(/No takes yet/i)).toBeInTheDocument());
     // the prompt is an honest call to action, not a dead/blank label
     expect(getByText(/Press record to begin/i)).toBeInTheDocument();
@@ -230,7 +221,6 @@ describe('voice lens — four UX states', () => {
     lensDataState.isError = true;
     lensDataState.error = new Error('voice store offline');
     const { container, getByText } = render(<VoiceLensPage />);
-    openVoiceDesk();
 
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/voice store offline/i)).toBeInTheDocument();
@@ -248,7 +238,6 @@ describe('voice lens — four UX states', () => {
   it('POPULATED: a real take artifact renders with its name + duration', async () => {
     lensDataState.items = [TAKE];
     const { getByText } = render(<VoiceLensPage />);
-    openVoiceDesk();
     // the take's name renders in the Takes sidebar
     await waitFor(() => expect(getByText('Pitch rehearsal')).toBeInTheDocument());
     // 95s formats as 01:35 (formatTime) — the real duration from the artifact

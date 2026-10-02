@@ -173,12 +173,6 @@ vi.mock('react-virtuoso', () => ({
 
 import FeedLensPage from '@/app/lenses/feed/page';
 
-/** The timeline stays one click under More. These contracts cover that desk. */
-function openFeedDesk() {
-  fireEvent.click(screen.getByRole('button', { name: 'More' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'For you' }));
-}
-
 function makePost(id: string, content: string) {
   return {
     id,
@@ -218,7 +212,6 @@ describe('/lenses/feed — UX state contract', () => {
   it('loading: renders the skeleton pulse while the feed query is in flight', () => {
     feedState.isLoading = true;
     const { container } = render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
   });
 
@@ -226,7 +219,6 @@ describe('/lenses/feed — UX state contract', () => {
     feedState.isError = true;
     feedState.error = new Error('feed backend unreachable');
     const { getByText, getByRole } = render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(getByText(/feed backend unreachable/i)).toBeTruthy();
     fireEvent.click(getByRole('button', { name: /retry|try again/i }));
     expect(refetchLens).toHaveBeenCalledTimes(1);
@@ -237,7 +229,6 @@ describe('/lenses/feed — UX state contract', () => {
   it('empty: renders the honest empty state with a Discover CTA (no fabricated posts)', () => {
     feedState.pages = { pages: [[]] };
     const { getByText } = render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(getByText(/nothing in your feed yet/i)).toBeTruthy();
     expect(getByText(/discover sources/i)).toBeTruthy();
   });
@@ -245,7 +236,6 @@ describe('/lenses/feed — UX state contract', () => {
   it('populated: renders real posts from the feed pages through the list', () => {
     feedState.pages = { pages: [[makePost('p1', 'First real post body'), makePost('p2', 'Second real post body')]] };
     const { getByText } = render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(getByText('First real post body')).toBeTruthy();
     expect(getByText('Second real post body')).toBeTruthy();
   });
@@ -262,14 +252,12 @@ describe("/lenses/feed — 'timeline:post' new-post pill (DET-C dead-event fix)"
   it('shows no new-post pill before any timeline:post arrival', () => {
     feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
     render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(screen.queryByText(/new post.*tap to show/i)).toBeNull();
   });
 
   it('a real timeline:post arrival shows the pill, and clicking it clears the pill and invalidates the feed query', () => {
     feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
     render(React.createElement(FeedLensPage));
-    openFeedDesk();
     expect(lastTimelinePostHandler).not.toBeNull();
 
     act(() => { lastTimelinePostHandler!({ dtuId: 'dtu-new-1' }); });
@@ -285,7 +273,6 @@ describe("/lenses/feed — 'timeline:post' new-post pill (DET-C dead-event fix)"
   it('two real timeline:post arrivals pluralize the pill correctly', () => {
     feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
     render(React.createElement(FeedLensPage));
-    openFeedDesk();
     act(() => {
       lastTimelinePostHandler!({ dtuId: 'dtu-new-1' });
       lastTimelinePostHandler!({ dtuId: 'dtu-new-2' });

@@ -2,8 +2,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { SayItUnnamed } from '@/components/anon/SayItUnnamed';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -43,7 +41,7 @@ const EXAMPLE_RECORDS: PrivacyRecord[] = [
   { age: 22, zipcode: '94103', condition: 'Flu' },
 ];
 
-export function AnonDesk() {
+export default function AnonLensPage() {
   useLensNav('anon');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('anon');
@@ -445,15 +443,5 @@ export function AnonDesk() {
         Skip to anon content
       </a>      <CrossLensRecentsPanel lensId="anon" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-export default function AnonLensPage() {
-  return (
-    <NorthGate
-      backLabel="Anonymous"
-      desk={<AnonDesk />}
-      star={(openDesk) => <SayItUnnamed onOpenDesk={openDesk} />}
-    />
   );
 }
