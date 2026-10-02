@@ -55,6 +55,8 @@ const SHELL_TITLES: Record<SupportedLens, string> = {
   environment: 'Emissions',
 };
 
+const PLACEHOLDER_ONLY = ['code', 'legal', 'message', 'healthcare'] as const;
+
 export interface ShellPreviewProps {
   lensId: string;
   defaultOpen?: boolean;
@@ -65,6 +67,9 @@ export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPre
   const [open, setOpen] = useState(defaultOpen);
   const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
+  // These lenses have no data-backed preview — only a sentence pointing at the
+  // real workbench below, so the section is pure chrome. Render nothing.
+  if ((PLACEHOLDER_ONLY as readonly string[]).includes(lensId)) return null;
   const label = SHELL_TITLES[lensId as SupportedLens];
 
   return (

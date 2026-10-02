@@ -158,7 +158,7 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
   if (hidden || occluded) return null;
 
   return (
-    <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-16 right-4 md:top-20 md:right-6">
+    <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-[6.75rem] right-4 md:top-[7.5rem] md:right-6">
       <ConKayWidget state={effectiveState} onActivate={activate} onDismiss={dismiss} pendingCount={pendingCount} />
     </div>
   );

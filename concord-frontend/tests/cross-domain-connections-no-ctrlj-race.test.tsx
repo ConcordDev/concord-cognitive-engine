@@ -5,8 +5,8 @@
 // Cmd/Ctrl+J app-wide (both are mounted together on every lens page via
 // app/lenses/layout.tsx), so every press toggled both the connections
 // panel and ConKay simultaneously. The fix removes CrossDomainConnections'
-// own listener — ConKay owns the shortcut; the panel keeps its visible FAB
-// toggle button as the entry point.
+// own listener — ConKay owns the shortcut. The panel's entry point is now
+// the lens header toolbar's Connections button (lib/lens-dock), not a FAB.
 
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -33,6 +33,8 @@ vi.mock('@/lib/api/client', () => ({
 }));
 
 import { CrossDomainConnections } from '@/components/common/CrossDomainConnections';
+import { openLensTool } from '@/lib/lens-dock';
+import { act } from '@testing-library/react';
 
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -56,20 +58,19 @@ describe('CrossDomainConnections — no more global Ctrl+J listener (ConKay owns
     addSpy.mockRestore();
   });
 
-  it('pressing Ctrl+J does not open the panel (no combobox/dialog appears)', () => {
+  it('pressing Ctrl+J does not open the panel', () => {
     renderPanel();
-    // Panel starts closed — the FAB toggle button is visible.
-    expect(screen.getByLabelText('Open cross-domain connections')).toBeInTheDocument();
-
+    expect(screen.queryByLabelText('Close panel')).not.toBeInTheDocument();
     fireEvent(document.body, new KeyboardEvent('keydown', { key: 'j', ctrlKey: true, bubbles: true }));
-
-    // Still closed — the FAB is still there and no close button/panel content appeared.
-    expect(screen.getByLabelText('Open cross-domain connections')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Close panel')).not.toBeInTheDocument();
   });
 
-  it('the visible FAB button still opens the panel (the panel is still reachable)', () => {
+  it('renders no floating trigger and opens from the lens toolbar dock', () => {
     renderPanel();
-    fireEvent.click(screen.getByLabelText('Open cross-domain connections'));
     expect(screen.queryByLabelText('Open cross-domain connections')).not.toBeInTheDocument();
+    let handled = false;
+    act(() => { handled = openLensTool('connections'); });
+    expect(handled).toBe(true);
+    expect(screen.getByLabelText('Close panel')).toBeInTheDocument();
   });
 });

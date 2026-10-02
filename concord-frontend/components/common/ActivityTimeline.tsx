@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLensTool } from '@/lib/lens-dock';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { Clock, ChevronDown, ChevronUp, User, Bot, Sparkles } from 'lucide-react';
+import { Clock, X, User, Bot, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SkeletonTimeline } from '@/components/common/Skeleton';
 
@@ -21,6 +22,7 @@ const sourceIcons: Record<string, typeof User> = {
 function ActivityTimeline({ domain }: ActivityTimelineProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'user' | 'system'>('all');
+  useLensTool('activity', useCallback(() => setIsOpen((o) => !o), []));
 
   const { data, isLoading } = useQuery({
     queryKey: ['activity-timeline', domain],
@@ -40,11 +42,15 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
     return filter === 'user' ? source === 'user' || source === 'user.capture' : source !== 'user';
   });
 
+  // Opened from the lens header toolbar ("Activity"); nothing renders closed.
+  if (!isOpen) return null;
+
   return (
     <div className="border-t border-lattice-border">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(false)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+        aria-label="Close activity timeline"
       >
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4" />
@@ -53,7 +59,7 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
             <span className="text-xs bg-lattice-surface px-1.5 py-0.5 rounded">{items.length}</span>
           )}
         </div>
-        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        <X className="w-4 h-4" />
       </button>
 
       <AnimatePresence>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLensTool } from '@/lib/lens-dock';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -18,6 +19,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const addToast = useUIStore((state) => state.addToast);
+  // Opened from the lens header toolbar (no floating trigger of its own).
+  useLensTool('capture', useCallback(() => setIsOpen((o) => !o), []));
 
   // Focus the textarea when modal opens
   useEffect(() => {
@@ -85,26 +88,6 @@ function QuickCapture({ domain }: QuickCaptureProps) {
 
   return (
     <>
-      {/* Floating Action Button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="fixed bottom-[9.5rem] right-6 z-40 w-14 h-14 rounded-full bg-neon-cyan text-white shadow-lg shadow-neon-cyan/30 flex items-center justify-center hover:bg-neon-cyan/90 transition-colors"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsOpen(true)}
-            title="Quick Capture (Ctrl+N)"
-            aria-label="Quick Capture"
-          >
-            <Plus className="w-6 h-6" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
       {/* Capture Modal */}
       <AnimatePresence>
         {isOpen && (

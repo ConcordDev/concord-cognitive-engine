@@ -15,7 +15,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { Brain, Activity, Boxes } from 'lucide-react';
 
 interface HealthPayload {
   ok?: boolean;
@@ -50,34 +49,6 @@ const text: Record<Tone, string> = {
   warn: 'text-amber-300/90',
   dim: 'text-zinc-500',
 };
-
-function Chip({
-  icon: Icon,
-  tone,
-  label,
-  title,
-}: {
-  icon: typeof Brain;
-  tone: Tone;
-  label: string;
-  title: string;
-}) {
-  return (
-    <div
-      className="flex items-center gap-1.5 px-2 py-1 rounded-md"
-      title={title}
-    >
-      <span className="relative flex h-1.5 w-1.5">
-        {tone === 'live' && (
-          <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${dot[tone]}`} />
-        )}
-        <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dot[tone]}`} />
-      </span>
-      <Icon className={`w-3.5 h-3.5 ${text[tone]}`} />
-      <span className={`hidden xl:inline text-[11px] font-mono tracking-tight ${text[tone]}`}>{label}</span>
-    </div>
-  );
-}
 
 export function SovereignHealthRibbon() {
   const { data, isError } = useQuery<HealthPayload>({
@@ -126,15 +97,27 @@ export function SovereignHealthRibbon() {
     ? 'Substrate status unavailable'
     : `${sub?.total ?? 0} DTUs in the substrate · ${sub?.compacted ?? 0} consolidated into MEGA/HYPER · up ${fmtUptime(h?.uptime)}`;
 
+  // One indicator, worst-of-three tone. The full readout is in the tooltip —
+  // the header used to carry three always-on chips for this.
+  const tones: Tone[] = [brainTone, hbTone, subTone];
+  const overall: Tone = !reachable ? 'dim' : tones.includes('warn') ? 'warn' : tones.every((x) => x === 'live') ? 'live' : 'dim';
+  const overallLabel = !reachable ? 'Status unknown' : overall === 'live' ? 'All systems live' : overall === 'warn' ? 'Degraded' : 'Starting';
+
   return (
     <div
       role="status"
-      aria-label="System health"
-      className="hidden sm:flex items-center gap-0.5 rounded-lg border border-lattice-border/60 bg-lattice-deep/50 px-1"
+      aria-label={`System health: ${overallLabel}`}
+      className="hidden sm:flex h-8 items-center gap-1.5 rounded-md px-2 hover:bg-white/[0.04]"
+      title={[brainTitle, hbTitle, subTitle].join('\n')}
     >
-      <Chip icon={Brain} tone={brainTone} label={brainLabel} title={brainTitle} />
-      <Chip icon={Activity} tone={hbTone} label={hbLabel} title={hbTitle} />
-      <Chip icon={Boxes} tone={subTone} label={subLabel} title={subTitle} />
+      <span className="relative flex h-1.5 w-1.5">
+        {overall === 'live' && (
+          <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${dot[overall]}`} />
+        )}
+        <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dot[overall]}`} />
+      </span>
+      <span className={`hidden xl:inline text-[12px] ${text[overall]}`}>{overallLabel}</span>
+      <span className="sr-only">{brainLabel} · {hbLabel} · {subLabel}</span>
     </div>
   );
 }

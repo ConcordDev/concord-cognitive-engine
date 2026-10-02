@@ -169,10 +169,14 @@ describe('Topbar', () => {
     expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
   });
 
-  it('shows online status indicator', () => {
+  it('shows online status on the avatar indicator', () => {
     render(<Topbar />, { wrapper: createWrapper() });
-    expect(screen.getByTestId('sync-dot')).toBeInTheDocument();
-    expect(screen.getByText('Online')).toBeInTheDocument();
+    expect(screen.getByTitle('Online')).toBeInTheDocument();
+  });
+
+  it('renders trailing controls inside the header', () => {
+    render(<Topbar trailing={<button>extra-control</button>} />, { wrapper: createWrapper() });
+    expect(screen.getByRole('banner')).toContainElement(screen.getByText('extra-control'));
   });
 
   it('renders notification bell', () => {
