@@ -479,9 +479,7 @@ function generateScriptOutput(scriptType: ScriptType, code: string): { log: stri
   };
 }
 
-const BUFFER_STARTER = '// one file. the editor is the lens.\n';
-
-export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { onOpenExtras?: () => void; chrome?: 'full' | 'buffer' }) {
+export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
   const { user, isAuthenticated } = useAuth();
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('code');
 
@@ -496,14 +494,14 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'main', name: 'untitled.js', language: 'javascript', content: chrome === 'buffer' ? BUFFER_STARTER : DEFAULT_CODE, isDirty: false, scriptType: 'snippet' },
+    { id: 'main', name: 'untitled.js', language: 'javascript', content: DEFAULT_CODE, isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
   const [consoleLog, setConsoleLog] = useState<string[]>([]);
   const [activeScriptType, setActiveScriptType] = useState<ScriptType>('snippet');
-  const [showFileTree, setShowFileTree] = useState(chrome !== 'buffer');
-  const [showOutput, setShowOutput] = useState(chrome !== 'buffer');
+  const [showFileTree, setShowFileTree] = useState(true);
+  const [showOutput, setShowOutput] = useState(true);
   const [showApiRef, setShowApiRef] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [workspaceKind, setWorkspaceKind] = useState<'scratch' | 'project'>('scratch');
@@ -1293,14 +1291,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
     { lensId: 'code' }
   );
 
-  if (isLoading && chrome === 'buffer') {
-    return (
-      <div role="status" className="flex h-full min-h-[420px] items-center px-6 text-[14px] text-zinc-500">
-        Opening the buffer…
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="h-full p-4 space-y-3">
@@ -1359,8 +1349,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
           <CodeWorkbenchSection />
         </div>
       ) : null}
-      <div className={workspaceKind === 'scratch' ? `flex flex-col font-mono flex-1 min-h-0 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : chrome === 'buffer' ? 'bg-transparent' : 'bg-[#0d1117]'}` : 'hidden'} data-lens-theme="code">
-      {chrome !== 'buffer' && (<>
+      <div className={workspaceKind === 'scratch' ? `flex flex-col font-mono flex-1 min-h-0 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'bg-[#0d1117]'}` : 'hidden'} data-lens-theme="code">
       {/* Header */}
       {/* One title bar (VS Code-style): workspace switch + project + status on
           the left; run, analysis and view controls on the right. */}
@@ -1564,7 +1553,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
         )}
       </AnimatePresence>
 
-      </>)}
       {/* Analysis result (the four analysis actions live in the title bar) */}
       {codeActionResult && (
       <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3 font-sans">
@@ -1702,10 +1690,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Activity bar — selects which sidebar panel renders. Hidden on the
-            buffer north star; the explorer stays one toggle away via the
-            command palette / full chrome. */}
-        {chrome !== 'buffer' && <ActivityBar
+        {/* Activity bar — selects which sidebar panel renders */}
+        <ActivityBar
           active={activity}
           onChange={(a) => {
             if (a === 'settings') {
@@ -1722,7 +1708,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
           badges={{
             sourceControl: tabs.filter(t => t.isDirty).length,
           }}
-        />}
+        />
         {/* Sidebar — content switches with activity */}
         <AnimatePresence>
           {showFileTree && (
@@ -1865,7 +1851,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tab Bar */}
           <div className="flex items-center gap-1 px-2 py-1 bg-lattice-surface/50 border-b border-lattice-border flex-wrap">
-            {chrome !== 'buffer' && (
             <button
               onClick={() => setShowFileTree(!showFileTree)}
               className="p-1.5 rounded hover:bg-lattice-elevated text-gray-400 flex-shrink-0"
@@ -1873,7 +1858,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
             >
               <FolderTree className="w-4 h-4" />
             </button>
-            )}
 
             <div className="flex items-center gap-1">
               {tabs.map((tab) => (
@@ -1916,7 +1900,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* Code Editor */}
             <div className={`flex-1 flex flex-col overflow-hidden ${showOutput || showApiRef ? 'lg:w-1/2' : ''}`}>
-              {chrome !== 'buffer' && (
               <div className="flex items-center justify-between px-3 py-1.5 bg-lattice-deep border-b border-lattice-border">
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span className={SCRIPT_TYPES.find((s) => s.id === activeScriptType)?.color}>
@@ -1945,7 +1928,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
                   </button>
                 </div>
               </div>
-              )}
               <div className="flex-1 relative">
                 {/* SafeCard isolates Monaco load failures (sandbox network
                     egress can block its CDN). Page stays up even if the
@@ -2166,8 +2148,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
             cursorStyle={settings.terminal.cursorStyle}
           />
 
-          {/* Status Bar — full chrome only. The buffer is the file. */}
-          {chrome !== 'buffer' && (
+          {/* Status Bar */}
           <div className="flex items-center justify-between px-3 py-1 bg-lattice-deep border-t border-lattice-border text-xs text-gray-400">
             <div className="flex items-center gap-4">
               <span>Ln 1, Col 1</span>
@@ -2202,7 +2183,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
               </span>
             </div>
           </div>
-          )}
         </div>
 
       </div>
@@ -2584,24 +2564,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras, chrome = 'full' }: { on
         </motion.aside>
       )}
     </AnimatePresence>
-    {chrome === 'buffer' && workspaceKind === 'scratch' && (
-      <button
-        type="button"
-        onClick={() => runScriptMutation.mutate()}
-        disabled={runScriptMutation.isPending}
-        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-50"
-        title="Run (⌘↵)"
-      >
-        {runScriptMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
-        Run
-      </button>
-    )}
-    {chrome !== 'buffer' && (
     <LensAgentFab
       lensId="code"
       lensPrompt="You're inside Concord's Code lens — a polyglot dev workspace with snippets, projects, pipelines, notebooks, algorithms, libraries. Prefer run_compute for math, run_lens_action for code-quality / code-engine helpers, and create_dtu to save reusable snippets."
     />
-    )}
 
     {/* BYO API key drawer (slide-in from right). Triggered from the AI
         Pair header. Auth-only — anon users can't manage BYO keys. */}
