@@ -24,6 +24,8 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { TheBoard } from '@/components/forum/TheBoard';
 import { DiscoursePanel } from '@/components/forum/DiscoursePanel';
 import { BoardPanel } from '@/components/forum/BoardPanel';
 import { ChatterPanel } from '@/components/forum/ChatterPanel';
@@ -45,7 +47,7 @@ const PANELS: Record<ForumView, ComponentType> = {
   actions: ModToolsPanel,
 };
 
-export default function ForumLensPage() {
+export function ForumDesk() {
   useLensNav('forum');
   useLensIdentity('forum');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('forum');
@@ -146,5 +148,15 @@ export default function ForumLensPage() {
         <CrossLensRecentsPanel lensId="forum" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function ForumLensPage() {
+  return (
+    <NorthGate
+      backLabel="Forum"
+      desk={<ForumDesk />}
+      star={(openDesk) => <TheBoard onOpenDesk={openDesk} />}
+    />
   );
 }
