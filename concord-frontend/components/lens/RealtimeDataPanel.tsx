@@ -14,20 +14,16 @@ interface RealtimeDataPanelProps {
 export function RealtimeDataPanel({
   domain = 'general',
   data,
-  isLive = false,
+  isLive: _isLive = false,
   lastUpdated = null,
   insights,
   compact,
 }: RealtimeDataPanelProps) {
   // When data is an array of insight objects, render them directly
   if (Array.isArray(data)) {
-    if (data.length === 0) {
-      return (
-        <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-400">
-          No realtime insights yet
-        </div>
-      );
-    }
+    // Nothing yet: render nothing. An empty "no insights" strip on every lens
+    // was chrome without content; the panel appears when data arrives.
+    if (data.length === 0) return null;
     return (
       <div className="rounded-lg bg-zinc-800/50 overflow-hidden">
         <div className="px-3 py-2 bg-zinc-700/50 flex items-center justify-between">
@@ -52,15 +48,8 @@ export function RealtimeDataPanel({
     );
   }
 
-  if (!data && !insights?.length) {
-    return (
-      <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-400">
-        {isLive
-          ? `Waiting for ${domain} data...`
-          : 'Connect to receive real-time updates'}
-      </div>
-    );
-  }
+  // No data and no insights: render nothing (see the array branch above).
+  if (!data && !insights?.length) return null;
 
   if (compact) {
     return (

@@ -12,6 +12,7 @@ import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { RepairBoundary } from '@/components/RepairBoundary';
 import { QuickCapture } from '@/components/common/QuickCapture';
 import { LensToolbar } from '@/components/lens/LensToolbar';
+import { DepthBadgeHostContext } from '@/components/lens/DepthBadge';
 import { ActivityTimeline } from '@/components/common/ActivityTimeline';
 import DomainAssistant from '@/components/common/DomainAssistant';
 import { CrossDomainConnections } from '@/components/common/CrossDomainConnections';
@@ -88,6 +89,7 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
   if (!slug) return <>{children}</>;
 
   return (
+    <DepthBadgeHostContext.Provider value={true}>
     <div className="flex flex-col h-full min-h-0">
       {/* One header row: workspace tabs + lens toolbar */}
       <div className="flex h-11 flex-shrink-0 items-center gap-3 border-b border-lattice-border px-3">
@@ -128,6 +130,7 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
       <CrossDomainConnections domain={slug} domainLabel={label} />
 
     </div>
+    </DepthBadgeHostContext.Provider>
   );
 }
 

@@ -19,6 +19,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { openLensTool, useAvailableLensTools, type LensTool } from '@/lib/lens-dock';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
 import { ExportMenu } from '@/components/common/ExportMenu';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 
 const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>; label: string; shortcut?: string }> = [
   { tool: 'capture', icon: Plus, label: 'Quick capture', shortcut: 'Ctrl+N' },
@@ -49,6 +50,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
 
   return (
     <div className="flex flex-shrink-0 items-center gap-0.5">
+      <DepthBadge lensId={domain} size="sm" inToolbar className="mr-2" />
       <a
         href={`/lenses/chat?context=${encodeURIComponent(domain)}`}
         className="mr-1 flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[12px] text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-zinc-50"
