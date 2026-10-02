@@ -42,7 +42,8 @@ describe('AccountingDashboard', () => {
       '2026-07-01:2026-07-23': { revenue: 15000, expense: 9000, netIncome: 6000 },
       '2026-06-01:2026-06-23': { revenue: 10000, expense: 9000, netIncome: 1000 },
     });
-    vi.setSystemTime(new Date('2026-07-23T00:00:00Z'));
+    // Local noon: the dashboard computes periods in the user's local calendar.
+    vi.setSystemTime(new Date('2026-07-23T12:00:00'));
     render(<AccountingDashboard />);
     // Revenue grew 10000 -> 15000 = +50.0%
     await waitFor(() => expect(screen.getByText('+50.0%')).toBeInTheDocument());
