@@ -76,7 +76,7 @@ vi.mock('@/components/legal/LegalActionPanel', () => ({
   LegalActionPanel: () => React.createElement('div', { 'data-testid': 'legal-action-panel' }, 'LegalActionPanel'),
 }));
 
-import LegalLens from '@/app/lenses/legal/page';
+import { LegalDesk as LegalLens } from '@/app/lenses/legal/page';
 
 const WORKBENCHES = [
   { testId: 'wb-practice', buttonText: 'Practice' },

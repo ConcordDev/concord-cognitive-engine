@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { OneChart } from '@/components/analytics/OneChart';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -41,7 +43,7 @@ const VIEWS: { id: AnalyticsView; label: string; keys: string; hint: string; ico
 
 const DESK_MODES = new Set<AnalyticsView>(['overview', 'revenue', 'dtus', 'actions']);
 
-export default function AnalyticsPage() {
+export function AnalyticsDesk() {
   useLensNav('analytics');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<AnalyticsView>('overview');
@@ -140,6 +142,16 @@ export default function AnalyticsPage() {
       <a href="#analytics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to analytics content</a>
       <CrossLensRecentsPanel lensId="analytics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <NorthGate
+      backLabel="Analytics"
+      desk={<AnalyticsDesk />}
+      star={(openDesk) => <OneChart onOpenDesk={openDesk} />}
+    />
   );
 }
 

@@ -40,6 +40,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { MatterFront } from '@/components/legal/MatterFront';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -81,7 +83,7 @@ const WORKBENCH_TABS: {
   { id: 'caselaw', label: 'Case Law', icon: Search, key: 'L', hint: 'CourtListener opinion search' },
 ];
 
-export default function LegalLensPage() {
+export function LegalDesk() {
   useLensNav('legal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
   const [workbench, setWorkbench] = useState<Workbench>('practice');
@@ -208,5 +210,15 @@ export default function LegalLensPage() {
         onSelect={(id) => setWorkbench(id as Workbench)}
       />
     </LensShell>
+  );
+}
+
+export default function LegalPage() {
+  return (
+    <NorthGate
+      backLabel="Legal"
+      desk={<LegalDesk />}
+      star={(openDesk) => <MatterFront onOpenDesk={openDesk} />}
+    />
   );
 }

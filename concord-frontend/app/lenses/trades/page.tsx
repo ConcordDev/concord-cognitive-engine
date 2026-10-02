@@ -35,6 +35,8 @@ import {
   Rss,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { JobOnBoard } from '@/components/trades/JobOnBoard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -153,7 +155,7 @@ const PANELS: Record<TradesView, ComponentType> = {
   feed: TradesFeed,
 };
 
-export default function TradesLensPage() {
+export function TradesDesk() {
   useLensNav('trades');
   useLensIdentity('trades');
   const reduceMotion = useReducedMotion();
@@ -259,5 +261,15 @@ export default function TradesLensPage() {
         <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function TradesPage() {
+  return (
+    <NorthGate
+      backLabel="Trades"
+      desk={<TradesDesk />}
+      star={(openDesk) => <JobOnBoard onOpenDesk={openDesk} />}
+    />
   );
 }

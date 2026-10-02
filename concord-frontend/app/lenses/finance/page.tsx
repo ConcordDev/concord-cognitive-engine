@@ -26,6 +26,8 @@ import {
   Keyboard,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { FinanceBook } from '@/components/finance/FinanceBook';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import {
   StatTile,
@@ -109,7 +111,7 @@ const fmtUsd = (v: number, opts: Intl.NumberFormatOptions = {}) =>
     ...opts,
   }).format(v);
 
-export default function FinanceTerminalPage() {
+export function FinanceTerminalPage() {
   useLensNav('finance');
   useLensIdentity('finance');
 
@@ -336,5 +338,15 @@ export default function FinanceTerminalPage() {
         )}
       </AnimatePresence>
     </LensShell>
+  );
+}
+
+export default function FinancePage() {
+  return (
+    <NorthGate
+      backLabel="Finance"
+      desk={<FinanceTerminalPage />}
+      star={(openDesk) => <FinanceBook onOpenDesk={openDesk} />}
+    />
   );
 }
