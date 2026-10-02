@@ -22,6 +22,8 @@ import { Z_INDEX } from "@/lib/ui/z-index";
 
 const SUPPORT_EMAIL = "support@concord-os.org";
 
+// Desktop: the floating trigger is hidden (it covered lens CTAs); the sidebar
+// rail's help icon dispatches concord:open-help instead. Mobile keeps it.
 export function HelpButton() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"menu" | "report">("menu");
@@ -84,7 +86,7 @@ export function HelpButton() {
         onClick={() => { setOpen((v) => !v); setMode("menu"); setSent(false); }}
         aria-label="Help and feedback"
         style={{ zIndex: Z_INDEX.HELP }}
-        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center"
+        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center lg:hidden"
         title="Help & feedback"
       >
         {open ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}

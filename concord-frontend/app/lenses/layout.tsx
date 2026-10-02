@@ -12,7 +12,7 @@ import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { RepairBoundary } from '@/components/RepairBoundary';
 import { QuickCapture } from '@/components/common/QuickCapture';
 import { LensToolbar } from '@/components/lens/LensToolbar';
-import { DepthBadgeHostContext } from '@/components/lens/DepthBadge';
+import { DepthBadge, DepthBadgeHostContext } from '@/components/lens/DepthBadge';
 import { ActivityTimeline } from '@/components/common/ActivityTimeline';
 import DomainAssistant from '@/components/common/DomainAssistant';
 import { CrossDomainConnections } from '@/components/common/CrossDomainConnections';
@@ -91,8 +91,11 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
   return (
     <DepthBadgeHostContext.Provider value={true}>
     <div className="flex flex-col h-full min-h-0">
-      {/* One header row: workspace tabs + lens toolbar */}
-      <div className="flex h-11 flex-shrink-0 items-center gap-3 border-b border-lattice-border px-3">
+      {/* One quiet header row (lens north stars): lens label + data tier +
+          workspace tabs on the left; share / export / ⋯ tools on the right. */}
+      <div className="flex h-12 flex-shrink-0 items-center gap-3 px-4">
+        <span className="flex-shrink-0 text-[13px] text-zinc-500">{label}</span>
+        <DepthBadge lensId={slug} size="sm" inToolbar />
         <div className="min-w-0 flex-1">
           <CoreLensNavWrapper />
         </div>

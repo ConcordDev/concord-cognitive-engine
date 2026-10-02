@@ -1,5 +1,6 @@
 'use client';
 
+import { TOGGLE_SESSIONS_EVENT } from './RailAccount';
 import { PanelRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
@@ -264,6 +265,13 @@ export function AppShell({ children }: AppShellProps) {
     return () => { cancelled = true; };
   }, [pathname, router]);
 
+  // Sidebar rail's sessions button (RailAccount) toggles the session sidebar.
+  useEffect(() => {
+    const toggle = () => setSessionSidebarOpen((prev) => !prev);
+    window.addEventListener(TOGGLE_SESSIONS_EVENT, toggle);
+    return () => window.removeEventListener(TOGGLE_SESSIONS_EVENT, toggle);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Mod+K is NOT handled here — CommandPalette.tsx owns that binding
@@ -329,6 +337,9 @@ export function AppShell({ children }: AppShellProps) {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Desktop uses the sidebar rail (RailAccount) — no top bar, per the
+            lens north stars. Mobile keeps it: it holds the menu button. */}
+        <div className="lg:hidden">
         <Topbar
             trailing={
               <>
@@ -344,6 +355,7 @@ export function AppShell({ children }: AppShellProps) {
               </>
             }
           />
+        </div>
         <OperatorErrorBanner />
 
         <main

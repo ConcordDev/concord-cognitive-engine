@@ -29,25 +29,23 @@ export function WorkspaceTabs({
 }) {
   return (
     <nav
-      className="flex min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]"
+      className="inline-flex max-w-full min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar rounded-xl border border-white/[0.08] bg-white/[0.02] p-1"
       aria-label={label}
     >
       {tabs.map((tab) => {
-        const Icon = tab.icon;
         const isActive = activePath === tab.path;
         return (
           <Link
             key={tab.id}
             href={tab.path}
             className={cn(
-              'flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[13px] transition-colors',
+              'flex h-7 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] transition-colors',
               isActive
-                ? 'bg-white/[0.08] text-zinc-50'
-                : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100',
+                ? 'bg-white/[0.09] text-zinc-50'
+                : 'text-zinc-500 hover:text-zinc-200',
             )}
             aria-current={isActive ? 'page' : undefined}
           >
-            {Icon && <Icon className={cn('h-3.5 w-3.5', isActive ? 'opacity-90' : 'opacity-60')} />}
             {tab.label}
           </Link>
         );

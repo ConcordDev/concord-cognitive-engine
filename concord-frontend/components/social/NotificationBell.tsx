@@ -12,10 +12,11 @@ import { NotificationCenter } from './NotificationCenter';
 
 interface NotificationBellProps {
   userId?: string;
+  placement?: 'below' | 'side';
   className?: string;
 }
 
-export function NotificationBell({ userId, className }: NotificationBellProps) {
+export function NotificationBell({ userId, className, placement = 'below' }: NotificationBellProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
@@ -141,6 +142,7 @@ export function NotificationBell({ userId, className }: NotificationBellProps) {
           onNavigateToUser={handleNavigateToUser}
           onNavigateToContent={handleNavigateToContent}
           mode="dropdown"
+          placement={placement}
         />
       )}
     </div>
