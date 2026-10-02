@@ -37,7 +37,7 @@ vi.mock('@/components/forecast/ForecastAccuracy', () => ({ ForecastAccuracy: () 
 vi.mock('@/components/forecast/ForecastArchive', () => ({ ForecastArchive: () => null }));
 vi.mock('@/components/forecast/AlertSubscriptions', () => ({ AlertSubscriptions: () => null }));
 
-import ForecastPage from '@/app/lenses/forecast/page';
+import { ForecastDesk as ForecastPage } from '@/app/lenses/forecast/page';
 
 const POPULATED = {
   window_hours: 24,

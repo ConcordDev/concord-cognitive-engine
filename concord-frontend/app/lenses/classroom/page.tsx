@@ -13,7 +13,9 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
+import { TheRoom } from '@/components/classroom/TheRoom';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
 
 interface Cohort {
@@ -41,7 +43,7 @@ async function macro(domain: string, name: string, input: Record<string, unknown
   return j ? (j.result ?? j) : null;
 }
 
-export default function ClassroomPage() {
+export function ClassroomDesk() {
   useLensCommand([
     { id: 'classroom-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'classroom' });
@@ -248,5 +250,15 @@ export default function ClassroomPage() {
       </section>
           <CrossLensRecentsPanel lensId="classroom" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+export default function ClassroomPage() {
+  return (
+    <NorthGate
+      backLabel="Classroom"
+      desk={<ClassroomDesk />}
+      star={(openDesk) => <TheRoom onOpenDesk={openDesk} />}
+    />
   );
 }
