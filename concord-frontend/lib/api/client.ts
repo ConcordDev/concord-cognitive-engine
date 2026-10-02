@@ -1161,6 +1161,7 @@ export const apiHelpers = {
       api.get('/api/graph/visual', { params }),
     force: (params?: GraphForceParams) =>
       api.get('/api/graph/force', { params }),
+    search: (q: string, limit = 8) => api.get('/api/graph/search', { params: { q, limit } }),
   },
 
   // Feature 44: Prediction Markets (wired to LOAF hypothesis market)
