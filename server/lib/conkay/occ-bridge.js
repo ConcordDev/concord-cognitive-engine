@@ -393,11 +393,56 @@ export async function featureRebuild(payload = {}) {
 }
 
 export async function featureCreate(payload = {}) {
-  return runOccCli('feature_create', payload);
+  // FE "Add feature" / steel-box flow often posts {kind, params, include_mesh}
+  // without an explicit features[]. Seed a real solid op so OCC returns mesh
+  // instead of an empty tree (count:0) that left the CAD viewer blank.
+  const body = { ...(payload || {}) };
+  if ((!body.features || !body.features.length) && (body.kind || body.params)) {
+    const kind = String(body.kind || 'box').toLowerCase();
+    const params = body.params && typeof body.params === 'object' ? body.params : {};
+    body.features = [{ id: `f_${Date.now().toString(36)}`, op: kind === 'cylinder' ? 'cylinder' : 'box', ...params, params }];
+  }
+  const created = await runOccCli('feature_create', body);
+  if (!created?.ok) return created;
+  if (body.include_mesh === false || body.omit_mesh) return created;
+  if (!(created.features || body.features || []).length && !(body.features || []).length) return created;
+  const features = created.features || body.features;
+  if (!features?.length) return created;
+  const rebuilt = await featureRebuild({
+    partId: created.partId,
+    features,
+    include_mesh: true,
+    deflection: body.deflection || 0.5,
+    name: body.name || `feat_${created.partId}`,
+  });
+  return {
+    ...created,
+    ...rebuilt,
+    ok: !!(rebuilt?.ok || created.ok),
+    partId: created.partId || rebuilt?.partId,
+    seededFromKind: !!(payload?.kind || payload?.params),
+  };
 }
 
 export async function featureAppend(payload = {}) {
-  return runOccCli('feature_append', payload);
+  const body = { ...(payload || {}) };
+  if (!body.feature && !body.feat && (body.kind || body.params || body.op)) {
+    const kind = String(body.kind || body.op || 'box').toLowerCase();
+    const params = body.params && typeof body.params === 'object' ? body.params : {};
+    body.feature = { id: `f_${Date.now().toString(36)}`, op: kind, ...params, params };
+  }
+  const appended = await runOccCli('feature_append', body);
+  if (!appended?.ok) return appended;
+  if (body.include_mesh === false || body.omit_mesh) return appended;
+  const features = appended.features;
+  if (!features?.length) return appended;
+  const rebuilt = await featureRebuild({
+    partId: appended.partId || body.partId,
+    features,
+    include_mesh: true,
+    deflection: body.deflection || 0.5,
+  });
+  return { ...appended, ...rebuilt, ok: !!(rebuilt?.ok || appended.ok), partId: appended.partId || body.partId };
 }
 
 export async function featureList(payload = {}) {

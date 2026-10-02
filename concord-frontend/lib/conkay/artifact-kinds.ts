@@ -281,7 +281,8 @@ function num(v: unknown): number {
 
 /** ar.render → an exploded-view artifact. Requires a real, non-empty drawList. */
 function normalizeAr(domain: string, macro: string, _input: unknown, result: unknown): ConkayArArtifact | null {
-  if (domain !== 'ar' || macro !== 'render') return null;
+  // render_scene / export_3d are FE-manifest aliases of ar.render (drawList plan).
+  if (domain !== 'ar' || (macro !== 'render' && macro !== 'render_scene' && macro !== 'export_3d')) return null;
   const res = asObj(result);
   const drawList = asArray(res.drawList) as ConkayDrawPart[];
   // Nothing real to inspect ⟹ no artifact (the viewer falls to its empty state).
@@ -348,7 +349,9 @@ function normalizeFoundry(domain: string, macro: string, _input: unknown, result
 
 /** forge.sandbox → a generated-app artifact. Requires the real generated HTML. */
 function normalizeForge(domain: string, macro: string, _input: unknown, result: unknown): ConkayForgeArtifact | null {
-  if (domain !== 'forge' || macro !== 'sandbox') return null;
+  // forge.generate historically returns code text; when a caller/sandbox path
+  // actually returns html, accept generate/preview too so ArtifactViewer lights up.
+  if (domain !== 'forge' || (macro !== 'sandbox' && macro !== 'generate' && macro !== 'preview' && macro !== 'generate-app')) return null;
   const res = asObj(result);
   const html = str(res.html);
   if (!html) return null; // no real generated document ⟹ nothing honest to frame

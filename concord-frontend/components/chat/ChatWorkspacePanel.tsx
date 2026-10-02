@@ -41,7 +41,6 @@ import {
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
-  Code,
   FileText,
   Brain,
   ChevronDown,
@@ -64,6 +63,7 @@ import {
   Layers,
   Loader2,
   Hammer,
+  Mic,
   ChevronRight,
   PauseCircle,
   PlayCircle,
@@ -163,11 +163,11 @@ import {
 import { AI_MODES, PERSONAS, SLASH_COMMANDS } from '@/components/chat/ChatModeConfig';
 import { ToolTraceBlock } from '@/components/chat/ToolTraceBlock';
 import type { ChatMode } from '@/components/chat/ChatModeTypes';
+import { getTimeOfDayGreeting } from '@/components/chat/claudeCleanGreeting';
 
 import { AssistantMoodChip } from '@/components/chat/AssistantMoodChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
 import { SafeCard } from '@/components/common/SafeCard';
-import { GracefulFallback } from '@/components/common/GracefulFallback';
 // Sprint 11 — Agent Mode + initiative bell (mounted alongside, no
 // modification to existing chat state). Dynamic to keep main-bundle
 // LCP/FCP from regressing (Sprint 15 Lighthouse fix).
@@ -455,6 +455,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
   const [conversationSearch, setConversationSearch] = useState('');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [composerPlusOpen, setComposerPlusOpen] = useState(false);
   // Front-door density: the 8 secondary workspace tools (Context/Tools/Systems/
   // Projects/Prompts/Schedule/Studio/Search) collapse into one "Workspace" overflow
   // so the header reads as a chat app, not a cockpit. Primary controls (AI mode,
@@ -842,7 +843,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     try { return typeof window !== 'undefined' && localStorage.getItem('concord_anon_nudge_dismissed') === '1'; }
     catch { return false; }
   });
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const dismissAnonNudge = useCallback(() => {
     setAnonNudgeDismissed(true);
     try { localStorage.setItem('concord_anon_nudge_dismissed', '1'); } catch { /* private mode */ }
@@ -2835,6 +2836,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // ──────────────────────────────────────────────
 
   const modelOffline = isError || (cogStatus && cogStatus.llm && cogStatus.llm.enabled === false);
+  // Claude-clean conversation surface for empty AND active threads.
+  // Empty-only bits (greeting mark, "Chat with" label) use isEmptyThread.
+  // Prior bug: cleanEmpty was messages.length === 0, so after send the stacked
+  // workspace chrome (mode rail, dense header, docked sidebar, Agent M, HN) returned.
+  const isEmptyThread = messages.length === 0;
+  const cleanEmpty = true; // keep Claude chrome after first message
+  const greeting = getTimeOfDayGreeting(user?.username);
+  const chatWithLabel = isConKay
+    ? 'Kay'
+    : selectedPersona.id !== 'default'
+      ? selectedPersona.name
+      : 'Concord';
 
   // ──────────────────────────────────────────────
   // Render
@@ -2842,7 +2855,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   return (
     <>
-    <div data-lens-theme="chat" className="relative h-full flex flex-col bg-lattice-bg">
+    <div data-lens-theme="chat" className={cn('relative h-full flex flex-col', cleanEmpty ? 'bg-black' : 'bg-lattice-bg')}>
       {modelOffline && (
         <div className="px-4 py-2 text-xs bg-amber-500/10 border-b border-amber-500/30 text-amber-200">
           Language model is offline — you can still type. Replies may not generate.
@@ -2852,16 +2865,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         {/* Mobile sidebar backdrop */}
         {chatSidebarOpen && (
           <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-30"
+            className={cn('fixed inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
             onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar — always a drawer under Claude-clean (never a second always-docked chat column) */}
         <aside
           className={cn(
             'w-80 border-r border-lattice-border flex flex-col bg-lattice-surface z-40 transition-transform duration-200',
-            'fixed inset-y-0 left-0 lg:relative lg:translate-x-0',
-            chatSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            'fixed inset-y-0 left-0',
+            !cleanEmpty && 'lg:relative lg:translate-x-0',
+            cleanEmpty
+              ? (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
+              : (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
           )}
           role="complementary"
           aria-label="Conversation list"
@@ -2909,7 +2925,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             </button>
           </div>
 
-          {/* DTU Context */}
+          {/* DTU mega dock — hidden under Claude-clean; drawer stays conversations-only */}
+          {!cleanEmpty && (
           <div className="p-3 border-t border-white/10 space-y-3">
             <ArtifactUploader
               lens="chat"
@@ -2930,6 +2947,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             <FeedbackWidget targetType="lens" targetId="chat" />
             <FoundationCard type="status" />
           </div>
+          )}
 
           <div className="p-4">
             <div className="relative">
@@ -3051,11 +3069,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         </aside>
 
         {/* Main Chat Area */}
-        <main className={cn('flex-1 flex flex-col', isConKay && 'relative isolate')} aria-label="Chat messages">
+        <main className={cn('flex-1 flex flex-col relative min-h-0', isConKay && 'isolate', cleanEmpty && 'bg-black')} aria-label="Chat messages">
           {/* ConKay holographic world-tree — full-column, behind translucent chrome.
               Mounted at the lens column level (not the small messages panel) so it
               genuinely fills the screen. */}
-          {isConKay && (
+          {/* Claude-clean chat chrome: no CAD 3D backdrop / full HUD cockpit clutter.
+              Keep a small Listening chip only. Full design-studio cockpit stays on
+              ConKayOverlay (summon), not stacked inside the Chat lens conversation. */}
+          {isConKay && !cleanEmpty && (
             <>
               <ConKayBackdrop
                 state={conkayState}
@@ -3075,7 +3096,42 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               />
             </>
           )}
-          <header className={cn('px-4 lg:px-6 py-4 border-b border-lattice-border flex flex-wrap items-center justify-between gap-y-2', isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface')}>
+          {isConKay && cleanEmpty && (conkayVoice.listening || conkayState === 'listening' || conkayState === 'processing' || conkayState === 'acting') && (
+            <div
+              className="pointer-events-none absolute right-3 top-12 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-white/70 backdrop-blur-sm"
+              data-testid="conkay-clean-listening-chip"
+              aria-live="polite"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
+              {conkayState === 'processing' || conkayState === 'acting' ? 'Working…' : 'Listening'}
+            </div>
+          )}
+          {/* Light conversations / new-chat header — drawer trigger, not a second chat column */}
+          {cleanEmpty && (
+            <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-2 py-2 bg-transparent">
+              <button
+                type="button"
+                onClick={() => setChatSidebarOpen(true)}
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="Open conversations"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => startNewChat()}
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="New conversation"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </header>
+          )}
+          <header className={cn(
+            'px-4 lg:px-6 py-4 border-b border-lattice-border flex flex-wrap items-center justify-between gap-y-2',
+            cleanEmpty && 'hidden',
+            isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface',
+          )}>
             {/* Toolbar row wraps instead of clipping when the secondary pills
                 (Context/Tools/Systems/Projects/Prompts/Schedule/Studio) overflow. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:gap-x-4 min-w-0">
@@ -3424,33 +3480,36 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             </div>
           </header>
 
-          {/* Chat Mode Selector Rail — ONE nav primitive (`active`) */}
+          {/* Chat Mode Selector Rail — ONE nav primitive (`active`). Hidden on the empty canvas. */}
+          {!cleanEmpty && (
           <div className={cn(isConKay && 'relative z-10')}>
             <ModeSelector activeMode={active} onModeChange={onActiveChange} />
           </div>
+          )}
 
           {/* Mode surfaces — assist/explore/connect were unreachable before */}
-          {active === 'assist' && (
+          {!cleanEmpty && active === 'assist' && (
             <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <AssistPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
-          {active === 'explore' && (
+          {!cleanEmpty && active === 'explore' && (
             <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <ExplorePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
-          {active === 'connect' && (
+          {!cleanEmpty && active === 'connect' && (
             <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <ConnectPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
-          {active === 'welcome' && messages.length === 0 && (
+          {!cleanEmpty && active === 'welcome' && messages.length === 0 && (
             <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <WelcomePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
-          {active === 'chat' && messages.length > 0 && (
+          {/* ChatModePanel was a nested chat strip on active threads — hide under Claude-clean. */}
+          {!cleanEmpty && active === 'chat' && messages.length > 0 && (
             <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <ChatModePanel
                 currentLens="chat"
@@ -3463,101 +3522,34 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
           {/* Messages */}
           <div
-            className={cn('flex-1 overflow-hidden flex flex-col', isConKay && 'relative z-10')}
+            className={cn(
+              'flex-1 overflow-hidden flex flex-col',
+              isConKay && 'relative z-10',
+              // Floating composer overlays the bottom — leave room for last bubbles.
+              !isEmptyThread && 'pb-28 sm:pb-32',
+            )}
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
           >
             {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="w-20 h-20 rounded-full bg-neon-cyan/10 flex items-center justify-center mb-6">
-                  <Bot className="w-10 h-10 text-neon-cyan" />
-                </div>
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-cyan/30 to-cyan-900/40 ring-1 ring-neon-cyan/20 flex items-center justify-center mb-6 shadow-lg shadow-neon-cyan/10"
-                >
-                  <Bot className="w-10 h-10 text-neon-cyan" />
-                </motion.div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-36 bg-black">
+                <motion.img
+                  src="/logo-mark.svg"
+                  alt=""
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="w-14 h-14 mb-8 select-none"
+                />
                 <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.4 }}
-                  className="text-2xl font-bold text-white mb-2"
+                  transition={{ delay: 0.08, duration: 0.35 }}
+                  className="font-vault text-[1.75rem] sm:text-4xl font-normal text-[#f4f1ea] tracking-tight"
                 >
-                  Yo. What&apos;s the move?
+                  {greeting}
                 </motion.h2>
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.4 }}
-                  className="text-gray-400 max-w-md mb-8"
-                >
-                  Pick a direction or ask me anything. Everything we talk about becomes knowledge in
-                  your lattice.
-                </motion.p>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.4 }}
-                  className="grid grid-cols-2 gap-3 max-w-lg"
-                >
-                  {[
-                    { icon: Sparkles, label: 'Explain a concept', desc: 'Break anything down' },
-                    { icon: Code, label: 'Help me code', desc: 'Debug, build, ship' },
-                    { icon: FileText, label: 'Summarize text', desc: 'Condense anything' },
-                    { icon: Brain, label: 'Forge a DTU', desc: 'Create knowledge' },
-                  ].map((suggestion) => (
-                    <button
-                      key={suggestion.label}
-                      onClick={() => setInput(suggestion.label)}
-                      className="flex items-start gap-3 p-4 bg-lattice-surface border border-lattice-border rounded-xl hover:border-neon-cyan/50 hover:bg-lattice-surface/80 transition-all text-left group"
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-neon-cyan/10 flex items-center justify-center flex-shrink-0 group-hover:bg-neon-cyan/20 transition-colors">
-                        <suggestion.icon className="w-4.5 h-4.5 text-neon-cyan" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-white block">
-                          {suggestion.label}
-                        </span>
-                        <span className="text-xs text-gray-400">{suggestion.desc}</span>
-                      </div>
-                    </button>
-                  ))}
-                </motion.div>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6, duration: 0.4 }}
-                  className="text-xs text-gray-400 mt-6"
-                >
-                  Type{' '}
-                  <code className="px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">
-                    /help
-                  </code>{' '}
-                  for slash commands &middot;{' '}
-                  <code className="px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">
-                    /forge
-                  </code>{' '}
-                  to create DTUs
-                </motion.p>
-
-                {/* Welcome panel from ChatModePanels */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7, duration: 0.4 }}
-                  className="mt-6 w-full max-w-lg"
-                >
-                  <WelcomePanel
-                    currentLens="chat"
-                    onSendMessage={(msg) => {
-                      setInput(msg);
-                    }}
-                  />
-                </motion.div>
               </div>
             )}
 
@@ -3576,13 +3568,31 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   // newest rows). A simple scroll container keeps every reply —
                   // including skill viz/citations — reliably mounted.
                   //
-                  // Unit A5-backport — wrapped in the SAME <ConKayCockpit> the
-                  // global overlay uses (imported, not forked): the left/right
-                  // panel lanes resolve every registered `conkay.*` panel from
-                  // `lib/panel-registry.ts` automatically (macro library,
-                  // DTU provenance, forward-sim, artifact viewer, orchestration
-                  // trace, telemetry, connector status), so chat's ConKay mode
-                  // and the summonable overlay share one cockpit, not two.
+                  // Claude-clean chat chrome: do NOT mount ConKayCockpit panel
+                  // lanes (provenance / forward-sim / feature tree / connectors /
+                  // macro library / artifact viewer) inside the Chat lens — that
+                  // stacked the CAD design studio on top of the conversation.
+                  // Full cockpit remains on ConKayOverlay (summon). Under
+                  // !cleanEmpty, keep the shared <ConKayCockpit> backport.
+                  cleanEmpty ? (
+                    <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto px-5" data-testid="conkay-clean-transcript">
+                      {threadItems.map((item, i) => (
+                        <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
+                          {renderThreadItem(i, item)}
+                        </div>
+                      ))}
+                      {conkayPendingConfirm && (
+                        <ConKayActionConfirm
+                          domain={conkayPendingConfirm.domain}
+                          macro={conkayPendingConfirm.macro}
+                          input={conkayPendingConfirm.input}
+                          onConfirm={() => resolveConkayPendingConfirm(true)}
+                          onCancel={() => resolveConkayPendingConfirm(false)}
+                        />
+                      )}
+                      <div ref={conkayBottomRef} aria-hidden="true" />
+                    </div>
+                  ) : (
                   <ConKayCockpit className="relative z-10">
                     <>
                       {threadItems.map((item, i) => (
@@ -3607,6 +3617,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       <div ref={conkayBottomRef} aria-hidden="true" />
                     </>
                   </ConKayCockpit>
+                  )
                 ) : (
                   <Virtuoso
                     data={threadItems}
@@ -3618,13 +3629,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 )}
               </>
             )}
-
-            {/* Phase P — GracefulFallback wraps the AI-dependent
-                streaming / thinking indicators so a downed conscious
-                brain shows a clear status instead of an empty pulse. */}
-            <GracefulFallback feature="Chat" brainRequired="conscious">
-              <></>
-            </GracefulFallback>
 
             {/* Streaming indicator */}
             {streamActive && streamingContent && (
@@ -3675,9 +3679,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             )}
           </div>
 
-          {/* Input Area */}
-          <div className={cn('p-4 border-t', isConKay ? 'relative z-10 border-cyan-400/15 bg-lattice-surface/40 backdrop-blur-md' : 'border-lattice-border bg-lattice-surface')}>
-            <div className="max-w-4xl mx-auto">
+          {/* Input Area — floating Claude composer for empty and active threads */}
+          <div className={cn(
+            cleanEmpty
+              ? 'absolute bottom-0 inset-x-0 z-20 px-3 pb-4 sm:px-6 sm:pb-8 pointer-events-none'
+              : cn('p-4 border-t', isConKay ? 'relative z-10 border-cyan-400/15 bg-lattice-surface/40 backdrop-blur-md' : 'border-lattice-border bg-lattice-surface'),
+          )}>
+            <div className={cn(
+              'max-w-3xl mx-auto pointer-events-auto',
+              cleanEmpty && 'rounded-2xl border border-white/10 bg-[#161616] shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 pt-3 pb-2',
+            )}>
+              {isEmptyThread && (
+                <p className="px-1 pb-2 text-[13px] text-white/45 font-vault">Chat with {chatWithLabel}</p>
+              )}
               {/* Quoted message indicator */}
               {quotedMessage && (
                 <div className="flex items-center gap-2 mb-2 p-2 bg-lattice-bg border border-lattice-border rounded-lg">
@@ -3790,8 +3804,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   )}
                 </AnimatePresence>
 
-                <div className="flex items-end gap-4">
-                  <div className="flex-1 flex items-end bg-lattice-bg border border-lattice-border rounded-2xl p-2">
+                <div className={cn('flex items-end', cleanEmpty ? 'gap-2' : 'gap-4')}>
+                  <div className={cn(
+                    'flex-1 flex items-end rounded-2xl p-2',
+                    cleanEmpty ? 'bg-black/50 border border-white/10' : 'bg-lattice-bg border border-lattice-border',
+                  )}>
                     {/* Hidden file input */}
                     <input
                       ref={fileInputRef}
@@ -3802,6 +3819,37 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       className="hidden"
                       aria-label="Attach files"
                     />
+                    {cleanEmpty ? (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setComposerPlusOpen((v) => !v)}
+                          className="p-2 text-white/70 hover:text-white transition-colors"
+                          title="Attachments and tools"
+                          aria-label="Attachments and tools"
+                          aria-expanded={composerPlusOpen}
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                        <AnimatePresence>
+                          {composerPlusOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 8 }}
+                              className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
+                            >
+                              <button type="button" onClick={() => { fileInputRef.current?.click(); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Attach file</button>
+                              <button type="button" onClick={() => { setToolsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Tools</button>
+                              <button type="button" onClick={() => { setProjectsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Projects</button>
+                              <button type="button" onClick={() => { setPromptsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Prompts</button>
+                              <button type="button" onClick={() => { setScheduledPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Schedule</button>
+                              <button type="button" onClick={() => { setStudioOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Studio</button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="p-2 text-gray-400 hover:text-white transition-colors"
@@ -3810,17 +3858,78 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     >
                       <Paperclip className="w-5 h-5" />
                     </button>
+                    )}
                     <textarea
                       ref={inputRef}
                       value={input}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
-                      placeholder={`Message ${aiMode.name} mode${selectedPersona.id !== 'default' ? ` as ${selectedPersona.name}` : ''}... (/ for commands)`}
+                      placeholder={cleanEmpty ? `Message ${chatWithLabel}` : `Message ${aiMode.name} mode${selectedPersona.id !== 'default' ? ` as ${selectedPersona.name}` : ''}... (/ for commands)`}
                       rows={1}
                       className="flex-1 px-2 py-2 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none max-h-32"
                       style={{ minHeight: '24px' }}
                       disabled={sendMutation.isPending}
                     />
+                    {cleanEmpty && (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setModeSelectOpen((v) => !v)}
+                          className="mx-1 mb-1 inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
+                          aria-label="Choose mode"
+                        >
+                          <aiMode.icon className="w-3.5 h-3.5" />
+                          <span>{aiMode.name}</span>
+                        </button>
+                        <AnimatePresence>
+                          {modeSelectOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 8 }}
+                              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
+                            >
+                              {AI_MODES.map((mode) => (
+                                <button
+                                  key={mode.id}
+                                  type="button"
+                                  onClick={() => { setAiMode(mode); setModeSelectOpen(false); }}
+                                  className={cn(
+                                    'w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5',
+                                    aiMode.id === mode.id ? 'text-white' : 'text-white/70',
+                                  )}
+                                >
+                                  <mode.icon className="w-4 h-4" />
+                                  {mode.name}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                    {cleanEmpty && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isConKay) {
+                            const kay = AI_MODES.find((m) => m.id === 'conkay');
+                            if (kay) setAiMode(kay);
+                            return;
+                          }
+                          setConkayMuted((m) => !m);
+                        }}
+                        className={cn(
+                          'p-2 transition-colors',
+                          isConKay && !conkayMuted ? 'text-white' : 'text-white/50 hover:text-white',
+                        )}
+                        title={isConKay ? (conkayMuted ? 'Unmute Kay' : 'Mute Kay') : 'Voice with Kay'}
+                        aria-label={isConKay ? (conkayMuted ? 'Unmute voice' : 'Mute voice') : 'Start voice'}
+                      >
+                        <Mic className="w-5 h-5" />
+                      </button>
+                    )}
+                    {!cleanEmpty && (
                     <div className="relative">
                       <button
                         onClick={() => setEmojiPickerOpen((prev) => !prev)}
@@ -3878,6 +3987,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         )}
                       </AnimatePresence>
                     </div>
+                    )}
                   </div>
                   {/* Send / Stop toggle — when streaming, swap to a stop
                       button (ChatGPT / Claude pattern). Aborts in-flight
@@ -3898,7 +4008,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <button
                       onClick={handleSend}
                       disabled={!input.trim() && attachments.length === 0}
-                      className="p-4 bg-neon-cyan text-black rounded-2xl hover:bg-neon-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className={cn(
+                        'rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+                        cleanEmpty
+                          ? 'p-3 bg-white text-black hover:bg-white/90'
+                          : 'p-4 bg-neon-cyan text-black hover:bg-neon-cyan/90',
+                      )}
                       title="Send (⌘ Enter)"
                       aria-label="Send message"
                     >
@@ -3917,7 +4032,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   chip names a shortcut genuinely registered via
                   useLensCommand above (send / focus-input / thread-search),
                   not decorative text. */}
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500">
+              <div className={cn('flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500', cleanEmpty && 'hidden')}>
                 <span className="inline-flex items-center gap-1">
                   <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Enter</kbd> send
                 </span>
@@ -4013,7 +4128,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       {/* Sprint 11B — Agent Mode floating action button (bottom-right) +
           slide-over panel + initiative bell. All three are self-contained;
           they don't touch existing chat state. */}
-      <button
+      {!cleanEmpty && <button
         onClick={() => setAgentPanelOpen(true)}
         className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
         title="Agent Mode — give Concord a task. It will use any of 200+ apps + web + compute to complete it."
@@ -4022,7 +4137,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           <path d="M12 8V4H8M4 8h4v4M16 4v4h4M20 16h-4v4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         <span className="hidden sm:inline">Agent Mode</span>
-      </button>
+      </button>}
       <AgentModePanel open={agentPanelOpen} onClose={() => setAgentPanelOpen(false)} />
       <ProjectsPanel
         open={projectsPanelOpen}
@@ -4089,9 +4204,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           setLocalMessages((prev) => [...prev, sysMsg]);
         }}
       />
+      {!cleanEmpty && (
       <div className="fixed top-4 right-20 z-30">
         <InitiativeBell />
       </div>
+      )}
 
       <ToolPalette
         open={toolPaletteOpen}
@@ -4202,16 +4319,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           </motion.div>
         )}
       </AnimatePresence>
+      {!cleanEmpty && (
       <ExternalReferenceLocale label="Hacker News" source="hn.algolia.com" className="mt-6">
         <HackerNewsReference />
       </ExternalReferenceLocale>
+      )}
     </div>
     {/* Phase 12 (C4) — mobile pane switcher. Chat has multiple overlays
         (sidebar, thread-search, tool-palette, scheduled, projects) that
         each ship their own desktop affordance; mobile users only need
         one tappable surface that opens each panel. The "active" tab
         here is best-effort — these panels close themselves on action. */}
-    <MobileTabBar
+    {!cleanEmpty && <MobileTabBar
       tabs={[
         { id: 'chat',      label: 'Chat',    icon: MTabChat },
         { id: 'convos',    label: 'Convos',  icon: MTabConvos },
@@ -4235,7 +4354,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         else if (id === 'scheduled') setOverlay('scheduled');
         else setOverlay(null); // 'chat' restores focus to the thread
       }}
-    />
+    />}
     </>
   );
 }
