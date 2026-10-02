@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { AccountingStatement } from '@/components/accounting/AccountingStatement';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -51,7 +49,7 @@ import { PipingProvider } from '@/components/panel-polish';
  *  removed; this page now has exactly one book of record.             */
 /* ------------------------------------------------------------------ */
 
-export function AccountingDesk() {
+export default function AccountingLensPage() {
   useLensNav('accounting');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('accounting');
 
@@ -162,15 +160,5 @@ export function AccountingDesk() {
         </section>
       </PipingProvider>      <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-export default function AccountingPage() {
-  return (
-    <NorthGate
-      backLabel="Accounting"
-      desk={<AccountingDesk />}
-      star={(openDesk) => <AccountingStatement onOpenDesk={openDesk} />}
-    />
   );
 }

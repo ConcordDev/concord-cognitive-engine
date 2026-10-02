@@ -1,8 +1,6 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { FlightList } from '@/components/projects/FlightList';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -17,7 +15,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-export function ProjectsDesk() {
+export default function ProjectsLensPage() {
   useLensNav('projects');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('projects');
   const [showRepos, setShowRepos] = useState(false);
@@ -59,15 +57,5 @@ export function ProjectsDesk() {
       <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
           <SessionRail lensId="projects" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="projects" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-export default function ProjectsPage() {
-  return (
-    <NorthGate
-      backLabel="Projects"
-      desk={<ProjectsDesk />}
-      star={(openDesk) => <FlightList onOpenDesk={openDesk} />}
-    />
   );
 }

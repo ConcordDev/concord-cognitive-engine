@@ -21,8 +21,6 @@ import {
   Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { OpenChart } from '@/components/healthcare/OpenChart';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
@@ -52,7 +50,7 @@ const COMMANDS: { id: EpicNav; keys: string; description: string }[] = [
   { id: 'actions', keys: 'g l', description: 'Lookups / actions' },
 ];
 
-export function HealthcareDesk() {
+export default function HealthcareLensPage() {
   useLensNav('healthcare');
   useLensIdentity('healthcare');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('healthcare');
@@ -144,15 +142,5 @@ export function HealthcareDesk() {
         onSelect={(id) => go(id as EpicNav)}
       />
     </LensShell>
-  );
-}
-
-export default function HealthcarePage() {
-  return (
-    <NorthGate
-      backLabel="Healthcare"
-      desk={<HealthcareDesk />}
-      star={(openDesk) => <OpenChart onOpenDesk={openDesk} />}
-    />
   );
 }

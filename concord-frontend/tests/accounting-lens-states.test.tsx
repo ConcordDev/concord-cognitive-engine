@@ -86,7 +86,7 @@ vi.mock('@/components/accounting/AccountingWorkbench', () => ({
   },
 }));
 
-import { AccountingDesk as AccountingLens } from '@/app/lenses/accounting/page';
+import AccountingLens from '@/app/lenses/accounting/page';
 
 beforeEach(() => {
   walletBalance = { ok: true, balance: 1200, tier: 'standard' };
