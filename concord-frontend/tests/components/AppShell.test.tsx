@@ -101,8 +101,8 @@ vi.mock('@/lib/music/store', () => ({
 // --- trivial child-component stubs ----------------------------------------
 vi.mock('./Sidebar', () => ({ Sidebar: () => <div data-testid="sidebar" /> }));
 vi.mock('@/components/shell/Sidebar', () => ({ Sidebar: () => <div data-testid="sidebar" /> }));
-vi.mock('./Topbar', () => ({ Topbar: () => <div data-testid="topbar" /> }));
-vi.mock('@/components/shell/Topbar', () => ({ Topbar: () => <div data-testid="topbar" /> }));
+vi.mock('./Topbar', () => ({ Topbar: ({ trailing }: { trailing?: React.ReactNode }) => <div data-testid="topbar">{trailing}</div> }));
+vi.mock('@/components/shell/Topbar', () => ({ Topbar: ({ trailing }: { trailing?: React.ReactNode }) => <div data-testid="topbar">{trailing}</div> }));
 vi.mock('@/components/common/CommandPalette', () => ({
   CommandPalette: () => <div data-testid="command-palette" />,
 }));
@@ -163,8 +163,8 @@ describe('AppShell', () => {
   });
 
   it('shows active session title in the session toggle', async () => {
-    const { getByText } = render(<AppShell><div>Body</div></AppShell>);
-    await waitFor(() => expect(getByText('My Session')).toBeInTheDocument());
+    const { getByTitle } = render(<AppShell><div>Body</div></AppShell>);
+    await waitFor(() => expect(getByTitle('Sessions — My Session (Ctrl+Shift+S)')).toBeInTheDocument());
   });
 
   it('age guard redirects when account owes a DOB', async () => {
@@ -241,13 +241,13 @@ describe('AppShell', () => {
   });
 
   it('toggles the session sidebar via the topbar button', async () => {
-    const { getByTitle, getByTestId, queryByTestId } = render(<AppShell><div>Body</div></AppShell>);
+    const { getByLabelText, getByTestId, queryByTestId } = render(<AppShell><div>Body</div></AppShell>);
     await waitFor(() => expect(getByTestId('sidebar')).toBeInTheDocument());
     // Shell-diet: SessionSidebar is lazily mounted the first time it's
     // opened (useEverTrue-gated) rather than always-mounted-but-hidden, so
     // it's genuinely absent from the DOM until the toggle is first clicked.
     expect(queryByTestId('session-sidebar')).toBeNull();
-    fireEvent.click(getByTitle('Open sessions (Ctrl+Shift+S)'));
+    fireEvent.click(getByLabelText('Open sessions'));
     await waitFor(() => expect(getByTestId('session-sidebar').getAttribute('data-open')).toBe('true'));
   });
 });

@@ -72,7 +72,7 @@ export function FashionClosetSection({ activeTab, onTabChange }: FashionClosetSe
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-fuchsia-600/15 to-transparent">
         <Shirt className="w-5 h-5 text-fuchsia-400" />
         <h2 className="text-sm font-bold text-zinc-100">Digital Closet</h2>
-        <span className="text-[11px] text-zinc-400">Stylebook shape — wardrobe, outfits, wear tracking</span>
+        <span className="text-[11px] text-zinc-400">Wardrobe, outfits, wear tracking</span>
       </header>
 
       {loading ? (

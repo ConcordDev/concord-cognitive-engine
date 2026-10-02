@@ -120,6 +120,63 @@ function dtuSimilarity(a, b) {
   return clamp01(tagSim * 0.5 + summarySim * 0.3 + domainMatch * 0.2);
 }
 
+// ── Per-pass features ───────────────────────────────────────────────────────
+// The pairwise passes below are O(n²) over DTUs. Normalizing tags and building
+// summary bigram sets inside the pair loop made each pass take minutes of
+// synchronous main-thread time at a few thousand DTUs (measured: 160-190s
+// event-loop stalls every 20 min). Features are built once per DTU per pass;
+// the *F variants compute exactly what tagSimilarity/textSimilarity/
+// dtuSimilarity compute, from those features.
+
+function normTagList(tags) {
+  return Array.isArray(tags) ? tags.map(t => String(t).toLowerCase().trim()) : [];
+}
+
+function makeFeatures(d) {
+  const tags = normTagList(d?.tags);
+  const rawSummary = d?.human?.summary || "";
+  return {
+    rawTags: d?.tags,
+    tags,
+    tagSet: new Set(tags),
+    rawSummary,
+    summary: String(rawSummary).toLowerCase().trim(),
+    bigrams: null, // built lazily — only pairs that can still reach the threshold need it
+  };
+}
+
+function bigramsOf(f) {
+  if (!f.bigrams) {
+    const s = f.summary;
+    const set = new Set();
+    for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2));
+    f.bigrams = set;
+  }
+  return f.bigrams;
+}
+
+/** Same result as tagSimilarity(a.tags, b.tags). */
+function tagSimilarityF(fa, fb) {
+  if (!fa.rawTags?.length || !fb.rawTags?.length) return 0;
+  let intersection = 0;
+  for (const t of fa.tagSet) if (fb.tagSet.has(t)) intersection++;
+  const union = fa.tagSet.size + fb.tagSet.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+/** Same result as textSimilarity(a.human?.summary || "", b.human?.summary || ""). */
+function textSimilarityF(fa, fb) {
+  if (!fa.rawSummary || !fb.rawSummary) return 0;
+  if (fa.summary === fb.summary) return 1;
+  if (fa.summary.length < 2 || fb.summary.length < 2) return 0;
+  const A = bigramsOf(fa);
+  const B = bigramsOf(fb);
+  let intersection = 0;
+  for (const bg of A) if (B.has(bg)) intersection++;
+  const union = A.size + B.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
 // ── Lineage Proximity ───────────────────────────────────────────────────────
 
 /**
@@ -199,17 +256,19 @@ export function clusterAnalysis(dtus) {
       }
     }
 
-    // Unite DTUs that share >= 2 tags or share lineage
+    // Unite DTUs that share >= 2 tags or share lineage.
+    // Tags are normalized once per DTU (was: per pair — O(n²) re-normalization).
+    const normTags = ids.map(id => normTagList(dtuMap.get(id).tags));
+    const normSets = normTags.map(arr => new Set(arr));
     for (let i = 0; i < ids.length; i++) {
       const a = dtuMap.get(ids[i]);
+      const aTags = normTags[i];
       for (let j = i + 1; j < ids.length; j++) {
         const b = dtuMap.get(ids[j]);
 
-        // Tag overlap check
-        const aTags = (a.tags || []).map(t => String(t).toLowerCase().trim());
-        const bTags = (b.tags || []).map(t => String(t).toLowerCase().trim());
+        // Tag overlap check (counts aTags occurrences, as before)
         let overlap = 0;
-        const bSet = new Set(bTags);
+        const bSet = normSets[j];
         for (const t of aTags) {
           if (bSet.has(t)) overlap++;
         }
@@ -397,18 +456,47 @@ export function redundancyDetection(dtus) {
     const redundancies = [];
     const seen = new Set();
 
+    // similarity = 0.5·tag + 0.3·text + 0.2·domain, each in [0,1]. Without a
+    // shared tag the maximum is 0.5 < SIMILARITY_THRESHOLD, so only pairs that
+    // share a normalized tag can be redundant. An inverted tag index yields
+    // exactly those pairs (in the original i<j order), and a pair whose tag
+    // score alone can't reach the threshold skips the text comparison.
+    const feats = dtus.map(d => (d?.id ? makeFeatures(d) : null));
+    const byTag = new Map();
+    for (let i = 0; i < dtus.length; i++) {
+      const f = feats[i];
+      if (!f || !f.rawTags?.length) continue;
+      for (const tag of f.tagSet) {
+        let list = byTag.get(tag);
+        if (!list) byTag.set(tag, (list = []));
+        list.push(i);
+      }
+    }
+
     for (let i = 0; i < dtus.length; i++) {
       const a = dtus[i];
-      if (!a?.id) continue;
+      const fa = feats[i];
+      if (!a?.id || !fa?.rawTags?.length) continue;
 
-      for (let j = i + 1; j < dtus.length; j++) {
+      const candidates = new Set();
+      for (const tag of fa.tagSet) {
+        for (const j of byTag.get(tag) || []) if (j > i) candidates.add(j);
+      }
+      const ordered = [...candidates].sort((x, y) => x - y);
+
+      for (const j of ordered) {
         const b = dtus[j];
         if (!b?.id) continue;
 
         const pairKey = [a.id, b.id].sort().join(":");
         if (seen.has(pairKey)) continue;
 
-        const sim = dtuSimilarity(a, b);
+        const fb = feats[j];
+        const tagSim = tagSimilarityF(fa, fb);
+        const domainMatch = a.domain && b.domain && a.domain === b.domain ? 1 : 0;
+        // Upper bound with a perfect text match; below threshold → cannot qualify.
+        if (tagSim * 0.5 + 0.3 + domainMatch * 0.2 < SIMILARITY_THRESHOLD) continue;
+        const sim = clamp01(tagSim * 0.5 + textSimilarityF(fa, fb) * 0.3 + domainMatch * 0.2);
         if (sim >= SIMILARITY_THRESHOLD) {
           seen.add(pairKey);
 
@@ -541,7 +629,7 @@ export function orphanRescue(dtus, clusters) {
  * @param {Object[]} dtus - Array of DTU objects
  * @returns {Object} Topology map
  */
-export function topologyMap(dtus) {
+export function topologyMap(dtus, precomputed = null) {
   try {
     if (!Array.isArray(dtus) || dtus.length === 0) {
       return {
@@ -562,14 +650,11 @@ export function topologyMap(dtus) {
       if (d?.id) dtuMap.set(d.id, d);
     }
 
-    // Step 1: Clusters
-    const { clusters, unassigned } = clusterAnalysis(dtus);
-
-    // Step 2: Gaps
-    const { gaps } = gapAnalysis(clusters, dtus);
-
-    // Step 3: Redundancies
-    const { redundancies } = redundancyDetection(dtus);
+    // Steps 1-3 (runHLMPass computes these itself and passes them in, so a
+    // pass no longer runs clustering/gaps/redundancy twice).
+    const { clusters, unassigned } = precomputed?.clusterResult ?? clusterAnalysis(dtus);
+    const { gaps } = precomputed?.gapResult ?? gapAnalysis(clusters, dtus);
+    const { redundancies } = precomputed?.redundancyResult ?? redundancyDetection(dtus);
 
     // Step 4: Bridges — DTUs that appear connected to multiple clusters
     const bridges = findBridges(dtus, clusters, dtuMap);
@@ -672,15 +757,19 @@ function findBridges(dtus, clusters, dtuMap) {
 function findHubs(dtus, dtuMap) {
   const hubScores = [];
 
+  // Normalize every DTU's tags once (was: per pair).
+  const norm = new Map();
+  for (const d of dtus) if (d?.id) norm.set(d, normTagList(d.tags || []));
+
   for (const d of dtus) {
     if (!d?.id || !d.tags?.length) continue;
 
     let connectionCount = 0;
-    const dTags = new Set((d.tags || []).map(t => String(t).toLowerCase().trim()));
+    const dTags = new Set(norm.get(d));
 
     for (const other of dtus) {
       if (!other?.id || other.id === d.id) continue;
-      const oTags = (other.tags || []).map(t => String(t).toLowerCase().trim());
+      const oTags = norm.get(other);
       for (const t of oTags) {
         if (dTags.has(t)) {
           connectionCount++;
@@ -1165,8 +1254,8 @@ export function runHLMPass(dtus) {
     // Step 3: Redundancy detection
     const redundancyResult = redundancyDetection(dtus);
 
-    // Step 4: Topology map
-    const topology = topologyMap(dtus);
+    // Step 4: Topology map (reuses steps 1-3)
+    const topology = topologyMap(dtus, { clusterResult, gapResult, redundancyResult });
 
     // Step 5: Recommendations
     const recResult = getRecommendations(topology);

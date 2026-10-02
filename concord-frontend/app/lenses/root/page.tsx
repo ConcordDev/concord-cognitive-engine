@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ExpressionEvaluator } from '@/components/root/ExpressionEvaluator';
 import { BitwisePanel } from '@/components/root/BitwisePanel';
@@ -209,7 +208,6 @@ export default function RootLens() {
   return (
     <LensShell lensId="root" asMain={false}>
       <FirstRunTour lensId="root" />      <DepthBadge lensId="root" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="root" className="mx-6 mt-4" />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">
 

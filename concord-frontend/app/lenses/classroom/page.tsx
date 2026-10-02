@@ -13,7 +13,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
 
@@ -108,7 +107,6 @@ export default function ClassroomPage() {
         <LensShell lensId="classroom">
       <FirstRunTour lensId="classroom" />
       <DepthBadge lensId="classroom" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="classroom" className="mx-6 mt-4" />
   <div className="p-6 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Classroom</h1>

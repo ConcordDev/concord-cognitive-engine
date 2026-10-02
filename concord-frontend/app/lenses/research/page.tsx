@@ -114,7 +114,7 @@ export default function ResearchLensPage() {
             <div className="min-w-0">
               <h1 className={ds.heading1}>Research</h1>
               <p className={ds.textMuted}>
-                Zotero library + Obsidian workbench — one research desk.
+                Library, notes and search — one research desk.
               </p>
             </div>
           </div>

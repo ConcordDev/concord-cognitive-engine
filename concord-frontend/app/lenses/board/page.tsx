@@ -15,13 +15,9 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
 import { TasksPanel } from '@/components/board/TasksPanel';
 import { BoardWorkspace } from '@/components/board/BoardWorkspace';
@@ -38,7 +34,6 @@ const VIEWS: { id: BoardView; label: string; keys: string; hint: string; icon: L
 
 export default function BoardLensPage() {
   useLensNav('board');
-  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('board');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<BoardView>('board');
 
@@ -69,56 +64,27 @@ export default function BoardLensPage() {
 
   return (
     <LensShell lensId="board" asMain={false}>
-      <FirstRunTour lensId="board" />
       <DepthBadge lensId="board" size="sm" className="ml-2" />
       <div data-lens-theme="board" className="flex flex-col min-h-screen">
-        <header className="flex-shrink-0 px-6 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3 min-w-0">
-              <Kanban className="w-6 h-6 text-purple-400 shrink-0" />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-bold text-white">Project Board</h1>
-                  <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                  <DTUExportButton domain="board" data={realtimeData || {}} compact />
-                </div>
-                <p className="text-xs text-gray-400">
-                  Kanban desk — board, timeline, table, workspace, BGG.
-                </p>
-              </div>
-            </div>
-
-            <nav
-              className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10 overflow-x-auto"
-              aria-label="Board views"
-            >
-              {VIEWS.map((v) => {
-                const Icon = v.icon;
-                const on = active === v.id;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setActive(v.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
-                      on
-                        ? 'bg-purple-500/20 text-purple-300 shadow-sm'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5',
-                    )}
-                    aria-current={on ? 'page' : undefined}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {v.label}
-                    <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono ml-0.5">
-                      {v.keys}
-                    </kbd>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </header>
+        {/* Views as quiet text links (keys b / t / g / w / h). The Board view's
+            own greeting + lanes follow the north-star concept. */}
+        <nav className="flex flex-shrink-0 items-center justify-end gap-4 px-8 pt-2 text-[13px]" aria-label="Board views">
+          {VIEWS.map((v) => {
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn('transition-colors', on ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-200')}
+                aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+              >
+                {v.label}
+              </button>
+            );
+          })}
+        </nav>
 
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps} className="flex-1 flex flex-col min-h-0">

@@ -19,9 +19,17 @@
  *   demo (DEMO)         → zinc
  */
 
+import { createContext, useContext } from 'react';
 import { useDepthBadge } from '@/hooks/useDepthBadge';
 import { cn } from '@/lib/utils';
 import { Activity, BookOpen, Sparkles, FlaskConical } from 'lucide-react';
+
+/**
+ * True inside the lens layout, whose header toolbar shows this lens's badge.
+ * Per-page badges then render nothing, so the chip appears once, in the
+ * header row, instead of taking a row of its own above the lens.
+ */
+export const DepthBadgeHostContext = createContext(false);
 
 export interface DepthBadgeProps {
   lensId: string;
@@ -30,6 +38,8 @@ export interface DepthBadgeProps {
   /** Hide the caption tooltip. Default false. */
   hideTooltip?: boolean;
   className?: string;
+  /** Rendered by the lens toolbar itself (always shows). */
+  inToolbar?: boolean;
 }
 
 const TONE_CLASS: Record<string, string> = {
@@ -63,8 +73,11 @@ export function DepthBadge({
   size = 'md',
   hideTooltip = false,
   className,
+  inToolbar = false,
 }: DepthBadgeProps) {
   const info = useDepthBadge(lensId);
+  const hostedInToolbar = useContext(DepthBadgeHostContext);
+  if (hostedInToolbar && !inToolbar) return null;
   if (!info) return null;
   // Prod polish: never render a "Demo" chip — it reads as unfinished. The honest
   // positive tiers (live / free / sim) still show; demo-grade lenses show nothing.

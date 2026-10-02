@@ -12,7 +12,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TournamentListPanel } from '@/components/tournaments/TournamentListPanel';
 import { TournamentDetailPanel } from '@/components/tournaments/TournamentDetailPanel';
 import { TournamentCreatePanel } from '@/components/tournaments/TournamentCreatePanel';
@@ -46,7 +45,6 @@ export default function TournamentsPage() {
     <LensShell lensId="tournaments" asMain={false}>
       <FirstRunTour lensId="tournaments" />
       <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="tournaments" className="mx-6 mt-4" />
       <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
         <div className="mx-auto max-w-6xl">
           <header className="mb-6 flex items-center justify-between">

@@ -142,7 +142,7 @@ export function GameDesignSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-lime-600/15 to-transparent">
         <Gamepad2 className="w-5 h-5 text-lime-400" />
         <h2 className="text-sm font-bold text-zinc-100">Game Design</h2>
-        <span className="text-[11px] text-zinc-400">Tiled + LDtk + Nuclino shape · GDD + level editor</span>
+        <span className="text-[11px] text-zinc-400">GDD + level editor</span>
       </header>
 
       {error && (

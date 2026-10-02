@@ -77,7 +77,6 @@ export function EventAnalytics() {
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Event Analytics</h3>
-        <span className="text-[11px] text-zinc-400">Mixpanel / Amplitude shape</span>
       </div>
 
       {dash && (

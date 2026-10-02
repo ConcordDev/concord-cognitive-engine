@@ -203,7 +203,6 @@ export function AmsWorkbench() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Agency Management Workbench
         </span>
-        <span className="ml-auto text-[10px] text-gray-400">Applied Epic / EZLynx parity</span>
       </header>
 
       <nav className="flex items-center gap-1 px-2 py-2 border-b border-white/10 flex-wrap">

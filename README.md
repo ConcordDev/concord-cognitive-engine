@@ -1,247 +1,406 @@
-<div align="center">
+Concord Cognitive Engine
 
-# 🜂 Concord
+A deterministic cognitive operating substrate with AI reasoning, verification, self-audit, and an embodied world layer.
 
-### AI that shows its receipts.
+Concord is an independently developed software platform for building AI systems that do more than generate text.
 
-**Ask a question that has a real answer, and Concord computes it** — with a symbolic math engine, a structural FEA solver and other deterministic engines — **then cites it and remembers it.** Around that sits a whole operating system of apps ("lenses"), a creator economy that pays for citations, and **Concordia**, a living world you can play in your browser.
+Its architecture combines deterministic computation, persistent state, structured memory, multi-model reasoning, verification, self-repair, provenance, capability auditing, and embodied simulation into one runtime.
 
-Built by one person.
+The core principle is simple:
 
-<br/>
+Concord provides the authority. AI provides reasoning and physical expression.
 
-### [→ Try it: concord-os.org](https://concord-os.org/explore)
+LLMs are not treated as the source of truth for everything. Where a problem can be solved deterministically, Concord does that first. Models are used where reasoning, interpretation, generation, or ambiguity actually require them.
 
-*Live. Browse without an account · [watch the world live](https://concord-os.org/spectate/concordia-hub) · sign up free to chat, create, and play.*
+⸻
 
-<br/>
+What Concord Does
 
-[![Concord — the public entry point](docs/images/hero-explore.png)](https://concord-os.org/explore)
+Concord currently contains working implementations across several major layers:
 
-<br/>
+🧠 Cognitive Runtime
 
-![lenses](https://img.shields.io/badge/lenses-266-22d3ee)
-![macros](https://img.shields.io/badge/macros-~10.6k-22c55e)
-![engines](https://img.shields.io/badge/compute-CAS_·_FEA_·_more-f59e0b)
-![status](https://img.shields.io/badge/status-live-16a34a)
-![license](https://img.shields.io/badge/license-CSL--CE_1.0-6366f1)
+* Multi-brain routing
+* Conscious, subconscious, utility, repair, and vision roles
+* Council-style reasoning
+* Persistent cognitive state
+* Long-term and working memory
+* Dream / ghost-thread processing
+* Meta-derivation
+* Context compression and retrieval
+* Structured cognitive interactions
 
-</div>
+⚙️ Deterministic Compute
 
----
+Concord contains native computational engines for domains including:
 
-<details>
-<summary><b>Contents</b></summary>
+* Symbolic mathematics
+* Differentiation and integration
+* Classical physics
+* Beam and frame analysis
+* Chemistry
+* Materials
+* Electrical systems
+* Aviation weight and balance
+* Construction and trades
+* Robotics
+* Logistics
+* Queueing theory
+* Graph algorithms
+* Monte Carlo analysis
+* Quantum simulation
+* Fractal analysis
+* Neuroscience
 
-- [Why it exists](#why-it-exists)
-- [Try it](#try-it)
-- [What's inside](#whats-inside)
-- [Why it's different](#why-its-different)
-- [Maturity, honest](#maturity-honest)
-- [The receipts](#the-receipts)
-- [Architecture](#architecture-from-altitude)
-- [For partners and investors](#for-partners-and-investors)
-- [License](#license)
-- [Repo map](#repo-map)
+The objective is not to ask an LLM to approximate an answer that software can calculate exactly.
 
-</details>
+A recent engineering journey, for example, solved a beam problem deterministically and matched the expected hand calculation.
 
----
+⸻
 
-## Why it exists
+Verification Is Part of the Runtime
 
-AI tools got good at *sounding* right. The thing now blocking real work isn't capability — it's that you can't trust unchecked output in a workflow that matters, and agent projects stall for exactly that reason.
+Concord is built around a closed engineering loop:
 
-Concord's rule is **compute, don't guess.** When a question has a deterministic answer — an integral, a beam deflection, a balance sheet — Concord routes it to a real engine instead of letting a language model improvise, and keeps the result as a cited, reusable record.
+implement → measure → detect → repair → verify → regress
 
-```text
-you:      What is 1234 × 5678?
-concord:  1234 × 5678 = 7,006,652          ← from the symbolic engine, not the model
-```
+The repository contains automated systems for auditing:
 
-*(That exact example is a regression test: a small model once answered 7,031,242. Now the engine answers.)*
+* Lens/backend wiring
+* Runtime capability coverage
+* Brain routing
+* Resource allocation
+* Macro execution
+* Deterministic compute
+* Dependency and security state
+* Architectural drift
+* Dormant/orphaned functionality
+* Regression conditions
+* Production-readiness conditions
 
----
+This means the project does not rely exclusively on documentation to describe what exists.
 
-## Try it
+The codebase continuously tests whether claimed capabilities are actually reachable and executable.
 
-**Engineers, researchers, the curious** — sign up free at [concord-os.org](https://concord-os.org/explore), then:
+⸻
 
-1. Open **Chat** and ask for a calculation — arithmetic, an integral, a unit conversion.
-2. Open the **Math** lens for the CAS directly (`∫ x² dx → x³/3 + C`), or **Engineering** for parametric parts and beam-frame FEA.
-3. Save what you learned as a **DTU** — Concord's knowledge unit — and cite it later; citations pay the author.
+Self-Repair
 
-**Players** — [watch Concordia live, no account](https://concord-os.org/spectate/concordia-hub), or sign up and open the **World** lens to play (Unity WebGL, runs in the browser).
+Concord includes a governed repair layer designed to detect failures, diagnose causes, propose or execute repairs where permitted, and verify the result.
 
-**Run it yourself:**
+Repair is not equivalent to unrestricted self-modification.
 
-```bash
-git clone https://github.com/ConcordDev/concord-cognitive-engine
-cd concord-cognitive-engine
+Changes remain subject to:
 
-cd server && npm install && npm run migrate && npm start      # :5050
-cd ../concord-frontend && npm install && npm run dev          # :3000
-# or the full stack (backend + frontend + Ollama brains + nginx/redis/qdrant/prometheus):
-docker-compose up
-```
+* Deterministic gates
+* Regression tests
+* Provenance
+* Capability boundaries
+* Runtime verification
+* Audit trails
 
-Production needs `JWT_SECRET`. Running the frontend standalone? Copy `concord-frontend/.env.example` → `.env.local` first. Realtime needs a WebSocket-aware proxy (nginx config included). Full setup: [`DEPLOYMENT.md`](DEPLOYMENT.md).
+The goal is a system that can participate in maintaining itself without making correctness dependent on an LLM’s assertion that something worked.
 
----
+⸻
 
-## What's inside
+Provenance & Trust
 
-- **Deterministic compute.** A symbolic CAS, direct-stiffness beam-frame FEA, a quantum statevector simulator, orbital mechanics, double-entry accounting, statistics — called by chat and by the lenses, so answers are *computed*.
-- **266 lenses.** Each reads as the app it replaces — a Bloomberg-style terminal, a VS Code shell, an Ableton-style timeline — on one shared substrate and one macro spine.
+Concord tracks the origin and lineage of important operations and outputs.
 
-  | Finance lens | Code lens |
-  |---|---|
-  | [![Finance lens](docs/images/lens-finance.png)](https://concord-os.org/lenses/finance) | [![Code lens](docs/images/lens-code.png)](https://concord-os.org/lenses/code) |
+The runtime includes mechanisms for:
 
-- **DTUs — owned, cited memory.** A four-layer knowledge unit (human summary, structured claims, machine layer, optional artifact) that consolidates over time and keeps its lineage.
-- **A citation economy.** Cite a DTU and its ancestry earns a perpetual, depth-halving royalty; 95% goes to creators.
-- **Concordia.** A persistent world whose people live their own lives — jobs, grudges, schemes, grief — with real-time action combat. Unity client in the browser; a Godot client too.
-- **ConKay.** A voice-capable assistant that rides the same chat and tools.
-- **A layer that distrusts itself.** ~50 detectors on a CI ratchet, a drift monitor, and a repair cortex that proposes fixes but **cannot apply them unsupervised** — every code change goes through a governance gate.
+* Provenance
+* CaMeL-style lineage
+* Refusal handling
+* Capability auditing
+* Deterministic verification
+* Evidence tracking
+* Runtime integrity checks
 
----
+A generated answer and a computed answer are therefore not treated as equivalent simply because both are represented as text.
 
-## Why it's different
+⸻
 
-Every incumbent owns one vector. None ships the intersection ([market research](docs/MARKET_DEMAND_MAP.md)):
+Concordia
 
-| Vector | Who owns it | Concord |
-|---|---|---|
-| Grounded / verified | Perplexity, Wolfram | deterministic engines + citation-resolution checks + a drift monitor |
-| General capability | ChatGPT | multi-brain router + ~10.6k macros |
-| Private / local | Ollama | self-hostable brains + consent gates |
-| Controllable memory | Notion | DTU substrate with scope/consent gates |
-| Owned economy | *(unclaimed)* | 95%-to-creator citation royalties |
+Concordia is Concord’s embodied world layer.
 
-The moat is that these are **one fabric** — the knowledge graph, the economy, the world and the codebase's own self-repair:
+It is being developed as a large-scale Unity 6 world rather than a disconnected technology demo.
 
-```mermaid
-flowchart LR
-    DRIFT["corpus contradiction"] -->|spawns| QUEST["playable quest"]
-    PAIN["combat damage"] -->|somatic ledger| XP["skill XP"] -->|grants| BUFF["resist buff"]
-    CITE["cite a DTU"] -->|pays ancestry forever| ROYALTY["depth-halving royalty"]
-    BUG["a bug"] -->|AI-generated VERIFIED fix| GATE["governance proposal — never auto-applied"]
-```
+The world is designed to expose Concord’s cognitive and simulation systems through an actual persistent environment containing:
 
-The full thesis: [`WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · every novelty mapped to a source file: [`NOVELTY_INVENTORY.md`](docs/NOVELTY_INVENTORY.md) · the plan: [`GO_TO_MARKET.md`](docs/GO_TO_MARKET.md).
+* Characters
+* Factions
+* Quests
+* Combat
+* Economy
+* Schedules
+* Companions
+* Mounts
+* Vehicles
+* World state
+* Geography
+* Settlements
+* Procedural generation
+* Persistent consequences
 
----
+The world is intended to function as another execution environment for Concord’s underlying systems.
 
-## Maturity, honest
+Current visual state
 
-| Solid | In progress | Not yet |
-|---|---|---|
-| Live at concord-os.org; signup, chat, lenses and per-user privacy exercised by a new-user QA journey (2026-09-27). | Production AI runs on a dedicated GPU box; while it's offline the site falls back to a small local model and chat quality drops. | No heavy-load run against production yet. Load *shedding* (admission control on event-loop lag) is built and was tuned against real stalls found in QA. |
-| Arithmetic in chat is computed by the engine, not the model; math/FEA engines are deterministic and test-pinned. | "Verify" today means **checking that a claim's citations resolve** — not fact-checking arbitrary uncited text. Claim-level grounding is on the roadmap. | Hosting still runs on one machine; the move to dedicated infra is planned ([blueprint](docs/OFF_MAC_MIGRATION_BLUEPRINT.md)). |
-| Private operator systems (trading agents, internal organs) are locked to the operator; public accounts get an honest `operator_only`. | The in-browser Concordia build lags the latest gameplay work; a fresh export is queued. | Six connectors (Gmail, Calendar, Slack, Sheets, GitHub, Notion) are code-complete; going live needs OAuth credentials, not code. |
+The central Court has been brought to a substantially more complete visual state.
 
-Deeper caveats: [`WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md#honest-caveats-what-it-is-not) · measured live-vs-overclaim: [`STACK_REALITY.md`](docs/STACK_REALITY.md).
+Recent fixes addressed:
 
----
+* Broken fallback geometry producing a streaked/plank-like floor
+* Stretched road and sidewalk textures
+* Excessive teal atmospheric fog
+* Grey character bodies caused by obsolete concept-art/material references
+* Magenta equipment caused by bypassed material initialization
 
-<div align="center">
+The current Court uses a continuous cobblestone surface, correctly tiled surfaces, lighter atmospheric haze, real character skins, and normalized equipment materials.
 
-## The receipts
+These changes are currently in PR #1004.
 
-*Everything below reproduces from a command. That's the point.*
+The live browser build has not yet been regenerated, so the deployed WebGL build may not reflect the current Unity state.
 
-</div>
+Rendering direction
 
-| Metric | Reproduce |
-|---|---|
-| Authored source (~2.8M LOC, excl. content) | `npm run count-loc` |
-| Lenses · backend domains | `ls -d concord-frontend/app/lenses/*/` · `ls server/domains/*.js` |
-| Macro domains · `(domain, macro)` pairs (~565 · ~10.6k) and lens wiring | `node scripts/verify-lens-backends.mjs` |
-| Numbered migrations | `ls server/migrations/[0-9]*.js` |
-| Heartbeats driving the live simulation (~143) | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ --exclude-dir=tests \| sort -u \| wc -l` |
-| Tests | `cd server && npm test` |
-| Detector board | `cd server && node scripts/run-detectors.js` — the CI ratchet blocks *new* high/critical findings |
+Concordia currently remains on Gamma color space.
 
-> `npm run check-doc-claims` re-runs the command behind every numeric claim in `docs/` and fails the build on drift. Current values: [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).
+Linear color space has been tested under controlled loading conditions. It preserves the Court but currently produces a flatter, more washed-out appearance because the existing lighting was tuned for Gamma.
 
----
+Linear remains a future lighting-calibration task rather than a required rendering fix.
 
-## Architecture, from altitude
+⸻
 
-```mermaid
-flowchart TD
-    subgraph R1["🧬 Substrate"]
-        DTU["DTU — 4-layer, self-compressing knowledge unit"]
-    end
-    subgraph R2["🧠 Cognition"]
-        BRAINS["multi-brain router + deterministic engines<br/>compute-don't-guess routing"]
-    end
-    subgraph R3["💰 Economy"]
-        ECON["citation → royalty cascade<br/>perpetual, depth-halving, 95% to creator"]
-    end
-    subgraph R4["🌍 World"]
-        WORLD["Concordia · NPC lives, schemes, factions<br/>real-time action combat"]
-    end
-    subgraph R5["🛰️ Reach"]
-        MESH["mesh transports · federation"]
-    end
-    subgraph R6["🔍 Self-aware meta-layer"]
-        META["cartographer · ~50 detectors · drift monitor<br/>repair cortex → governance-gated"]
-    end
-    DTU --> BRAINS --> ECON --> WORLD --> MESH
-    META -.audits + repairs.-> DTU & BRAINS & ECON & WORLD & MESH
-```
+Architecture
 
-**How a request flows:** `POST /api/lens/run` → permission gates → `runMacro` (a brain *or* a deterministic engine) → read/mint DTUs → a citation fires the royalty cascade → `{ ok, result }`.
+At a high level:
 
-Deeper: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`API.md`](API.md)
+                    ┌──────────────────────┐
+                    │      Concordia       │
+                    │  Embodied World      │
+                    └──────────┬───────────┘
+                               │
+                    ┌──────────▼───────────┐
+                    │    Cognitive Runtime │
+                    │  5-Brain Architecture│
+                    └──────────┬───────────┘
+                               │
+          ┌────────────────────┼────────────────────┐
+          │                    │                    │
+┌─────────▼─────────┐ ┌────────▼─────────┐ ┌──────▼─────────┐
+│ Deterministic     │ │ Memory / DTU      │ │ Verification   │
+│ Compute Engines   │ │ State / Retrieval │ │ & Audit        │
+└─────────┬─────────┘ └────────┬─────────┘ └──────┬─────────┘
+          │                    │                    │
+          └────────────────────┼────────────────────┘
+                               │
+                    ┌──────────▼───────────┐
+                    │   Substrate / Data   │
+                    │  Persistence / APIs  │
+                    └──────────────────────┘
 
----
+The exact implementation is substantially larger than this diagram suggests. The repository contains hundreds of domains and a large collection of backend, frontend, runtime, simulation, compute, and infrastructure modules.
 
-## For partners and investors
+⸻
 
-**Stage:** live at [concord-os.org](https://concord-os.org), pre-revenue, one founder, AI-accelerated. Seeking design partners — especially **engineering and R&D teams who need an agent that computes instead of guessing** — and pre-seed conversations.
+Determinism First
 
-**Why now.** Agents are shipping everywhere, and the blocker is trust. "Deterministic compute an agent can call, with a citation trail" is an unclaimed wedge, and Concord is a working instance of it ([research](docs/MARKET_DEMAND_MAP.md) · [plan](docs/GO_TO_MARKET.md)).
+Concord follows a deterministic-first architecture.
 
-**Contact:** Concord Dev — [dutchtropez@gmail.com](mailto:dutchtropez@gmail.com)
+When a task has an authoritative computational solution:
 
----
+User request
+     │
+     ▼
+Capability / intent routing
+     │
+     ├── deterministic solution available
+     │          │
+     │          ▼
+     │    native compute engine
+     │          │
+     │          ▼
+     │       verification
+     │
+     └── reasoning / interpretation required
+                │
+                ▼
+          model-assisted reasoning
+                │
+                ▼
+             validation
 
-## License
+This allows AI models to focus on the parts of a problem where probabilistic reasoning is useful instead of making them responsible for arithmetic, physics, state integrity, or other domains where software can provide stronger guarantees.
 
-**Concord Source License – Community Edition (CSL-CE 1.0)** — source-available, **not** OSI open-source. See [`LICENSE.txt`](LICENSE.txt).
+⸻
 
-You **may**: run and self-host privately, study and modify for non-commercial research/education, create DTUs for private use, contribute back via PR, fork for personal/research use.
+Five-Brain Architecture
 
-You **may not** without a written grant: sell or commercially distribute it, offer it as a hosted service, operate a derivative marketplace or a competing global network, or monetize DTUs / lineage graphs / Concord-derived assets. Commercial licensing is available.
+Concord does not treat every model invocation as the same operation.
 
-"Concord," "ConcordOS," "DTU," "Hyper-DTU," and associated marks are not licensed. Dependency/model license posture: [`docs/LICENSING.md`](docs/LICENSING.md).
+Different cognitive roles can be routed through different model capabilities:
 
----
+Role	Purpose
+Conscious	Primary reasoning and interaction
+Subconscious	Background processing and associative work
+Utility	Specialized task execution
+Repair	Diagnosis and recovery
+Vision	Visual understanding and generation workflows
 
-## Repo map
+The router, deployment machinery, health checks, and wiring verification are implemented in the repository.
 
-| Path | What's there |
-|---|---|
-| `server/server.js` | The monolith by deliberate choice — routes, admission control, and the background simulation tick |
-| `server/domains/` | ~440 domain engines (the lens backends) |
-| `server/emergent/` | ~240 simulation modules (the living layer) |
-| `server/lib/` | ~1,300 subsystem libraries (brains, compute, DTUs, runtime, detectors) |
-| `server/migrations/` | ~450 numbered migrations |
-| `concord-frontend/` | Next.js — 266 lenses, the lens runtime, ConKay, the Concordia web host |
-| `apps/concordia-living-world/` | The Concordia Unity client |
-| `world-lens-godot/` | A Godot 4 client for Concordia |
-| `concord-mobile/` | React Native — BLE / WiFi-P2P / NFC, offline-first |
-| `sdk/` | Developer SDK + examples |
-| `docs/` | Verified strategy and state docs |
+Model availability is treated as an infrastructure concern rather than silently assuming every brain is always available.
 
-**Worth reading:** [`GO_TO_MARKET.md`](docs/GO_TO_MARKET.md) · [`MARKET_DEMAND_MAP.md`](docs/MARKET_DEMAND_MAP.md) · [`WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md) · [`SECURITY.md`](SECURITY.md)
+⸻
 
----
+Developer Verification
 
-<div align="center">
+The repository contains executable verification systems rather than relying solely on manual inspection.
 
-**The artifact is the pitch.** Ask it something with a real answer — or [walk in the door](https://concord-os.org/explore).
+Examples include:
 
-</div>
+audit-wiring.js
+audit-wiring-gate.mjs
+verify-brain-wiring.mjs
+runtime capability coverage
+macro-depth grading
+detector ratchets
+synthetic journey probes
+daily integrity sweeps
+adversarial audits
+
+The project also maintains regression gates around protected capabilities.
+
+This is important because Concord changes rapidly. Static documentation can become obsolete as the implementation evolves.
+
+The source code and executable verification are therefore the authoritative state.
+
+⸻
+
+Repository Structure
+
+Major areas include:
+
+server/                 Core runtime and backend
+apps/                   Product and application surfaces
+audit/                  Automated verification and audit infrastructure
+docs/                   Architecture, specifications, and historical snapshots
+engines/                Specialized compute / generation systems
+migrations/             Database evolution
+scripts/                Build, audit, and operational tooling
+
+Concordia’s Unity project lives alongside the platform and connects the embodied world to the underlying Concord runtime.
+
+⸻
+
+Engineering Philosophy
+
+Concord is built around several principles:
+
+Authority over appearance
+
+A system should not claim a capability merely because an interface exists for it.
+
+Determinism where possible
+
+If software can calculate something reliably, don’t make an LLM guess.
+
+Verification over assertion
+
+A successful response is not proof that the underlying operation was correct.
+
+Explicit failure
+
+Failures should be observable rather than silently converted into plausible output.
+
+Self-auditing
+
+The system should continuously test whether its own architecture still matches its claims.
+
+Local-first operation
+
+The architecture is designed to minimize unnecessary dependence on external services and unnecessary telemetry.
+
+AI as a component, not the entire system
+
+Models are powerful reasoning components. They are not a substitute for databases, compilers, physics engines, verification systems, schedulers, or application logic.
+
+⸻
+
+Project Status
+
+Concord is under active development.
+
+The repository contains substantial implemented infrastructure across cognitive runtime, deterministic computation, verification, embodied simulation, application surfaces, and developer tooling.
+
+At the same time, not every subsystem has equivalent production maturity.
+
+Current work includes:
+
+* Production-scale concurrency validation
+* Continued runtime and infrastructure hardening
+* Browser/WebGL deployment
+* Concordia world development
+* Rendering and lighting calibration
+* CI and dependency maintenance
+* Continued behavioral verification
+* Expansion of deterministic compute capabilities
+
+Implemented, wired, tested, and production-proven are treated as different states.
+
+That distinction is intentional.
+
+⸻
+
+Development
+
+Clone the repository and install the project dependencies according to the environment-specific instructions.
+
+Before submitting changes, run the relevant project verification and test suites for the subsystem being modified.
+
+For major architectural changes, verify:
+
+1. Implementation exists.
+2. Callers actually reach it.
+3. Runtime wiring is intact.
+4. Tests exercise behavior rather than only presence.
+5. CI gates remain green.
+6. No architectural detector or integrity ratchet regresses.
+
+⸻
+
+Documentation
+
+The repository contains detailed specifications and subsystem documentation covering architecture, runtime behavior, Concordia, compute engines, verification, and deployment.
+
+Treat dated status documents as snapshots, not permanent truth.
+
+For current state, prefer:
+
+1. Current source
+2. Current tests
+3. Current CI
+4. Current runtime verification
+5. Recent commits
+6. Then documentation
+
+⸻
+
+License
+
+See the repository’s license and individual dependency licenses for current terms.
+
+⸻
+
+Concord
+
+A cognitive runtime built around computation, memory, reasoning, verification, and an embodied world.
+
+Not an LLM wrapper.
+
+Not a chatbot with tools.
+
+A software system where AI is one layer inside a larger computational architecture.

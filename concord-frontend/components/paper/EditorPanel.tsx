@@ -621,7 +621,7 @@ export function EditorPanel() {
           <div>
             <h2 className={ds.heading2}>Manuscript</h2>
             <p className={ds.textMuted}>
-              Overleaf-shaped editor — papers, hypotheses, evidence, experiments, synthesis, bibliography
+              Papers, hypotheses, evidence, experiments, synthesis, bibliography
             </p>
           </div>
         </div>

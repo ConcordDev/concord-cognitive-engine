@@ -145,7 +145,6 @@ export function TimelineBuilder() {
       <div className="flex items-center gap-2 mb-3">
         <History className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Timeline Builder</h3>
-        <span className="text-[11px] text-zinc-400">TimelineJS-shape</span>
       </div>
 
       {/* timeline picker */}

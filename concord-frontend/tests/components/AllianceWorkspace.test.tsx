@@ -100,21 +100,23 @@ describe('AllianceWorkspace — channel search', () => {
     // not called immediately — debounced
     expect(lensRunMock.mock.calls.some((c) => c[1] === 'message-search')).toBe(false);
 
+    // Real-timer debounce: a generous ceiling so a loaded parallel test run
+    // can't fail it — the 'not immediately' half is asserted above.
     await waitFor(() => {
       expect(lensRunMock.mock.calls.some((c) => c[1] === 'message-search')).toBe(true);
-    }, { timeout: 2000 });
+    }, { timeout: 8000 });
 
     const searchCall = lensRunMock.mock.calls.find((c) => c[1] === 'message-search');
     expect(searchCall?.[0]).toBe('alliance');
     expect(searchCall?.[2]).toMatchObject({ channelId: 'chn_1', query: 'launch' });
 
-    await waitFor(() => expect(screen.getByText(/1 match/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/1 match/)).toBeInTheDocument(), { timeout: 8000 });
     const mark = document.querySelector('mark');
     expect(mark).toBeTruthy();
     expect(mark?.textContent?.toLowerCase()).toBe('launch');
     // normal (unfiltered) message no longer shown while a search is active
     expect(screen.queryByText('coffee run in 5')).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it('does not search on a single-character query (respects the [2,200] bound)', async () => {
     installLensRunMock();

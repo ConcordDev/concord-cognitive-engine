@@ -35,8 +35,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { EpicSection } from '@/components/healthcare/EpicSection';
 import type { EpicNav } from '@/components/healthcare/EpicShell';
 
@@ -80,32 +78,29 @@ export default function HealthcareLensPage() {
     <LensShell lensId="healthcare" asMain={false}>
       <FirstRunTour lensId="healthcare" />
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
-      <div data-lens-theme="healthcare" className={cn(ds.pageContainer, 'pb-20 lg:pb-6')}>
+      <div data-lens-theme="healthcare" className="space-y-4 p-4 pb-20 lg:p-5 lg:pb-6">
         <a href="#healthcare-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-[var(--lens-accent)]">
           Skip to clinical ops
         </a>
         <ShellPreview lensId="healthcare" defaultOpen={true} />
 
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-md bg-blue-500/20 flex items-center justify-center shrink-0">
-              <HeartPulse className="w-5 h-5 text-blue-300" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Clinical ops</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={cn(ds.textMuted, 'font-mono text-xs tracking-wide')}>
-                {activeLabel} · EHR desk · organizational records only — not a substitute for care
-              </p>
-            </div>
+        {/* Compact header: the workbench is the product, so it comes first. */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <HeartPulse className="h-4 w-4 shrink-0 text-blue-300" />
+            <h1 className="text-[15px] font-semibold text-zinc-100">Clinical ops</h1>
+            <span className="truncate text-[13px] text-zinc-500">{activeLabel}</span>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           </div>
           <DTUExportButton domain="healthcare" data={{}} compact />
         </header>
 
-        <SubLensQuickNav lensId="healthcare" />
+        <main id="healthcare-main" className="min-w-0">
+          <EpicSection activeNav={active} onNavChange={go} />
+        </main>
 
+        {/* Secondary: outbreak wire + realtime insights + feed + sub-lenses.
+            Each renders nothing until it has real content. */}
         <LiveFeed
           articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
           domain="healthcare"
@@ -121,17 +116,11 @@ export default function HealthcareLensPage() {
           insights={insights}
           compact
         />
+        <LensFeedPanel lensId="healthcare" />
+        <SubLensQuickNav lensId="healthcare" />
 
-        <main id="healthcare-main" className="min-w-0 mt-3">
-          <EpicSection activeNav={active} onNavChange={go} />
-        </main>
-
-        <div className="px-1 mt-4 mb-2">
-          <LensFeedPanel lensId="healthcare" />
-        </div>
-
-        <div className="sticky bottom-0 bg-blue-950/90 backdrop-blur-sm border-t border-blue-400/10 px-4 py-2 text-center rounded-b-lg">
-          <p className="text-xs text-blue-400/50">
+        <div className="border-t border-white/5 pt-3 text-center">
+          <p className="text-[11px] text-zinc-500">
             This tool is for organizational purposes only. Not a substitute for professional medical
             advice, diagnosis, or treatment.
           </p>

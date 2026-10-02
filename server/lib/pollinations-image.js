@@ -10,11 +10,27 @@
 // fallback; the preferred provider is the self-hosted gen server.
 
 import fs from "fs";
-import os from "os";
 import path from "path";
 
 const GEN_URL = () => (process.env.CONCORD_GEN_URL || process.env.GEN_SERVER_URL || "http://127.0.0.1:7870").replace(/\/$/, "");
 const FALLBACK_REASONS = new Set(["local_gpu_unreachable", "weights_missing"]);
+// FLUX-schnell renders in seconds; the long tail is a cold model load.
+const GPU_CONCEPT_TIMEOUT_MS = Number(process.env.CONCORD_GEN_TIMEOUT_MS) || 5 * 60 * 1000;
+// Saved copies are a convenience cache, not storage — keep the newest N.
+const gpuArtKeep = () => Number(process.env.CONCORD_GPU_ART_KEEP) || 200;
+
+async function saveGpuArt(pngB64, seed) {
+  const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
+  const outDir = path.join(dataDir, "gpu-art");
+  await fs.promises.mkdir(outDir, { recursive: true });
+  const savedPath = path.join(outDir, `flux-${Date.now()}-${seed}.png`);
+  await fs.promises.writeFile(savedPath, Buffer.from(pngB64, "base64"));
+  const names = (await fs.promises.readdir(outDir)).filter((n) => n.startsWith("flux-")).sort();
+  for (const n of names.slice(0, Math.max(0, names.length - gpuArtKeep()))) {
+    await fs.promises.unlink(path.join(outDir, n)).catch(() => {});
+  }
+  return savedPath;
+}
 
 async function localHealth() {
   try {
@@ -33,13 +49,11 @@ async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
   const cleanPrompt = String(prompt || "").trim();
   if (!cleanPrompt) return { ok: false, reason: "prompt_required" };
   const health = await localHealth();
-  if (!health?.ok && health?.ok !== true && !health?.gpu && !health?.weights) {
-    // Some health payloads are {ok:true,...}; also accept weights.flux_schnell
-    if (!(health && (health.ok === true || health.weights?.flux_schnell))) {
-      return { ok: false, reason: "local_gpu_unreachable" };
-    }
+  // Healthy = {ok:true,...} or a weights map that has flux_schnell.
+  if (!health || !(health.ok === true || health.weights?.flux_schnell)) {
+    return { ok: false, reason: "local_gpu_unreachable" };
   }
-  if (health?.weights && health.weights.flux_schnell === false) {
+  if (health.weights && health.weights.flux_schnell === false) {
     return { ok: false, reason: "weights_missing" };
   }
   const w = Math.max(256, Math.min(1024, Number(width) || 768));
@@ -56,7 +70,7 @@ async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: cleanPrompt, seed: s, width: w, height: h }),
-      signal: AbortSignal.timeout(25 * 60 * 1000),
+      signal: AbortSignal.timeout(GPU_CONCEPT_TIMEOUT_MS),
     });
     const body = await r.json();
     if (!body?.ok || !body?.png_b64) {
@@ -65,16 +79,9 @@ async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
       return { ok: false, reason, error: body?.error || body?.reason || "gpu_concept_failed" };
     }
     const dataUrl = `data:image/png;base64,${body.png_b64}`;
-    // Persist under DATA_DIR for attachable proof / artifact reuse
+    // Persist under DATA_DIR for artifact reuse (async, bounded).
     let savedPath = null;
-    try {
-      const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
-      const outDir = path.join(dataDir, "gpu-art");
-      fs.mkdirSync(outDir, { recursive: true });
-      const fname = `flux-${Date.now()}-${s}.png`;
-      savedPath = path.join(outDir, fname);
-      fs.writeFileSync(savedPath, Buffer.from(body.png_b64, "base64"));
-    } catch { /* non-fatal */ }
+    try { savedPath = await saveGpuArt(body.png_b64, s); } catch { /* non-fatal */ }
     return {
       ok: true,
       provider: body.provider || "local_gpu_flux",
@@ -149,11 +156,10 @@ export async function generatePollinationsImage(opts = {}) {
   }
   const gpu = await generateViaLocalGpu(opts);
   if (gpu.ok) return gpu;
-  if (gpu.reason === "timeout" || (gpu.reason && !FALLBACK_REASONS.has(gpu.reason) && gpu.reason !== "prompt_required")) {
-    // Real generation error (not "unreachable") — do not silently swap to a watermarked third party.
-    if (gpu.reason !== "local_gpu_unreachable" && gpu.reason !== "weights_missing") {
-      return { ok: false, error: gpu.error || gpu.reason || "gpu_generate_failed", reason: gpu.reason, provider_attempted: "local_gpu_flux" };
-    }
+  // Only "the GPU server isn't there" falls back. A real generation error or
+  // timeout is reported, never silently swapped for a watermarked third party.
+  if (!FALLBACK_REASONS.has(gpu.reason) && gpu.reason !== "prompt_required") {
+    return { ok: false, error: gpu.error || gpu.reason || "gpu_generate_failed", reason: gpu.reason, provider_attempted: "local_gpu_flux" };
   }
   const fb = await generatePollinationsFallback(opts);
   if (fb.ok) {

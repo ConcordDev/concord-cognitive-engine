@@ -392,6 +392,13 @@ export async function featureRebuild(payload = {}) {
   });
 }
 
+// The feature op succeeded; the mesh is a follow-up rebuild. A failed rebuild
+// is reported as meshError on a still-ok feature result — never merged over it.
+function withMesh(base, rebuilt, extra = {}) {
+  if (rebuilt?.ok) return { ...base, ...rebuilt, ok: true, partId: base.partId || rebuilt.partId, ...extra };
+  return { ...base, ...extra, mesh: null, meshError: rebuilt?.error || rebuilt?.reason || 'rebuild_failed' };
+}
+
 export async function featureCreate(payload = {}) {
   // FE "Add feature" / steel-box flow often posts {kind, params, include_mesh}
   // without an explicit features[]. Seed a real solid op so OCC returns mesh
@@ -405,7 +412,6 @@ export async function featureCreate(payload = {}) {
   const created = await runOccCli('feature_create', body);
   if (!created?.ok) return created;
   if (body.include_mesh === false || body.omit_mesh) return created;
-  if (!(created.features || body.features || []).length && !(body.features || []).length) return created;
   const features = created.features || body.features;
   if (!features?.length) return created;
   const rebuilt = await featureRebuild({
@@ -415,13 +421,7 @@ export async function featureCreate(payload = {}) {
     deflection: body.deflection || 0.5,
     name: body.name || `feat_${created.partId}`,
   });
-  return {
-    ...created,
-    ...rebuilt,
-    ok: !!(rebuilt?.ok || created.ok),
-    partId: created.partId || rebuilt?.partId,
-    seededFromKind: !!(payload?.kind || payload?.params),
-  };
+  return withMesh(created, rebuilt, { seededFromKind: !!(payload?.kind || payload?.params) });
 }
 
 export async function featureAppend(payload = {}) {
@@ -442,7 +442,7 @@ export async function featureAppend(payload = {}) {
     include_mesh: true,
     deflection: body.deflection || 0.5,
   });
-  return { ...appended, ...rebuilt, ok: !!(rebuilt?.ok || appended.ok), partId: appended.partId || body.partId };
+  return withMesh({ ...appended, partId: appended.partId || body.partId }, rebuilt);
 }
 
 export async function featureList(payload = {}) {

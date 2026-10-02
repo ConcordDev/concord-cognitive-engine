@@ -161,7 +161,7 @@ export function GovernanceWorkbench() {
           <Vote className="h-5 w-5 text-neon-purple" />
           <h2 className="text-sm font-semibold text-white">Governance Workbench</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-            Polis · Decidim · Snapshot parity
+            Deliberation · participatory budgets · snapshot votes
           </span>
         </div>
         <div className="flex items-center gap-2">

@@ -177,7 +177,6 @@ export function JournalStudio() {
       <div className="flex items-center gap-2 mb-3">
         <BookHeart className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Journal studio</h3>
-        <span className="text-[11px] text-zinc-400">Day One + Reflectly shape</span>
         {unlocked && (
           <div className="ml-auto flex gap-1">
             {tabs.map((t) => (

@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench } from '@/components/schema/SchemaWorkbench';
 import { FileCode, Database, ChevronDown, ChevronRight } from 'lucide-react';
@@ -23,7 +22,6 @@ export default function SchemaLensPage() {
   return (
     <LensShell lensId="schema" asMain={false}>
       <FirstRunTour lensId="schema" />      <DepthBadge lensId="schema" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="schema" className="mx-6 mt-4" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -36,7 +34,7 @@ export default function SchemaLensPage() {
             <p className="text-sm text-gray-400">
               A versioned schema registry, visual editor, sample-data generator, migration
               codegen, breaking-change diff, evolution planning, live-data conformance, ER
-              diagrams, and schema inference — dbdiagram.io / DataGrip parity.
+              diagrams, and schema inference.
             </p>
           </div>
         </div>

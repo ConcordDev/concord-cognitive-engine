@@ -114,6 +114,10 @@ export default function LiveFeed({
   const hero = heroFirst ? list[0] : null;
   const rest = heroFirst ? list.slice(1) : list;
 
+  // No articles yet: render nothing rather than an empty "feeds connecting…"
+  // card at the top of the lens. The wire appears when the first item lands.
+  if (list.length === 0) return null;
+
   return (
     <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm overflow-hidden ${className}`}>
       <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-zinc-900/60 to-zinc-900/20">

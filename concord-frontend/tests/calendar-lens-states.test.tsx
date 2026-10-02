@@ -190,12 +190,12 @@ describe('calendar lens — four UX states', () => {
 
   it('EMPTY: shows the honest empty CTA when there are no events', async () => {
     setBackend({ events: [] });
-    const { getByText } = render(<CalendarLensPage />);
+    const { getByText, getByTitle } = render(<CalendarLensPage />);
     await waitFor(() =>
       expect(getByText(/No events scheduled yet/i)).toBeInTheDocument(),
     );
-    // Page-level CTA present.
-    expect(getByText(/Create your first event/i)).toBeInTheDocument();
+    // The page's one CTA is the floating "+ Event" (north star 08).
+    expect(getByTitle(/New event/i)).toBeInTheDocument();
   });
 
   it('POPULATED: renders the real event in the agenda view (no empty CTA)', async () => {

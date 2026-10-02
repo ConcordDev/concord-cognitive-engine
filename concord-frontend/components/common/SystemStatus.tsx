@@ -10,7 +10,7 @@
  * - "No silent failures" guarantee
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -32,11 +32,19 @@ interface StatusResponse {
   version?: string;
 }
 
+export const SYSTEM_STATUS_OPEN_EVENT = 'concord:system-status-open';
+
 function SystemStatus() {
   const requestErrors = useUIStore((s) => s.requestErrors);
   const clearRequestErrors = useUIStore((s) => s.clearRequestErrors);
   const authPosture = useUIStore((s) => s.authPosture);
   const [expanded, setExpanded] = useState(false);
+  // The Topbar health indicator opens this panel (SYSTEM_STATUS_OPEN_EVENT).
+  useEffect(() => {
+    const open = () => setExpanded(true);
+    window.addEventListener(SYSTEM_STATUS_OPEN_EVENT, open);
+    return () => window.removeEventListener(SYSTEM_STATUS_OPEN_EVENT, open);
+  }, []);
 
   // The CookieConsent notice shares this bottom-left corner while a first-time
   // visitor hasn't answered it yet. It outranks this "always-visible" status
@@ -84,22 +92,10 @@ function SystemStatus() {
   const recentErrors = criticalErrors.slice(-5);
   const hasErrors = recentErrors.length > 0;
 
-  // Don't show if everything is fine and no errors
-  if (isHealthy && !hasErrors && !expanded) {
-    return (
-      <button
-        onClick={() => setExpanded(true)}
-        style={{ zIndex: Z_INDEX.STATUS }}
-        className={cn(
-          'fixed left-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-neon-green/10 border border-neon-green/20 text-neon-green text-xs hover:bg-neon-green/20 transition-colors transition-[bottom] duration-300',
-          bottomOffsetClass
-        )}
-      >
-        <Wifi className="w-3 h-3" />
-        <span>System OK</span>
-      </button>
-    );
-  }
+  // Nothing to report: render nothing. Healthy status already lives in the
+  // Topbar's health indicator; this corner only speaks up when the backend is
+  // unreachable or a critical request failed.
+  if (isHealthy && !hasErrors && !expanded) return null;
 
   return (
     <div

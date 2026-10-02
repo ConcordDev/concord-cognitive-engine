@@ -4,7 +4,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
 import { FractalRenderer } from '@/components/fractal/FractalRenderer';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -24,7 +23,6 @@ export default function FractalLensPage() {
   return (
     <LensShell lensId="fractal" asMain={false}>
       <FirstRunTour lensId="fractal" />      <DepthBadge lensId="fractal" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="fractal" className="mx-6 mt-4" />
       <div data-lens-theme="fractal" className="space-y-6 p-6">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-4">

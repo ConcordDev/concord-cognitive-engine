@@ -5,7 +5,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
 import { ExpeditionPlanner } from '@/components/desert/ExpeditionPlanner';
@@ -64,7 +63,6 @@ export default function DesertLensPage() {
     <LensShell lensId="desert" asMain={false}>
       <FirstRunTour lensId="desert" />
       <DepthBadge lensId="desert" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="desert" className="mx-6 mt-4" />
       <LensPageShell
         domain="desert"
         title="Desert Operations"

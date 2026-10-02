@@ -100,7 +100,7 @@ export default function PaperLensPage() {
                 )}
               </div>
               <p className={ds.textMuted}>
-                Overleaf manuscript + Zotero library — one research-writing desk.
+                Manuscript and library — one research-writing desk.
               </p>
             </div>
           </div>

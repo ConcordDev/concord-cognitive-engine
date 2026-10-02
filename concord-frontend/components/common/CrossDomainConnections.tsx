@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useLensTool } from '@/lib/lens-dock';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiHelpers } from '@/lib/api/client';
@@ -108,6 +109,7 @@ function formatScore(score: number): string {
 function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  useLensTool('connections', useCallback(() => setOpen((o) => !o), []));
 
   // Duplicate-handler-race fix (verification-audit campaign): this used to
   // bind its own Cmd/Ctrl+J global keydown listener, but ConKayOverlay.tsx
@@ -210,19 +212,6 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
 
   return (
     <>
-      {/* Toggle button (visible when panel is closed) — compact round FAB so it
-          stacks neatly in the right action column and never protrudes over content. */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-[18.5rem] right-6 z-40 w-12 h-12 rounded-full bg-lattice-surface border border-lattice-border text-gray-300 shadow-lg flex items-center justify-center hover:bg-lattice-elevated hover:text-white transition-colors"
-          aria-label="Open cross-domain connections"
-          title="Connections"
-        >
-          <Network className="w-5 h-5" />
-        </button>
-      )}
-
       {/* Slide-out panel */}
       <AnimatePresence>
         {open && (

@@ -86,7 +86,6 @@ export function CreatorStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent">
         <Megaphone className="w-5 h-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Creator Studio</h2>
-        <span className="text-[11px] text-zinc-400">YouTube Studio + Buffer + Patreon shape</span>
       </header>
 
       {loading ? (

@@ -31,7 +31,6 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
 import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -63,7 +62,6 @@ export default function ForgeLensPage() {
   return (
     <LensShell lensId="forge" asMain={false}>
       <FirstRunTour lensId="forge" />      <DepthBadge lensId="forge" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="forge" className="mx-6 mt-4" />
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
       <motion.header
         initial={{ opacity: 0, y: -8 }}

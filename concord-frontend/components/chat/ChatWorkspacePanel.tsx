@@ -3550,6 +3550,26 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 >
                   {greeting}
                 </motion.h2>
+                {/* North star (docs/lens-northstar/02-chat): subtitle + a few
+                    starter prompts. A chip only fills the composer — the user
+                    still sends it. */}
+                <p className="mt-3 text-[15px] text-zinc-500">How can I help you think today?</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {[
+                    'Summarize what’s new in my lattice',
+                    'Help me outline a plan',
+                    'Explain a concept simply',
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => { setInput(s); inputRef.current?.focus(); }}
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

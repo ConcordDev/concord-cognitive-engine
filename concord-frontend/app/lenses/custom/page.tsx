@@ -32,7 +32,7 @@ export default function CustomLensPage() {
           <h1 className="text-xl font-bold">Custom Lens Builder</h1>
           <p className="text-sm text-gray-400">
             A no-code app builder — drag widgets onto a canvas, bind them to any macro or REST endpoint,
-            wire up actions, and publish straight into the sidebar (Retool/Airtable parity).
+            wire up actions, and publish straight into the sidebar.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap ml-auto">

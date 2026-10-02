@@ -168,7 +168,6 @@ export function SrsWorkbench() {
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-purple-400" />
         <h3 className="text-sm font-bold text-zinc-100">SRS Workbench</h3>
-        <span className="text-[11px] text-zinc-400">Anki 2026 parity</span>
       </div>
 
       {/* Tab bar */}

@@ -45,7 +45,7 @@ export default function ReposLensPage() {
                 <span className="text-3xl">📦</span>
                 <div>
                   <h1 className="text-lg font-bold text-white leading-tight">Repos</h1>
-                  <p className="text-[11px] text-gray-500">A GitHub-shape workspace over the Concord repo substrate</p>
+                  <p className="text-[11px] text-gray-500">Repositories, files and history over the Concord repo substrate</p>
                 </div>
               </div>
               <nav className="flex items-center gap-1 rounded-md border border-gray-700 bg-[#0d1117] p-1">

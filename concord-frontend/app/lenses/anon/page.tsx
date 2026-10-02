@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
@@ -117,7 +116,6 @@ export default function AnonLensPage() {
   return (
     <LensShell lensId="anon" asMain={false}>
       <FirstRunTour lensId="anon" />      <DepthBadge lensId="anon" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="anon" className="mx-6 mt-4" />
       <div data-lens-theme="anon" className="space-y-6 p-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">

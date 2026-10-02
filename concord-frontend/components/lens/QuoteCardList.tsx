@@ -77,6 +77,9 @@ export default function QuoteCardList({ quotes, isLive, lastUpdated, className =
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUpdated, list.length]);
 
+  // No quotes yet: render nothing rather than a "feed connecting…" card.
+  if (list.length === 0) return null;
+
   return (
     <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm overflow-hidden ${className}`}>
       <header className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-zinc-900/60 to-zinc-900/20 flex items-center justify-between">

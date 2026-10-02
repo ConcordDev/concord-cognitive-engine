@@ -103,7 +103,7 @@ export default function MaterialsLensPage() {
                 <h1 className={ds.heading1}>Materials Science</h1>
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
               </div>
-              <p className={ds.textMuted}>MatWeb density — library, tests, MP search, corrosion, crystal.</p>
+              <p className={ds.textMuted}>Library, tests, MP search, corrosion, crystal.</p>
             </div>
           </div>
           <DTUExportButton domain="materials" data={{}} compact />

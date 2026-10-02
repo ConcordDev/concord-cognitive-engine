@@ -179,7 +179,10 @@ export async function getTileCacheStats(): Promise<TileCacheStats> {
 
 async function storeTile(url: string, blob: Blob): Promise<void> {
   const cache = await getCache();
-  await cache.put(url, new Response(blob, { headers: { 'Content-Type': blob.type || 'image/png' } }));
+  // Hand Response the bytes, not the Blob object: a Blob from a different
+  // realm (e.g. jsdom's vs Node's undici Response) is stringified to
+  // "[object Blob]" instead of read. An ArrayBuffer is portable everywhere.
+  await cache.put(url, new Response(await blob.arrayBuffer(), { headers: { 'Content-Type': blob.type || 'image/png' } }));
   await withManifestLock(async () => {
     const manifest = await readManifest();
     manifest[url] = { bytes: blob.size, ts: Date.now() };

@@ -104,7 +104,6 @@ export function PhilosophyCuration() {
       <div className="flex items-center gap-2 mb-3">
         <Network className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Curation Studio</h3>
-        <span className="text-[11px] text-zinc-400">Are.na + IEP feature surface</span>
       </div>
 
       <div className="flex flex-wrap gap-1 mb-4">
