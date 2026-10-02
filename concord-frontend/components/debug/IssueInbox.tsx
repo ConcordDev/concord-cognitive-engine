@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { northCtaClass } from '@/components/code/CodeFamilyChrome';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -66,7 +67,7 @@ const LEVEL_TONE: Record<string, string> = {
   info: 'text-neon-blue bg-neon-blue/10 border-neon-blue/30',
 };
 
-export function IssueInbox() {
+export function IssueInbox({ quiet = false }: { quiet?: boolean }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [summary, setSummary] = useState<IssueSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'open' | 'resolved' | 'ignored'>('open');
@@ -171,6 +172,7 @@ export function IssueInbox() {
 
   return (
     <div className="space-y-4">
+      {!quiet && (<>
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
           <Bug className="w-4 h-4 text-red-400" /> Issue Inbox
@@ -280,19 +282,27 @@ export function IssueInbox() {
           className="flex-1 px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
         />
       </div>
+      </>)}
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
 
       {/* Issue list */}
       {loading ? (
-        <div className="text-center py-8 text-gray-400 text-sm flex items-center justify-center gap-2">
+        <div role="status" className="text-center py-8 text-gray-400 text-sm flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading issues...
         </div>
       ) : issues.length === 0 ? (
+        quiet ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+            <span className="inline-flex rounded-full border border-white/10 px-2.5 py-0.5 text-[12px] text-zinc-300">No open issue</span>
+            <p className="mt-3 text-[14px] text-zinc-400">Status, traces, and metrics stay behind this one list. Nothing is waiting right now.</p>
+          </div>
+        ) : (
         <div className="text-center py-8 text-gray-400 text-sm">
           <Bug className="w-7 h-7 mx-auto mb-2 opacity-40" />
           No issues match this filter
         </div>
+        )
       ) : (
         <div className="space-y-2 max-h-[420px] overflow-y-auto">
           {issues.map((issue) => (
@@ -486,6 +496,12 @@ export function IssueInbox() {
             )}
           </div>
         </div>
+      )}
+      {quiet && (
+        <button type="button" onClick={() => void load()} disabled={loading} className={northCtaClass}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Refresh
+        </button>
       )}
     </div>
   );

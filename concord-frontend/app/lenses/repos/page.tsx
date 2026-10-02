@@ -1,30 +1,31 @@
 'use client';
 
+/**
+ * Repos — north star (docs/lens-northstar/34): the repo list.
+ * GitHub explore stays under More. Counts come from repos.repo-list.
+ */
+
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import { GitBranch, Code2 as Github } from 'lucide-react';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { RepoBrowser } from '@/components/repos-explorer/RepoBrowser';
 import { ConcordRepoWorkspace } from '@/components/repos/ConcordRepoWorkspace';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { CodeFamilyPill, NorthGreeting, QuietMore } from '@/components/code/CodeFamilyChrome';
 
 type View = 'workspace' | 'explore';
 
 export default function ReposLensPage() {
   useLensNav('repos');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('repos');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('workspace');
 
-  // Lens-scoped keyboard commands — discoverable via the visible kbd chips
-  // on each tab below and the ⌘K palette (useLensCommand registration).
   useLensCommand(
     [
       { id: 'view-workspace', keys: 'w', description: 'Your repos', category: 'navigation', action: () => setView('workspace') },
@@ -34,86 +35,41 @@ export default function ReposLensPage() {
   );
 
   return (
-    <LensShell lensId="repos" asMain={false}>
-      <FirstRunTour lensId="repos" />      <DepthBadge lensId="repos" size="sm" className="ml-2" />
-      <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">
-        {/* Header */}
-        <header className="bg-[#161b22] border-b border-gray-700">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">📦</span>
-                <div>
-                  <h1 className="text-lg font-bold text-white leading-tight">Repos</h1>
-                  <p className="text-[11px] text-gray-500">Repositories, files and history over the Concord repo substrate</p>
-                </div>
+    <LensShell lensId="repos" asMain={false} disableAgentFab>
+      <div data-lens-theme="repos" className="min-h-[calc(100vh-4rem)] px-8 pb-28 pt-4">
+        {view === 'workspace' ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <NorthGreeting kicker="Repos" title={who ? `Your repos, ${who}` : 'Your repos'} />
+                <CodeFamilyPill active="repos" />
               </div>
-              <nav className="flex items-center gap-1 rounded-md border border-gray-700 bg-[#0d1117] p-1">
-                <button
-                  onClick={() => setView('workspace')}
-                  className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
-                    view === 'workspace' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <GitBranch className="w-3.5 h-3.5" /> Your repos
-                  <kbd className="ml-1 rounded border border-gray-600 bg-black/30 px-1 text-[9px] text-gray-500">w</kbd>
-                </button>
-                <button
-                  onClick={() => setView('explore')}
-                  className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
-                    view === 'explore' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Github className="w-3.5 h-3.5" /> Explore GitHub
-                  <kbd className="ml-1 rounded border border-gray-600 bg-black/30 px-1 text-[9px] text-gray-500">e</kbd>
-                </button>
-              </nav>
+              <QuietMore
+                items={[{ id: 'explore', label: 'Explore GitHub', key: 'e' }]}
+                onPick={() => setView('explore')}
+              />
             </div>
-          </div>
-        </header>
-
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-          {/* Real-time Enhancement Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="repos" data={realtimeData || {}} compact />
-            {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-
-          {view === 'workspace' && (
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <ConcordRepoWorkspace />
-            </section>
-          )}
-
-          {view === 'explore' && (
-            <div className="space-y-6">
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <RepoBrowser />
-              </section>
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <TrendingRepos />
-              </section>
+            <div className="mt-6">
+              <ConcordRepoWorkspace listOnly />
             </div>
-          )}
-
-          {/* Real-time Data Panel */}
-          {realtimeData && (
-            <RealtimeDataPanel
-              domain="repos"
-              data={realtimeData}
-              isLive={isLive}
-              lastUpdated={lastUpdated}
-              insights={realtimeInsights}
-              compact
-            />
-          )}
-        </div>
-      </div>      <CrossLensRecentsPanel lensId="repos" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          </>
+        ) : (
+          <div className="space-y-6">
+            <button
+              type="button"
+              onClick={() => setView('workspace')}
+              className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Repos
+            </button>
+            <h1 className="font-vault text-[2.25rem] leading-tight text-zinc-100">Explore GitHub</h1>
+            <RepoBrowser />
+            <TrendingRepos />
+          </div>
+        )}
+        <CrossLensRecentsPanel lensId="repos" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
+      </div>
     </LensShell>
   );
 }

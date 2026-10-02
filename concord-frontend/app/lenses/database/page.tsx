@@ -1,31 +1,22 @@
 'use client';
 
 /**
- * Database — one DBeaver/TablePlus tool-shaped app.
- *
- * Single `active` union drives the tab bar. Each screen owns its hooks in
- * components/database/*Panel.tsx. Page is a thin shell.
+ * Database — north star (docs/lens-northstar/32): one query and its rows.
+ * Table browser, schema, designer and the rest stay under More.
  */
 
 import { useCallback, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import {
-  Database, Plug, Terminal, Table2, Layers, PenLine, Key, BarChart3, History, FolderGit2,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { cn } from '@/lib/utils';
-import { ConnectionStrip } from '@/components/database/ConnectionStrip';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { CodeFamilyPill, NorthGreeting, QuietMore } from '@/components/code/CodeFamilyChrome';
+import { QuerySurface } from '@/components/database/QuerySurface';
 import { LiveClientPanel } from '@/components/database/LiveClientPanel';
-import { QueryEditorPanel } from '@/components/database/QueryEditorPanel';
 import { TableBrowserPanel } from '@/components/database/TableBrowserPanel';
 import { SchemaMapPanel } from '@/components/database/SchemaMapPanel';
 import { DesignerPanel } from '@/components/database/DesignerPanel';
@@ -34,9 +25,9 @@ import { MonitoringPanel } from '@/components/database/MonitoringPanel';
 import { HistoryPanel } from '@/components/database/HistoryPanel';
 import { ProjectsPanel } from '@/components/database/ProjectsPanel';
 
-export type DbView =
-  | 'live'
+type DbView =
   | 'query'
+  | 'live'
   | 'tables'
   | 'schema'
   | 'designer'
@@ -45,112 +36,72 @@ export type DbView =
   | 'history'
   | 'projects';
 
-const TABS: { id: DbView; label: string; icon: typeof Database; keys: string }[] = [
-  { id: 'live', label: 'Live Client', icon: Plug, keys: 'l' },
-  { id: 'query', label: 'Query Editor', icon: Terminal, keys: 'q' },
-  { id: 'tables', label: 'Table Browser', icon: Table2, keys: 't' },
-  { id: 'schema', label: 'Schema Map', icon: Layers, keys: 'm' },
-  { id: 'designer', label: 'Designer', icon: PenLine, keys: 'd' },
-  { id: 'indexes', label: 'Indexes', icon: Key, keys: 'i' },
-  { id: 'monitor', label: 'Monitoring', icon: BarChart3, keys: 'o' },
-  { id: 'history', label: 'History', icon: History, keys: 'h' },
-  { id: 'projects', label: 'Projects', icon: FolderGit2, keys: 'p' },
+const MORE: { id: Exclude<DbView, 'query'>; label: string; key?: string }[] = [
+  { id: 'live', label: 'Live client', key: 'l' },
+  { id: 'tables', label: 'Tables', key: 't' },
+  { id: 'schema', label: 'Schema map', key: 'm' },
+  { id: 'designer', label: 'Designer', key: 'd' },
+  { id: 'indexes', label: 'Indexes', key: 'i' },
+  { id: 'monitor', label: 'Monitoring', key: 'o' },
+  { id: 'history', label: 'History', key: 'h' },
+  { id: 'projects', label: 'Projects', key: 'p' },
 ];
 
 export default function DatabaseLensPage() {
   useLensNav('database');
   useLensIdentity('database');
-  const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('database');
-  const reduceMotion = useReducedMotion();
-  const [active, setActive] = useState<DbView>('live');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [active, setActive] = useState<DbView>('query');
   const [seedSql, setSeedSql] = useState<string | null>(null);
 
-  const go = useCallback((id: DbView) => setActive(id), []);
   const loadSql = useCallback((sql: string) => {
     setSeedSql(sql);
     setActive('query');
   }, []);
-  const onSeedConsumed = useCallback(() => setSeedSql(null), []);
 
   useLensCommand(
-    TABS.map((t) => ({
-      id: `tab-${t.id}`,
-      keys: t.keys,
-      description: t.label,
-      category: 'navigation' as const,
-      action: () => go(t.id),
-    })),
+    [
+      { id: 'tab-query', keys: 'q', description: 'Query', category: 'navigation', action: () => setActive('query') },
+      ...MORE.map((t) => ({
+        id: `tab-${t.id}`,
+        keys: t.key || t.id,
+        description: t.label,
+        category: 'navigation' as const,
+        action: () => setActive(t.id),
+      })),
+    ],
     { lensId: 'database' },
   );
 
+  const secondary = MORE.find((v) => v.id === active);
+
   return (
-    <LensShell lensId="database" asMain={false}>
-      <FirstRunTour lensId="database" />
-      <DepthBadge lensId="database" size="sm" className="ml-2" />
-      <div data-lens-theme="database" className="p-6 space-y-6 bg-lattice-bg min-h-screen">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Database className="w-8 h-8 text-neon-orange shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold">Database Administration</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="database" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
+    <LensShell lensId="database" asMain={false} disableAgentFab>
+      <div data-lens-theme="database" className="min-h-[calc(100vh-4rem)] px-8 pb-28 pt-4">
+        {active === 'query' ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <NorthGreeting kicker="Database" title={who ? `Ask the data, ${who}` : 'Ask the data'} />
+                <CodeFamilyPill active="database" />
               </div>
-              <p className="text-sm text-gray-400">
-                Query editor, schema browser, and performance monitoring.
-              </p>
+              <QuietMore items={MORE} onPick={(id) => setActive(id as DbView)} />
             </div>
-          </div>
-        </header>
-
-        <ConnectionStrip />
-
-        <nav
-          className="flex gap-1 border-b border-lattice-border flex-wrap pb-px"
-          aria-label="Database views"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const on = active === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => go(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t transition-colors whitespace-nowrap',
-                  on
-                    ? 'bg-lattice-surface text-neon-cyan border border-lattice-border border-b-transparent -mb-px'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-lattice-surface/50',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {tab.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
-            transition={{ duration: reduceMotion ? 0 : 0.15 }}
-          >
+            <QuerySurface key={seedSql ?? 'draft'} initialSql={seedSql ?? ''} />
+          </>
+        ) : (
+          <div>
+            <button
+              type="button"
+              onClick={() => setActive('query')}
+              className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Database
+            </button>
+            <h1 className="mb-4 mt-2 font-vault text-[2.25rem] leading-tight text-zinc-100">{secondary?.label}</h1>
             {active === 'live' && <LiveClientPanel />}
-            {active === 'query' && <QueryEditorPanel seedSql={seedSql} onSeedConsumed={onSeedConsumed} />}
             {active === 'tables' && <TableBrowserPanel onQueryTable={loadSql} />}
             {active === 'schema' && <SchemaMapPanel />}
             {active === 'designer' && <DesignerPanel />}
@@ -158,10 +109,9 @@ export default function DatabaseLensPage() {
             {active === 'monitor' && <MonitoringPanel />}
             {active === 'history' && <HistoryPanel onLoadQuery={loadSql} />}
             {active === 'projects' && <ProjectsPanel />}
-          </motion.div>
-        </AnimatePresence>
-
-        <CrossLensRecentsPanel lensId="database" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          </div>
+        )}
+        <CrossLensRecentsPanel lensId="database" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
       </div>
     </LensShell>
   );

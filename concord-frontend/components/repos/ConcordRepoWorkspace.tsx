@@ -114,7 +114,7 @@ function ErrorBanner({ err }: { err: string | null }) {
   );
 }
 
-export function ConcordRepoWorkspace() {
+export function ConcordRepoWorkspace({ listOnly = false }: { listOnly?: boolean }) {
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [activeRepo, setActiveRepo] = useState<RepoSummary | null>(null);
   const [tab, setTab] = useState<Tab>('code');
@@ -124,6 +124,7 @@ export function ConcordRepoWorkspace() {
 
   // Repo create
   const [newRepoName, setNewRepoName] = useState('');
+  const [naming, setNaming] = useState(false);
 
   const loadRepos = useCallback(async () => {
     setLoading(true);
@@ -147,6 +148,21 @@ export function ConcordRepoWorkspace() {
 
   return (
     <div className="space-y-4">
+      {listOnly && !loading && !activeRepo && repos.length === 0 && (
+        <p className="text-[13px] text-zinc-500">Substrate · 0 repos</p>
+      )}
+      {listOnly && !activeRepo && (
+        <button
+          type="button"
+          onClick={() => { if (!naming) { setNaming(true); return; } void createRepo(); }}
+          disabled={busy === 'create-repo' || (naming && !newRepoName.trim())}
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-50"
+        >
+          {busy === 'create-repo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          New repo
+        </button>
+      )}
+      {!(listOnly && !activeRepo && repos.length === 0) && (
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <GitBranch className="h-5 w-5 text-cyan-400" />
@@ -155,6 +171,7 @@ export function ConcordRepoWorkspace() {
             substrate · {repos.length} repos
           </span>
         </div>
+        {!listOnly && (
         <div className="flex items-center gap-2">
           <input
             value={newRepoName}
@@ -171,12 +188,14 @@ export function ConcordRepoWorkspace() {
             New repo
           </button>
         </div>
+        )}
       </header>
+      )}
 
       <ErrorBanner err={listErr} />
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <div role="status" className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading repos…
         </div>
       )}
@@ -184,9 +203,32 @@ export function ConcordRepoWorkspace() {
       {!loading && !activeRepo && (
         <div className="space-y-2">
           {repos.length === 0 && (
-            <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
-              No repos yet. Create one above to get a file tree, branches, issues, PRs and CI.
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-[14px] text-zinc-300">
+              <p className="font-medium text-zinc-100">Concord Code Host</p>
+              <p className="mt-1 text-zinc-400">No repos yet. One name, then the tree.</p>
+              {listOnly && naming && (
+                <input
+                  autoFocus
+                  value={newRepoName}
+                  onChange={(e) => setNewRepoName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void createRepo(); }}
+                  placeholder="repo name"
+                  aria-label="New repo name"
+                  className="mt-3 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[14px] text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+                />
+              )}
             </div>
+          )}
+          {listOnly && naming && repos.length > 0 && (
+            <input
+              autoFocus
+              value={newRepoName}
+              onChange={(e) => setNewRepoName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void createRepo(); }}
+              placeholder="repo name"
+              aria-label="New repo name"
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[14px] text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+            />
           )}
           {repos.map((r) => (
             <button
