@@ -23,8 +23,6 @@ import { cn } from '@/lib/utils';
 import { BrowserPanel } from '@/components/dtus/BrowserPanel';
 import { WorkbenchPanel } from '@/components/dtus/WorkbenchPanel';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { OneUnit } from '@/components/dtus/OneUnit';
 import { OpsPanel } from '@/components/dtus/OpsPanel';
 
 type DtusView = 'browser' | 'workbench' | 'trending' | 'ops';
@@ -51,7 +49,7 @@ const PANELS: Record<DtusView, ComponentType> = {
   ops: OpsPanel,
 };
 
-export function DtusDesk() {
+export default function DTUBrowserPage() {
   useLensNav('dtus');
   useLensIdentity('dtus');
   const reduceMotion = useReducedMotion();
@@ -141,15 +139,5 @@ export function DtusDesk() {
         <CrossLensRecentsPanel lensId="dtus" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function DTUBrowserPage() {
-  return (
-    <NorthGate
-      backLabel="DTU Browser"
-      desk={<DtusDesk />}
-      star={(openDesk) => <OneUnit onOpenDesk={openDesk} />}
-    />
   );
 }

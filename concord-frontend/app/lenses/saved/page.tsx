@@ -14,9 +14,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { SavedDeskPanel } from '@/components/saved/SavedDeskPanel';
-import { WorthKeeping } from '@/components/saved/WorthKeeping';
 import { SocialBookmarksPanel } from '@/components/saved/SocialBookmarksPanel';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -28,7 +26,7 @@ const VIEWS: { id: SavedView; label: string; keys: string; icon: typeof FolderOp
   { id: 'social', label: 'Social bookmarks', keys: '2', icon: Bookmark },
 ];
 
-export function SavedDesk() {
+export default function SavedLensPage() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SavedView>('collections');
   const [saveFormOpen, setSaveFormOpen] = useState(false);
@@ -108,15 +106,5 @@ export function SavedDesk() {
         </motion.div>
       </AnimatePresence>
     </LensShell>
-  );
-}
-
-export default function SavedLensPage() {
-  return (
-    <NorthGate
-      backLabel="Saved"
-      desk={<SavedDesk />}
-      star={(openDesk) => <WorthKeeping onOpenDesk={openDesk} />}
-    />
   );
 }

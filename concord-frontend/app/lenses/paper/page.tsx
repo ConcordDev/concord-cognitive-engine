@@ -29,9 +29,7 @@ import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { LibraryPanel } from '@/components/paper/LibraryPanel';
 import { EditorPanel } from '@/components/paper/EditorPanel';
 import { WorkbenchPanel } from '@/components/paper/WorkbenchPanel';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { DiscoverPanel } from '@/components/paper/DiscoverPanel';
-import { ThePaper } from '@/components/paper/ThePaper';
 
 type PaperView = 'library' | 'editor' | 'workbench' | 'discover';
 
@@ -49,7 +47,7 @@ const PANELS: Record<PaperView, ComponentType> = {
   discover: DiscoverPanel,
 };
 
-export function PaperDesk() {
+export default function PaperLensPage() {
   useLensNav('paper');
   useLensIdentity('paper');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('paper');
@@ -159,15 +157,5 @@ export function PaperDesk() {
           <CrossLensRecentsPanel lensId="paper" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function PaperLensPage() {
-  return (
-    <NorthGate
-      backLabel="Paper"
-      desk={<PaperDesk />}
-      star={(openDesk) => <ThePaper onOpenDesk={openDesk} />}
-    />
   );
 }

@@ -34,7 +34,7 @@ vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPane
 vi.mock('@/components/social/BookmarksList', () => ({ BookmarksList: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
-import { SavedDesk as SavedLensPage } from '@/app/lenses/saved/page';
+import SavedLensPage from '@/app/lenses/saved/page';
 
 const ITEM = {
   id: 'svd_1', kind: 'article', refId: null, title: 'Concord paper',

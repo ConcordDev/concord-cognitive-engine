@@ -54,9 +54,7 @@ import { HealthPanel } from '@/components/resonance/HealthPanel';
 import { GrowthPanel } from '@/components/resonance/GrowthPanel';
 import { ActionsPanel } from '@/components/resonance/ActionsPanel';
 import { WorkbenchPanel } from '@/components/resonance/WorkbenchPanel';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { ArxivPanel } from '@/components/resonance/ArxivPanel';
-import { WhatResonates } from '@/components/resonance/WhatResonates';
 
 type ResonanceView =
   | 'live'
@@ -79,7 +77,7 @@ const VIEWS: { id: ResonanceView; label: string; keys: string; icon: typeof Radi
   { id: 'arxiv', label: 'arXiv', keys: 'x', icon: BookOpen },
 ];
 
-export function ResonanceDesk() {
+export default function ResonanceBoundaryPage() {
   useLensNav('resonance');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('resonance');
@@ -358,15 +356,5 @@ export function ResonanceDesk() {
         <CrossLensRecentsPanel lensId="resonance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3 px-4" />
       </div>
     </LensShell>
-  );
-}
-
-export default function ResonanceBoundaryPage() {
-  return (
-    <NorthGate
-      backLabel="Resonance"
-      desk={<ResonanceDesk />}
-      star={(openDesk) => <WhatResonates onOpenDesk={openDesk} />}
-    />
   );
 }
