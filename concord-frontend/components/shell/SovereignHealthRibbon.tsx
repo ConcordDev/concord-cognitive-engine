@@ -101,7 +101,19 @@ export function SovereignHealthRibbon() {
   // the header used to carry three always-on chips for this.
   const tones: Tone[] = [brainTone, hbTone, subTone];
   const overall: Tone = !reachable ? 'dim' : tones.includes('warn') ? 'warn' : tones.every((x) => x === 'live') ? 'live' : 'dim';
-  const overallLabel = !reachable ? 'Status unknown' : overall === 'live' ? 'All systems live' : overall === 'warn' ? 'Degraded' : 'Starting';
+  // Name the actual state — "Starting" only while the heartbeat is genuinely
+  // warming up; a box with no brains online says so instead of looking idle.
+  const overallLabel = !reachable
+    ? 'Status unknown'
+    : overall === 'live'
+      ? 'All systems live'
+      : overall === 'warn'
+        ? 'Degraded'
+        : online === 0
+          ? 'Brains offline'
+          : warming
+            ? 'Starting'
+            : 'Partial';
 
   return (
     <button
