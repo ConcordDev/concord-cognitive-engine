@@ -1321,27 +1321,29 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {workspaceKind === 'project' && (
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-white/10 bg-[#161b22] shrink-0" role="tablist" aria-label="Workspace kind">
         <button
           type="button"
           role="tab"
-          aria-selected={workspaceKind === 'scratch'}
+          aria-selected={false}
           onClick={() => setWorkspaceKind('scratch')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium ${workspaceKind === 'scratch' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+          className="px-2.5 py-1 rounded text-[11px] font-medium text-gray-400 hover:text-white"
         >
           Scratch
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={workspaceKind === 'project'}
+          aria-selected={true}
           onClick={() => setWorkspaceKind('project')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium ${workspaceKind === 'project' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+          className="px-2.5 py-1 rounded text-[11px] font-medium bg-white/10 text-white"
         >
           Project
         </button>
         <span className="ml-auto text-[10px] text-gray-500 font-mono">⌘⇧N scratch · ⌘⇧E project</span>
       </div>
+      )}
       {workspaceKind === 'project' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
           <CodeWorkbenchSection />
@@ -1349,12 +1351,31 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       ) : null}
       <div className={workspaceKind === 'scratch' ? `flex flex-col font-mono flex-1 min-h-0 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'bg-[#0d1117]'}` : 'hidden'} data-lens-theme="code">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">
-        <div className="flex items-center gap-3">
-          <Terminal className="w-6 h-6 text-green-400" />
-          <div>
-            <h1 className="text-lg font-bold text-green-300 font-mono tracking-tight">Code Workspace</h1>
-            <p className="text-xs text-green-600 font-mono">Write, run & share code</p>
+      {/* One title bar (VS Code-style): workspace switch + project + status on
+          the left; run, analysis and view controls on the right. */}
+      <header className="flex items-center justify-between gap-3 px-3 py-1.5 border-b border-white/10 bg-[#161b22] font-sans">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-0.5 rounded-md bg-black/30 p-0.5" role="tablist" aria-label="Workspace kind">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              onClick={() => setWorkspaceKind('scratch')}
+              className="px-2.5 py-1 rounded text-[11px] font-medium bg-white/10 text-white"
+              title="Scratch editor (⌘⇧N)"
+            >
+              Scratch
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              onClick={() => setWorkspaceKind('project')}
+              className="px-2.5 py-1 rounded text-[11px] font-medium text-gray-400 hover:text-white"
+              title="Project workbench (⌘⇧E)"
+            >
+              Project
+            </button>
           </div>
 
       {/* Shared project pointer — same projectId the virtual-git workspace
@@ -1362,7 +1383,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       <QuickScriptProjectBadge />
 
       {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         <DTUExportButton domain="code" data={realtimeData || {}} compact />
         <VisionAnalyzeButton
@@ -1381,7 +1402,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* Script Type Selector */}
           <div className="flex items-center gap-1 bg-[#0d1117] rounded-lg p-1 border border-green-900/20">
             {SCRIPT_TYPES.map((stype) => {
@@ -1403,10 +1424,33 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
             })}
           </div>
 
+          {/* Code analysis (results open under the title bar) */}
+          <div className="flex items-center gap-0.5" role="group" aria-label="Code analysis">
+            {([
+              ['complexityAnalysis', BarChart3, 'Complexity analysis — cyclomatic & cognitive complexity'],
+              ['dependencyAudit', Layers, 'Dependency audit — vulnerabilities and license risk'],
+              ['coverageAnalysis', RefreshCw, 'Coverage analysis — test coverage gaps'],
+              ['changeRiskAssessment', AlertTriangle, 'Change risk — risk of pending changes'],
+            ] as const).map(([action, Icon, label]) => (
+              <button
+                key={action}
+                type="button"
+                onClick={() => handleCodeAction(action)}
+                disabled={runningCodeAction !== null || !savedScripts[0]}
+                className="p-1.5 rounded-md text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-40"
+                title={!savedScripts[0] ? `${label} (save a script first)` : label}
+                aria-label={label}
+              >
+                {runningCodeAction === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => runScriptMutation.mutate()}
             disabled={runScriptMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-mono text-sm font-bold shadow-lg shadow-green-900/50 transition-all hover:shadow-green-800/60"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors"
+            title="Run (⌘↵)"
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1418,7 +1462,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
           <button
             onClick={() => setShowForge(!showForge)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${showForge ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30' : 'bg-lattice-elevated text-gray-300 hover:text-white'}`}
+            className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-[13px] transition-colors ${showForge ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30' : 'bg-lattice-elevated text-gray-300 hover:text-white'}`}
             title="Generate Forge App"
           >
             <Sparkles className="w-4 h-4" />
@@ -1509,53 +1553,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
         )}
       </AnimatePresence>
 
-      {/* AI Actions */}
-
-      {/* Backend Code Analysis Actions */}
-      <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Zap className="w-4 h-4 text-neon-yellow" />
-          <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Code Analysis</span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <button
-            onClick={() => handleCodeAction('complexityAnalysis')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Analyze cyclomatic & cognitive complexity'}
-          >
-            {runningCodeAction === 'complexityAnalysis' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <BarChart3 className="w-5 h-5 text-neon-cyan" />}
-            <span className="text-xs text-gray-300">Complexity Analysis</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('dependencyAudit')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Audit dependencies for vulnerabilities and license risk'}
-          >
-            {runningCodeAction === 'dependencyAudit' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Layers className="w-5 h-5 text-neon-purple" />}
-            <span className="text-xs text-gray-300">Dependency Audit</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('coverageAnalysis')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-green-400/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Analyze test coverage gaps'}
-          >
-            {runningCodeAction === 'coverageAnalysis' ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <RefreshCw className="w-5 h-5 text-green-400" />}
-            <span className="text-xs text-gray-300">Coverage Analysis</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('changeRiskAssessment')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-yellow-400/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Assess risk of pending changes'}
-          >
-            {runningCodeAction === 'changeRiskAssessment' ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <AlertTriangle className="w-5 h-5 text-yellow-400" />}
-            <span className="text-xs text-gray-300">Change Risk</span>
-          </button>
-        </div>
-
+      {/* Analysis result (the four analysis actions live in the title bar) */}
+      {codeActionResult && (
+      <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3 font-sans">
         {/* Action Result Display */}
         <AnimatePresence>
           {codeActionResult && (
@@ -1687,6 +1687,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           )}
         </AnimatePresence>
       </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Activity bar — selects which sidebar panel renders */}
