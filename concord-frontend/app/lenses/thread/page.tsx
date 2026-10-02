@@ -24,8 +24,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { WhichBranch } from '@/components/thread/WhichBranch';
 import { ThreadMapPanel } from '@/components/thread/ThreadMapPanel';
 import { ComposerPanel } from '@/components/thread/ComposerPanel';
 import { StudioPanel } from '@/components/thread/StudioPanel';
@@ -48,7 +46,7 @@ const PANELS: Record<ThreadView, ComponentType> = {
   feed: FeedPanel,
 };
 
-export function ThreadDesk() {
+export default function ThreadLensPage() {
   useLensNav('thread');
   useLensIdentity('thread');
   const reduceMotion = useReducedMotion();
@@ -157,15 +155,5 @@ export function ThreadDesk() {
         <CrossLensRecentsPanel lensId="thread" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
-  );
-}
-
-export default function ThreadLensPage() {
-  return (
-    <NorthGate
-      backLabel="Threads"
-      desk={<ThreadDesk />}
-      star={(openDesk) => <WhichBranch onOpenDesk={openDesk} />}
-    />
   );
 }

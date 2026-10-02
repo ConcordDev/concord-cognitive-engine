@@ -7,8 +7,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { NorthGate } from '@/components/lens/NorthStarChrome';
-import { TodayPage } from '@/components/daily/TodayPage';
 import { DailyTodayPanel } from '@/components/daily/DailyTodayPanel';
 import { JournalStudio } from '@/components/daily/JournalStudio';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
@@ -25,7 +23,7 @@ const TABS: { id: DailyView; label: string; icon: typeof BookOpen; keys: string 
   { id: 'inspiration', label: 'Inspiration', icon: Quote, keys: 'i' },
 ];
 
-export function DailyDesk() {
+export default function DailyLensPage() {
   useLensNav('daily');
   useLensIdentity('daily');
   const reduceMotion = useReducedMotion();
@@ -105,15 +103,5 @@ export function DailyDesk() {
         </div>
       </div>
     </LensShell>
-  );
-}
-
-export default function DailyLensPage() {
-  return (
-    <NorthGate
-      backLabel="Daily"
-      desk={<DailyDesk />}
-      star={(openDesk) => <TodayPage onOpenDesk={openDesk} />}
-    />
   );
 }
