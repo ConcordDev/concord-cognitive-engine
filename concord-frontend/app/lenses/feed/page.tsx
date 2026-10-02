@@ -12,6 +12,8 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { TheNextThing } from '@/components/feed/TheNextThing';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -40,7 +42,7 @@ const RAIL: { id: FeedView; label: string; icon: typeof Home; keys?: string }[] 
   { id: 'hn', label: 'HN', icon: Newspaper, keys: 'h' },
 ];
 
-export default function FeedLensPage() {
+export function FeedDesk() {
   useLensNav('feed');
   useLensIdentity('feed');
   const reduceMotion = useReducedMotion();
@@ -144,5 +146,15 @@ export default function FeedLensPage() {
         <CrossLensRecentsPanel lensId="feed" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function FeedLensPage() {
+  return (
+    <NorthGate
+      backLabel="Feed"
+      desk={<FeedDesk />}
+      star={(openDesk) => <TheNextThing onOpenDesk={openDesk} />}
+    />
   );
 }

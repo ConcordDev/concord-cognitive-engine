@@ -18,6 +18,8 @@
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { WhatChanged } from '@/components/news/WhatChanged';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { IntelDesk } from '@/components/news/intel/IntelDesk';
@@ -55,10 +57,20 @@ function NewsLensInner() {
   );
 }
 
-export default function NewsLensPage() {
+export function NewsDesk() {
   return (
     <Suspense fallback={null}>
       <NewsLensInner />
     </Suspense>
+  );
+}
+
+export default function NewsLensPage() {
+  return (
+    <NorthGate
+      backLabel="News"
+      desk={<NewsDesk />}
+      star={(openDesk) => <WhatChanged onOpenDesk={openDesk} />}
+    />
   );
 }

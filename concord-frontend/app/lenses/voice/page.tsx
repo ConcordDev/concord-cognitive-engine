@@ -25,6 +25,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { HoldToTalk } from '@/components/voice/HoldToTalk';
 import { VoiceBoothPanel } from '@/components/voice/VoiceBoothPanel';
 import { VoiceTranscripts } from '@/components/voice/VoiceTranscripts';
 import { VoiceOtterSuite } from '@/components/voice/VoiceOtterSuite';
@@ -49,7 +51,7 @@ const PANELS: Record<VoiceView, ComponentType> = {
   analyze: VoiceAnalyzeView,
 };
 
-export default function VoiceLensPage() {
+export function VoiceDesk() {
   useLensNav('voice');
   useLensIdentity('voice');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
@@ -160,5 +162,15 @@ export default function VoiceLensPage() {
         <CrossLensRecentsPanel lensId="voice" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function VoiceLensPage() {
+  return (
+    <NorthGate
+      backLabel="Voice"
+      desk={<VoiceDesk />}
+      star={(openDesk) => <HoldToTalk onOpenDesk={openDesk} />}
+    />
   );
 }
