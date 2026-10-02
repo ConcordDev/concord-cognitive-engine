@@ -72,6 +72,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Glasses, Camera, Boxes, ScanEye, Library, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGreeting, QuietMore, northCtaClass } from '@/components/code/CodeFamilyChrome';
+import { StudioFamilyPill } from '@/components/studio/StudioFamilyChrome';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -137,6 +141,10 @@ export default function ARLensPage() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
   const [arEnabled, setArEnabled] = useState(false);
+  const [fullDesk, setFullDesk] = useState(false);
+  const [previewNote, setPreviewNote] = useState('');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [renderPlan, setRenderPlan] = useState<ArRenderPlan | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string | null>(null);
   const [arSupported, setArSupported] = useState(false);
@@ -322,8 +330,74 @@ export default function ARLensPage() {
     setArEnabled(true);
   }, []);
 
+  const startPreview = useCallback(async () => {
+    setPreviewNote('');
+    const list = await lensRun('ar', 'sceneList', {});
+    if (!list.data?.ok) {
+      setPreviewNote(list.data?.error || 'Could not load scenes.');
+      setArEnabled(false);
+      return;
+    }
+    const scenes = (list.data.result as { scenes?: { id?: string; name?: string }[] } | null)?.scenes || [];
+    const first = scenes.find((s) => s.id);
+    if (!first?.id) {
+      setPreviewNote('No scene to place yet.');
+      setArEnabled(false);
+      return;
+    }
+    const rendered = await lensRun('ar', 'render', { sceneId: first.id });
+    if (!rendered.data?.ok) {
+      setPreviewNote(rendered.data?.error || 'Preview failed.');
+      setArEnabled(false);
+      return;
+    }
+    setRenderPlan(rendered.data.result as ArRenderPlan);
+    setPreviewTitle(first.name || 'Scene');
+    setArEnabled(true);
+  }, []);
+
+  if (!fullDesk) {
+    return (
+      <LensShell lensId="ar" asMain={false} disableAgentFab>
+        <div data-lens-theme="ar" className="flex min-h-[calc(100vh-4rem)] flex-col px-8 pb-28 pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <NorthGreeting kicker="AR" title={who ? `Place it in the room, ${who}` : 'Place it in the room'} />
+              <StudioFamilyPill active="ar" />
+            </div>
+            <QuietMore items={[{ id: 'desk', label: 'Scene desk' }]} onPick={() => setFullDesk(true)} />
+          </div>
+          <div className="mt-8 flex min-h-[420px] flex-1 items-center justify-center rounded-2xl border border-dashed border-white/15 px-6 text-center">
+            {arEnabled ? (
+              <div className="h-full min-h-[380px] w-full">
+                <div ref={viewportRef} className="h-full min-h-[380px] w-full" />
+                <p className="mt-2 text-[13px] text-zinc-500">
+                  {previewTitle ? `Previewing ${previewTitle}` : 'Screen preview'}
+                  {arSupported ? '' : ' · no XR device on this machine'}
+                </p>
+              </div>
+            ) : (
+              <p className="text-[14px] text-zinc-400">
+                {arSupported
+                  ? 'An XR device is available on this machine.'
+                  : 'No XR device on this machine.'}
+                <br />
+                Screen preview is the honest view.
+                {previewNote ? <span className="mt-2 block text-zinc-500">{previewNote}</span> : null}
+              </p>
+            )}
+          </div>
+          <button type="button" className={northCtaClass} onClick={() => { void startPreview(); }}>
+            Start preview
+          </button>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
-    <LensShell lensId="ar" asMain={false}>
+    <LensShell lensId="ar" asMain={false} disableAgentFab>
+      <button type="button" onClick={() => setFullDesk(false)} className="px-6 pt-4 text-[14px] text-zinc-500 hover:text-zinc-200">← AR</button>
       <FirstRunTour lensId="ar" />
       <div data-lens-theme="ar" className="p-6 space-y-5">
         {/* Header */}

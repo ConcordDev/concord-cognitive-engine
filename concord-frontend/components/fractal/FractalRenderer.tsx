@@ -145,12 +145,19 @@ function colorFor(iter: number, maxIter: number, lut: Uint8ClampedArray): [numbe
   return [lut[idx * 3], lut[idx * 3 + 1], lut[idx * 3 + 2]];
 }
 
-export function FractalRenderer() {
+export function FractalRenderer({
+  variant = 'full',
+  initial,
+}: {
+  /** `image` is the north-star frame: the escape-time canvas only. */
+  variant?: 'full' | 'image';
+  initial?: Partial<ViewState>;
+} = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderIdRef = useRef(0);
   const lutRef = useRef<Uint8ClampedArray>(new Uint8ClampedArray(0));
 
-  const [view, setView] = useState<ViewState>(DEFAULT_VIEW);
+  const [view, setView] = useState<ViewState>({ ...DEFAULT_VIEW, ...initial });
   const [isRendering, setIsRendering] = useState(false);
   const [renderMs, setRenderMs] = useState(0);
 
@@ -559,6 +566,16 @@ export function FractalRenderer() {
   };
 
   const resetView = () => setView({ ...DEFAULT_VIEW });
+
+  if (variant === 'image') {
+    return (
+      <canvas
+        ref={canvasRef}
+        aria-label="Fractal render"
+        className="h-full w-full bg-black"
+      />
+    );
+  }
 
   // --- UI ------------------------------------------------------------------
   const panel = 'rounded-xl border border-zinc-800 bg-zinc-950/60 p-4';

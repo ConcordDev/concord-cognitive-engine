@@ -17,8 +17,10 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthGreeting, QuietMore, northCtaClass } from '@/components/code/CodeFamilyChrome';
+import { StudioFamilyPill } from '@/components/studio/StudioFamilyChrome';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -71,9 +73,13 @@ const PANELS: Record<ArtView, ComponentType> = {
 export default function ArtLensPage() {
   useLensNav('art');
   useLensIdentity('art');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('art');
   const reduceMotion = useReducedMotion();
-  const [active, setActive] = useState<ArtView>('studio');
+  const [active, setActive] = useState<ArtView>('canvas');
+  const [desk, setDesk] = useState(false);
+  const [canvasKey, setCanvasKey] = useState(0);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -99,11 +105,42 @@ export default function ArtLensPage() {
     [reduceMotion],
   );
 
+  if (!desk) {
+    return (
+      <LensShell lensId="art" asMain={false} disableAgentFab>
+        <div data-lens-theme="art" className="flex min-h-[calc(100vh-4rem)] flex-col px-8 pb-28 pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <NorthGreeting kicker="Art" title={who ? `Make a mark, ${who}` : 'Make a mark'} />
+              <StudioFamilyPill active="art" />
+            </div>
+            <QuietMore
+              items={VIEWS.filter((v) => v.id !== 'canvas').map((v) => ({ id: v.id, label: v.label }))}
+              onPick={(id) => { setActive(id as ArtView); setDesk(true); }}
+            />
+          </div>
+          <p className="mt-6 text-[14px] text-zinc-500">The canvas is the desk.</p>
+          <div className="mt-3 min-h-[62vh] flex-1 overflow-hidden rounded-2xl border border-white/10">
+            <CanvasPanel key={canvasKey} />
+          </div>
+          <button
+            type="button"
+            className={northCtaClass}
+            onClick={() => { setActive('canvas'); setCanvasKey((n) => n + 1); }}
+          >
+            + New canvas
+          </button>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
-    <LensShell lensId="art" asMain={false}>
-      <FirstRunTour lensId="art" />
-      <DepthBadge lensId="art" size="sm" className="ml-2" />
+    <LensShell lensId="art" asMain={false} disableAgentFab>
       <div data-lens-theme="art" className={ds.pageContainer}>
+        <button type="button" onClick={() => { setActive('canvas'); setDesk(false); }} className="mb-3 text-[14px] text-zinc-500 hover:text-zinc-200">
+          ← Art
+        </button>
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">

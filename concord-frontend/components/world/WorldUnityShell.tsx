@@ -168,7 +168,7 @@ export default function WorldUnityShell() {
   }
 
   return (
-    <LensShell lensId="world" asMain={false}>
+    <LensShell lensId="world" asMain={false} disableAgentFab>
       <div
         data-testid="world-unity-shell"
         data-unity-status={status}
@@ -200,10 +200,10 @@ export default function WorldUnityShell() {
         {/* Minimal always-available chrome */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-between p-3">
           <div
-            className="pointer-events-none rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-widest text-amber-200/90 backdrop-blur"
-            aria-hidden={status !== 'ready'}
+            data-testid="world-place-chip"
+            className="pointer-events-none rounded-full border border-white/15 bg-black/70 px-3 py-1 text-[13px] text-zinc-100 backdrop-blur"
           >
-            {chromeHint}
+            Flower Law · Hub
           </div>
           <button
             type="button"

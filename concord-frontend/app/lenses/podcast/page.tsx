@@ -15,8 +15,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PodcastPlayerSection } from '@/components/podcast/PodcastPlayerSection';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
@@ -25,6 +23,7 @@ import { EpisodesPanel } from '@/components/podcast/EpisodesPanel';
 import { CreateEpisodePanel } from '@/components/podcast/CreateEpisodePanel';
 import { AnalyticsPanel } from '@/components/podcast/AnalyticsPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import { PodcastNow } from '@/components/podcast/PodcastNow';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -64,7 +63,7 @@ function StudioPanel() {
   );
 }
 
-export default function PodcastLensPage() {
+function PodcastDesk({ onBack }: { onBack: () => void }) {
   useLensNav('podcast');
   useLensIdentity('podcast');
   const { isLive, lastUpdated } = useRealtimeLens('podcast');
@@ -108,9 +107,8 @@ export default function PodcastLensPage() {
     StudioPanel;
 
   return (
-    <LensShell lensId="podcast" asMain={false}>
-      <FirstRunTour lensId="podcast" />
-      <DepthBadge lensId="podcast" size="sm" className="ml-2" />
+    <LensShell lensId="podcast" asMain={false} disableAgentFab>
+      <button type="button" onClick={onBack} className="px-4 pt-4 text-[14px] text-zinc-500 hover:text-zinc-200">← Podcast</button>
       <div className="px-4 mt-3">
         <PodcastPlayerSection />
       </div>
@@ -188,4 +186,10 @@ export default function PodcastLensPage() {
       </div>
     </LensShell>
   );
+}
+
+export default function PodcastLensPage() {
+  const [desk, setDesk] = useState(false);
+  if (desk) return <PodcastDesk onBack={() => setDesk(false)} />;
+  return <PodcastNow onOpenDesk={() => setDesk(true)} />;
 }
