@@ -23,9 +23,8 @@ import { api } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
-  ArrowLeft, Leaf, Sun, Wind, TreeDeciduous, Cloud, Bug, Globe, Bird, LineChart, Flame, Bell, Building2,
+  Leaf, Sun, Wind, TreeDeciduous, Cloud, Bug, Globe, Bird, LineChart, Flame, Bell, Building2,
 } from 'lucide-react';
-import { EcoNorthStar } from '@/components/eco/EcoNorthStar';
 import { motion } from 'framer-motion';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -41,7 +40,7 @@ type EcoTab = 'overview' | 'weather' | 'air' | 'actions' | 'species' | 'energy' 
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function EcoDesk({ onBack }: { onBack: () => void }) {
+export default function EcoLensPage() {
   useLensNav('eco');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('eco');
 
@@ -99,16 +98,12 @@ function EcoDesk({ onBack }: { onBack: () => void }) {
   const orgTab = { id: 'org-esg' as const, label: 'Org ESG', icon: Building2, blurb: 'Corporate ESG scoring (board diversity, compliance, labor practices) for an organization or team — not a personal footprint metric.', shortcut: 'g' };
 
   return (
-    <LensShell lensId="eco" asMain={false} disableAgentFab>
+    <LensShell lensId="eco" asMain={false}>
       <FirstRunTour lensId="eco" />
       <DepthBadge lensId="eco" size="sm" className="ml-2" />
     <div data-lens-theme="eco" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 hover:text-zinc-200">
-            <ArrowLeft className="h-4 w-4" />
-            Ecosystem
-          </button>
           <span className="text-2xl">🌿</span>
           <div>
             <div className="flex items-center gap-2">
@@ -233,10 +228,4 @@ function EcoDesk({ onBack }: { onBack: () => void }) {
     </div>          <CrossLensRecentsPanel lensId="eco" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
-}
-
-export default function EcoLensPage() {
-  const [desk, setDesk] = useState(false);
-  if (!desk) return <EcoNorthStar onOpenDesk={() => setDesk(true)} />;
-  return <EcoDesk onBack={() => setDesk(false)} />;
 }

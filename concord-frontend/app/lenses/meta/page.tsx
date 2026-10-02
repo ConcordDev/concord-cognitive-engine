@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
-  ArrowLeft, Layers, Search, AlertTriangle, Package, Eye, GitBranch, Cog, Server, Activity,
+  Layers, Search, AlertTriangle, Package, Eye, GitBranch, Cog, Server, Activity,
 } from 'lucide-react';
-import { MetaNorthStar } from '@/components/meta/MetaNorthStar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -42,7 +41,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Layers }[] = [
   { key: 'lens-infra', label: 'Lens Infrastructure', icon: Cog },
 ];
 
-function MetaDesk({ onBack }: { onBack: () => void }) {
+export default function MetaLensPage() {
   const viewLog = useArtifacts<{ at: string }>('meta', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('meta');
   void viewLog; void recordView;
@@ -67,7 +66,7 @@ function MetaDesk({ onBack }: { onBack: () => void }) {
   );
 
   return (
-    <LensShell lensId="meta" asMain={false} disableAgentFab>
+    <LensShell lensId="meta" asMain={false}>
       <FirstRunTour lensId="meta" />
       <DepthBadge lensId="meta" size="sm" className="ml-2" />
       <div data-lens-theme="meta" className="p-6 space-y-6">
@@ -77,10 +76,6 @@ function MetaDesk({ onBack }: { onBack: () => void }) {
           className="flex items-center justify-between flex-wrap gap-3"
         >
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 hover:text-zinc-200">
-              <ArrowLeft className="h-4 w-4" />
-              Meta
-            </button>
             <Layers className="w-6 h-6 text-neon-purple" />
             <div>
               <h1 className="text-xl font-bold">Codebase Inventory</h1>
@@ -143,10 +138,4 @@ function MetaDesk({ onBack }: { onBack: () => void }) {
       <CrossLensRecentsPanel lensId="meta" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
-}
-
-export default function MetaLensPage() {
-  const [desk, setDesk] = useState(false);
-  if (!desk) return <MetaNorthStar onOpenDesk={() => setDesk(true)} />;
-  return <MetaDesk onBack={() => setDesk(false)} />;
 }
