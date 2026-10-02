@@ -76,7 +76,6 @@ export function MeditationStudio({ onPractice }: { onPractice?: () => void }) {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-indigo-300" />
         <h3 className="text-sm font-bold text-zinc-100">Meditation Studio</h3>
-        <span className="text-[11px] text-zinc-400">Calm / Headspace shape</span>
       </div>
 
       {dash && (

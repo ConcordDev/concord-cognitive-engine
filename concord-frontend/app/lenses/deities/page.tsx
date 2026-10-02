@@ -17,7 +17,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 import { DeityDetailPanel } from '@/components/deities/DeityDetailPanel';
 import { MyDevotionPanel } from '@/components/deities/MyDevotionPanel';
@@ -121,7 +120,6 @@ export default function DeitiesPage() {
     <LensShell lensId="deities">
       <FirstRunTour lensId="deities" />
       <DepthBadge lensId="deities" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="deities" className="mx-6 mt-4" />
       <div className="p-6 max-w-5xl mx-auto">
         {selectedId ? (
           <DeityDetailPanel

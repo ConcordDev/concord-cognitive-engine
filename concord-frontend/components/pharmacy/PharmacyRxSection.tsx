@@ -57,7 +57,7 @@ export function PharmacyRxSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-amber-500/15 to-transparent">
         <Pill className="w-5 h-5 text-amber-400" />
         <h2 className="text-sm font-bold text-zinc-100">Prescription Manager</h2>
-        <span className="text-[11px] text-zinc-400">GoodRx + MyTherapy shape — not medical advice</span>
+        <span className="text-[11px] text-zinc-400">Not medical advice</span>
       </header>
 
       {loading ? (

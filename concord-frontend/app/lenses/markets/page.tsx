@@ -17,7 +17,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
 import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
@@ -112,7 +111,6 @@ export default function MarketsPage() {
         <LensShell lensId="markets">
       <FirstRunTour lensId="markets" />
       <DepthBadge lensId="markets" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="markets" className="mx-6 mt-4" />
   <div className="p-6 sm:p-8 max-w-4xl mx-auto">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>

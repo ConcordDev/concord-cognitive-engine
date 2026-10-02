@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -88,7 +87,6 @@ export default function TransferLensPage() {
   return (
     <LensShell lensId="transfer" asMain={false}>
       <FirstRunTour lensId="transfer" />      <DepthBadge lensId="transfer" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="transfer" className="mx-6 mt-4" />
     <div data-lens-theme="transfer" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🔄</span>

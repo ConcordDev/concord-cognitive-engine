@@ -98,7 +98,6 @@ export function SchemaDesigner() {
       <div className="flex items-center gap-2 mb-3">
         <Database className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-bold text-zinc-100">Schema Designer</h3>
-        <span className="text-[11px] text-zinc-400">dbdiagram shape</span>
         {active && (
           <button onClick={exportSql} className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 inline-flex items-center gap-1">
             <Code2 className="w-3 h-3" />Export SQL

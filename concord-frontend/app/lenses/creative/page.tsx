@@ -82,7 +82,7 @@ export default function CreativeLensPage() {
             <Palette className="w-7 h-7 text-pink-500" />
             <div>
               <h1 className={ds.heading1}>Creative Production</h1>
-              <p className={ds.textMuted}>Boards, production management (StudioBinder + Frame.io parity) and a producer bench — all real macro-backed.</p>
+              <p className={ds.textMuted}>Boards, production management and a producer bench.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

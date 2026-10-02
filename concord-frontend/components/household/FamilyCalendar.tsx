@@ -104,7 +104,6 @@ export function FamilyCalendar() {
       <div className="flex items-center gap-2 mb-3">
         <CalendarDays className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Family Calendar</h3>
-        <span className="text-[11px] text-zinc-400">Cozi shape</span>
         <div className="ml-auto flex items-center gap-1">
           <button onClick={() => setCursor(c => { const m = c.m - 1; return m < 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m }; })}
             className="p-1 rounded text-zinc-400 hover:bg-zinc-800" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>

@@ -48,7 +48,6 @@ export function MusicStreamingSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-emerald-600/15 to-transparent">
         <Music className="w-5 h-5 text-emerald-400" />
         <h2 className="text-sm font-bold text-zinc-100">Music Library</h2>
-        <span className="text-[11px] text-zinc-400">Spotify + Apple Music shape</span>
       </header>
 
       {loading ? (

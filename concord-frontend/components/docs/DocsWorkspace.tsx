@@ -163,7 +163,6 @@ export function DocsWorkspace() {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <FileText className="w-4 h-4 text-zinc-300" />
         <h3 className="text-sm font-bold text-zinc-100">Docs Workspace</h3>
-        <span className="text-[11px] text-zinc-400">Notion / Confluence shape</span>
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-zinc-800 p-0.5">
           <button onClick={() => setTab('editor')}
             className={cn('px-2 py-0.5 rounded text-[11px]', tab === 'editor' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400')}>

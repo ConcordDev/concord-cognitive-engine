@@ -388,7 +388,6 @@ export function EegWorkbench() {
       <header className="flex items-center gap-2 border-b border-purple-500/10 pb-2">
         <Waves className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-white">EEG / MEG Workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">EEGLAB / MNE parity</span>
         {active && (
           <span className="ml-auto text-[11px] text-zinc-400 font-mono">
             {active.name} · {active.channelCount}ch · {active.sampleRate}Hz · {active.durationSec}s · {active.eventCount} events

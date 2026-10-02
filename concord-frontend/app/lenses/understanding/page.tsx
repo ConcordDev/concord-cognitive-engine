@@ -19,7 +19,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -139,7 +138,6 @@ export default function UnderstandingPage() {
     <LensShell lensId="understanding" asMain={false}>
       <FirstRunTour lensId="understanding" />
       <DepthBadge lensId="understanding" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="understanding" className="mx-6 mt-4" />
       <main className={cn(ds.pageContainer, 'max-w-6xl mx-auto text-white')}>
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>

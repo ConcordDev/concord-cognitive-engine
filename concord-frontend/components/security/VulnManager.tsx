@@ -74,7 +74,6 @@ export function VulnManager() {
       <div className="flex items-center gap-2 mb-3">
         <ShieldAlert className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Vulnerability Manager</h3>
-        <span className="text-[11px] text-zinc-400">OpenCVE shape</span>
       </div>
 
       {dash && (

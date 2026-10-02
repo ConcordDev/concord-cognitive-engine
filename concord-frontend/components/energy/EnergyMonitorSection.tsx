@@ -54,7 +54,7 @@ export function EnergyMonitorSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-lime-600/15 to-transparent">
         <Zap className="w-5 h-5 text-lime-400" />
         <h2 className="text-sm font-bold text-zinc-100">Energy Monitor</h2>
-        <span className="text-[11px] text-zinc-400">Sense shape — usage, devices, solar</span>
+        <span className="text-[11px] text-zinc-400">Usage, devices, solar</span>
       </header>
 
       {loading ? (

@@ -149,7 +149,7 @@ export default function SRSLensPage() {
               <Brain className="w-7 h-7 text-neon-cyan" />
               <div>
                 <h1 className="text-xl font-bold text-white">Spaced Repetition Studio</h1>
-                <p className="text-xs text-gray-400">Anki-parity flashcard decks, plus spaced review of anything you&apos;ve already saved in Concord.</p>
+                <p className="text-xs text-gray-400">Flashcard decks, plus spaced review of anything you&apos;ve already saved in Concord.</p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -297,7 +297,7 @@ export default function SRSLensPage() {
               onClick={() => setShowWorkbench(v => !v)}
               className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
             >
-              <span>Deck engine (Anki-parity)</span>
+              <span>Deck engine</span>
               {showWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
             {showWorkbench && (

@@ -76,7 +76,6 @@ export function DailyJournal() {
       <div className="flex items-center gap-2 mb-3">
         <BookHeart className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Journal</h3>
-        <span className="text-[11px] text-zinc-400">Day One shape</span>
       </div>
 
       {dash && (

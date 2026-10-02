@@ -120,7 +120,7 @@ export default function TravelLensPage() {
                 <h1 className="text-xl font-bold text-white">Travel</h1>
                 <DepthBadge lensId="travel" size="sm" />
               </div>
-              <p className="text-sm text-gray-400">Trip planning &amp; travel management — TripIt + Hopper shape</p>
+              <p className="text-sm text-gray-400">Trip planning &amp; travel management</p>
             </div>
           </div>
           <DensityToggle variant="dropdown" />

@@ -88,7 +88,6 @@ export function VoiceTranscripts() {
       <div className="flex items-center gap-2 mb-3">
         <Mic className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Transcripts</h3>
-        <span className="text-[11px] text-zinc-400">Otter.ai shape</span>
         <button onClick={() => setShowNew(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New
         </button>

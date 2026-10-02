@@ -52,7 +52,6 @@ export function LaunchWatchlist() {
       <div className="flex items-center gap-2 mb-3">
         <Rocket className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Launch Watchlist</h3>
-        <span className="text-[11px] text-zinc-400">Heavens-Above shape</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">

@@ -7,7 +7,6 @@ import { SavedSearchesPanel } from '@/components/genesis/SavedSearchesPanel';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
 import { RosterExplorer, type RosterFilters } from '@/components/genesis/RosterExplorer';
 import { IdentityTimeline } from '@/components/genesis/IdentityTimeline';
@@ -140,7 +139,6 @@ export default function GenesisLens() {
   return (
     <LensShell lensId="genesis" asMain={false}>
       <FirstRunTour lensId="genesis" />      <DepthBadge lensId="genesis" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="genesis" className="mx-6 mt-4" />
       <div className="min-h-screen bg-gray-950 text-white p-6">
         {/* Header */}
         <header className="mb-8">

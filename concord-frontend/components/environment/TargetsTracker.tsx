@@ -59,7 +59,7 @@ export function TargetsTracker() {
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
-        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Decarbonisation targets · SBTi-shape</span>
+        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Decarbonisation targets</span>
         <span className="ml-auto text-[10px] text-gray-400">{targets.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 space-y-2">

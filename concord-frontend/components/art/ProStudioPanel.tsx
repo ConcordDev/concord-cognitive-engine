@@ -301,7 +301,6 @@ export function ProStudioPanel({
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-violet-400" />
         <h3 className="text-xs font-bold text-zinc-100">Pro Studio</h3>
-        <span className="text-[10px] text-zinc-400">Procreate / Krita parity tools</span>
       </div>
 
       <nav className="flex flex-wrap gap-1">

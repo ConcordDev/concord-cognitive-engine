@@ -533,7 +533,7 @@ export function VoiceBoothPanel() {
           </div>
           <div>
             <h2 className="text-lg font-bold">Recording Booth</h2>
-            <p className="text-xs text-gray-400">Descript-shape capture — real MediaRecorder, live meters</p>
+            <p className="text-xs text-gray-400">Real MediaRecorder, live meters</p>
           </div>
         </div>
         <div className="flex items-center gap-4">

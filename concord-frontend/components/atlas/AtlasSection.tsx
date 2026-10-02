@@ -776,7 +776,7 @@ function PlannerPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap: (
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <header className="px-3 py-2.5 border-b border-white/10 text-xs font-semibold text-gray-200">AI trip planner (Ask Maps parity)</header>
+      <header className="px-3 py-2.5 border-b border-white/10 text-xs font-semibold text-gray-200">AI trip planner</header>
       <div className="p-2 space-y-2">
         <p className="text-[11px] text-gray-400">Builds a multi-day itinerary from your {places.length} saved place(s).</p>
         <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="e.g. relaxed foodie weekend" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

@@ -793,7 +793,6 @@ export function WeldingOperations() {
       <header className="flex items-center gap-2 border-b border-orange-500/15 pb-2">
         <CheckCircle2 className="h-4 w-4 text-orange-400" />
         <h2 className="text-sm font-semibold text-white">Field-service operations</h2>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Jobber-parity console</span>
       </header>
 
       {stats.length > 0 && (

@@ -40,7 +40,6 @@ export function RouteStops() {
       <div className="flex items-center gap-2 mb-3">
         <Route className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-bold text-gray-100">Add a Stop</h3>
-        <span className="text-[11px] text-gray-400">Ask Maps shape</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
         {([['startLat', 'Start lat'], ['startLng', 'Start lng'], ['endLat', 'End lat'], ['endLng', 'End lng']] as const).map(([k, label]) => (

@@ -88,7 +88,7 @@ export default function AnimationPage() {
             <div>
               <h1 className="text-lg font-bold text-white">Animation</h1>
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Frame-by-frame drawing, rigging &amp; export — FlipaClip + Pencil2D parity</span>
+                <span>Frame-by-frame drawing, rigging &amp; export</span>
                 <DepthBadge lensId="animation" size="sm" />
               </div>
             </div>

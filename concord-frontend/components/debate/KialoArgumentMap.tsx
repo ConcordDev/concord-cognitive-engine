@@ -309,7 +309,7 @@ export function KialoArgumentMap() {
       <div className="flex items-center gap-2 mb-3">
         <Scale className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-white">Argument Map</h3>
-        <span className="text-[11px] text-gray-400">Kialo-shape · impact-weighted</span>
+        <span className="text-[11px] text-gray-400">Impact-weighted</span>
         {busy && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
       </div>
 

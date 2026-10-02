@@ -35,7 +35,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -163,7 +162,6 @@ export default function UrbanPlanningLensPage() {
   return (
     <LensShell lensId="urban-planning" asMain={false}>
       <FirstRunTour lensId="urban-planning" />      <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="urban-planning" className="mx-6 mt-4" />
       <LensPageShell
         domain="urban-planning"
         title="Urban Planning"

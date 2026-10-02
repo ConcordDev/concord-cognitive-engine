@@ -99,7 +99,7 @@ export default function RealEstateLensPage() {
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
                 <DTUExportButton domain="realestate" data={realtimeData || {}} compact />
               </div>
-              <p className={ds.textMuted}>Map, listing inspector, and comps — Zillow-shaped, honest numbers only.</p>
+              <p className={ds.textMuted}>Map, listing inspector, and comps</p>
             </div>
           </div>
         </header>

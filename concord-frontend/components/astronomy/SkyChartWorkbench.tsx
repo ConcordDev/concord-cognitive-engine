@@ -171,7 +171,7 @@ export function SkyChartWorkbench() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-violet-600/15 to-transparent">
         <Sparkles className="w-5 h-5 text-violet-400" />
         <h2 className="text-sm font-bold text-zinc-100">Sky Chart Workbench</h2>
-        <span className="text-[11px] text-zinc-400">real-time ephemeris · SkySafari / Stellarium parity</span>
+        <span className="text-[11px] text-zinc-400">Real-time ephemeris</span>
       </header>
 
       {/* Observer location bar */}

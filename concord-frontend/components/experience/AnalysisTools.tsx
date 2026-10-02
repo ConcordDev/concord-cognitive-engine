@@ -96,7 +96,7 @@ function JourneyMapTool() {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-400">Map the stages a user moves through, with touchpoints, emotion, pain points and opportunities per stage — the same shape as a Smaply/Miro journey map, computed server-side.</p>
+      <p className="text-[11px] text-gray-400">Map the stages a user moves through, with touchpoints, emotion, pain points and opportunities per stage — computed server-side.</p>
       <div className="space-y-2">
         {stages.map((s, i) => (
           <div key={i} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
