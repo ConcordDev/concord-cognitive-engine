@@ -72,7 +72,7 @@ vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useRunArtifact: () => ({ mutateAsync: vi.fn(async () => ({ ok: true, result: {} })), isPending: false }),
 }));
 
-import ResearchLensPage from '@/app/lenses/research/page';
+import { ResearchLensPage } from '@/app/lenses/research/page';
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

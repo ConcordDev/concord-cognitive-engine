@@ -3,6 +3,8 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { TheExperiment } from '@/components/lab/TheExperiment';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -23,7 +25,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-export default function LabLensPage() {
+export function LabDesk() {
   useLensNav('lab');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('lab');
 
@@ -515,5 +517,15 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
         )}
       </div>
     </div>
+  );
+}
+
+export default function LabLensPage() {
+  return (
+    <NorthGate
+      backLabel="Lab"
+      desk={<LabDesk />}
+      star={(openDesk) => <TheExperiment onOpenDesk={openDesk} />}
+    />
   );
 }

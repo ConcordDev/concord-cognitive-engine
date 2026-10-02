@@ -17,6 +17,8 @@ import {
   FileText,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { WhatYouRead } from '@/components/research/WhatYouRead';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -73,7 +75,7 @@ const PANELS: Record<ResearchView, ComponentType> = {
   workbench: WorkbenchViewPanel,
 };
 
-export default function ResearchLensPage() {
+export function ResearchLensPage() {
   useLensNav('research');
   useLensIdentity('research');
   const reduceMotion = useReducedMotion();
@@ -159,5 +161,15 @@ export default function ResearchLensPage() {
         <CrossLensRecentsPanel lensId="research" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function ResearchPage() {
+  return (
+    <NorthGate
+      backLabel="Research"
+      desk={<ResearchLensPage />}
+      star={(openDesk) => <WhatYouRead onOpenDesk={openDesk} />}
+    />
   );
 }

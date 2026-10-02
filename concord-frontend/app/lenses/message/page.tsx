@@ -12,6 +12,8 @@ import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Inbox, Wrench, Tags, Plug } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
+import { WhoWrote } from '@/components/message/WhoWrote';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -39,7 +41,7 @@ const PANELS: Record<MessageView, ComponentType> = {
   connect: ConnectPanel,
 };
 
-export default function MessageLensPage() {
+export function MessageLensPage() {
   useLensNav('message');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<MessageView>('inbox');
@@ -120,5 +122,15 @@ export default function MessageLensPage() {
         <CrossLensRecentsPanel lensId="message" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
+  );
+}
+
+export default function MessagePage() {
+  return (
+    <NorthGate
+      backLabel="Messages"
+      desk={<MessageLensPage />}
+      star={(openDesk) => <WhoWrote onOpenDesk={openDesk} />}
+    />
   );
 }
