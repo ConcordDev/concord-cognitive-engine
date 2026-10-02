@@ -37,7 +37,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ShellPreview } from '@/components/lens/ShellPreview';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -46,7 +45,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -161,16 +159,7 @@ export default function TradesLensPage() {
   const reduceMotion = useReducedMotion();
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('trades');
   const [active, setActive] = useState<TradesView>('project');
-  const [chartSymbol, setChartSymbol] = useState<string>(() => {
-    if (typeof window === 'undefined') return '^IXIC';
-    return localStorage.getItem('concord_trades_chart_symbol') || '^IXIC';
-  });
-
   const go = useCallback((id: TradesView) => setActive(id), []);
-  const handleChangeSymbol = useCallback((s: string) => {
-    setChartSymbol(s);
-    try { localStorage.setItem('concord_trades_chart_symbol', s); } catch { /* private mode */ }
-  }, []);
 
   useLensCommand(
     [
@@ -200,43 +189,16 @@ export default function TradesLensPage() {
         <a href="#trades-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-teal-500">
           Skip to trades content
         </a>
-        <ShellPreview lensId="trades" defaultOpen={true} />
-
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-md bg-teal-500/20 flex items-center justify-center shrink-0">
-              <HardHat className="w-5 h-5 text-teal-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Trades & Construction</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={cn(ds.textMuted, 'font-mono text-xs tracking-wide')}>
-                {activeLabel} · ServiceTitan density · kbd j / d / c / w
-              </p>
-            </div>
+        {/* Compact header: the dispatch/project workbench comes first. */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <HardHat className="h-4 w-4 shrink-0 text-teal-400" />
+            <h1 className="text-[15px] font-semibold text-zinc-100">Trades & Construction</h1>
+            <span className="truncate text-[13px] text-zinc-500">{activeLabel}</span>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           </div>
-          <div className="flex items-center gap-2">
-            <DTUExportButton domain="trades" data={{}} compact />
-          </div>
+          <DTUExportButton domain="trades" data={{}} compact />
         </header>
-
-        <QuoteChart
-          symbol={chartSymbol}
-          quotes={(realtimeData as { quotes?: QuoteSnapshot[] } | null)?.quotes}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          onChangeSymbol={handleChangeSymbol}
-        />
-        <RealtimeDataPanel
-          domain="trades"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={insights}
-          compact
-        />
 
         <div className="grid grid-cols-1 lg:grid-cols-[13rem_minmax(0,1fr)] gap-4 items-start">
           <nav aria-label="Trades ops" className="lg:sticky lg:top-3 space-y-4">
@@ -285,6 +247,15 @@ export default function TradesLensPage() {
           </main>
         </div>
 
+        {/* Industry wire (PPI / industrial production) — renders only with data. */}
+        <RealtimeDataPanel
+          domain="trades"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={insights}
+          compact
+        />
         <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>

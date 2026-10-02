@@ -49,6 +49,9 @@ const SYMBOL_LABELS: Record<string, string> = {
 export default function SectorHeatmap({ quotes, isLive, lastUpdated, className = '', onSelect }: SectorHeatmapProps) {
   const list = quotes || [];
 
+  // No quotes yet: render nothing rather than a "feed connecting…" card.
+  if (list.length === 0) return null;
+
   return (
     <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm overflow-hidden ${className}`}>
       <header className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-zinc-900/60 to-zinc-900/20 flex items-center justify-between">

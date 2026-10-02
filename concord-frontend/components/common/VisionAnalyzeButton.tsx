@@ -39,7 +39,7 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMa
       <button
         onClick={() => fileRef.current?.click()}
         disabled={isAnalyzing}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition min-h-[36px]"
+        className="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition min-h-[36px]"
       >
         {isAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SvgIcon name="eye" size={14} />}
         {isAnalyzing ? 'Analyzing...' : 'Analyze with Vision'}

@@ -56,6 +56,11 @@ const SHELL_TITLES: Record<SupportedLens, string> = {
 };
 
 const PLACEHOLDER_ONLY = ['code', 'legal', 'message', 'healthcare'] as const;
+// These lenses' own body renders the same KPIs/board right below the preview
+// (checked by screenshot 2026-10-02), so the preview was a duplicate block at
+// the top of the page. Crypto (wallet), retail (storefront), studio and
+// whiteboard keep theirs — there it IS the primary surface.
+const DUPLICATES_BODY = ['education', 'agriculture', 'logistics', 'government', 'aviation', 'environment', 'realestate', 'trades'] as const;
 
 export interface ShellPreviewProps {
   lensId: string;
@@ -70,6 +75,7 @@ export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPre
   // These lenses have no data-backed preview — only a sentence pointing at the
   // real workbench below, so the section is pure chrome. Render nothing.
   if ((PLACEHOLDER_ONLY as readonly string[]).includes(lensId)) return null;
+  if ((DUPLICATES_BODY as readonly string[]).includes(lensId)) return null;
   const label = SHELL_TITLES[lensId as SupportedLens];
 
   return (

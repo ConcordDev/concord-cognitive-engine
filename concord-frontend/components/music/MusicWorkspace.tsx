@@ -71,7 +71,7 @@ import type {
 
 /** One nav machine for the whole music app — catalog views + previously
  *  welded MusicBrainz / workbench accordions. */
-export type MusicAppView = MusicLensView | 'artists' | 'tools';
+export type MusicAppView = MusicLensView | 'artists' | 'tools' | 'listen';
 import { previewRoyaltyObligations, ROYALTY_CONSTANTS } from '@/lib/music/royalty-cascade';
 import { TrackCard } from '@/components/music/TrackCard';
 import { ArtistProfile } from '@/components/music/ArtistProfile';
@@ -820,16 +820,15 @@ export function MusicWorkspace() {
     <LensShell lensId="music" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="music" />
       <DepthBadge lensId="music" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <LensFeedButton domain="music" />
-        <MusicStreamingSection />
-      </div>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">
-        <div className="flex items-center gap-1">
+      <header className="flex items-center justify-between gap-4 px-4 py-2 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto no-scrollbar">
           {[
             { id: 'home' as MusicAppView, icon: Home, label: 'Home' },
+            // Streaming player (library, releases, now playing, radio, stats) —
+            // used to be a second app stacked above this one.
+            { id: 'listen' as MusicAppView, icon: Headphones, label: 'Listen' },
             { id: 'browse' as MusicAppView, icon: Disc3, label: 'Browse' },
             { id: 'session' as MusicAppView, icon: Music2, label: 'Session' },
             { id: 'marketplace' as MusicAppView, icon: ShoppingBag, label: 'Market' },
@@ -842,7 +841,7 @@ export function MusicWorkspace() {
               key={nav.id}
               onClick={() => setView(nav.id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                'flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-[13px] transition-colors',
                 view === nav.id
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                   : 'text-gray-400 hover:text-purple-300 hover:bg-purple-500/10'
@@ -854,7 +853,8 @@ export function MusicWorkspace() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
+          <LensFeedButton domain="music" compact />
           {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />}
           {realtimeAlerts.length > 0 && (
             <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
@@ -870,7 +870,7 @@ export function MusicWorkspace() {
           />
           <button
             onClick={() => setView('upload')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+            className="flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1 rounded-md text-[13px] bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
           >
             <Upload className="w-4 h-4" /> Upload
           </button>
@@ -2269,6 +2269,8 @@ export function MusicWorkspace() {
                 <MusicArtistExplorer />
               </div>
             )}
+
+            {view === 'listen' && <MusicStreamingSection />}
 
             {view === 'tools' && (
               <PipingProvider>

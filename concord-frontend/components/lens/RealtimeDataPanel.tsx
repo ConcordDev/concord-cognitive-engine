@@ -94,7 +94,7 @@ export function RealtimeDataPanel({
 }
 
 function renderCompactData(domain: string, data: Record<string, unknown>) {
-  if (domain === 'finance' || domain === 'trades' || domain === 'market') {
+  if (domain === 'finance' || domain === 'market') {
     const quotes = data.quotes as Array<{ symbol: string; price: number; changePercent: string }> | undefined;
     if (quotes) {
       return (
@@ -170,7 +170,7 @@ function renderCompactData(domain: string, data: Record<string, unknown>) {
 }
 
 function renderDetailedData(domain: string, data: Record<string, unknown>) {
-  if (domain === 'finance' || domain === 'trades' || domain === 'market') {
+  if (domain === 'finance' || domain === 'market') {
     const quotes = data.quotes as Array<{ symbol: string; price: number; change: number; changePercent: string; exchange: string }> | undefined;
     if (quotes) {
       return (

@@ -13,7 +13,11 @@ import { lensRun } from '@/lib/api/client';
 
 interface FeedResult { ingested: number; skipped: number; source: string; dtuIds: string[] }
 
-export function LensFeedButton({ domain, label }: { domain: string; label?: string }) {
+/**
+ * `compact` renders an inline header button (result/error in its tooltip and a
+ * small status line) instead of the full-width banner card.
+ */
+export function LensFeedButton({ domain, label, compact = false }: { domain: string; label?: string; compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<FeedResult | null>(null);
   const [err, setErr] = useState('');
@@ -24,6 +28,32 @@ export function LensFeedButton({ domain, label }: { domain: string; label?: stri
     if (r.data?.ok) setResult(r.data.result as FeedResult);
     else setErr(r.data?.error || 'Feed unavailable.');
     setBusy(false);
+  }
+
+  if (compact) {
+    const status = err
+      ? err
+      : result
+        ? `Ingested ${result.ingested} new DTU${result.ingested === 1 ? '' : 's'} from ${result.source}${result.skipped > 0 ? ` · ${result.skipped} already seen` : ''}`
+        : 'Ingest real items from a free public source as DTUs';
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <button
+          onClick={pull}
+          disabled={busy}
+          title={status}
+          className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-[12px] text-zinc-300 hover:border-white/20 hover:text-white disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rss className="h-3.5 w-3.5 text-emerald-400" />}
+          {label || 'Pull feed'}
+        </button>
+        {(result || err) && (
+          <span className={`text-[11px] ${err ? 'text-rose-400' : 'text-emerald-300'}`} role="status">
+            {err ? 'Feed unavailable' : `+${result!.ingested}`}
+          </span>
+        )}
+      </span>
+    );
   }
 
   return (
