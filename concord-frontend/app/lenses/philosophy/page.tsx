@@ -45,6 +45,8 @@ import { DilemmaPanel } from '@/components/philosophy/DilemmaPanel';
 import { PhilosophyChannels } from '@/components/philosophy/PhilosophyChannels';
 import { PhilosophyCuration } from '@/components/philosophy/PhilosophyCuration';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
+import { TheTable } from '@/components/philosophy/TheTable';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
@@ -58,7 +60,7 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof BookOpen; des
   { id: 'pulse', label: 'Community Pulse', icon: Newspaper, desc: 'Real philosophy.stackexchange.com Q&A' },
 ];
 
-export default function PhilosophyLensPage() {
+export function PhilosophyDesk() {
   useLensNav('philosophy');
   const [dest, setDest] = useState<Destination>('overview');
 
@@ -154,5 +156,15 @@ export default function PhilosophyLensPage() {
         Skip to philosophy content
       </a>
     </LensShell>
+  );
+}
+
+export default function PhilosophyLensPage() {
+  return (
+    <NorthGate
+      backLabel="Philosophy"
+      desk={<PhilosophyDesk />}
+      star={(openDesk) => <TheTable onOpenDesk={openDesk} />}
+    />
   );
 }

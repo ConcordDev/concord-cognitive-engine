@@ -11,6 +11,8 @@ import { useSearchParams } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { DeepLinkModal } from '@/components/codex/DeepLinkModal';
+import { TheCodexPage } from '@/components/codex/TheCodexPage';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { SpinePanel } from '@/components/codex/SpinePanel';
 import { BrowsePanel } from '@/components/codex/BrowsePanel';
 import { COLORS, type Facets, type LoreEvent } from '@/components/codex/types';
@@ -88,10 +90,20 @@ function CodexLensInner() {
   );
 }
 
-export default function CodexLensPage() {
+export function CodexDesk() {
   return (
     <Suspense fallback={null}>
       <CodexLensInner />
     </Suspense>
+  );
+}
+
+export default function CodexLensPage() {
+  return (
+    <NorthGate
+      backLabel="Codex"
+      desk={<CodexDesk />}
+      star={(openDesk) => <TheCodexPage onOpenDesk={openDesk} />}
+    />
   );
 }

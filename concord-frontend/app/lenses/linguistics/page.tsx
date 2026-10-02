@@ -25,6 +25,8 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
+import { TheUtterance } from '@/components/linguistics/TheUtterance';
+import { NorthGate } from '@/components/lens/NorthStarChrome';
 import { NotebookPanel } from '@/components/linguistics/NotebookPanel';
 import { AnalyzePanel } from '@/components/linguistics/AnalyzePanel';
 import { LookupToolsPanel } from '@/components/linguistics/LookupToolsPanel';
@@ -52,7 +54,7 @@ const NOTEBOOK_MODES = new Set<LinguisticsView>([
   'Analyses', 'Lexicon', 'Grammars', 'Corpora', 'Translations', 'Dashboard',
 ]);
 
-export default function LinguisticsLensPage() {
+export function LinguisticsDesk() {
   useLensNav('linguistics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('linguistics');
   const reduceMotion = useReducedMotion();
@@ -180,5 +182,15 @@ export default function LinguisticsLensPage() {
       </div>
       <CrossLensRecentsPanel lensId="linguistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+export default function LinguisticsLensPage() {
+  return (
+    <NorthGate
+      backLabel="Linguistics"
+      desk={<LinguisticsDesk />}
+      star={(openDesk) => <TheUtterance onOpenDesk={openDesk} />}
+    />
   );
 }
