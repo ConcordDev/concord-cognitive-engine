@@ -2049,6 +2049,7 @@ import { createCslToolGate } from "./lib/csl-router.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
+import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
@@ -2652,6 +2653,8 @@ try {
   for (const [k, v] of EXTENDED_DOMAIN_RULES) {
     if (!DOMAIN_RULES.has(k)) DOMAIN_RULES.set(k, v);
   }
+  // Accept the artifact types the lenses actually create (lib/lens-artifact-types.js).
+  reconcileArtifactTypes(DOMAIN_RULES);
 } catch (_e) { console.warn("[DomainLogic] Failed to merge extended rules:", _e?.message); }
 
 // ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
