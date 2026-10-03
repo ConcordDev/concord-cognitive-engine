@@ -157,6 +157,7 @@ export function ConcordRepoWorkspace() {
         </div>
         <div className="flex items-center gap-2">
           <input
+            id="repo-new-name"
             value={newRepoName}
             onChange={(e) => setNewRepoName(e.target.value)}
             placeholder="new-repo-name"
