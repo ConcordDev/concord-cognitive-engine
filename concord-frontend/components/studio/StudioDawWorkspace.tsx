@@ -37,7 +37,6 @@ import {
   Piano,
   Waves,
   X,
-  Headphones,
   Zap,
   Activity,
   Sparkles,
@@ -63,6 +62,7 @@ import { showToast } from '@/components/common/Toasts';
 import Link from 'next/link';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTULibraryPanel } from '@/components/dtu/DTULibraryPanel';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import SessionWorkspace from '@/components/studio/SessionWorkspace';
@@ -444,6 +444,7 @@ export function StudioDawWorkspace() {
   } = useLensData('studio', 'project', { noSeed: true });
   const { createDTU, publishToMarketplace } = useLensDTUs({ lens: 'studio' });
   const { user: _user } = useAuth();
+  const who = titleCaseDisplayName(_user?.username);
   const queryClient = useQueryClient();
 
   // ---- State ----
@@ -1652,16 +1653,17 @@ export function StudioDawWorkspace() {
   if (!project) {
     return (
       <div
-        className="h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
+        className="relative h-full min-h-[70vh] flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black px-8 pb-28 pt-6"
         data-lens-theme="studio"
       >
-        <div className="flex items-center justify-between border-b border-violet-500/10 px-6 py-3">
-          <div className="flex items-center gap-2">
-            <Headphones className="w-6 h-6 text-neon-cyan" />
-            <h1 className="text-xl font-bold">Studio</h1>
-            <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded">DAW</span>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Studio</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              What are we making{who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="studio" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
@@ -1669,26 +1671,18 @@ export function StudioDawWorkspace() {
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
-            <button
-              onClick={() => setShowNewProject(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30"
-            >
-              <Plus className="w-4 h-4" /> New Project
-            </button>
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-lg">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 flex items-center justify-center">
-              <Headphones className="w-10 h-10 text-neon-cyan" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Concord Studio</h2>
-            <p className="text-gray-400 text-sm mb-6">
+
+        <div className="mt-2 grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+          <div>
+            <h2 className="mb-1 text-lg font-semibold text-zinc-100">Concord Studio</h2>
+            <p className="mb-5 max-w-xl text-sm text-gray-400">
               A full DAW in your browser. Every sound, synth preset, effect chain, and arrangement
               becomes a DTU — citeable, consolidatable, compounding knowledge atoms.
             </p>
-            <div className="grid grid-cols-3 gap-3 text-left mb-8">
+            <div className="grid grid-cols-2 gap-3 text-left sm:grid-cols-3">
               {[
                 { icon: Waves, label: 'Synthesizers', desc: 'Subtractive, FM, sampler' },
                 { icon: Sliders, label: 'Full Mixer', desc: 'Faders, sends, master' },
@@ -1697,32 +1691,40 @@ export function StudioDawWorkspace() {
                 { icon: Zap, label: 'Mastering', desc: 'EQ, comp, limiter, LUFS' },
                 { icon: Sparkles, label: 'DTU Engine', desc: 'Every action = knowledge' },
               ].map((f, i) => (
-                <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10">
-                  <f.icon className="w-5 h-5 text-neon-cyan mb-1" />
-                  <p className="text-xs font-medium">{f.label}</p>
-                  <p className="text-[10px] text-gray-400">{f.desc}</p>
+                <div key={i} className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                  <f.icon className="mb-2 h-5 w-5 text-teal-300" />
+                  <p className="text-sm font-medium text-zinc-100">{f.label}</p>
+                  <p className="text-[12px] text-gray-400">{f.desc}</p>
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => setShowNewProject(true)}
-              className="px-8 py-3 bg-neon-cyan text-black rounded-lg font-semibold hover:bg-neon-cyan/80 transition-colors"
-            >
-              Create Project
-            </button>
+          </div>
 
-            {/* Reopen a previously-saved project — the landing screen used to
-                dead-end returning users at "Create New Project" with no way
-                back to their saved work. `studioArtifacts` is the real
-                project-artifact store (server-sorted most-recently-updated
-                first), so this list is always accurate. */}
+          <div>
             <RecentProjectsList
               items={studioArtifacts}
               onSelect={loadProject}
-              className="mt-8"
+              title="Continue a recent project"
+              limit={8}
             />
+            {studioArtifacts.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
+                <p className="text-[15px] text-zinc-300">No saved sessions yet.</p>
+                <p className="mt-1 text-[13px] text-zinc-500">Start one and it will be listed here, ready to reopen.</p>
+              </div>
+            )}
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowNewProject(true)}
+          title="New project"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New project
+        </button>
 
         {/* DTU activity ticker */}
         {dtuEvents.length > 0 && (

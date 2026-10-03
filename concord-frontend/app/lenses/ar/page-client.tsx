@@ -78,6 +78,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -96,6 +98,8 @@ const TABS: { id: Tab; label: string; hotkey: string; icon: typeof Boxes; descri
 
 export default function ARLensPage() {
   useLensNav('ar');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   const [tab, setTab] = useState<Tab>('studio');
   useLensCommand(
@@ -325,33 +329,47 @@ export default function ARLensPage() {
   return (
     <LensShell lensId="ar" asMain={false}>
       <FirstRunTour lensId="ar" />
-      <div data-lens-theme="ar" className="p-6 space-y-5">
-        {/* Header */}
-        <header className="space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shrink-0">
-              <Glasses className="w-5 h-5 text-white" />
-            </div>
+      <div data-lens-theme="ar" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
+        <header className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                AR
-                <DepthBadge lensId="ar" size="sm" />
+              <p className="text-[14px] text-zinc-500">Augmented reality</p>
+              <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+                {tab === 'studio' ? `Place something in the world${who ? `, ${who}` : ''}` : tab === 'diagnostics' ? 'Check how it anchors' : 'Every model you can place'}
               </h1>
-              <p className="text-sm text-gray-400">
-                WebXR augmented-reality scene authoring — spatial anchors, 3D placement, behaviors, and publish-to-phone.
+              <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
+                WebXR scene authoring — spatial anchors, 3D placement, behaviors, and publish-to-phone.
               </p>
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-3 pt-2">
+              <DepthBadge lensId="ar" size="sm" />
               <DensityToggle variant="dropdown" />
               <DTUExportButton domain="ar" data={{ scenes: sceneCount, models: models.length, imageTargets: targetCount }} compact />
-              <button
-                onClick={() => setArEnabled((v) => !v)}
-                className={cn(arEnabled ? ds.btnPrimary : ds.btnSecondary)}
-              >
-                {arEnabled ? <><Camera className="w-4 h-4" /> Stop preview</> : <><Glasses className="w-4 h-4" /> Start preview</>}
-              </button>
             </div>
           </div>
+
+          <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="AR workspace sections">
+            {TABS.map((t) => {
+              const on = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => switchTab(t.id)}
+                  aria-current={on ? 'page' : undefined}
+                  title={`${t.description} (${t.hotkey})`}
+                  className={cn(
+                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  )}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                  {t.label}
+                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.hotkey}</kbd>
+                </button>
+              );
+            })}
+          </nav>
 
           <StatTileGrid columns={4}>
             <StatTile label="Scenes authored" value={sceneCount ?? '—'} icon={<Boxes className="w-4 h-4" />} />
@@ -395,29 +413,6 @@ export default function ARLensPage() {
           )}
         </header>
 
-        {/* Workspace nav */}
-        <nav className="flex gap-1 flex-wrap border-b border-lattice-border pb-0" aria-label="AR workspace sections">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => switchTab(t.id)}
-                title={t.description}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg border-b-2 -mb-px transition-colors',
-                  active ? 'border-neon-purple text-neon-purple bg-neon-purple/5' : 'border-transparent text-gray-400 hover:text-white hover:bg-lattice-surface/50',
-                )}
-              >
-                <t.icon className="w-4 h-4" />
-                {t.label}
-                <kbd className="ml-1 hidden sm:inline text-[9px] px-1 py-0.5 rounded bg-black/30 text-gray-500 font-mono">{t.hotkey}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
         {/* Workspace body */}
         <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
           {tab === 'studio' && (
@@ -432,6 +427,16 @@ export default function ARLensPage() {
           )}
           {tab === 'library' && <AssetLibrary onPreview={handlePreview} />}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setArEnabled((v) => !v)}
+          title="Toggle the AR preview"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          {arEnabled ? <Camera className="h-4 w-4" /> : <Glasses className="h-4 w-4" />}
+          {arEnabled ? 'Stop preview' : 'Start preview'}
+        </button>
       </div>
     </LensShell>
   );
