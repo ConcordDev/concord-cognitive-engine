@@ -6,12 +6,20 @@
 // privacy, profile, "On this day" memories and notifications are all wired
 // to real macros; nothing here is placeholder data.
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { TimelineRoadmap } from '@/components/timeline/TimelineRoadmap';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { PostComposer } from '@/components/timeline/PostComposer';
@@ -26,7 +34,7 @@ import { lensRun } from '@/lib/api/client';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
-  ArrowLeft, LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock,
+  CalendarRange, LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock, Plus,
 } from 'lucide-react';
 import type { FeedPost } from '@/components/timeline/types';
 
@@ -37,15 +45,14 @@ interface FeedResult {
   total: number;
 }
 
-// Social views (posts, albums, memories, profile). North star 10 makes the
-// roadmap the lens; these stay reachable from "More", hidden by default.
-const TABS: { id: Exclude<Tab, 'roadmap'>; label: string; icon: typeof LayoutList }[] = [
-  { id: 'feed', label: 'Feed', icon: LayoutList },
-  { id: 'timeline', label: 'Post history', icon: GitBranch },
-  { id: 'albums', label: 'Albums', icon: LayoutGrid },
-  { id: 'memories', label: 'Memories', icon: Clock },
-  { id: 'notifications', label: 'Alerts', icon: Bell },
-  { id: 'profile', label: 'Profile', icon: UserCircle },
+const TABS: { id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof LayoutList }[] = [
+  { id: 'roadmap', label: 'Roadmap', keys: 'g r', title: 'When it lands', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
+  { id: 'feed', label: 'Feed', keys: 'g f', title: 'What you have shared', hint: 'Your posts, reactions and comments', icon: LayoutList },
+  { id: 'timeline', label: 'Post history', keys: 'g t', title: 'Your posts over time', hint: 'Every post on an axis, colored by audience', icon: GitBranch },
+  { id: 'albums', label: 'Albums', keys: 'g a', title: 'Your albums', hint: 'Media albums', icon: LayoutGrid },
+  { id: 'memories', label: 'Memories', keys: 'g m', title: 'On this day', hint: 'What you posted on this day before', icon: Clock },
+  { id: 'notifications', label: 'Alerts', keys: 'g n', title: 'What you missed', hint: 'Reactions, comments and mentions', icon: Bell },
+  { id: 'profile', label: 'Profile', keys: 'g p', title: 'Your profile', hint: 'Your profile and stats', icon: UserCircle },
 ];
 
 // Map post privacy to a TimelineView tone so the axis colour-codes audience.
@@ -55,51 +62,12 @@ const PRIVACY_TONE: Record<string, TimelineEvent['tone']> = {
   private: 'warn',
 };
 
-function SocialMenu({ unread, onPick }: { unread: number; onPick: (t: Tab) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        More{unread > 0 && <span className="ml-1 text-teal-300">·</span>}
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="menuitem"
-              type="button"
-              onClick={() => { setOpen(false); onPick(t.id); }}
-              className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50"
-            >
-              <span className="flex-1">{t.label}</span>
-              {t.id === 'notifications' && unread > 0 && <span className="text-[11px] text-teal-300">{unread}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function TimelineLensPage() {
   useLensNav('timeline');
+  useLensIdentity('timeline');
+  const { isLive, lastUpdated } = useRealtimeLens('timeline');
   const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const viewerId = user?.id || 'anon';
 
   const [tab, setTab] = useState<Tab>('roadmap');
@@ -182,56 +150,85 @@ export default function TimelineLensPage() {
 
   const loadMore = useCallback(() => setLimit((n) => n + 30), []);
 
+  const compose = useCallback(() => {
+    setTab((t) => (t === 'feed' || t === 'timeline' ? t : 'feed'));
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLTextAreaElement>('[data-lens-theme="timeline"] textarea');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
+      if (++tries < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, []);
+
   useLensCommand(
     [
-      { id: 'goto-roadmap', keys: 'g r', description: 'Go to roadmap', category: 'navigation', action: () => setTab('roadmap') },
-      { id: 'goto-feed', keys: 'g f', description: 'Go to Feed', category: 'navigation', action: () => setTab('feed') },
-      { id: 'goto-timeline', keys: 'g t', description: 'Go to post history', category: 'navigation', action: () => setTab('timeline') },
-      { id: 'goto-albums', keys: 'g a', description: 'Go to Albums', category: 'navigation', action: () => setTab('albums') },
-      { id: 'goto-memories', keys: 'g m', description: 'Go to Memories', category: 'navigation', action: () => setTab('memories') },
-      { id: 'goto-alerts', keys: 'g n', description: 'Go to Notifications', category: 'navigation', action: () => setTab('notifications') },
-      { id: 'load-more', keys: 'm', description: 'Load 30 more posts', category: 'actions', action: loadMore },
+      ...TABS.map((t) => ({
+        id: `goto-${t.id}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setTab(t.id),
+      })),
+      { id: 'compose', keys: 'c', description: 'New post', category: 'actions' as const, action: compose },
+      { id: 'load-more', keys: 'm', description: 'Load 30 more posts', category: 'actions' as const, action: loadMore },
     ],
     { lensId: 'timeline' },
   );
 
+  const current = TABS.find((t) => t.id === tab)!;
+
   return (
     <LensShell lensId="timeline" asMain={false}>
+      <FirstRunTour lensId="timeline" />
+      <DepthBadge lensId="timeline" size="sm" className="ml-2" />
       <div data-lens-theme="timeline" className="relative min-h-full">
-        <div className="absolute right-8 top-4 z-20">
-          <SocialMenu unread={unread ?? 0} onPick={setTab} />
+        <div className="px-8 pt-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[14px] text-zinc-500">Timeline</p>
+              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+                {current.title}{tab === 'roadmap' && who ? `, ${who}` : ''}
+              </h1>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 pt-2">
+              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+              <DTUExportButton domain="timeline" data={{}} compact />
+            </div>
+          </div>
+
+          <nav className="mb-2 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Timeline views">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const on = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  aria-current={on ? 'page' : undefined}
+                  title={`${t.hint} (${t.keys})`}
+                  className={cn(
+                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {t.label}
+                  {t.id === 'notifications' && (unread ?? 0) > 0 && (
+                    <span className="rounded-full bg-teal-400 px-1.5 text-[11px] font-medium text-black">{unread}</span>
+                  )}
+                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+                </button>
+              );
+            })}
+          </nav>
         </div>
+
         {tab === 'roadmap' ? (
           <TimelineRoadmap />
         ) : (
         <>
-        <header className="px-8 pt-4">
-          <button
-            type="button"
-            onClick={() => setTab('roadmap')}
-            className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Timeline
-          </button>
-          <nav className="mt-3 flex flex-wrap items-center gap-5" aria-label="Social views">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'border-b pb-1 text-[14px] transition-colors',
-                  tab === t.id ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                {t.label}
-                {t.id === 'notifications' && (unread ?? 0) > 0 && <span className="ml-1 text-teal-300">{unread}</span>}
-              </button>
-            ))}
-          </nav>
-        </header>
-
         <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
           {tab === 'profile' && <ProfilePanel viewerId={viewerId} />}
           {tab === 'albums' && <AlbumsPanel />}
@@ -329,6 +326,22 @@ export default function TimelineLensPage() {
           )}
         </div>
         </>
+        )}
+
+        <div className="px-8 pb-28">
+          <CrossLensRecentsPanel lensId="timeline" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
+        </div>
+
+        {tab !== 'roadmap' && (
+          <button
+            type="button"
+            onClick={compose}
+            title="New post (C)"
+            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          >
+            <Plus className="h-4 w-4" />
+            New post
+          </button>
         )}
       </div>
     </LensShell>

@@ -19,9 +19,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 const DAY = 86_400_000;
 const WINDOW_DAYS = 28;
@@ -110,7 +109,6 @@ function barsFrom(tasks: LensItem<Record<string, unknown>>[], goals: LensItem<Re
 
 export function TimelineRoadmap() {
   const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const tasksQ = useLensData<Record<string, unknown>>('board', 'task', { noSeed: true });
   const goalsQ = useLensData<Record<string, unknown>>('goals', 'goal', { noSeed: true });
 
@@ -160,14 +158,9 @@ export function TimelineRoadmap() {
   const failed = tasksQ.isError && goalsQ.isError;
 
   return (
-    <div className="relative px-8 pb-28 pt-4">
-      <p className="text-[13px] text-zinc-500">Timeline</p>
-      <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
-        {who ? `When it lands, ${who}` : 'When it lands'}
-      </h1>
-
+    <div className="relative px-8 pb-28 pt-2">
       {/* Week ruler */}
-      <div className="mt-8 flex items-center gap-2">
+      <div className="mt-4 flex items-center gap-2">
         <div className="relative h-5 flex-1">
           {[0, 1, 2, 3, 4].map((w) => (
             <span
