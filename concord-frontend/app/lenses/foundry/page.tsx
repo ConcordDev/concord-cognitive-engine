@@ -1,47 +1,30 @@
 'use client';
 
 /**
- * Foundry Lens (#125) — no-code game-builder.
- *
- * Build complete, persistent, cross-world games by composing Concord's
- * existing systems as configurable building blocks. This page is the
- * LensShell wrapper; the front-door create → list → open → delete loop
- * is wired straight to the foundry.* macros via <FoundryWorldsPanel>,
- * and the deeper build/configure/validate/save/publish loop lives in
- * <FoundryCanvas>.
- *
- * Distinct from /lenses/forge (the polyglot single-file *app*
- * generator) — different domain namespace (foundry.* macros),
- * different product.
- *
- * Frontend Rebuild Program (Wave 3, 2026-07-10): retired two generic
- * surfaces that duplicated / diluted the real designed builder — the
- * auto-generated ManifestActionBar button wall (the flagship proof unit
- * omits it too), and FoundryActionPanel, a broken "item" workbench whose
- * data contracts never matched the real foundry.* macros (it read
- * `.items`/`.id`/`.issues`/`.url` where the macros return
- * `worlds`/`world.id`/`errors`/`previewWorldId`, so its list was always
- * empty, Create silently minted orphan empty worlds then reported "No id
- * returned", and Validate/Preview never rendered their results). The real
- * create → configure → validate → preview → publish → playtest loop lives
- * in FoundryWorldsPanel + FoundryCanvas + BuilderStudio + FoundryPreview,
- * each wired to the correct macro shapes. Nothing real was lost.
+ * Foundry lens: north-star chrome over the no-code game builder. Compose
+ * Concord's systems into a persistent, cross-world game. The front-door
+ * create/list/open/delete loop is wired to foundry.* macros via
+ * FoundryWorldsPanel; the configure/validate/save/publish loop lives in
+ * FoundryCanvas; BuilderStudio covers scripting, playtest, assets,
+ * multiplayer, marketplace and analytics. Distinct from /lenses/forge.
  */
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import { Boxes, Loader2, Hammer, Github, Plus } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FoundryWorldsPanel } from '@/components/foundry/FoundryWorldsPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { BuilderStudio } from '@/components/foundry/BuilderStudio';
-import { Boxes, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 
-// Drag-drop + the catalog fetch are browser-only — load client-side.
 const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas'), {
   ssr: false,
   loading: () => (
@@ -51,73 +34,74 @@ const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas')
   ),
 });
 
+type View = 'worlds' | 'studio' | 'tooling';
+
+const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Boxes }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', title: 'Build a game', hint: 'Your worlds and the block canvas', icon: Boxes },
+  { id: 'studio', label: 'Builder studio', keys: '2', title: 'Script, test and ship', hint: 'Visual scripting, playtest, assets, multiplayer, marketplace, analytics', icon: Hammer },
+  { id: 'tooling', label: 'Tooling', keys: '3', title: 'World-building tooling', hint: 'Open-source world-building tools on GitHub', icon: Github },
+];
+
 export default function FoundryLensPage() {
-  // Real persisted-artifact surface for the foundry domain (generic lens
-  // artifact store). Drives the front-door worlds count badge; the panel
-  // below wires the live foundry.* macro loop.
   const { total: worldArtifacts } = useLensData('foundry', 'foundry_world', { noSeed: true });
-  const [showRepos, setShowRepos] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<View>('worlds');
+
+  useLensCommand(
+    [
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
+      { id: 'foundry-new-world', keys: 'n', description: 'Create a world', category: 'actions' as const, action: () => setView('worlds') },
+    ],
+    { lensId: 'foundry' },
+  );
+
+  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="foundry" asMain={false}>
       <FirstRunTour lensId="foundry" />
       <DepthBadge lensId="foundry" size="sm" className="ml-2" />
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/10 text-slate-100">
-        <header className="border-b border-sky-500/20 bg-slate-950/70 px-4 py-2.5 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-2">
-              <Boxes className="h-5 w-5 text-sky-400" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-                Foundry — Build Games from Concord&apos;s Systems
-              </h1>
-              <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-                Compose terrain, living NPCs, combat, economies and more into a persistent,
-                cross-world game. No code, no infrastructure.
-              </p>
-            </div>
-            <span
-              className="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-300 sm:inline"
-              title={`${worldArtifacts} persisted foundry artifact(s)`}
-            >
-              Beta
-            </span>
-          </div>
-        </header>
-
-        {/* Front-door worlds loop — wired straight to foundry.{list,create,get,delete} */}
-        <section className="mx-auto mt-4 max-w-screen-2xl rounded-xl border border-sky-500/20 bg-slate-950/40 p-4">
-          <FoundryWorldsPanel />
-        </section>
-
-        <section className="mx-auto mt-6 max-w-screen-2xl">
-          <FoundryCanvas />
-        </section>
-        <section className="mx-auto mt-6 max-w-screen-2xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowRepos(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+      <NorthStarFrame
+        lensId="foundry"
+        crumb="Foundry"
+        title={`${current.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
+        subtitle="Compose terrain, living NPCs, combat, economies and more into a persistent, cross-world game. No code, no infrastructure."
+        actions={
+          <span
+            className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-300"
+            title={`${worldArtifacts} persisted foundry artifact(s)`}
           >
-            <span>World-building tooling (GitHub)</span>
-            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showRepos && (
-            <div className="mt-3">
-              <WorldBuilderRepos />
-            </div>
-          )}
-        </section>
-
-        {/* Roblox-Studio-parity builder: visual scripting, playtest hot-reload,
-            asset library, multiplayer config, games marketplace, analytics,
-            and collaborative multi-builder editing. */}
-        <section className="mx-auto mt-6 max-w-screen-2xl">
-          <BuilderStudio />
-        </section>
-      </main>
-          <SessionRail lensId="foundry" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="foundry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+            Beta
+          </span>
+        }
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
+        activeTab={view}
+        onTab={(id) => setView(id as View)}
+        cta={{ label: 'Create a world', icon: Plus, onClick: () => setView('worlds'), title: 'Create a world (N)' }}
+      >
+        {view === 'worlds' && (
+          <div className="space-y-5">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <FoundryWorldsPanel />
+            </section>
+            <FoundryCanvas />
+          </div>
+        )}
+        {view === 'studio' && <BuilderStudio />}
+        {view === 'tooling' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <WorldBuilderRepos />
+          </section>
+        )}
+        <SessionRail lensId="foundry" hideWhenEmpty className="mt-4" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
