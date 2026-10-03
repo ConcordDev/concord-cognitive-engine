@@ -67,12 +67,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Fish, Sparkles, Compass, ArrowRight } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FishingMinigameOverlay } from '@/components/world-lens/FishingMinigameOverlay';
 import { StatTile, StatTileGrid, DensityToggle } from '@/components/ui';
 import { useDensity } from '@/lib/hooks/useDensity';
 import { lensRun } from '@/lib/api/client';
-import { cn, formatRelativeTime } from '@/lib/utils';
-import { ds } from '@/lib/design-system';
+import { formatRelativeTime } from '@/lib/utils';
 import { SpeciesCatalog } from '@/components/fishing/SpeciesCatalog';
 import { SpeciesDetailModal } from '@/components/fishing/SpeciesDetailModal';
 import { CatchLog } from '@/components/fishing/CatchLog';
@@ -83,6 +86,8 @@ interface SpeciesResult { ok: boolean; fish?: FishSpecies[]; reason?: string }
 interface CatchesResult { ok: boolean; catches?: CatchRow[]; reason?: string }
 
 export default function FishingLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState<string>('concordia-hub');
 
   const [catalog, setCatalog] = useState<FishSpecies[]>([]);
@@ -110,7 +115,7 @@ export default function FishingLensPage() {
 
   useEffect(() => {
     const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    if (w) setWorldId(w);
+    if (w) void Promise.resolve().then(() => setWorldId(w));
   }, []);
 
   // DET-C dead-event-listener sweep (batch 9): this hub previously carried a
@@ -165,14 +170,16 @@ export default function FishingLensPage() {
   }, []);
 
   useEffect(() => {
-    setActiveBiome(null);
-    loadCatalog();
-    loadCatches().finally(() => setCatchesLoading(false));
+    void Promise.resolve().then(() => {
+      setActiveBiome(null);
+      void loadCatalog();
+      void loadCatches().finally(() => setCatchesLoading(false));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
 
   useEffect(() => {
-    if (activeBiome) loadBiomeSpecies(activeBiome);
+    if (activeBiome) void Promise.resolve().then(() => loadBiomeSpecies(activeBiome));
   }, [activeBiome, loadBiomeSpecies]);
 
   // Track the top catch id so a genuinely new one (post-reel refresh) can
@@ -231,22 +238,25 @@ export default function FishingLensPage() {
     setMinigameOpen(true);
   }, []);
 
+  useLensCommand([
+    { id: 'fishing-cast', keys: 'c', description: 'Cast line', category: 'actions' as const, action: handleCast },
+  ], { lensId: 'fishing' });
+
   return (
-    <LensShell lensId="fishing">
-      <div className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div>
-            <h1 className={cn(ds.heading1, 'flex items-center gap-2')}>
-              <Fish size={22} className="text-cyan-300" aria-hidden /> Fishing
-            </h1>
-            <p className={ds.textMuted}>Browse the local catalog, cast a line, review your catch log.</p>
-          </div>
-          <DensityToggle variant="dropdown" />
-        </header>
+    <LensShell lensId="fishing" asMain={false}>
+      <NorthStarFrame
+        lensId="fishing"
+        crumb="Fishing"
+        title={who ? `Cast a line, ${who}` : 'Cast a line'}
+        subtitle="Browse the local catalog, cast a line, review your catch log."
+        actions={<DensityToggle variant="dropdown" />}
+        cta={{ label: 'Cast line', icon: Sparkles, onClick: handleCast, disabled: minigameOpen, title: 'Open the cast / bite / reel minigame (C)' }}
+      >
+      <div className="space-y-5">
 
         {/* Honest world-ownership bridge: the spatial minigame's real home is
             the 3D world; this hub is a companion, not a duplicate. */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-700/30 bg-cyan-950/20 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-700/30 bg-cyan-950/20 px-4 py-3">
           <div className="flex items-start gap-2 text-sm text-cyan-100">
             <Compass className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" />
             <p>
@@ -273,15 +283,6 @@ export default function FishingLensPage() {
             caption={mostRecentCatch !== 'None yet' ? `Last: ${mostRecentCatch}` : undefined}
           />
         </StatTileGrid>
-
-        <button
-          type="button"
-          onClick={handleCast}
-          disabled={minigameOpen}
-          className={cn(ds.btnPrimary, 'inline-flex w-full items-center justify-center gap-2 sm:w-auto')}
-        >
-          <Sparkles size={14} aria-hidden /> Cast line
-        </button>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -325,6 +326,7 @@ export default function FishingLensPage() {
           onClose={handleMinigameClose}
         />
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

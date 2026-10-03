@@ -31,6 +31,9 @@ import { render, act, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // ── headless shell + minigame overlay: render-only stubs ────────────────────
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),

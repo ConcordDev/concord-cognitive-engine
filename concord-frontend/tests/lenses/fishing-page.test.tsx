@@ -4,6 +4,9 @@ import React from 'react';
 
 // LensShell wraps children in an a11y context provider that registers with a
 // UI store; stub it to a plain pass-through so the page renders in isolation.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
 }));
