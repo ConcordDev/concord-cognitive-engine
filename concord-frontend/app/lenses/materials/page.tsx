@@ -10,7 +10,9 @@
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
@@ -25,8 +27,6 @@ import {
 } from '@/components/materials/MaterialsLibraryPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { Box, Atom, Search, Thermometer, ListChecks, Wrench, Gem, Database } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -74,6 +74,8 @@ export default function MaterialsLensPage() {
   useLensNav('materials');
   const reduceMotion = useReducedMotion();
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('materials');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MaterialsView>('library');
 
   useLensCommand(
@@ -93,44 +95,23 @@ export default function MaterialsLensPage() {
     <LensShell lensId="materials" asMain={false}>
       <FirstRunTour lensId="materials" />
       <DepthBadge lensId="materials" size="sm" className="ml-2" />
-      <div data-lens-theme="materials" className="space-y-6 p-6">
-        <a href="#materials-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to materials content</a>
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-400 to-slate-600 flex items-center justify-center"><Box className="w-5 h-5 text-white" /></div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Materials Science</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={ds.textMuted}>Library, tests, MP search, corrosion, crystal.</p>
-            </div>
-          </div>
-          <DTUExportButton domain="materials" data={{}} compact />
-        </header>
-        <RealtimeDataPanel domain="materials" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-        <nav className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1" aria-label="Materials views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md whitespace-nowrap transition-colors',
-                  on ? 'bg-zinc-300/20 text-zinc-200' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="materials"
+        crumb="Materials"
+        title={`Find the right material${active === 'library' && who ? `, ${who}` : ''}`}
+        subtitle="Library, tests, Materials Project search, corrosion and crystal structure."
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as MaterialsView)}
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="materials" data={{}} compact />
+          </>
+        }
+        tabsLabel="Materials views"
+        cta={{ label: 'Search Materials Project', icon: Search, onClick: () => setActive('mp'), title: 'Search the Materials Project (M)' }}
+      >
         <main id="materials-main">
           <AnimatePresence mode="wait">
             <motion.div
@@ -151,9 +132,8 @@ export default function MaterialsLensPage() {
             </motion.div>
           </AnimatePresence>
         </main>
-
-        <CrossLensRecentsPanel lensId="materials" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+        <RealtimeDataPanel domain="materials" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      </NorthStarFrame>
     </LensShell>
   );
 }

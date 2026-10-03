@@ -27,6 +27,14 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useRealtimeLens', () => ({
+  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
+}));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
+vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
+vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
