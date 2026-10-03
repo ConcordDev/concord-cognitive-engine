@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
@@ -18,6 +18,8 @@ import { SharedShoppingLists } from '@/components/household/SharedShoppingLists'
 import { RecurringTemplates } from '@/components/household/RecurringTemplates';
 import { ExpenseSplitter } from '@/components/household/ExpenseSplitter';
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -31,7 +33,7 @@ import {
   ShoppingCart, RotateCcw, AlertTriangle, Clock,
   Calendar, Heart,
   DollarSign, Shield, Phone,
-  Star, Award, ChevronLeft, ChevronRight, ChevronDown,
+  Star, Award, ChevronLeft, ChevronRight,
   CreditCard, PiggyBank, FileText, Stethoscope, Siren,
   Dog, Pill, MapPin, Zap,
   Sun, Snowflake, Leaf, CloudRain, ClipboardList,
@@ -113,6 +115,27 @@ const MODE_TABS: { id: ModeTab; icon: typeof Home; types: ArtifactType[] }[] = [
   { id: 'Pets', icon: PawPrint, types: ['Pet'] },
 ];
 
+const MODE_KEYS: Record<ModeTab, string> = {
+  Dashboard: 'd', Meals: 'm', Chores: 'c', Home: 'h', Calendar: 'a', Budget: 'b', Emergency: 'e', Family: 'f', Pets: 'p',
+};
+
+const MODE_TITLES: Record<ModeTab, string> = {
+  Dashboard: 'Your household',
+  Meals: 'What is for dinner',
+  Chores: 'Who does what',
+  Home: 'Keeping the house up',
+  Calendar: 'What is coming up',
+  Budget: 'Where the money goes',
+  Emergency: 'When something goes wrong',
+  Family: 'The people you live with',
+  Pets: 'The ones with paws',
+};
+
+const MODE_CTA: Record<ModeTab, string> = {
+  Dashboard: 'Add family member', Meals: 'Plan a meal', Chores: 'Add a chore', Home: 'Add maintenance item',
+  Calendar: 'Add an event', Budget: 'Add budget entry', Emergency: 'Add a contact', Family: 'Add family member', Pets: 'Add a pet',
+};
+
 const STATUS_COLORS: Record<Status, string> = {
   planned: 'neon-blue',
   active: 'green-400',
@@ -181,7 +204,8 @@ export function HouseholdHome() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('household');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
-  const [showHouseholdWorkbench, setShowHouseholdWorkbench] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1707,21 +1731,24 @@ export function HouseholdHome() {
     <>
       <FirstRunTour lensId="household" />
       <DepthBadge lensId="household" size="sm" className="ml-2" />
-    <div data-lens-theme="household" className={ds.pageContainer}>
-      {/* Header */}
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3">
-          <Home className="w-7 h-7" style={{ color: 'var(--lens-accent)' }} />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className={ds.heading1} style={{ color: 'var(--lens-accent)' }}>Home</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className={ds.textMuted}>Apple Home rooms — chores, meals, calendar, budget, people</p>
-          </div>
-        </div>
-      </header>
-
+    <NorthStarFrame
+      lensId="household"
+      crumb="Household"
+      title={`${MODE_TITLES[mode]}${mode === 'Dashboard' && who ? `, ${who}` : ''}`}
+      subtitle="Chores, meals, calendar, budget, maintenance and the people and pets under your roof."
+      actions={
+        <>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          <DTUExportButton domain="household" data={{}} compact />
+        </>
+      }
+      tabs={MODE_TABS.map((t) => ({ id: t.id, label: t.id, icon: t.icon, keys: MODE_KEYS[t.id] }))}
+      activeTab={mode}
+      onTab={(id) => { setMode(id as ModeTab); setStatusFilter('all'); setSearchQuery(''); }}
+      tabsLabel="Household sections"
+      cta={{ label: MODE_CTA[mode], icon: Plus, onClick: () => openNew(), title: MODE_CTA[mode] }}
+    >
+    <div data-lens-theme="household" className="space-y-6">
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1743,28 +1770,6 @@ export function HouseholdHome() {
 
       {/* AI Actions */}
       <RealtimeDataPanel domain="household" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="household" data={{}} compact />
-      {/* Mode tabs */}
-      <nav className="flex items-center gap-1 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setMode(tab.id); setStatusFilter('all'); setSearchQuery(''); }}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap text-sm',
-                mode === tab.id
-                  ? 'bg-neon-cyan/20 text-neon-cyan'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.id}
-            </button>
-          );
-        })}
-      </nav>
 
       {/* Domain Actions */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -1951,26 +1956,15 @@ export function HouseholdHome() {
         </section>
       )}
       {mode === 'Dashboard' && (
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setShowHouseholdWorkbench(v => !v)}
-            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
-          >
-            {showHouseholdWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            Household Workbench (grocery / chores / maintenance / summary)
-          </button>
-          {showHouseholdWorkbench && (
-            <PipingProvider>
-              <section className="mt-3">
-                <HouseholdActionPanel />
-              </section>
-            </PipingProvider>
-          )}
-        </div>
+        <PipingProvider>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="mb-3 text-sm font-semibold text-white">Household workbench: grocery, chores, maintenance, summary</h2>
+            <HouseholdActionPanel />
+          </section>
+        </PipingProvider>
       )}
     </div>
-      <CrossLensRecentsPanel lensId="household" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </NorthStarFrame>
     </>
   );
 }
