@@ -2,8 +2,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Activity, Bug, FileSearch, GitPullRequest, ListChecks, ScanSearch, ShieldCheck, TrendingDown } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -75,14 +78,14 @@ const SEVERITY_STYLE: Record<Severity, string> = {
 
 type Tab = 'analyze' | 'annotate' | 'gate' | 'debt' | 'issues' | 'pr' | 'detectors';
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'analyze', label: 'Analyze' },
-  { id: 'annotate', label: 'Annotations' },
-  { id: 'gate', label: 'Quality Gate' },
-  { id: 'debt', label: 'Debt & Trend' },
-  { id: 'issues', label: 'Issues' },
-  { id: 'pr', label: 'PR Decoration' },
-  { id: 'detectors', label: 'Detector Suite' },
+const TABS: Array<{ id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof Bug }> = [
+  { id: 'analyze', label: 'Analyze', keys: '1', title: 'What is wrong with this code', hint: 'Scan submitted source for issues, debt and duplication', icon: ScanSearch },
+  { id: 'annotate', label: 'Annotations', keys: '2', title: 'Line by line', hint: 'Per-line issue annotations on the scanned source', icon: FileSearch },
+  { id: 'gate', label: 'Quality Gate', keys: '3', title: 'Does it clear the bar', hint: 'Configurable pass/fail quality gates', icon: ShieldCheck },
+  { id: 'debt', label: 'Debt & Trend', keys: '4', title: 'Where the debt is piling up', hint: 'Technical-debt estimate and trend', icon: TrendingDown },
+  { id: 'issues', label: 'Issues', keys: '5', title: 'Track what you will fix', hint: 'Issue workflow for tracked findings', icon: ListChecks },
+  { id: 'pr', label: 'PR Decoration', keys: '6', title: 'Review a pull request diff', hint: 'Decorate pull-request diffs with findings', icon: GitPullRequest },
+  { id: 'detectors', label: 'Detector Suite', keys: '7', title: "The platform's own detectors", hint: 'Internal detector suite sweep and findings', icon: Activity },
 ];
 
 async function postLensRun<T>(domain: string, name: string, input: object): Promise<T> {
@@ -92,6 +95,8 @@ async function postLensRun<T>(domain: string, name: string, input: object): Prom
 
 export default function CodeQualityLensPage() {
   useLensNav('code-quality');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   const [tab, setTab] = useState<Tab>('analyze');
   const [scan, setScan] = useState<CQScan | null>(null);
@@ -143,7 +148,7 @@ export default function CodeQualityLensPage() {
   }
 
   useEffect(() => {
-    loadDetectors();
+    void Promise.resolve().then(loadDetectors);
   }, []);
 
   const severityRank = (s: Severity) => SEVERITIES.indexOf(s);
@@ -184,54 +189,50 @@ export default function CodeQualityLensPage() {
         category: 'navigation',
         action: () => findingsSearchRef.current?.focus(),
       },
-      { id: 'tab-analyze', keys: '1', description: 'Tab: Analyze', category: 'view', action: () => setTab('analyze') },
-      { id: 'tab-annotate', keys: '2', description: 'Tab: Annotations', category: 'view', action: () => setTab('annotate') },
-      { id: 'tab-gate', keys: '3', description: 'Tab: Quality Gate', category: 'view', action: () => setTab('gate') },
-      { id: 'tab-debt', keys: '4', description: 'Tab: Debt & Trend', category: 'view', action: () => setTab('debt') },
-      { id: 'tab-issues', keys: '5', description: 'Tab: Issues', category: 'view', action: () => setTab('issues') },
+      ...TABS.map((t) => ({
+        id: `tab-${t.id}`,
+        keys: t.keys,
+        description: `Tab: ${t.label}`,
+        category: 'view' as const,
+        action: () => setTab(t.id),
+      })),
     ],
     { lensId: 'code-quality' },
   );
 
+  const current = TABS.find((t) => t.id === tab)!;
+
   return (
     <LensShell lensId="code-quality" asMain={false}>
-      <FirstRunTour lensId="code-quality" />      <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
-      <div data-lens-theme="code-quality" className="p-6 space-y-5">
-        <header>
-          <p className="text-xs uppercase text-gray-400 tracking-wider">Tooling</p>
-          <h1 className="text-3xl font-bold text-gradient-neon">Code Quality</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Static-analysis surface for submitted source — per-line issue
-            annotation, technical-debt estimation, duplication hotspots,
-            configurable quality gates, an issue workflow, and pull-request
-            diff decoration. Plus the platform&apos;s internal detector suite.
-          </p>
-        </header>
-
-        <nav className="flex flex-wrap gap-1 border-b border-gray-800">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-3 py-1.5 text-sm rounded-t border-b-2 transition ${
-                tab === t.id
-                  ? 'border-neon-blue text-neon-blue'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
+      <FirstRunTour lensId="code-quality" />
+      <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="code-quality"
+        crumb="Code quality"
+        title={`${current.title}${tab === 'analyze' && who ? `, ${who}` : ''}`}
+        subtitle="Per-line issue annotation, technical-debt estimation, duplication hotspots, quality gates, an issue workflow and pull-request diff decoration — plus the platform's internal detector suite."
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as Tab)}
+        tabsLabel="Code quality views"
+        cta={{
+          label: loading ? 'Running sweep…' : 'Run detector sweep',
+          icon: Activity,
+          onClick: () => { if (!loading) { setTab('detectors'); void runSweep(); } },
+          title: 'Run the platform detector sweep (⌘⏎)',
+          disabled: loading,
+        }}
+      >
+      <div className="space-y-5">
 
         {tab === 'analyze' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <AnalyzePanel scan={scan} onScan={setScan} />
           </section>
         )}
 
         {tab === 'annotate' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <AnnotatedSource
               scan={scan}
               onIssueTracked={() => setIssueRefresh((n) => n + 1)}
@@ -240,25 +241,25 @@ export default function CodeQualityLensPage() {
         )}
 
         {tab === 'gate' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <QualityGatePanel scan={scan} />
           </section>
         )}
 
         {tab === 'debt' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <DebtTrendPanel scan={scan} />
           </section>
         )}
 
         {tab === 'issues' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <IssueWorkflow refreshKey={issueRefresh} />
           </section>
         )}
 
         {tab === 'pr' && (
-          <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <PRDecorationPanel />
           </section>
         )}
@@ -451,16 +452,13 @@ export default function CodeQualityLensPage() {
               )}
             </section>
 
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <ReleaseCadence />
             </section>
           </>
         )}
       </div>
-
-      <div className="sr-only" aria-hidden="true">
-        EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
-      </div>      <CrossLensRecentsPanel lensId="code-quality" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
