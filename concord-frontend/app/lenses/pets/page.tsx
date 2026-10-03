@@ -32,98 +32,114 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { PetCareSection } from '@/components/pets/PetCareSection';
 import { DensityToggle, ErrorState } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface LostCard { id: string; petName: string; status: string }
 
 export default function PetsLensPage() {
   useLensNav('pets');
+  const { user } = useAuth();
 
   const [activeLostCards, setActiveLostCards] = useState<LostCard[]>([]);
   const [lostLoading, setLostLoading] = useState(true);
   const [lostLoadError, setLostLoadError] = useState<string | null>(null);
 
-  const refreshLostCards = useCallback(async () => {
-    setLostLoading(true);
-    const r = await lensRun('pets', 'lost-card-list', {});
+  const applyLostCards = useCallback((r: { data?: { ok?: boolean; error?: string; result?: { cards?: LostCard[] } } }) => {
     if (r.data?.ok === false) {
       setLostLoadError(r.data?.error || 'Could not load lost-pet alerts.');
-      setLostLoading(false);
-      return;
+    } else {
+      setLostLoadError(null);
+      setActiveLostCards((r.data?.result?.cards || []).filter((c) => c.status === 'lost'));
     }
-    setLostLoadError(null);
-    const cards: LostCard[] = r.data?.result?.cards || [];
-    setActiveLostCards(cards.filter((c) => c.status === 'lost'));
     setLostLoading(false);
   }, []);
 
-  useEffect(() => { void refreshLostCards(); }, [refreshLostCards]);
+  const refreshLostCards = useCallback(async () => {
+    setLostLoading(true);
+    applyLostCards(await lensRun('pets', 'lost-card-list', {}));
+  }, [applyLostCards]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void lensRun('pets', 'lost-card-list', {}).then((r) => { if (!cancelled) applyLostCards(r); });
+    return () => { cancelled = true; };
+  }, [applyLostCards]);
+
+  const focusAddPet = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>('[data-pets-care] input:not([type="file"]), [data-pets-care] button[aria-label*="Add" i]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.focus();
+    });
+  }, []);
 
   useLensCommand(
     [
+      { id: 'pets-add', keys: 'n', description: 'Add a pet', category: 'actions', action: focusAddPet },
       { id: 'refresh-lost-cards', keys: 'r', description: 'Refresh lost-pet alerts', category: 'actions', action: () => void refreshLostCards() },
     ],
     { lensId: 'pets' },
   );
 
+  const who = titleCaseDisplayName(user?.username);
+
   return (
     <LensShell lensId="pets" asMain={false}>
       <FirstRunTour lensId="pets" />
-      <div data-lens-theme="pets" className="space-y-4 p-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white">Pets</h1>
-                <DepthBadge lensId="pets" size="sm" />
-              </div>
-              <p className="text-xs text-gray-400">Health records, vaccines, feeding, caregivers &amp; lost-pet ID cards — for pets you own</p>
-            </div>
-          </div>
+      <DepthBadge lensId="pets" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="pets"
+        crumb="Pets"
+        title={who ? `How your pets are doing, ${who}` : 'How your pets are doing'}
+        subtitle="Health records, vaccines, feeding, caregivers and lost-pet ID cards for pets you own."
+        actions={
           <div className="flex items-center gap-2">
             <DensityToggle variant="dropdown" />
             <button
               type="button"
               onClick={() => void refreshLostCards()}
               disabled={lostLoading}
-              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
+              className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-zinc-100 disabled:opacity-50"
               aria-label="Refresh lost-pet alerts"
               title="r — refresh lost-pet alerts"
             >
-              <RefreshCw className={cn('w-4 h-4', lostLoading && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4', lostLoading && 'animate-spin')} />
             </button>
             <DTUExportButton domain="pets" data={{}} compact />
           </div>
-        </header>
-
+        }
+        cta={{ label: 'Add a pet', icon: PawPrint, onClick: focusAddPet, title: 'Add a pet (N)' }}
+      >
         {lostLoadError && (
           <ErrorState variant="inline" message={lostLoadError} onRetry={() => void refreshLostCards()} />
         )}
 
         {activeLostCards.length > 0 && (
-          <div role="alert" className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-            <ShieldAlert className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <div role="alert" className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
-              {activeLostCards.length} active lost-pet report{activeLostCards.length === 1 ? '' : 's'}: {activeLostCards.map((c) => c.petName).join(', ')} — open the Records tab for the public ID card.
+              {activeLostCards.length} active lost-pet report{activeLostCards.length === 1 ? '' : 's'}: {activeLostCards.map((c) => c.petName).join(', ')}. Open the Records tab for the public ID card.
             </span>
           </div>
         )}
 
-        <PetCareSection />
+        <div data-pets-care>
+          <PetCareSection />
+        </div>
 
-        <section>
+        <section className="mt-5">
           <LensFeedButton domain="pets" label="Live dog-breed reference feed" />
         </section>
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
