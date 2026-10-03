@@ -81,6 +81,10 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => {} }));
+vi.mock('@/hooks/useAuth', () => {
+  const value = { user: { username: 'tester' } };
+  return { useAuth: () => value };
+});
 vi.mock('@/hooks/useRealtimeLens', () => ({
   useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
 }));

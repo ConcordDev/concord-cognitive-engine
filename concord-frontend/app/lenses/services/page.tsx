@@ -13,7 +13,9 @@ import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Scissors, CalendarRange, MessageSquare, TrendingUp } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -22,8 +24,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { ServicesDeskPanel } from '@/components/services/ServicesDeskPanel';
 import { BookingSuite } from '@/components/services/BookingSuite';
 import { ServicesFeed } from '@/components/services/ServicesFeed';
@@ -39,7 +39,7 @@ const VIEWS: { id: ServicesView; label: string; keys: string; hint: string; icon
 
 function SuitePanel() {
   return (
-    <section className="m-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <BookingSuite />
     </section>
   );
@@ -47,7 +47,7 @@ function SuitePanel() {
 
 function FeedPanel() {
   return (
-    <section className="m-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <ServicesFeed />
     </section>
   );
@@ -55,7 +55,7 @@ function FeedPanel() {
 
 function RetentionPanel() {
   return (
-    <section className="m-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <RevenueRetentionPanel />
     </section>
   );
@@ -73,6 +73,8 @@ export default function ServicesLensPage() {
   useLensIdentity('services');
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('services');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ServicesView>('desk');
 
   useLensCommand(
@@ -103,63 +105,29 @@ export default function ServicesLensPage() {
     <LensShell lensId="services" asMain={false}>
       <FirstRunTour lensId="services" />
       <DepthBadge lensId="services" size="sm" className="ml-2" />
-      <div data-lens-theme="services" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Scissors className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Services</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="services" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                Square Appointments desk — bookings, POS, staff, retention.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Services views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="services"
+        crumb="Services"
+        title={`Run your appointments${active === 'desk' && who ? `, ${who}` : ''}`}
+        subtitle="Bookings, POS, staff and retention for a service business."
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as ServicesView)}
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="services" data={realtimeData || {}} compact />
+          </>
+        }
+        tabsLabel="Services views"
+        cta={{ label: 'Open the desk', icon: Scissors, onClick: () => setActive('desk'), title: 'Open the appointments desk (1)' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             <Panel />
           </motion.div>
         </AnimatePresence>
-
-        <CrossLensRecentsPanel lensId="services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
