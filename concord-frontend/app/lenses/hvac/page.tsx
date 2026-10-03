@@ -15,13 +15,17 @@ import {
   MessageSquare, Receipt, Thermometer, Users, Wrench,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
-import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
 import { FieldService } from '@/components/hvac/FieldService';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
@@ -49,6 +53,10 @@ const DESK_MODES = new Set<HvacView>([
 
 export default function HVACLensPage() {
   const reduceMotion = useReducedMotion();
+  useLensNav('hvac');
+  const { latestData: realtimeData, isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('hvac');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<HvacView>('jobs');
 
   useLensCommand(
@@ -89,47 +97,32 @@ export default function HVACLensPage() {
     <LensShell lensId="hvac" asMain={false}>
       <FirstRunTour lensId="hvac" />
       <DepthBadge lensId="hvac" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="hvac"
-        title="HVAC"
-        description="Jobs, estimates, codes, materials, CRM, invoicing, inspections, and certifications"
-        headerIcon={<SvgIcon name="hvac-duct" size={24} />}
+      <NorthStarFrame
+        lensId="hvac"
+        crumb="HVAC"
+        title={`Climate work${who ? `, ${who}` : ''}`}
+        subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and Manual J loads"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="hvac" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as HvacView)}
+        tabsLabel="HVAC views"
+        cta={{ label: 'Estimate a job', icon: Calculator, onClick: () => setActive('estimates'), title: 'Open the estimates desk' }}
       >
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1"
-          aria-label="HVAC views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-neon-blue text-neon-blue'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             {body}
           </motion.div>
         </AnimatePresence>
-      </LensPageShell>
-      <a href="#hvac-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hvac content</a>
-      <CrossLensRecentsPanel lensId="hvac" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {realtimeData && (
+          <RealtimeDataPanel domain="hvac" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

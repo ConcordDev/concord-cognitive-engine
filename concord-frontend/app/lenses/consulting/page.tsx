@@ -15,12 +15,17 @@ import {
   Lightbulb, Target, Timer, TrendingUp, Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
 import { ConsultingDeskPanel } from '@/components/consulting/ConsultingDeskPanel';
 import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
 import { EngagementTracker } from '@/components/consulting/EngagementTracker';
@@ -52,6 +57,10 @@ const DESK_MODES = new Set<ConsultingView>([
 
 export default function ConsultingLensPage() {
   const reduceMotion = useReducedMotion();
+  useLensNav('consulting');
+  const { latestData: realtimeData, isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('consulting');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ConsultingView>('engagements');
 
   useLensCommand(
@@ -92,47 +101,32 @@ export default function ConsultingLensPage() {
     <LensShell lensId="consulting" asMain={false}>
       <FirstRunTour lensId="consulting" />
       <DepthBadge lensId="consulting" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="consulting"
-        title="Consulting"
-        description="Engagements, proposals, deliverables, clients, and frameworks"
-        headerIcon={<Lightbulb className="w-6 h-6" />}
+      <NorthStarFrame
+        lensId="consulting"
+        crumb="Consulting"
+        title={`Client work${who ? `, ${who}` : ''}`}
+        subtitle="Engagements, proposals, deliverables, clients, timesheets and frameworks"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="consulting" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as ConsultingView)}
+        tabsLabel="Consulting views"
+        cta={{ label: 'New proposal', icon: FileText, onClick: () => setActive('proposals'), title: 'Open proposals' }}
       >
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1"
-          aria-label="Consulting views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-neon-blue text-neon-blue'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             {body}
           </motion.div>
         </AnimatePresence>
-      </LensPageShell>
-      <a href="#consulting-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to consulting content</a>
-      <CrossLensRecentsPanel lensId="consulting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {realtimeData && (
+          <RealtimeDataPanel domain="consulting" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

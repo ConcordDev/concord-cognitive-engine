@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
@@ -11,8 +10,15 @@ import { FieldServiceConsole } from '@/components/plumbing/FieldServiceConsole';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Droplets, Calendar, Calculator, Newspaper } from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { Calendar, Calculator, Newspaper } from 'lucide-react';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type PageTab = 'operations' | 'calculators' | 'feed';
 
@@ -46,6 +52,10 @@ const PAGE_TABS: { id: PageTab; label: string; icon: typeof Calendar }[] = [
  * for the audit and the honest disposition of each removed tab.
  */
 export default function PlumbingLensPage() {
+  useLensNav('plumbing');
+  const { latestData: realtimeData, isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('plumbing');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<PageTab>('operations');
 
   useLensCommand(
@@ -78,30 +88,23 @@ export default function PlumbingLensPage() {
   return (
     <LensShell lensId="plumbing" asMain={false}>
       <FirstRunTour lensId="plumbing" />      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="plumbing"
-        title="Plumbing"
-        description="Dispatch, estimating, quote-to-invoice, tech workflow, maintenance plans, and IPC/UPC trade calculators"
-        headerIcon={<Droplets className="w-6 h-6" />}
+      <NorthStarFrame
+        lensId="plumbing"
+        crumb="Plumbing"
+        title={`Jobs on the board${who ? `, ${who}` : ''}`}
+        subtitle="Dispatch, quote-to-invoice, maintenance plans and IPC/UPC trade calculators"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="plumbing" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={PAGE_TABS}
+        activeTab={tab}
+        onTab={(id) => setTab(id as PageTab)}
+        tabsLabel="Plumbing views"
+        cta={{ label: 'Size a pipe', icon: Calculator, onClick: () => setTab('calculators'), title: 'Open the trade calculators' }}
       >
-        <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-          {PAGE_TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-                tab === t.id
-                  ? 'bg-neon-blue/20 text-neon-blue'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-              )}
-            >
-              <t.icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
         {tab === 'operations' && (
           <div className={cn(ds.panel, 'p-4')}>
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
@@ -125,9 +128,10 @@ export default function PlumbingLensPage() {
             <PlumbingFeed />
           </div>
         )}
-      </LensPageShell>
-
-      <a href="#plumbing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to plumbing content</a>      <CrossLensRecentsPanel lensId="plumbing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {realtimeData && (
+          <RealtimeDataPanel domain="plumbing" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }
