@@ -74,8 +74,20 @@ const CLOSE_REASONS = ['duplicate', 'needs detail or clarity', 'opinion-based', 
 
 type SidePanel = 'none' | 'privileges' | 'tags' | 'moderation';
 
+let askPending = false;
+const ASK_EVENT = 'answers:ask';
+/** Opens the ask-a-question form, whether or not the Q&A tab is mounted yet. */
+export function requestAskQuestion() {
+  askPending = true;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ASK_EVENT));
+}
+
 export function AnswersQA() {
-  const [view, setView] = useState<'list' | 'detail' | 'ask'>('list');
+  const [view, setView] = useState<'list' | 'detail' | 'ask'>(() => {
+    if (!askPending) return 'list';
+    askPending = false;
+    return 'ask';
+  });
   const [questions, setQuestions] = useState<QSummary[]>([]);
   const [detail, setDetail] = useState<QDetail | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
@@ -119,6 +131,16 @@ export function AnswersQA() {
   }, [sort, filter, query, tagFilter]);
 
   useEffect(() => { if (view === 'list') void refreshList(); }, [view, refreshList]);
+
+  const openAsk = useCallback(() => {
+    if (!askPending) return;
+    askPending = false;
+    setView('ask');
+  }, []);
+  useEffect(() => {
+    window.addEventListener(ASK_EVENT, openAsk);
+    return () => window.removeEventListener(ASK_EVENT, openAsk);
+  }, [openAsk]);
 
   const openDetail = useCallback(async (id: string) => {
     const r = await lensRun('answers', 'question-detail', { id });
