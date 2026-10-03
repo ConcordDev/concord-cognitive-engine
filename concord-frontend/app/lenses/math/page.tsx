@@ -82,7 +82,7 @@ export default function MathLensPage() {
             )}
           </>
         }
-        tabs={VIEWS}
+        tabs={[...VIEWS]}
         activeTab={active}
         onTab={(id) => setActive(id as typeof active)}
         tabsLabel="Math views"

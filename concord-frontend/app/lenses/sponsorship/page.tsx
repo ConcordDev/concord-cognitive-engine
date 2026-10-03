@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Compass, Heart, CreditCard, Inbox, Sparkles, Github } from 'lucide-react';
+import { Compass, Heart, CreditCard, Inbox, Sparkles, GitBranch } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -30,7 +30,7 @@ const TABS: { id: Tab; label: string; keys: string; title: string; icon: typeof 
   { id: 'billing', label: 'Billing', keys: 'g b', title: 'What you have given', icon: CreditCard },
   { id: 'inbox', label: 'Inbox', keys: 'g i', title: 'Thank-yous and dispatches', icon: Inbox },
   { id: 'creator', label: 'Creator hub', keys: 'g c', title: 'Your supporters', icon: Sparkles },
-  { id: 'repos', label: 'Open source', keys: 'g o', title: 'Back the code you use', icon: Github },
+  { id: 'repos', label: 'Open source', keys: 'g o', title: 'Back the code you use', icon: GitBranch },
 ];
 
 export default function SponsorshipPage() {

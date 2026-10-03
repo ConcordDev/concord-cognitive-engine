@@ -53,7 +53,7 @@ export default function PetsLensPage() {
   const [lostLoading, setLostLoading] = useState(true);
   const [lostLoadError, setLostLoadError] = useState<string | null>(null);
 
-  const applyLostCards = useCallback((r: { data?: { ok?: boolean; error?: string; result?: { cards?: LostCard[] } } }) => {
+  const applyLostCards = useCallback((r: { data?: { ok?: boolean; error?: string | null; result?: { cards?: LostCard[] } | null } }) => {
     if (r.data?.ok === false) {
       setLostLoadError(r.data?.error || 'Could not load lost-pet alerts.');
     } else {

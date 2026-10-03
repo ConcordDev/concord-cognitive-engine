@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Wand2, Rocket, Link2, LayoutGrid, Database, Github, Plus } from 'lucide-react';
+import { Wand2, Rocket, Link2, LayoutGrid, Database, GitBranch, Plus } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -29,7 +29,7 @@ type View = 'builder' | 'data' | 'gists';
 const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof LayoutGrid }[] = [
   { id: 'builder', label: 'Builder', keys: '1', title: 'Build your own lens', hint: 'Drag-drop canvas, data binding, preview, publish', icon: LayoutGrid },
   { id: 'data', label: 'Data utilities', keys: '2', title: 'Shape your data', hint: 'Schema design, templates, validation rules, field transforms', icon: Database },
-  { id: 'gists', label: 'Gist gallery', keys: '3', title: 'Borrow from the community', hint: 'Public GitHub gists', icon: Github },
+  { id: 'gists', label: 'Gist gallery', keys: '3', title: 'Borrow from the community', hint: 'Public GitHub gists', icon: GitBranch },
 ];
 
 export default function CustomLensPage() {

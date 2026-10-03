@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Activity, Eye, FileText, Github, Wrench } from 'lucide-react';
+import { Activity, Eye, FileText, GitBranch, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -59,7 +59,7 @@ const VIEWS: { id: ObserveView; label: string; keys: string; hint: string; title
   { id: 'compose', label: 'Compose', keys: '1', title: 'Watch, do not intervene', hint: 'Compose a citable empirical report from a world', icon: FileText },
   { id: 'platform', label: 'Telemetry', keys: '2', title: 'What the system is doing', hint: 'Live metrics, logs, traces, monitors and on-call', icon: Activity },
   { id: 'ops', label: 'Ops actions', keys: '3', title: 'Run an ops action', hint: 'Service log, alerts, SLO and incident actions', icon: Wrench },
-  { id: 'tooling', label: 'Tooling', keys: '4', title: 'Observability tooling', hint: 'Open-source observability repos on GitHub', icon: Github },
+  { id: 'tooling', label: 'Tooling', keys: '4', title: 'Observability tooling', hint: 'Open-source observability repos on GitHub', icon: GitBranch },
 ];
 
 export default function ObservePage() {

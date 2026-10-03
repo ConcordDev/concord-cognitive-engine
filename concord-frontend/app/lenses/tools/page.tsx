@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Globe, Hammer, FileSignature, Github, Search } from 'lucide-react';
+import { Globe, Hammer, FileSignature, GitBranch, Search } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,7 +28,7 @@ const TABS: { key: TabKey; label: string; keys: string; title: string; hint: str
   { key: 'web', label: 'Web research', keys: 'w', title: 'Look it up', hint: 'Live web research', icon: Globe },
   { key: 'compile', label: 'Compile', keys: 'c', title: 'Build and transpile', hint: 'Compile / transpile across languages', icon: Hammer },
   { key: 'esign', label: 'E-signature', keys: 's', title: 'Get it signed', hint: 'Multi-party signing with audit trail', icon: FileSignature },
-  { key: 'repos', label: 'Developer tooling', keys: 'd', title: 'Tooling worth knowing', hint: 'Developer tooling on GitHub', icon: Github },
+  { key: 'repos', label: 'Developer tooling', keys: 'd', title: 'Tooling worth knowing', hint: 'Developer tooling on GitHub', icon: GitBranch },
 ];
 
 export default function ToolsLensPage() {

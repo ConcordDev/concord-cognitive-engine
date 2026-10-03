@@ -44,7 +44,7 @@ export default function TournamentsPage() {
 
   const activeTab = desk.active === 'detail' ? 'list' : desk.active;
   const current = desk.active === 'detail' && desk.detail
-    ? { title: desk.detail.name || 'Tournament' }
+    ? { title: desk.detail.title || 'Tournament' }
     : VIEWS.find((v) => v.id === desk.active) ?? VIEWS[0];
 
   return (

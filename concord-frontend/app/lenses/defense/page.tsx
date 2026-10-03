@@ -22,7 +22,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
-  BarChart3, Target, Crosshair, Users, Eye, MapPin, Radio,
+  BarChart3, Target, Crosshair, Users, Eye, MapPin, Radio, Shield,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';

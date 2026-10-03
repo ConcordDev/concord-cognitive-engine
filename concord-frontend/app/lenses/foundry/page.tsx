@@ -11,7 +11,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { Boxes, Loader2, Hammer, Github, Plus } from 'lucide-react';
+import { Boxes, Loader2, Hammer, GitBranch, Plus } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,7 +39,7 @@ type View = 'worlds' | 'studio' | 'tooling';
 const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Boxes }[] = [
   { id: 'worlds', label: 'Worlds', keys: '1', title: 'Build a game', hint: 'Your worlds and the block canvas', icon: Boxes },
   { id: 'studio', label: 'Builder studio', keys: '2', title: 'Script, test and ship', hint: 'Visual scripting, playtest, assets, multiplayer, marketplace, analytics', icon: Hammer },
-  { id: 'tooling', label: 'Tooling', keys: '3', title: 'World-building tooling', hint: 'Open-source world-building tools on GitHub', icon: Github },
+  { id: 'tooling', label: 'Tooling', keys: '3', title: 'World-building tooling', hint: 'Open-source world-building tools on GitHub', icon: GitBranch },
 ];
 
 export default function FoundryLensPage() {

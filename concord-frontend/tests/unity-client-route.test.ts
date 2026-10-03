@@ -9,7 +9,7 @@ import {
   resolveRequestOrigin,
   applyUnityWebEmbed,
   resolveUnityIndexPath,
-} from '../app/unity-client/index.html/route';
+} from '../app/unity-client/index.html/helpers';
 import type { NextRequest } from 'next/server';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
