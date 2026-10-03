@@ -1269,6 +1269,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     }
   }, [tabs]);
 
+  useEffect(() => {
+    const onRun = () => runScriptMutation.mutate();
+    window.addEventListener('concord:code-run', onRun);
+    return () => window.removeEventListener('concord:code-run', onRun);
+  }, [runScriptMutation]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('concord:code-run-state', { detail: { running: runScriptMutation.isPending } }));
+  }, [runScriptMutation.isPending]);
+
   useLensCommand(
     [
       { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
