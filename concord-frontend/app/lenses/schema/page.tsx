@@ -80,7 +80,7 @@ export default function SchemaLensPage() {
 
   useLensCommand(
     [
-      { id: 'schema-new', keys: 'n', description: 'New schema', category: 'action', action: newSchema },
+      { id: 'schema-new', keys: 'n', description: 'New schema', category: 'actions', action: newSchema },
       { id: 'schema-canvas', keys: '1', description: 'Schema canvas', category: 'navigation', action: () => setView('canvas') },
     ],
     { lensId: 'schema' },
@@ -112,7 +112,7 @@ export default function SchemaLensPage() {
         ) : (
           <SchemaWorkbench
             bare
-            tab={view === 'tooling' ? undefined : view}
+            tab={view}
             onTabChange={(t) => setView(t)}
             newSignal={newSignal}
           />
