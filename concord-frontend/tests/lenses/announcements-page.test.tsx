@@ -4,6 +4,8 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 // LensShell + ManifestActionBar pull in stores/context we don't care about
 // here — stub them to passthrough so the test isolates the four UX states.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -88,8 +90,8 @@ describe('AnnouncementsLensPage — four UX states', () => {
     render(<AnnouncementsLensPage />);
     await waitFor(() => expect(screen.getByText('Batch 4 shipped')).toBeInTheDocument());
     expect(screen.getByText('Announcements lens is live.')).toBeInTheDocument();
-    // a11y: the kind filter is a tablist.
-    expect(screen.getByRole('tablist', { name: /filter by kind/i })).toBeInTheDocument();
+    // a11y: the kind filter is a labelled nav of pill buttons.
+    expect(screen.getByRole('navigation', { name: /filter by kind/i })).toBeInTheDocument();
   });
 
   it('realtime: a real concord:announcement socket event refetches (was a dead window listener)', async () => {
