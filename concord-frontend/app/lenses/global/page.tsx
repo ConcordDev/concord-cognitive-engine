@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
@@ -10,13 +10,15 @@ import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { DataExplorer } from '@/components/global/DataExplorer';
 import { DevelopmentIndex } from '@/components/global/DevelopmentIndex';
 import { IndicatorCorrelations } from '@/components/global/IndicatorCorrelations';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Award, GitBranch, Compass, Loader2, Bookmark } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { COUNTRIES as WB_COUNTRIES, INDICATORS as WB_INDICATORS } from '@/components/global/indicators';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { getCommandPaletteLenses } from '@/lib/lens-registry';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -45,6 +47,8 @@ interface CatalogIndicator { code: string; name: string; sourceNote: string; top
 export default function GlobalLensPage() {
   useLensNav('global');
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
@@ -57,6 +61,7 @@ export default function GlobalLensPage() {
       { id: 'tab-index', keys: 'i', description: 'Development Index', category: 'navigation', action: () => setActiveTab('index') },
       { id: 'tab-correlate', keys: 'c', description: 'Correlations', category: 'navigation', action: () => setActiveTab('correlate') },
       { id: 'tab-search', keys: 's', description: 'Search', category: 'navigation', action: () => setActiveTab('search') },
+      { id: 'refresh', keys: 'r', description: 'Refresh DTU corpus', category: 'actions', action: () => queryClient.invalidateQueries({ queryKey: ['global-dtus-browser'] }) },
     ],
     { lensId: 'global' }
   );
@@ -115,7 +120,7 @@ export default function GlobalLensPage() {
   const [crossLoading, setCrossLoading] = useState(false);
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setCrossResult(null); return; }
+    if (q.length < 2) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       setCrossLoading(true);
@@ -149,96 +154,75 @@ export default function GlobalLensPage() {
   }
 
   const tabs = [
-    { key: 'explore' as const, label: 'Data Explorer', icon: Compass },
-    { key: 'index' as const, label: 'Development Index', icon: Award },
-    { key: 'correlate' as const, label: 'Correlations', icon: GitBranch },
-    { key: 'search' as const, label: 'Search', icon: Search },
+    { key: 'explore' as const, label: 'Data Explorer', icon: Compass, keys: 'e', title: `The world in numbers${who ? `, ${who}` : ''}`, hint: 'World Bank map, time series, comparison and country profiles' },
+    { key: 'index' as const, label: 'Development Index', icon: Award, keys: 'i', title: 'Who is pulling ahead', hint: 'Composite country ranking from live indicators' },
+    { key: 'correlate' as const, label: 'Correlations', icon: GitBranch, keys: 'c', title: 'What moves together', hint: 'Cross-country indicator correlation' },
+    { key: 'search' as const, label: 'Search', icon: Search, keys: 's', title: 'Find it across everything', hint: 'Your DTUs and the World Bank catalog in one search' },
   ];
+  const currentTab = tabs.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="global" asMain={false}>
-      <FirstRunTour lensId="global" />      <DepthBadge lensId="global" size="sm" className="ml-2" />
-    <div data-lens-theme="global" className="p-6 space-y-5">
-      {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
-      <WorldBankPanel domain="global" />
-      <motion.header
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-end justify-between gap-4"
+      <FirstRunTour lensId="global" />
+      <DepthBadge lensId="global" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="global"
+        crumb="Global"
+        title={currentTab.title}
+        subtitle={`${total.toLocaleString()} DTUs in your global corpus, plus live World Bank open data.`}
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="global" data={{}} compact />
+            <button
+              type="button"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['global-dtus-browser'] })}
+              title="Refresh DTU corpus (R)"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[13px] text-zinc-400 hover:text-zinc-100"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh
+            </button>
+          </>
+        }
+        tabs={tabs.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as typeof activeTab)}
+        tabsLabel="Global views"
+        cta={{
+          label: 'Search everything',
+          icon: Search,
+          onClick: () => setActiveTab('search'),
+          title: 'Search your DTUs and the World Bank catalog (S)',
+        }}
       >
-        <div>
-          <p className="text-xs uppercase text-gray-400 tracking-wider">Truth Lens</p>
-          <h1 className="text-3xl font-bold text-gradient-neon flex items-center gap-2">
-            <Globe className="w-7 h-7" /> Global — World Bank Data &amp; Knowledge
-          </h1>
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <p className="text-neon-cyan mt-1 text-sm">{total.toLocaleString()} DTUs in your global corpus</p>
-        </div>
-        <button
-          className="btn-ghost text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['global-dtus-browser'] })}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </motion.header>
+    <div className="space-y-5">
+      <WorldBankPanel domain="global" />
 
-      {/* Stat Cards — every value is either live-fetched or an accurate count
-          of the real, code-backed catalogs the pickers below actually offer
-          (never an invented "index"). */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          { icon: Globe, color: 'text-neon-cyan', value: total.toLocaleString(), label: 'Total DTUs' },
-          { icon: Bookmark, color: 'text-neon-green', value: savedViewsQuery.data ?? '—', label: 'Saved Views' },
-          { icon: Map, color: 'text-neon-purple', value: WB_COUNTRIES.length, label: 'Countries Curated' },
-          { icon: TrendingUp, color: 'text-yellow-400', value: WB_INDICATORS.length, label: 'Indicators Curated' },
+          { icon: Globe, color: 'text-teal-300', value: total.toLocaleString(), label: 'Total DTUs' },
+          { icon: Bookmark, color: 'text-emerald-300', value: savedViewsQuery.data ?? '—', label: 'Saved Views' },
+          { icon: Map, color: 'text-violet-300', value: WB_COUNTRIES.length, label: 'Countries Curated' },
+          { icon: TrendingUp, color: 'text-amber-300', value: WB_INDICATORS.length, label: 'Indicators Curated' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.08, duration: 0.3 }}
-            className="lens-card"
+            transition={{ delay: i * 0.05, duration: 0.25 }}
+            className="rounded-2xl border border-white/10 bg-[#111] p-4"
           >
-            <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-sm text-gray-400">{stat.label}</p>
+            <stat.icon className={`mb-2 h-5 w-5 ${stat.color}`} />
+            <p className="text-2xl font-semibold text-zinc-100">{stat.value}</p>
+            <p className="text-sm text-zinc-500">{stat.label}</p>
           </motion.div>
         ))}
       </div>
 
       <RealtimeDataPanel domain="global" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="global" data={{}} compact />
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 justify-center',
-              activeTab === tab.key
-                ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <AnimatePresence mode="wait">
         {activeTab === 'explore' && (
-          <motion.div
-            key="explore"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-4"
-          >
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="font-semibold mb-1 flex items-center gap-2">
               <Compass className="w-4 h-4 text-neon-cyan" /> World Bank Data Explorer
             </h2>
@@ -247,18 +231,11 @@ export default function GlobalLensPage() {
               indicator catalog, and country profiles. Save any view for a shareable link.
             </p>
             <DataExplorer />
-          </motion.div>
+          </div>
         )}
 
         {activeTab === 'index' && (
-          <motion.div
-            key="index"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-4"
-          >
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="font-semibold mb-1 flex items-center gap-2">
               <Award className="w-4 h-4 text-neon-cyan" /> Global Development Index
             </h2>
@@ -268,18 +245,11 @@ export default function GlobalLensPage() {
               {' '}&mdash; every score is derived from fetched data, never an invented benchmark.
             </p>
             <DevelopmentIndex />
-          </motion.div>
+          </div>
         )}
 
         {activeTab === 'correlate' && (
-          <motion.div
-            key="correlate"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-4"
-          >
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="font-semibold mb-1 flex items-center gap-2">
               <GitBranch className="w-4 h-4 text-neon-purple" /> Indicator Correlations
             </h2>
@@ -289,18 +259,12 @@ export default function GlobalLensPage() {
               {' '}&mdash; e.g. does internet access correlate with life expectancy across countries?
             </p>
             <IndicatorCorrelations />
-          </motion.div>
+          </div>
         )}
 
         {activeTab === 'search' && (
-          <motion.div
-            key="search"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-          >
-            <section className="panel p-4 grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          <div>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4 grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               <label className="space-y-2">
                 <span className="text-xs uppercase tracking-wider text-gray-400">Search your DTUs + the World Bank catalog</span>
                 <div className="relative">
@@ -329,7 +293,7 @@ export default function GlobalLensPage() {
                 Real relevance scoring, dedup, and diversity -- computed by the
                 macro, not the client. */}
             {query.trim().length >= 2 && (
-              <section className="panel p-4 mb-4 space-y-3">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4 mb-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-neon-cyan flex items-center gap-2 text-sm">
                     <Search className="w-4 h-4" /> Unified results for &quot;{query}&quot;
@@ -368,7 +332,7 @@ export default function GlobalLensPage() {
               </section>
             )}
 
-            <section className="panel divide-y divide-lattice-border">
+            <section className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-[#111]">
               {isLoading ? (
                 <div className="p-6 text-gray-400">Loading DTUs...</div>
               ) : items.length === 0 ? (
@@ -418,7 +382,7 @@ export default function GlobalLensPage() {
               )}
             </section>
 
-            <footer className="flex items-center justify-between panel p-3 mt-4">
+            <footer className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#111] p-3">
               <p className="text-xs text-gray-400">
                 Showing {total === 0 ? 0 : offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
               </p>
@@ -431,13 +395,13 @@ export default function GlobalLensPage() {
                 </button>
               </div>
             </footer>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
         <CountryAtlas />
       </section>
-    </div>          <CrossLensRecentsPanel lensId="global" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
