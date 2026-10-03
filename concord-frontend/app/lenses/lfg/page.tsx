@@ -15,6 +15,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle, Loader2, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 type Role = 'tank' | 'healer' | 'dps' | 'support' | 'any';
@@ -37,6 +40,11 @@ const ROLES: Role[] = ['tank', 'healer', 'dps', 'support', 'any'];
 const WORLDS = ['concordia-hub', 'tunya', 'sovereign-ruins', 'crime', 'cyber', 'superhero', 'fantasy', 'lattice-crucible'];
 
 export default function LfgLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [reloadKey, setReloadKey] = useState(0);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const hasRows = useRef(false);
   const [requests, setRequests] = useState<LfgRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -48,43 +56,50 @@ export default function LfgLensPage() {
   // Track which posts belong to this session so the owner can cancel them
   // (the open list is anonymous — userIds are opaque, so we remember ids
   // we just created rather than guessing identity).
-  const ownPosts = useRef<Set<string>>(new Set());
-  const firstLoadDone = useRef(false);
+  const [ownPosts, setOwnPosts] = useState<ReadonlySet<string>>(() => new Set());
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
     setTimeout(() => setFlash(null), 3000);
   }, []);
 
-  const refresh = useCallback(async () => {
-    // Only show the full-panel spinner on the very first load; background
-    // polls refresh in place so the list doesn't flicker.
-    if (!firstLoadDone.current) setLoadState('loading');
-    try {
-      const params = new URLSearchParams();
-      if (filterWorld !== 'all') params.set('worldId', filterWorld);
-      if (filterRole !== 'all') params.set('role', filterRole);
-      const res = await fetch(`/api/lfg/open?${params.toString()}`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`server returned ${res.status}`);
-      const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || 'request failed');
-      setRequests(Array.isArray(j.requests) ? j.requests : []);
-      setLoadError(null);
-      setLoadState('ready');
-    } catch (err) {
-      // On a background refresh, keep the last-known list visible; only flip
-      // to the error panel when we have nothing to show.
-      setLoadError(err instanceof Error ? err.message : 'network error');
-      setLoadState((prev) => (firstLoadDone.current && requests.length > 0 ? prev : 'error'));
-    } finally {
-      firstLoadDone.current = true;
-    }
-  }, [filterWorld, filterRole, requests.length]);
+  const refresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  useEffect(() => { refresh(); }, [refresh]);
-  // Background refresh — tab-visibility-paused + jittered (see
-  // hooks/useSmartPolling.ts). `immediate: false` since the effect above
-  // already covers the mount-time / filter-change call.
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (filterWorld !== 'all') params.set('worldId', filterWorld);
+    if (filterRole !== 'all') params.set('role', filterRole);
+    fetch(`/api/lfg/open?${params.toString()}`, { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`server returned ${res.status}`);
+        const j = await res.json();
+        if (!j?.ok) throw new Error(j?.error || 'request failed');
+        return Array.isArray(j.requests) ? (j.requests as LfgRow[]) : [];
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        hasRows.current = rows.length > 0;
+        setRequests(rows);
+        setLoadError(null);
+        setLoadState('ready');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // Background polls keep the last-known list visible; only flip to the
+        // error panel when there is nothing to show.
+        setLoadError(err instanceof Error ? err.message : 'network error');
+        setLoadState((prev) => (hasRows.current ? prev : 'error'));
+      });
+    return () => { cancelled = true; };
+  }, [filterWorld, filterRole, reloadKey]);
+
+  const retry = useCallback(() => {
+    setLoadState('loading');
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  // Background refresh — tab-visibility-paused + jittered.
   useSmartPolling(refresh, 8_000, { immediate: false });
 
   const handlePost = useCallback(async () => {
@@ -97,7 +112,7 @@ export default function LfgLensPage() {
       });
       const j = await r.json();
       if (j.ok) {
-        if (j.id) ownPosts.current.add(j.id);
+        if (j.id) setOwnPosts((prev) => new Set(prev).add(j.id));
         showFlash('ok', 'Request posted.');
         refresh();
         setPostForm({ ...postForm, note: '' });
@@ -125,7 +140,7 @@ export default function LfgLensPage() {
     try {
       const r = await fetch(`/api/lfg/${lfgId}/cancel`, { method: 'POST', credentials: 'include' });
       const j = await r.json();
-      if (j.ok) { ownPosts.current.delete(lfgId); showFlash('ok', 'Request cancelled.'); }
+      if (j.ok) { setOwnPosts((prev) => { const n = new Set(prev); n.delete(lfgId); return n; }); showFlash('ok', 'Request cancelled.'); }
       else showFlash('err', j.error || j.reason || 'cancel failed');
       refresh();
     } catch {
@@ -134,31 +149,28 @@ export default function LfgLensPage() {
   }, [refresh, showFlash]);
 
   return (
-    <LensShell lensId="lfg" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-        <header className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-              <Users2 className="h-5 w-5 text-cyan-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Looking For Group</h1>
-              <p className="mt-0.5 truncate text-xs text-slate-400">Find or post group requests across all worlds.</p>
-            </div>
-            <button onClick={refresh} aria-label="Refresh requests" className="rounded-full border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-300 hover:bg-cyan-500/20">
-              <RefreshCcw className="h-3.5 w-3.5" />
-            </button>
+    <LensShell lensId="lfg" asMain={false}>
+      <NorthStarFrame
+        lensId="lfg"
+        crumb="Looking for group"
+        title={`Who is looking, ${who || 'traveller'}`}
+        subtitle="Find or post group requests across every world. Invite a poster and a party forms."
+        actions={(
+          <button onClick={refresh} aria-label="Refresh requests" className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-300 hover:bg-white/10">
+            <RefreshCcw className="h-4 w-4" />
+          </button>
+        )}
+        cta={{ label: 'Post a request', icon: Users2, onClick: () => noteRef.current?.focus(), title: 'Jump to the post form' }}
+      >
+        {flash && (
+          <div role="status" className={`mb-4 flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
+            {flash.kind === 'ok' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+            {flash.msg}
           </div>
-          {flash && (
-            <div role="status" className={`mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md px-3 py-1.5 text-[11px] ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
-              {flash.kind === 'ok' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-              {flash.msg}
-            </div>
-          )}
-        </header>
-
-        <section className="mx-auto grid max-w-screen-2xl gap-4 px-3 py-4 sm:grid-cols-[2fr_1fr] sm:px-6 sm:py-5">
+        )}
+        <section className="grid gap-4 sm:grid-cols-[2fr_1fr]">
           {/* Open requests */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Filter className="h-4 w-4" /> Open requests
             </h2>
@@ -188,7 +200,7 @@ export default function LfgLensPage() {
               <div role="alert" className="flex flex-col items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/5 p-6 text-center text-[11px] text-rose-200">
                 <AlertCircle className="h-5 w-5" aria-hidden="true" />
                 <p>Could not load requests{loadError ? `: ${loadError}` : '.'}</p>
-                <button onClick={refresh} className="mt-1 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-rose-100 hover:bg-rose-500/20">
+                <button onClick={retry} className="mt-1 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-rose-100 hover:bg-rose-500/20">
                   <RefreshCcw className="mr-1 inline h-3 w-3" aria-hidden="true" /> Retry
                 </button>
               </div>
@@ -205,7 +217,7 @@ export default function LfgLensPage() {
             {loadState === 'ready' && requests.length > 0 && (
               <ul className="space-y-2" aria-label="Open group requests">
                 {requests.map((r) => {
-                  const mine = ownPosts.current.has(r.id);
+                  const mine = ownPosts.has(r.id);
                   return (
                     <li key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2">
                       <div className="min-w-0">
@@ -236,7 +248,7 @@ export default function LfgLensPage() {
           </div>
 
           {/* Post form */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-fuchsia-300">
               <Plus className="h-4 w-4" /> Post your own
             </h2>
@@ -261,7 +273,7 @@ export default function LfgLensPage() {
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Note (optional)</span>
-              <textarea aria-label="Request note" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              <textarea ref={noteRef} aria-label="Request note" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
             </label>
             <button onClick={handlePost} disabled={busy === 'post'} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
               {busy === 'post' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
@@ -270,7 +282,7 @@ export default function LfgLensPage() {
             <p className="mt-2 text-[10px] text-slate-500">Posting again in the same world replaces your previous open request.</p>
           </div>
         </section>
-      </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

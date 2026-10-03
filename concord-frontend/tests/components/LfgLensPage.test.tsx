@@ -8,6 +8,9 @@ import React from 'react';
 // it to a no-op.
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+
 import LfgLensPage from '@/app/lenses/lfg/page';
 
 const realFetch = global.fetch;
