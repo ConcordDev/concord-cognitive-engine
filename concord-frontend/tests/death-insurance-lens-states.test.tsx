@@ -35,6 +35,7 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
@@ -164,12 +165,13 @@ describe('death-insurance lens — four UX states', () => {
       'pact-notifications': () => reply({ notifications: [{ kind: 'expiring', severity: 'high' }], count: 1, unreadHigh: 1 }),
       'pact-payout-history': () => reply({ paidOut: [], received: [], totalPaidOutSparks: 600, totalReceivedSparks: 0 }),
     }));
-    const { getByTestId } = render(<DeathInsurancePage />);
+    const { getByTestId, getByRole } = render(<DeathInsurancePage />);
     await waitFor(() => expect(getByTestId('pact-pct_1')).toBeInTheDocument());
     // real values flow into the row + the rollup children
     expect(getByTestId('pact-pct_1').textContent).toMatch(/1000 sparks/);
     expect(getByTestId('bene-pct_b')).toBeInTheDocument();
     expect(getByTestId('notifications').textContent).toBe('notes:1');
+    fireEvent.click(getByRole('button', { name: /^Payouts/ }));
     expect(getByTestId('payout-history').textContent).toBe('paidOut:600');
   });
 

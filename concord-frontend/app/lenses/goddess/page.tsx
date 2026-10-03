@@ -12,7 +12,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GoddessGallery } from '@/components/goddess/GoddessGallery';
@@ -21,7 +23,7 @@ import { DispatchArchive } from '@/components/goddess/DispatchArchive';
 import { ToneSubscriptions } from '@/components/goddess/ToneSubscriptions';
 import { TONE_COLOR, KNOWN_TONES, type Dispatch } from '@/components/goddess/types';
 import { lensRun } from '@/lib/api/client';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Loader2, Radio, Archive, Bell, RefreshCw } from 'lucide-react';
 
 type Tab = 'feed' | 'archive' | 'alerts';
 
@@ -34,6 +36,8 @@ export default function GoddessPage() {
     { id: 'goddess-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'goddess' });
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,36 +82,39 @@ export default function GoddessPage() {
 
   const openDispatch = (id: number) => { setOpenId(id); };
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: 'feed', label: 'Feed' },
-    { id: 'archive', label: 'Archive' },
-    { id: 'alerts', label: 'Alerts' },
+  const TABS: { id: Tab; label: string; title: string; icon: typeof Radio }[] = [
+    { id: 'feed', label: 'Feed', title: 'What Concordia is saying', icon: Radio },
+    { id: 'archive', label: 'Archive', title: 'Everything she has said', icon: Archive },
+    { id: 'alerts', label: 'Alerts', title: 'Hear it when it matters', icon: Bell },
   ];
+  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="goddess">
       <FirstRunTour lensId="goddess" />
       <DepthBadge lensId="goddess" size="sm" className="ml-2" />
-      <div className="p-6 sm:p-8 max-w-2xl mx-auto">
-        <header className="mb-5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <h1 className="text-2xl font-bold text-zinc-100">Concordia Speaks</h1>
-          </div>
-          <p className="mt-1 text-sm text-zinc-400">
-            Ambient broadcasts from Concordia, composed hourly from world ecosystem score,
-            refusal-field strength, and drift events.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <label className="text-xs text-zinc-400" htmlFor="goddess-world">World:</label>
+      <NorthStarFrame
+        lensId="goddess"
+        crumb="Concordia"
+        title={openId !== null ? 'A single dispatch' : `${current.title}${tab === 'feed' && who ? `, ${who}` : ''}`}
+        subtitle="Ambient broadcasts from Concordia, composed hourly from world ecosystem score, refusal-field strength, and drift events."
+        actions={
+          <label className="flex items-center gap-2 text-xs text-zinc-400" htmlFor="goddess-world">
+            World
             <input
               id="goddess-world" type="text" value={worldId}
               onChange={(e) => { setWorldId(e.target.value); setOpenId(null); }}
-              className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 font-mono"
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-zinc-100"
             />
-          </div>
-        </header>
-
+          </label>
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+        activeTab={tab}
+        onTab={(id) => { setOpenId(null); setTab(id as Tab); }}
+        tabsLabel="Goddess views"
+        cta={{ label: 'Listen again', icon: RefreshCw, onClick: retryFeed, title: 'Re-fetch the latest dispatches' }}
+      >
+        <div className="max-w-3xl">
         {openId !== null ? (
           <DispatchDetail
             dispatchId={openId}
@@ -116,21 +123,6 @@ export default function GoddessPage() {
           />
         ) : (
           <>
-            <nav className="mb-4 flex gap-1 border-b border-zinc-800">
-              {TABS.map((t) => (
-                <button
-                  key={t.id} type="button" onClick={() => setTab(t.id)}
-                  className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
-                    tab === t.id
-                      ? 'border-amber-400 text-amber-200'
-                      : 'border-transparent text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </nav>
-
             {tab === 'feed' && (
               <>
                 <div className="mb-3 flex flex-wrap gap-1.5">
@@ -216,10 +208,11 @@ export default function GoddessPage() {
           </>
         )}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        </div>
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <GoddessGallery />
         </section>
-      </div>      <CrossLensRecentsPanel lensId="goddess" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
