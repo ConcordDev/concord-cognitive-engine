@@ -1,117 +1,90 @@
 'use client';
 
 /**
- * Tools Lens — multi-utility surface: live web research, multi-language
- * compile/transpile, and a full multi-party e-signature workflow. Every
- * tab is a real workflow over the `tools` domain macros (tools.research,
- * tools.compile, tools.esign-*) — readable result rendering, per-tool
- * history, and tamper-evident signing with an audit trail.
+ * Tools lens: north-star chrome over live web research, multi-language
+ * compile/transpile, a multi-party e-signature workflow, and developer
+ * tooling. Every tab is a real workflow over the `tools` domain macros
+ * (tools.research, tools.compile, tools.esign-*).
  */
 
+import { useCallback, useState } from 'react';
+import { Globe, Hammer, FileSignature, Github, Search } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { ToolsRepos } from '@/components/tools/ToolsRepos';
 import { WebResearchTool } from '@/components/tools/WebResearchTool';
 import { CompileTool } from '@/components/tools/CompileTool';
 import { ESignatureTool } from '@/components/tools/ESignatureTool';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Hammer, FileSignature, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 
-type TabKey = 'web' | 'compile' | 'esign';
+type TabKey = 'web' | 'compile' | 'esign' | 'repos';
+
+const TABS: { key: TabKey; label: string; keys: string; title: string; hint: string; icon: typeof Globe }[] = [
+  { key: 'web', label: 'Web research', keys: 'w', title: 'Look it up', hint: 'Live web research', icon: Globe },
+  { key: 'compile', label: 'Compile', keys: 'c', title: 'Build and transpile', hint: 'Compile / transpile across languages', icon: Hammer },
+  { key: 'esign', label: 'E-signature', keys: 's', title: 'Get it signed', hint: 'Multi-party signing with audit trail', icon: FileSignature },
+  { key: 'repos', label: 'Developer tooling', keys: 'd', title: 'Tooling worth knowing', hint: 'Developer tooling on GitHub', icon: Github },
+];
 
 export default function ToolsLensPage() {
   useLensNav('tools');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<TabKey>('web');
-  const [showRepos, setShowRepos] = useState(false);
 
-  // Lens-scoped keyboard commands. Single-letter aliases per tool.
+  const research = useCallback(() => {
+    setActiveTab('web');
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="tools"] input:not([type="file"]), [data-lens-theme="tools"] textarea');
+      el?.focus();
+    });
+  }, []);
+
   useLensCommand(
     [
-      { id: 'goto-web', keys: 'w', description: 'Web research', category: 'navigation', action: () => setActiveTab('web') },
-      { id: 'goto-compile', keys: 'c', description: 'Compile / transpile', category: 'navigation', action: () => setActiveTab('compile') },
-      { id: 'goto-esign', keys: 's', description: 'E-signature', category: 'navigation', action: () => setActiveTab('esign') },
+      ...TABS.map((t) => ({
+        id: `goto-${t.key}`,
+        keys: t.keys,
+        description: t.label,
+        category: 'navigation' as const,
+        action: () => setActiveTab(t.key),
+      })),
+      { id: 'tools-research', keys: 'n', description: 'New research query', category: 'actions' as const, action: research },
     ],
     { lensId: 'tools' },
   );
 
-  const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
-    { key: 'web', label: 'Web research', icon: Globe },
-    { key: 'compile', label: 'Compile', icon: Hammer },
-    { key: 'esign', label: 'E-signature', icon: FileSignature },
-  ];
+  const current = TABS.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="tools" asMain={false}>
-      <FirstRunTour lensId="tools" />      <DepthBadge lensId="tools" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-black pb-12 text-yellow-50">
-        <header className="sticky top-0 z-10 border-b border-yellow-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Hammer className="h-6 w-6 text-yellow-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Tools</h1>
-              <p className="text-xs text-yellow-700">Web research · Compile / build · E-signature</p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="border-b border-yellow-900/30 px-4 md:px-8" aria-label="Tools sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {tabs.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
-                  activeTab === key ? 'border-yellow-400 text-yellow-200' : 'border-transparent text-yellow-700 hover:text-yellow-400'
-                }`}
-                aria-pressed={activeTab === key}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait">
-            {activeTab === 'web' && (
-              <motion.section key="web" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <WebResearchTool />
-              </motion.section>
-            )}
-            {activeTab === 'compile' && (
-              <motion.section key="compile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <CompileTool />
-              </motion.section>
-            )}
-            {activeTab === 'esign' && (
-              <motion.section key="esign" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <ESignatureTool />
-              </motion.section>
-            )}
-          </AnimatePresence>
-        </main>
-
-        <section className="mx-auto mt-6 max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowRepos(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Developer tooling (GitHub)</span>
-            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showRepos && (
-            <div className="mt-3">
-              <ToolsRepos />
-            </div>
-          )}
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="tools" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <FirstRunTour lensId="tools" />
+      <DepthBadge lensId="tools" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="tools"
+        crumb="Tools"
+        title={`${current.title}${activeTab === 'web' && who ? `, ${who}` : ''}`}
+        subtitle="Web research, compile / build, e-signature and developer tooling."
+        tabs={TABS.map((t) => ({ id: t.key, label: t.label, keys: t.keys, hint: t.hint, icon: t.icon }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as TabKey)}
+        tabsLabel="Tools sections"
+        cta={{ label: 'New research', icon: Search, onClick: research, title: 'New research query (N)' }}
+      >
+        {activeTab === 'web' && <WebResearchTool />}
+        {activeTab === 'compile' && <CompileTool />}
+        {activeTab === 'esign' && <ESignatureTool />}
+        {activeTab === 'repos' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <ToolsRepos />
+          </section>
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }
