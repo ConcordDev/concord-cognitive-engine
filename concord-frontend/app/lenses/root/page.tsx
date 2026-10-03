@@ -3,7 +3,9 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
@@ -14,8 +16,7 @@ import { AlgebraTutorial } from '@/components/root/AlgebraTutorial';
 import { ComputationNotebook } from '@/components/root/ComputationNotebook';
 import type { NotebookHandle, ReloadPayload } from '@/components/root/ComputationNotebook';
 import { SharedComputationBanner } from '@/components/root/SharedComputationBanner';
-import { motion } from 'framer-motion';
-import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle, History, Share2 } from 'lucide-react';
+import { ArrowRightLeft, X, BookOpen, AlertCircle, History, Share2, Calculator, Library, GraduationCap, Activity, Save } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
 
@@ -110,11 +111,30 @@ const GLYPH_REF = Object.entries(GLYPHS).map(([digit, glyph]) => ({
   digit: Number(digit), glyph, name: GLYPH_NAMES[glyph],
 }));
 
+type RootView = 'convert' | 'compute' | 'notebook' | 'learn' | 'metrics';
+
+const VIEWS: { id: RootView; label: string; keys: string; title: string; hint: string; icon: typeof Calculator }[] = [
+  { id: 'convert', label: 'Convert', keys: '1', title: 'Say a number in glyphs', hint: 'Decimal and glyph converter with glyph keyboard', icon: ArrowRightLeft },
+  { id: 'compute', label: 'Compute', keys: '2', title: 'Do arithmetic where numbers mean something', hint: 'Operation playground, expression evaluator, bitwise and modular ops', icon: Calculator },
+  { id: 'notebook', label: 'Notebook', keys: '3', title: 'What you have worked out', hint: 'Saved computations with reload and share', icon: Library },
+  { id: 'learn', label: 'Learn', keys: '4', title: 'Learn the base-6 glyphs', hint: 'Glyph reference and worked-example tutorial', icon: GraduationCap },
+  { id: 'metrics', label: 'Metrics', keys: '5', title: 'How the algebra is being used', hint: 'Live refusal-algebra metrics', icon: Activity },
+];
+
+const CARD = 'rounded-2xl border border-white/10 bg-[#111] p-4';
+
 /* ─── Component ─── */
 export default function RootLens() {
-  useLensCommand([
-    { id: 'root-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'root' });
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<RootView>('convert');
+  useLensCommand(VIEWS.map((v) => ({
+    id: `root-${v.id}`,
+    keys: v.keys,
+    description: `${v.label} — ${v.hint}`,
+    category: 'navigation' as const,
+    action: () => setView(v.id),
+  })), { lensId: 'root' });
 
   useLensNav('root');
 
@@ -205,190 +225,183 @@ export default function RootLens() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const canSave = !isNaN(parseFloat(opA)) && !isNaN(parseFloat(opB)) && !!opResult;
+  const current = VIEWS.find((v) => v.id === view)!;
+
+  const glyphReference = (
+    <section className={CARD}>
+      <div className="mb-4 flex items-center gap-2">
+        <BookOpen className="h-4 w-4 text-zinc-400" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">Glyph Reference</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {GLYPH_REF.map(({ digit, glyph, name }) => (
+          <div key={digit} className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3">
+            <span className="w-8 text-center text-2xl text-teal-300">{glyph}</span>
+            <div>
+              <div className="text-xs text-zinc-400">base-6 digit {digit}</div>
+              <div className="text-sm text-zinc-200">{name}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
     <LensShell lensId="root" asMain={false}>
-      <FirstRunTour lensId="root" />      <DepthBadge lensId="root" size="sm" className="ml-2" />
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <FirstRunTour lensId="root" />
+      <DepthBadge lensId="root" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="root"
+        crumb="Root"
+        title={`${current.title}${view === 'convert' && who ? `, ${who}` : ''}`}
+        subtitle="Refusal Algebra: a base-6 numeral system where numbers carry meaning."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as RootView)}
+        tabsLabel="Root views"
+        cta={{
+          label: 'Save to notebook',
+          icon: Save,
+          onClick: () => { setView('compute'); void saveResult(); },
+          disabled: !canSave,
+          title: canSave ? 'Save the current operation to your notebook' : 'Enter a and b in the playground first',
+        }}
+      >
+        <div className="space-y-5">
+          <SharedComputationBanner onOpen={applyReload} />
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Hash className="w-7 h-7 text-violet-400" />
-          <div>
-            <h1 className="text-2xl font-bold text-violet-300">Refusal Algebra</h1>
-            <p className="text-sm text-gray-400">Base-6 numeral system — where numbers carry meaning</p>
-          </div>
-        </div>
-
-        {/* Shared computation deep-link banner */}
-        <SharedComputationBanner onOpen={applyReload} />
-
-        {/* Glyph Reference */}
-        <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-4 h-4 text-gray-400" />
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Glyph Reference</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {GLYPH_REF.map(({ digit, glyph, name }) => (
-              <div key={digit} className="bg-gray-800 rounded-lg p-3 flex items-center gap-3">
-                <span className="text-2xl text-violet-300 w-8 text-center">{glyph}</span>
-                <div>
-                  <div className="text-xs text-gray-400">base-6 digit {digit}</div>
-                  <div className="text-sm text-gray-300">{name}</div>
-                </div>
+          {view === 'convert' && (
+            <>
+              <div className="grid gap-5 xl:grid-cols-[3fr_2fr]">
+                <section className={CARD}>
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-300">Converter</h2>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs text-zinc-400">Decimal</label>
+                      <input
+                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
+                        placeholder="e.g. 47"
+                        value={decInput}
+                        onChange={e => setDecInput(e.target.value)}
+                      />
+                      {dec2glyph && <div className="mt-1 text-xl text-teal-300">{dec2glyph}</div>}
+                    </div>
+                    <button onClick={swap}
+                      className="mt-7 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-400 transition-colors hover:text-teal-300" aria-label="Arrow right left">
+                      <ArrowRightLeft className="h-4 w-4" />
+                    </button>
+                    <div className="space-y-2">
+                      <label className="text-xs text-zinc-400">Glyph notation</label>
+                      <input
+                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
+                        placeholder="e.g. ⟲⟲⟐⊚"
+                        value={glyphInput}
+                        onChange={e => setGlyphInput(e.target.value)}
+                      />
+                      {glyphError && <div className="flex items-center gap-1 text-xs text-red-400"><AlertCircle className="h-3 w-3" />{glyphError}</div>}
+                      {glyph2dec !== null && !glyphError && <div className="mt-1 text-xl text-emerald-300">{glyph2dec}</div>}
+                    </div>
+                  </div>
+                  <div className="mt-5 border-t border-white/10 pt-4">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Insert Glyphs</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(GLYPHS).map(([d, g]) => (
+                        <button key={d}
+                          onClick={() => setGlyphInput(prev => prev + g)}
+                          title={`${GLYPH_NAMES[g]} (${d})`}
+                          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-lg text-teal-300 transition-colors hover:border-teal-400/40">
+                          {g}
+                        </button>
+                      ))}
+                      <button onClick={() => setGlyphInput(prev => prev + RADIX)}
+                        title="Radix separator"
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-teal-400/40">
+                        ⸱ (radix)
+                      </button>
+                      <button onClick={() => setGlyphInput('')}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-red-500/50 hover:text-red-400" aria-label="Close">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </section>
+                {glyphReference}
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Converter */}
-        <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Converter</h2>
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
-            {/* Decimal input */}
-            <div className="space-y-2">
-              <label className="text-xs text-gray-400">Decimal</label>
-              <input
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
-                placeholder="e.g. 47"
-                value={decInput}
-                onChange={e => setDecInput(e.target.value)}
-              />
-              {dec2glyph && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="text-xl text-violet-300 mt-1">{dec2glyph}</motion.div>
-              )}
-            </div>
-
-            {/* Swap */}
-            <button onClick={swap}
-              className="mt-7 p-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-violet-400 transition-colors" aria-label="Arrow right left">
-              <ArrowRightLeft className="w-4 h-4" />
-            </button>
-
-            {/* Glyph input */}
-            <div className="space-y-2">
-              <label className="text-xs text-gray-400">Glyph notation</label>
-              <input
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
-                placeholder="e.g. ⟲⟲⟐⊚"
-                value={glyphInput}
-                onChange={e => setGlyphInput(e.target.value)}
-              />
-              {glyphError && <div className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{glyphError}</div>}
-              {glyph2dec !== null && !glyphError && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="text-xl text-emerald-300 mt-1">{glyph2dec}</motion.div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Operation Playground */}
-        <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Operation Playground</h2>
-            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-              <input type="checkbox" checked={showSemantic} onChange={e => setShowSemantic(e.target.checked)}
-                className="accent-violet-500" />
-              Show semantic layer
-            </label>
-          </div>
-
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_auto] gap-3 items-center mb-4">
-            <input className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
-              placeholder="a (decimal)" value={opA} onChange={e => setOpA(e.target.value)} />
-            <select className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none text-sm"
-              value={op} onChange={e => setOp(e.target.value)}>
-              {['+', '−', '×', '÷'].map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-            <input className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
-              placeholder="b (decimal)" value={opB} onChange={e => setOpB(e.target.value)} />
-            <span className="text-gray-400 text-sm">=</span>
-            <div className="text-xl text-violet-300 min-w-[4rem]">{opResult?.numerical ?? '–'}</div>
-          </div>
-
-          {opResult && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="text-sm text-gray-400">
-                  <span className="text-gray-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => void saveResult()}
-                    className="text-[11px] px-2 py-1 bg-violet-700/40 hover:bg-violet-700/60 border border-violet-700 rounded text-violet-200 inline-flex items-center gap-1"
-                  >
-                    <History className="w-3 h-3" /> Save to notebook
-                  </button>
-                  <button
-                    onClick={() => void shareResult()}
-                    className="text-[11px] px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 inline-flex items-center gap-1"
-                  >
-                    <Share2 className="w-3 h-3" /> Share
-                  </button>
-                </div>
-              </div>
-              {showSemantic && (
-                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                  className="text-xs text-violet-400 italic bg-violet-950/30 rounded-lg p-3 border border-violet-900/40">
-                  {opResult.semantic}
-                </motion.div>
-              )}
-              {opNotice && <div className="text-[11px] text-emerald-400">{opNotice}</div>}
-            </div>
+              <GlyphKeyboard onInsert={setGlyphInput} />
+            </>
           )}
-        </section>
 
-        {/* Multi-term expression evaluator */}
-        <ExpressionEvaluator onSaved={() => notebookRef.current?.refresh()} />
+          {view === 'compute' && (
+            <>
+              <section className={CARD}>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">Operation Playground</h2>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
+                    <input type="checkbox" checked={showSemantic} onChange={e => setShowSemantic(e.target.checked)} className="accent-teal-400" />
+                    Show semantic layer
+                  </label>
+                </div>
+                <div className="mb-4 grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-3">
+                  <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
+                    placeholder="a (decimal)" value={opA} onChange={e => setOpA(e.target.value)} />
+                  <select className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:outline-none"
+                    value={op} onChange={e => setOp(e.target.value)}>
+                    {['+', '−', '×', '÷'].map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
+                    placeholder="b (decimal)" value={opB} onChange={e => setOpB(e.target.value)} />
+                  <span className="text-sm text-zinc-400">=</span>
+                  <div className="min-w-[4rem] text-xl text-teal-300">{opResult?.numerical ?? '–'}</div>
+                </div>
+                {opResult && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm text-zinc-400">
+                        <span className="text-zinc-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => void saveResult()}
+                          className="inline-flex items-center gap-1 rounded-lg border border-teal-400/30 bg-teal-400/10 px-2.5 py-1 text-[11px] text-teal-200 hover:bg-teal-400/20">
+                          <History className="h-3 w-3" /> Save to notebook
+                        </button>
+                        <button onClick={() => void shareResult()}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-white/10">
+                          <Share2 className="h-3 w-3" /> Share
+                        </button>
+                      </div>
+                    </div>
+                    {showSemantic && (
+                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs italic text-zinc-300">{opResult.semantic}</div>
+                    )}
+                    {opNotice && <div className="text-[11px] text-emerald-400">{opNotice}</div>}
+                  </div>
+                )}
+              </section>
+              <ExpressionEvaluator onSaved={() => notebookRef.current?.refresh()} />
+              <BitwisePanel />
+            </>
+          )}
 
-        {/* Bitwise / modular operations */}
-        <BitwisePanel />
-
-        {/* Glyph keyboard — type semantic names */}
-        <GlyphKeyboard onInsert={setGlyphInput} />
-
-        {/* Saved notebook with history re-load + per-entry share */}
-        <ComputationNotebook ref={notebookRef} onReload={applyReload} />
-
-        {/* Worked-example tutorial */}
-        <AlgebraTutorial />
-
-        {/* Glyph insertion palette */}
-        <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Insert Glyphs</h2>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(GLYPHS).map(([d, g]) => (
-              <button key={d}
-                onClick={() => setGlyphInput(prev => prev + g)}
-                title={`${GLYPH_NAMES[g]} (${d})`}
-                className="px-3 py-2 bg-gray-800 hover:bg-violet-900/40 border border-gray-700 hover:border-violet-700 rounded-lg text-lg text-violet-300 transition-colors">
-                {g}
-              </button>
-            ))}
-            <button onClick={() => setGlyphInput(prev => prev + RADIX)}
-              title="Radix separator"
-              className="px-3 py-2 bg-gray-800 hover:bg-violet-900/40 border border-gray-700 hover:border-violet-700 rounded-lg text-violet-500 text-sm transition-colors">
-              ⸱ (radix)
-            </button>
-            <button onClick={() => setGlyphInput('')}
-              className="px-3 py-2 bg-gray-800 hover:bg-red-900/30 border border-gray-700 hover:border-red-700 rounded-lg text-gray-400 hover:text-red-400 text-sm transition-colors" aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
+          <div className={view === 'notebook' ? '' : 'hidden'}>
+            <ComputationNotebook ref={notebookRef} onReload={(p) => { applyReload(p); setView(p.kind === 'expression' ? 'convert' : 'compute'); }} />
           </div>
-        </section>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <RootMetrics />
-        </section>
-      </div>
-    </div>
+          {view === 'learn' && (
+            <>
+              {glyphReference}
+              <AlgebraTutorial />
+            </>
+          )}
 
-      {/* The notebook's four UX states (loading role=status / error role=alert
-          + Retry / empty / populated) are the genuine, tested data-bound states
-          for this lens — see ComputationNotebook above + tests/root-lens-states.test.tsx. */}          <CrossLensRecentsPanel lensId="root" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {view === 'metrics' && (
+            <section className={CARD}>
+              <RootMetrics />
+            </section>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
