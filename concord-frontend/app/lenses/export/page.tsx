@@ -11,16 +11,15 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Download, Wrench, LayoutGrid } from 'lucide-react';
-import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -47,6 +46,8 @@ export default function ExportLensPage() {
   useLensIdentity('export');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('export');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ExportView>('desk');
 
   useLensCommand(
@@ -77,58 +78,28 @@ export default function ExportLensPage() {
     <LensShell lensId="export" asMain={false}>
       <FirstRunTour lensId="export" />
       <DepthBadge lensId="export" size="sm" className="ml-2" />
-      <div data-lens-theme="export" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <SvgIcon name="export-package" size={28} className="text-neon-green shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Export</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="export" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                DTU, JSON, CSV, Markdown, or plain text — your data, your format.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Export views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="export"
+        crumb="Export"
+        title={`Take your data with you${active === 'desk' && who ? `, ${who}` : ''}`}
+        subtitle="DTU, JSON, CSV, Markdown or plain text, in your format"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="export" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        }
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as ExportView)}
+        tabsLabel="Export views"
+        cta={{ label: 'Export data', icon: Download, onClick: () => setActive('desk'), title: 'Open the export desk' }}
+      >
         <div className="pt-4">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
@@ -136,9 +107,7 @@ export default function ExportLensPage() {
             </motion.div>
           </AnimatePresence>
         </div>
-
-        <CrossLensRecentsPanel lensId="export" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

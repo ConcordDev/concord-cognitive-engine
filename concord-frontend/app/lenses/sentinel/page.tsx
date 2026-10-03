@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -39,6 +41,8 @@ type TabKey = 'shield' | 'triage' | 'monitors' | 'metrics' | 'rules' | 'semantic
 
 export default function SentinelLensPage() {
   useLensNav('sentinel');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<TabKey>('shield');
   // Bumped whenever a triage / monitor / intel action mutates state so the
   // metrics + timeline surface refetches.
@@ -58,50 +62,30 @@ export default function SentinelLensPage() {
     { lensId: 'sentinel' },
   );
 
-  const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
-    { key: 'shield', label: 'Shield', icon: Shield },
-    { key: 'triage', label: 'Triage', icon: GitBranch },
-    { key: 'monitors', label: 'Monitors', icon: Radio },
-    { key: 'metrics', label: 'Metrics', icon: BarChart3 },
-    { key: 'rules', label: 'Rules', icon: Settings2 },
-    { key: 'semantic', label: 'Semantic', icon: Search },
-    { key: 'research', label: 'Research', icon: FlaskConical },
+  const tabs: { id: TabKey; label: string; icon: LucideIcon }[] = [
+    { id: 'shield', label: 'Shield', icon: Shield },
+    { id: 'triage', label: 'Triage', icon: GitBranch },
+    { id: 'monitors', label: 'Monitors', icon: Radio },
+    { id: 'metrics', label: 'Metrics', icon: BarChart3 },
+    { id: 'rules', label: 'Rules', icon: Settings2 },
+    { id: 'semantic', label: 'Semantic', icon: Search },
+    { id: 'research', label: 'Research', icon: FlaskConical },
   ];
 
   return (
     <LensShell lensId="sentinel" asMain={false}>
       <FirstRunTour lensId="sentinel" />      <DepthBadge lensId="sentinel" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-black pb-12 text-blue-50">
-        <header className="sticky top-0 z-10 border-b border-blue-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Shield className="h-6 w-6 text-blue-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Sentinel</h1>
-              <p className="text-xs text-blue-700">Threat console — shield · triage · monitor · intel</p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="border-b border-blue-900/30 px-4 md:px-8" aria-label="Sentinel sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {tabs.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  activeTab === key
-                    ? 'border-blue-400 text-blue-200'
-                    : 'border-transparent text-blue-700 hover:text-blue-400'
-                }`}
-                aria-pressed={activeTab === key}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+      <NorthStarFrame
+        lensId="sentinel"
+        crumb="Sentinel"
+        title={`Threat console${who ? `, ${who}` : ''}`}
+        subtitle="Shield, triage, monitor and intel in one console"
+        tabs={tabs}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as TabKey)}
+        tabsLabel="Sentinel sections"
+        cta={{ label: 'Open triage', icon: GitBranch, onClick: () => setActiveTab('triage'), title: 'Go to the triage queue' }}
+      >
           <AnimatePresence mode="wait">
             <motion.section
               key={activeTab}
@@ -124,15 +108,10 @@ export default function SentinelLensPage() {
               {activeTab === 'research' && <SentinelResearchAccess onChanged={bump} />}
             </motion.section>
           </AnimatePresence>
-        </main>
-
-        <section className="mx-auto mt-6 max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 md:px-8">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <SentinelCves />
         </section>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 md:px-8">        <CrossLensRecentsPanel lensId="sentinel" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

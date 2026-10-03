@@ -31,7 +31,9 @@
 
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DesignSystemAtlas } from '@/components/experience/DesignSystemAtlas';
@@ -39,7 +41,7 @@ import { UXResearchSuite } from '@/components/experience/UXResearchSuite';
 import { AnalysisTools } from '@/components/experience/AnalysisTools';
 import { CareerPortfolio } from '@/components/experience/CareerPortfolio';
 import { useState } from 'react';
-import { Brain } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -49,6 +51,8 @@ type SectionId = 'portfolio' | 'tools' | 'research' | 'atlas';
 
 export default function ExperienceLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('experience');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [section, setSection] = useState<SectionId>('portfolio');
 
   useLensCommand([
@@ -69,48 +73,28 @@ export default function ExperienceLensPage() {
     <LensShell lensId="experience" asMain={false}>
       <FirstRunTour lensId="experience" />
       <DepthBadge lensId="experience" size="sm" className="ml-2" />
-      <div data-lens-theme="experience" className="p-6 space-y-6 max-w-6xl mx-auto">
-        {/* ========== Header ========== */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Experience</h1>
-              <p className="text-sm text-gray-400">UX research suite + a verifiable career portfolio</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <NorthStarFrame
+        lensId="experience"
+        crumb="Experience"
+        title={`Your craft, on the record${who ? `, ${who}` : ''}`}
+        subtitle="UX research suite and a verifiable career portfolio"
+        actions={
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="experience" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
-          </div>
-        </header>
-
-        {/* ========== Section Navigation ========== */}
-        <nav role="tablist" aria-label="Experience lens sections" className="flex gap-1 border-b border-lattice-border overflow-x-auto">
-          {SECTIONS.map((s, i) => (
-            <button
-              key={s.id}
-              role="tab"
-              aria-selected={section === s.id}
-              onClick={() => setSection(s.id)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors relative whitespace-nowrap ${
-                section === s.id ? 'text-white' : 'text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              <kbd className="mr-1.5 rounded bg-white/10 px-1 text-[9px] text-gray-400">{i + 1}</kbd>
-              {s.label}
-              {section === s.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-400" />}
-            </button>
-          ))}
-        </nav>
-
+          </>
+        }
+        tabs={SECTIONS.map((x, i) => ({ id: x.id, label: x.label, keys: String(i + 1) }))}
+        activeTab={section}
+        onTab={(id) => setSection(id as SectionId)}
+        tabsLabel="Experience sections"
+        cta={{ label: 'Add to portfolio', icon: Plus, onClick: () => setSection('portfolio'), title: 'Open the career portfolio' }}
+      >
         {/* ========== Section Content ========== */}
         {section === 'portfolio' && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -136,10 +120,7 @@ export default function ExperienceLensPage() {
         {realtimeData && (
           <RealtimeDataPanel domain="experience" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
         )}
-
-      </div>
-
-      <a href="#experience-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to experience content</a>      <CrossLensRecentsPanel lensId="experience" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
