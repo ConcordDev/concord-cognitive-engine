@@ -39,6 +39,9 @@ import { ShieldCheck, Antenna, Radio } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -57,6 +60,8 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof ShieldCheck; 
 
 export default function GroundingLensPage() {
   useLensNav('grounding');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('factcheck');
 
   useLensCommand(
@@ -71,46 +76,18 @@ export default function GroundingLensPage() {
   return (
     <LensShell lensId="grounding" asMain={false}>
       <FirstRunTour lensId="grounding" />
-      <div data-lens-theme="grounding" className="p-6 space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded bg-teal-500/15 border border-teal-500/30 text-xl" aria-hidden="true">🌍</span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white">Grounding</h1>
-                <DepthBadge lensId="grounding" size="sm" />
-              </div>
-              <p className="text-sm text-gray-400">
-                Two real substrates: claim/fact verification, and embodied real-world sensor anchoring.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="flex flex-wrap items-center gap-2 border-b border-lattice-border pb-3" aria-label="Grounding destinations">
-          {DESTINATIONS.map((d) => {
-            const Icon = d.icon;
-            const active = dest === d.id;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDest(d.id)}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors border ${
-                  active
-                    ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-                    : 'bg-zinc-900/40 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
-                }`}
-                title={d.desc}
-              >
-                <Icon className="w-4 h-4" />
-                {d.label}
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="grounding"
+        crumb="Grounding"
+        title={`Check it against reality${who ? `, ${who}` : ''}`}
+        subtitle="Two real substrates: claim and fact verification, and embodied real-world sensor anchoring."
+        actions={<DepthBadge lensId="grounding" size="sm" />}
+        tabs={DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, hint: d.desc }))}
+        activeTab={dest}
+        onTab={(id) => setDest(id as Destination)}
+        tabsLabel="Grounding destinations"
+        cta={{ label: 'Check a claim', icon: ShieldCheck, onClick: () => setDest('factcheck'), title: 'Open the fact-check workbench (G F)' }}
+      >
         {dest === 'factcheck' && (
           <div className="space-y-6">
             <ClaimVerificationPanel />
@@ -127,7 +104,7 @@ export default function GroundingLensPage() {
         )}
 
         <ConnectiveTissueBar lensId="grounding" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

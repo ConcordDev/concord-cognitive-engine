@@ -14,12 +14,17 @@ import {
   BarChart3, BookOpen, Camera, Hammer, Lightbulb, Package, Wrench, LayoutGrid,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
 import { DiyLibraryPanel } from '@/components/diy/DiyLibraryPanel';
 import { ProjectWorkshop } from '@/components/diy/ProjectWorkshop';
 import { DiyShowcase } from '@/components/diy/DiyShowcase';
@@ -42,6 +47,10 @@ const DESK_MODES = new Set<DiyView>([
 ]);
 
 export default function DIYLensPage() {
+  useLensNav('diy');
+  const { latestData, isLive, lastUpdated, insights } = useRealtimeLens('diy');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DiyView>('projects');
 
@@ -81,50 +90,32 @@ export default function DIYLensPage() {
     <LensShell lensId="diy" asMain={false}>
       <FirstRunTour lensId="diy" />
       <DepthBadge lensId="diy" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="diy"
-        title="DIY"
-        description="Projects, tools, materials, instructions, ideas, and gallery"
-        headerIcon={<Wrench className="w-5 h-5 text-white" />}
+      <NorthStarFrame
+        lensId="diy"
+        crumb="DIY"
+        title={`What are we building${who ? `, ${who}` : ''}`}
+        subtitle="Projects, tools, materials, instructions, ideas and a gallery: the whole workshop."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="diy" data={{}} compact />
+          </>
+        )}
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as DiyView)}
+        tabsLabel="DIY views"
+        cta={{ label: 'Start a project', icon: Hammer, onClick: () => setActive('projects'), title: 'Open the project notebook (1)' }}
       >
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1"
-          aria-label="DIY views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-orange-400 text-orange-300'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={active} {...motionProps}>
-            {body}
-          </motion.div>
-        </AnimatePresence>
-      </LensPageShell>
-      <a href="#diy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to diy content</a>
-      <CrossLensRecentsPanel lensId="diy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <div className="space-y-5">
+          <AnimatePresence mode="wait">
+            <motion.div key={active} {...motionProps}>
+              {body}
+            </motion.div>
+          </AnimatePresence>
+          <RealtimeDataPanel domain="diy" data={latestData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
