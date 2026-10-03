@@ -11,10 +11,12 @@
 
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { GitBranch, MessageSquare, Scale, Timer } from 'lucide-react';
+import { GitBranch, MessageSquare, Timer } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -28,12 +30,10 @@ import { SharedDebateView } from '@/components/debate/SharedDebateView';
 import { LiveFloorPanel } from '@/components/debate/LiveFloorPanel';
 import { ArgumentMapPanel } from '@/components/debate/ArgumentMapPanel';
 import { CmvPanel } from '@/components/debate/CmvPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 
 type DebateView = 'floor' | 'map' | 'cmv';
 
-const VIEWS: { id: DebateView; label: string; keys: string; hint: string; icon: typeof Scale }[] = [
+const VIEWS: { id: DebateView; label: string; keys: string; hint: string; icon: typeof Timer }[] = [
   { id: 'floor', label: 'Floor', keys: '1', hint: 'Timed oratory debate', icon: Timer },
   { id: 'map', label: 'Argument map', keys: '2', hint: 'Kialo claim tree', icon: GitBranch },
   { id: 'cmv', label: 'Discussion', keys: '3', hint: 'CMV-shape feed', icon: MessageSquare },
@@ -49,14 +49,19 @@ export default function DebateLensPage() {
   useLensNav('debate');
   useLensIdentity('debate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debate');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DebateView>('floor');
   const [shareToken, setShareToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const t = new URLSearchParams(window.location.search).get('share');
-    if (t) setShareToken(t);
+    let cancelled = false;
+    void Promise.resolve(new URLSearchParams(window.location.search).get('share')).then((t) => {
+      if (!cancelled && t) setShareToken(t);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const exitShare = useCallback(() => {
@@ -96,61 +101,29 @@ export default function DebateLensPage() {
     <LensShell lensId="debate" asMain={false}>
       <FirstRunTour lensId="debate" />
       <DepthBadge lensId="debate" size="sm" className="ml-2" />
-      <div data-lens-theme="debate" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Scale className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Debate</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="debate" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                Kialo claim tree + timed debate floor — one argumentation desk.
-              </p>
-            </div>
-          </div>
-        </header>
-
+      <NorthStarFrame
+        lensId="debate"
+        crumb="Debate"
+        title={`Argue it out${active === 'floor' && who ? `, ${who}` : ''}`}
+        subtitle="Kialo-style claim tree plus a timed debate floor: one argumentation desk."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="debate" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={shareToken ? undefined : VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as DebateView)}
+        tabsLabel="Debate views"
+        cta={{ label: 'Open the floor', icon: Timer, onClick: () => { exitShare(); setActive('floor'); }, title: 'Open the timed debate floor (1)' }}
+      >
         {shareToken ? (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <SharedDebateView shareToken={shareToken} onExit={exitShare} />
           </section>
         ) : (
           <>
-            <nav
-              className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-              aria-label="Debate views"
-            >
-              {VIEWS.map((v) => {
-                const Icon = v.icon;
-                const on = active === v.id;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setActive(v.id)}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                      on
-                        ? 'border-[var(--lens-accent)] text-white'
-                        : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                    )}
-                    aria-current={on ? 'page' : undefined}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {v.label}
-                    <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                      {v.keys}
-                    </kbd>
-                  </button>
-                );
-              })}
-            </nav>
-
             <AnimatePresence mode="wait">
               <motion.div key={active} {...motionProps}>
                 <Panel />
@@ -164,8 +137,7 @@ export default function DebateLensPage() {
         <section className="mt-3">
           <SessionRail lensId="debate" hideWhenEmpty />
         </section>
-        <CrossLensRecentsPanel lensId="debate" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -15,12 +15,12 @@ import {
   FileText, Receipt, ShieldCheck, Users, Wrench, Zap,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
 import { ElectricalDeskPanel } from '@/components/electrical/ElectricalDeskPanel';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
 import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
@@ -50,6 +50,8 @@ const VIEWS: { id: ModeTab; label: string; keys: string; hint: string; icon: typ
 
 export default function ElectricalLensPage() {
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ModeTab>('jobs');
 
   useLensCommand(
@@ -100,68 +102,23 @@ export default function ElectricalLensPage() {
     <LensShell lensId="electrical" asMain={false}>
       <FirstRunTour lensId="electrical" />
       <DepthBadge lensId="electrical" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="electrical"
-        title="Electrical"
-        description="Jobs, NEC calculators, panel schedules, estimate→invoice, and inspections"
-        headerIcon={<Zap className="w-5 h-5 text-yellow-400" />}
+      <NorthStarFrame
+        lensId="electrical"
+        crumb="Electrical"
+        title={`Wire the next job${active === 'jobs' && who ? `, ${who}` : ''}`}
+        subtitle="Jobs, NEC calculators, panel schedules, estimate to invoice, and inspections."
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as ModeTab)}
+        tabsLabel="Electrical views"
+        cta={{ label: 'Size a circuit', icon: Calculator, onClick: () => setActive('calculators'), title: 'Open the NEC calculators (2)' }}
       >
-        <nav className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1" aria-label="Electrical desk">
-          {VIEWS.filter((v) => v.group === 'desk').map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-neon-blue text-neon-blue'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-        <nav className="flex items-center gap-2 border-b border-lattice-border pb-3 flex-wrap" aria-label="Electrical trade tools">
-          <span className="px-2 text-[10px] uppercase tracking-wider text-gray-400">Trade Tools</span>
-          {VIEWS.filter((v) => v.group === 'tools').map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap',
-                  on
-                    ? 'bg-yellow-500/20 text-yellow-300'
-                    : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             {body}
           </motion.div>
         </AnimatePresence>
-      </LensPageShell>
-      <a href="#electrical-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to electrical content</a>
-      <CrossLensRecentsPanel lensId="electrical" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
