@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
@@ -19,7 +19,9 @@ import { StageCard, type StageView } from '@/components/expedition-journal/Stage
 import { ExpeditionSummary, type SummaryData, type Badge } from '@/components/expedition-journal/ExpeditionSummary';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { Loader2, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, Compass, Map as MapIcon, Trophy, SkipForward } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface WorldCatalogEntry {
   worldId: string;
@@ -53,95 +55,98 @@ export default function ExpeditionJournalPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<'world' | 'summary'>('world');
 
-  // Load the authored world catalog once.
-  const loadWorlds = useCallback(async () => {
+  const [worldsKey, setWorldsKey] = useState(0);
+  const [dataKey, setDataKey] = useState(0);
+
+  const retryWorlds = useCallback(() => {
     setLoading(true);
     setError(null);
-    try {
-      const r = await lensRun('expedition-journal', 'worlds', {});
-      if (r.data?.ok && r.data.result) {
-        const ws = (r.data.result.worlds as WorldCatalogEntry[]) || [];
-        setWorlds(ws);
-        if (ws.length > 0) setActiveWorld((cur) => cur || ws[0].worldId);
-      } else {
-        setError(r.data?.error || 'Could not load expeditions.');
-      }
-    } catch {
-      setError('Could not reach the expedition service.');
-    } finally {
-      setLoading(false);
-    }
+    setWorldsKey((k) => k + 1);
   }, []);
 
-  useEffect(() => { void loadWorlds(); }, [loadWorlds]);
+  // Load the authored world catalog.
+  useEffect(() => {
+    let cancelled = false;
+    lensRun('expedition-journal', 'worlds', {})
+      .then((r) => {
+        if (cancelled) return;
+        if (r.data?.ok && r.data.result) {
+          const ws = (r.data.result.worlds as WorldCatalogEntry[]) || [];
+          setWorlds(ws);
+          if (ws.length > 0) setActiveWorld((cur) => cur || ws[0].worldId);
+        } else {
+          setError(r.data?.error || 'Could not load expeditions.');
+        }
+      })
+      .catch(() => { if (!cancelled) setError('Could not reach the expedition service.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [worldsKey]);
 
-  const loadProgress = useCallback(async (worldId: string) => {
-    if (!worldId) return;
-    const r = await lensRun('expedition-journal', 'progress', { worldId });
-    if (r.data?.ok && r.data.result) setProgress(r.data.result as WorldProgress);
-  }, []);
+  useEffect(() => {
+    if (!activeWorld) return;
+    let cancelled = false;
+    lensRun('expedition-journal', 'progress', { worldId: activeWorld })
+      .then((r) => { if (!cancelled && r.data?.ok && r.data.result) setProgress(r.data.result as WorldProgress); })
+      .catch(() => { /* the stage list keeps its last good state */ });
+    return () => { cancelled = true; };
+  }, [activeWorld, dataKey]);
 
-  const loadSummary = useCallback(async () => {
-    const [s, rw] = await Promise.all([
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
       lensRun('expedition-journal', 'summary', {}),
       lensRun('expedition-journal', 'rewards', {}),
-    ]);
-    if (s.data?.ok && s.data.result) setSummary(s.data.result as SummaryData);
-    if (rw.data?.ok && rw.data.result) setBadges((rw.data.result.badges as Badge[]) || []);
-  }, []);
+    ])
+      .then(([sm, rw]) => {
+        if (cancelled) return;
+        if (sm.data?.ok && sm.data.result) setSummary(sm.data.result as SummaryData);
+        if (rw.data?.ok && rw.data.result) setBadges((rw.data.result.badges as Badge[]) || []);
+      })
+      .catch(() => { /* summary stays at its last good state */ });
+    return () => { cancelled = true; };
+  }, [dataKey]);
 
-  useEffect(() => { if (activeWorld) void loadProgress(activeWorld); }, [activeWorld, loadProgress]);
-  useEffect(() => { void loadSummary(); }, [loadSummary]);
+  const onStageChange = useCallback(() => setDataKey((k) => k + 1), []);
 
-  const onStageChange = useCallback(() => {
-    void loadProgress(activeWorld);
-    void loadSummary();
-  }, [activeWorld, loadProgress, loadSummary]);
+  const nextWorld = useCallback(() => {
+    const i = worlds.findIndex((w) => w.worldId === activeWorld);
+    if (worlds.length > 0) setActiveWorld(worlds[(i + 1) % worlds.length].worldId);
+    setTab('world');
+  }, [worlds, activeWorld]);
 
   useLensCommand([
-    { id: 'next-world', keys: ']', description: 'Next world', category: 'navigation', action: () => {
-      const i = worlds.findIndex((w) => w.worldId === activeWorld);
-      if (worlds.length > 0) setActiveWorld(worlds[(i + 1) % worlds.length].worldId);
-    } },
+    { id: 'next-world', keys: ']', description: 'Next world', category: 'navigation', action: nextWorld },
     { id: 'toggle-summary', keys: 's', description: 'Toggle summary view', category: 'navigation', action: () => {
       setTab((t) => (t === 'world' ? 'summary' : 'world'));
     } },
   ], { lensId: 'expedition-journal' });
 
+  const doneCount = summary?.worlds?.filter((w) => w.expeditionComplete).length ?? 0;
+
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
-      <FirstRunTour lensId="expedition-journal" />      <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-[#0b0f17] p-6 text-gray-100">
-        <header className="mb-5">
-          <h1 className="text-3xl font-semibold text-emerald-300">Expedition Journal</h1>
-          <p className="mt-1 text-gray-400">
-            Server-backed expedition progress per canon world — journal entries, screenshots, XP and badges. Press <kbd className="rounded bg-white/10 px-1">]</kbd> to cycle worlds, <kbd className="rounded bg-white/10 px-1">S</kbd> for the summary.
-          </p>
-        </header>
-
-        <nav role="tablist" aria-label="Expedition journal views" className="mb-4 flex gap-2 border-b border-white/10 pb-2">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'world'}
-            onClick={() => setTab('world')}
-            className={`rounded px-3 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${tab === 'world' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-          >
-            World expeditions
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'summary'}
-            onClick={() => setTab('summary')}
-            className={`rounded px-3 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${tab === 'summary' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-          >
-            Cross-world summary
-          </button>
-        </nav>
-
+      <FirstRunTour lensId="expedition-journal" />
+      <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="expedition-journal"
+        crumb="Expedition Journal"
+        title={tab === 'world' ? `Where the road leads${who ? `, ${who}` : ''}` : 'Everything you have charted'}
+        subtitle="Server-backed expedition progress per canon world: journal entries, screenshots, XP and badges. Press ] to cycle worlds, S for the summary."
+        tabs={[
+          { id: 'world', label: 'World expeditions', icon: MapIcon, hint: 'Per-world stages and journal' },
+          { id: 'summary', label: doneCount > 0 ? `Cross-world summary (${doneCount} complete)` : 'Cross-world summary', icon: Trophy, keys: 's', hint: 'Rewards and progress across all worlds' },
+        ]}
+        activeTab={tab}
+        onTab={(id) => setTab(id as 'world' | 'summary')}
+        tabsLabel="Expedition journal views"
+        cta={{ label: 'Next world', icon: SkipForward, onClick: nextWorld, disabled: worlds.length < 2, title: 'Cycle to the next canon world (])' }}
+      >
+      <div className="text-gray-100">
         {/* LOADING state */}
         {loading && (
           <div role="status" aria-live="polite" aria-busy="true" className="flex items-center gap-2 text-sm text-gray-400">
@@ -158,7 +163,7 @@ export default function ExpeditionJournalPage() {
             </div>
             <button
               type="button"
-              onClick={() => void loadWorlds()}
+              onClick={retryWorlds}
               className="rounded bg-rose-600/30 px-3 py-1 text-xs text-rose-100 hover:bg-rose-600/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
             >
               Retry
@@ -226,14 +231,15 @@ export default function ExpeditionJournalPage() {
               </>
             )}
 
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
               <BaseCampAlmanac />
             </section>
           </>
         )}
 
         {!loading && !error && worlds.length > 0 && tab === 'summary' && <ExpeditionSummary data={summary} badges={badges} />}
-      </div>      <CrossLensRecentsPanel lensId="expedition-journal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
