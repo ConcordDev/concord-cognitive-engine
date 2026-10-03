@@ -146,11 +146,12 @@ export function ArtifactBench({
       {actionResult && <ActionResultPanel result={actionResult} onClose={onClearResult} />}
 
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={onCloseEditor} role="presentation">
+        <div className={ds.modalBackdrop} onClick={onCloseEditor} onKeyDown={(e) => { if (e.key === 'Escape') onCloseEditor(); }} role="presentation">
           <div className={ds.modalContainer}>
             <div
               className={cn(ds.modalPanel, 'max-w-3xl max-h-[90vh] overflow-hidden flex flex-col')}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Escape') onCloseEditor(); }}
               role="dialog"
               aria-modal="true"
               aria-labelledby="av-editor-title"

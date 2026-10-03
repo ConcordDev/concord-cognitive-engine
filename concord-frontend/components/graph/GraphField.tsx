@@ -247,7 +247,7 @@ export function GraphField() {
       </div>
       {err && <p className="mt-2 text-[13px] text-rose-300" role="alert">{err}</p>}
 
-      <div ref={boxRef} className="relative mt-2 min-h-0 flex-1" onClick={() => setSelectedId(null)}>
+      <div ref={boxRef} className="relative mt-2 min-h-0 flex-1" onClick={() => setSelectedId(null)} onKeyDown={(e) => { if (e.key === 'Escape') setSelectedId(null); }}>
         {graphQ.isLoading ? (
           <p className="absolute inset-0 flex items-center justify-center text-[14px] text-zinc-600">Reading the lattice…</p>
         ) : graphQ.isError ? (
@@ -316,7 +316,7 @@ export function GraphField() {
         )}
 
         {selected && (
-          <div className="absolute right-0 top-0 w-72 rounded-2xl border border-white/[0.08] bg-[#121214]/95 p-4 backdrop-blur" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute right-0 top-0 w-72 rounded-2xl border border-white/[0.08] bg-[#121214]/95 p-4 backdrop-blur" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') setSelectedId(null); }}>
             <div className="flex items-start gap-2">
               <p className="flex-1 text-[14px] leading-snug text-zinc-100">{selected.label}</p>
               <button type="button" onClick={() => setSelectedId(null)} className="text-zinc-500 hover:text-zinc-200" aria-label="Close"><X className="h-4 w-4" /></button>
