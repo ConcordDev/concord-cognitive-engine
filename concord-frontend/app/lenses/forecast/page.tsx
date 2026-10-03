@@ -11,7 +11,14 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useEffect, useState } from 'react';
+import { CalendarDays, Clock, Bell, MapPin, Target, Archive, Sun, RefreshCw, Loader2 } from 'lucide-react';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { cn } from '@/lib/utils';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -37,17 +44,21 @@ interface Forecast {
 
 type Tab = 'now' | 'multiday' | 'hourly' | 'regional' | 'accuracy' | 'archive' | 'alerts';
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'now', label: '24h' },
-  { id: 'multiday', label: 'Multi-day' },
-  { id: 'hourly', label: 'Hourly' },
-  { id: 'regional', label: 'Per-district' },
-  { id: 'accuracy', label: 'Accuracy' },
-  { id: 'archive', label: 'Archive' },
-  { id: 'alerts', label: 'Alerts' },
+const TABS: Array<{ id: Tab; label: string; keys: string; title: string; icon: typeof Sun }> = [
+  { id: 'now', label: '24h', keys: '1', title: 'Tomorrow', icon: Sun },
+  { id: 'multiday', label: 'Multi-day', keys: '2', title: 'The days ahead', icon: CalendarDays },
+  { id: 'hourly', label: 'Hourly', keys: '3', title: 'Hour by hour', icon: Clock },
+  { id: 'regional', label: 'Per-district', keys: '4', title: 'District by district', icon: MapPin },
+  { id: 'accuracy', label: 'Accuracy', keys: '5', title: 'How right it was', icon: Target },
+  { id: 'archive', label: 'Archive', keys: '6', title: 'What was forecast', icon: Archive },
+  { id: 'alerts', label: 'Alerts', keys: '7', title: 'What to be told about', icon: Bell },
 ];
 
 export default function ForecastPage() {
+  useLensNav('forecast');
+  useLensIdentity('forecast');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('concordia-hub');
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,49 +113,57 @@ export default function ForecastPage() {
     { lensId: 'forecast' },
   );
 
+  const current = TABS.find((t) => t.id === tab)!;
+  const card = 'rounded-2xl border border-white/10 bg-[#111] p-5';
+
   return (
-    <LensShell lensId="forecast">
+    <LensShell lensId="forecast" asMain={false}>
       <FirstRunTour lensId="forecast" />
       <DepthBadge lensId="forecast" size="sm" className="ml-2" />
-      <div className="p-6 sm:p-8 max-w-3xl mx-auto">
-        <header className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-100">Tomorrow in Concordia</h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              World outlook composed from forward-sim + drift + faction strategy + embodied baselines.
-            </p>
+      <div data-lens-theme="forecast" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Forecast</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{tab === 'now' && who ? `, ${who}` : ''}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
             <input
               type="text" value={worldId} onChange={(e) => setWorldId(e.target.value)}
               aria-label="World id"
-              className="mt-2 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 font-mono"
+              className="w-44 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 font-mono text-[12px] text-zinc-200 focus:border-teal-400/50 focus:outline-none"
             />
+            <DTUExportButton domain="forecast" data={{ worldId, forecast }} compact />
           </div>
-          <button
-            type="button" onClick={composeFresh} disabled={composing}
-            className="bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs px-3 py-2 rounded font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >{composing ? 'Composing…' : 'Refresh forecast'}</button>
-        </header>
+        </div>
 
-        <nav className="mb-5 flex flex-wrap gap-1.5 border-b border-zinc-800 pb-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`rounded px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                tab === t.id
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Forecast views">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={on ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              </button>
+            );
+          })}
         </nav>
 
         {tab === 'now' && (
           loading ? (
-            <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
+            <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-12 border border-white/10 rounded-2xl">
               <span className="inline-block h-3 w-3 mr-2 rounded-full bg-indigo-500 animate-pulse" aria-hidden="true" />
               Loading the latest forecast…
             </div>
@@ -158,26 +177,26 @@ export default function ForecastPage() {
               >Retry</button>
             </div>
           ) : !forecast ? (
-            <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
-              No forecast yet. Compose one above.
+            <div className="text-center text-zinc-400 italic py-12 border border-white/10 rounded-2xl">
+              No forecast yet. Use Refresh forecast to compose one.
             </div>
           ) : (
             <div className="space-y-4">
               {forecast.weather && (
-                <section className="bg-zinc-900/80 border border-cyan-700/40 rounded-xl p-4">
+                <section className="bg-[#111] border border-cyan-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Weather</h2>
                   <p className="text-zinc-100">{forecast.weather.kind}{forecast.weather.temperature_c !== null ? ` · ${forecast.weather.temperature_c}°C` : ''}{forecast.weather.humidity_pct != null ? ` · ${forecast.weather.humidity_pct}% humidity` : ''}</p>
                   <p className="text-[10px] text-zinc-400 font-mono mt-1">confidence {(forecast.weather.confidence * 100).toFixed(0)}%</p>
                 </section>
               )}
               {forecast.ecology && (
-                <section className="bg-zinc-900/80 border border-emerald-700/40 rounded-xl p-4">
+                <section className="bg-[#111] border border-emerald-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Ecology</h2>
                   <p className="text-zinc-100">Trend: {forecast.ecology.trend} · current score {forecast.ecology.ecosystem_score?.toFixed(2)}</p>
                 </section>
               )}
               {forecast.factions.length > 0 && (
-                <section className="bg-zinc-900/80 border border-amber-700/40 rounded-xl p-4">
+                <section className="bg-[#111] border border-amber-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-amber-300 uppercase tracking-wider mb-2">Faction Strategy</h2>
                   <ul className="space-y-1 text-xs">
                     {forecast.factions.map(f => (
@@ -190,7 +209,7 @@ export default function ForecastPage() {
                 </section>
               )}
               {forecast.events.length > 0 && (
-                <section className="bg-zinc-900/80 border border-purple-700/40 rounded-xl p-4">
+                <section className="bg-[#111] border border-purple-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2">Premonitions</h2>
                   <ul className="space-y-2 text-xs">
                     {forecast.events.map((e, i) => (
@@ -203,7 +222,7 @@ export default function ForecastPage() {
                 </section>
               )}
               {forecast.drift && (
-                <section className="bg-zinc-900/80 border border-rose-700/40 rounded-xl p-4">
+                <section className="bg-[#111] border border-rose-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-rose-300 uppercase tracking-wider mb-2">Drift Watch</h2>
                   <p className="text-zinc-100">{forecast.drift.likely_kind} · severity {forecast.drift.severity}</p>
                 </section>
@@ -216,51 +235,64 @@ export default function ForecastPage() {
         )}
 
         {tab === 'multiday' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-cyan-300">Multi-day outlook</h2>
             <MultiDayOutlook worldId={worldId} />
           </section>
         )}
 
         {tab === 'hourly' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-300">Hourly breakdown</h2>
             <HourlyBreakdown worldId={worldId} />
           </section>
         )}
 
         {tab === 'regional' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-300">Per-district forecast</h2>
             <RegionalForecast worldId={worldId} />
           </section>
         )}
 
         {tab === 'accuracy' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-300">Forecast accuracy</h2>
             <ForecastAccuracy worldId={worldId} />
           </section>
         )}
 
         {tab === 'archive' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-300">Historical archive</h2>
             <ForecastArchive worldId={worldId} />
           </section>
         )}
 
         {tab === 'alerts' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-indigo-300">Alert subscriptions</h2>
             <AlertSubscriptions worldId={worldId} />
           </section>
         )}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className={cn(card, 'mt-6')}>
           <WeatherForecast />
         </section>
-      </div>      <CrossLensRecentsPanel lensId="forecast" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <CrossLensRecentsPanel lensId="forecast" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={composeFresh}
+          disabled={composing}
+          title="Compose a fresh forecast (C)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          {composing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {composing ? 'Composing…' : 'Refresh forecast'}
+        </button>
+      </div>
     </LensShell>
   );
 }

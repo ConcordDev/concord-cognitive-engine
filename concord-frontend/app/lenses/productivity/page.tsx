@@ -20,8 +20,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Notebook, Keyboard, Code2 as Github } from 'lucide-react';
+import { Plus, Code2 as Github } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -43,6 +47,9 @@ function isTabId(v: unknown): v is ProductivityTabId {
 
 export default function ProductivityLensPage() {
   useLensNav('productivity');
+  useLensIdentity('productivity');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { restore, persist } = useLensStatePersistence('productivity');
 
   const [tab, setTab] = useState<ProductivityTabId>('today');
@@ -63,75 +70,82 @@ export default function ProductivityLensPage() {
   // Linear-style keyboard-first view navigation: `g <key>` jumps between
   // the nine task-manager views. The same chords render as kbd chips in
   // the tab bar so they're discoverable without reading source.
+  const quickAdd = useCallback(() => {
+    selectTab('quickadd');
+    const focus = (tries: number) => {
+      const el = document.querySelector<HTMLInputElement>('input[placeholder^="submit report"]');
+      if (el) { el.focus(); return; }
+      if (tries > 0) requestAnimationFrame(() => focus(tries - 1));
+    };
+    requestAnimationFrame(() => focus(6));
+  }, [selectTab]);
+
   const commands = useMemo(
-    () => PRODUCTIVITY_TABS.map((t) => ({
-      id: `goto-${t.id}`,
-      keys: t.chord,
-      description: `Go to ${t.label}`,
-      category: 'navigation' as const,
-      action: () => selectTab(t.id),
-    })),
-    [selectTab],
+    () => [
+      ...PRODUCTIVITY_TABS.map((t) => ({
+        id: `goto-${t.id}`,
+        keys: t.chord,
+        description: `Go to ${t.label}`,
+        category: 'navigation' as const,
+        action: () => selectTab(t.id),
+      })),
+      { id: 'quick-add', keys: 'n', description: 'Quick add a task', category: 'actions' as const, action: quickAdd },
+    ],
+    [selectTab, quickAdd],
   );
   useLensCommand(commands, { lensId: 'productivity' });
+
+  const current = PRODUCTIVITY_TABS.find((t) => t.id === tab);
 
   return (
     <LensShell lensId="productivity" asMain={false}>
       <FirstRunTour lensId="productivity" />
+      <DepthBadge lensId="productivity" size="sm" className="ml-2" />
+      <div data-lens-theme="productivity" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Productivity{current ? ` · ${current.label}` : ''}</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {tab === 'today' ? `Today${who ? `, ${who}` : ''}` : 'Your work'}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <DTUExportButton domain="productivity" data={{}} compact />
+          </div>
+        </div>
 
-      <div className="min-h-screen bg-black pb-12 text-zinc-100">
-        <header className="sticky top-0 z-10 border-b border-zinc-800 bg-black/95 px-4 py-3 backdrop-blur md:px-6">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
-            <Notebook className="h-6 w-6 text-red-400" aria-hidden />
-            <div className="mr-auto">
-              <div className="flex items-center gap-2">
-                <h1 className="font-mono text-lg font-semibold tracking-wide">Productivity</h1>
-                <DepthBadge lensId="productivity" size="sm" />
-              </div>
-              <p className="text-xs text-zinc-500">
-                Tasks · projects · filters · calendar · reminders · collaboration · habits · focus
-              </p>
+        <ProductivityTaskSection activeTab={tab} onTabChange={selectTab} />
+
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111]">
+          <button
+            type="button"
+            onClick={() => setShowTooling((v) => !v)}
+            aria-expanded={showTooling}
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-zinc-200"
+          >
+            <Github className="h-4 w-4 text-emerald-400" aria-hidden />
+            Discover open-source productivity tooling
+            <span className="ml-auto text-xs font-normal text-zinc-500">{showTooling ? 'Hide' : 'Show'}</span>
+          </button>
+          {showTooling && (
+            <div className="border-t border-white/10 p-4">
+              <ProductivityRepos />
             </div>
-            <span
-              className="hidden items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[11px] text-zinc-400 sm:inline-flex"
-              title="Press g then the highlighted key to jump between views"
-            >
-              <Keyboard className="h-3.5 w-3.5" aria-hidden />
-              <span>
-                Press <kbd className="rounded border border-zinc-700 px-1 font-mono text-[10px]">g</kbd> then a view key
-              </span>
-            </span>          </div>
-        </header>
+          )}
+        </section>
 
-        <main className="mx-auto max-w-6xl px-4 py-5 md:px-6">
-          <ProductivityTaskSection activeTab={tab} onTabChange={selectTab} />
+        <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
-          {/* Secondary, honest reference surface — live GitHub topic search
-              for real open-source productivity tooling (real data, honest
-              error state). Collapsed by default so it never competes with
-              the task manager for the lens's identity. */}
-          <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/40">
-            <button
-              type="button"
-              onClick={() => setShowTooling((v) => !v)}
-              aria-expanded={showTooling}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-zinc-200"
-            >
-              <Github className="h-4 w-4 text-emerald-400" aria-hidden />
-              Discover open-source productivity tooling
-              <span className="ml-auto text-xs font-normal text-zinc-500">{showTooling ? 'Hide' : 'Show'}</span>
-            </button>
-            {showTooling && (
-              <div className="border-t border-zinc-800 p-4">
-                <ProductivityRepos />
-              </div>
-            )}
-          </section>
-        </main>
+        <button
+          type="button"
+          onClick={quickAdd}
+          title="Quick add a task (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Add a task
+        </button>
       </div>
-
-      {/* Production-grade polish sentinels — cross-lens surfaces, kept
-          out of the primary flow (accessibility-only). */}      <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
