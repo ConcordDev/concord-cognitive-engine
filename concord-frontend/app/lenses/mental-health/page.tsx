@@ -2,7 +2,10 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
@@ -13,7 +16,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Heart, Shield, AlertTriangle, Sparkles, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Brain, Heart, Shield, AlertTriangle, Sparkles, Loader2, LifeBuoy, Sun, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -34,15 +37,36 @@ const TRIGGER_OPTIONS = ['anxiety', 'depression', 'stress', 'anger', 'grief'] as
 interface CopingResult { triggers: number; strategies: string[]; categories: string[]; note?: string }
 interface WellnessResult { wellnessScore: number; breakdown: Record<string, string>; areas: string[] }
 
+type MhView = 'today' | 'analysis' | 'toolkit' | 'support';
+
+const VIEWS: { id: MhView; label: string; keys: string; title: string; hint: string; icon: typeof Sun }[] = [
+  { id: 'today', label: 'Today', keys: '1', title: 'How are you feeling', hint: 'Check-ins, mood, sleep, breathing and practice', icon: Sun },
+  { id: 'analysis', label: 'Analysis', keys: '2', title: 'Make sense of it', hint: 'Coping strategies and your wellness score', icon: Brain },
+  { id: 'toolkit', label: 'Toolkit', keys: '3', title: 'Everything in reach', hint: 'Worksheets, safety plan, reminders and therapist report', icon: Wrench },
+  { id: 'support', label: 'Support', keys: '4', title: 'You are not alone', hint: 'Crisis lines and trusted health information', icon: LifeBuoy },
+];
+
 export default function MentalHealthLensPage() {
   useLensNav('mental-health');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<MhView>('today');
+  useLensCommand([
+    ...VIEWS.map((v) => ({
+      id: `mental-health-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
+  ], { lensId: 'mental-health' });
+  const current = VIEWS.find((v) => v.id === view)!;
 
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mental-health');
 
   // ── Coping strategies ──────────────────────────────────────────────
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
   const [copingBusy, setCopingBusy] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
   const [copingResult, setCopingResult] = useState<CopingResult | null>(null);
   const [copingError, setCopingError] = useState<string | null>(null);
 
@@ -92,15 +116,28 @@ export default function MentalHealthLensPage() {
 
   return (
     <LensShell lensId="mental-health" asMain={false}>
-      <FirstRunTour lensId="mental-health" />      <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <MentalHealthSection />
-      </div>
-    <div data-lens-theme="mental-health" className="p-6 space-y-6">
-      {/* Phase 4 — REAL MedlinePlus (NIH/NLM) consumer-health topic search. */}
-      <MedlinePlusPanel initialQuery="" />
+      <FirstRunTour lensId="mental-health" />
+      <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="mental-health"
+        crumb="Mental health"
+        title={`${current.title}${view === 'today' && who ? `, ${who}` : ''}`}
+        subtitle="Mood tracking, journaling, coping strategies and crisis support. For self-reflection, not treatment."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="mental-health" data={{}} compact />
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as MhView)}
+        tabsLabel="Mental health views"
+        cta={{ label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
+      >
+        <div data-lens-theme="mental-health" className="space-y-5">
       {/* Disclaimer */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
         <div className="flex-1">
           <p className="text-sm text-amber-200">
@@ -109,21 +146,18 @@ export default function MentalHealthLensPage() {
         </div>
       </div>
 
-      <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center gap-3">
-        <Brain className="w-8 h-8 text-neon-purple" />
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">Mental Health &amp; Wellbeing</h1>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          </div>
-          <p className="text-sm text-gray-400">Mood tracking, journaling, and coping strategies</p>
-        </div>
-      </motion.header>
 
+          {view === 'today' && (
+            <>
+              <MentalHealthSection />
       <RealtimeDataPanel domain="mental-health" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
+            </>
+          )}
+          {view === 'analysis' && (
+            <>
       {/* ── Coping strategies + wellness score ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="panel space-y-4 p-4">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 rounded-2xl border border-white/10 bg-[#111] p-4">
         <div className="flex items-center gap-2 mb-1">
           <Brain className="w-4 h-4 text-neon-purple" />
           <h2 className="font-semibold text-sm">Wellness Analysis</h2>
@@ -273,31 +307,27 @@ export default function MentalHealthLensPage() {
         </div>
       </motion.div>
 
-      <DTUExportButton domain="mental-health" data={{}} compact />
-
+            </>
+          )}
+          {view === 'toolkit' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <PipingProvider>
+                <MentalHealthActionPanel />
+              </PipingProvider>
+            </section>
+          )}
+          {view === 'support' && (
+            <>
       {/* Bespoke 988 + national crisis hotline reference with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
         <CrisisPanel />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowActionPanel(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>More actions</span>
-          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showActionPanel && (
-          <div className="mt-3">
-            <PipingProvider>
-              <MentalHealthActionPanel />
-            </PipingProvider>
-          </div>
-        )}
-      </section>
-    </div>          <CrossLensRecentsPanel lensId="mental-health" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+              <MedlinePlusPanel initialQuery="" />
+            </>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
