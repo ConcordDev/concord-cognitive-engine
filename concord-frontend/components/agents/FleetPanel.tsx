@@ -69,6 +69,12 @@ export function FleetPanel() {
     { lensId: 'agents' }
   );
 
+  useEffect(() => {
+    const open = () => setShowCreate(true);
+    window.addEventListener('agents:new', open);
+    return () => window.removeEventListener('agents:new', open);
+  }, []);
+
   // Create form
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('general');
@@ -365,13 +371,6 @@ export function FleetPanel() {
             <ChevronRight className="w-4 h-4 rotate-180" /> Back to fleet
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1 px-3 py-2 bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 transition-colors text-sm"
-        >
-          <Plus className="w-4 h-4" /> New Agent
-        </button>
       </div>
 
       <div>
