@@ -16,6 +16,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act, fireEvent, waitFor } from '@testing-library/react';
 
 const lensRunMock = vi.fn();
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
