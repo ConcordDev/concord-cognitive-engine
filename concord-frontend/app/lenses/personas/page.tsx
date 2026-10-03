@@ -24,6 +24,10 @@ import { PersonaMarketplace } from '@/components/personas/PersonaMarketplace';
 import { PersonaDetailPanel } from '@/components/personas/PersonaDetailPanel';
 import { runPersona, readEnvelope } from '@/components/personas/persona-envelope';
 import { lensRun } from '@/lib/api/client';
+import { Package, Plus, Store, UserRound, Wand2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 
 interface PersonaPackage {
   id: number;
@@ -36,6 +40,8 @@ interface PersonaPackage {
 type Tab = 'mine' | 'browse' | 'create' | 'npc';
 
 export default function PersonasPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<PersonaDetail[]>([]);
   const [loadingMine, setLoadingMine] = useState(true);
@@ -75,9 +81,22 @@ export default function PersonasPage() {
   }, []);
 
   useEffect(() => {
-    void refreshMine();
-    void refreshPackages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    runPersona('mine', {})
+      .then((r) => {
+        if (cancelled) return;
+        if (r.ok) setMine(((r.data as any)?.personas || []) as PersonaDetail[]);
+        else setErrMine(r.error || 'Could not load your personas.');
+      })
+      .catch((e) => { if (!cancelled) setErrMine(e instanceof Error ? e.message : 'Could not load your personas.'); })
+      .finally(() => { if (!cancelled) setLoadingMine(false); });
+    lensRun('npc_persona', 'list_for_user', {})
+      .then((raw) => {
+        const r = readEnvelope(raw);
+        if (!cancelled && r.ok) setPackages(((r.data as any)?.packages || []) as PersonaPackage[]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const flash = (t: string) => { setStatus(t); window.setTimeout(() => setStatus(null), 4000); };
@@ -121,11 +140,11 @@ export default function PersonasPage() {
     } else flash(`Failed: ${r.error || 'unknown'}`);
   };
 
-  const TABS: Array<{ id: Tab; label: string; hint: string }> = [
-    { id: 'mine', label: 'My Personas', hint: 'g m' },
-    { id: 'browse', label: 'Marketplace', hint: 'g b' },
-    { id: 'create', label: 'Create', hint: 'g c' },
-    { id: 'npc', label: 'NPC Packaging', hint: 'g n' },
+  const TABS: Array<{ id: Tab; label: string; hint: string; title: string; icon: typeof UserRound }> = [
+    { id: 'mine', label: 'My Personas', hint: 'g m', title: "Who you're talking with", icon: UserRound },
+    { id: 'browse', label: 'Marketplace', hint: 'g b', title: 'Characters worth meeting', icon: Store },
+    { id: 'create', label: 'Create', hint: 'g c', title: 'Author a character', icon: Wand2 },
+    { id: 'npc', label: 'NPC Packaging', hint: 'g n', title: 'Package an NPC', icon: Package },
   ];
 
   // Discoverable, keyboard-first navigation (Linear-style). Registered in the
@@ -136,44 +155,56 @@ export default function PersonasPage() {
     { id: 'tab-mine', keys: 'g m', description: 'Go to My Personas', category: 'navigation', action: () => goTab('mine') },
     { id: 'tab-browse', keys: 'g b', description: 'Go to Marketplace', category: 'navigation', action: () => goTab('browse') },
     { id: 'tab-create', keys: 'g c', description: 'Author a new persona', category: 'navigation', action: () => { goTab('create'); setCreating(true); } },
+    { id: 'new-persona', keys: 'n', description: 'New persona', category: 'actions', action: () => { setTab('create'); setSelectedId(null); setEditing(null); setCreating(true); } },
     { id: 'tab-npc', keys: 'g n', description: 'Go to NPC Packaging', category: 'navigation', action: () => goTab('npc') },
   ], { lensId: 'personas' });
 
+  const startPersona = () => { goTab('create'); setCreating(true); };
+  const currentTab = TABS.find((t) => t.id === tab)!;
+
   return (
-    <LensShell lensId="personas">
+    <LensShell lensId="personas" asMain={false}>
       <FirstRunTour lensId="personas" />
       <DepthBadge lensId="personas" size="sm" className="ml-2" />
-      <div className="p-6 sm:p-8 max-w-3xl mx-auto">
-        <header className="mb-5">
-          <h1 className="text-2xl font-bold text-zinc-100">AI Personas</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Author a character from scratch — personality, voice, greeting, example dialogue — chat with it in-lens, then publish it to the marketplace. Other authors install, rate, and remix it.
-          </p>
-        </header>
+      <div data-lens-theme="personas" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Personas</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {currentTab.title}{tab === 'mine' && who ? `, ${who}` : ''}
+        </h1>
+
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Persona views">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => goTab(t.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`Shortcut: ${t.hint}`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.hint}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+
+        <p className="mb-5 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
+          Author a character from scratch — personality, voice, greeting, example dialogue — chat with it in-lens, then publish it to the marketplace. Other authors install, rate, and remix it.
+        </p>
 
         {status && (
-          <div className="mb-4 bg-purple-950/50 border border-purple-700/50 text-purple-200 px-3 py-2 rounded-lg text-sm">
+          <div className="mb-4 rounded-2xl border border-purple-700/50 bg-purple-950/50 px-4 py-2 text-sm text-purple-200">
             {status}
           </div>
         )}
-
-        <div className="flex gap-1 border-b border-zinc-800 mb-4">
-          {TABS.map((t) => (
-            <button
-              key={t.id} type="button"
-              onClick={() => goTab(t.id)}
-              title={`Shortcut: ${t.hint}`}
-              className={`group px-3 py-2 text-sm inline-flex items-center gap-1.5 ${
-                tab === t.id
-                  ? 'border-b-2 border-purple-500 text-purple-200'
-                  : 'text-zinc-400 hover:text-zinc-300'
-              }`}
-            >
-              {t.label}
-              <kbd className="hidden sm:inline rounded border border-zinc-700 bg-zinc-900 px-1 text-[9px] font-mono uppercase text-zinc-500 group-hover:text-zinc-300">{t.hint}</kbd>
-            </button>
-          ))}
-        </div>
 
         {/* selected persona detail overrides the tab body */}
         {selectedId ? (
@@ -184,7 +215,7 @@ export default function PersonasPage() {
             onClose={() => setSelectedId(null)}
           />
         ) : editing ? (
-          <section className="bg-zinc-900/80 border border-purple-800/50 rounded-xl p-4">
+          <section className="bg-[#111] border border-white/10 rounded-2xl p-5">
             <h2 className="text-sm font-bold text-purple-300 mb-3">Edit “{editing.name}”</h2>
             <PersonaEditor
               existing={editing}
@@ -213,13 +244,13 @@ export default function PersonasPage() {
                     >Retry</button>
                   </div>
                 ) : mine.length === 0 ? (
-                  <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl">
+                  <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-white/10 bg-[#111] p-8 text-center italic text-zinc-400">
                     No personas yet. Use the <strong>Create</strong> tab to author your first.
                   </div>
                 ) : (
-                  <ul className="grid gap-2 sm:grid-cols-2">
+                  <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {mine.map((p) => (
-                      <li key={p.id} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+                      <li key={p.id} className="rounded-2xl border border-white/10 bg-[#111] p-4">
                         <button
                           type="button" onClick={() => setSelectedId(p.id)}
                           className="w-full text-left flex gap-3"
@@ -256,7 +287,7 @@ export default function PersonasPage() {
             )}
 
             {tab === 'create' && (
-              <section className="bg-zinc-900/80 border border-purple-800/50 rounded-xl p-4">
+              <section className="bg-[#111] border border-white/10 rounded-2xl p-5">
                 <h2 className="text-sm font-bold text-purple-300 mb-3">Author a new persona</h2>
                 {creating ? (
                   <PersonaEditor
@@ -280,7 +311,7 @@ export default function PersonasPage() {
                 <p className="text-xs text-zinc-400">
                   The legacy NPC-packaging pipeline bundles an existing NPC&apos;s grudges, schemes, schedule, and opinions into a sellable DTU. Royalty cascade pays the author on every install.
                 </p>
-                <div className="bg-zinc-900/80 border border-purple-800/50 rounded-xl p-4 space-y-3">
+                <div className="bg-[#111] border border-white/10 rounded-2xl p-5 space-y-3">
                   <h2 className="text-sm font-bold text-purple-300">Package an NPC</h2>
                   <input
                     type="text" placeholder="NPC id (e.g. tully_vex)"
@@ -299,7 +330,7 @@ export default function PersonasPage() {
                     className="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-sm py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >Package</button>
                 </div>
-                <div className="bg-zinc-900/80 border border-cyan-800/50 rounded-xl p-4 space-y-3">
+                <div className="bg-[#111] border border-white/10 rounded-2xl p-5 space-y-3">
                   <h2 className="text-sm font-bold text-cyan-300">Install a Persona DTU</h2>
                   <input
                     type="text" placeholder="DTU id"
@@ -343,7 +374,19 @@ export default function PersonasPage() {
             )}
           </>
         )}
-      </div>      <CrossLensRecentsPanel lensId="personas" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <CrossLensRecentsPanel lensId="personas" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={startPersona}
+          title="New persona (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New persona
+        </button>
+      </div>
     </LensShell>
   );
 }
