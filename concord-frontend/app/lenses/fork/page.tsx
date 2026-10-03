@@ -170,7 +170,7 @@ export default function ForkLensPage() {
   // any matched fork visible so the tree structure stays coherent —
   // otherwise filtering can hide a parent and orphan its children
   // visually.  In list view we just show the matched leaves.
-  const visibleForkIds = useMemo(() => {
+  const visibleForkIds = (() => {
     const q = forkSearch.trim().toLowerCase();
     if (!q && forkStatusFilter === 'all') return null; // no filter
     const direct = new Set<string>();
@@ -192,7 +192,7 @@ export default function ForkLensPage() {
       }
     }
     return out;
-  }, [forks, forkSearch, forkStatusFilter, layout]);
+  })();
 
   const rootForks = forks.filter((f) =>
     f.parentId === null && (!visibleForkIds || visibleForkIds.has(f.id))
