@@ -1,88 +1,99 @@
 'use client';
 
 /**
- * World Creator — visual authoring lens for player-built sub-worlds.
- *
- * Two surfaces:
- *  - DraftGallery: start a blank draft / template, list your drafts,
- *    discover public worlds by other creators.
- *  - DraftEditor: a top-down scene editor — place props, spawn points,
- *    zones, NPCs and factions; preview biomes; tune rule modulators;
- *    set publish/privacy; run a playtest-readiness check; and "Playtest"
- *    mints the real world via POST /api/worlds and jumps into it.
- *
- * Backend: server/domains/world-creator.js (world-creator.* macros) for
- * the authoring layer + REST /api/worlds to mint the final world.
+ * World Creator: visual authoring for player-built sub-worlds, in the
+ * north-star look.
+ *  - Drafts: DraftGallery (blank draft / template, your drafts, discover
+ *    public worlds) or, once a draft is open, DraftEditor (top-down scene
+ *    editor, rule modulators, readiness check; "Playtest" mints the real
+ *    world via POST /api/worlds).
+ *  - Inspiration: live worldbuilding chatter.
+ * Backend: server/domains/world-creator.js (world-creator.* macros) plus
+ * REST /api/worlds.
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AlertTriangle, Hammer, Lightbulb } from 'lucide-react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 import { DraftGallery } from '@/components/world-creator/DraftGallery';
 import { DraftEditor } from '@/components/world-creator/DraftEditor';
 
+type CreatorView = 'drafts' | 'inspiration';
+
+const VIEWS: { id: CreatorView; label: string; keys: string; hint: string; icon: typeof Hammer }[] = [
+  { id: 'drafts', label: 'Drafts', keys: '1', hint: 'Your drafts, templates and public worlds', icon: Hammer },
+  { id: 'inspiration', label: 'Inspiration', keys: '2', hint: 'Worldbuilding chatter', icon: Lightbulb },
+];
+
 export default function WorldCreatorPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
-  const [showInspo, setShowInspo] = useState(false);
+  const [view, setView] = useState<CreatorView>('drafts');
 
   useLensCommand([
     { id: 'world-creator-back', keys: 'Escape', description: 'Back to drafts', category: 'navigation',
-      action: () => setEditingDraft(null) },
+      action: () => { setEditingDraft(null); setView('drafts'); } },
+    ...VIEWS.map((v) => ({
+      id: `world-creator-${v.id}`,
+      keys: v.keys,
+      description: `${v.label}: ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => { setEditingDraft(null); setView(v.id); },
+    })),
   ], { lensId: 'world-creator' });
 
+  const title = editingDraft
+    ? 'Shape the world'
+    : view === 'inspiration'
+      ? 'Borrow a spark'
+      : `Build a world${who ? `, ${who}` : ''}`;
+
   return (
-    <LensShell lensId="world-creator">
+    <LensShell lensId="world-creator" asMain={false}>
       <FirstRunTour lensId="world-creator" />
       <DepthBadge lensId="world-creator" size="sm" className="ml-2" />
-      <div className="mx-auto max-w-6xl px-6 py-8 text-stone-100">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">World Creator</h1>
-          <p className="mt-2 text-stone-400">
-            Author a sub-world the way a studio editor does — sculpt a scene, place props,
-            spawn points, zones, NPCs and factions, preview the biome, tune the rule
-            modulators, then playtest straight into <code className="text-stone-300">/lenses/world</code>.
-            You become the world&apos;s sole creator — there is no admin role.
-          </p>
-          <nav className="mt-4 flex gap-4 text-sm">
-            <Link href="/lenses/world-creator/anomalies" className="text-amber-400 hover:underline">
-              View anomalies in your worlds →
-            </Link>
-            <Link href="/lenses/world" className="text-stone-400 hover:underline">
-              ← Back to world lens
-            </Link>
-          </nav>
-        </header>
-
+      <NorthStarFrame
+        lensId="world-creator"
+        crumb="World creator"
+        title={title}
+        subtitle="Sculpt a scene, place props, spawn points, zones, NPCs and factions, tune the rule modulators, then playtest straight into the world lens. You become the world's sole creator; there is no admin role."
+        actions={(
+          <Link href="/lenses/world" className="text-[13px] text-zinc-500 hover:text-zinc-200">
+            Back to world lens
+          </Link>
+        )}
+        tabs={editingDraft ? undefined : VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as CreatorView)}
+        tabsLabel="World creator views"
+        cta={{
+          label: 'Check world anomalies',
+          icon: AlertTriangle,
+          onClick: () => router.push('/lenses/world-creator/anomalies'),
+          title: 'View anomalies in your worlds',
+        }}
+      >
         {editingDraft ? (
           <DraftEditor draftId={editingDraft} onClose={() => setEditingDraft(null)} />
-        ) : (
+        ) : view === 'drafts' ? (
           <DraftGallery onOpen={setEditingDraft} />
-        )}
-
-        {!editingDraft && (
-          <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <button
-              type="button"
-              onClick={() => setShowInspo(v => !v)}
-              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-            >
-              <span>Worldbuilding inspiration (Reddit)</span>
-              {showInspo ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </button>
-            {showInspo && (
-              <div className="mt-3">
-                <WorldBuilderInspo />
-              </div>
-            )}
+        ) : (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <WorldBuilderInspo />
           </section>
         )}
-      </div>      <CrossLensRecentsPanel lensId="world-creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
