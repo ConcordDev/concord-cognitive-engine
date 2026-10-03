@@ -15,7 +15,9 @@ import { RelationshipGraph } from '@/components/genesis/RelationshipGraph';
 import { GenesisMetrics } from '@/components/genesis/GenesisMetrics';
 import { ActivityFeed, type FeedEvent } from '@/components/genesis/ActivityFeed';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { Cpu, Zap, MessageSquare, Star, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Cpu, Zap, MessageSquare, Star, X, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useSocket } from '@/hooks/useSocket';
 
@@ -37,9 +39,8 @@ interface EmergentIdentity {
 type DetailTab = 'timeline' | 'lineage';
 
 export default function GenesisLens() {
-  useLensCommand([
-    { id: 'genesis-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'genesis' });
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('genesis', { type: 'view-event', limit: 5 });
@@ -54,7 +55,7 @@ export default function GenesisLens() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [isLive, setIsLive] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('timeline');
 
@@ -77,8 +78,6 @@ export default function GenesisLens() {
   // than silently degrading to an empty page.
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setLoadError(null);
     Promise.all([
       fetch('/api/emergents').then((r) => {
         if (!r.ok) throw new Error(`roster ${r.status}`);
@@ -114,9 +113,30 @@ export default function GenesisLens() {
       setFeed((prev) => [data, ...prev].slice(0, 200));
     };
     on('emergent:activity', handleActivity);
-    setIsLive(isConnected);
     return () => off('emergent:activity', handleActivity);
   }, [on, off, isConnected]);
+
+  const begin = () => {
+    const first = emergents[0];
+    const id = first?.emergent_id || first?.id;
+    if (id) {
+      setSelectedId(id);
+      setDetailTab('timeline');
+    }
+    document.getElementById('roster')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  useLensCommand([
+    { id: 'genesis-begin', keys: 'n', description: 'Open the first identity', category: 'actions', action: begin },
+    { id: 'genesis-roster', keys: 'r', description: 'Jump to the roster', category: 'navigation', action: () => document.getElementById('roster')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+  ], { lensId: 'genesis' });
+
+  const isLive = isConnected;
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const toggleFeedType = (t: string) => {
     setFeedFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -124,10 +144,10 @@ export default function GenesisLens() {
 
   const activeCount = emergents.filter((e) => e.active).length;
   const artifactsToday = feed.filter(
-    (e) => e.type === 'artifact_created' && e.timestamp > Date.now() - 86_400_000,
+    (e) => e.type === 'artifact_created' && e.timestamp > now - 86_400_000,
   ).length;
   const communicationsToday = feed.filter(
-    (e) => e.type === 'communication' && e.timestamp > Date.now() - 86_400_000,
+    (e) => e.type === 'communication' && e.timestamp > now - 86_400_000,
   ).length;
 
   const feedTypes = useMemo(() => {
@@ -138,21 +158,23 @@ export default function GenesisLens() {
 
   return (
     <LensShell lensId="genesis" asMain={false}>
-      <FirstRunTour lensId="genesis" />      <DepthBadge lensId="genesis" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-gray-950 text-white p-6">
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Zap className="w-8 h-8 text-neon-cyan" />
-            <h1 className="text-3xl font-bold tracking-tight">Genesis</h1>
-            {isLive && (
-              <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                ● LIVE
-              </span>
-            )}
+      <FirstRunTour lensId="genesis" />
+      <DepthBadge lensId="genesis" size="sm" className="ml-2" />
+      <div data-lens-theme="genesis" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Genesis</p>
+            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              Where it starts{who ? `, ${who}` : ''}
+            </h1>
+            <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
           </div>
-          <p className="text-gray-400 text-sm">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
-        </header>
+          {isLive && (
+            <span className="mt-3 shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+              ● Live
+            </span>
+          )}
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -162,7 +184,7 @@ export default function GenesisLens() {
             { label: 'Artifacts today', value: artifactsToday, icon: Star },
             { label: 'Communications today', value: communicationsToday, icon: MessageSquare },
           ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div key={label} className="rounded-2xl border border-white/10 bg-[#111] p-5">
               <div className="flex items-center gap-2 mb-1">
                 <Icon className="w-4 h-4 text-neon-cyan" />
                 <span className="text-xs text-gray-400">{label}</span>
@@ -184,7 +206,7 @@ export default function GenesisLens() {
               onClearFilter={() => setFeedFilter([])}
               loading={loading}
               loadError={loadError}
-              onRetry={() => setReloadKey((k) => k + 1)}
+              onRetry={() => { setLoading(true); setLoadError(null); setReloadKey((k) => k + 1); }}
             />
           </div>
 
@@ -206,7 +228,7 @@ export default function GenesisLens() {
 
         {/* Selected-emergent detail — timeline + lineage */}
         {selectedId && (
-          <section className="mt-8 rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4">
+          <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-5">
             <div className="mb-4 flex items-center gap-2 border-b border-zinc-800 pb-2">
               <div className="flex gap-1">
                 {(['timeline', 'lineage'] as const).map((tab) => (
@@ -242,17 +264,17 @@ export default function GenesisLens() {
 
         {/* Relationship graph */}
         <SavedSearchesPanel className="mt-6" currentFilters={rosterFilters} onRun={runSavedSearch} />
-        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-5">
           <RelationshipGraph onSelect={setSelectedId} />
         </section>
 
         {/* Observatory metrics */}
-        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-5">
           <GenesisMetrics onSelect={setSelectedId} />
         </section>
 
         {/* Origin & cosmogony reference */}
-        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-5">
           <button
             type="button"
             onClick={() => setShowOriginExplorer(v => !v)}
@@ -267,7 +289,19 @@ export default function GenesisLens() {
             </div>
           )}
         </section>
-      </div>      <CrossLensRecentsPanel lensId="genesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <CrossLensRecentsPanel lensId="genesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={begin}
+          title="Open the first identity (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Sparkles className="h-4 w-4" />
+          Begin
+        </button>
+      </div>
     </LensShell>
   );
 }
