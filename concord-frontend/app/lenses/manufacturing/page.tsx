@@ -2,7 +2,6 @@
 
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
@@ -12,7 +11,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Gauge as MTabOEE, ClipboardList as MTabWO, ShieldCheck as MTabQC,
   Factory as MTabFloor, Wrench as MTabTools,
-  ChevronDown, ChevronRight,
+  MessagesSquare, Zap,
 } from 'lucide-react';
 import { PipingProvider } from '@/components/panel-polish';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
@@ -21,7 +20,10 @@ import QualitySPC from '@/components/manufacturing/QualitySPC';
 import ShopFloorSuite from '@/components/manufacturing/ShopFloorSuite';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -42,14 +44,16 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type ModeTab = 'oeeBoard' | 'woBoard' | 'spc' | 'shopFloor' | 'tools';
+type ModeTab = 'oeeBoard' | 'woBoard' | 'spc' | 'shopFloor' | 'tools' | 'actions' | 'community';
 
-const MODE_TABS: { id: ModeTab; label: string; icon: typeof Cog }[] = [
-  { id: 'oeeBoard', label: 'OEE Board', icon: Gauge },
-  { id: 'woBoard', label: 'Work Orders', icon: ClipboardList },
-  { id: 'spc', label: 'Quality / SPC', icon: ShieldCheck },
-  { id: 'shopFloor', label: 'Shop Floor', icon: Factory },
-  { id: 'tools', label: 'Tools', icon: Wrench },
+const MODE_TABS: { id: ModeTab; label: string; title: string; keys?: string; icon: typeof Cog }[] = [
+  { id: 'shopFloor', label: 'Shop Floor', title: 'What the floor is doing', keys: 's', icon: Factory },
+  { id: 'oeeBoard', label: 'OEE Board', title: 'How well the machines run', keys: 'o', icon: Gauge },
+  { id: 'woBoard', label: 'Work Orders', title: 'What is in the queue', keys: 'w', icon: ClipboardList },
+  { id: 'spc', label: 'Quality / SPC', title: 'Whether the process holds', keys: 'q', icon: ShieldCheck },
+  { id: 'tools', label: 'Tools', title: 'Shop-floor calculators', keys: 't', icon: Wrench },
+  { id: 'actions', label: 'Actions', title: 'Every manufacturing action', icon: Zap },
+  { id: 'community', label: 'Community', title: 'What other makers are saying', icon: MessagesSquare },
 ];
 
 interface MfgKpis {
@@ -100,8 +104,8 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
   const [mode, setMode] = useState<ModeTab>('shopFloor');
-  const [showFeed, setShowFeed] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('manufacturing');
 
   useLensCommand(
@@ -151,131 +155,99 @@ export default function ManufacturingLensPage() {
   });
   const k = kpis || EMPTY_KPIS;
 
+  const current = MODE_TABS.find((t) => t.id === mode)!;
+
   return (
     <LensShell lensId="manufacturing" asMain={false}>
       <FirstRunTour lensId="manufacturing" />
       <DepthBadge lensId="manufacturing" size="sm" className="ml-2" />
-    <LensPageShell
-      domain="manufacturing"
-      title="Manufacturing"
-      description="OEE, work orders, quality/SPC, and shop-floor execution (MES)"
-      headerIcon={<Cog className="w-6 h-6 text-neon-purple" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error as Error | null}
-      onRetry={refetch}
-      actions={<LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />}
-    >
-      {/* Industry Wire — BLS PPI + Federal Reserve G.17 live feed */}
-      <LiveFeed
-        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-        domain="manufacturing"
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        limit={10}
-        className="mb-4"
-      />
-
-      {/* Dashboard KPIs — real manufacturing.* macros, aggregated client-side */}
-      <div className={ds.grid4}>
-        <StatCard icon={Gauge} label="Machines" value={k.machineCount} sub={`${k.runningCount} running`} />
-        <StatCard icon={ClipboardList} label="Work Orders" value={k.workOrderCount} color="text-neon-blue" />
-        <StatCard
-          icon={Siren}
-          label="Andon Alerts"
-          value={k.andonOpenCount}
-          sub={`${k.andonCriticalCount} critical`}
-          color={k.andonOpenCount > 0 ? 'text-red-400' : 'text-green-400'}
-        />
-        <StatCard
-          icon={AlertOctagon}
-          label="Open NCRs"
-          value={k.ncrOpenCount}
-          color={k.ncrOpenCount > 0 ? 'text-amber-400' : 'text-green-400'}
-        />
-      </div>
-
-      {/* AI Actions */}
-
-      {/* Mode Tabs */}
-      <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setMode(tab.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-                mode === tab.id
-                  ? 'bg-neon-purple/20 text-neon-purple'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Tab Content — every tab mounts a real macro-backed component */}
-      <div className="pt-2">
-        {mode === 'oeeBoard' && <OEEDashboard />}
-        {mode === 'woBoard' && <WorkOrderBoard />}
-        {mode === 'spc' && <QualitySPC />}
-        {mode === 'shopFloor' && <ShopFloorSuite />}
-        {mode === 'tools' && <ShopFloorToolsPanel />}
-      </div>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowFeed(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Manufacturing community (Reddit)</span>
-          {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showFeed && (
-          <div className="mt-3">
-            <ManufacturingFeed />
-          </div>
+      <NorthStarFrame
+        lensId="manufacturing"
+        theme="dashboard"
+        crumb="Manufacturing"
+        title={`${current.title}${mode === 'shopFloor' && who ? `, ${who}` : ''}`}
+        subtitle="OEE, work orders, quality/SPC and shop-floor execution (MES)."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="manufacturing" data={{}} compact />
+          </>
         )}
-      </section>
+        tabs={MODE_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
+        activeTab={mode}
+        onTab={(id) => setMode(id as ModeTab)}
+        tabsLabel="Manufacturing views"
+        cta={{ label: 'Open work orders', icon: ClipboardList, onClick: () => setMode('woBoard'), title: 'Jump to the work-order board (W)' }}
+      >
+        <div className="space-y-5">
+          {isError && (
+            <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-200">
+              <span>{(error as Error | null)?.message || 'Could not load manufacturing KPIs.'}</span>
+              <button type="button" onClick={() => void refetch()} className="rounded-md border border-rose-400/40 px-3 py-1 text-xs hover:bg-rose-500/10">Retry</button>
+            </div>
+          )}
 
-      <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowActionPanel(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>More actions</span>
-          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showActionPanel && (
-          <div className="mt-3">
-            <PipingProvider>
-              <ManufacturingActionPanel />
-            </PipingProvider>
-          </div>
-        )}
-      </section>
-    </LensPageShell>
-
-      <a href="#manufacturing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to manufacturing content</a>          <CrossLensRecentsPanel lensId="manufacturing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
-          <MobileTabBar
-            tabs={[
-              { id: 'oeeBoard',   label: 'OEE',   icon: MTabOEE },
-              { id: 'woBoard',    label: 'WO',    icon: MTabWO },
-              { id: 'spc',        label: 'QC',    icon: MTabQC },
-              { id: 'shopFloor',  label: 'Floor', icon: MTabFloor },
-              { id: 'tools',      label: 'Tools', icon: MTabTools },
-            ]}
-            active={mode}
-            onSelect={(id) => setMode(id as ModeTab)}
+          {/* Industry Wire — BLS PPI + Federal Reserve G.17 live feed */}
+          <LiveFeed
+            articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+            domain="manufacturing"
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            limit={10}
           />
+
+          {/* Dashboard KPIs — real manufacturing.* macros, aggregated client-side */}
+          <div className={ds.grid4} aria-busy={isLoading}>
+            <StatCard icon={Gauge} label="Machines" value={isLoading ? '…' : k.machineCount} sub={`${k.runningCount} running`} />
+            <StatCard icon={ClipboardList} label="Work Orders" value={isLoading ? '…' : k.workOrderCount} color="text-neon-blue" />
+            <StatCard
+              icon={Siren}
+              label="Andon Alerts"
+              value={isLoading ? '…' : k.andonOpenCount}
+              sub={`${k.andonCriticalCount} critical`}
+              color={k.andonOpenCount > 0 ? 'text-red-400' : 'text-green-400'}
+            />
+            <StatCard
+              icon={AlertOctagon}
+              label="Open NCRs"
+              value={isLoading ? '…' : k.ncrOpenCount}
+              color={k.ncrOpenCount > 0 ? 'text-amber-400' : 'text-green-400'}
+            />
+          </div>
+
+          <div id="manufacturing-skip" className="pt-1">
+            {mode === 'oeeBoard' && <OEEDashboard />}
+            {mode === 'woBoard' && <WorkOrderBoard />}
+            {mode === 'spc' && <QualitySPC />}
+            {mode === 'shopFloor' && <ShopFloorSuite />}
+            {mode === 'tools' && <ShopFloorToolsPanel />}
+            {mode === 'actions' && (
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <PipingProvider>
+                  <ManufacturingActionPanel />
+                </PipingProvider>
+              </section>
+            )}
+            {mode === 'community' && (
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <ManufacturingFeed />
+              </section>
+            )}
+          </div>
+        </div>
+      </NorthStarFrame>
+      {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'oeeBoard',   label: 'OEE',   icon: MTabOEE },
+          { id: 'woBoard',    label: 'WO',    icon: MTabWO },
+          { id: 'spc',        label: 'QC',    icon: MTabQC },
+          { id: 'shopFloor',  label: 'Floor', icon: MTabFloor },
+          { id: 'tools',      label: 'Tools', icon: MTabTools },
+        ]}
+        active={mode}
+        onSelect={(id) => setMode(id as ModeTab)}
+      />
     </LensShell>
   );
 }
