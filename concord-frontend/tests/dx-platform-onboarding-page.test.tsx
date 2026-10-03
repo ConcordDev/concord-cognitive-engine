@@ -15,6 +15,7 @@ import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
 }));
