@@ -195,6 +195,12 @@ export function InboxPanel() {
     setComposing(true);
   }, []);
 
+  useEffect(() => {
+    const open = () => setComposing(true);
+    window.addEventListener('message:compose', open);
+    return () => window.removeEventListener('message:compose', open);
+  }, []);
+
   useLensCommand(
     [
       { id: 'goto-inbox',   keys: 'g i', description: 'Inbox',   category: 'navigation', action: () => setActiveLabelId('inbox') },

@@ -216,16 +216,16 @@ interface DTU {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TABS: { id: CouncilTab; label: string; icon: typeof FileText }[] = [
-  { id: 'proposals', label: 'Proposals', icon: FileText },
-  { id: 'voting', label: 'Voting', icon: Vote },
-  { id: 'meetings', label: 'Meetings', icon: CalendarClock },
-  { id: 'debates', label: 'Debates', icon: MessageSquare },
-  { id: 'budget', label: 'Budget', icon: DollarSign },
-  { id: 'archive', label: 'Archive', icon: Archive },
-  { id: 'audit', label: 'Audit', icon: Shield },
-  { id: 'stakeholders', label: 'Stakeholders', icon: Users },
-  { id: 'workbench', label: 'Workbench', icon: Gavel },
+const TABS: { id: CouncilTab; label: string; title: string; icon: typeof FileText }[] = [
+  { id: 'proposals', title: "What is on the table", label: 'Proposals', icon: FileText },
+  { id: 'voting', title: "What is being decided", label: 'Voting', icon: Vote },
+  { id: 'meetings', title: "When we meet", label: 'Meetings', icon: CalendarClock },
+  { id: 'debates', title: "Who is speaking", label: 'Debates', icon: MessageSquare },
+  { id: 'budget', title: "Where the money goes", label: 'Budget', icon: DollarSign },
+  { id: 'archive', title: "What was decided", label: 'Archive', icon: Archive },
+  { id: 'audit', title: "What happened and who did it", label: 'Audit', icon: Shield },
+  { id: 'stakeholders', title: "Who has a voice", label: 'Stakeholders', icon: Users },
+  { id: 'workbench', title: "Weigh it with the voices", label: 'Workbench', icon: Gavel },
 ];
 
 const PROPOSAL_TYPES: { value: ProposalType; label: string }[] = [
@@ -2728,28 +2728,30 @@ export default function CouncilLensPage() {
     <LensShell lensId="council" asMain={false}>
       <FirstRunTour lensId="council" />
       <DepthBadge lensId="council" size="sm" className="ml-2" />
-    <div data-lens-theme="council" className={ds.pageContainer}>
+    <div data-lens-theme="council" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
       {/* Header */}
       <header>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Scale className="w-7 h-7 text-neon-purple" />
-            <div>
-              <h1 className={ds.heading1}>Council Lens</h1>
-              <p className={ds.textMuted}>
-                Governance, deliberation, and collective decision-making
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-[22rem]">
+            <p className="text-[14px] text-zinc-500">Council</p>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {activeTab === 'proposals' ? 'What is the question' : (TABS.find((t) => t.id === activeTab)?.title ?? 'Council')}
+            </h1>
+            <p className="text-[14px] text-zinc-500">
+              Governance, deliberation, and collective decision-making
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="council" data={{}} compact />
             <button
               onClick={() => {
                 setActiveTab('debates');
                 setShowCreateDebate(true);
               }}
-              className={ds.btnSecondary}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
             >
-              <Megaphone className="w-4 h-4" />
+              <Megaphone className="h-3.5 w-3.5" />
               Start Debate
             </button>
             <button
@@ -2760,13 +2762,16 @@ export default function CouncilLensPage() {
                   setActiveTab('voting');
                 }
               }}
-              className={ds.btnSecondary}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
             >
-              <Gavel className="w-4 h-4" />
+              <Gavel className="h-3.5 w-3.5" />
               Call Vote
             </button>
-            <button onClick={handleExportAudit} className={ds.btnSecondary}>
-              <Download className="w-4 h-4" />
+            <button
+              onClick={handleExportAudit}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
+            >
+              <Download className="h-3.5 w-3.5" />
               Export Decisions
             </button>
           </div>
@@ -2843,9 +2848,10 @@ export default function CouncilLensPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-lattice-border flex-wrap">
+      <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Council views">
         {TABS.map((tab) => {
           const Icon = tab.icon;
+          const on = activeTab === tab.id;
           return (
             <button
               key={tab.id}
@@ -2853,19 +2859,18 @@ export default function CouncilLensPage() {
                 setActiveTab(tab.id);
                 setSelectedProposalId(null);
               }}
+              aria-current={on ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 whitespace-nowrap',
-                activeTab === tab.id
-                  ? 'border-neon-cyan text-neon-cyan'
-                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600'
+                'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
               )}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="h-3.5 w-3.5" />
               {tab.label}
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* Tab Content */}
       <div className="min-h-[400px]">
@@ -3253,6 +3258,16 @@ export default function CouncilLensPage() {
           compact
         />
       )}
+
+      <button
+        type="button"
+        onClick={() => setShowCreateProposal(true)}
+        title="New proposal (N)"
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+      >
+        <Plus className="h-4 w-4" />
+        New proposal
+      </button>
     </div>
 
       <a href="#council-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to council content</a>
