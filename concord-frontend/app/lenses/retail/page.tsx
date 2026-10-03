@@ -2,15 +2,16 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Store, ShoppingCart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -35,7 +36,6 @@ import InventoryTransfers from '@/components/retail/InventoryTransfers';
 import SalesAnalytics from '@/components/retail/SalesAnalytics';
 import CommerceSuite from '@/components/retail/CommerceSuite';
 import { ShellPreview } from '@/components/lens/ShellPreview';
-import { ChevronDown } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
@@ -50,6 +50,8 @@ export default function RetailLensPage() {
   useLensNav('retail');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('retail');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -62,30 +64,22 @@ export default function RetailLensPage() {
     <LensShell lensId="retail" asMain={false}>
       <FirstRunTour lensId="retail" />
       <DepthBadge lensId="retail" size="sm" className="ml-2" />
-      <div data-lens-theme="retail" className={ds.pageContainer}>
+      <NorthStarFrame
+        lensId="retail"
+        crumb="Retail & Commerce"
+        title={`Run the register${who ? `, ${who}` : ''}`}
+        subtitle="Point of sale, catalog, fulfillment, storefront & ops — one real backend, no seeded data."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="retail" data={{}} compact />
+          </>
+        )}
+        cta={{ label: 'Retail Workbench', icon: ShoppingCart, onClick: () => setWorkbenchOpen(true), title: 'Retail Workbench — POS register, catalog, orders, low stock (press W)' }}
+      >
+      <div>
         <ShellPreview lensId="retail" defaultOpen={true} />
 
-        {/* Header */}
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Store className="w-7 h-7 text-neon-purple" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Retail &amp; Commerce</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={ds.textMuted}>Point of sale, catalog, fulfillment, storefront &amp; ops — one real backend, no seeded data.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWorkbenchOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-rose-500 hover:bg-rose-400 text-rose-50 shadow-lg text-sm font-medium"
-            title="Retail Workbench — POS register, catalog, orders, low stock (press W)"
-          >
-            <ShoppingCart className="w-4 h-4" /> Retail Workbench <kbd className="ml-1 px-1.5 py-0.5 rounded bg-black/20 text-[10px] font-mono">W</kbd>
-          </button>
-        </header>
         <RetailWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
         {/* Retail Wire — BLS CPI + Census Retail live feed */}
@@ -97,10 +91,9 @@ export default function RetailLensPage() {
           limit={10}
         />
         <RealtimeDataPanel domain="retail" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-        <DTUExportButton domain="retail" data={{}} compact />
 
         {/* Point of sale */}
-        <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-deep/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <LivePosTerminal />
         </section>
 
@@ -121,9 +114,8 @@ export default function RetailLensPage() {
         </PipingProvider>
 
         <section className="mt-4"><LensFeedButton domain="retail" label="Live product feed" /></section>
-          <CrossLensRecentsPanel lensId="retail" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
@@ -150,17 +142,17 @@ function RetailWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Retail workbench</h2>
-      <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
+      <h2 className="font-vault text-2xl text-zinc-100">Retail workbench</h2>
+      <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Retail workbench views">
         {TABS.map(t => (
           <button
             key={t.id}
+            type="button"
             onClick={() => setActive(t.id)}
+            aria-current={active === t.id ? 'page' : undefined}
             className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
-              active === t.id
-                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
+              'whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+              active === t.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
             )}
           >
             {t.label}
