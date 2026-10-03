@@ -7,7 +7,7 @@
  * macros.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,13 @@ const STATUS = [
   { id: 'read', label: 'Read', cls: 'bg-emerald-700 text-emerald-100' },
 ];
 
+export const PAPER_ADD_EVENT = 'paper:add';
+let paperAddPending = false;
+export function requestAddPaper() {
+  paperAddPending = true;
+  window.dispatchEvent(new Event(PAPER_ADD_EVENT));
+}
+
 export function PaperLibrary() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [collections, setCollections] = useState<CollectionMeta[]>([]);
@@ -35,6 +42,19 @@ export function PaperLibrary() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ title: '', authors: '', year: '', venue: '' });
   const [newCollection, setNewCollection] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const focus = () => {
+      const el = titleRef.current;
+      if (!el) return;
+      paperAddPending = false;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    };
+    const raf = requestAnimationFrame(() => { if (paperAddPending) focus(); });
+    window.addEventListener(PAPER_ADD_EVENT, focus);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener(PAPER_ADD_EVENT, focus); };
+  }, [loading]);
 
   const refresh = useCallback(async () => {
     const [pl, cl, d] = await Promise.all([
@@ -106,7 +126,7 @@ export function PaperLibrary() {
 
       {/* Add paper */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
-        <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Paper title"
+        <input ref={titleRef} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Paper title"
           className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.authors} onChange={e => setForm({ ...form, authors: e.target.value })} placeholder="authors (comma sep)"
           className="w-36 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />

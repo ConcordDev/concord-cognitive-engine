@@ -46,6 +46,13 @@ const BLOCK_TYPES: { id: string; label: string }[] = [
 type Tab = 'editor' | 'database';
 type SidePanel = 'none' | 'versions' | 'comments' | 'backlinks' | 'share';
 
+export const DOCS_NEW_EVENT = 'docs:new';
+let docsNewPending = false;
+export function requestNewDoc() {
+  docsNewPending = true;
+  window.dispatchEvent(new Event(DOCS_NEW_EVENT));
+}
+
 export function DocsWorkspace() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [active, setActive] = useState<Page | null>(null);
@@ -92,6 +99,20 @@ export function DocsWorkspace() {
     await refreshTree();
     if (r.data?.ok) await openPage(r.data.result?.page.id as string);
   }
+  const createRootRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    createRootRef.current = () => { void createPage(null); };
+  });
+  useEffect(() => {
+    const run = () => {
+      docsNewPending = false;
+      createRootRef.current();
+    };
+    if (docsNewPending) run();
+    window.addEventListener(DOCS_NEW_EVENT, run);
+    return () => window.removeEventListener(DOCS_NEW_EVENT, run);
+  }, []);
+
   async function deletePage(id: string) {
     await lensRun('docs', 'page-delete', { id });
     if (active?.id === id) setActive(null);
