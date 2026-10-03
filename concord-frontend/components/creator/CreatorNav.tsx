@@ -55,12 +55,12 @@ export function CreatorNav({
   return (
     <nav
       aria-label="Creator studio"
-      className="w-full lg:w-52 shrink-0 lg:border-r border-lattice-border lg:pr-3 overflow-x-auto lg:overflow-visible"
+      className="w-full shrink-0 self-start overflow-x-auto rounded-2xl border border-white/10 bg-[#111] p-3 lg:w-56 lg:overflow-visible"
     >
       <div className="flex lg:flex-col gap-4 min-w-max lg:min-w-0">
         {GROUPS.map((g) => (
           <div key={g.label}>
-            <div className="hidden lg:block text-[10px] uppercase tracking-[0.14em] text-white/35 px-2 mb-1">
+            <div className="hidden lg:block text-[11px] uppercase tracking-wider text-zinc-600 px-2 mb-1">
               {g.label}
             </div>
             <ul className="flex lg:flex-col gap-0.5">
@@ -72,11 +72,10 @@ export function CreatorNav({
                     <button
                       type="button"
                       onClick={() => onSelect(item.id)}
+                      aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-                        active
-                          ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
-                          : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent',
+                        'w-full flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] whitespace-nowrap transition-colors',
+                        active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                       )}
                     >
                       <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -102,4 +101,8 @@ export const CREATOR_COMMANDS = GROUPS.flatMap((g) =>
   g.items
     .filter((i) => i.keys)
     .map((i) => ({ id: `tab-${i.id}`, keys: i.keys!, view: i.id, description: i.label })),
+);
+
+export const CREATOR_VIEW_LABELS: Record<string, string> = Object.fromEntries(
+  GROUPS.flatMap((g) => g.items.map((i) => [i.id, i.label])),
 );
