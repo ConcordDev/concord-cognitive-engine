@@ -7,8 +7,10 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
@@ -29,11 +31,13 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type Tab = 'workflows' | 'connectors' | 'webhooks' | 'analysis';
 
-const TAB_KEYS: Record<Tab, string> = { workflows: 'Z', connectors: 'C', webhooks: 'W', analysis: 'A' };
+const TAB_KEYS: Record<Tab, string> = { workflows: 'z', connectors: 'c', webhooks: 'w', analysis: 'a' };
 
 export default function IntegrationsLensPage() {
   useLensNav('integrations');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<Tab>('workflows');
   const [showCreate, setShowCreate] = useState(false);
 
@@ -91,84 +95,63 @@ export default function IntegrationsLensPage() {
     );
   }
 
-  const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode; count?: number }> = [
-    { id: 'workflows', label: 'Workflows', icon: <Zap className="w-4 h-4" />, count: zaps?.length },
-    { id: 'connectors', label: 'Connectors', icon: <Plug className="w-4 h-4" />, count: connectedCount || undefined },
-    { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" />, count: webhooks?.count },
-    { id: 'analysis', label: 'Analysis', icon: <Activity className="w-4 h-4" />, count: undefined },
+  const TABS: Array<{ id: Tab; label: string; icon: typeof Zap; count?: number }> = [
+    { id: 'workflows', label: 'Workflows', icon: Zap, count: zaps?.length },
+    { id: 'connectors', label: 'Connectors', icon: Plug, count: connectedCount || undefined },
+    { id: 'webhooks', label: 'Webhooks', icon: Webhook, count: webhooks?.count },
+    { id: 'analysis', label: 'Analysis', icon: Activity },
   ];
+  const TITLES: Record<Tab, string> = {
+    workflows: `Wire your workflows${who ? `, ${who}` : ''}`,
+    connectors: 'Link your apps',
+    webhooks: 'Listen for events',
+    analysis: 'Analyze the plumbing',
+  };
 
   return (
     <LensShell lensId="integrations" asMain={false}>
       <FirstRunTour lensId="integrations" />
       <DepthBadge lensId="integrations" size="sm" className="ml-2" />
-      <div className="p-6 space-y-6">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Plug className="w-8 h-8 text-neon-green" />
-            <div>
-              <h1 className="text-xl font-bold">Integrations</h1>
-              <p className="text-sm text-gray-400">
-                Zapier-style workflows, app connectors, webhooks &amp; integration analysis
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-              <DTUExportButton domain="integrations" data={realtimeData || {}} compact />
-              {realtimeAlerts.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                  {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          </div>
-          {active === 'webhooks' && (
-            <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Add Webhook
-            </button>
-          )}
-        </header>
-
-        <div className="grid grid-cols-4 gap-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="panel p-3 flex items-center gap-3">
+      <NorthStarFrame
+        lensId="integrations"
+        crumb="Integrations"
+        title={TITLES[active]}
+        subtitle="Zapier-style workflows, app connectors, webhooks & integration analysis"
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="integrations" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        )}
+        tabs={TABS.map((t) => ({ id: t.id, label: t.count ? `${t.label} · ${t.count}` : t.label, icon: t.icon, keys: TAB_KEYS[t.id] }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as Tab)}
+        tabsLabel="Integration views"
+        cta={{ label: 'Add webhook', icon: Plus, onClick: () => { setActive('webhooks'); setShowCreate(true); }, title: 'Create a webhook' }}
+      >
+        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="rounded-2xl border border-white/10 bg-[#111] p-4 flex items-center gap-3">
             <Link className="w-5 h-5 text-neon-green" />
             <div><p className="text-lg font-bold">{connectedCount}</p><p className="text-xs text-gray-400">Linked apps</p></div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-3 flex items-center gap-3">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border border-white/10 bg-[#111] p-4 flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-neon-cyan" />
             <div><p className="text-lg font-bold">{authorizedCount}</p><p className="text-xs text-gray-400">OAuth-authorized</p></div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-3 flex items-center gap-3">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-white/10 bg-[#111] p-4 flex items-center gap-3">
             <Zap className="w-5 h-5 text-neon-purple" />
             <div><p className="text-lg font-bold">{activeZaps}</p><p className="text-xs text-gray-400">Active workflows</p></div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="panel p-3 flex items-center gap-3">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl border border-white/10 bg-[#111] p-4 flex items-center gap-3">
             <Webhook className="w-5 h-5 text-red-400" />
             <div><p className="text-lg font-bold">{webhooks?.count || 0}</p><p className="text-xs text-gray-400">Webhooks</p></div>
           </motion.div>
-        </div>
-
-        <div className="flex gap-2 border-b border-lattice-border flex-wrap">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActive(tab.id)}
-              title={`${tab.label} (press ${TAB_KEYS[tab.id]})`}
-              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
-                active === tab.id
-                  ? 'border-neon-green text-neon-green'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="text-xs bg-lattice-surface px-1.5 py-0.5 rounded">{tab.count || 0}</span>
-              )}
-              <kbd className="text-[9px] font-mono px-1 py-0.5 rounded bg-lattice-deep border border-lattice-border text-gray-500 hidden sm:inline">{TAB_KEYS[tab.id]}</kbd>
-            </button>
-          ))}
         </div>
 
         {active === 'workflows' && <WorkflowsPanel />}
@@ -187,12 +170,15 @@ export default function IntegrationsLensPage() {
 
         <RealtimeDataPanel data={realtimeInsights} />
 
-        <details className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-white">Integration tooling (external reference)</summary>
-          <div className="mt-3"><IntegrationsRepos /></div>
-        </details>
-      </div>
-      <CrossLensRecentsPanel lensId="integrations" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <RealtimeDataPanel data={realtimeInsights} />
+
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">Integration tooling (external reference)</h2>
+          <IntegrationsRepos />
+        </section>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

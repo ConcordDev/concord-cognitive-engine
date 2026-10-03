@@ -10,11 +10,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Activity, ArrowLeftRight, Baby, GitMerge, Loader2, MessageSquare, Network,
+  Activity, Baby, GitMerge, Loader2, MessageSquare, Network,
   Radio, RefreshCw, Shield, Zap,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -34,8 +36,6 @@ import { EmergentsPanel } from '@/components/bridge/EmergentsPanel';
 import { BridgeActionsPanel } from '@/components/bridge/BridgeActionsPanel';
 import { useBridgeData } from '@/components/bridge/useBridgeData';
 import type { BridgeView } from '@/components/bridge/types';
-import { cn } from '@/lib/utils';
-import { ds } from '@/lib/design-system';
 
 const VIEWS: { id: BridgeView; label: string; keys: string; icon: typeof Activity }[] = [
   { id: 'activity', label: 'Activity', keys: 'a', icon: Activity },
@@ -51,6 +51,8 @@ export default function BridgeLens() {
   useLensNav('bridge');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('bridge');
   const [active, setActive] = useState<BridgeView>('activity');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const { organisms, log, debates, births, emergents, loading, refresh } = useBridgeData();
 
@@ -65,34 +67,42 @@ export default function BridgeLens() {
     { lensId: 'bridge' },
   );
 
+  const titles: Record<BridgeView, string> = {
+    activity: `Watch the bridge${who ? `, ${who}` : ''}`,
+    organisms: 'Meet the organisms',
+    debates: 'Hear the debates',
+    lifecycle: 'Follow the births',
+    emergents: 'See what emerged',
+    federation: 'Connect the federation',
+    actions: 'Act on the bridge',
+  };
+
   return (
     <LensShell lensId="bridge" asMain={false}>
       <FirstRunTour lensId="bridge" />
       <DepthBadge lensId="bridge" size="sm" className="ml-2" />
-      <div data-lens-theme="bridge" className={cn(ds.pageContainer, 'bg-zinc-950 text-zinc-100')}>
-        <header className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
-              <ArrowLeftRight className="w-5 h-5 text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold">Organism Bridge</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="bridge" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-zinc-400">Emergent ↔ Knowledge Organism Communication</p>
-            </div>
-          </div>
-          <button onClick={refresh} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500" title="Refresh">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </header>
+      <NorthStarFrame
+        lensId="bridge"
+        crumb="Organism Bridge"
+        title={titles[active]}
+        subtitle="Emergent ↔ Knowledge Organism communication"
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="bridge" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as BridgeView)}
+        tabsLabel="Bridge views"
+        cta={{ label: loading ? 'Refreshing…' : 'Refresh bridge', icon: RefreshCw, onClick: refresh, disabled: loading, title: 'Re-read organisms, debates and events' }}
+      >
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
@@ -106,7 +116,7 @@ export default function BridgeLens() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08, duration: 0.35 }}
-              className="p-4 bg-zinc-900 rounded-lg border border-zinc-800"
+              className="rounded-2xl border border-white/10 bg-[#111] p-4"
             >
               <div className="flex items-center gap-2 mb-2">{stat.icon}</div>
               <p className={`text-2xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
@@ -115,27 +125,6 @@ export default function BridgeLens() {
           ))}
         </div>
 
-        <nav className="flex gap-1 mb-6 bg-zinc-900 rounded-lg p-1 overflow-x-auto" aria-label="Bridge views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                  on ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="capitalize">{v.label}</span>
-                <kbd className="hidden sm:inline text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">{v.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -162,12 +151,11 @@ export default function BridgeLens() {
           onNavigate={(id) => setSelectedDtuId(id)}
         />
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <ConcordLinkWalkers />
         </section>
 
-        <CrossLensRecentsPanel lensId="bridge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
