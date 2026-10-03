@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { FmTopicsPanel } from './FmTopicsPanel';
+import { FmTopicsPanel, FORUM_COMPOSE_EVENT } from './FmTopicsPanel';
 import { FmCategoriesPanel } from './FmCategoriesPanel';
 import { FmModerationPanel } from './FmModerationPanel';
 import { FmProfilePanel } from './FmProfilePanel';
@@ -52,6 +52,12 @@ export function ForumSection() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    const onCompose = () => setTab('topics');
+    window.addEventListener(FORUM_COMPOSE_EVENT, onCompose);
+    return () => window.removeEventListener(FORUM_COMPOSE_EVENT, onCompose);
+  }, []);
 
   // Opening a topic from trending/inbox/profile jumps to the Topics tab
   // and tells FmTopicsPanel which thread to auto-open.

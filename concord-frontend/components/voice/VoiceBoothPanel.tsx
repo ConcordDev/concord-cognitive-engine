@@ -141,6 +141,13 @@ const DEFAULT_INPUTS = [
 
 const REST_BARS = Array.from({ length: 48 }, () => 0.1);
 
+let voiceRecordPending = false;
+export const VOICE_RECORD_EVENT = 'voice:record';
+export function requestVoiceRecord() {
+  voiceRecordPending = true;
+  window.dispatchEvent(new CustomEvent(VOICE_RECORD_EVENT));
+}
+
 export function VoiceBoothPanel() {
   const [status, setStatus] = useState<RecordingStatus>('ready');
   const [recordingTime, setRecordingTime] = useState(0);
@@ -412,6 +419,23 @@ export function VoiceBoothPanel() {
       }
     }
   }, [status, activeTakeId, isPlaying]);
+
+  // Header CTA: starts a take, even when the booth view was not mounted yet.
+  const recordRef = useRef(handleRecord);
+  const statusRef = useRef(status);
+  useEffect(() => {
+    recordRef.current = handleRecord;
+    statusRef.current = status;
+  }, [handleRecord, status]);
+  useEffect(() => {
+    const go = () => {
+      voiceRecordPending = false;
+      if (statusRef.current !== 'recording') void recordRef.current();
+    };
+    if (voiceRecordPending) go();
+    window.addEventListener(VOICE_RECORD_EVENT, go);
+    return () => window.removeEventListener(VOICE_RECORD_EVENT, go);
+  }, []);
 
   // Lens-scoped keyboard commands. Space toggles record/stop; K toggles
   // playback (shotcut convention from video editors).

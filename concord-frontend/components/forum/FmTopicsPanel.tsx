@@ -30,6 +30,13 @@ interface Topic {
 
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
+let composeRequested = false;
+export const FORUM_COMPOSE_EVENT = 'forum:new-topic';
+export function requestForumCompose() {
+  composeRequested = true;
+  window.dispatchEvent(new CustomEvent(FORUM_COMPOSE_EVENT));
+}
+
 export function FmTopicsPanel({
   onChange, initialTopicId, onTopicConsumed,
 }: {
@@ -46,7 +53,11 @@ export function FmTopicsPanel({
   const [filterSub, setFilterSub] = useState('');
   const [sort, setSort] = useState('latest');
 
-  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(() => {
+    const want = composeRequested;
+    composeRequested = false;
+    return want;
+  });
   const [form, setForm] = useState({ title: '', categoryId: '', subforumId: '', tags: '' });
   const [draft, setDraft] = useState<RichDraft>(EMPTY_DRAFT);
 
@@ -96,6 +107,16 @@ export function FmTopicsPanel({
   }, [filterCat, filterSub, sort, loadSaved, onChange]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    const onCompose = () => {
+      composeRequested = false;
+      setOpenTopic(null);
+      setComposeOpen(true);
+    };
+    window.addEventListener(FORUM_COMPOSE_EVENT, onCompose);
+    return () => window.removeEventListener(FORUM_COMPOSE_EVENT, onCompose);
+  }, []);
 
   const consumedRef = useRef<string | null>(null);
 
