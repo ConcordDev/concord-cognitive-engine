@@ -31,7 +31,6 @@
 
 import { useState } from 'react';
 import {
-  Scale,
   Briefcase,
   Search,
   Gavel,
@@ -62,7 +61,8 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { ds } from '@/lib/design-system';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 type Workbench = 'practice' | 'analyzer' | 'docket' | 'qa' | 'caselaw';
@@ -70,21 +70,25 @@ type Workbench = 'practice' | 'analyzer' | 'docket' | 'qa' | 'caselaw';
 const WORKBENCH_TABS: {
   id: Workbench;
   label: string;
+  title: string;
   icon: React.ComponentType<{ className?: string }>;
   key: string;
   hint: string;
 }[] = [
-  { id: 'practice', label: 'Practice', icon: Briefcase, key: 'P', hint: 'Matters, billing, trust, documents' },
-  { id: 'analyzer', label: 'Analyzer', icon: Brain, key: 'Y', hint: 'AI contract risk-flagging' },
-  { id: 'docket', label: 'Docket', icon: Gavel, key: 'K', hint: 'Quick case log + deadlines' },
-  { id: 'qa', label: 'Q&A', icon: MessageSquare, key: 'Q', hint: 'Jurisdiction-aware research' },
-  { id: 'caselaw', label: 'Case Law', icon: Search, key: 'L', hint: 'CourtListener opinion search' },
+  { id: 'practice', title: 'Your practice', label: 'Practice', icon: Briefcase, key: 'P', hint: 'Matters, billing, trust, documents' },
+  { id: 'analyzer', title: 'What a contract risks', label: 'Analyzer', icon: Brain, key: 'Y', hint: 'AI contract risk-flagging' },
+  { id: 'docket', title: 'What is on the docket', label: 'Docket', icon: Gavel, key: 'K', hint: 'Quick case log + deadlines' },
+  { id: 'qa', title: 'Ask the research desk', label: 'Q&A', icon: MessageSquare, key: 'Q', hint: 'Jurisdiction-aware research' },
+  { id: 'caselaw', title: 'What the courts held', label: 'Case Law', icon: Search, key: 'L', hint: 'CourtListener opinion search' },
 ];
 
 export default function LegalLensPage() {
   useLensNav('legal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [workbench, setWorkbench] = useState<Workbench>('practice');
+  const current = WORKBENCH_TABS.find((t) => t.id === workbench)!;
 
   useLensCommand(
     [
@@ -100,62 +104,55 @@ export default function LegalLensPage() {
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="legal" />
-      <div data-lens-theme="legal" className={ds.pageContainer}>
-        {/* Header */}
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Scale className="w-7 h-7 text-indigo-500" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Legal Practice Management</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-                <DepthBadge lensId="legal" size="sm" />
-              </div>
-              <p className={ds.textMuted}>
-                Matters, billing, IOLTA trust accounting, documents, e-signature, and AI-assisted
-                research — a Clio-shape practice-management cockpit.
-              </p>
-            </div>
+      <div data-lens-theme="legal" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Legal</p>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{workbench === 'practice' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <DTUExportButton domain="legal" data={{}} compact />
-        </header>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <DepthBadge lensId="legal" size="sm" />
+            <DTUExportButton domain="legal" data={{}} compact />
+          </div>
+        </div>
 
-        {/* Legal disclaimer */}
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-200">
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <p className="text-[13px] leading-relaxed text-amber-200/90">
             This tool assists with legal organization and practice management. It does not
-            constitute legal advice. Always consult with qualified legal counsel for legal
-            decisions.
+            constitute legal advice. Always consult qualified legal counsel for legal decisions.
           </p>
         </div>
 
         <ShellPreview lensId="legal" defaultOpen={false} />
 
-        {/* Workbench switcher */}
         <nav
-          className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap"
+          className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label="Legal workbench"
         >
-          {WORKBENCH_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setWorkbench(tab.id)}
-              title={tab.hint}
-              aria-current={workbench === tab.id ? 'page' : undefined}
-              className={cn(
-                ds.btnGhost,
-                'whitespace-nowrap',
-                workbench === tab.id && 'bg-amber-400/20 text-amber-400'
-              )}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-              <kbd className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-black/30 text-gray-400 font-mono">
-                {tab.key}
-              </kbd>
-            </button>
-          ))}
+          {WORKBENCH_TABS.map((tab) => {
+            const on = workbench === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setWorkbench(tab.id)}
+                title={tab.hint}
+                aria-current={on ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{tab.key}</kbd>
+              </button>
+            );
+          })}
         </nav>
 
         {/* Workbench content */}
@@ -194,6 +191,18 @@ export default function LegalLensPage() {
         <LensFeedPanel lensId="legal" />
 
         <CrossLensRecentsPanel lensId="legal" sinceDays={7} limit={6} hideWhenEmpty />
+
+        {workbench !== 'qa' && (
+          <button
+            type="button"
+            onClick={() => setWorkbench('qa')}
+            title="Ask a legal research question (Q)"
+            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Ask a question
+          </button>
+        )}
       </div>
 
       <LensAgentFab

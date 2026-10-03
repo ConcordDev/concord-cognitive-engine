@@ -12,7 +12,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp,
   RefreshCw,
   Plus,
   Briefcase,
@@ -23,7 +22,6 @@ import {
   Globe2,
   Sparkles,
   PieChart,
-  Keyboard,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -39,6 +37,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import TickerTape from '@/components/finance/TickerTape';
@@ -81,15 +81,15 @@ type GroupId =
   | 'macro'
   | 'assistant';
 
-const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof PieChart }[] = [
-  { id: 'overview', label: 'Overview', hotkey: '1', icon: PieChart },
-  { id: 'positions', label: 'Positions', hotkey: '2', icon: Briefcase },
-  { id: 'cashflow', label: 'Cash-flow', hotkey: '3', icon: ArrowLeftRight },
-  { id: 'accounts', label: 'Accounts', hotkey: '4', icon: Building2 },
-  { id: 'planning', label: 'Planning', hotkey: '5', icon: Target },
-  { id: 'bills', label: 'Bills & Budget', hotkey: '6', icon: Receipt },
-  { id: 'macro', label: 'Macro data', hotkey: '7', icon: Globe2 },
-  { id: 'assistant', label: 'Assistant', hotkey: '8', icon: Sparkles },
+const GROUPS: { id: GroupId; title: string; label: string; hotkey: string; icon: typeof PieChart }[] = [
+  { id: 'overview', title: 'What you hold', label: 'Overview', hotkey: '1', icon: PieChart },
+  { id: 'positions', title: 'What you own', label: 'Positions', hotkey: '2', icon: Briefcase },
+  { id: 'cashflow', title: 'Where money moves', label: 'Cash-flow', hotkey: '3', icon: ArrowLeftRight },
+  { id: 'accounts', title: 'Where it lives', label: 'Accounts', hotkey: '4', icon: Building2 },
+  { id: 'planning', title: 'Where you are headed', label: 'Planning', hotkey: '5', icon: Target },
+  { id: 'bills', title: 'What is due', label: 'Bills & Budget', hotkey: '6', icon: Receipt },
+  { id: 'macro', title: 'What the world is doing', label: 'Macro data', hotkey: '7', icon: Globe2 },
+  { id: 'assistant', title: 'Ask about your money', label: 'Assistant', hotkey: '8', icon: Sparkles },
 ];
 
 const INDEX_NAMES: Record<string, string> = {
@@ -113,6 +113,8 @@ export default function FinanceTerminalPage() {
   useLensNav('finance');
   useLensIdentity('finance');
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('overview');
   const [showSnapshot, setShowSnapshot] = useState(false);
 
@@ -190,6 +192,8 @@ export default function FinanceTerminalPage() {
     { lensId: 'finance' },
   );
 
+  const current = GROUPS.find((g) => g.id === group)!;
+
   const GroupBody: ComponentType = useMemo(() => {
     switch (group) {
       case 'overview':
@@ -217,47 +221,55 @@ export default function FinanceTerminalPage() {
 
   return (
     <LensShell lensId="finance" asMain={false}>
-      <div data-lens-theme="finance" className="min-h-full bg-[#0a0d12] text-gray-200 font-mono p-4 space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-emerald-900/40 border border-emerald-700/30 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-tight text-emerald-100">
-                CONCORD <span className="text-gray-600">{'//'}</span> FINANCE TERMINAL
-              </h1>
-              <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                <StatusDot state={isLive ? 'live' : 'idle'} size="xs" />
-                <span>{isLive ? 'Market feed live' : 'Market feed idle'}</span>
-                {lastUpdated && <span className="text-gray-600">· {new Date(lastUpdated).toLocaleTimeString()}</span>}
-              </div>
+      <div data-lens-theme="finance" className="relative min-h-full space-y-5 px-8 pb-28 pt-6 text-gray-200">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Finance</p>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{group === 'overview' && who ? `, ${who}` : ''}
+            </h1>
+            <div className="mt-2 flex items-center gap-2 text-[12px] text-zinc-500">
+              <StatusDot state={isLive ? 'live' : 'idle'} size="xs" />
+              <span>{isLive ? 'Market feed live' : 'Market feed idle'}</span>
+              {lastUpdated && <span className="text-zinc-600">· {new Date(lastUpdated).toLocaleTimeString()}</span>}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–8 switch view · r refresh · s snapshot">
-              <Keyboard className="w-3.5 h-3.5" /> 1–8 · r · s
-            </span>
+          <div className="flex shrink-0 items-center gap-2 pt-2">
             <DensityToggle variant="dropdown" />
             <button
               type="button"
               onClick={() => setShowSnapshot(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-emerald-700/40 bg-emerald-900/20 text-emerald-200 text-xs hover:bg-emerald-900/40 transition-colors"
+              title="Record a net-worth snapshot (S)"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:text-white"
             >
-              <Plus className="w-3.5 h-3.5" /> Snapshot
-            </button>
-            <button
-              type="button"
-              onClick={() => loadDashboard(true)}
-              disabled={refreshing}
-              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
-              aria-label="Refresh dashboard"
-            >
-              <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+              <Plus className="h-4 w-4" /> Snapshot
             </button>
             <DTUExportButton domain="finance" data={{ summary, history, trend }} compact />
           </div>
-        </header>
+        </div>
+
+        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Finance views">
+          {GROUPS.map((g) => {
+            const active = group === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setGroup(g.id)}
+                aria-current={active ? 'page' : undefined}
+                title={`${g.label} (${g.hotkey})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <g.icon className="h-3.5 w-3.5" />
+                {g.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{g.hotkey}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
         <TickerTape className="-mx-4" />
 
@@ -293,29 +305,6 @@ export default function FinanceTerminalPage() {
           </StatTileGrid>
         ) : null}
 
-        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Finance views">
-          {GROUPS.map((g) => {
-            const active = group === g.id;
-            return (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => setGroup(g.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
-                  active
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                    : 'text-gray-400 hover:text-emerald-200 hover:bg-emerald-900/10 border-transparent'
-                )}
-              >
-                <span className="text-[10px] text-gray-600 tabular-nums">{g.hotkey}</span>
-                <g.icon className="w-3.5 h-3.5" />
-                {g.label}
-              </button>
-            );
-          })}
-        </nav>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -328,6 +317,17 @@ export default function FinanceTerminalPage() {
             <GroupBody />
           </motion.div>
         </AnimatePresence>
+
+        <button
+          type="button"
+          onClick={() => loadDashboard(true)}
+          disabled={refreshing}
+          title="Refresh dashboard (R)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       <AnimatePresence>

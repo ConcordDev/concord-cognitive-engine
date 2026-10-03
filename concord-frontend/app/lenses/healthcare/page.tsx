@@ -30,6 +30,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -54,6 +56,8 @@ export default function HealthcareLensPage() {
   useLensNav('healthcare');
   useLensIdentity('healthcare');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('healthcare');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<EpicNav>('dashboard');
 
   const go = useCallback((id: EpicNav) => setActive(id), []);
@@ -84,15 +88,18 @@ export default function HealthcareLensPage() {
         </a>
         <ShellPreview lensId="healthcare" defaultOpen={true} />
 
-        {/* Compact header: the workbench is the product, so it comes first. */}
-        <header className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <HeartPulse className="h-4 w-4 shrink-0 text-blue-300" />
-            <h1 className="text-[15px] font-semibold text-zinc-100">Clinical ops</h1>
-            <span className="truncate text-[13px] text-zinc-500">{activeLabel}</span>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+        <header className="flex items-start justify-between gap-4 px-4 pt-2 lg:px-3">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Healthcare</p>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {active === 'dashboard' && who ? `Your clinic today, ${who}` : activeLabel}
+            </h1>
           </div>
-          <DTUExportButton domain="healthcare" data={{}} compact />
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <HeartPulse className="h-4 w-4 text-blue-300" aria-hidden />
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <DTUExportButton domain="healthcare" data={{}} compact />
+          </div>
         </header>
 
         <main id="healthcare-main" className="min-w-0">
