@@ -224,6 +224,9 @@ export default function WorldUnityShell() {
             onClick={(e) => {
               if (e.target === e.currentTarget) setPanel(null);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setPanel(null);
+            }}
           >
             <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-zinc-950/95 p-4 shadow-2xl">
               <div className="mb-3 flex items-center justify-between">

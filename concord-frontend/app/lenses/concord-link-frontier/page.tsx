@@ -33,6 +33,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useUIStore } from '@/store/ui';
 import { Globe, Coins, RefreshCcw, AlertTriangle } from 'lucide-react';
 
 // ── Real response shapes (server/lib/cross-world-feed.js) ──────────────────
@@ -97,7 +98,7 @@ export default function ConcordLinkFrontierPage() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (announce = false) => {
     setFeedLoading(true);
     setFlowLoading(true);
     setFeedError(null);
@@ -134,11 +135,13 @@ export default function ConcordLinkFrontierPage() {
 
       setHasLoadedOnce(true);
       setLastRefresh(new Date());
+      if (announce) useUIStore.getState().addToast({ type: 'success', message: 'Cross-world feed synced.' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setFeedError((prev) => prev ?? msg);
       setFlowError((prev) => prev ?? msg);
       setHasLoadedOnce(true);
+      if (announce) useUIStore.getState().addToast({ type: 'error', message: 'Could not sync the cross-world feed.' });
     } finally {
       setFeedLoading(false);
       setFlowLoading(false);
@@ -146,7 +149,7 @@ export default function ConcordLinkFrontierPage() {
   }, []);
 
   useEffect(() => {
-    Promise.resolve().then(refresh);
+    Promise.resolve().then(() => refresh());
   }, [refresh]);
 
   useEffect(() => {
@@ -162,7 +165,7 @@ export default function ConcordLinkFrontierPage() {
     [
       { id: 'view-feed', keys: '1', description: 'Cross-world feed', category: 'navigation', action: () => setView('feed') },
       { id: 'view-royalty', keys: '2', description: 'Cross-world royalty flow', category: 'navigation', action: () => setView('royalty') },
-      { id: 'refresh', keys: 'r', description: 'Refresh the cross-world feed now', category: 'actions', action: refresh },
+      { id: 'refresh', keys: 'r', description: 'Refresh the cross-world feed now', category: 'actions', action: () => { void refresh(true); } },
     ],
     { lensId: 'concord-link-frontier' },
   );
@@ -191,7 +194,7 @@ export default function ConcordLinkFrontierPage() {
           document.getElementById(id === 'feed' ? 'link-feed' : 'link-royalty')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
         tabsLabel="Frontier views"
-        cta={{ label: loading ? 'Syncing…' : 'Sync the feed', icon: RefreshCcw, onClick: () => { void refresh(); }, disabled: loading, title: 'Refresh the cross-world feed now (R)' }}
+        cta={{ label: loading ? 'Syncing…' : 'Sync the feed', icon: RefreshCcw, onClick: () => { void refresh(true); }, disabled: loading, title: 'Refresh the cross-world feed now (R)' }}
       >
         <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500 sm:gap-3">
           {lastRefresh && <span>last synced {lastRefresh.toLocaleTimeString()}</span>}
@@ -206,7 +209,7 @@ export default function ConcordLinkFrontierPage() {
           </div>
         )}
         <section className="grid gap-4 xl:grid-cols-2">
-<div id="link-feed" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4">
+<div id="link-feed" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-white/20">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Globe className="h-4 w-4" /> Cross-world feed
             </h2>
@@ -237,7 +240,7 @@ export default function ConcordLinkFrontierPage() {
 
 
 
-<div id="link-royalty" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4">
+<div id="link-royalty" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-white/20">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-emerald-300">
               <Coins className="h-4 w-4" /> Cross-world royalty flow
             </h2>
