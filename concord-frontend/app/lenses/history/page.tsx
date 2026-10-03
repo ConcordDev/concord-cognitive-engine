@@ -52,11 +52,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Clock, Layers, BookOpen, Wand2, Users } from 'lucide-react';
+import { Layers, BookOpen, Wand2, Users, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DensityToggle } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
@@ -71,16 +74,18 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 
 type GroupId = 'timelines' | 'wikipedia' | 'tools' | 'notebook';
 
-const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof Layers; description: string }[] = [
-  { id: 'timelines', label: 'Timelines', hotkey: '1', icon: Layers, description: 'Build, visualize, map, compare and publish dated timelines' },
-  { id: 'wikipedia', label: 'Wikipedia Research', hotkey: '2', icon: BookOpen, description: 'Search articles, browse On This Day, cite sources' },
-  { id: 'tools', label: 'Analysis Tools', hotkey: '3', icon: Wand2, description: 'Ad-hoc timeline/source/period/causation analyzers' },
-  { id: 'notebook', label: 'Figures Notebook', hotkey: '4', icon: Users, description: 'Personal notes on historical figures' },
+const GROUPS: { id: GroupId; label: string; hotkey: string; title: string; icon: typeof Layers; description: string }[] = [
+  { id: 'timelines', title: 'The record', label: 'Timelines', hotkey: '1', icon: Layers, description: 'Build, visualize, map, compare and publish dated timelines' },
+  { id: 'wikipedia', title: 'What the sources say', label: 'Wikipedia Research', hotkey: '2', icon: BookOpen, description: 'Search articles, browse On This Day, cite sources' },
+  { id: 'tools', title: 'How to read it', label: 'Analysis Tools', hotkey: '3', icon: Wand2, description: 'Ad-hoc timeline/source/period/causation analyzers' },
+  { id: 'notebook', title: 'The people in it', label: 'Figures Notebook', hotkey: '4', icon: Users, description: 'Personal notes on historical figures' },
 ];
 
 export default function HistoryLensPage() {
   useLensNav('history');
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('timelines');
   const [dashboardRefreshToken, setDashboardRefreshToken] = useState(0);
 
@@ -96,67 +101,76 @@ export default function HistoryLensPage() {
     });
   }, []);
 
+  const openRecord = useCallback(() => {
+    switchGroup('wikipedia');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="history"] [role="tabpanel"] input');
+      if (el) el.focus();
+      else if (tries++ < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, [switchGroup]);
+
   useLensCommand(
-    GROUPS.map((g) => ({
-      id: `group-${g.id}`,
-      keys: g.hotkey,
-      description: g.label,
-      category: 'navigation' as const,
-      action: () => switchGroup(g.id),
-    })),
+    [
+      ...GROUPS.map((g) => ({
+        id: `group-${g.id}`,
+        keys: g.hotkey,
+        description: g.label,
+        category: 'navigation' as const,
+        action: () => switchGroup(g.id),
+      })),
+      { id: 'open-record', keys: 'o', description: 'Open a record (search Wikipedia)', category: 'actions' as const, action: openRecord },
+    ],
     { lensId: 'history' },
   );
+
+  const current = GROUPS.find((g) => g.id === group)!;
 
   return (
     <LensShell lensId="history" asMain={false}>
       <FirstRunTour lensId="history" />
-      <div data-lens-theme="history" className="p-6 space-y-5">
-        {/* Header */}
-        <header className="space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Clock className="w-6 h-6 text-neon-cyan" />
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                History
-                <DepthBadge lensId="history" size="sm" />
-              </h1>
-              <p className="text-sm text-gray-400">
-                A Wikipedia-grounded, user-authored timeline research tool —
-                real On This Day + article search, source-reliability scoring.
-              </p>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <DensityToggle variant="dropdown" />
-            </div>
+      <DepthBadge lensId="history" size="sm" className="ml-2" />
+      <div data-lens-theme="history" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">History</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{group === 'timelines' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <HistoryDashboardStrip refreshToken={dashboardRefreshToken} />
-        </header>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <DensityToggle variant="dropdown" />
+          </div>
+        </div>
 
-        {/* Workspace nav */}
-        <nav className="flex gap-1 flex-wrap border-b border-lattice-border pb-0" aria-label="History workspace sections">
+        <div className="mb-5">
+          <HistoryDashboardStrip refreshToken={dashboardRefreshToken} />
+        </div>
+
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="History workspace sections">
           {GROUPS.map((g) => {
-            const active = group === g.id;
+            const on = group === g.id;
             return (
               <button
                 key={g.id}
                 type="button"
                 onClick={() => switchGroup(g.id)}
+                aria-current={on ? 'page' : undefined}
                 title={g.description}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg border-b-2 -mb-px transition-colors',
-                  active
-                    ? 'border-neon-cyan text-neon-cyan bg-neon-cyan/5'
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-lattice-surface/50',
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
               >
-                <g.icon className="w-4 h-4" />
+                <g.icon className="h-3.5 w-3.5" />
                 {g.label}
-                <kbd className="ml-1 hidden sm:inline text-[9px] px-1 py-0.5 rounded bg-black/30 text-gray-500 font-mono">{g.hotkey}</kbd>
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{g.hotkey}</kbd>
               </button>
             );
           })}
         </nav>
-
         {/* Workspace body */}
         <div role="tabpanel" aria-label={GROUPS.find((g) => g.id === group)?.label}>
           {group === 'timelines' && (
@@ -168,7 +182,7 @@ export default function HistoryLensPage() {
 
           {group === 'wikipedia' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <WikipediaExplorer />
               </div>
               <LensFeedButton domain="history" label="Ingest today's On This Day events as DTUs" />
@@ -177,10 +191,10 @@ export default function HistoryLensPage() {
 
           {group === 'tools' && (
             <div className="space-y-6">
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <TimelineSourceTools />
               </section>
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <PeriodCauseEffectTools />
               </section>
             </div>
@@ -188,6 +202,18 @@ export default function HistoryLensPage() {
 
           {group === 'notebook' && <FiguresNotebook />}
         </div>
+
+        <CrossLensRecentsPanel lensId="history" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={openRecord}
+          title="Open a record (O)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Search className="h-4 w-4" />
+          Open a record
+        </button>
       </div>
     </LensShell>
   );

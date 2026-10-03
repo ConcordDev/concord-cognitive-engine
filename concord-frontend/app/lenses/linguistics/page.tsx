@@ -8,11 +8,11 @@
  * Page is a thin shell; panels own their macros and loading/empty/error.
  */
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   BookOpen, FileText, Globe, GraduationCap, Hash, Languages,
-  Search, Sparkles, Type, Wand2,
+  Plus, Search, Sparkles, Type, Wand2,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -24,6 +24,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { NotebookPanel } from '@/components/linguistics/NotebookPanel';
 import { AnalyzePanel } from '@/components/linguistics/AnalyzePanel';
@@ -35,17 +37,17 @@ import {
   type ModeTab,
 } from '@/components/linguistics/linguistics-shared';
 
-const VIEWS: { id: LinguisticsView; label: string; keys: string; hint: string; icon: typeof Languages }[] = [
-  { id: 'Analyses', label: 'Analyses', keys: '1', hint: 'Morphosyntax notes', icon: FileText },
-  { id: 'Lexicon', label: 'Lexicon', keys: '2', hint: 'Lexicon entries', icon: BookOpen },
-  { id: 'Grammars', label: 'Grammars', keys: '3', hint: 'Grammar sketches', icon: Type },
-  { id: 'Corpora', label: 'Corpora', keys: '4', hint: 'Corpus collections', icon: Hash },
-  { id: 'Translations', label: 'Translations', keys: '5', hint: 'Parallel text', icon: Globe },
-  { id: 'Dashboard', label: 'Dashboard', keys: '6', hint: 'Counts overview', icon: Sparkles },
-  { id: 'analyze', label: 'Analyze', keys: 'a', hint: 'Quick analysis', icon: Type },
-  { id: 'lookup', label: 'Lookup', keys: 'l', hint: 'Rhyme · dictionary', icon: Search },
-  { id: 'learning', label: 'Learning', keys: 'w', hint: 'Vocab · quiz · decks', icon: GraduationCap },
-  { id: 'workbench', label: 'Workbench', keys: 'b', hint: 'Action panel', icon: Wand2 },
+const VIEWS: { id: LinguisticsView; label: string; keys: string; title: string; hint: string; icon: typeof Languages }[] = [
+  { id: 'Analyses', title: 'The utterance', label: 'Analyses', keys: '1', hint: 'Morphosyntax notes', icon: FileText },
+  { id: 'Lexicon', title: 'The words', label: 'Lexicon', keys: '2', hint: 'Lexicon entries', icon: BookOpen },
+  { id: 'Grammars', title: 'The rules', label: 'Grammars', keys: '3', hint: 'Grammar sketches', icon: Type },
+  { id: 'Corpora', title: 'The corpus', label: 'Corpora', keys: '4', hint: 'Corpus collections', icon: Hash },
+  { id: 'Translations', title: 'Side by side', label: 'Translations', keys: '5', hint: 'Parallel text', icon: Globe },
+  { id: 'Dashboard', title: 'The shape of your work', label: 'Dashboard', keys: '6', hint: 'Counts overview', icon: Sparkles },
+  { id: 'analyze', title: 'Read a text closely', label: 'Analyze', keys: 'a', hint: 'Quick analysis', icon: Type },
+  { id: 'lookup', title: 'Look it up', label: 'Lookup', keys: 'l', hint: 'Rhyme · dictionary', icon: Search },
+  { id: 'learning', title: 'Learn it', label: 'Learning', keys: 'w', hint: 'Vocab · quiz · decks', icon: GraduationCap },
+  { id: 'workbench', title: 'The workbench', label: 'Workbench', keys: 'b', hint: 'Action panel', icon: Wand2 },
 ];
 
 const NOTEBOOK_MODES = new Set<LinguisticsView>([
@@ -55,12 +57,26 @@ const NOTEBOOK_MODES = new Set<LinguisticsView>([
 export default function LinguisticsLensPage() {
   useLensNav('linguistics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('linguistics');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<LinguisticsView>('Analyses');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const openText = useCallback(() => {
+    setActive('analyze');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="linguistics"] main textarea, [data-lens-theme="linguistics"] textarea');
+      if (el) el.focus();
+      else if (tries++ < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, []);
+
   useLensCommand(
     [
+      { id: 'open-text', keys: 'o', description: 'Open a text to analyze', category: 'actions' as const, action: openText },
       ...VIEWS.map((v) => ({
         id: `view-${v.id}`,
         keys: v.keys,
@@ -94,6 +110,8 @@ export default function LinguisticsLensPage() {
     [reduceMotion],
   );
 
+  const current = VIEWS.find((v) => v.id === active)!;
+
   let body: ReactNode = null;
   if (NOTEBOOK_MODES.has(active)) {
     body = <NotebookPanel mode={active as ModeTab} searchInputRef={searchInputRef} />;
@@ -111,28 +129,27 @@ export default function LinguisticsLensPage() {
     <LensShell lensId="linguistics" asMain={false}>
       <FirstRunTour lensId="linguistics" />
       <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
-      <div data-lens-theme="linguistics" className="p-6 space-y-6">
-        <header className="flex items-center gap-3">
-          <Languages className="w-6 h-6 text-pink-400" />
-          <div>
-            <h1 className="text-xl font-bold">Linguistics</h1>
-            <p className="text-sm text-gray-400">
-              Language analysis, lexicon, grammars, corpora, and translations
-            </p>
+      <div data-lens-theme="linguistics" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Linguistics</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'Analyses' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="linguistics" data={realtimeData || {}} compact />
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
             {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="linguistics" data={realtimeData || {}} compact />
           </div>
-        </header>
+        </div>
 
         <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
+          className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label="Linguistics views"
         >
           {VIEWS.map((v) => {
@@ -143,17 +160,16 @@ export default function LinguisticsLensPage() {
                 key={v.id}
                 type="button"
                 onClick={() => setActive(v.id)}
+                title={`${v.hint} (${v.keys})`}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-pink-400 text-pink-300'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
                 aria-current={on ? 'page' : undefined}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">
                   {v.keys}
                 </kbd>
               </button>
@@ -177,8 +193,19 @@ export default function LinguisticsLensPage() {
             compact
           />
         )}
+
+        <CrossLensRecentsPanel lensId="linguistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={openText}
+          title="Open a text (O)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Open a text
+        </button>
       </div>
-      <CrossLensRecentsPanel lensId="linguistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
