@@ -10,12 +10,13 @@ import { useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, CalendarDays, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirehosePanel } from '@/components/event-timeline/FirehosePanel';
 import { MyOnThisDay } from '@/components/event-timeline/MyOnThisDay';
 import { OnThisDay } from '@/components/event-timeline/OnThisDay';
@@ -37,6 +38,8 @@ const PANELS: Record<TimelineView, ComponentType> = {
 export default function EventTimelineLens() {
   useLensNav('event-timeline');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TimelineView>('firehose');
 
   useLensCommand(
@@ -56,45 +59,18 @@ export default function EventTimelineLens() {
     <LensShell lensId="event-timeline" asMain={false}>
       <FirstRunTour lensId="event-timeline" />
       <DepthBadge lensId="event-timeline" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <header className="mb-6">
-            <h1 className="mb-1 text-2xl font-semibold">Substrate Event Timeline</h1>
-            <p className="text-sm text-zinc-400">
-              The full firehose of substrate events — combat, quests, NPCs, world-state,
-              cross-world plots, cognition. Search, filter, drill into any event, and
-              export the slice you care about.
-            </p>
-          </header>
-
-          <nav
-            className="mb-4 flex gap-1 border-b border-zinc-800 overflow-x-auto"
-            aria-label="Event timeline views"
-          >
-            {VIEWS.map(({ id, label, keys, icon: Icon }) => {
-              const on = active === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setActive(id)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap',
-                    on
-                      ? 'border-indigo-500 text-indigo-300'
-                      : 'border-transparent text-zinc-400 hover:text-zinc-300',
-                  )}
-                  aria-current={on ? 'page' : undefined}
-                >
-                  <Icon className="h-4 w-4" /> {label}
-                  <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                    {keys}
-                  </kbd>
-                </button>
-              );
-            })}
-          </nav>
-
+      <NorthStarFrame
+        lensId="event-timeline"
+        crumb="Timeline"
+        title={`Everything that happened${who ? `, ${who}` : ''}`}
+        subtitle="The full firehose of substrate events: combat, quests, NPCs, world-state, cross-world plots, cognition. Search, filter, drill into any event, and export the slice you care about."
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as TimelineView)}
+        tabsLabel="Event timeline views"
+        cta={{ label: 'Open firehose', icon: Activity, onClick: () => setActive('firehose'), title: 'Open the live firehose (1)' }}
+      >
+        <div className="max-w-6xl">
           <AnimatePresence mode="wait">
             <motion.div
               key={active}
@@ -112,16 +88,8 @@ export default function EventTimelineLens() {
               )}
             </motion.div>
           </AnimatePresence>
-
-          <CrossLensRecentsPanel
-            lensId="event-timeline"
-            sinceDays={7}
-            limit={6}
-            hideWhenEmpty
-            className="mt-3"
-          />
         </div>
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
