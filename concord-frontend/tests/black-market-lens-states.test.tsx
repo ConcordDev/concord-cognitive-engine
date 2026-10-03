@@ -34,6 +34,7 @@ vi.mock('@/components/lens/LensVerticalHero', () => ({ LensVerticalHero: () => n
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/components/black-market/SaelStall', () => ({ SaelStall: () => null }));
 vi.mock('@/components/black-market/UndergroundExchange', () => ({ UndergroundExchange: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useArtifacts: () => ({ data: [], isLoading: false }),
