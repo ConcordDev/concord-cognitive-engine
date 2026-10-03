@@ -18,7 +18,7 @@ import {
 export function LensesPanel() {
   const { data, isLoading } = useQuery<LensEntry[]>({
     queryKey: ['inventory-lenses'],
-    queryFn: () => api.get('/api/inventory/lenses').then((r) => r.data),
+    queryFn: () => api.get('/api/inventory/lenses').then((r) => (r.data?.lenses ?? []) as LensEntry[]),
   });
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
