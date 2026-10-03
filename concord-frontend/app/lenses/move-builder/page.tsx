@@ -6,58 +6,59 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { Hammer, Library, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ComposePanel } from '@/components/move-builder/ComposePanel';
 import { MintedMovesPanel, type MintedMovesHandle } from '@/components/move-builder/MintedMovesPanel';
-import { cn } from '@/lib/utils';
 
 type MoveView = 'compose' | 'library';
 
-const TABS: { id: MoveView; label: string }[] = [
-  { id: 'compose', label: 'Compose' },
-  { id: 'library', label: 'Your moves' },
+const TABS: { id: MoveView; label: string; keys: string; title: string; hint: string; icon: typeof Hammer }[] = [
+  { id: 'compose', label: 'Compose', keys: 'c', title: 'Build a move', hint: 'Element, kind and a modifier budget, with an animation preview', icon: Sparkles },
+  { id: 'library', label: 'Your moves', keys: 'l', title: 'Everything you have minted', hint: 'Your minted moves and their composed detail', icon: Library },
 ];
 
 export default function MoveBuilderLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MoveView>('compose');
   const libraryRef = useRef<MintedMovesHandle>(null);
   const go = useCallback((id: MoveView) => setActive(id), []);
 
   useLensCommand(
-    [
-      { id: 'mb-compose', keys: 'c', description: 'Compose a move', category: 'navigation', action: () => go('compose') },
-      { id: 'mb-library', keys: 'l', description: 'Your minted moves', category: 'navigation', action: () => go('library') },
-    ],
+    TABS.map((t) => ({
+      id: `mb-${t.id}`,
+      keys: t.keys,
+      description: t.hint,
+      category: 'navigation' as const,
+      action: () => go(t.id),
+    })),
     { lensId: 'move-builder' },
   );
 
+  const current = TABS.find((t) => t.id === active)!;
+
   return (
-    <LensShell lensId="move-builder">
-      <div className="px-4 sm:px-6" style={{ maxWidth: 720, margin: '0 auto', paddingTop: 24, paddingBottom: 24, color: '#e8e4dc' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>System · Move Builder</h1>
-        <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 16 }}>
-          Compose a move — element, kind, and a diminishing-returns modifier budget — preview how it animates, then mint it.
-        </p>
-
-        <nav aria-label="Move builder" className="flex gap-1 mb-4 border-b border-[#2a2a35] pb-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => go(t.id)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-mono transition-colors',
-                active === t.id
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                  : 'text-gray-400 hover:text-white border border-transparent',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
+    <LensShell lensId="move-builder" asMain={false}>
+      <FirstRunTour lensId="move-builder" />
+      <DepthBadge lensId="move-builder" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="move-builder"
+        crumb="Move builder"
+        title={`${current.title}${active === 'compose' && who ? `, ${who}` : ''}`}
+        subtitle="Compose a move with an element, a kind and a diminishing-returns modifier budget, preview how it animates, then mint it."
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={active}
+        onTab={(id) => go(id as MoveView)}
+        tabsLabel="Move builder"
+        cta={active === 'library' ? { label: 'Compose a new move', icon: Sparkles, onClick: () => go('compose') } : undefined}
+      >
         {active === 'compose' && (
           <ComposePanel
             onMinted={() => {
@@ -66,10 +67,8 @@ export default function MoveBuilderLensPage() {
             }}
           />
         )}
-        {/* Keep library mounted via hidden when compose so ref reload works after mint;
-            actually remount is fine — onMinted navigates to library which loads fresh. */}
         {active === 'library' && <MintedMovesPanel ref={libraryRef} />}
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

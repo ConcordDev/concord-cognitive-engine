@@ -44,6 +44,9 @@ vi.mock('@/components/lens/DepthBadge', () => ({
 // that this focused state-machine test doesn't mount — stub it like every
 // other *-lens-states test does (see tests/retail-lens-states.test.tsx).
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 // The overview view's Simulation-overview + Federation-mesh cards go through
 // lensRun (POST /api/lens/run), not one of the mocked /api/admin/* fetch
 // routes — without this mock the real client's real axios instance runs
@@ -128,7 +131,7 @@ afterEach(() => { vi.restoreAllMocks(); });
 // page (heartbeat rows, pool stats, brain endpoints, shard rows) is now
 // spread across these tabs, so most assertions need a tab switch first.
 function goToView(getByRole: (role: string, opts: { name: string }) => HTMLElement, name: string) {
-  fireEvent.click(getByRole('tab', { name }));
+  fireEvent.click(getByRole('button', { name }));
 }
 
 describe('ops-telemetry lens — four UX states', () => {
@@ -168,7 +171,7 @@ describe('ops-telemetry lens — four UX states', () => {
     global.fetch = wire(EMPTY);
     const { getByText, getByRole } = render(<OpsTelemetryPage />);
     // Heartbeats
-    await waitFor(() => expect(getByRole('tab', { name: 'Heartbeats' })).toBeInTheDocument());
+    await waitFor(() => expect(getByRole('button', { name: 'Heartbeats' })).toBeInTheDocument());
     await act(async () => { goToView(getByRole, 'Heartbeats'); });
     await waitFor(() => expect(getByText(/no samples yet/i)).toBeInTheDocument());
     // Brains
@@ -223,7 +226,7 @@ describe('ops-telemetry lens — four UX states', () => {
     const restart = vi.fn(() => jsonResponse({ ok: true }));
     global.fetch = wire({ ...POPULATED, 'world-shards/concordia-hub/restart': restart });
     const { getByText, getByLabelText, getByRole } = render(<OpsTelemetryPage />);
-    await waitFor(() => expect(getByRole('tab', { name: 'Shards' })).toBeInTheDocument());
+    await waitFor(() => expect(getByRole('button', { name: 'Shards' })).toBeInTheDocument());
     await act(async () => { goToView(getByRole, 'Shards'); });
     await waitFor(() => expect(getByText('concordia-hub')).toBeInTheDocument());
 
