@@ -9,10 +9,7 @@
  * view is a panel under components/engineering/.
  */
 
-import { useMemo } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
-  Wrench,
   Zap,
   Loader2,
   CheckCircle,
@@ -30,14 +27,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   EngineeringFeaProvider,
   useEngineeringFea,
@@ -45,22 +42,23 @@ import {
 import { EngineeringPane } from '@/components/engineering/EngineeringPane';
 import type { EngView } from '@/components/engineering/types';
 
-const VIEWS: { id: EngView; label: string; keys: string; icon: typeof Wrench }[] = [
-  { id: 'geometry', label: 'Geometry', keys: '1', icon: Box },
-  { id: 'model', label: 'Model', keys: '2', icon: Atom },
-  { id: 'loads', label: 'Loads', keys: '3', icon: Weight },
-  { id: 'materials', label: 'Materials', keys: '4', icon: FlaskConical },
-  { id: 'analysis', label: 'Analysis', keys: 'a', icon: BarChart3 },
-  { id: 'bom', label: 'BOM', keys: 'b', icon: ClipboardList },
-  { id: 'tolerance', label: 'Tolerance', keys: 't', icon: Ruler },
-  { id: 'calcs', label: 'Calcs', keys: 'c', icon: Calculator },
-  { id: 'results', label: 'Results', keys: 'r', icon: Activity },
-  { id: 'feed', label: 'Feed', keys: 'f', icon: MessageSquare },
-  { id: 'actions', label: 'Actions', keys: 'x', icon: Sparkles },
+const VIEWS: { id: EngView; label: string; keys: string; title: string; icon: typeof Box }[] = [
+  { id: 'geometry', label: 'Geometry', keys: '1', title: 'The shape of it', icon: Box },
+  { id: 'model', label: 'Model', keys: '2', title: 'The structural model', icon: Atom },
+  { id: 'loads', label: 'Loads', keys: '3', title: 'What it has to carry', icon: Weight },
+  { id: 'materials', label: 'Materials', keys: '4', title: 'What it is made of', icon: FlaskConical },
+  { id: 'analysis', label: 'Analysis', keys: 'a', title: 'How it behaves', icon: BarChart3 },
+  { id: 'bom', label: 'BOM', keys: 'b', title: 'Everything it takes to build', icon: ClipboardList },
+  { id: 'tolerance', label: 'Tolerance', keys: 't', title: 'How tight it has to be', icon: Ruler },
+  { id: 'calcs', label: 'Calcs', keys: 'c', title: 'Run the numbers', icon: Calculator },
+  { id: 'results', label: 'Results', keys: 'r', title: 'What the solver found', icon: Activity },
+  { id: 'feed', label: 'Feed', keys: 'f', title: 'What engineers are saying', icon: MessageSquare },
+  { id: 'actions', label: 'Actions', keys: 'x', title: 'Every engineering tool', icon: Sparkles },
 ];
 
 function EngineeringDesk() {
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { active, setActive, runFEA, running, status, summary } = useEngineeringFea();
 
   useLensCommand(
@@ -74,125 +72,72 @@ function EngineeringDesk() {
     { lensId: 'engineering' },
   );
 
-  const motionProps = useMemo(
-    () =>
-      reduceMotion
-        ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
-        : {
-            initial: { opacity: 0, y: 8 },
-            animate: { opacity: 1, y: 0 },
-            exit: { opacity: 0, y: -6 },
-            transition: { duration: 0.16 },
-          },
-    [reduceMotion],
-  );
+  const current = VIEWS.find((v) => v.id === active) ?? VIEWS[0];
 
   return (
-    <div data-lens-theme="engineering" className={cn(ds.pageContainer, 'space-y-4 max-w-6xl')}>
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-            <Wrench className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
+    <NorthStarFrame
+      lensId="engineering"
+      crumb="Engineering"
+      title={`${current.title}${active === 'geometry' && who ? `, ${who}` : ''}`}
+      subtitle="FEA, structural, thermal, electrical and hydraulic."
+      tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
+      activeTab={active}
+      onTab={(id) => setActive(id as EngView)}
+      tabsLabel="Engineering views"
+      cta={{
+        label: running ? 'Solving…' : 'Run FEA',
+        icon: running ? Loader2 : Zap,
+        onClick: runFEA,
+        disabled: running,
+        title: 'Run the finite-element solve',
+      }}
+    >
+      <div className="space-y-4">
+        {status && (
+          <div
+            className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-sm ${
+              status.includes('Error') || status.includes('failed')
+                ? 'border border-red-500/30 bg-red-500/10 text-red-400'
+                : status.includes('complete')
+                  ? 'border border-green-500/30 bg-green-500/10 text-green-400'
+                  : 'border border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan'
+            }`}
+          >
+            {status.includes('complete') ? (
+              <CheckCircle className="h-4 w-4" />
+            ) : status.includes('Error') || status.includes('failed') ? (
+              <XCircle className="h-4 w-4" />
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            {status}
           </div>
-          <div className="min-w-0">
-            <h1 className={ds.heading1}>Engineering</h1>
-            <p className={ds.textMuted}>FEA · Structural · Thermal · Electrical · Hydraulic</p>
+        )}
+
+        {summary && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
+              <p className="mb-1 text-xs text-gray-400">Max Displacement</p>
+              <p className="font-mono text-lg font-bold text-neon-cyan">{summary.maxDisplacement.toFixed(4)}&quot;</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
+              <p className="mb-1 text-xs text-gray-400">Max Utilization</p>
+              <p className={`font-mono text-lg font-bold ${summary.maxUtilization > 1 ? 'text-red-400' : 'text-green-400'}`}>
+                {(summary.maxUtilization * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
+              <p className="mb-1 text-xs text-gray-400">All Members</p>
+              <p className={`text-lg font-bold ${summary.allPass ? 'text-green-400' : 'text-red-400'}`}>
+                {summary.allPass ? 'PASS ✓' : 'FAIL ✗'}
+              </p>
+            </div>
           </div>
-        </div>
-        <button
-          onClick={runFEA}
-          disabled={running}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-black rounded-lg font-semibold text-sm hover:bg-neon-cyan/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
-        >
-          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          Run FEA
-        </button>
-      </header>
+        )}
 
-      {status && (
-        <div
-          className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
-            status.includes('Error') || status.includes('failed')
-              ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-              : status.includes('complete')
-                ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-                : 'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan'
-          }`}
-        >
-          {status.includes('complete') ? (
-            <CheckCircle className="w-4 h-4" />
-          ) : status.includes('Error') || status.includes('failed') ? (
-            <XCircle className="w-4 h-4" />
-          ) : (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          )}
-          {status}
-        </div>
-      )}
-
-      {summary && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="panel p-3 text-center">
-            <p className="text-xs text-gray-400 mb-1">Max Displacement</p>
-            <p className="text-lg font-mono font-bold text-neon-cyan">
-              {summary.maxDisplacement.toFixed(4)}&quot;
-            </p>
-          </div>
-          <div className="panel p-3 text-center">
-            <p className="text-xs text-gray-400 mb-1">Max Utilization</p>
-            <p
-              className={`text-lg font-mono font-bold ${summary.maxUtilization > 1 ? 'text-red-400' : 'text-green-400'}`}
-            >
-              {(summary.maxUtilization * 100).toFixed(1)}%
-            </p>
-          </div>
-          <div className="panel p-3 text-center">
-            <p className="text-xs text-gray-400 mb-1">All Members</p>
-            <p className={`text-lg font-bold ${summary.allPass ? 'text-green-400' : 'text-red-400'}`}>
-              {summary.allPass ? 'PASS ✓' : 'FAIL ✗'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      <nav
-        className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-        aria-label="Engineering views"
-      >
-        {VIEWS.map((v) => {
-          const Icon = v.icon;
-          const on = active === v.id;
-          return (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => setActive(v.id)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                on
-                  ? 'border-[var(--lens-accent)] text-white'
-                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-              )}
-              aria-current={on ? 'page' : undefined}
-            >
-              <Icon className="w-4 h-4" />
-              {v.label}
-              <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                {v.keys}
-              </kbd>
-            </button>
-          );
-        })}
-      </nav>
-
-      <AnimatePresence mode="wait">
-        <motion.div key={active} {...motionProps}>
-          <EngineeringPane active={active} />
-        </motion.div>
-      </AnimatePresence>
-
-      <CrossLensRecentsPanel lensId="engineering" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-    </div>
+        <EngineeringPane active={active} />
+      </div>
+    </NorthStarFrame>
   );
 }
 
