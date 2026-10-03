@@ -25,6 +25,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle, Gift } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Objective {
@@ -48,6 +51,8 @@ type Tab = 'active' | 'completed' | 'available';
 type LoadState = 'loading' | 'error' | 'ready';
 
 export default function QuestsLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('active');
   const [quests, setQuests] = useState<Quest[]>([]);
   const [state, setState] = useState<LoadState>('loading');
@@ -61,16 +66,20 @@ export default function QuestsLensPage() {
     setTimeout(() => setFlash(null), 3000);
   }, []);
 
-  const refresh = useCallback(async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useCallback(() => {
     setState('loading');
     setErrMsg(null);
-    try {
-      // Real quest state machine via the quests domain macros. `quests.mine`
-      // only ever returns the ACTIVE set (its underlying query excludes
-      // completed/rewarded rows by design — see quest-engine.js), so the
-      // Completed tab needs the separate `quests.completed` macro; that call
-      // is best-effort (like the party lookup) so a hiccup there degrades to
-      // "no history shown" rather than blocking the primary active list.
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // `quests.mine` only returns ACTIVE quests (quest-engine.js excludes
+      // completed/rewarded rows), so Completed needs the separate
+      // `quests.completed` macro; that call and the party lookup are
+      // best-effort so a hiccup there never blocks the primary active list.
       const [qRes, completedRes, p] = await Promise.all([
         lensRun<{ ok: boolean; quests?: Quest[] }>('quests', 'mine', {}),
         Promise.resolve(lensRun<{ ok: boolean; quests?: Quest[] }>('quests', 'completed', {})).catch(() => null),
@@ -78,32 +87,32 @@ export default function QuestsLensPage() {
           .then((r) => r.json())
           .catch(() => null),
       ]);
-
       const node = qRes?.data;
       if (!node || node.ok === false || !node.result || node.result.ok === false) {
         throw new Error(node?.error || 'Could not load your quests.');
       }
-      const activeQuests = node.result.quests || [];
-
       const completedNode = completedRes?.data;
       const completedQuests =
         completedNode && completedNode.ok !== false && completedNode.result?.ok !== false
           ? completedNode.result?.quests || []
           : [];
-
       const merged = new Map<string, Quest>();
-      for (const q of [...activeQuests, ...completedQuests]) merged.set(q.id, q);
-      setQuests(Array.from(merged.values()));
-
-      if (p?.ok && p.party) setPartyId(p.party.party_id);
-      else setPartyId(null);
-
-      setState('ready');
-    } catch (e) {
-      setErrMsg(e instanceof Error ? e.message : 'Could not load your quests.');
-      setState('error');
-    }
-  }, []);
+      for (const q of [...(node.result.quests || []), ...completedQuests]) merged.set(q.id, q);
+      return { list: Array.from(merged.values()), party: p?.ok && p.party ? (p.party.party_id as string) : null };
+    })()
+      .then(({ list, party }) => {
+        if (cancelled) return;
+        setQuests(list);
+        setPartyId(party);
+        setState('ready');
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setErrMsg(e instanceof Error ? e.message : 'Could not load your quests.');
+        setState('error');
+      });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   const handleClaim = useCallback(async (questId: string) => {
     setBusy(`claim-${questId}`);
@@ -125,7 +134,6 @@ export default function QuestsLensPage() {
     }
   }, [showFlash]);
 
-  useEffect(() => { refresh(); }, [refresh]);
 
   const handleShare = useCallback(async (questId: string) => {
     if (!partyId) return;
@@ -152,35 +160,51 @@ export default function QuestsLensPage() {
     });
   }, [quests, tab]);
 
-  return (
-    <LensShell lensId="quests" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
-        <header className="border-b border-amber-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2">
-              <ScrollText className="h-5 w-5 text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Quest log</h1>
-              <p className="mt-0.5 truncate text-xs text-slate-400">{quests.length} total quest{quests.length === 1 ? '' : 's'}</p>
-            </div>
-            <button onClick={refresh} aria-label="Refresh quests" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
-              <RefreshCcw className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="mx-auto mt-2 flex max-w-screen-2xl gap-1" role="tablist" aria-label="Quest filters">
-            {(['active', 'completed', 'available'] as const).map((t) => (
-              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-md border px-3 py-1 text-[11px] font-medium capitalize ${tab === t ? 'border-amber-400 bg-amber-500/20 text-amber-100' : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-700/40'}`}>{t}</button>
-            ))}
-          </div>
-          {flash && (
-            <div role="status" className={`mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md px-3 py-1.5 text-[11px] ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
-              {flash.kind === 'ok' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-              {flash.msg}
-            </div>
-          )}
-        </header>
+  const counts = useMemo(() => ({
+    active: quests.filter((q) => !q.status || q.status === 'active' || q.status === 'accepted').length,
+    completed: quests.filter((q) => q.status === 'completed' || q.status === 'rewarded').length,
+    available: quests.filter((q) => q.status === 'available' || q.status === 'open').length,
+  }), [quests]);
+  const unclaimed = quests.filter((q) => q.status === 'completed').length;
+  const TITLES: Record<Tab, string> = {
+    active: `What you are on, ${who || 'adventurer'}`,
+    completed: 'What you have finished',
+    available: 'What is on offer',
+  };
 
-        <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+  return (
+    <LensShell lensId="quests" asMain={false}>
+      <NorthStarFrame
+        lensId="quests"
+        crumb="Quest log"
+        title={TITLES[tab]}
+        subtitle={`${quests.length} total quest${quests.length === 1 ? '' : 's'}${partyId ? ' · in a party, so active quests can be shared' : ''}`}
+        actions={
+          <button onClick={refresh} aria-label="Refresh quests" title="Refresh quests" className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-400 hover:text-zinc-100">
+            <RefreshCcw className="h-3.5 w-3.5" />
+          </button>
+        }
+        tabs={[
+          { id: 'active', label: `Active (${counts.active})`, icon: Clock, hint: 'Quests you have accepted' },
+          { id: 'completed', label: `Completed (${counts.completed})`, icon: Check, hint: 'Finished quests and unclaimed rewards' },
+          { id: 'available', label: `Available (${counts.available})`, icon: ScrollText, hint: 'Offers from NPCs' },
+        ]}
+        activeTab={tab}
+        onTab={(id) => setTab(id as Tab)}
+        tabsLabel="Quest filters"
+        cta={
+          unclaimed > 0
+            ? { label: `Claim rewards (${unclaimed})`, icon: Gift, onClick: () => setTab('completed'), title: 'Jump to completed quests with unclaimed rewards' }
+            : { label: 'Refresh quests', icon: RefreshCcw, onClick: () => void refresh(), title: 'Reload your quest log' }
+        }
+      >
+        {flash && (
+          <div role="status" className={`mb-4 flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
+            {flash.kind === 'ok' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+            {flash.msg}
+          </div>
+        )}
+        <section>
           {state === 'loading' ? (
             <ul className="space-y-3" role="status" aria-busy="true" aria-label="Loading quests">
               {[0, 1, 2].map((i) => <li key={i} className="h-16 animate-pulse rounded-xl border border-amber-500/15 bg-amber-500/5" />)}
@@ -211,7 +235,7 @@ export default function QuestsLensPage() {
           ) : (
             <ul className="space-y-3">
               {filtered.map((q) => (
-                <li key={q.id} className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <li key={q.id} className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h2 className="truncate text-sm font-semibold text-amber-100">{q.title || q.id}</h2>
@@ -260,7 +284,7 @@ export default function QuestsLensPage() {
             </ul>
           )}
         </section>
-      </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

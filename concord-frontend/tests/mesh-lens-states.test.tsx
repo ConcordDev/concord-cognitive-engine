@@ -44,6 +44,7 @@ vi.mock('@/components/mesh/MeshQueue', () => ({ MeshQueue: () => null }));
 vi.mock('@/components/mesh/MeshChannels', () => ({ MeshChannels: () => null }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 
 import MeshLensPage from '@/app/lenses/mesh/page';
 
@@ -114,8 +115,8 @@ describe('mesh lens — four UX states', () => {
 
     // a11y: the tab buttons carry aria-pressed reflecting the active tab.
     const overviewTab = view!.getByRole('button', { name: /Overview/ });
-    expect(overviewTab).toHaveAttribute('aria-pressed', 'true');
+    expect(overviewTab).toHaveAttribute('aria-current', 'page');
     const topologyTab = view!.getByRole('button', { name: /Topology/ });
-    expect(topologyTab).toHaveAttribute('aria-pressed', 'false');
+    expect(topologyTab).not.toHaveAttribute('aria-current');
   });
 });
