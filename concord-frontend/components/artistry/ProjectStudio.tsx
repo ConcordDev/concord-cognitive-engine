@@ -204,7 +204,7 @@ export function ProjectStudio() {
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <FolderPlus className="w-5 h-5 text-neon-pink" /> Project Case Studies
         </h2>
-        <button onClick={() => setShowForm(true)} className="px-3 py-1.5 text-xs bg-neon-pink/20 border border-neon-pink/30 rounded-lg hover:bg-neon-pink/30 flex items-center gap-1">
+        <button data-artistry-new-project onClick={() => setShowForm(true)} className="px-3 py-1.5 text-xs bg-neon-pink/20 border border-neon-pink/30 rounded-lg hover:bg-neon-pink/30 flex items-center gap-1">
           <Plus className="w-3 h-3" /> New Project
         </button>
       </div>
