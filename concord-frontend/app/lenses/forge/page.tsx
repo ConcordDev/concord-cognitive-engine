@@ -1,58 +1,48 @@
 'use client';
 
 /**
- * Forge Lens — polyglot single-file app generator surface.
- *
- * Mounts the absorbed ForgeWorkbench component (concord-frontend/
- * components/forge) which talks to /api/forge/{templates,sections,
- * generate,validate,...}.
- *
- * The heavy lifting (template selection, 13-subsystem configuration,
- * generation pipeline, copy-to-clipboard, undo, mobile-responsive grid)
- * lives inside ForgeWorkbench. This page is the lens-shell wrapper —
- * production-grade per Sprint 17 invariant:
- *   - Loading state: ForgeWorkbench shows Loader2 while templates fetch
- *   - Empty state:   "No templates available" if /api/forge/templates fails
- *   - Error state:   LensErrorBoundary auto-mounted by LensShell catches
- *                    any runtime error; ForgeWorkbench has its own
- *                    try/catch around the generation API
- *   - Keyboard:      useLensCommand registers ⌘K for template search,
- *                    ⌘↵ to generate
- *   - Responsive:    sm:/md:/lg: grid breakpoints across the workbench
- *   - Focus styles:  amber accent ring on every interactive control
- *   - Icons:         lucide-react throughout
+ * Forge lens: the north-star look (serif title, teal floating CTA) over the
+ * real Forge studio, template catalogue and polyglot workbench. The CTA
+ * focuses the studio's app-name field; every tool stays on screen.
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
+import { AlertTriangle, HelpCircle, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
-import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
 import ForgeStudio from '@/components/forge/ForgeStudio';
 import ForgeSharedView from '@/components/forge/ForgeSharedView';
 
 export default function ForgeLensPage() {
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  // The workbench mounts asynchronously; treat the first 800ms as
-  // "Loading" so the user sees a deterministic loading state before
-  // ForgeWorkbench takes over its own UX.
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
+  const startApp = useCallback(() => {
+    let tries = 0;
+    const tick = () => {
+      const el = document.getElementById('forge-appname') as HTMLInputElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      } else if (tries++ < 20) requestAnimationFrame(tick);
+    };
+    tick();
   }, []);
 
   useLensCommand(
     [
+      { id: 'forge-start', keys: 'n', description: 'Start a new app', category: 'actions', action: startApp },
       { id: 'forge-help', keys: '?', description: 'Toggle Forge keyboard help', category: 'navigation', action: () => setShowHelp(v => !v) },
       { id: 'forge-clear-error', keys: 'esc', description: 'Dismiss any visible error', category: 'actions', action: () => setError(null) },
     ],
@@ -61,91 +51,73 @@ export default function ForgeLensPage() {
 
   return (
     <LensShell lensId="forge" asMain={false}>
-      <FirstRunTour lensId="forge" />      <DepthBadge lensId="forge" size="sm" className="ml-2" />
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-amber-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6"
-      >
-        <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2">
-            <Hammer className="h-5 w-5 text-amber-400" aria-hidden="true" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-              Forge — Polyglot Monolith Generator
+      <FirstRunTour lensId="forge" />
+      <DepthBadge lensId="forge" size="sm" className="ml-2" />
+      <div data-lens-theme="forge" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Forge</p>
+            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              What&apos;s in the forge{who ? `, ${who}` : ''}
             </h1>
-            <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-              Pick a template, configure 13 subsystems, generate a single-file TS app you can publish as a DTU.
+            <p className="mb-5 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
+              Pick a template, configure 13 subsystems, generate a single-file TypeScript app you can publish as a DTU.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setShowHelp(v => !v)}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="mt-3 shrink-0 rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-500 transition-colors hover:text-zinc-200"
             aria-label="Toggle keyboard help"
           >
             <HelpCircle className="h-4 w-4" />
           </button>
-          <div className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300 sm:flex">
-            <Sparkles className="h-3 w-3" aria-hidden="true" />
-            Beta
-          </div>
         </div>
-      </motion.header>
 
-      {error && (
-        <div role="alert" className="mx-auto max-w-screen-2xl px-4 py-2">
-          <div className="flex items-start gap-2 rounded-lg border border-red-700/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <strong>Forge error:</strong> {error}
+        {error && (
+          <div role="alert" className="mb-4">
+            <div className="flex items-start gap-2 rounded-2xl border border-red-700/50 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1"><strong>Forge error:</strong> {error}</div>
+              <button onClick={() => setError(null)} className="rounded text-xs underline focus:outline-none focus:ring-2 focus:ring-red-400">dismiss</button>
             </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-xs underline focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
-            >
-              dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showHelp && (
-        <div className="mx-auto max-w-screen-2xl px-4 py-2 text-xs text-slate-300">
-          <div className="rounded-lg border border-slate-700/40 bg-slate-900/60 px-3 py-2 space-y-1">
-            <div><kbd className="font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300">?</kbd> toggle help</div>
-            <div><kbd className="font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300">Esc</kbd> dismiss error</div>
-            <div><kbd className="font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300">⌘K</kbd> template search (inside workbench)</div>
-            <div><kbd className="font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300">⌘↵</kbd> generate (inside workbench)</div>
-          </div>
-        </div>
-      )}
-
-      {/* Resolves ?share=<token> into a read-only shared-app view; renders
-          nothing when the page wasn't opened via a Forge share link. */}
-      <ForgeSharedView />
-
-      <section className="mx-auto max-w-screen-2xl px-2 py-3 sm:px-4 sm:py-4">
-        {loading ? (
-          <div className="flex items-center gap-2 text-slate-400 text-sm py-12 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading Forge templates…
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <ForgeStudio />
-            <ForgeWorkbench />
           </div>
         )}
-      </section>
-      <section className="mx-auto mt-6 max-w-5xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <TemplateCatalogue />
-      </section>
-    </main>
 
-          <SessionRail lensId="forge" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="forge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {showHelp && (
+          <div className="mb-4 rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-xs text-zinc-300 space-y-1">
+            <div><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-teal-300">N</kbd> start a new app</div>
+            <div><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-teal-300">?</kbd> toggle help</div>
+            <div><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-teal-300">Esc</kbd> dismiss error</div>
+            <div><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-teal-300">⌘K</kbd> template search (inside workbench)</div>
+            <div><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-teal-300">⌘↵</kbd> generate (inside workbench)</div>
+          </div>
+        )}
+
+        <ForgeSharedView />
+
+        <div className="space-y-6">
+          <ForgeStudio />
+          <ForgeWorkbench />
+        </div>
+
+        <section className="mt-6 max-w-5xl rounded-2xl border border-white/10 bg-[#111] p-4">
+          <TemplateCatalogue />
+        </section>
+
+        <SessionRail lensId="forge" hideWhenEmpty className="mt-4" />
+        <CrossLensRecentsPanel lensId="forge" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={startApp}
+          title="Start a new app (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Start
+        </button>
+      </div>
     </LensShell>
   );
 }
