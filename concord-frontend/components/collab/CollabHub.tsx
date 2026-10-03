@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -14,15 +15,16 @@ import { api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
   Users,
   Plus,
   Mail,
   Archive,
   Search,
-  ChevronDown,
-  ChevronRight,
+  FileText,
+  Gauge,
+  Clock,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -62,6 +64,7 @@ export function CollabHub() {
   const { user } = useAuth();
   const myUserId = user?.id || 'anon';
   const myName = user?.username || 'You';
+  const who = titleCaseDisplayName(user?.username);
   const {
     isLoading,
     isError,
@@ -117,27 +120,7 @@ export function CollabHub() {
   const [activeTab, setActiveTab] = useState<MainTab>('active');
 
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
-
-  useLensCommand(
-
-    [
-
-      { id: 'tab-active', keys: 'a', description: 'Active', category: 'navigation', action: () => setActiveTab('active') },
-
-      { id: 'tab-mine', keys: 'm', description: 'Mine', category: 'navigation', action: () => setActiveTab('mine') },
-
-      { id: 'tab-invitations', keys: 'i', description: 'Invitations', category: 'navigation', action: () => setActiveTab('invitations') },
-
-      { id: 'tab-history', keys: 'h', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
-
-    ],
-
-    { lensId: 'collab' }
-
-  );
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
-  const [showCollabActionPanel, setShowCollabActionPanel] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -171,12 +154,30 @@ export function CollabHub() {
     (s) => s.host.id === myUserId || s.participants.some((p) => p.id === myUserId)
   );
 
-  const TABS: { key: MainTab; label: string; count?: number }[] = [
-    { key: 'active', label: 'Active Sessions', count: sessions.length },
-    { key: 'mine', label: 'My Sessions', count: mySessions.length },
-    { key: 'invitations', label: 'Invitations' },
-    { key: 'history', label: 'Session History' },
+  const TABS: { key: MainTab; label: string; keys: string; title: string; hint: string; icon: typeof Users }[] = [
+    { key: 'active', label: `Rooms · ${sessions.length}`, keys: 'a', title: 'Where people are working', hint: 'Every live session room', icon: Users },
+    { key: 'mine', label: `Mine · ${mySessions.length}`, keys: 'm', title: 'Rooms you are in', hint: 'Sessions you host or joined', icon: Users },
+    { key: 'invitations', label: 'Invitations', keys: 'i', title: 'Who wants you in the room', hint: 'Invites sent to you', icon: Mail },
+    { key: 'workspace', label: 'Docs & people', keys: 'd', title: 'Write together', hint: 'Live docs and the workspace roster', icon: FileText },
+    { key: 'facilitator', label: 'Facilitator', keys: 'f', title: 'How the team is doing', hint: 'Analytics, contribution, consensus and workload', icon: Gauge },
+    { key: 'history', label: 'History', keys: 'h', title: 'Rooms that wrapped up', hint: 'Completed session history', icon: Clock },
   ];
+
+  useLensCommand(
+    [
+      ...TABS.map((t) => ({
+        id: `tab-${t.key}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setActiveTab(t.key),
+      })),
+      { id: 'create-session', keys: 'n', description: 'Create session', category: 'actions' as const, action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'collab' },
+  );
+
+  const currentTab = TABS.find((t) => t.key === activeTab)!;
 
   const PILLS: { key: FilterPill; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -228,85 +229,35 @@ export function CollabHub() {
     <>
       <FirstRunTour lensId="collab" />
       <DepthBadge lensId="collab" size="sm" className="ml-2" />
-    <div data-lens-theme="collab" className="p-6 space-y-5 max-w-[1440px] mx-auto">
-      {/* Header */}
-      <header className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
-            <Users className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--lens-accent)' }}>Files &amp; Rooms</h1>
-            <p className="text-sm text-gray-400">Live docs, session rooms, and presence</p>
-          </div>
-
-          {/* Real-time Enhancement Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap">
+      <NorthStarFrame
+        lensId="collab"
+        crumb="Files & rooms"
+        title={`${currentTab.title}${activeTab === 'active' && who ? `, ${who}` : ''}`}
+        subtitle="Live docs, session rooms, and presence."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="collab" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
+            <span className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">{onlineCount} online</span>
+            </span>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-emerald-400 font-medium">{onlineCount} online</span>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Create Session
-          </button>
-        </div>
-      </header>
-
-      {/* Tab navigation */}
-      <nav className="flex items-center gap-1 border-b border-lattice-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
-              activeTab === tab.key
-                ? 'border-neon-blue text-neon-blue'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
-            )}
-          >
-            {tab.label}
-            {tab.count !== undefined && (
-              <span
-                className={cn(
-                  'ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full',
-                  activeTab === tab.key
-                    ? 'bg-neon-blue/20 text-neon-blue'
-                    : 'bg-gray-700 text-gray-400'
-                )}
-              >
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
-
-      {/* Tab content */}
-      <AnimatePresence mode="wait">
-        {activeTab === 'active' && (
-          <motion.div
-            key="active"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-4"
-          >
+        }
+        tabs={TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as MainTab)}
+        tabsLabel="Collab views"
+        cta={{ label: 'Create session', icon: Plus, onClick: () => setShowCreateModal(true), title: 'Start a new session room (N)' }}
+      >
+        <div data-lens-theme="collab" className="space-y-5">
+          {activeTab === 'active' && (
+            <div className="space-y-4">
             {/* Filter pills + search */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-2">
@@ -339,7 +290,7 @@ export function CollabHub() {
 
             {/* Session grid */}
             {filteredSessions.length === 0 ? (
-              <div className="panel p-12 text-center text-gray-400">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-12 text-center text-gray-400">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No sessions found</p>
                 <p className="text-sm mt-1">Try adjusting your filters or create a new session.</p>
@@ -355,19 +306,13 @@ export function CollabHub() {
                 ))}
               </div>
             )}
-          </motion.div>
-        )}
+            </div>
+          )}
 
-        {activeTab === 'mine' && (
-          <motion.div
-            key="mine"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
+          {activeTab === 'mine' && (
+            <div>
             {mySessions.length === 0 ? (
-              <div className="panel p-12 text-center text-gray-400">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-12 text-center text-gray-400">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No active sessions</p>
                 <p className="text-sm mt-1">Create or join a session to see it here.</p>
@@ -383,20 +328,13 @@ export function CollabHub() {
                 ))}
               </div>
             )}
-          </motion.div>
-        )}
+            </div>
+          )}
 
-        {activeTab === 'invitations' && (
-          <motion.div
-            key="invitations"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3"
-          >
+          {activeTab === 'invitations' && (
+            <div className="space-y-3">
             {invitations.length === 0 ? (
-              <div className="panel p-12 text-center text-gray-400">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-12 text-center text-gray-400">
                 <Mail className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No invitations</p>
                 <p className="text-sm mt-1">
@@ -419,20 +357,13 @@ export function CollabHub() {
                 />
               ))
             )}
-          </motion.div>
-        )}
+            </div>
+          )}
 
-        {activeTab === 'history' && (
-          <motion.div
-            key="history"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3"
-          >
+          {activeTab === 'history' && (
+            <div className="space-y-3">
             {history.length === 0 ? (
-              <div className="panel p-12 text-center text-gray-400">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-12 text-center text-gray-400">
                 <Archive className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No session history</p>
                 <p className="text-sm mt-1">Completed sessions will appear here.</p>
@@ -440,25 +371,40 @@ export function CollabHub() {
             ) : (
               history.map((entry) => <HistoryCard key={entry.id} entry={entry} />)
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
 
-      {/* Create session modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <CreateSessionModal
-            onClose={() => setShowCreateModal(false)}
-            onCreate={createSessionArtifact}
-            hostId={myUserId}
-            hostName={myName}
-          />
-        )}
-      </AnimatePresence>
+          {activeTab === 'workspace' && (
+            <PipingProvider>
+              <CollabDocWorkspace />
+              <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
+                <WorkspaceRoster />
+              </section>
+            </PipingProvider>
+          )}
+
+          {activeTab === 'facilitator' && (
+            <PipingProvider>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <CollabActionPanel />
+              </section>
+            </PipingProvider>
+          )}
+
+          <AnimatePresence>
+            {showCreateModal && (
+              <CreateSessionModal
+                onClose={() => setShowCreateModal(false)}
+                onCreate={createSessionArtifact}
+                hostId={myUserId}
+                hostName={myName}
+              />
+            )}
+          </AnimatePresence>
 
       {/* Active Collaborations from API */}
       {activeCollabsData?.collabs?.length > 0 && (
-        <div className="panel p-4 space-y-3">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
             <Users className="w-4 h-4 text-neon-blue" />
             Active Collaborations ({activeCollabsData.collabs.length})
@@ -520,43 +466,10 @@ export function CollabHub() {
         </div>
       )}
 
-      <RealtimeDataPanel data={realtimeInsights} />
-
-      <div className="border-t border-white/10">
-        <PipingProvider>
-          <section className="mt-6">
-            <CollabDocWorkspace />
-          </section>
-
-          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <WorkspaceRoster />
-          </section>
-
-          {/* Team facilitator bench: session analytics / contribution score /
-              consensus detection / workload balance + actions. Collapsed by
-              default — was previously mounted unconditionally below every
-              tab regardless of which was active. */}
-          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
-            <button
-              type="button"
-              onClick={() => setShowCollabActionPanel((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
-              aria-expanded={showCollabActionPanel}
-            >
-              <span>Team facilitator bench (analytics, consensus, workload)</span>
-              {showCollabActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-            {showCollabActionPanel && (
-              <div className="px-4 pb-4">
-                <CollabActionPanel />
-              </div>
-            )}
-          </section>
-        </PipingProvider>
-      </div>
-    </div>
-          <SessionRail lensId="collab" hideWhenEmpty className="mt-4" />
-          <CrossLensRecentsPanel lensId="collab" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <RealtimeDataPanel data={realtimeInsights} />
+        </div>
+      </NorthStarFrame>
+      <SessionRail lensId="collab" hideWhenEmpty className="mt-4" />
     </>
   );
 }
