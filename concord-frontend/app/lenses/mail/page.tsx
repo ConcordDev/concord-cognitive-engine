@@ -1,104 +1,73 @@
 'use client';
 
 /**
- * Mail — one WoW-style inbox app.
- *
- * Single active union (inbox | sent | compose). REST mail routes preserved
- * in folder + compose panels (list/send/read/claim).
+ * Mail: north-star chrome over async player-to-player mail with attachments
+ * and COD. REST mail routes preserved in the folder + compose panels.
  */
 
-import { useEffect, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Mail, Send, Inbox, Pencil } from 'lucide-react';
+import { useState, useSyncExternalStore } from 'react';
+import { Send, Inbox, Pencil } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { MailFolderPanel } from '@/components/mail/MailFolderPanel';
 import { ComposeMailPanel } from '@/components/mail/ComposeMailPanel';
 import type { MailTab } from '@/components/mail/types';
 
-const VIEWS: { id: MailTab; label: string; keys: string; icon: typeof Inbox }[] = [
-  { id: 'inbox', label: 'inbox', keys: '1', icon: Inbox },
-  { id: 'sent', label: 'sent', keys: '2', icon: Send },
-  { id: 'compose', label: 'compose', keys: '3', icon: Pencil },
+const VIEWS: { id: MailTab; label: string; keys: string; title: string; icon: typeof Inbox }[] = [
+  { id: 'inbox', label: 'Inbox', keys: '1', title: 'Waiting for you', icon: Inbox },
+  { id: 'sent', label: 'Sent', keys: '2', title: 'What you sent', icon: Send },
+  { id: 'compose', label: 'Compose', keys: '3', title: 'Write a letter', icon: Pencil },
 ];
 
-export default function MailLensPage() {
-  const reduceMotion = useReducedMotion();
-  const [active, setActive] = useState<MailTab>('inbox');
+const subscribeNoop = () => () => {};
+const readHasTo = () => !!new URLSearchParams(window.location.search).get('to');
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const to = new URLSearchParams(window.location.search).get('to');
-    if (to) setActive('compose');
-  }, []);
+export default function MailLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [picked, setActive] = useState<MailTab | null>(null);
+  const wantsCompose = useSyncExternalStore(subscribeNoop, readHasTo, () => false);
+  const active: MailTab = picked ?? (wantsCompose ? 'compose' : 'inbox');
 
   useLensCommand(
-    VIEWS.map((v) => ({
-      id: `mail-${v.id}`,
-      keys: v.keys,
-      description: v.label,
-      category: 'navigation' as const,
-      action: () => setActive(v.id),
-    })),
+    [
+      ...VIEWS.map((v) => ({
+        id: `mail-${v.id}`,
+        keys: v.keys,
+        description: v.label,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'mail-new', keys: 'n', description: 'Compose mail', category: 'actions' as const, action: () => setActive('compose') },
+    ],
     { lensId: 'mail' },
   );
 
+  const current = VIEWS.find((v) => v.id === active)!;
+
   return (
     <LensShell lensId="mail" asMain={false}>
-      <main className="min-h-screen bg-lattice-void text-gray-100">
-        <header className="border-b border-lattice-border bg-lattice-surface/70 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-neon-blue/30 bg-neon-blue/10 p-2">
-              <Mail className="h-5 w-5 text-neon-blue" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight text-white sm:text-lg">Mail</h1>
-              <p className="mt-0.5 hidden truncate text-xs text-gray-400 sm:block">
-                Async player-to-player mail with attachments and COD.
-              </p>
-            </div>
-          </div>
-          <div className="mx-auto mt-2 flex max-w-screen-2xl gap-1" role="tablist" aria-label="Mail folders">
-            {VIEWS.map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.id}
-                  role="tab"
-                  aria-selected={active === t.id}
-                  onClick={() => setActive(t.id)}
-                  className={cn(
-                    'flex items-center gap-1 rounded-md border px-3 py-1 text-[11px] font-medium capitalize transition-colors',
-                    active === t.id
-                      ? 'border-neon-blue/50 bg-neon-blue/15 text-neon-blue'
-                      : 'border-lattice-border bg-lattice-elevated/60 text-gray-400 hover:bg-lattice-elevated hover:text-gray-200',
-                  )}
-                >
-                  <Icon className="h-3 w-3" />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-        </header>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.16 }}
-          >
-            {active === 'compose' ? (
-              <ComposeMailPanel onSent={() => setActive('sent')} />
-            ) : (
-              <MailFolderPanel folder={active} onCompose={() => setActive('compose')} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      <NorthStarFrame
+        lensId="mail"
+        crumb="Mail"
+        title={`${current.title}${active === 'inbox' && who ? `, ${who}` : ''}`}
+        subtitle="Async player-to-player mail with attachments and COD."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, icon: v.icon }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as MailTab)}
+        cta={{ label: 'Compose', icon: Pencil, onClick: () => setActive('compose'), title: 'Compose mail (N)' }}
+      >
+        <div className="-mx-8 -mt-2">
+          {active === 'compose' ? (
+            <ComposeMailPanel onSent={() => setActive('sent')} />
+          ) : (
+            <MailFolderPanel folder={active} onCompose={() => setActive('compose')} />
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
