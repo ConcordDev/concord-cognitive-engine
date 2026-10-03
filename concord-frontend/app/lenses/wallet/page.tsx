@@ -16,7 +16,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WalletBadge } from '@/components/economy/WalletBadge';
@@ -29,8 +31,6 @@ import { WalletToolsPanel } from '@/components/wallet/WalletToolsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import type { WalletPanelProps, WalletView } from '@/components/wallet/wallet-model';
 
 const TABS: { id: WalletView; label: string; keys: string; icon: typeof Wallet }[] = [
@@ -52,6 +52,8 @@ const PANELS: Record<WalletView, ComponentType<WalletPanelProps>> = {
 function WalletPageInner() {
   useLensNav('wallet');
   useLensIdentity('wallet');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<WalletView>('home');
 
   useLensCommand(
@@ -71,46 +73,34 @@ function WalletPageInner() {
 
   const Panel = PANELS[active];
 
+  const current = TABS.find((t) => t.id === active)!;
+  const titles: Record<WalletView, string> = {
+    home: `Your wallet${who ? `, ${who}` : ''}`,
+    activity: 'Where your coin went',
+    pay: 'Pay someone',
+    cashout: 'Cash out your earnings',
+    tools: 'Wallet tools',
+  };
+
   return (
     <MotionConfig reducedMotion="user">
-      <div data-lens-theme="wallet" className={cn(ds.pageContainer, 'max-w-3xl mx-auto')}>
-        <header className="flex items-center gap-3 mb-4">
-          <Wallet className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-          <h1 className={ds.heading1}>Wallet</h1>
-          <WalletBadge />
-          <WalletWidget compact className="ml-auto" />
-        </header>
-
-        <nav
-          className="flex gap-1 border-b border-lattice-border mb-5 overflow-x-auto"
-          role="tablist"
-          aria-label="Wallet views"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const on = active === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setActive(tab.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors',
-                  on
-                    ? 'text-[var(--lens-accent)] border-[var(--lens-accent)]'
-                    : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600',
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-                <kbd className="hidden sm:inline text-[10px] font-mono text-gray-500">{tab.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="wallet"
+        crumb="Wallet"
+        title={titles[current.id]}
+        subtitle="Concord Coin balance, ledger, peer payments and cash-out"
+        actions={
+          <>
+            <WalletBadge />
+            <WalletWidget compact />
+          </>
+        }
+        tabs={TABS}
+        activeTab={active}
+        onTab={(id) => setActive(id as WalletView)}
+        tabsLabel="Wallet views"
+        cta={{ label: 'Pay someone', icon: Send, onClick: () => setActive('pay'), title: 'Send Concord Coin (S)' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
@@ -122,9 +112,7 @@ function WalletPageInner() {
             <Panel onNavigate={setActive} />
           </motion.div>
         </AnimatePresence>
-
-        <CrossLensRecentsPanel lensId="wallet" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
-      </div>
+      </NorthStarFrame>
     </MotionConfig>
   );
 }
@@ -136,12 +124,10 @@ export default function WalletPage() {
       <DepthBadge lensId="wallet" size="sm" className="ml-2" />
       <Suspense
         fallback={
-          <div className={cn(ds.pageContainer, 'max-w-3xl mx-auto')}>
-            <div className="flex items-center gap-3 mb-6">
-              <Wallet className="w-6 h-6 text-gray-400" />
-              <h1 className={ds.heading1}>Wallet</h1>
-            </div>
-            <div className="h-48 bg-lattice-surface border border-lattice-border rounded-2xl animate-pulse" />
+          <div className="px-8 pt-6">
+            <p className="text-[14px] text-zinc-500">Wallet</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Your wallet</h1>
+            <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-[#111]" />
           </div>
         }
       >

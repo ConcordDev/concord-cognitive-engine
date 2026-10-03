@@ -12,16 +12,22 @@
 /*  rendered here comes from a real macro call — no seed/mock data.    */
 /* ------------------------------------------------------------------ */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
 import { RFPlanner, RF_PLANNER_TABS } from '@/components/telecommunications/RFPlanner';
 import { PipingProvider } from '@/components/panel-polish';
-import { LensPageShell } from '@/components/lens/LensPageShell';
 import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
@@ -42,34 +48,40 @@ interface OverviewCounts {
 }
 
 export default function TelecommunicationsLensPage() {
+  useLensNav('telecommunications');
+  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('telecommunications');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [overview, setOverview] = useState<OverviewCounts | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [rfTab, setRfTab] = useState<(typeof RF_PLANNER_TABS)[number]['key']>('sites');
 
-  const loadOverview = useCallback(async () => {
-    try {
-      const [towerRes, spectrumRes, outageRes] = await Promise.all([
-        lensRun<{ towers: Array<{ status: string }> }>('telecommunications', 'towerList', {}),
-        lensRun<{ allocations: Array<{ widthMhz: number }> }>('telecommunications', 'spectrumList', {}),
-        lensRun<{ outages: Array<{ status: string }> }>('telecommunications', 'outageList', {}),
-      ]);
-      const towers = towerRes.data.ok ? towerRes.data.result?.towers || [] : [];
-      const allocations = spectrumRes.data.ok ? spectrumRes.data.result?.allocations || [] : [];
-      const outages = outageRes.data.ok ? outageRes.data.result?.outages || [] : [];
-      setOverview({
-        towers: towers.length,
-        activeTowers: towers.filter((t) => t.status === 'active').length,
-        spectrumMhz: Math.round(allocations.reduce((s, a) => s + (a.widthMhz || 0), 0) * 100) / 100,
-        openOutages: outages.filter((o) => o.status === 'open').length,
-      });
-    } catch (e) {
-      setOverviewError(e instanceof Error ? e.message : String(e));
-    }
-  }, []);
-
   useEffect(() => {
-    loadOverview();
-  }, [loadOverview]);
+    let cancelled = false;
+    Promise.all([
+      lensRun<{ towers: Array<{ status: string }> }>('telecommunications', 'towerList', {}),
+      lensRun<{ allocations: Array<{ widthMhz: number }> }>('telecommunications', 'spectrumList', {}),
+      lensRun<{ outages: Array<{ status: string }> }>('telecommunications', 'outageList', {}),
+    ])
+      .then(([towerRes, spectrumRes, outageRes]) => {
+        if (cancelled) return;
+        const towers = towerRes.data.ok ? towerRes.data.result?.towers || [] : [];
+        const allocations = spectrumRes.data.ok ? spectrumRes.data.result?.allocations || [] : [];
+        const outages = outageRes.data.ok ? outageRes.data.result?.outages || [] : [];
+        setOverview({
+          towers: towers.length,
+          activeTowers: towers.filter((t) => t.status === 'active').length,
+          spectrumMhz: Math.round(allocations.reduce((sum, al) => sum + (al.widthMhz || 0), 0) * 100) / 100,
+          openOutages: outages.filter((o) => o.status === 'open').length,
+        });
+      })
+      .catch((e) => {
+        if (!cancelled) setOverviewError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Discoverable keyboard shortcuts to jump between RF Planner sub-tabs —
   // matches the fluidity invariant (every scoped command must be surfaced,
@@ -87,16 +99,24 @@ export default function TelecommunicationsLensPage() {
 
   return (
     <LensShell lensId="telecommunications" asMain={false}>
-      <FirstRunTour lensId="telecommunications" />      <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="telecommunications"
-        title="Telecommunications"
-        description="RF network planning, spectrum allocation, outage/SLA tracking & NOC ops"
-        headerIcon={<Radio className="w-5 h-5 text-violet-400" />}
+      <FirstRunTour lensId="telecommunications" />
+      <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="telecommunications"
+        crumb="Telecommunications"
+        title={`Your network${who ? `, ${who}` : ''}`}
+        subtitle="RF network planning, spectrum allocation, outage and SLA tracking, and NOC ops"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="telecommunications" data={realtimeData || {}} compact />
+          </>
+        }
+        cta={{ label: 'Add a site', icon: Radio, onClick: () => { setRfTab('sites'); document.getElementById('telecom-planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, title: 'Open the site planner' }}
       >
         {/* Live stat strip — real towerList/spectrumList/outageList counts */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
             <div className="flex items-center gap-2 mb-1">
               <Antenna className="w-4 h-4 text-violet-400" />
             </div>
@@ -106,14 +126,14 @@ export default function TelecommunicationsLensPage() {
             </p>
             <p className="text-xs text-gray-400">Active sites</p>
           </div>
-          <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
             <div className="flex items-center gap-2 mb-1">
               <Wifi className="w-4 h-4 text-cyan-400" />
             </div>
             <p className="text-2xl font-bold text-cyan-400">{overview ? overview.spectrumMhz : '—'}</p>
             <p className="text-xs text-gray-400">MHz allocated</p>
           </div>
-          <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
             <div className="flex items-center gap-2 mb-1">
               <Signal className="w-4 h-4 text-green-400" />
             </div>
@@ -122,7 +142,7 @@ export default function TelecommunicationsLensPage() {
             </p>
             <p className="text-xs text-gray-400">Sites w/o open incident</p>
           </div>
-          <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-4 h-4 text-red-400" />
             </div>
@@ -136,7 +156,7 @@ export default function TelecommunicationsLensPage() {
           </div>
         )}
 
-        <section>
+        <section id="telecom-planner" className="scroll-mt-6">
           <RFPlanner tab={rfTab} onTabChange={setRfTab} />
         </section>
 
@@ -146,10 +166,12 @@ export default function TelecommunicationsLensPage() {
           </section>
         </PipingProvider>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <TelcoRepos />
         </section>
-      </LensPageShell>      <CrossLensRecentsPanel lensId="telecommunications" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <RealtimeDataPanel domain="telecommunications" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      </NorthStarFrame>
     </LensShell>
   );
 }

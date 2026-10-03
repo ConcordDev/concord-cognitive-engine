@@ -12,14 +12,15 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Rocket, BarChart3, Satellite, Flame, Radio, Users, Orbit, Eye, Newspaper, Bookmark, BookOpen,
 } from 'lucide-react';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -68,6 +69,8 @@ export default function SpaceLensPage() {
   useLensIdentity('space');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('space');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SpaceView>('dashboard');
 
   useLensCommand(
@@ -97,47 +100,23 @@ export default function SpaceLensPage() {
     <LensShell lensId="space" asMain={false}>
       <FirstRunTour lensId="space" />
       <DepthBadge lensId="space" size="sm" className="ml-2" />
-      <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
-        <header className="bg-gradient-to-r from-indigo-900/20 via-transparent to-purple-900/20 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border border-indigo-500/40 animate-spin" style={{ animationDuration: '8s' }} />
-              <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                <Rocket className="w-5 h-5 text-indigo-400" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Space Operations</h1>
-              <p className="text-sm text-gray-400">Missions, satellites, telemetry &amp; orbital management</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <NorthStarFrame
+        lensId="space"
+        crumb="Space"
+        title={`${active === 'dashboard' ? 'Mission control' : (VIEWS.find((v) => v.id === active)?.label ?? 'Space')}${active === 'dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Missions, satellites, telemetry and orbital management"
+        actions={
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="space" data={realtimeData || {}} compact />
-          </div>
-        </header>
-
-        <nav className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap" aria-label="Space views">
-          {VIEWS.map(({ id, label, keys, icon: Icon }) => {
-            const on = active === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActive(id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-                  on ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" /> {label}
-                <kbd className="hidden sm:inline text-[10px] text-white/30 font-mono">{keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+          </>
+        }
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as SpaceView)}
+        tabsLabel="Space views"
+        cta={{ label: 'Plan a mission', icon: Rocket, onClick: () => setActive('planning'), title: 'Open mission planning' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             <SpacePane active={active} />
@@ -147,7 +126,7 @@ export default function SpaceLensPage() {
         {insights && insights.length > 0 && (
           <RealtimeDataPanel domain="space" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
         )}
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
