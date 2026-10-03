@@ -29,8 +29,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Globe, Coins, RefreshCcw, AlertTriangle, Radio } from 'lucide-react';
+import { Globe, Coins, RefreshCcw, AlertTriangle } from 'lucide-react';
 
 // ── Real response shapes (server/lib/cross-world-feed.js) ──────────────────
 
@@ -75,7 +78,12 @@ function formatTs(ts: number | null | undefined): string {
   }
 }
 
+type LinkView = 'feed' | 'royalty';
+
 export default function ConcordLinkFrontierPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<LinkView>('feed');
   const [events, setEvents] = useState<CrossWorldEvent[]>([]);
   const [worldsActive, setWorldsActive] = useState(0);
   const [feedLoading, setFeedLoading] = useState(false);
@@ -138,7 +146,7 @@ export default function ConcordLinkFrontierPage() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    Promise.resolve().then(refresh);
   }, [refresh]);
 
   useEffect(() => {
@@ -151,68 +159,52 @@ export default function ConcordLinkFrontierPage() {
   }, [refresh]);
 
   useLensCommand(
-    [{ id: 'refresh', keys: 'r', description: 'Refresh the cross-world feed now', category: 'actions', action: refresh }],
+    [
+      { id: 'view-feed', keys: '1', description: 'Cross-world feed', category: 'navigation', action: () => setView('feed') },
+      { id: 'view-royalty', keys: '2', description: 'Cross-world royalty flow', category: 'navigation', action: () => setView('royalty') },
+      { id: 'refresh', keys: 'r', description: 'Refresh the cross-world feed now', category: 'actions', action: refresh },
+    ],
     { lensId: 'concord-link-frontier' },
   );
 
   const loading = feedLoading || flowLoading;
-
-  if (!hasLoadedOnce && loading) {
-    return (
-      <LensShell lensId="concord-link-frontier" asMain={false}>
-        <div
-          role="status"
-          aria-busy="true"
-          aria-label="Loading Concord Link Frontier"
-          className="flex min-h-screen flex-col items-center justify-center gap-3 bg-zinc-950 text-slate-300"
-        >
-          <RefreshCcw className="h-6 w-6 animate-spin text-cyan-400" aria-hidden="true" />
-          <p className="text-sm">Tuning in to the federation…</p>
-        </div>
-      </LensShell>
-    );
-  }
+  const titles: Record<LinkView, string> = {
+    feed: 'What is happening across worlds',
+    royalty: 'Where the royalties are flowing',
+  };
 
   return (
-    <LensShell lensId="concord-link-frontier" asMain={false}>      <DepthBadge lensId="concord-link-frontier" size="sm" className="ml-2" />
-      <main
-        aria-label="Concord Link Frontier"
-        className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100"
+    <LensShell lensId="concord-link-frontier" asMain={false}>
+      <DepthBadge lensId="concord-link-frontier" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="concord-link-frontier"
+        crumb="Concord Link Frontier"
+        title={`${titles[view]}${view === 'feed' && who ? `, ${who}` : ''}`}
+        subtitle="The news layer of the federation: notable cross-world events and citation royalty flow, live."
+        tabs={[
+          { id: 'feed', label: `Cross-world feed (${events.length})`, icon: Globe, keys: '1', hint: 'Notable events across worlds' },
+          { id: 'royalty', label: `Royalty flow (${flows.length})`, icon: Coins, keys: '2', hint: 'Citations whose parent and child live in different worlds' },
+        ]}
+        activeTab={view}
+        onTab={(id) => setView(id as LinkView)}
+        tabsLabel="Frontier views"
+        cta={{ label: loading ? 'Syncing…' : 'Sync the feed', icon: RefreshCcw, onClick: () => { void refresh(); }, disabled: loading, title: 'Refresh the cross-world feed now (R)' }}
       >
-        <header className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-              <Radio className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Concord Link Frontier</h1>
-              <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-                The news layer of the federation — notable cross-world events and citation royalty flow, live.
-              </p>
-            </div>
-            <button
-              onClick={refresh}
-              disabled={loading}
-              aria-label="Refresh the cross-world feed"
-              className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-60"
-            >
-              <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {loading ? 'refreshing…' : 'refresh'}
-              <kbd className="ml-0.5 rounded border border-cyan-500/30 bg-black/30 px-1 text-[9px] font-mono text-cyan-300/80">R</kbd>
-            </button>
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+          {lastRefresh && <span>last synced {lastRefresh.toLocaleTimeString()}</span>}
+          <span aria-hidden="true">·</span>
+          <span>{worldsActive} world{worldsActive === 1 ? '' : 's'} active in the feed window</span>
+          <span aria-hidden="true">·</span>
+          <span>{totalRoyaltyCC.toLocaleString()} CC in cross-world royalties (24h)</span>
+        </div>
+        {!hasLoadedOnce && loading && (
+          <div role="status" aria-busy="true" aria-label="Loading Concord Link Frontier" className="mb-4 rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-zinc-400">
+            Tuning in to the federation…
           </div>
-          <div className="mx-auto mt-1 flex max-w-screen-2xl items-center gap-3 text-[10px] text-slate-500">
-            {lastRefresh && <span>last synced {lastRefresh.toLocaleTimeString()}</span>}
-            <span aria-hidden="true">·</span>
-            <span>{worldsActive} world{worldsActive === 1 ? '' : 's'} active in the feed window</span>
-            <span aria-hidden="true">·</span>
-            <span>{totalRoyaltyCC.toLocaleString()} CC in cross-world royalties (24h)</span>
-          </div>
-        </header>
-
-        <section className="mx-auto grid max-w-screen-2xl gap-4 px-3 py-4 sm:px-6 sm:py-5">
-          {/* Cross-world feed */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+        )}
+        <section className="grid gap-4">
+{view === 'feed' && (
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Globe className="h-4 w-4" /> Cross-world feed
             </h2>
@@ -241,8 +233,10 @@ export default function ConcordLinkFrontierPage() {
             )}
           </div>
 
-          {/* Cross-world royalty flow */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+)}
+
+{view === 'royalty' && (
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-emerald-300">
               <Coins className="h-4 w-4" /> Cross-world royalty flow
             </h2>
@@ -287,8 +281,9 @@ export default function ConcordLinkFrontierPage() {
               </div>
             )}
           </div>
+)}
         </section>
-      </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }
