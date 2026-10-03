@@ -28,7 +28,9 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { cn } from '@/lib/utils';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 import { SupplyChainOverview } from '@/components/supplychain/SupplyChainOverview';
 import { SupplyChainPlanner } from '@/components/supplychain/SupplyChainPlanner';
@@ -47,8 +49,12 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof Truck; desc: 
   { id: 'pulse', label: 'Industry Pulse', icon: Newspaper, desc: 'Real-world r/supplychain chatter' },
 ];
 
+const TABS = DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, hint: d.desc }));
+
 export default function SupplyChainLensPage() {
   useLensNav('supplychain');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('overview');
 
   // Real navigation shortcuts only — the old "/" focus-search binding
@@ -67,52 +73,24 @@ export default function SupplyChainLensPage() {
     { lensId: 'supplychain' }
   );
 
+  const current = DESTINATIONS.find((d) => d.id === dest)!;
+  const title = dest === 'overview' ? `Your supply chain${who ? `, ${who}` : ''}` : current.label;
+
   return (
     <LensShell lensId="supplychain" asMain={false}>
       <FirstRunTour lensId="supplychain" />
-      <div data-lens-theme="supplychain" className="space-y-6 p-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-              <Truck className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">Supply Chain Control Tower</h1>
-                <DepthBadge lensId="supplychain" size="sm" />
-              </div>
-              <p className="text-sm text-gray-400">
-                End-to-end visibility, exception management, and what-if planning over your real shipment,
-                network, inventory, and procurement state.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="flex flex-wrap items-center gap-2 border-b border-lattice-border pb-3" aria-label="Supply chain destinations">
-          {DESTINATIONS.map((d) => {
-            const Icon = d.icon;
-            const active = dest === d.id;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDest(d.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'group flex flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors min-w-[9rem]',
-                  active ? 'bg-teal-500/15 border border-teal-500/40' : 'border border-transparent hover:bg-lattice-elevated hover:border-lattice-border'
-                )}
-              >
-                <span className={cn('flex items-center gap-1.5 text-sm font-medium', active ? 'text-teal-200' : 'text-gray-300 group-hover:text-white')}>
-                  <Icon className="w-4 h-4" /> {d.label}
-                </span>
-                <span className="text-[10px] text-gray-500 leading-tight">{d.desc}</span>
-              </button>
-            );
-          })}
-        </nav>
-
+      <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="supplychain"
+        crumb="Supply chain"
+        title={title}
+        subtitle="End-to-end visibility, exception management and what-if planning over your real shipment, network, inventory and procurement state."
+        tabs={TABS}
+        activeTab={dest}
+        onTab={(id) => setDest(id as Destination)}
+        tabsLabel="Supply chain destinations"
+        cta={{ label: 'Open control tower', icon: Network, onClick: () => setDest('tower'), title: 'Shipments, network, scenarios and procurement' }}
+      >
         {dest === 'overview' && <SupplyChainOverview onJump={(d) => setDest(d)} />}
 
         {dest === 'tower' && (
@@ -122,7 +100,7 @@ export default function SupplyChainLensPage() {
         )}
 
         {dest === 'scorecards' && (
-          <section aria-label="Scorecards and quick analysis" className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section aria-label="Scorecards and quick analysis" className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <PipingProvider>
               <SupplyChainActionPanel />
             </PipingProvider>
@@ -136,16 +114,11 @@ export default function SupplyChainLensPage() {
         )}
 
         {dest === 'pulse' && (
-          <section aria-label="Industry pulse" className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section aria-label="Industry pulse" className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <SupplyChainFeed />
           </section>
         )}
-      </div>
-
-      {/* Accessibility skip-link sentinel — never visually displayed. */}
-      <a href="#supplychain-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
-        Skip to supply chain content
-      </a>
+      </NorthStarFrame>
     </LensShell>
   );
 }

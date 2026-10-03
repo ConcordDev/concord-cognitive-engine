@@ -12,7 +12,9 @@ import { useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Upload, Activity, Database, FolderGit2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -23,7 +25,6 @@ import { WorkbenchPanel } from '@/components/ingest/WorkbenchPanel';
 import type { IngestView } from '@/components/ingest/ingest-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -55,6 +56,8 @@ export default function IngestLensPage() {
   useLensNav('ingest');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ingest');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<IngestView>('workbench');
 
   useLensCommand(
@@ -74,65 +77,28 @@ export default function IngestLensPage() {
     <LensShell lensId="ingest" asMain={false}>
       <FirstRunTour lensId="ingest" />
       <DepthBadge lensId="ingest" size="sm" className="ml-2" />
-      <div data-lens-theme="ingest" className="p-6 space-y-4">
-        <header className="flex items-center gap-3 flex-wrap">
-          <Upload className="w-6 h-6 text-neon-cyan" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold">Ingest</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-              <DTUExportButton domain="ingest" data={realtimeData || {}} compact />
-              {realtimeAlerts.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                  {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-400">
-              ELT pipelines + document intake — one workbench.
-            </p>
-          </div>
-        </header>
-
-        <RealtimeDataPanel
-          domain="ingest"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-
-        <nav
-          className="flex flex-wrap gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1"
-          aria-label="Ingest views"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const on = active === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActive(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all',
-                  on
-                    ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
-                    : 'text-gray-400 hover:text-white hover:bg-lattice-surface',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-                <kbd className="hidden sm:inline text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {tab.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="ingest"
+        crumb="Ingest"
+        title={`Bring something in${active === 'workbench' && who ? `, ${who}` : ''}`}
+        subtitle="ELT pipelines and document intake, one workbench"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="ingest" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        }
+        tabs={TABS}
+        activeTab={active}
+        onTab={(id) => setActive(id as IngestView)}
+        tabsLabel="Ingest views"
+        cta={{ label: 'Open workbench', icon: Upload, onClick: () => setActive('workbench'), title: 'Ingest a document' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
@@ -146,8 +112,15 @@ export default function IngestLensPage() {
         </AnimatePresence>
 
         <ConnectiveTissueBar lensId="ingest" />
-        <CrossLensRecentsPanel lensId="ingest" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+        <RealtimeDataPanel
+          domain="ingest"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={realtimeInsights}
+          compact
+        />
+      </NorthStarFrame>
     </LensShell>
   );
 }
