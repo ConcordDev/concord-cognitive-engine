@@ -1,6 +1,13 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // Translation lens — machine translation through Concord's local LLM.
 // Wires the REAL `translation` backend domain (languages / detect / translate
@@ -20,7 +27,7 @@ import { LensShell } from '@/components/lens/LensShell';
 // server-local Saved store (useLensData → the real lens-artifact substrate).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Languages, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
@@ -36,6 +43,9 @@ import {
 const DOMAIN = 'translation';
 
 export default function TranslationLens() {
+  useLensNav('translation');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [formalities, setFormalities] = useState<string[]>(['neutral', 'formal', 'informal']);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -56,7 +66,6 @@ export default function TranslationLens() {
   // Load the supported-language catalog (public read — no auth needed).
   const loadCatalog = useCallback(() => {
     let alive = true;
-    setCatalogLoading(true);
     lensRun<{ languages: Language[]; formalities: string[] }>(DOMAIN, 'languages', {})
       .then((res) => {
         if (!alive) return;
@@ -71,11 +80,32 @@ export default function TranslationLens() {
 
   useEffect(() => loadCatalog(), [loadCatalog]);
 
+  const focusInput = useCallback(() => {
+    const label = mode === 'single' ? 'Text to translate' : 'Lines to batch translate';
+    const el = document.querySelector<HTMLElement>(`textarea[aria-label="${label}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.focus();
+  }, [mode]);
+
+  useLensCommand(
+    [
+      { id: 'mode-single', keys: '1', description: 'Single translation', category: 'navigation' as const, action: () => setMode('single') },
+      { id: 'mode-batch', keys: '2', description: 'Batch translate', category: 'navigation' as const, action: () => setMode('batch') },
+      { id: 'translate-focus', keys: 'n', description: 'Write something to translate', category: 'actions' as const, action: focusInput },
+    ],
+    { lensId: 'translation' },
+  );
+
   return (
-    <LensShell lensId="translation">
-      <div className="w-full max-w-[880px] mx-auto px-4 sm:px-6 py-6">
-        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Translation</h1>
-        <p style={{ opacity: 0.7, marginBottom: 20, fontSize: 14 }}>
+    <LensShell lensId="translation" asMain={false}>
+      <FirstRunTour lensId="translation" />
+      <DepthBadge lensId="translation" size="sm" className="ml-2" />
+      <div data-lens-theme="translation" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Translation</p>
+        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          Say it another way{who ? `, ${who}` : ''}
+        </h1>
+        <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">
           Machine translation on your own hardware — powered by the local LLM. Text never leaves your server.
         </p>
 
@@ -154,6 +184,18 @@ export default function TranslationLens() {
             <SavedTranslations saved={saved} onRemove={removeTranslation} />
           </>
         )}
+
+        <CrossLensRecentsPanel lensId="translation" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={focusInput}
+          title="Write something to translate (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Languages className="h-4 w-4" />
+          Translate
+        </button>
       </div>
     </LensShell>
   );
