@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Layers, Shield, Brain, GraduationCap, AlertTriangle, Briefcase, BadgeCheck, Users, Rocket } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -53,37 +54,21 @@ export default function StrategicAddsPage() {
 
   return (
     <LensShell lensId="strategic-adds" asMain={false}>
-      <FirstRunTour lensId="strategic-adds" />      <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
+      <FirstRunTour lensId="strategic-adds" />
+      <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
 
-      <div data-lens-theme="command" className="p-6 space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-white">Strategic Adds Launchpad</h1>
-          <p className="text-sm text-zinc-400">
-            Productized hub for the eight next adds. Each tab is wired to real substrate already in the repo.
-          </p>
-        </header>
-
-        <nav className="flex flex-wrap gap-2 border-b border-zinc-800 pb-3" aria-label="Strategic add tracks">
-          {TABS.map(({ id, label, icon: Icon }) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${
-                  active
-                    ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-200'
-                    : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="strategic-adds"
+        theme="command"
+        crumb="Strategic adds"
+        title="Pick the next bet"
+        subtitle="Productized hub for the eight next adds. Each tab is wired to real substrate already in the repo."
+        tabs={TABS.map(({ id, label, icon }, i) => ({ id, label, icon, keys: String(i + 1) }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as AddTab)}
+        tabsLabel="Strategic add tracks"
+        cta={{ label: 'Go-live platform', icon: Rocket, onClick: () => setTab('golive') }}
+      >
         {tab === 'api' && (
           <section className="space-y-4">
             <p className="text-sm text-zinc-300">Config UX + consent scope management for personal sovereign APIs.</p>
@@ -109,10 +94,10 @@ export default function StrategicAddsPage() {
         {tab === 'hazard' && (
           <section className="space-y-4">
             <p className="text-sm text-zinc-300">Unified seismic + wildfire hazard views with live feeds and deterministic scoring.</p>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <SeismicHazardPanel />
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <FireIncidents />
             </div>
           </section>
@@ -122,7 +107,7 @@ export default function StrategicAddsPage() {
           <section className="space-y-4">
             <p className="text-sm text-zinc-300">BLS time-series + forecast workflows for labor and opportunity scanning.</p>
             <BlsSeriesExplorer />
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <BlsWageForecast />
             </div>
           </section>
@@ -159,7 +144,7 @@ export default function StrategicAddsPage() {
             <DevToolingPulse />
           </section>
         )}
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

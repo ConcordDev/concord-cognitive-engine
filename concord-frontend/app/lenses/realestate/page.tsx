@@ -9,18 +9,18 @@
 
 import { useMemo, useState, type ComponentProps, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { BarChart3, Building2, Calculator, Map as MapIcon } from 'lucide-react';
+import { BarChart3, Building2, Calculator, Map as MapIcon, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -54,6 +54,8 @@ export default function RealEstateLensPage() {
   useLensNav('realestate');
   useLensIdentity('realestate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('realestate');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<RealEstateView>('search');
 
@@ -86,53 +88,24 @@ export default function RealEstateLensPage() {
     <LensShell lensId="realestate" asMain={false}>
       <FirstRunTour lensId="realestate" />
       <DepthBadge lensId="realestate" size="sm" className="ml-2" />
-      <div data-lens-theme="realestate" className={ds.pageContainer}>
+      <NorthStarFrame
+        lensId="realestate"
+        crumb="Real estate"
+        title={`Find your next place${active === 'search' && who ? `, ${who}` : ''}`}
+        subtitle="Map, listing inspector, comps, pipeline and in-world property."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="realestate" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as RealEstateView)}
+        tabsLabel="Real estate views"
+        cta={{ label: 'Search homes', icon: Search, onClick: () => setActive('search') }}
+      >
         <ShellPreview lensId="realestate" defaultOpen={false} />
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Building2 className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Real Estate</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-                <DTUExportButton domain="realestate" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>Map, listing inspector, and comps</p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Real estate views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
 
         <PipingProvider>
           <RealEstateProvider>
@@ -163,14 +136,13 @@ export default function RealEstateLensPage() {
         <section className="mt-4">
           <LensFeedButton domain="realestate" label="Live home-value feed" />
         </section>
-          <CrossLensRecentsPanel lensId="realestate" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
 
         <MobileTabBar
           tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon }))}
           active={active}
           onSelect={(id) => setActive(id as RealEstateView)}
         />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -15,18 +15,19 @@
  */
 
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
 import { ComponentWorkbench } from '@/components/ux-suite/ComponentWorkbench';
 import { AvatarComputeToggle } from '@/components/ux-suite/AvatarComputeToggle';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Accessibility, Settings, Save, Music2, Trophy, TrendingUp, Sun,
   Eye, CalendarDays, Globe, Image as ImageIcon, ArrowRight,
-  BarChart3, Puzzle, Lightbulb, Smartphone, Sparkles, Layers,
-  Bot, Search, Heart, MountainSnow,
+  BarChart3, Puzzle, Lightbulb, Smartphone, Layers,
+  Bot, Heart, MountainSnow,
 } from 'lucide-react';
 
 interface ComponentRow {
@@ -82,28 +83,19 @@ const GROUP_COLOUR: Record<string, string> = {
 };
 
 export default function UxSuiteLensPage() {
+  const router = useRouter();
   return (
     <LensShell lensId="ux-suite" asMain={false}>
-      <FirstRunTour lensId="ux-suite" />      <DepthBadge lensId="ux-suite" size="sm" className="ml-2" />
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
-        <header className="border-b border-fuchsia-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 p-2">
-              <Sparkles className="h-5 w-5 text-fuchsia-400" aria-hidden="true" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">UX Suite — component directory</h1>
-              <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-                {COMPONENTS.length} absorbed UX components, each wired to its real semantic home. No mock data.
-              </p>
-            </div>
-            <Link href="/lenses/system" className="hidden items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300 hover:bg-fuchsia-500/20 sm:flex">
-              <Search className="h-3 w-3" />System overview
-            </Link>
-          </div>
-        </header>
-
-        <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+      <FirstRunTour lensId="ux-suite" />
+      <DepthBadge lensId="ux-suite" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="ux-suite"
+        crumb="UX suite"
+        title="Every interface piece, in its real home"
+        subtitle={`${COMPONENTS.length} absorbed UX components, each wired to where it runs. No mock data.`}
+        cta={{ label: 'System overview', icon: Settings, onClick: () => router.push('/lenses/system') }}
+      >
+        <section>
           <div className="mb-5">
             <ComponentWorkbench />
           </div>
@@ -168,10 +160,10 @@ export default function UxSuiteLensPage() {
             <p className="mt-1 text-amber-200/80">This page used to render each component with fabricated demo data. Per the &ldquo;no fake data anywhere&rdquo; rule, that surface was removed. Each component now lives in its real home, where it consumes real backend state via the standard substrate APIs.</p>
           </div>
         </section>
-        <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <UxRepos />
         </section>
-      </main>          <CrossLensRecentsPanel lensId="ux-suite" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
