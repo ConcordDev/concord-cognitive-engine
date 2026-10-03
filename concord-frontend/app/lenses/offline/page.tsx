@@ -4,7 +4,9 @@ import { useState, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
@@ -14,7 +16,7 @@ import { ConflictMergePanel, type Conflict } from '@/components/offline/Conflict
 import { BackoffPanel } from '@/components/offline/BackoffPanel';
 import { SyncAnalysisPanel } from '@/components/offline/SyncAnalysisPanel';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 /**
  * Offline lens — a real PWA offline-sync workbench (PouchDB/Dexie + Workbox
@@ -30,7 +32,8 @@ export default function OfflineLensPage() {
   useLensNav('offline');
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [replicationKey, setReplicationKey] = useState(0);
-  const [showOfflineRepos, setShowOfflineRepos] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   // Conflicts surfaced by a push are held until the user resolves them.
   const handleConflicts = useCallback((c: Conflict[]) => {
@@ -54,6 +57,10 @@ export default function OfflineLensPage() {
   // it re-reads the local store and re-syncs.
   const handleRetryDue = useCallback(() => {
     setReplicationKey((k) => k + 1);
+  }, []);
+
+  const jumpReplication = useCallback(() => {
+    document.getElementById('offline-replication')?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useLensCommand(
@@ -84,80 +91,65 @@ export default function OfflineLensPage() {
     <LensShell lensId="offline" asMain={false}>
       <FirstRunTour lensId="offline" />      <DepthBadge lensId="offline" size="sm" className="ml-2" />
 
-      <div data-lens-theme="offline" className="space-y-6 p-6">
-        <header className="flex items-center gap-3">
-          <span className="text-2xl">📴</span>
-          <div>
-            <h1 className="text-xl font-bold">Offline Lens</h1>
-            <p className="text-sm text-gray-400">
-              Local-first sync workbench — IndexedDB write-through, service-worker
-              caching, CRDT conflict resolution, and bidirectional replication.
-            </p>
+      <NorthStarFrame
+        lensId="offline"
+        crumb="Offline"
+        title={`Work without a connection${who ? `, ${who}` : ''}`}
+        subtitle="Local-first sync workbench: IndexedDB write-through, service-worker caching, CRDT conflict resolution and bidirectional replication."
+        cta={{ label: 'Open replication', icon: RefreshCw, onClick: jumpReplication, title: 'Jump to replication (S)' }}
+      >
+        <div className="space-y-6">
+          {/* Connectivity + retry backoff */}
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <BackoffPanel onRetryDue={handleRetryDue} />
+          </section>
+
+          {/* Conflict resolution — only renders when there are conflicts */}
+          {conflicts.length > 0 && (
+            <section className="rounded-2xl border border-amber-500/25 bg-[#111] p-4">
+              <ConflictMergePanel conflicts={conflicts} onResolved={handleResolved} />
+            </section>
+          )}
+
+          {/* Bidirectional replication + IndexedDB write-through */}
+          <section
+            id="offline-replication"
+            className="rounded-2xl border border-white/10 bg-[#111] p-4"
+          >
+            <ReplicationPanel
+              key={replicationKey}
+              onConflicts={handleConflicts}
+              onStateChange={handleRetryDue}
+            />
+          </section>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Service worker / Workbox */}
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <ServiceWorkerPanel />
+            </section>
+
+            {/* Browser storage quota */}
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <StorageQuotaPanel />
+            </section>
           </div>
-        </header>
 
-        {/* Connectivity + retry backoff */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <BackoffPanel onRetryDue={handleRetryDue} />
-        </section>
-
-        {/* Conflict resolution — only renders when there are conflicts */}
-        {conflicts.length > 0 && (
-          <section className="rounded-xl border border-amber-500/25 bg-zinc-950/40 p-4">
-            <ConflictMergePanel conflicts={conflicts} onResolved={handleResolved} />
-          </section>
-        )}
-
-        {/* Bidirectional replication + IndexedDB write-through */}
-        <section
-          id="offline-replication"
-          className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
-        >
-          <ReplicationPanel
-            key={replicationKey}
-            onConflicts={handleConflicts}
-            onStateChange={handleRetryDue}
-          />
-        </section>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Service worker / Workbox */}
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <ServiceWorkerPanel />
+          {/* Sync intelligence — CRDT / cache / delta analysis */}
+          <section
+            id="offline-analysis"
+            className="rounded-2xl border border-white/10 bg-[#111] p-4"
+          >
+            <SyncAnalysisPanel />
           </section>
 
-          {/* Browser storage quota */}
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <StorageQuotaPanel />
+          {/* Real-world offline-first tooling (GitHub reference) */}
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="mb-3 text-sm font-semibold text-white">Real-world offline-first tooling (GitHub)</h2>
+            <OfflineRepos />
           </section>
         </div>
-
-        {/* Sync intelligence — CRDT / cache / delta analysis */}
-        <section
-          id="offline-analysis"
-          className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
-        >
-          <SyncAnalysisPanel />
-        </section>
-
-        {/* Real-world offline-first tooling (GitHub reference) */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowOfflineRepos(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Real-world offline-first tooling (GitHub)</span>
-            {showOfflineRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showOfflineRepos && (
-            <div className="mt-3">
-              <OfflineRepos />
-            </div>
-          )}
-        </section>
-          <CrossLensRecentsPanel lensId="offline" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

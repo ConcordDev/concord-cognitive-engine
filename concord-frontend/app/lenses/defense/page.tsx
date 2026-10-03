@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ContractSearch } from '@/components/defense/ContractSearch';
@@ -19,11 +21,8 @@ import { DashboardStats } from '@/components/defense/DashboardStats';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import {
-  Shield, BarChart3, Target, Crosshair, Users, Eye, MapPin, Radio,
-  ChevronDown, ChevronRight,
+  BarChart3, Target, Crosshair, Users, Eye, MapPin, Radio,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -59,7 +58,8 @@ export default function DefenseLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('defense');
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
-  const [showActionPanel, setShowActionPanel] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -77,89 +77,54 @@ export default function DefenseLensPage() {
   return (
     <LensShell lensId="defense" asMain={false}>
       <FirstRunTour lensId="defense" />      <DepthBadge lensId="defense" size="sm" className="ml-2" />
-    <div className={cn(ds.pageContainer, 'space-y-4')}>
-      {/* Header */}
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-red-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Military & Defense</h1>
-            <p className="text-sm text-gray-400">Common operating picture, readiness, threats, personnel & logistics</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          <DTUExportButton domain="defense" data={realtimeData || {}} compact />
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-        {MODE_TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveMode(key)}
-            className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300')}>
-            <Icon className="w-4 h-4" /> {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Dashboard — C2 common operating picture + readiness rollups */}
-      {activeMode === 'Dashboard' && (
+      <NorthStarFrame
+        lensId="defense"
+        crumb="Defense"
+        title={`${activeMode === 'Dashboard' ? 'Common operating picture' : MODE_TABS.find((t) => t.key === activeMode)?.label}${activeMode === 'Dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Readiness, threats, personnel, logistics and comms in one command desk."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="defense" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon }))}
+        activeTab={activeMode}
+        onTab={(id) => setActiveMode(id as ModeTab)}
+        tabsLabel="Defense views"
+        cta={{ label: 'Plan a mission', icon: Target, onClick: () => setActiveMode('Operations'), title: 'Open the mission planner (O)' }}
+      >
         <div className="space-y-4">
-          <DashboardStats />
-          <CommonOperatingPicture />
-          <ThreatBoard />
-          <AssetReadiness />
-          <ResourceAllocationPanel />
-        </div>
-      )}
+          {activeMode === 'Dashboard' && (
+            <div className="space-y-4">
+              <DashboardStats />
+              <CommonOperatingPicture />
+              <ThreatBoard />
+              <AssetReadiness />
+              <ResourceAllocationPanel />
+            </div>
+          )}
+          {activeMode === 'Operations' && <MissionPlanner />}
+          {activeMode === 'Assets' && <AssetReadiness />}
+          {activeMode === 'Personnel' && <PersonnelRoster />}
+          {activeMode === 'Intel' && <ThreatBoard />}
+          {activeMode === 'Logistics' && <LogisticsBoard />}
+          {activeMode === 'Communications' && <CommsLog />}
 
-      {/* Operations — mission planner */}
-      {activeMode === 'Operations' && <MissionPlanner />}
+          <RealtimeDataPanel domain="defense" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
-      {/* Assets — readiness rollup */}
-      {activeMode === 'Assets' && <AssetReadiness />}
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <ContractSearch />
+          </section>
 
-      {/* Personnel — roster */}
-      {activeMode === 'Personnel' && <PersonnelRoster />}
-
-      {/* Intel — threat tracking board */}
-      {activeMode === 'Intel' && <ThreatBoard />}
-
-      {/* Logistics — supply-chain tracking */}
-      {activeMode === 'Logistics' && <LogisticsBoard />}
-
-      {/* Communications — secure comms log */}
-      {activeMode === 'Communications' && <CommsLog />}
-
-      <RealtimeDataPanel data={insights} />
-
-      {/* Bespoke USAspending DoD contract search with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ContractSearch />
-      </section>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowActionPanel(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Security ops bench</span>
-          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showActionPanel && (
-          <div className="mt-3">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="mb-3 text-sm font-semibold text-white">Security ops bench</h2>
             <PipingProvider>
               <DefenseActionPanel />
             </PipingProvider>
-          </div>
-        )}
-      </section>
-    </div>          <CrossLensRecentsPanel lensId="defense" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          </section>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
