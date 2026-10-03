@@ -1,27 +1,36 @@
 'use client';
 
 /**
- * Creatures — one fauna ops desk.
- * Single view union: populations | codex | lineage. Panels own macros:
- * roster/breed/affect, species/taxonomy, lineage.
+ * Creatures: north-star chrome over the fauna ops desk. Populations (roster,
+ * crossbreeding pen), species codex, and lineage browser.
  */
 
-import { useEffect, useState } from 'react';
-import { Dna } from 'lucide-react';
+import { useState, useSyncExternalStore } from 'react';
+import { Dna, GitBranch, BookMarked, PawPrint } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { PopulationsPanel } from '@/components/creatures/PopulationsPanel';
 import { SpeciesCodexPanel } from '@/components/creatures/SpeciesCodexPanel';
 import { LineagePanel } from '@/components/creatures/LineagePanel';
 import type { CreaturesView } from '@/components/creatures/types';
-import { cn } from '@/lib/utils';
 
-const VIEWS: { id: CreaturesView; label: string; keys: string }[] = [
-  { id: 'populations', label: 'Populations', keys: '1' },
-  { id: 'codex', label: 'Species codex', keys: '2' },
-  { id: 'lineage', label: 'Lineage', keys: '3' },
+const VIEWS: { id: CreaturesView; label: string; keys: string; title: string; hint: string; icon: typeof Dna }[] = [
+  { id: 'populations', label: 'Populations', keys: '1', title: 'Who lives here', hint: 'Roster and crossbreeding pen', icon: PawPrint },
+  { id: 'codex', label: 'Species codex', keys: '2', title: 'Every kind of creature', hint: 'Species and taxonomy', icon: BookMarked },
+  { id: 'lineage', label: 'Lineage', keys: '3', title: 'Where they come from', hint: 'Lineage browser', icon: GitBranch },
 ];
+
+const DEFAULT_WORLD = 'concordia-hub';
+const subscribeNoop = () => () => {};
+function readActiveWorld(): string {
+  try {
+    return localStorage.getItem('concordia:activeWorldId') || DEFAULT_WORLD;
+  } catch {
+    return DEFAULT_WORLD;
+  }
+}
 
 function CreaturesPane({ active, worldId }: { active: CreaturesView; worldId: string }) {
   switch (active) {
@@ -36,54 +45,41 @@ function CreaturesPane({ active, worldId }: { active: CreaturesView; worldId: st
 
 export default function CreaturesLensPage() {
   useLensNav('creatures');
-  const [worldId, setWorldId] = useState('concordia-hub');
+  const worldId = useSyncExternalStore(subscribeNoop, readActiveWorld, () => DEFAULT_WORLD);
   const [active, setActive] = useState<CreaturesView>('populations');
 
-  useEffect(() => {
-    const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    if (w) setWorldId(w);
-  }, []);
-
   useLensCommand(
-    VIEWS.map((v) => ({
-      id: `view-${v.id}`,
-      keys: v.keys,
-      description: v.label,
-      category: 'navigation' as const,
-      action: () => setActive(v.id),
-    })),
+    [
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: v.label,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'breed', keys: 'n', description: 'Open the crossbreeding pen', category: 'actions' as const, action: () => setActive('populations') },
+    ],
     { lensId: 'creatures' },
   );
 
+  const current = VIEWS.find((v) => v.id === active)!;
+
   return (
-    <LensShell lensId="creatures">
-      <div className="mx-auto max-w-5xl space-y-6 p-6">
-        <header>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-violet-200">
-            <Dna size={22} aria-hidden /> Creatures
-          </h1>
-          <p className="text-sm text-zinc-400">{worldId} populations · crossbreeding pen · lineage browser</p>
-        </header>
-
-        <nav className="flex gap-1 border-b border-zinc-800" aria-label="Creatures views">
-          {VIEWS.map((v) => {
-            const on = active === v.id;
-            return (
-              <button key={v.id} type="button" onClick={() => setActive(v.id)}
-                className={cn(
-                  'px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on ? 'border-violet-400 text-violet-100' : 'border-transparent text-zinc-400 hover:text-zinc-200',
-                )}
-              >
-                {v.label}
-                <kbd className="ml-2 hidden sm:inline text-[10px] text-zinc-500">{v.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <CreaturesPane active={active} worldId={worldId} />
-      </div>
+    <LensShell lensId="creatures" asMain={false}>
+      <NorthStarFrame
+        lensId="creatures"
+        crumb={`Creatures · ${worldId}`}
+        title={current.title}
+        subtitle="Populations, crossbreeding pen and lineage browser."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as CreaturesView)}
+        cta={{ label: 'Breed a pair', icon: Dna, onClick: () => setActive('populations'), title: 'Open the crossbreeding pen (N)' }}
+      >
+        <section key={active}>
+          <CreaturesPane active={active} worldId={worldId} />
+        </section>
+      </NorthStarFrame>
     </LensShell>
   );
 }
