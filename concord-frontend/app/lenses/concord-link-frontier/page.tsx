@@ -186,11 +186,14 @@ export default function ConcordLinkFrontierPage() {
           { id: 'royalty', label: `Royalty flow (${flows.length})`, icon: Coins, keys: '2', hint: 'Citations whose parent and child live in different worlds' },
         ]}
         activeTab={view}
-        onTab={(id) => setView(id as LinkView)}
+        onTab={(id) => {
+          setView(id as LinkView);
+          document.getElementById(id === 'feed' ? 'link-feed' : 'link-royalty')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
         tabsLabel="Frontier views"
         cta={{ label: loading ? 'Syncing…' : 'Sync the feed', icon: RefreshCcw, onClick: () => { void refresh(); }, disabled: loading, title: 'Refresh the cross-world feed now (R)' }}
       >
-        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500 sm:gap-3">
           {lastRefresh && <span>last synced {lastRefresh.toLocaleTimeString()}</span>}
           <span aria-hidden="true">·</span>
           <span>{worldsActive} world{worldsActive === 1 ? '' : 's'} active in the feed window</span>
@@ -202,9 +205,8 @@ export default function ConcordLinkFrontierPage() {
             Tuning in to the federation…
           </div>
         )}
-        <section className="grid gap-4">
-{view === 'feed' && (
-          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+        <section className="grid gap-4 xl:grid-cols-2">
+<div id="link-feed" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Globe className="h-4 w-4" /> Cross-world feed
             </h2>
@@ -233,10 +235,9 @@ export default function ConcordLinkFrontierPage() {
             )}
           </div>
 
-)}
 
-{view === 'royalty' && (
-          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+
+<div id="link-royalty" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-emerald-300">
               <Coins className="h-4 w-4" /> Cross-world royalty flow
             </h2>
@@ -281,7 +282,7 @@ export default function ConcordLinkFrontierPage() {
               </div>
             )}
           </div>
-)}
+
         </section>
       </NorthStarFrame>
     </LensShell>

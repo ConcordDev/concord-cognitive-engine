@@ -2,24 +2,35 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Layers, Shield, Brain, GraduationCap, AlertTriangle, Briefcase, BadgeCheck, Users, Rocket } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensErrorBoundary } from '@/components/lens/LensErrorBoundary';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { DataControlsPanel } from '@/components/privacy/DataControlsPanel';
-import { ConnectorCatalog } from '@/components/integrations/ConnectorCatalog';
-import { FocusToolkit } from '@/components/attention/FocusToolkit';
-import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
-import { SeismicHazardPanel } from '@/components/geology/SeismicHazardPanel';
-import { FireIncidents } from '@/components/forestry/FireIncidents';
-import { BlsSeriesExplorer } from '@/components/hr/BlsSeriesExplorer';
-import { BlsWageForecast } from '@/components/hr/BlsWageForecast';
-import { ClaimVerificationPanel } from '@/components/grounding/ClaimVerificationPanel';
-import { FactGroundingWorkbench } from '@/components/grounding/FactGroundingWorkbench';
-import { DevToolingPulse } from '@/components/dx-platform/DevToolingPulse';
+
+function PanelSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-live="polite" className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-500">
+      Loading panel…
+    </div>
+  );
+}
+
+const DataControlsPanel = dynamic(() => import('@/components/privacy/DataControlsPanel').then((m) => m.DataControlsPanel), { ssr: false, loading: PanelSkeleton });
+const ConnectorCatalog = dynamic(() => import('@/components/integrations/ConnectorCatalog').then((m) => m.ConnectorCatalog), { ssr: false, loading: PanelSkeleton });
+const FocusToolkit = dynamic(() => import('@/components/attention/FocusToolkit').then((m) => m.FocusToolkit), { ssr: false, loading: PanelSkeleton });
+const SrsWorkbench = dynamic(() => import('@/components/srs/SrsWorkbench').then((m) => m.SrsWorkbench), { ssr: false, loading: PanelSkeleton });
+const SeismicHazardPanel = dynamic(() => import('@/components/geology/SeismicHazardPanel').then((m) => m.SeismicHazardPanel), { ssr: false, loading: PanelSkeleton });
+const FireIncidents = dynamic(() => import('@/components/forestry/FireIncidents').then((m) => m.FireIncidents), { ssr: false, loading: PanelSkeleton });
+const BlsSeriesExplorer = dynamic(() => import('@/components/hr/BlsSeriesExplorer').then((m) => m.BlsSeriesExplorer), { ssr: false, loading: PanelSkeleton });
+const BlsWageForecast = dynamic(() => import('@/components/hr/BlsWageForecast').then((m) => m.BlsWageForecast), { ssr: false, loading: PanelSkeleton });
+const ClaimVerificationPanel = dynamic(() => import('@/components/grounding/ClaimVerificationPanel').then((m) => m.ClaimVerificationPanel), { ssr: false, loading: PanelSkeleton });
+const FactGroundingWorkbench = dynamic(() => import('@/components/grounding/FactGroundingWorkbench').then((m) => m.FactGroundingWorkbench), { ssr: false, loading: PanelSkeleton });
+const DevToolingPulse = dynamic(() => import('@/components/dx-platform/DevToolingPulse').then((m) => m.DevToolingPulse), { ssr: false, loading: PanelSkeleton });
 
 type AddTab = 'api' | 'burnout' | 'learning' | 'hazard' | 'labor' | 'misinfo' | 'contacts' | 'golive';
 
@@ -69,6 +80,7 @@ export default function StrategicAddsPage() {
         tabsLabel="Strategic add tracks"
         cta={{ label: 'Go-live platform', icon: Rocket, onClick: () => setTab('golive') }}
       >
+        <LensErrorBoundary key={tab} lensId="strategic-adds">
         {tab === 'api' && (
           <section className="space-y-4">
             <p className="text-sm text-zinc-300">Config UX + consent scope management for personal sovereign APIs.</p>
@@ -122,7 +134,8 @@ export default function StrategicAddsPage() {
         )}
 
         {tab === 'contacts' && (
-          <section className="rounded-xl border border-amber-700/30 bg-amber-600/10 p-4">
+          <section role="status" aria-label="Contact network status" className="rounded-xl border border-amber-700/30 bg-amber-600/10 p-4 sm:p-5">
+            {/* No contact graph exists yet: honest empty state */}
             <h2 className="text-sm font-semibold text-amber-200">Honest status: foundational packaging only</h2>
             <p className="mt-2 text-sm text-amber-100/90">
               A dedicated contact+preference graph is not yet built. Use existing controls while the purpose-built network lands.
@@ -137,13 +150,14 @@ export default function StrategicAddsPage() {
         {tab === 'golive' && (
           <section className="space-y-4">
             <p className="text-sm text-zinc-300">MCP/IDE rollout hardening with onboarding and live telemetry.</p>
-            <div className="flex flex-wrap gap-3 text-sm">
+            <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:gap-3">
               <Link className="underline text-cyan-300" href="/lenses/dx-platform">DX onboarding flow</Link>
               <Link className="underline text-cyan-300" href="/lenses/integrations">Connector registry and workflows</Link>
             </div>
             <DevToolingPulse />
           </section>
         )}
+        </LensErrorBoundary>
       </NorthStarFrame>
     </LensShell>
   );
