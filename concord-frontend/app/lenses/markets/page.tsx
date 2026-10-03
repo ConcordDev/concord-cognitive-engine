@@ -11,10 +11,12 @@
 
 import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CandlestickChart } from 'lucide-react';
 import { SkeletonTableRows, EmptyState, ErrorState } from '@/components/ui';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -63,6 +65,8 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 }
 
 export default function MarketsPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   useLensCommand([
     { id: 'markets-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'markets' });
@@ -78,20 +82,27 @@ export default function MarketsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = () => {
     setLoading(true);
     setLoadError(null);
-    const [m, p] = await Promise.all([
-      macro('betting', 'list_open', { limit: 50 }),
-      macro('betting', 'my_positions'),
-    ]);
-    if (m?.ok) setMarkets(m.markets || []);
-    else setLoadError(m?.error || m?.reason || 'Could not reach the betting substrate.');
-    if (p?.ok) setPositions(p.positions || []);
-    setLoading(false);
+    setReloadKey((k) => k + 1);
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      macro('betting', 'list_open', { limit: 50 }),
+      macro('betting', 'my_positions'),
+    ]).then(([m, p]) => {
+      if (cancelled) return;
+      if (m?.ok) setMarkets(m.markets || []);
+      else setLoadError(m?.error || m?.reason || 'Could not reach the betting substrate.');
+      if (p?.ok) setPositions(p.positions || []);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   const placeBet = async (marketId: number, side: 'yes' | 'no') => {
     setBetting(marketId);
@@ -99,7 +110,7 @@ export default function MarketsPage() {
     const r = await macro('betting', 'place_bet', { marketId, side, stakeSparks: stake });
     if (r?.ok) {
       setStatus(`✓ Wagered ${stake} ⚡ ${side.toUpperCase()} on market #${marketId}`);
-      await refresh();
+      refresh();
     } else {
       setStatus(`Failed: ${r?.error || r?.reason || 'unknown'}`);
     }
@@ -108,17 +119,15 @@ export default function MarketsPage() {
   };
 
   return (
-        <LensShell lensId="markets">
+    <LensShell lensId="markets" asMain={false}>
       <FirstRunTour lensId="markets" />
       <DepthBadge lensId="markets" size="sm" className="ml-2" />
-  <div className="p-6 sm:p-8 max-w-4xl mx-auto">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Spectator Markets</h1>
-            <p className="mt-1 text-sm text-gray-400">
-              Wager <strong>⚡ Sparks</strong> on emergent outcomes. Non-extractive — no real money. Sparks are earned by playing; markets resolve via substrate signals.
-            </p>
-          </div>
+      <NorthStarFrame
+        lensId="markets"
+        crumb="Markets"
+        title={who ? `What is moving, ${who}` : 'What is moving'}
+        subtitle="Live quotes and research, user-created prediction markets, and Spark-denominated spectator bets. Sparks are earned by playing — no real money."
+        actions={
           <DTUExportButton
             domain="markets"
             data={{ markets, positions, quotes: (realtimeData as { quotes?: QuoteCardItem[] } | null)?.quotes ?? null }}
@@ -126,10 +135,12 @@ export default function MarketsPage() {
             tags={['markets', 'betting', 'export']}
             compact
           />
-        </header>
-
+        }
+        cta={{ label: 'Markets Workbench', icon: CandlestickChart, onClick: () => setWorkbenchOpen(true), title: 'Options chain (BSM greeks), futures, FX, depth-of-book, alerts' }}
+      >
+      <div className="mx-auto max-w-5xl space-y-5">
         {/* Live Yahoo Finance ticker list — CNBC mobile style */}
-        <div className="mb-6">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <QuoteCardList
             quotes={(realtimeData as { quotes?: QuoteCardItem[] } | null)?.quotes}
             isLive={isLive}
@@ -138,21 +149,22 @@ export default function MarketsPage() {
         </div>
 
         {/* Bespoke quote research — lightweight-charts + percent-rebase compare + Save-as-DTU */}
-        <div className="mb-8 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <MarketsQuoteDetail />
         </div>
 
         {/* Polymarket / Kalshi parity — user-created event markets, live odds,
             price-history charts, limit orders, cash-out, resolution, leaderboard */}
-        <div className="mb-8">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <PredictionMarkets />
         </div>
 
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
         {status && (
-          <div className="mb-4 bg-amber-950/50 border border-amber-700/50 text-amber-200 px-3 py-2 rounded-lg text-sm">{status}</div>
+          <div className="bg-amber-950/50 border border-amber-700/50 text-amber-200 px-3 py-2 rounded-lg text-sm">{status}</div>
         )}
 
-        <div className="mb-4 flex items-center gap-3 bg-lattice-surface/60 border border-lattice-border rounded-lg px-3 py-2">
+        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
           <label className="text-xs text-gray-400">Stake per bet:</label>
           <input
             type="number" min={1} max={1000}
@@ -172,7 +184,7 @@ export default function MarketsPage() {
             variant="panel"
             title="Couldn't load open markets."
             message={loadError}
-            onRetry={() => void refresh()}
+            onRetry={refresh}
             className="mb-6"
           />
         ) : markets.length === 0 ? (
@@ -251,20 +263,13 @@ export default function MarketsPage() {
             ))}
           </ul>
         )}
+        </section>
       </div>
+      </NorthStarFrame>
     
       <a href="#markets-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to markets content</a>
 
-      {/* 2026 parity workbench — derivatives + global markets companion */}
-      <button
-        type="button"
-        onClick={() => setWorkbenchOpen(true)}
-        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-cyan-50 shadow-2xl text-sm font-medium"
-        title="Markets Workbench — options chain (BSM greeks), futures, FX, depth-of-book, alerts"
-      >
-        Markets Workbench
-      </button>
-      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />          <CrossLensRecentsPanel lensId="markets" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
+      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
