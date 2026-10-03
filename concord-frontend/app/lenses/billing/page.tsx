@@ -1,100 +1,71 @@
 'use client';
 
+/**
+ * Billing: north-star chrome over the real billing workbench (balance,
+ * transactions, plans, subscriptions, platform economy).
+ */
+
 import { useState } from 'react';
 import { BarChart3, History, CreditCard, Layers, Landmark } from 'lucide-react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { BillingWorkbench, type BillingView } from '@/components/billing/BillingWorkbench';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
-const TABS: { id: BillingView; label: string; icon: typeof BarChart3; keys: string }[] = [
-  { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'g o' },
-  { id: 'transactions', label: 'Transactions', icon: History, keys: 'g t' },
-  { id: 'subscriptions', label: 'Plans', icon: CreditCard, keys: 'g s' },
-  { id: 'billing', label: 'Subscriptions', icon: Layers, keys: 'g b' },
-  { id: 'economy', label: 'Economy', icon: Landmark, keys: 'g e' },
+const TABS: { id: BillingView; label: string; title: string; icon: typeof BarChart3; keys: string }[] = [
+  { id: 'overview', label: 'Overview', title: 'Where your money stands', icon: BarChart3, keys: 'g o' },
+  { id: 'transactions', label: 'Transactions', title: 'Every charge and credit', icon: History, keys: 'g t' },
+  { id: 'subscriptions', label: 'Plans', title: 'Pick the plan that fits', icon: CreditCard, keys: 'g s' },
+  { id: 'billing', label: 'Subscriptions', title: 'What you are subscribed to', icon: Layers, keys: 'g b' },
+  { id: 'economy', label: 'Economy', title: 'How the platform economy moves', icon: Landmark, keys: 'g e' },
 ];
 
 export default function BillingPage() {
   useLensNav('billing');
   useLensIdentity('billing');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<BillingView>('overview');
 
   useLensCommand(
-    TABS.map((t) => ({
-      id: `goto-${t.id}`,
-      keys: t.keys,
-      description: t.label,
-      category: 'navigation' as const,
-      action: () => setView(t.id),
-    })),
+    [
+      ...TABS.map((t) => ({
+        id: `goto-${t.id}`,
+        keys: t.keys,
+        description: t.label,
+        category: 'navigation' as const,
+        action: () => setView(t.id),
+      })),
+      { id: 'billing-plans', keys: 'n', description: 'Browse plans', category: 'actions' as const, action: () => setView('subscriptions') },
+    ],
     { lensId: 'billing' },
   );
+
+  const current = TABS.find((t) => t.id === view)!;
 
   return (
     <LensShell lensId="billing" asMain={false}>
       <FirstRunTour lensId="billing" />
-      <div data-lens-theme="billing" className="p-6 max-w-6xl mx-auto space-y-6">
-        <header className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Billing</h1>
-              <DepthBadge lensId="billing" size="sm" />
-            </div>
-            <p className="text-sm text-white/45 mt-0.5">
-              Balance, invoices, plans, and platform economy — real numbers.
-            </p>
-          </div>
-        </header>
-
-        <nav
-          aria-label="Billing"
-          className="flex gap-1 border-b border-lattice-border overflow-x-auto"
-        >
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = view === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setView(t.id)}
-                className={cn(
-                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap',
-                  active
-                    ? 'border-emerald-400 text-emerald-300'
-                    : 'border-transparent text-gray-400 hover:text-white',
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {t.label}
-                <kbd className="hidden md:inline font-mono text-[10px] text-white/30">{t.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.16 }}
-          >
-            <BillingWorkbench tab={view} />
-          </motion.div>
-        </AnimatePresence>
-
-        <CrossLensRecentsPanel lensId="billing" sinceDays={7} limit={6} hideWhenEmpty />
-      </div>
+      <DepthBadge lensId="billing" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="billing"
+        crumb="Billing"
+        title={`${current.title}${view === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="Balance, invoices, plans and the platform economy, from real ledger numbers."
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
+        activeTab={view}
+        onTab={(id) => setView(id as BillingView)}
+        tabsLabel="Billing views"
+        cta={{ label: 'Browse plans', icon: CreditCard, onClick: () => setView('subscriptions'), title: 'Browse plans (N)' }}
+      >
+        <BillingWorkbench tab={view} />
+      </NorthStarFrame>
     </LensShell>
   );
 }
