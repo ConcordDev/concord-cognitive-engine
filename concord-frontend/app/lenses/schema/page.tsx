@@ -1,72 +1,30 @@
 'use client';
 
 /**
- * Schema lens per docs/lens-northstar/18: the registry is a canvas of entity
- * cards; "+ New schema" is the one primary action. The versioned editor opens
- * from a card; the other tools (sample data, migrations, diff, evolution,
- * conformance, ER list, inference, GitHub tooling) live under More.
+ * Schema lens: north-star look (serif title, pill tabs, teal CTA) with every
+ * tool one click away: canvas, registry, visual editor, sample data,
+ * migrations, diff, evolution, conformance, ER diagram, import and GitHub tooling.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, LayoutGrid, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
-import { SchemaWorkbench, type SchemaTab } from '@/components/schema/SchemaWorkbench';
+import { SchemaWorkbench, SCHEMA_TOOL_TABS, type SchemaTab } from '@/components/schema/SchemaWorkbench';
 
 type View = SchemaTab | 'tooling';
 
-const TOOLS: { id: View; label: string }[] = [
-  { id: 'registry', label: 'Registry list' },
-  { id: 'sample', label: 'Sample data' },
-  { id: 'migration', label: 'Migrations' },
-  { id: 'diff', label: 'Diff versions' },
-  { id: 'evolution', label: 'Evolution' },
-  { id: 'conformance', label: 'Conformance' },
-  { id: 'er', label: 'ER diagram' },
-  { id: 'import', label: 'Infer from data' },
-  { id: 'tooling', label: 'Schema tooling' },
+const NAV: { id: View; label: string; title: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'canvas', label: 'Canvas', title: 'The shape of the data', icon: LayoutGrid },
+  ...SCHEMA_TOOL_TABS.map((t) => ({ id: t.id as View, label: t.label, title: t.label, icon: t.icon })),
+  { id: 'tooling', label: 'Tooling', title: 'Schema tooling', icon: Wrench },
 ];
-
-const TITLES: Record<string, string> = {
-  editor: 'Schema editor',
-  tooling: 'Schema tooling',
-  ...Object.fromEntries(TOOLS.map((t) => [t.id, t.label])),
-};
-
-function MoreMenu({ onPick }: { onPick: (v: View) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  return (
-    <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((o) => !o)} className="text-[13px] text-zinc-500 transition-colors hover:text-zinc-200" aria-haspopup="menu" aria-expanded={open}>
-        More
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
-          {TOOLS.map((t) => (
-            <button key={t.id} role="menuitem" type="button" onClick={() => { setOpen(false); onPick(t.id); }}
-              className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50">
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function SchemaLensPage() {
   useLensNav('schema');
@@ -80,32 +38,51 @@ export default function SchemaLensPage() {
 
   useLensCommand(
     [
-      { id: 'schema-new', keys: 'n', description: 'New schema', category: 'actions', action: newSchema },
-      { id: 'schema-canvas', keys: '1', description: 'Schema canvas', category: 'navigation', action: () => setView('canvas') },
+      { id: 'schema-new', keys: 'n', description: 'New schema', category: 'actions', action: () => { setView('canvas'); newSchema(); } },
+      ...NAV.slice(0, 9).map((n, i) => ({
+        id: `schema-view-${n.id}`,
+        keys: String(i + 1),
+        description: n.label,
+        category: 'navigation' as const,
+        action: () => setView(n.id),
+      })),
     ],
     { lensId: 'schema' },
   );
 
   const onCanvas = view === 'canvas';
+  const current = NAV.find((n) => n.id === view)!;
 
   return (
     <LensShell lensId="schema" asMain={false}>
       <div data-lens-theme="schema" className="relative min-h-full px-8 pb-10 pt-6">
-        <div className="absolute right-8 top-4 z-20">
-          <MoreMenu onPick={setView} />
-        </div>
-
-        {onCanvas ? (
-          <p className="text-[14px] text-zinc-500">Schema</p>
-        ) : (
-          <button type="button" onClick={() => setView('canvas')} className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200">
-            <ArrowLeft className="h-4 w-4" />
-            Schema
-          </button>
-        )}
-        <h1 className="mb-6 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {onCanvas ? `The shape of the data${who ? `, ${who}` : ''}` : (TITLES[view] ?? 'Schema')}
+        <p className="text-[14px] text-zinc-500">Schema</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {onCanvas ? `${current.title}${who ? `, ${who}` : ''}` : current.title}
         </h1>
+
+        <nav className="mb-6 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 sm:inline-flex" aria-label="Schema tools">
+          {NAV.map((n, i) => {
+            const Icon = n.icon;
+            const on = view === n.id;
+            return (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => setView(n.id)}
+                aria-current={on ? 'page' : undefined}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {n.label}
+                {i < 9 && <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 xl:inline-block">{i + 1}</kbd>}
+              </button>
+            );
+          })}
+        </nav>
 
         {view === 'tooling' ? (
           <SchemaRepos />
