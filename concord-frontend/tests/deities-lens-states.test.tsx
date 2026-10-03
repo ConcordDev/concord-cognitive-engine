@@ -29,6 +29,7 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
@@ -116,7 +117,7 @@ describe('deities lens — four UX states', () => {
     const { getByText } = render(<DeitiesPage />);
     await waitFor(() => expect(getByText('Veyra')).toBeInTheDocument());
     expect(getByText('Patron of the tide')).toBeInTheDocument();
-    expect(getByText('3')).toBeInTheDocument();      // pilgrim_count
+    expect(getByText('pilgrims').previousElementSibling?.textContent).toBe('3'); // pilgrim_count
     expect(getByText('pilgrims')).toBeInTheDocument();
   });
 
