@@ -9,9 +9,11 @@
 
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Upload, Archive, Wrench, Layers } from 'lucide-react';
+import { Upload, Archive, Wrench, Layers, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -21,8 +23,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { ImportDeskPanel } from '@/components/import/ImportDeskPanel';
 import { RestoreDtuExport } from '@/components/import/RestoreDtuExport';
 import { ImportParityWorkbench } from '@/components/import/ImportParityWorkbench';
@@ -39,7 +39,7 @@ const VIEWS: { id: ImportView; label: string; keys: string; hint: string; icon: 
 
 function RestorePanel() {
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <RestoreDtuExport />
     </section>
   );
@@ -47,7 +47,7 @@ function RestorePanel() {
 
 function ParityPanel() {
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <ImportParityWorkbench />
     </section>
   );
@@ -55,7 +55,7 @@ function ParityPanel() {
 
 function ToolsPanel() {
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <ImportToolingGallery />
     </section>
   );
@@ -74,6 +74,8 @@ export default function ImportLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('import');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<ImportView>('desk');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -104,65 +106,40 @@ export default function ImportLensPage() {
     [reduceMotion],
   );
 
+  const titles: Record<ImportView, string> = {
+    desk: `Bring it in${who ? `, ${who}` : ''}`,
+    restore: 'Restore what you exported',
+    parity: 'Map and shape the data',
+    tools: 'Reach for the right ETL tool',
+  };
+
   return (
     <LensShell lensId="import" asMain={false}>
       <FirstRunTour lensId="import" />
       <DepthBadge lensId="import" size="sm" className="ml-2" />
-      <div data-lens-theme="import" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Upload className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Import</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="import" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                Airbyte / Stitch desk — drop any file, validate, restore DTUs.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Import views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <main className="min-w-0 pt-4">
+      <NorthStarFrame
+        lensId="import"
+        crumb="Import"
+        title={titles[active]}
+        subtitle="Airbyte / Stitch desk: drop any file, validate, restore DTUs."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="import" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as ImportView)}
+        tabsLabel="Import views"
+        cta={{ label: 'New import', icon: Plus, onClick: () => setActive('desk'), title: 'Open the import desk (1)' }}
+      >
+        <main className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
               <Panel />
@@ -181,8 +158,7 @@ export default function ImportLensPage() {
           />
         )}
 
-        <CrossLensRecentsPanel lensId="import" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

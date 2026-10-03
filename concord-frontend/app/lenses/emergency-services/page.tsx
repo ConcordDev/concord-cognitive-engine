@@ -54,16 +54,17 @@
  */
 
 import { useState } from 'react';
-import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Keyboard, Users } from 'lucide-react';
+import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Users } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
 
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
@@ -84,6 +85,8 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren; hotkey: stri
 export default function EmergencyServicesLensPage() {
   useLensNav('emergency-services');
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     MODE_TABS.map((t) => ({
@@ -100,13 +103,13 @@ export default function EmergencyServicesLensPage() {
     switch (activeMode) {
       case 'Dashboard':
         return (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <EmsOverviewPanel />
           </section>
         );
       case 'CAD':
         return (
-          <section className="rounded-xl border border-red-500/20 bg-zinc-950/50 p-4">
+          <section className="rounded-2xl border border-red-500/20 bg-[#111] p-4">
             <CADConsole />
           </section>
         );
@@ -126,7 +129,7 @@ export default function EmergencyServicesLensPage() {
         );
       case 'Seismic':
         return (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <QuakeFeed />
           </section>
         );
@@ -135,56 +138,36 @@ export default function EmergencyServicesLensPage() {
     }
   };
 
+  const titles: Record<ModeTab, string> = {
+    Dashboard: `Hold the line${who ? `, ${who}` : ''}`,
+    CAD: 'Dispatch the next unit',
+    Agency: 'Call for mutual aid',
+    Actions: 'Run the field numbers',
+    Seismic: 'Watch the ground',
+  };
+
   return (
     <LensShell lensId="emergency-services" asMain={false}>
       <FirstRunTour lensId="emergency-services" />
-      <div data-lens-theme="emergency-services" className="min-h-full p-4 space-y-4">
-        {/* Command bar */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
-              <Siren className="w-5 h-5 text-red-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">Emergency Services</h1>
-                <DepthBadge lensId="emergency-services" size="sm" />
-              </div>
-              <p className="text-xs text-gray-400">Computer-aided dispatch, field calculators &amp; live seismic intake</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–5 switch view">
-              <Keyboard className="w-3.5 h-3.5" /> 1–5
-            </span>
+      <NorthStarFrame
+        lensId="emergency-services"
+        crumb="Emergency Services"
+        title={titles[activeMode]}
+        subtitle="Computer-aided dispatch, field calculators & live seismic intake"
+        actions={(
+          <>
+            <DepthBadge lensId="emergency-services" size="sm" />
             <DTUExportButton domain="emergency-services" data={{}} compact />
-          </div>
-        </header>
-
-        {/* Tabs */}
-        <nav className="flex gap-2 border-b border-white/10 pb-2 overflow-x-auto">
-          {MODE_TABS.map((t) => {
-            const Icon = t.icon;
-            const active = activeMode === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveMode(t.key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors',
-                  active
-                    ? 'bg-red-400/20 text-red-400 border-b-2 border-red-400'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" /> {t.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="min-h-[240px]">{renderTab()}</div>        <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+          </>
+        )}
+        tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, hint: `${t.label} (${t.hotkey})` }))}
+        activeTab={activeMode}
+        onTab={(id) => setActiveMode(id as ModeTab)}
+        tabsLabel="Emergency services views"
+        cta={{ label: 'Open CAD console', icon: Radio, onClick: () => setActiveMode('CAD'), title: 'Dispatch and incident intake (2)' }}
+      >
+        <div className="min-h-[240px]">{renderTab()}</div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
