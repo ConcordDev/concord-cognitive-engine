@@ -27,6 +27,9 @@ import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { SessionDetail } from '@/components/sessions/SessionDetail';
 import { StaleReminder } from '@/components/sessions/StaleReminder';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -69,6 +72,14 @@ const STATUS_META: Record<SessionStatus, { label: string; color: string; icon: t
   abandoned:  { label: 'Abandoned',  color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',          icon: XCircle },
 };
 
+const FILTER_TABS: { id: SessionStatus | 'all'; label: string; keys: string; title: string; hint: string; icon: typeof Play }[] = [
+  { id: 'all', label: 'All', keys: '0', title: 'Where you left off', hint: 'Every session across every lens', icon: GitBranch },
+  { id: 'open', label: 'Open', keys: '1', title: 'Work in flight', hint: 'Sessions you are actively working in', icon: Play },
+  { id: 'paused', label: 'Paused', keys: '2', title: 'Waiting for you', hint: 'Paused sessions you can resume', icon: Pause },
+  { id: 'completed', label: 'Completed', keys: '3', title: 'What you finished', hint: 'Sessions closed as completed', icon: CheckCircle2 },
+  { id: 'abandoned', label: 'Abandoned', keys: '4', title: 'What you let go', hint: 'Sessions closed as abandoned', icon: XCircle },
+];
+
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'recent', label: 'Recently updated' },
   { key: 'oldest', label: 'Oldest first' },
@@ -79,6 +90,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 export default function SessionsLensPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +140,7 @@ export default function SessionsLensPage() {
       setCounts(c);
     }
   }, []);
-  useEffect(() => { void refreshCounts(); }, [refreshCounts]);
+  useEffect(() => { void Promise.resolve().then(refreshCounts); }, [refreshCounts]);
 
   const refreshAll = useCallback(() => {
     void fetchAll();
@@ -191,45 +204,41 @@ export default function SessionsLensPage() {
     { lensId: 'sessions' },
   );
 
+  const currentFilter = FILTER_TABS.find(t => t.id === activeFilter)!;
+
   return (
     <LensShell lensId="sessions" asMain={false}>
-      <FirstRunTour lensId="sessions" />      <DepthBadge lensId="sessions" size="sm" className="ml-2" />
+      <FirstRunTour lensId="sessions" />
+      <DepthBadge lensId="sessions" size="sm" className="ml-2" />
 
-      <div className="min-h-screen bg-lattice-void p-6 text-zinc-100">
-        <div className="max-w-5xl mx-auto">
-          <header className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <GitBranch className="w-7 h-7 text-indigo-300" />
-              <div>
-                <h1 className="text-2xl font-bold">Sessions</h1>
-                <p className="text-xs text-zinc-400">Multi-step work across every lens — real, persistent, resumable.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => { setSelectMode(v => !v); setSelected(new Set()); }}
-                className={cn(
-                  'inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded border transition-colors',
-                  selectMode
-                    ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200'
-                    : 'border-zinc-800 text-zinc-400 hover:text-zinc-200',
-                )}
-              >
-                <ListChecks className="w-3.5 h-3.5" /> Select
-              </button>
-              <button
-                type="button"
-                onClick={refreshAll}
-                disabled={loading}
-                className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors rounded border border-zinc-800"
-                aria-label="Refresh"
-              >
-                <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-              </button>
-            </div>
-          </header>
-
+      <NorthStarFrame
+        lensId="sessions"
+        crumb="Sessions"
+        title={`${currentFilter.title}${activeFilter === 'all' && who ? `, ${who}` : ''}`}
+        subtitle="Multi-step work across every lens — real, persistent, resumable."
+        actions={
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={loading}
+            className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-zinc-100"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+          </button>
+        }
+        tabs={FILTER_TABS.map(t => ({ id: t.id, label: `${t.label} ${counts[t.id] || 0}`, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={activeFilter}
+        onTab={(id) => setActiveFilter(id as SessionStatus | 'all')}
+        tabsLabel="Session status"
+        cta={{
+          label: selectMode ? 'Exit select mode' : 'Select sessions',
+          icon: ListChecks,
+          onClick: () => { setSelectMode(v => !v); setSelected(new Set()); },
+          title: 'Multi-select sessions to complete or abandon in bulk (S)',
+        }}
+      >
+        <div className="space-y-3">
           <StaleReminder onChanged={refreshAll} />
 
           {/* Search + sort */}
@@ -258,26 +267,6 @@ export default function SessionsLensPage() {
                 <option key={o.key} value={o.key}>{o.label}</option>
               ))}
             </select>
-          </div>
-
-          {/* Filter chips */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-4">
-            {(['all', 'open', 'paused', 'completed', 'abandoned'] as const).map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setActiveFilter(s)}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded border transition-colors',
-                  activeFilter === s
-                    ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200'
-                    : 'border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700',
-                )}
-              >
-                {s === 'all' ? 'All' : STATUS_META[s].label}
-                <span className="ml-1.5 text-[10px] font-mono text-zinc-400">{counts[s] || 0}</span>
-              </button>
-            ))}
           </div>
 
           {/* Bulk action bar */}
@@ -321,7 +310,7 @@ export default function SessionsLensPage() {
           )}
 
           {!loading && rows.length === 0 && (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-12 text-center">
               <Sparkles className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
               <h2 className="text-sm font-medium text-zinc-300 mb-1">
                 {query.trim()
@@ -351,10 +340,10 @@ export default function SessionsLensPage() {
                   <li
                     key={s.id}
                     className={cn(
-                      'rounded-lg border bg-zinc-950/60 p-3 transition-colors',
+                      'rounded-2xl border bg-[#111] p-4 transition-colors',
                       selected.has(s.id)
                         ? 'border-indigo-500/50 bg-indigo-500/5'
-                        : 'border-zinc-800 hover:border-indigo-500/40',
+                        : 'border-white/10 hover:border-indigo-500/40',
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -454,7 +443,7 @@ export default function SessionsLensPage() {
             </ul>
           )}
         </div>
-      </div>
+      </NorthStarFrame>
 
       {detailId && (
         <SessionDetail
