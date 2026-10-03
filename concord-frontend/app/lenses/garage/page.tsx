@@ -42,6 +42,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Car, Plus, RefreshCw, MapPinned, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { useAuth } from '@/hooks/useAuth';
@@ -99,7 +104,8 @@ const KIND_ICON_NAME: Record<string, IconName> = {
 type FleetTab = 'world' | 'mine';
 
 export default function GarageLensPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   const [worldId, setWorldId] = useState('concordia-hub');
   const [worldIdDraft, setWorldIdDraft] = useState('concordia-hub');
@@ -119,8 +125,10 @@ export default function GarageLensPage() {
   useEffect(() => {
     const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
     if (w) {
-      setWorldId(w);
-      setWorldIdDraft(w);
+      void Promise.resolve().then(() => {
+        setWorldId(w);
+        setWorldIdDraft(w);
+      });
     }
   }, []);
 
@@ -148,7 +156,7 @@ export default function GarageLensPage() {
     }
   }, [worldId, isAuthenticated]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   const applyWorldId = useCallback(() => {
     const next = worldIdDraft.trim() || 'concordia-hub';
@@ -231,28 +239,54 @@ export default function GarageLensPage() {
     },
   ], []);
 
+  const fleetStats = useMemo(() => {
+    const fleet = worldFleet ?? [];
+    return {
+      seats: fleet.reduce((n, v) => n + (Number(v.capacity) || 0), 0),
+      fareBearing: fleet.filter((v) => v.fare_cc > 0).length,
+    };
+  }, [worldFleet]);
+
+  useLensCommand(
+    [
+      { id: 'garage-world-fleet', keys: '1', description: 'World fleet', category: 'navigation' as const, action: () => setTab('world') },
+      { id: 'garage-my-fleet', keys: '2', description: 'My fleet', category: 'navigation' as const, action: () => setTab('mine') },
+      { id: 'garage-refresh', keys: 'r', description: 'Refresh fleet data', category: 'actions' as const, action: () => void refresh() },
+      { id: 'garage-spawn', keys: 'n', description: 'Spawn the selected vehicle kind', category: 'actions' as const, action: () => void spawn() },
+    ],
+    { lensId: 'garage' },
+  );
+
   const spawnDisabled = spawnFeedback.status === 'dispatched' || spawnFeedback.status === 'running' || !isAuthenticated;
 
   return (
-    <LensShell lensId="garage">
-      <div className="mx-auto max-w-5xl space-y-5 p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className={cn(ds.heading1, 'flex items-center gap-2')}>
-              <Car className="h-6 w-6 text-amber-300" aria-hidden="true" /> Garage
-            </h1>
-            <p className={ds.textMuted}>Fleet browser, spawn depot, and inspector for world vehicles.</p>
-          </div>
-          <div className="flex items-center gap-2">
+    <LensShell lensId="garage" asMain={false}>
+      <FirstRunTour lensId="garage" />
+      <DepthBadge lensId="garage" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="garage"
+        crumb="Garage"
+        title={`Your fleet${who ? `, ${who}` : ''}`}
+        subtitle="Fleet browser, spawn depot, and inspector for world vehicles."
+        actions={
+          <>
             <StatusDot state={loading ? 'connecting' : error ? 'error' : 'live'} showLabel label={loading ? 'Loading' : error ? 'Error' : 'Synced'} />
             <button type="button" onClick={refresh} className={cn(ds.btnSecondary, 'p-2')} aria-label="Refresh fleet data">
               <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} aria-hidden="true" />
             </button>
-          </div>
-        </header>
-
+          </>
+        }
+        cta={{
+          label: 'Add to fleet',
+          icon: Plus,
+          onClick: () => void spawn(),
+          disabled: spawnDisabled,
+          title: isAuthenticated ? 'Spawn the vehicle kind chosen in the depot (n)' : 'Sign in to spawn vehicles',
+        }}
+      >
+      <div className="space-y-5">
         {/* Honest world-owned bridge — driving lives in the 3D world, not here. */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3">
           <p className="text-xs text-amber-100/80 max-w-2xl">
             <MapPinned className="inline h-3.5 w-3.5 -mt-0.5 mr-1" aria-hidden="true" />
             This page manages your fleet — browsing, inspecting, and spawning. Boarding, driving,
@@ -281,16 +315,18 @@ export default function GarageLensPage() {
               Go
             </button>
           </div>
-          <StatTileGrid columns={4} className="flex-1 max-w-md">
+          <StatTileGrid columns={6} className="flex-1 max-w-2xl">
             <StatTile label="Total" value={(worldFleet ?? []).length} size="sm" />
             <StatTile label="Carts" value={kindCounts.cart ?? 0} size="sm" />
             <StatTile label="Boats" value={kindCounts.boat ?? 0} size="sm" />
             <StatTile label="Canal taxis" value={kindCounts.canal_taxi ?? 0} size="sm" />
+            <StatTile label="Seats" value={fleetStats.seats} size="sm" />
+            <StatTile label="Fare-bearing" value={fleetStats.fareBearing} size="sm" />
           </StatTileGrid>
         </div>
 
         {/* Spawn depot */}
-        <div className="rounded-lg border border-lattice-border bg-lattice-surface p-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-end gap-2">
               <div>
@@ -378,7 +414,7 @@ export default function GarageLensPage() {
             )}
 
             {!error && loading && (
-              <div className="rounded-lg border border-lattice-border bg-lattice-surface overflow-hidden">
+              <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
                 <SkeletonTableRows rows={5} columns={5} />
               </div>
             )}
@@ -424,6 +460,7 @@ export default function GarageLensPage() {
           )}
         </div>
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
