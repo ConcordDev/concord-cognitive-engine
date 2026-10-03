@@ -2,21 +2,22 @@
 
 import React, { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import {
   Activity, Brain, FlaskConical, Layers, Radio,
   BarChart3, Zap, Shield, Database,
   Heart, Clock, CheckCircle, AlertTriangle,
-  ChevronDown, ChevronRight, Eye, Server, Gauge, Rocket,
+  ChevronDown, ChevronRight, Eye, Gauge, Rocket,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import PipelineMonitor from '@/components/platform/PipelineMonitor';
 import NerveCenter from '@/components/platform/NerveCenter';
 import EmpiricalGatesPanel from '@/components/platform/EmpiricalGatesPanel';
@@ -174,79 +175,41 @@ function OverviewDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
-          <BarChart3 className="w-6 h-6 text-neon-cyan" />
-          Platform Overview
-        </h2>
-        {isError && (
-          <span className="text-xs text-red-400">Failed to load some data</span>
-        )}
-        {isLoading && (
-          <div className="w-4 h-4 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
-        )}
-      </div>
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Server className="w-5 h-5 text-neon-blue" />
-          <div>
-            <p className="text-lg font-bold">{organCount + 6}</p>
-            <p className="text-xs text-gray-400">Services</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Gauge className="w-5 h-5 text-neon-green" />
-          <div>
-            <p className="text-lg font-bold">{healthScore !== null ? `${(typeof healthScore === 'number' ? (healthScore * 100).toFixed(0) : healthScore)}%` : '99%'}</p>
-            <p className="text-xs text-gray-400">Uptime Avg</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Activity className="w-5 h-5 text-neon-purple" />
-          <div>
-            <p className="text-lg font-bold">{pipelineRuns}</p>
-            <p className="text-xs text-gray-400">Deployments</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Clock className="w-5 h-5 text-neon-cyan" />
-          <div>
-            <p className="text-lg font-bold">{formatUptime(uptime)}</p>
-            <p className="text-xs text-gray-400">Uptime</p>
-          </div>
-        </motion.div>
-      </div>
+      {(isError || isLoading) && (
+        <div className="flex items-center gap-2 text-xs" role="status" aria-live="polite">
+          {isError && <span className="text-red-400">Failed to load some data</span>}
+          {isLoading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" />}
+        </div>
+      )}
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           <Database className="w-5 h-5 text-neon-blue mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{dtuCount}</p>
           <p className="text-xs text-gray-400">DTUs</p>
         </div>
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           <Eye className="w-5 h-5 text-neon-purple mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{shadowCount}</p>
           <p className="text-xs text-gray-400">Shadows</p>
         </div>
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           <Heart className="w-5 h-5 text-neon-pink mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{organCount}</p>
           <p className="text-xs text-gray-400">Organs</p>
         </div>
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           <Activity className="w-5 h-5 text-neon-green mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{pipelineRuns}</p>
           <p className="text-xs text-gray-400">Runs</p>
         </div>
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           <Clock className="w-5 h-5 text-neon-yellow mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{formatUptime(uptime)}</p>
           <p className="text-xs text-gray-400">Uptime</p>
         </div>
-        <div className="panel p-4 text-center">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
           {healthScore !== null ? (
             <>
               {healthScore >= 0.8 ? (
@@ -283,7 +246,7 @@ function OverviewDashboard() {
 
       {/* System Info */}
       {(status.version || status.nodeVersion || status.platform) && (
-        <div className="panel p-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <h3 className="text-sm font-semibold text-gray-400 mb-3">System Information</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             {status.version && (
@@ -324,6 +287,8 @@ function OverviewDashboard() {
 export default function PlatformPage() {
   useLensNav('platform');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('platform');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -342,102 +307,76 @@ export default function PlatformPage() {
   );
   const { events, connected } = usePlatformEvents();
 
+  const current = TABS.find((t) => t.id === activeTab)!;
+  const KEYS: Record<Tab, string> = { overview: 'o', console: 'c', pipeline: 'p', nerve: 'n', empirical: 'e', scope: 's', events: 'v', analysis: 'g' };
+  const TITLES: Record<Tab, string> = {
+    overview: `The platform at a glance${who ? `, ${who}` : ''}`,
+    console: 'Deploy, tune, audit',
+    pipeline: 'What the autogen pipeline is making',
+    nerve: 'Beacon, strategy and hypothesis',
+    empirical: 'Math, units and constants',
+    scope: 'Who can see what',
+    events: 'Everything happening right now',
+    analysis: 'Capacity, SLA and incidents',
+  };
+
   return (
     <LensShell lensId="platform" asMain={false}>
-      <FirstRunTour lensId="platform" />      <DepthBadge lensId="platform" size="sm" className="ml-2" />
-    <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">
-      {/* Top Bar */}
-      <div className="border-b border-lattice-border bg-lattice-deep/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <Shield className="w-7 h-7 text-neon-blue" />
-              <div>
-                <h1 className="text-lg font-bold text-gray-100">Concord Platform</h1>
-                <p className="text-xs text-gray-400">v5.5.0 — Pipeline + Empirical Gates + Capability Bridge</p>
-              </div>
+      <FirstRunTour lensId="platform" />
+      <DepthBadge lensId="platform" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="platform"
+        crumb="Platform"
+        title={TITLES[activeTab]}
+        subtitle={current.desc}
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="platform" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${connected ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-zinc-400'}`}>
+              <span className={`h-2 w-2 rounded-full ${connected ? 'animate-pulse bg-emerald-400' : 'bg-zinc-500'}`} />
+              {connected ? 'Live' : 'Polling'}
+              {events.length > 0 && <span className="text-[10px] text-zinc-500">({events.length} events)</span>}
+            </span>
+          </>
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: KEYS[t.id], hint: t.desc }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as Tab)}
+        tabsLabel="Platform views"
+        cta={{ label: 'Open console', icon: Rocket, onClick: () => setActiveTab('console'), title: 'Deploy, metrics, config, domains, alerts, cost, audit (C)' }}
+      >
+        <div className="space-y-6" id="platform-skip">
+          {activeTab === 'overview' && <OverviewDashboard />}
+          {activeTab === 'console' && <PlatformConsole />}
+          {activeTab === 'pipeline' && <PipelineMonitor />}
+          {activeTab === 'nerve' && <NerveCenter />}
+          {activeTab === 'empirical' && <EmpiricalGatesPanel />}
+          {activeTab === 'scope' && <ScopeControls />}
+          {activeTab === 'events' && <EventStreamPanel events={events} connected={connected} />}
+          {activeTab === 'analysis' && <PlatformAnalysisPanel />}
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="platform" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-                connected ? 'bg-neon-green/10' : 'bg-gray-600/10'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${connected ? 'bg-neon-green animate-pulse' : 'bg-gray-500'}`} />
-                <span className={`text-xs ${connected ? 'text-neon-green' : 'text-gray-400'}`}>
-                  {connected ? 'Live' : 'Polling'}
-                </span>
-                {events.length > 0 && (
-                  <span className="text-[10px] text-gray-400 ml-1">({events.length} events)</span>
-                )}
-              </div>
-            </div>
-          </div>
+          {realtimeData && (
+            <RealtimeDataPanel
+              domain="platform"
+              data={realtimeData}
+              isLive={isLive}
+              lastUpdated={lastUpdated}
+              insights={realtimeInsights}
+              compact
+            />
+          )}
 
-          {/* Tab Navigation */}
-          <div className="flex gap-1 flex-wrap scrollbar-hide -mb-px">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  title={tab.desc}
-                  className={`flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'border-neon-blue text-neon-blue bg-lattice-surface'
-                      : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-lattice-surface/50'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <PlatformRepos />
+          </section>
         </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {activeTab === 'overview' && <OverviewDashboard />}
-        {activeTab === 'console' && <PlatformConsole />}
-        {activeTab === 'pipeline' && <PipelineMonitor />}
-        {activeTab === 'nerve' && <NerveCenter />}
-        {activeTab === 'empirical' && <EmpiricalGatesPanel />}
-        {activeTab === 'scope' && <ScopeControls />}
-        {activeTab === 'events' && <EventStreamPanel events={events} connected={connected} />}
-        {activeTab === 'analysis' && <PlatformAnalysisPanel />}
-
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="platform"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-      </div>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PlatformRepos />
-      </section>
-    </div>
-
-      <a href="#platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to platform content</a>          <CrossLensRecentsPanel lensId="platform" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }
