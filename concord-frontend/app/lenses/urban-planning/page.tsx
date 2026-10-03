@@ -32,12 +32,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 import {
   Building2,
   Loader2,
@@ -53,7 +58,6 @@ import {
   ClipboardList,
 } from 'lucide-react';
 
-import { LensPageShell } from '@/components/lens/LensPageShell';
 import { CountyDataPanel } from '@/components/urban-planning/CountyDataPanel';
 import { ScenarioStudio } from '@/components/urban-planning/ScenarioStudio';
 import { ParcelManager } from '@/components/urban-planning/ParcelManager';
@@ -74,16 +78,16 @@ type ModeTab =
   | 'Reports'
   | 'County';
 
-const MODE_TABS: { key: ModeTab; label: string; icon: typeof Building2 }[] = [
-  { key: 'Dashboard', label: 'Dashboard', icon: BarChart3 },
-  { key: 'Zoning', label: 'Zoning & Site', icon: Ruler },
-  { key: 'Parcels', label: 'Parcels & Massing', icon: LandPlot },
-  { key: 'Scenarios', label: 'Scenarios', icon: Layers },
-  { key: 'Projects', label: 'Projects', icon: ClipboardList },
-  { key: 'Transit', label: 'Transit Coverage', icon: TrainFront },
-  { key: 'Comments', label: 'Public Comment', icon: MessagesSquare },
-  { key: 'Reports', label: 'Impacts & Export', icon: FileText },
-  { key: 'County', label: 'County Data', icon: Landmark },
+const MODE_TABS: { key: ModeTab; label: string; keys: string; title: string; hint: string; icon: typeof Building2 }[] = [
+  { key: 'Dashboard', label: 'Dashboard', keys: 'd', title: 'The state of the plan', hint: 'Live counts across parcels, scenarios, comments and projects', icon: BarChart3 },
+  { key: 'Zoning', label: 'Zoning & Site', keys: 'z', title: 'What the site allows', hint: 'FAR, walkability, density and traffic-impact calculators', icon: Ruler },
+  { key: 'Parcels', label: 'Parcels & Massing', keys: 'p', title: 'Shape the parcels', hint: 'Track parcels and model their 3D massing envelope', icon: LandPlot },
+  { key: 'Scenarios', label: 'Scenarios', keys: 's', title: 'Compare the futures', hint: 'Alternative development scenarios with population, jobs and emissions', icon: Layers },
+  { key: 'Projects', label: 'Projects', keys: 'j', title: 'From proposal to built', hint: 'Permit-status lifecycle with audit trail', icon: ClipboardList },
+  { key: 'Transit', label: 'Transit', keys: 't', title: 'Who the network reaches', hint: 'Transit walk-shed coverage', icon: TrainFront },
+  { key: 'Comments', label: 'Public comment', keys: 'c', title: 'What people are saying', hint: 'Stakeholder public-comment review', icon: MessagesSquare },
+  { key: 'Reports', label: 'Impacts & export', keys: 'r', title: 'Take the plan with you', hint: 'Impact dashboards and a shareable plan report', icon: FileText },
+  { key: 'County', label: 'County data', keys: 'y', title: 'The numbers behind the place', hint: 'Live Census ACS demographics and HUD income limits', icon: Landmark },
 ];
 
 interface DashboardCounts {
@@ -102,17 +106,23 @@ interface CommentListResult { comments: unknown[]; total: number; tally: Record<
 interface ProjectListResult { count: number; byStatus: Record<string, number> }
 
 export default function UrbanPlanningLensPage() {
+  useLensNav('urban-planning');
+  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('urban-planning');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
 
   useLensCommand(
-    [
-      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
-      { id: 'tab-zoning', keys: 'z', description: 'Zoning & Site Analysis', category: 'navigation', action: () => setActiveMode('Zoning') },
-      { id: 'tab-parcels', keys: 'p', description: 'Parcels & Massing', category: 'navigation', action: () => setActiveMode('Parcels') },
-      { id: 'tab-scenarios', keys: 's', description: 'Scenarios', category: 'navigation', action: () => setActiveMode('Scenarios') },
-    ],
+    MODE_TABS.map((t) => ({
+      id: `tab-${t.key.toLowerCase()}`,
+      keys: t.keys,
+      description: `${t.label} — ${t.hint}`,
+      category: 'navigation' as const,
+      action: () => setActiveMode(t.key),
+    })),
     { lensId: 'urban-planning' },
   );
+  const current = MODE_TABS.find((t) => t.key === activeMode)!;
 
   // Honest dashboard counts — pulled from the real parcel/scenario/comment
   // macros (parcel-list, scenario-list, comment-list) on mount, not a
@@ -156,32 +166,32 @@ export default function UrbanPlanningLensPage() {
   }, []);
 
   useEffect(() => {
-    loadCounts();
+    void Promise.resolve().then(loadCounts);
   }, [loadCounts]);
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
-      <FirstRunTour lensId="urban-planning" />      <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="urban-planning"
-        title="Urban Planning"
-        description="Parcels, 3D massing, scenario planning, transit coverage & impact dashboards"
-        headerIcon={<Building2 className="w-5 h-5 text-emerald-400" />}
+      <FirstRunTour lensId="urban-planning" />
+      <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="urban-planning"
+        crumb="Urban planning"
+        title={`${current.title}${activeMode === 'Dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Parcels, 3D massing, scenario planning, transit coverage and impact dashboards."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="urban-planning" data={counts ?? {}} compact />
+          </>
+        )}
+        tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={activeMode}
+        onTab={(id) => setActiveMode(id as ModeTab)}
+        tabsLabel="Urban planning views"
+        cta={{ label: 'Analyze a site', icon: Ruler, onClick: () => setActiveMode('Zoning'), title: 'Run zoning and site calculators' }}
       >
-        <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-          {MODE_TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveMode(key)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-                activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
-              )}
-            >
-              <Icon className="w-4 h-4" /> {label}
-            </button>
-          ))}
-        </div>
+        <div data-lens-theme="urban-planning" className="space-y-5">
+          <RealtimeDataPanel domain="urban-planning" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
         {activeMode === 'Dashboard' && (
           <div className="space-y-4">
@@ -207,18 +217,15 @@ export default function UrbanPlanningLensPage() {
                   { label: 'Units across scenarios', value: counts.scenarioUnits, color: 'amber', icon: Building2 },
                   { label: 'Public comments', value: counts.comments, color: 'cyan', icon: MessagesSquare },
                   { label: `Projects tracked (${counts.projectsBuilt} built)`, value: counts.projects, color: 'fuchsia', icon: ClipboardList },
-                ].map((s, i) => (
-                  <motion.div
+                ].map((s) => (
+                  <div
                     key={s.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="p-3 bg-zinc-900 rounded-lg border border-zinc-800"
+                    className="rounded-2xl border border-white/10 bg-[#111] p-4"
                   >
                     <s.icon className={`w-4 h-4 text-${s.color}-400 mb-1`} />
                     <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
                     <p className="text-xs text-gray-400">{s.label}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             ) : null}
@@ -237,12 +244,7 @@ export default function UrbanPlanningLensPage() {
               </div>
             )}
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="p-4 bg-zinc-900 rounded-lg border border-zinc-800"
-            >
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-400" /> Workbench
               </h3>
@@ -270,14 +272,14 @@ export default function UrbanPlanningLensPage() {
                     <button
                       key={label}
                       onClick={() => setActiveMode(tab)}
-                      className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-left text-xs text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200"
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-xs text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200"
                     >
                       <TabIcon className="h-4 w-4 text-emerald-400" /> {label}
                     </button>
                   ),
                 )}
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
 
@@ -289,21 +291,19 @@ export default function UrbanPlanningLensPage() {
         {activeMode === 'Comments' && <PublicCommentPanel />}
         {activeMode === 'Reports' && <PlanExportPanel />}
         {activeMode === 'County' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <CountyDataPanel />
           </section>
         )}
-      </LensPageShell>
+        </div>
+      </NorthStarFrame>
 
-      <div className="sr-only" aria-hidden="true">
-        EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
-      </div>
       <a
         href="#urban-planning-skip"
         className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none"
       >
         Skip to urban-planning content
-      </a>      <CrossLensRecentsPanel lensId="urban-planning" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>
     </LensShell>
   );
 }
