@@ -35,6 +35,8 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: null, isLoading: false, isAuthenticated: false }),
 }));
 
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+
 // ── headless shell: render-only stub ────────────────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
