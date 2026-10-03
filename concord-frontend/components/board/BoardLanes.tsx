@@ -17,7 +17,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { columns, type ColumnId, type Task } from './board-shared';
 
 type LaneId = 'todo' | 'doing' | 'done';
@@ -42,13 +41,11 @@ const statusName = (s: ColumnId) => columns.find((c) => c.id === s)?.name ?? s;
 
 export function BoardLanes({
   tasks,
-  userName,
   onOpen,
   onMove,
   onAdd,
 }: {
   tasks: Task[];
-  userName?: string | null;
   onOpen: (task: Task) => void;
   onMove: (taskId: string, status: ColumnId) => void;
   onAdd: (title: string) => void;
@@ -57,7 +54,6 @@ export function BoardLanes({
   const [draft, setDraft] = useState('');
   const [over, setOver] = useState<LaneId | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const who = titleCaseDisplayName(userName);
 
   useEffect(() => { if (adding) inputRef.current?.focus(); }, [adding]);
 
@@ -70,11 +66,7 @@ export function BoardLanes({
 
   return (
     <div className="relative flex-1 overflow-y-auto px-8 pb-28 pt-4">
-      <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
-        {who ? `What’s next, ${who}` : 'What’s next'}
-      </h1>
-
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-3">
         {LANES.map((lane) => {
           const laneTasks = tasks.filter((t) => lane.statuses.includes(t.status));
           return (

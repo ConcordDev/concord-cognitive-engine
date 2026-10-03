@@ -21,7 +21,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { TaskDetailPanel } from './TaskDetailPanel';
 import { BoardLanes } from './BoardLanes';
-import { useAuth } from '@/hooks/useAuth';
 import {
   type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
@@ -30,7 +29,6 @@ import {
 } from './board-shared';
 
 export function TasksPanel({ mode }: { mode: TaskView }) {
-  const { user } = useAuth();
   const {
     alerts: realtimeAlerts,
     insights: realtimeInsights,
@@ -199,9 +197,8 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
             selectedTask ? 'mr-0' : ''
           )}
         >
-          {/* Dense desk chrome (header, stats, filters, analysis) — Timeline and
-              Table views only. The Board view follows the north-star concept. */}
-          {mode !== 'board' && (
+          {/* Desk chrome (project, stats, search, filters, analysis) stays on
+              every view; the Board view adds the north-star lanes below it. */}
           <>
           {/* Header */}
           <header className="flex-shrink-0 px-6 pt-5 pb-3 space-y-4">
@@ -723,13 +720,11 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
           </div>
 
           </>
-          )}
 
           {/* Board view — north-star lanes (docs/lens-northstar/04-board). */}
           {mode === 'board' && (
             <BoardLanes
               tasks={filteredTasks}
-              userName={user?.username}
               onOpen={setSelectedTask}
               onMove={(taskId, status) => {
                 const task = tasks.find((x) => x.id === taskId);
