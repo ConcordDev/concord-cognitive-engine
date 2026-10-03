@@ -23,9 +23,10 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Radio, RefreshCw, ExternalLink, Plus, Check, Globe2, Newspaper,
-  Sun, Sparkles, ChevronDown, Quote, BookOpenText,
+  Sun, Sparkles, Quote, BookOpenText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -138,53 +139,36 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   }
 
   return (
-    <div data-lens-theme="news" className="relative flex min-h-full flex-col gap-4 px-8 pb-28 pt-6">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">News</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {mode === 'live' ? 'What changed' : 'What you follow'}{mode === 'live' && who ? `, ${who}` : ''}
-            </h1>
-          </div>
-          {mode === 'live' && (
-            <div className="flex shrink-0 items-center gap-3 pt-2">
-              <StatusDot
-                state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
-                label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
-                showLabel
-              />
-              <DensityToggle variant="segmented" showLabels={false} />
-            </div>
-          )}
+    <NorthStarFrame
+      lensId="news"
+      theme="news"
+      crumb="News"
+      title={`${mode === 'live' ? 'What changed' : 'What you follow'}${mode === 'live' && who ? `, ${who}` : ''}`}
+      subtitle={mode === 'live'
+        ? 'Live GDELT headlines with source attribution, a daily briefing, bias / event / narrative analysis and citable pulled intelligence.'
+        : 'Your followed topics and sources, saved stories, story clusters and bias spectrum.'}
+      tabs={[
+        { id: 'live', label: 'Live desk', icon: Radio, hint: 'Live headlines, briefing and analysis' },
+        { id: 'reader', label: 'My reader', icon: BookOpenText, hint: 'Follows, saves, clusters and bias spectrum' },
+      ]}
+      activeTab={mode}
+      onTab={(id) => setMode(id as DeskMode)}
+      tabsLabel="News views"
+      actions={mode === 'live' ? (
+        <div className="flex items-center gap-3">
+          <StatusDot
+            state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
+            label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
+            showLabel
+          />
+          <DensityToggle variant="segmented" showLabels={false} />
         </div>
-        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="News views">
-          {([
-            { id: 'live' as const, label: 'Live desk', icon: Radio },
-            { id: 'reader' as const, label: 'My reader', icon: BookOpenText },
-          ]).map((t) => {
-            const Icon = t.icon;
-            const on = mode === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setMode(t.id)}
-                aria-current={on ? 'page' : undefined}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
-      </header>
-
+      ) : undefined}
+      cta={mode === 'live'
+        ? { label: feed.isFetching ? 'Fetching…' : 'Refresh feed', icon: RefreshCw, onClick: () => { void feed.refetch(); }, disabled: feed.isFetching, title: 'Refresh feed' }
+        : undefined}
+    >
+    <div className="flex flex-col gap-4">
       {mode === 'reader' ? <MyReaderDesk /> : (
       <>
       {/* ── Stat strip ─────────────────────────────────────────── */}
@@ -390,19 +374,8 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
       </>
       )}
 
-      {mode === 'live' && (
-        <button
-          type="button"
-          onClick={() => feed.refetch()}
-          disabled={feed.isFetching}
-          title="Refresh feed"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
-        >
-          <RefreshCw className={cn('h-4 w-4', feed.isFetching && 'animate-spin')} />
-          {feed.isFetching ? 'Fetching…' : 'Refresh feed'}
-        </button>
-      )}
     </div>
+    </NorthStarFrame>
   );
 }
 
@@ -413,7 +386,6 @@ function BriefingCard({
   briefing: import('./intel-api').DailyBriefing | null | undefined;
   loading: boolean;
 }) {
-  const [open, setOpen] = useState(true);
   if (loading) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
@@ -439,46 +411,27 @@ function BriefingCard({
   );
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          <Sun className="h-3 w-3 text-amber-400" /> Daily briefing
-        </span>
-        <ChevronDown className={cn('h-3.5 w-3.5 text-zinc-500 transition-transform', !open && '-rotate-90')} />
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <p className="mt-2 text-xs text-zinc-300">{briefing.greeting}</p>
-            <p className="text-[10px] text-zinc-500">{briefing.date}</p>
-            <div className="mt-2 space-y-2">
-              {sections.map((s) => (
-                <div key={s.heading}>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-cyan-400/80">{s.heading}</p>
-                  <ul className="mt-0.5 space-y-0.5">
-                    {s.bullets.slice(0, 3).map((b, i) => (
-                      <li key={i} className="line-clamp-2 text-[11px] text-zinc-400">
-                        · {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+      <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+        <Sun className="h-3 w-3 text-amber-400" /> Daily briefing
+      </h2>
+      <p className="mt-2 text-xs text-zinc-300">{briefing.greeting}</p>
+      <p className="text-[10px] text-zinc-500">{briefing.date}</p>
+      <div className="mt-2 space-y-2">
+        {sections.map((s) => (
+          <div key={s.heading}>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-cyan-400/80">{s.heading}</p>
+            <ul className="mt-0.5 space-y-0.5">
+              {s.bullets.slice(0, 3).map((b, i) => (
+                <li key={i} className="line-clamp-2 text-[11px] text-zinc-400">
+                  · {b}
+                </li>
               ))}
-            </div>
-            <p className="mt-2 border-t border-zinc-800 pt-2 text-[11px] italic text-zinc-400">{briefing.closing}</p>
-            <p className="mt-1 text-[10px] text-zinc-600">Source: {briefing.source}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </ul>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 border-t border-zinc-800 pt-2 text-[11px] italic text-zinc-400">{briefing.closing}</p>
+      <p className="mt-1 text-[10px] text-zinc-600">Source: {briefing.source}</p>
     </div>
   );
 }
