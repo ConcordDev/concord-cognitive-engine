@@ -20,7 +20,7 @@ import {
 export function OrphansPanel() {
   const { data, isLoading } = useQuery<OrphanEntry[]>({
     queryKey: ['inventory-orphans'],
-    queryFn: () => api.get('/api/inventory/orphans').then((r) => r.data),
+    queryFn: () => api.get('/api/inventory/orphans').then((r) => (r.data?.orphans ?? []) as OrphanEntry[]),
   });
 
   const [copiedPath, setCopiedPath] = useState<string | null>(null);

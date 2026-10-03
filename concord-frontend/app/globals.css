@@ -421,9 +421,16 @@
     font-family: var(--font-display);
   }
 
-  /* Body font for everything else */
-  body, p, span, div, input, textarea, select, button {
+  /* Body font for everything else — set once on body and INHERITED. Setting
+     it on every div/span/p directly (as this used to) beat inheritance, so a
+     span inside monospace text (Monaco's code lines, .font-mono blocks) or a
+     heading was forced back to the body face. Form controls don't inherit
+     font by default, so they opt in explicitly. */
+  body {
     font-family: var(--font-body);
+  }
+  input, textarea, select, button {
+    font-family: inherit;
   }
 
   /* Mono font for code/technical */

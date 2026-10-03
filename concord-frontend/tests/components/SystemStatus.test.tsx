@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // Mock lucide-react
 vi.mock('lucide-react', () => ({
@@ -53,7 +53,11 @@ vi.mock('@/hooks/useClientConfig', () => ({
   useClientConfig: () => ({ poll: { systemStatusMs: 30000, connectionStatusMs: 20000 } }),
 }));
 
-import { SystemStatus } from '@/components/common/SystemStatus';
+import { SystemStatus, SYSTEM_STATUS_OPEN_EVENT } from '@/components/common/SystemStatus';
+
+function openStatus() {
+  act(() => { window.dispatchEvent(new Event(SYSTEM_STATUS_OPEN_EVENT)); });
+}
 
 describe('SystemStatus', () => {
   beforeEach(() => {
@@ -64,17 +68,14 @@ describe('SystemStatus', () => {
     mockQueryReturn.error = null;
   });
 
-  it('renders the "System OK" button when healthy and no errors', () => {
-    render(<SystemStatus />);
-    expect(screen.getByText('System OK')).toBeInTheDocument();
+  it('renders nothing when healthy and no errors (the Topbar shows health)', () => {
+    const { container } = render(<SystemStatus />);
+    expect(container.innerHTML).toBe('');
   });
 
-  it('expands on click of System OK button', () => {
+  it('opens the details panel when the Topbar health indicator asks', () => {
     render(<SystemStatus />);
-
-    const okButton = screen.getByText('System OK');
-    fireEvent.click(okButton);
-
+    openStatus();
     expect(screen.getByText('System Status')).toBeInTheDocument();
   });
 
@@ -82,7 +83,7 @@ describe('SystemStatus', () => {
     render(<SystemStatus />);
 
     // Click to expand
-    fireEvent.click(screen.getByText('System OK'));
+    openStatus();
 
     // Should show auth mode
     expect(screen.getByText('Auth Mode:')).toBeInTheDocument();
@@ -92,7 +93,7 @@ describe('SystemStatus', () => {
   it('shows version in expanded view', () => {
     render(<SystemStatus />);
 
-    fireEvent.click(screen.getByText('System OK'));
+    openStatus();
 
     expect(screen.getByText('Version:')).toBeInTheDocument();
     expect(screen.getByText('5.0.0')).toBeInTheDocument();
@@ -101,7 +102,7 @@ describe('SystemStatus', () => {
   it('shows backend connected in expanded view', () => {
     render(<SystemStatus />);
 
-    fireEvent.click(screen.getByText('System OK'));
+    openStatus();
 
     expect(screen.getByText('Backend:')).toBeInTheDocument();
     expect(screen.getByText('Connected')).toBeInTheDocument();
@@ -165,7 +166,7 @@ describe('SystemStatus', () => {
     render(<SystemStatus />);
 
     // Expand first
-    fireEvent.click(screen.getByText('System OK'));
+    openStatus();
     expect(screen.getByText('Collapse')).toBeInTheDocument();
 
     // Collapse

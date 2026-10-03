@@ -5,14 +5,16 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   Lock, Zap, BarChart3, XCircle, Loader2, Fingerprint, ShieldAlert,
-  Waves, AlertTriangle, CheckCircle, MessageSquare, Database, Plus, Trash2, Sparkles,
+  Waves, AlertTriangle, CheckCircle, MessageSquare, Database, Plus, Trash2, Sparkles, Network, Gauge,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -42,10 +44,26 @@ const EXAMPLE_RECORDS: PrivacyRecord[] = [
   { age: 22, zipcode: '94103', condition: 'Flu' },
 ];
 
+type AnonView = 'messenger' | 'lab' | 'network';
+
+const VIEWS: { id: AnonView; label: string; keys: string; title: string; hint: string; icon: typeof Lock }[] = [
+  { id: 'messenger', label: 'Messenger', keys: '1', title: 'Say it without a name', hint: 'End-to-end encrypted pseudonymous messages', icon: MessageSquare },
+  { id: 'lab', label: 'Privacy lab', keys: '2', title: 'How hidden is your data', hint: 'k-anonymity, re-identification risk, differential privacy', icon: Gauge },
+  { id: 'network', label: 'Network', keys: '3', title: 'How your traffic travels', hint: 'Tor network status', icon: Network },
+];
+
 export default function AnonLensPage() {
   useLensNav('anon');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('anon');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<AnonView>('messenger');
+  const current = VIEWS.find((v) => v.id === view)!;
+  const newConversation = () => {
+    setView('messenger');
+    requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('anon:new-conversation')));
+  };
 
   // Privacy-compute dataset. anonymize/privacyRisk/differentialPrivacy need
   // structured record data — driven by a small real table editor here and
@@ -73,6 +91,14 @@ export default function AnonLensPage() {
   // Lens-scoped keyboard commands.
   useLensCommand(
     [
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
+      { id: 'anon-new-conversation', keys: 'n', description: 'New encrypted conversation', category: 'actions' as const, action: newConversation },
       {
         id: 'run-anonymize',
         keys: 'mod+k',
@@ -116,38 +142,60 @@ export default function AnonLensPage() {
 
   return (
     <LensShell lensId="anon" asMain={false}>
-      <FirstRunTour lensId="anon" />      <DepthBadge lensId="anon" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="anon" className="mx-6 mt-4" />
-      <div data-lens-theme="anon" className="space-y-6 p-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">👤</span>
-            <div>
-              <h1 className="text-xl font-bold">Anon Lens</h1>
-              <p className="text-sm text-gray-400">
-                X25519 + AES-256-GCM end-to-end encrypted pseudonymous messaging
-              </p>
-            </div>
+      <FirstRunTour lensId="anon" />
+      <DepthBadge lensId="anon" size="sm" className="ml-2" />
+      <div data-lens-theme="anon" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Anonymous</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{view === 'messenger' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-1 text-[12px] text-teal-300">
+              <Lock className="h-3.5 w-3.5" /> E2E encrypted
+            </span>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="anon" data={realtimeData || {}} compact />
-            <span className="flex items-center gap-1 rounded bg-neon-green/10 px-2 py-1 text-sm text-neon-green">
-              <Lock className="h-4 w-4" /> E2E Encrypted
-            </span>
           </div>
-        </header>
+        </div>
+
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Anon views">
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = view === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setView(v.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {v.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
         {/* ── Real E2E messenger ── */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-            <MessageSquare className="h-4 w-4 text-neon-blue" /> Secure Messenger
-          </h2>
-          <AnonMessenger />
-        </section>
+        {view === 'messenger' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <p className="mb-3 text-[13px] text-zinc-500">X25519 + AES-256-GCM end-to-end encrypted pseudonymous messaging.</p>
+            <AnonMessenger />
+          </section>
+        )}
 
         {/* ── Privacy-compute analytics ── */}
-        <div className="panel p-4 space-y-3">
+        {view === 'lab' && (
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
           <h3 className="flex items-center gap-2 font-semibold">
             <Zap className="h-4 w-4 text-neon-green" />
             Privacy Compute Actions
@@ -420,8 +468,9 @@ export default function AnonLensPage() {
             </motion.div>
           )}
         </div>
+        )}
 
-        {realtimeData && (
+        {view === 'lab' && realtimeData && (
           <RealtimeDataPanel
             domain="anon"
             data={realtimeData}
@@ -432,9 +481,21 @@ export default function AnonLensPage() {
           />
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <TorNetworkStatus />
-        </section>
+        {view === 'network' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <TorNetworkStatus />
+          </section>
+        )}
+
+        <button
+          type="button"
+          onClick={newConversation}
+          title="New encrypted conversation (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New conversation
+        </button>
       </div>
 
       {/* Accessibility sentinel — never visually displayed */}
@@ -443,7 +504,8 @@ export default function AnonLensPage() {
         className="sr-only focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-amber-500"
       >
         Skip to anon content
-      </a>      <CrossLensRecentsPanel lensId="anon" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>
+      <CrossLensRecentsPanel lensId="anon" sinceDays={7} limit={6} hideWhenEmpty className="mt-3 px-8" />
     </LensShell>
   );
 }

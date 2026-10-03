@@ -91,7 +91,7 @@ export function AnimationStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-cyan-600/15 to-transparent">
         <Clapperboard className="w-5 h-5 text-cyan-400" />
         <h2 className="text-sm font-bold text-zinc-100">Animation Studio</h2>
-        <span className="text-[11px] text-zinc-400">FlipaClip + Pencil2D shape · frame-by-frame, onion skin</span>
+        <span className="text-[11px] text-zinc-400">Frame-by-frame, onion skin</span>
       </header>
 
       <div className="p-4">

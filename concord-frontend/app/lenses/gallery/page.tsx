@@ -16,7 +16,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { SavedCollections } from '@/components/gallery/SavedCollections';
@@ -165,7 +164,6 @@ export default function GalleryPage() {
     <LensShell lensId="gallery">
       <FirstRunTour lensId="gallery" />
       <DepthBadge lensId="gallery" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="gallery" className="mx-6 mt-4" />
       <div role="status" aria-live="polite" aria-busy="true" className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         Loading your gallery…
@@ -177,7 +175,6 @@ export default function GalleryPage() {
     <LensShell lensId="gallery">
       <FirstRunTour lensId="gallery" />
       <DepthBadge lensId="gallery" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="gallery" className="mx-6 mt-4" />
       <div role="alert" className="m-6 sm:m-8 rounded-xl border border-red-800/50 bg-red-950/30 p-6 text-center">
         <p className="text-sm text-red-300">{error}</p>
         <button

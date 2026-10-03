@@ -120,7 +120,7 @@ function AgricultureFarmDesk() {
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
               </div>
               <p className={ds.textMuted}>
-                John Deere Ops Center / Granular — fields, fleet, FieldView, harvest
+                Fields, fleet, field view and harvest
               </p>
             </div>
           </div>

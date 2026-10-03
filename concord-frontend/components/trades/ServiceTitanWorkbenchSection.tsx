@@ -43,7 +43,7 @@ export function ServiceTitanWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">ServiceTitan/Jobber-parity workbench</h2>
+      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">Field service workbench</h2>
       <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (
           <button

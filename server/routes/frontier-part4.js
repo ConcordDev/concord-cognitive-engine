@@ -16,11 +16,6 @@
  * DTU Diffing:
  *   POST /dtu/diff                    — compare two DTUs
  *   GET  /dtu/diff-history/:dtuId     — get diff history for a DTU
- *
- * Dependency Graph:
- *   GET  /graph/:projectId            — get dependency graph
- *   POST /graph/analyze               — analyze graph
- *   GET  /graph/royalty-flow/:projectId — get royalty flow through graph
  */
 
 import { Router } from 'express';
@@ -335,154 +330,13 @@ export default function createFrontierRoutesPart4({ requireAuth } = {}) {
     res.json({ ok: true, dtuId, history, count: history.length });
   }));
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 16. Dependency Graph
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const graphCache = new Map();
-
-  function buildGraph(projectId) {
-    if (graphCache.has(projectId)) return graphCache.get(projectId);
-
-    const nodeTypes = ['dtu', 'component', 'lens', 'brain', 'service'];
-    const nodes = [
-      { id: 'n1', label: 'Core DTU', type: 'dtu', x: 100, y: 200 },
-      { id: 'n2', label: 'Auth Service', type: 'service', x: 300, y: 100 },
-      { id: 'n3', label: 'Data Lens', type: 'lens', x: 300, y: 300 },
-      { id: 'n4', label: 'Render Component', type: 'component', x: 500, y: 100 },
-      { id: 'n5', label: 'Brain Module', type: 'brain', x: 500, y: 300 },
-      { id: 'n6', label: 'Analytics DTU', type: 'dtu', x: 700, y: 200 },
-      { id: 'n7', label: 'API Gateway', type: 'service', x: 100, y: 400 },
-      { id: 'n8', label: 'Validator Component', type: 'component', x: 500, y: 500 },
-      { id: 'n9', label: 'Insight Lens', type: 'lens', x: 700, y: 400 },
-      { id: 'n10', label: 'Processing Brain', type: 'brain', x: 900, y: 300 },
-    ];
-
-    const edges = [
-      { id: 'e1', source: 'n1', target: 'n2', relationship: 'depends-on' },
-      { id: 'e2', source: 'n1', target: 'n3', relationship: 'feeds' },
-      { id: 'e3', source: 'n2', target: 'n4', relationship: 'uses' },
-      { id: 'e4', source: 'n3', target: 'n5', relationship: 'feeds' },
-      { id: 'e5', source: 'n4', target: 'n6', relationship: 'depends-on' },
-      { id: 'e6', source: 'n5', target: 'n6', relationship: 'extends' },
-      { id: 'e7', source: 'n6', target: 'n9', relationship: 'feeds' },
-      { id: 'e8', source: 'n7', target: 'n1', relationship: 'uses' },
-      { id: 'e9', source: 'n7', target: 'n8', relationship: 'depends-on' },
-      { id: 'e10', source: 'n8', target: 'n3', relationship: 'uses' },
-      { id: 'e11', source: 'n9', target: 'n10', relationship: 'feeds' },
-      { id: 'e12', source: 'n10', target: 'n5', relationship: 'extends' },
-    ];
-
-    const graph = { projectId, nodes, edges };
-    graphCache.set(projectId, graph);
-    return graph;
-  }
-
-  // GET /graph/:projectId — get dependency graph
-  router.get("/graph/:projectId", auth, wrap((req, res) => {
-    const graph = buildGraph(req.params.projectId);
-    res.json({ ok: true, graph });
-  }));
-
-  // POST /graph/analyze — analyze graph
-  router.post("/graph/analyze", auth, wrap((req, res) => {
-    const { projectId } = req.body;
-    if (!projectId) throw new Error("projectId is required");
-
-    const graph = buildGraph(projectId);
-    const nodeCount = graph.nodes.length;
-    const edgeCount = graph.edges.length;
-
-    // Detect clusters (group by type)
-    const typeGroups = {};
-    for (const node of graph.nodes) {
-      if (!typeGroups[node.type]) typeGroups[node.type] = [];
-      typeGroups[node.type].push(node.id);
-    }
-    const clusters = Object.entries(typeGroups).map(([type, nodeIds]) => ({
-      type,
-      nodeIds,
-      size: nodeIds.length,
-    }));
-
-    // Detect circular dependencies (mock: n5 -> n6 -> n9 -> n10 -> n5)
-    const circularDeps = [
-      { path: ['n5', 'n6', 'n9', 'n10', 'n5'], length: 4 },
-    ];
-
-    // Find orphan nodes (nodes with no edges — none in our seed, but report empty)
-    const connectedNodes = new Set();
-    for (const edge of graph.edges) {
-      connectedNodes.add(edge.source);
-      connectedNodes.add(edge.target);
-    }
-    const orphanNodes = graph.nodes
-      .filter(n => !connectedNodes.has(n.id))
-      .map(n => n.id);
-
-    // Critical path (longest chain)
-    const criticalPath = ['n7', 'n1', 'n3', 'n5', 'n6', 'n9', 'n10'];
-
-    const healthScore = Math.max(0, 100 - (circularDeps.length * 15) - (orphanNodes.length * 10));
-
-    res.json({
-      ok: true,
-      analysis: {
-        projectId,
-        nodeCount,
-        edgeCount,
-        clusters,
-        circularDeps,
-        orphanNodes,
-        criticalPath,
-        healthScore,
-        analyzedAt: new Date().toISOString(),
-      },
-    });
-  }));
-
-  // GET /graph/royalty-flow/:projectId — get royalty flow through graph
-  router.get("/graph/royalty-flow/:projectId", auth, wrap((req, res) => {
-    const graph = buildGraph(req.params.projectId);
-
-    // Assign earned/paid amounts to nodes
-    const flowNodes = graph.nodes.map((node, i) => {
-      const earned = Math.round((100 - i * 8) * 100) / 100;
-      const paid = Math.round(earned * 0.21 * 100) / 100;
-      return {
-        id: node.id,
-        label: node.label,
-        type: node.type,
-        earned: Math.max(earned, 5),
-        paid: Math.max(paid, 1),
-      };
-    });
-
-    // Assign flow amounts to edges with halving royalty rate per generation
-    const flowEdges = graph.edges.map((edge, i) => {
-      const generation = Math.floor(i / 3);
-      const royaltyRate = parseFloat((0.21 / Math.pow(2, generation)).toFixed(4));
-      const flowAmount = Math.round((50 - i * 3) * royaltyRate * 100) / 100;
-      return {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        relationship: edge.relationship,
-        flowAmount: Math.max(flowAmount, 0.5),
-        royaltyRate,
-      };
-    });
-
-    res.json({
-      ok: true,
-      royaltyFlow: {
-        projectId: req.params.projectId,
-        nodes: flowNodes,
-        edges: flowEdges,
-        generatedAt: new Date().toISOString(),
-      },
-    });
-  }));
+  // 16. Dependency Graph — removed. GET /graph/:projectId, POST /graph/analyze
+  // and GET /graph/royalty-flow/:projectId returned a hardcoded ten-node graph
+  // with made-up analysis and royalty numbers. Mounted at /api before the real
+  // graph routes, /graph/:projectId also captured GET /api/graph/force and
+  // /api/graph/visual, so the Graph lens drew that fixture instead of the DTU
+  // lattice. Nothing in the frontend called these routes. Pinned by
+  // tests/graph-routes-not-shadowed.test.js.
 
   return router;
 }

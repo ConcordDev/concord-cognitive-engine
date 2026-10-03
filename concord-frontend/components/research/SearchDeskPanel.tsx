@@ -361,17 +361,12 @@ export function SearchDeskPanel() {
   }
 
     return (
-    <div data-lens-theme="research" className="p-6 space-y-6">
+    <div data-lens-theme="research" className="space-y-6">
       {/* Phase 5 — open research-arc sessions for this lens. */}
       <SessionRail lensId="research" hideWhenEmpty />
-      <header className="flex items-center gap-3">
-        <BookOpen className="w-6 h-6 text-neon-cyan" />
-        <div>
-          <h1 className="text-xl font-bold">Research</h1>
-          <p className="text-sm text-gray-400">
-            Search across all DTUs with full-text search and filters
-          </p>
-        </div>
+      {/* The page header already names the lens; this row is the search
+          desk's own toolbar (no second "Research" title). */}
+      <header className="flex items-center gap-3" aria-label="Search desk toolbar">
 
         {/* Real-time Enhancement Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">

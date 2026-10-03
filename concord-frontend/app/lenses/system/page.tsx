@@ -131,7 +131,7 @@ export default function SystemLensPage() {
               <Activity className="h-6 w-6 text-cyan-400" aria-hidden />
               <div>
                 <h1 className="text-lg font-semibold text-cyan-100">System</h1>
-                <p className="text-xs text-cyan-700 font-mono">Grafana density · cartograph + live telemetry</p>
+                <p className="text-xs text-cyan-700 font-mono">Cartograph + live telemetry</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

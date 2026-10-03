@@ -306,6 +306,15 @@ function CollabCard({ collab }: { collab: CollabAttachment }) {
   );
 }
 
+export const FEED_COMPOSE_EVENT = 'feed:compose';
+let feedComposePending = false;
+
+/** Focus the compose box, even when the timeline panel is not mounted yet. */
+export function requestFeedCompose() {
+  feedComposePending = true;
+  window.dispatchEvent(new Event(FEED_COMPOSE_EVENT));
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function FeedTimelinePanel({
@@ -693,6 +702,21 @@ export function FeedTimelinePanel({
     composeRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const focusCompose = () => {
+      if (!composeRef.current) return;
+      feedComposePending = false;
+      composeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      composeRef.current?.focus();
+    };
+    if (feedComposePending) {
+      feedComposePending = false;
+      requestAnimationFrame(focusCompose);
+    }
+    window.addEventListener(FEED_COMPOSE_EVENT, focusCompose);
+    return () => window.removeEventListener(FEED_COMPOSE_EVENT, focusCompose);
+  }, []);
+
   const formatTime = useCallback((dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -749,7 +773,8 @@ export function FeedTimelinePanel({
     );
   }
   return (
-    <div className="flex-1 min-w-0 flex">
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex">
       {/* ── Main Feed ─────────────────────────────────────────────────────── */}
       <main className="flex-1 max-w-2xl border-r border-lattice-border">
         <header className="sticky top-0 z-10 bg-lattice-bg/80 backdrop-blur-md border-b border-lattice-border px-4 py-3">
@@ -1581,6 +1606,7 @@ export function FeedTimelinePanel({
           Concord &copy; 2026
         </div>
       </aside>
+      </div>
 
       {/* DTU Context */}
       <div className="mt-6 space-y-3">

@@ -348,7 +348,6 @@ export function GraphParityPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Workflow className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Graph Toolkit</h3>
-        <span className="text-[11px] text-zinc-400">Obsidian / Kumu parity</span>
       </div>
 
       {/* Map picker */}

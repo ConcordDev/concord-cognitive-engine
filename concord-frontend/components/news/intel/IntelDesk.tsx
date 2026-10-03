@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { StatTile } from '@/components/ui/StatTile';
 import { DensityToggle } from '@/components/ui/DensityToggle';
@@ -55,6 +57,8 @@ function relTime(iso: string): string {
 }
 
 export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsCategory } = {}) {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<DeskMode>('live');
   const [category, setCategory] = useState<NewsCategory>(initialCategory);
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
@@ -134,62 +138,51 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   }
 
   return (
-    <div data-lens-theme="news" className="flex flex-col gap-4 p-4 md:p-6">
+    <div data-lens-theme="news" className="relative flex min-h-full flex-col gap-4 px-8 pb-28 pt-6">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-        <div className="flex items-center gap-2.5">
-          <Radio className="h-6 w-6 text-cyan-400" />
-          <div>
-            <h1 className="text-lg font-semibold leading-tight text-white">Intelligence Desk</h1>
-            <p className="text-xs text-zinc-500">
-              Live global feed · pull → DTU → cite · media-literacy engines
-            </p>
+      <header>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">News</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {mode === 'live' ? 'What changed' : 'What you follow'}{mode === 'live' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <nav className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950/60 p-0.5">
-            <button
-              type="button"
-              onClick={() => setMode('live')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500',
-                mode === 'live' ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300',
-              )}
-            >
-              <Radio className="h-3.5 w-3.5" /> Live Desk
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('reader')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500',
-                mode === 'reader' ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-500 hover:text-zinc-300',
-              )}
-            >
-              <BookOpenText className="h-3.5 w-3.5" /> My Reader
-            </button>
-          </nav>
           {mode === 'live' && (
-            <>
+            <div className="flex shrink-0 items-center gap-3 pt-2">
               <StatusDot
                 state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
                 label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
                 showLabel
               />
               <DensityToggle variant="segmented" showLabels={false} />
-              <button
-                type="button"
-                onClick={() => feed.refetch()}
-                disabled={feed.isFetching}
-                className="rounded-md border border-zinc-800 p-1.5 text-zinc-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300 disabled:opacity-50"
-                title="Refresh feed"
-                aria-label="Refresh feed"
-              >
-                <RefreshCw className={cn('h-4 w-4', feed.isFetching && 'animate-spin')} />
-              </button>
-            </>
+            </div>
           )}
         </div>
+        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="News views">
+          {([
+            { id: 'live' as const, label: 'Live desk', icon: Radio },
+            { id: 'reader' as const, label: 'My reader', icon: BookOpenText },
+          ]).map((t) => {
+            const Icon = t.icon;
+            const on = mode === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setMode(t.id)}
+                aria-current={on ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
       </header>
 
       {mode === 'reader' ? <MyReaderDesk /> : (
@@ -395,6 +388,19 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
         </aside>
       </div>
       </>
+      )}
+
+      {mode === 'live' && (
+        <button
+          type="button"
+          onClick={() => feed.refetch()}
+          disabled={feed.isFetching}
+          title="Refresh feed"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          <RefreshCw className={cn('h-4 w-4', feed.isFetching && 'animate-spin')} />
+          {feed.isFetching ? 'Fetching…' : 'Refresh feed'}
+        </button>
       )}
     </div>
   );

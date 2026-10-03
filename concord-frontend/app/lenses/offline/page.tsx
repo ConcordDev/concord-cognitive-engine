@@ -7,7 +7,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
 import { StorageQuotaPanel } from '@/components/offline/StorageQuotaPanel';
 import { ReplicationPanel } from '@/components/offline/ReplicationPanel';
@@ -84,7 +83,6 @@ export default function OfflineLensPage() {
   return (
     <LensShell lensId="offline" asMain={false}>
       <FirstRunTour lensId="offline" />      <DepthBadge lensId="offline" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="offline" className="mx-6 mt-4" />
 
       <div data-lens-theme="offline" className="space-y-6 p-6">
         <header className="flex items-center gap-3">

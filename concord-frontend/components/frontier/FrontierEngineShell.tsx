@@ -132,12 +132,13 @@ export function FrontierEngineTabs({
 }) {
   return (
     <nav
-      className="flex gap-1 border-b border-lattice-border px-4 overflow-x-auto no-scrollbar"
+      className="mx-8 mb-2 inline-flex max-w-[calc(100%-4rem)] items-center gap-1 self-start overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 no-scrollbar"
       aria-label="Frontier engine workspace navigation"
     >
-      {engines.map((engine) => {
+      {engines.map((engine, i) => {
         const Icon = engine.icon;
         const isActive = engine.id === activeId;
+        const key = i < 9 ? String(i + 1) : i === 9 ? '0' : '';
         return (
           <button
             key={engine.id}
@@ -146,20 +147,21 @@ export function FrontierEngineTabs({
             aria-current={isActive ? 'page' : undefined}
             title={engine.name}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px',
-              isActive
-                ? 'text-neon-cyan border-neon-cyan'
-                : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600',
+              'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+              isActive ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
             )}
           >
-            <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             {engine.shortName}
             {!engine.built && (
               <span
-                className="ml-1 h-1.5 w-1.5 rounded-full bg-slate-500"
+                className="h-1.5 w-1.5 rounded-full bg-slate-500"
                 aria-label="not built yet"
                 title="Panel not built yet"
               />
+            )}
+            {key && (
+              <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{key}</kbd>
             )}
           </button>
         );
@@ -374,7 +376,7 @@ export function FrontierEngineShell({
   return (
     <div className="flex flex-col h-full">
       <FrontierEngineTabs engines={engines} activeId={activeId} onSelect={onSelect} />
-      <div ref={bodyRef} className={cn(ds.pageContainer, 'flex-1 overflow-y-auto space-y-8 max-w-4xl')}>
+      <div ref={bodyRef} className={cn(ds.pageContainer, 'flex-1 space-y-8 max-w-5xl pb-24')}>
         {children}
       </div>
     </div>

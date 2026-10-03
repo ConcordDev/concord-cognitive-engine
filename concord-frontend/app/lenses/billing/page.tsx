@@ -49,7 +49,7 @@ export default function BillingPage() {
               <DepthBadge lensId="billing" size="sm" />
             </div>
             <p className="text-sm text-white/45 mt-0.5">
-              Balance, invoices, plans, and platform economy — Stripe-shaped, real numbers.
+              Balance, invoices, plans, and platform economy — real numbers.
             </p>
           </div>
         </header>

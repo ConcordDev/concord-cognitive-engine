@@ -99,6 +99,11 @@ export function AnonMessenger() {
 
   // New-conversation modal
   const [showNew, setShowNew] = useState(false);
+  useEffect(() => {
+    const open = () => setShowNew(true);
+    window.addEventListener('anon:new-conversation', open);
+    return () => window.removeEventListener('anon:new-conversation', open);
+  }, []);
   const [selectedPeers, setSelectedPeers] = useState<string[]>([]);
   const [groupTitle, setGroupTitle] = useState('');
   const [newDisappear, setNewDisappear] = useState(0);

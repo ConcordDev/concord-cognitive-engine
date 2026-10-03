@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin,
+  ChevronLeft, ChevronRight, Clock, MapPin,
   Plus, X, Edit2, Trash2, Bell, Repeat, Users,
-  Search, Settings, Check, Video,
+  Check, Video,
   ExternalLink, Rocket, CalendarDays, Megaphone, BookOpen, CheckSquare,
   Play, Timer, Loader2, AlertTriangle
 } from 'lucide-react';
@@ -16,11 +16,9 @@ import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,8 +97,6 @@ const REMINDER_OPTIONS = [
   { label: '1 hour before',  time: 1, unit: 'hours' as const },
 ];
 
-const SESSION_TYPES = ['Deep Work', 'Brainstorm', 'Review', 'Planning', 'Research', 'Workshop'];
-const SESSION_DURATIONS = [1, 1.5, 2, 3, 4];
 
 const CategoryIcon = ({ type, className }: { type: EventType; className?: string }) => {
   switch (type) {
@@ -287,8 +283,9 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CalendarGridWorkbench() {
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('calendar');
+export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode } = {}) {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -325,8 +322,9 @@ export function CalendarGridWorkbench() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
+  // North star (docs/lens-northstar/08): the grid is the page; the calendars
+  // sidebar is one click away, not always open.
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // New event form
   const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>({
@@ -344,13 +342,6 @@ export function CalendarGridWorkbench() {
     reminders: [],
   });
 
-  // Quick-book session form
-  const [bookSession, setBookSession] = useState({
-    sessionType: SESSION_TYPES[0],
-    duration: 2,
-    date: new Date(),
-    hour: 10,
-  });
 
   const [collaboratorInput, setCollaboratorInput] = useState('');
 
@@ -585,6 +576,17 @@ export function CalendarGridWorkbench() {
     reminders: [],
   });
 
+  /** "+ Event": a one-hour slot at 10:00 on the selected day. */
+  const openCreateFor = (day: Date) => {
+    const start = new Date(day);
+    start.setHours(10, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(11);
+    setEditingEventId(null);
+    setNewEvent({ ...defaultNewEventForm(), startDate: start, endDate: end, eventType: 'session', category: EVENT_TYPE_META.session.label, color: EVENT_TYPE_META.session.color });
+    setShowCreateModal(true);
+  };
+
   const handleCreateEvent = async () => {
     if (!newEvent.title) return;
     const defaultCalId = calendars.find((c) => c.isDefault)?.id || calendars[0]?.id;
@@ -667,7 +669,7 @@ export function CalendarGridWorkbench() {
       { id: 'view-week',   keys: 'w', description: 'Week view',   category: 'view', action: () => setViewMode('week') },
       { id: 'view-day',    keys: 'd', description: 'Day view',    category: 'view', action: () => setViewMode('day') },
       { id: 'view-agenda', keys: 'a', description: 'Agenda view', category: 'view', action: () => setViewMode('agenda') },
-      { id: 'new-event',   keys: 'n', description: 'New event',   category: 'actions', action: () => setShowCreateModal(true) },
+      { id: 'new-event',   keys: 'n', description: 'New event',   category: 'actions', action: () => openCreateFor(selectedDate) },
       { id: 'goto-today',  keys: 't', description: 'Jump to today', category: 'navigation', action: () => setSelectedDate(new Date()) },
       { id: 'next',        keys: 'j', description: 'Next period',     category: 'navigation', action: periodForward },
       { id: 'prev',        keys: 'k', description: 'Previous period', category: 'navigation', action: periodBackward },
@@ -677,41 +679,6 @@ export function CalendarGridWorkbench() {
     ],
     { lensId: 'calendar' }
   );
-
-  const handleBookSession = async () => {
-    const start = new Date(bookSession.date);
-    start.setHours(bookSession.hour, 0, 0, 0);
-    const end = new Date(start);
-    end.setMinutes(start.getMinutes() + bookSession.duration * 60);
-    const defaultCalId = calendars.find((c) => c.isDefault)?.id || calendars[0]?.id;
-
-    const event: CalendarEvent = {
-      id: `pending_${Date.now()}`,
-      title: `${bookSession.sessionType} Session`,
-      startDate: start,
-      endDate: end,
-      allDay: false,
-      color: EVENT_TYPE_META.session.color,
-      category: EVENT_TYPE_META.session.label,
-      eventType: 'session',
-      location: '',
-      reminders: [{ time: 1, unit: 'hours' }],
-      calendarId: defaultCalId,
-    };
-
-    const previousEvents = events;
-    setEvents((prev) => [...prev, event]);
-    setShowBookingModal(false);
-
-    try {
-      const r = await lensRun({ domain: 'calendar', action: 'events-create', input: toBackendEventParams(event) });
-      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to book session');
-      await fetchData();
-    } catch (e) {
-      setEvents(previousEvents);
-      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to book session' });
-    }
-  };
 
   const handleDeleteEvent = async (eventId: string) => {
     const previousEvents = events;
@@ -783,67 +750,74 @@ export function CalendarGridWorkbench() {
     }
 
     return (
-      <div className="flex-1 flex flex-col">
-        <div className="grid grid-cols-7 border-b border-lattice-border">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.015]">
+        <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DAY_NAMES.map((day) => (
-            <div key={day} className="py-3 text-center text-sm font-medium text-gray-400">
+            <div key={day} className="py-3 text-center text-[12px] uppercase tracking-[0.12em] text-zinc-500">
               {day}
             </div>
           ))}
         </div>
 
-        <div className="flex-1 grid grid-cols-7 grid-rows-6">
+        <div className="grid flex-1 grid-cols-7 grid-rows-6">
           {days.map((date, index) => {
             if (!date) return <div key={index} />;
 
             const isCurrentMonth = date.getMonth() === currentDate.getMonth();
             const dayEvents = getEventsForDay(date);
             const isSelected = isSameDay(date, selectedDate);
+            const today = isToday(date);
 
             return (
               <div
                 key={index}
                 onClick={() => setSelectedDate(date)}
+                onDoubleClick={() => openCreateFor(date)}
+                title="Double-click to add an event"
                 className={cn(
-                  'min-h-[100px] border-b border-r border-lattice-border p-1 cursor-pointer transition-colors',
-                  !isCurrentMonth && 'bg-lattice-deep/30',
-                  isSelected && 'bg-neon-cyan/5',
-                  isToday(date) && 'bg-neon-blue/10'
-                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className={cn(
-                      'w-7 h-7 flex items-center justify-center rounded-full text-sm tabular-nums',
-                      isToday(date) && 'bg-neon-blue text-white',
-                      !isCurrentMonth && 'text-gray-400'
-                    )}
-                  >
-                    {date.getDate()}
-                  </span>
-                  {dayEvents.length > 3 && (
-                    <span className="text-xs text-gray-400 tabular-nums">+{dayEvents.length - 3}</span>
+                  'flex min-h-[72px] cursor-pointer flex-col items-center gap-1 border-b border-r border-white/[0.05] p-1.5 transition-colors [&:nth-child(7n)]:border-r-0',
+                  isSelected ? 'bg-white/[0.035]' : 'hover:bg-white/[0.02]',
+                )}
+                role="button"
+                tabIndex={0}
+                aria-label={date.toDateString()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); } }}
+              >
+                <span
+                  className={cn(
+                    'font-vault text-[20px] leading-8 tabular-nums',
+                    today ? 'text-violet-300 [text-shadow:0_0_18px_rgba(167,139,250,0.7)]' : isCurrentMonth ? 'text-zinc-200' : 'text-zinc-600',
                   )}
-                </div>
+                >
+                  {date.getDate()}
+                </span>
 
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 3).map((event) => (
+                <div className="w-full space-y-1">
+                  {dayEvents.slice(0, 2).map((event) => (
                     <button
                       key={event.id}
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedEvent(event);
                         setShowEventModal(true);
                       }}
-                      className="w-full text-left px-1.5 py-0.5 rounded text-xs truncate font-medium transition-colors hover:opacity-80 flex items-center gap-1"
-                      style={{ backgroundColor: event.color + '30', color: event.color }}
+                      className="w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-left transition-colors hover:border-white/20"
                     >
-                      <CategoryIcon type={event.eventType} className="w-3 h-3 flex-shrink-0" />
+                      <span className="flex items-center gap-1.5 truncate text-[12px] text-zinc-100">
+                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: event.color }} aria-hidden="true" />
+                        <span className="truncate">{event.title}</span>
+                      </span>
                       {!event.allDay && (
-                        <span className="opacity-70 tabular-nums">{formatTime(new Date(event.startDate))} </span>
+                        <span className="block truncate pl-3 text-[11px] tabular-nums text-zinc-500">
+                          {formatTime(new Date(event.startDate))} – {formatTime(new Date(event.endDate))}
+                        </span>
                       )}
-                      <span className="truncate">{event.title}</span>
                     </button>
                   ))}
+                  {dayEvents.length > 2 && (
+                    <span className="block text-center text-[11px] tabular-nums text-zinc-500">+{dayEvents.length - 2} more</span>
+                  )}
                 </div>
               </div>
             );
@@ -1517,124 +1491,93 @@ export function CalendarGridWorkbench() {
     );
   }
   return (
-    <div data-lens-theme="calendar" className="h-[calc(100vh-8rem)] flex flex-col min-h-[640px]">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          aria-label="Calendar icon">
-            <CalendarIcon className="w-5 h-5" />
-          </button>
-
-          <button onClick={goToToday} className="px-4 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated text-sm font-medium">
-            Today
-          </button>
-
-          <div className="flex items-center gap-1">
+    <div data-lens-theme="calendar" className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col">
+      {/* Header — serif greeting, period label, quiet view switch */}
+      <header className="flex items-end justify-between gap-4 px-8 pt-4 pb-5">
+        <div className="min-w-0">
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
+            {who ? `Your week, ${who}` : 'Your week'}
+          </h1>
+          <div className="mt-1 flex items-center gap-1 text-[15px] text-zinc-400">
             <button
-              onClick={() => {
-                if (viewMode === 'month') navigateMonth(-1);
-                else if (viewMode === 'week') navigateWeek(-1);
-                else navigateDay(-1);
-              }}
-              className="p-2 rounded-lg hover:bg-lattice-elevated"
-            aria-label="Previous">
-              <ChevronLeft className="w-5 h-5" />
+              type="button"
+              onClick={() => { if (viewMode === 'month') navigateMonth(-1); else if (viewMode === 'week') navigateWeek(-1); else navigateDay(-1); }}
+              className="rounded-md p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="h-4 w-4" />
             </button>
+            <span className="tabular-nums">
+              {viewMode === 'day'
+                ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+                : `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+            </span>
             <button
-              onClick={() => {
-                if (viewMode === 'month') navigateMonth(1);
-                else if (viewMode === 'week') navigateWeek(1);
-                else navigateDay(1);
-              }}
-              className="p-2 rounded-lg hover:bg-lattice-elevated"
-            aria-label="Next">
-              <ChevronRight className="w-5 h-5" />
+              type="button"
+              onClick={() => { if (viewMode === 'month') navigateMonth(1); else if (viewMode === 'week') navigateWeek(1); else navigateDay(1); }}
+              className="rounded-md p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+              aria-label="Next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={goToToday} className="ml-2 rounded-md px-2 py-0.5 text-[13px] text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200">
+              Today
             </button>
           </div>
-
-          <h1 className="text-xl font-semibold tabular-nums">
-            {viewMode === 'month' && `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
-            {viewMode === 'week' && `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
-            {viewMode === 'day' && selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            {viewMode === 'agenda' && 'Release Schedule'}
-          </h1>
         </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="calendar" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-lattice-deep rounded-lg p-1">
+        <div className="flex items-center gap-5 pb-1">
+          {headerExtra}
+          <button
+            type="button"
+            onClick={() => setShowSidebar(!showSidebar)}
+            className={cn('text-[14px] transition-colors', showSidebar ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-200')}
+            aria-pressed={showSidebar}
+          >
+            Calendars
+          </button>
+          <nav className="flex items-center gap-5" aria-label="Calendar range">
             {(['day', 'week', 'month', 'agenda'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
+                type="button"
                 onClick={() => setViewMode(mode)}
+                aria-current={viewMode === mode ? 'true' : undefined}
                 className={cn(
-                  'px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors',
-                  viewMode === mode
-                    ? 'bg-neon-cyan/20 text-neon-cyan'
-                    : 'text-gray-400 hover:text-white'
+                  'border-b pb-1 text-[15px] capitalize transition-colors',
+                  viewMode === mode ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200',
                 )}
               >
                 {mode}
               </button>
             ))}
-          </div>
-
-          <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Search">
-            <Search className="w-5 h-5" />
-          </button>
-          <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Calendar settings' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Settings">
-            <Settings className="w-5 h-5" />
-          </button>
+          </nav>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
         {renderSidebar()}
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-lattice-deep relative">
-          {events.length === 0 && (
-            <div className="border-b border-lattice-border bg-lattice-surface/40 px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0">
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <CalendarDays className="w-4 h-4 text-neon-cyan/70" />
-                <span>No events scheduled yet. Your calendar is empty.</span>
-              </div>
-              <button
-                onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
-                className="btn-neon flex items-center gap-1.5 text-sm px-3 py-1.5 flex-shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                Create your first event
-              </button>
-            </div>
-          )}
+        <main className="relative flex flex-1 flex-col overflow-hidden px-8">
           {viewMode === 'month' && renderMonthView()}
           {viewMode === 'week' && renderWeekView()}
           {viewMode === 'day' && renderDayView()}
           {viewMode === 'agenda' && renderAgendaView()}
 
-          {/* Book Session floating button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowBookingModal(true)}
-            className="absolute bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-shadow z-20"
-          >
-            <Clock className="w-5 h-5" />
-            Book Session
-          </motion.button>
+          <div className="pointer-events-none flex flex-col items-center gap-2 py-5">
+            {events.length === 0 && (
+              <p className="text-[13px] text-zinc-500">No events scheduled yet. Double-click a day, or press N.</p>
+            )}
+            <button
+              type="button"
+              onClick={() => openCreateFor(selectedDate)}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-teal-500/90 px-8 py-3 text-[15px] font-medium text-white shadow-[0_8px_32px_rgba(45,212,191,0.2)] transition-colors hover:bg-teal-400"
+              title="New event (N)"
+            >
+              <Plus className="h-4 w-4" />
+              Event
+            </button>
+          </div>
         </main>
       </div>
 
@@ -2172,161 +2115,7 @@ export function CalendarGridWorkbench() {
         )}
       </AnimatePresence>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* Quick Book Session modal                                           */}
-      {/* ----------------------------------------------------------------- */}
-      <AnimatePresence>
-        {showBookingModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => setShowBookingModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-lattice-surface border border-lattice-border rounded-xl p-6 max-w-md w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-cyan-400" />
-                  </div>
-                  <h2 className="text-xl font-bold">Book a Session</h2>
-                </div>
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-                aria-label="Close">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="space-y-4">
-                {/* Session type */}
-                <div>
-                  <label className="text-xs text-gray-400 mb-2 block">Session Type</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {SESSION_TYPES.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setBookSession({ ...bookSession, sessionType: type })}
-                        className={cn(
-                          'px-3 py-2 rounded-lg border text-sm transition-colors text-left',
-                          bookSession.sessionType === type
-                            ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-white/20'
-                        )}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Date</label>
-                  <input
-                    type="date"
-                    value={bookSession.date.toISOString().slice(0, 10)}
-                    onChange={(e) => setBookSession({ ...bookSession, date: new Date(e.target.value) })}
-                    className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                  />
-                </div>
-
-                {/* Time slot */}
-                <div>
-                  <label className="text-xs text-gray-400 mb-2 block">Start Time</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((hour) => (
-                      <button
-                        key={hour}
-                        onClick={() => setBookSession({ ...bookSession, hour })}
-                        className={cn(
-                          'px-2 py-1.5 rounded-lg border text-xs tabular-nums transition-colors',
-                          bookSession.hour === hour
-                            ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-white/20'
-                        )}
-                      >
-                        {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Duration */}
-                <div>
-                  <label className="text-xs text-gray-400 mb-2 block">Duration</label>
-                  <div className="flex gap-2">
-                    {SESSION_DURATIONS.map((dur) => (
-                      <button
-                        key={dur}
-                        onClick={() => setBookSession({ ...bookSession, duration: dur })}
-                        className={cn(
-                          'flex-1 px-3 py-2 rounded-lg border text-sm tabular-nums transition-colors',
-                          bookSession.duration === dur
-                            ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-white/20'
-                        )}
-                      >
-                        {dur}h
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Summary */}
-                <div className="p-3 rounded-lg bg-lattice-deep border border-lattice-border">
-                  <p className="text-sm text-gray-400">Session summary</p>
-                  <p className="font-semibold mt-1">{bookSession.sessionType}</p>
-                  <p className="text-sm text-gray-300 tabular-nums">
-                    {bookSession.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    {' at '}
-                    {bookSession.hour === 0 ? '12 AM' : bookSession.hour < 12 ? `${bookSession.hour} AM` : bookSession.hour === 12 ? '12 PM' : `${bookSession.hour - 12} PM`}
-                    {' for '}
-                    {bookSession.duration}h
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="flex-1 py-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleBookSession}
-                    className="flex-1 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold"
-                  >
-                    Book Session
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {realtimeData && (
-        <div className="mt-6 px-4 pb-4">
-          <RealtimeDataPanel
-            domain="calendar"
-            data={realtimeData}
-            isLive={isLive}
-            lastUpdated={lastUpdated}
-            insights={realtimeInsights}
-            compact
-          />
-        </div>
-      )}
     </div>
   );
 }

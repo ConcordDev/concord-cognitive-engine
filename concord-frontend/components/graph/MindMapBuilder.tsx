@@ -133,7 +133,6 @@ export function MindMapBuilder() {
       <div className="flex items-center gap-2 mb-3">
         <Workflow className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-bold text-zinc-100">Mind Map Builder</h3>
-        <span className="text-[11px] text-zinc-400">XMind shape</span>
         {dashboard && (
           <span className="ml-auto text-[10px] text-zinc-500">{dashboard.maps} map{dashboard.maps === 1 ? '' : 's'} · {dashboard.totalNodes} nodes · {dashboard.totalEdges} edges</span>
         )}

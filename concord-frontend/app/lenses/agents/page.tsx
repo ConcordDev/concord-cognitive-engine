@@ -10,7 +10,7 @@
 
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Bot, GitFork, Users } from 'lucide-react';
+import { Bot, GitFork, Plus, Users } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -23,17 +23,18 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { FleetPanel } from '@/components/agents/FleetPanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
 import { ForkPreviewPanel } from '@/components/agents/ForkPreviewPanel';
 import type { AgentsView } from '@/components/agents/agents-model';
 
-const VIEWS: { id: AgentsView; label: string; keys: string; hint: string; icon: typeof Bot }[] = [
-  { id: 'fleet', label: 'Fleet', keys: 'f', hint: 'Control center + runtime', icon: Bot },
-  { id: 'roster', label: 'Roster', keys: 'r', hint: '/api/agents research roster', icon: Users },
-  { id: 'fork', label: 'Forked self', keys: 'k', hint: 'Lattice fork preview', icon: GitFork },
+const VIEWS: { id: AgentsView; label: string; keys: string; title: string; hint: string; icon: typeof Bot }[] = [
+  { id: 'fleet', title: 'Who is working for you', label: 'Fleet', keys: 'f', hint: 'Control center + runtime', icon: Bot },
+  { id: 'roster', title: 'The research roster', label: 'Roster', keys: 'r', hint: '/api/agents research roster', icon: Users },
+  { id: 'fork', title: 'Your forked self', label: 'Forked self', keys: 'k', hint: 'Lattice fork preview', icon: GitFork },
 ];
 
 const PANELS: Record<AgentsView, ComponentType> = {
@@ -47,6 +48,8 @@ export default function AgentsLensPage() {
   useLensIdentity('agents');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<'fleet' | 'roster' | 'fork'>('fleet');
 
   useLensCommand(
@@ -61,6 +64,7 @@ export default function AgentsLensPage() {
   );
 
   const Panel = PANELS[active];
+  const current = VIEWS.find((v) => v.id === active)!;
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -77,29 +81,21 @@ export default function AgentsLensPage() {
     <LensShell lensId="agents" asMain={false}>
       <FirstRunTour lensId="agents" />
       <DepthBadge lensId="agents" size="sm" className="ml-2" />
-      <div data-lens-theme="agents" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Bot className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Agents</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="agents" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                AutoGPT-shaped control center — fleet, research roster, fork preview.
-              </p>
-            </div>
+      <div data-lens-theme="agents" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Agents</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'fleet' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-        </header>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="agents" data={realtimeData || {}} compact />
+          </div>
+        </div>
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Agents views"
-        >
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Agents views">
           {VIEWS.map((v) => {
             const Icon = v.icon;
             const on = active === v.id;
@@ -108,19 +104,16 @@ export default function AgentsLensPage() {
                 key={v.id}
                 type="button"
                 onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
                 aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
               </button>
             );
           })}
@@ -145,6 +138,19 @@ export default function AgentsLensPage() {
 
         <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />
         <CrossLensRecentsPanel lensId="agents" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+        <button
+          type="button"
+          onClick={() => {
+            setActive('fleet');
+            requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('agents:new')));
+          }}
+          title="New agent (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New agent
+        </button>
       </div>
     </LensShell>
   );

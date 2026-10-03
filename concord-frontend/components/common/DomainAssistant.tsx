@@ -6,6 +6,7 @@ import type { ChatRequest } from '@/lib/api/generated-types';
 import { cn } from '@/lib/utils';
 import { Send, X, Bot, User, AlertCircle, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useLensTool } from '@/lib/lens-dock';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,7 @@ interface Message {
 
 export default function DomainAssistant({ domain, domainLabel }: DomainAssistantProps) {
   const [open, setOpen] = useState(false);
+  useLensTool('assistant', useCallback(() => setOpen((o) => !o), []));
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -146,19 +148,6 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
 
   return (
     <>
-      {/* Toggle button (visible when panel is closed) — compact round FAB so it
-          stacks neatly in the right action column and never protrudes over content. */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-[14rem] right-6 z-40 w-12 h-12 rounded-full bg-lattice-surface border border-lattice-border text-gray-300 shadow-lg flex items-center justify-center hover:bg-lattice-elevated hover:text-white transition-colors"
-          aria-label={`Open ${domainLabel} assistant`}
-          title={`${domainLabel} Assistant (${modKey}+/)`}
-        >
-          <Bot className="w-5 h-5" />
-        </button>
-      )}
-
       {/* Slide-out panel */}
       <AnimatePresence>
         {open && (

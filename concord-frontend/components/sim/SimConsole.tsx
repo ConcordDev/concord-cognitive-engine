@@ -9,6 +9,8 @@ import { StudioPanel } from '@/components/sim/StudioPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -137,6 +139,16 @@ interface ModelTemplate {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
+
+const TAB_TITLES: Record<SimTab, string> = {
+  scenarios: 'What are we simulating',
+  parameters: 'What can change',
+  runs: 'What is running',
+  results: 'What the runs show',
+  comparison: 'How the scenarios compare',
+  models: 'Models you can start from',
+  studio: 'Build a model',
+};
 
 const TAB_CONFIG: Array<{ key: SimTab; label: string; icon: React.ReactNode }> = [
   { key: 'scenarios', label: 'Scenarios', icon: <FlaskConical className="w-4 h-4" /> },
@@ -537,6 +549,8 @@ function getEmptyResults(): SimResults {
 export function SimConsole() {
   useLensNav('sim');
   useLensIdentity('sim');
+  const { user: authUser } = useAuth();
+  const who = titleCaseDisplayName(authUser?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('sim');
   const queryClient = useQueryClient();
 
@@ -977,46 +991,33 @@ export function SimConsole() {
     <>
       <FirstRunTour lensId="sim" />
       <DepthBadge lensId="sim" size="sm" className="ml-2" />
-    <div className={ds.pageContainer}>
+    <div data-lens-theme="sim" className={cn(ds.pageContainer, 'relative pb-28')}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/30 to-blue-500/30 border border-purple-500/30 flex items-center justify-center">
-            <FlaskConical className="w-5 h-5 text-purple-400" />
-          </div>
-          <div>
-            <h1 className={ds.heading1} style={{ color: 'var(--lens-accent)' }}>Simulation Console</h1>
-            <p className={ds.textMuted}>
-              AnyLogic-style multi-paradigm lab — Monte Carlo, agents, stock-and-flow, discrete event
-            </p>
-          </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="sim" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[14px] text-zinc-500">Simulation</p>
+          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+            {TAB_TITLES[activeTab]}{activeTab === 'scenarios' && who ? `, ${who}` : ''}
+          </h1>
+          <p className="max-w-3xl text-[14px] leading-relaxed text-zinc-500">
+            Multi-paradigm lab: Monte Carlo, agent-based, stock-and-flow and discrete-event models, with sensitivity analysis and run comparison.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-3 pt-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="sim" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setShowImportModal(true)}
             className={cn(ds.btnGhost, ds.btnSmall)}
           >
             <Upload className="w-4 h-4" /> Import
-          </button>
-          <button
-            onClick={() => {
-              setEditingScenario(createDefaultScenario());
-              setShowScenarioBuilder(true);
-            }}
-            className={cn(ds.btnPrimary, ds.btnSmall)}
-          >
-            <Plus className="w-4 h-4" /> New Scenario
           </button>
         </div>
       </header>
@@ -1136,22 +1137,25 @@ export function SimConsole() {
       </div>
 
       {/* ── Tab Navigation ────────────────────────────────────────────────── */}
-      <div className="flex gap-1 border-b border-lattice-border flex-wrap pb-px">
-        {TAB_CONFIG.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap',
-              activeTab === tab.key
-                ? 'bg-lattice-surface border border-lattice-border border-b-transparent text-white'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-surface/50'
-            )}
-          >
-            {tab.icon} {tab.label}
-          </button>
-        ))}
-      </div>
+      <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Simulation views">
+        {TAB_CONFIG.map(tab => {
+          const on = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              aria-current={on ? 'page' : undefined}
+              className={cn(
+                'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+              )}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* ── Tab Content ───────────────────────────────────────────────────── */}
       <div className="flex gap-4">
@@ -1594,6 +1598,15 @@ export function SimConsole() {
           </div>
         )}
       </section>
+      <button
+        type="button"
+        onClick={() => { setEditingScenario(createDefaultScenario()); setShowScenarioBuilder(true); }}
+        title="New scenario (N)"
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+      >
+        <Plus className="h-4 w-4" />
+        New scenario
+      </button>
     </div>
 
       <a href="#sim-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to sim content</a>          <CrossLensRecentsPanel lensId="sim" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

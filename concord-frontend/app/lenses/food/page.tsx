@@ -89,7 +89,7 @@ export default function FoodLensPage() {
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
               </div>
               <p className={ds.textMuted}>
-                Cook from a card, plan the week, shop the pantry — Paprika density.
+                Cook from a card, plan the week, shop the pantry.
                 <kbd className="ml-2 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">R</kbd> recipes
                 <kbd className="ml-1 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">P</kbd> pantry
               </p>

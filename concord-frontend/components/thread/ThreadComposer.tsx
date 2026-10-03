@@ -115,7 +115,6 @@ export function ThreadComposer() {
       <div className="flex items-center gap-2 mb-3">
         <PenSquare className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Thread Composer</h3>
-        <span className="text-[11px] text-zinc-400">Typefully shape</span>
         {dash && <span className="ml-auto text-[10px] text-zinc-400">{dash.drafts} drafts · {dash.scheduled} queued · {dash.published} published</span>}
       </div>
 

@@ -87,7 +87,6 @@ export function QuizGenerator({ initialSource = '', sourceDtuId, onDeckCreated }
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Quiz generator</span>
-        <span className="ml-auto text-[10px] text-gray-400">Quizlet Magic Notes parity</span>
       </header>
       <div className="p-4 space-y-3">
         {!sourceDtuId && (

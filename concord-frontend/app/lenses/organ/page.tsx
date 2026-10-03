@@ -99,7 +99,7 @@ export default function OrganLensPage() {
                 )}
               </div>
               <p className={ds.textMuted}>
-                Organizational design (ChartHop-parity) + Concord&apos;s own self-model organ registry
+                Organizational design + Concord&apos;s own self-model organ registry
               </p>
             </div>
           </div>

@@ -11,22 +11,19 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
-  Target, Swords, TrendingUp, Flag, Zap, Users,
+  Target, Swords, TrendingUp, Flag, Zap, Users, Sparkles,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { GoalsListPanel } from '@/components/goals/GoalsListPanel';
+import { GoalsListPanel, GOALS_NEW_EVENT } from '@/components/goals/GoalsListPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ChallengesPanel } from '@/components/goals/ChallengesPanel';
 import { MilestonesPanel } from '@/components/goals/MilestonesPanel';
 import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
@@ -58,7 +55,7 @@ const PANELS: Record<GoalTab, ComponentType> = {
 export default function GoalsLensPage() {
   useLensNav('goals');
   useLensIdentity('goals');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('goals');
+  const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('goals');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<GoalTab>('goals');
 
@@ -74,6 +71,9 @@ export default function GoalsLensPage() {
   );
 
   const Panel = PANELS[active];
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const chip = 'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[14px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100';
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -88,57 +88,38 @@ export default function GoalsLensPage() {
 
   return (
     <LensShell lensId="goals" asMain={false}>
-      <FirstRunTour lensId="goals" />
       <DepthBadge lensId="goals" size="sm" className="ml-2" />
-      <div data-lens-theme="goals" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Target className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Goals &amp; OKRs</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="goals" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                Personal goals, team OKRs, and Concord&apos;s own agent goal system
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Goals views"
-        >
+      <div data-lens-theme="goals" className="px-8 pt-4 pb-6">
+        {/* North star (docs/lens-northstar/07-goals): serif greeting, two
+            starter chips, quiet view links; the list follows. */}
+        <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
+          {who ? `What matters this quarter, ${who}` : 'What matters this quarter'}
+        </h1>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setActive('okr')} className={chip}>
+            <Sparkles className="h-4 w-4 text-violet-400" /> Review OKRs
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActive('goals'); window.dispatchEvent(new CustomEvent(GOALS_NEW_EVENT, { detail: { weekly: true } })); }}
+            className={chip}
+          >
+            <Target className="h-4 w-4 text-violet-400" /> Set a weekly focus
+          </button>
+        </div>
+        <nav className="mt-6 mb-2 flex flex-wrap gap-4 text-[13px]" aria-label="Goals views">
           {VIEWS.map((v) => {
-            const Icon = v.icon;
             const on = active === v.id;
             return (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
+                className={on ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-200'}
                 aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
               >
-                <Icon className="w-4 h-4" />
                 {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
               </button>
             );
           })}

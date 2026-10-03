@@ -3534,14 +3534,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           >
             {messages.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-36 bg-black">
-                <motion.img
-                  src="/logo-mark.svg"
-                  alt=""
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35 }}
-                  className="w-14 h-14 mb-8 select-none"
-                />
                 <motion.h2
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -3550,6 +3542,26 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 >
                   {greeting}
                 </motion.h2>
+                {/* North star (docs/lens-northstar/02-chat): subtitle + a few
+                    starter prompts. A chip only fills the composer — the user
+                    still sends it. */}
+                <p className="mt-3 text-[15px] text-zinc-500">How can I help you think today?</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {[
+                    'Summarize what’s new in my lattice',
+                    'Help me outline a plan',
+                    'Explain a concept simply',
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => { setInput(s); inputRef.current?.focus(); }}
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -3689,9 +3701,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               'max-w-3xl mx-auto pointer-events-auto',
               cleanEmpty && 'rounded-2xl border border-white/10 bg-[#161616] shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 pt-3 pb-2',
             )}>
-              {isEmptyThread && (
-                <p className="px-1 pb-2 text-[13px] text-white/45 font-vault">Chat with {chatWithLabel}</p>
-              )}
               {/* Quoted message indicator */}
               {quotedMessage && (
                 <div className="flex items-center gap-2 mb-2 p-2 bg-lattice-bg border border-lattice-border rounded-lg">
@@ -4012,7 +4021,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       className={cn(
                         'rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
                         cleanEmpty
-                          ? 'p-3 bg-white text-black hover:bg-white/90'
+                          ? 'p-3 bg-teal-400 text-black hover:bg-teal-300'
                           : 'p-4 bg-neon-cyan text-black hover:bg-neon-cyan/90',
                       )}
                       title="Send (⌘ Enter)"

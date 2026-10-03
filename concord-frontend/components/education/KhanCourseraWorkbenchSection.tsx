@@ -28,7 +28,7 @@ export function KhanCourseraWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">Khan/Coursera-parity workbench</h2>
+      <h2 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">Learning workbench</h2>
       <nav className="flex items-center gap-1 border-b border-amber-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (
           <button

@@ -84,7 +84,6 @@ export function StructuralCompass() {
       <div className="flex items-center gap-2 mb-3">
         <Compass className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Strike &amp; Dip — Structural Measurements</h3>
-        <span className="text-[11px] text-zinc-400">Strabo shape</span>
       </div>
 
       <div className="flex gap-3 mb-3">

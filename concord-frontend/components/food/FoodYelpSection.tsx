@@ -52,7 +52,7 @@ export function FoodYelpSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border bg-gradient-to-r from-red-600/15 to-transparent flex-wrap">
         <Utensils className="w-5 h-5 text-red-400" />
         <h2 className="text-sm font-bold text-white">Restaurant Finder</h2>
-        <span className="text-[11px] text-gray-400">Yelp shape — discover, review, reserve</span>
+        <span className="text-[11px] text-gray-400">Discover, review, reserve</span>
         {stats && (
           <div className="flex items-center gap-3 ml-auto text-[10px] text-gray-400 tabular-nums">
             <span><span className="text-gray-200 font-semibold">{stats.businesses}</span> restaurants</span>

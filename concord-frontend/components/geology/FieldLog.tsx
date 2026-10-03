@@ -102,7 +102,6 @@ export function FieldLog() {
       <div className="flex items-center gap-2 mb-3">
         <Mountain className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-bold text-zinc-100">Field Observation Log</h3>
-        <span className="text-[11px] text-zinc-400">Mindat shape</span>
       </div>
 
       {dash && (

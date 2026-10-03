@@ -13,15 +13,16 @@ import { XpActivityFeed } from '@/components/game/XpActivityFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Star, Zap, Target, Users, Swords, Crown,
+  Trophy, Star, Zap, Target, Users, Crown,
   Flame, TrendingUp, Plus, X, Check, Clock,
   BarChart3, Sparkles, Gamepad2, MessageSquare, FlaskConical,
-  ArrowUp, ChevronDown, ChevronRight,
+  ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
@@ -187,6 +188,7 @@ export default function GameApp() {
       { id: 'tab-minigame', keys: 'm', description: 'Minigame', category: 'navigation', action: () => setActiveTab('minigame') },
       { id: 'tab-trivia', keys: 'v', description: 'Trivia', category: 'navigation', action: () => setActiveTab('trivia') },
       { id: 'tab-feed', keys: 'f', description: 'Feed', category: 'navigation', action: () => setActiveTab('feed') },
+      { id: 'game-new-challenge', keys: 'n', description: 'New challenge', category: 'actions', action: () => { setActiveTab('quests'); setShowCreateChallenge(true); } },
 
     ],
 
@@ -195,6 +197,7 @@ export default function GameApp() {
   );
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
   const { user: authUser } = useAuth();
+  const who = titleCaseDisplayName(authUser?.username);
   const [playerXp, setPlayerXp] = useState(0);
   const [showCreateChallenge, setShowCreateChallenge] = useState(false);
   const [newChallenge, setNewChallenge] = useState({ name: '', description: '', difficulty: 'medium' as Quest['difficulty'], xpReward: 300 });
@@ -811,18 +814,19 @@ export default function GameApp() {
   const level = profile.level || 1;
   const progressPct = ((playerXp) / ((profile.nextLevelXp as number) || 1000)) * 100;
 
-  const TABS: { id: MainTab; label: string; icon: typeof Trophy }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'habits', label: 'Habit Hub', icon: Flame },
-    { id: 'design', label: 'Design Lab', icon: FlaskConical },
-    { id: 'quests', label: 'Quests', icon: Target },
-    { id: 'achievements', label: 'Achievements', icon: Trophy },
-    { id: 'leaderboard', label: 'Leaderboard', icon: Users },
-    { id: 'history', label: 'XP History', icon: TrendingUp },
-    { id: 'minigame', label: 'Mini-Game', icon: Gamepad2 },
-    { id: 'trivia', label: 'Trivia', icon: Sparkles },
-    { id: 'feed', label: 'Feed', icon: MessageSquare },
+  const TABS: { id: MainTab; label: string; keys: string; title: string; icon: typeof Trophy }[] = [
+    { id: 'dashboard', label: 'Dashboard', keys: 'd', title: 'Your progress', icon: BarChart3 },
+    { id: 'habits', label: 'Habit Hub', keys: 'b', title: 'What you keep doing', icon: Flame },
+    { id: 'design', label: 'Design Lab', keys: 'g', title: 'Design a game', icon: FlaskConical },
+    { id: 'quests', label: 'Quests', keys: 'q', title: 'What is worth doing', icon: Target },
+    { id: 'achievements', label: 'Achievements', keys: 'a', title: 'What you have earned', icon: Trophy },
+    { id: 'leaderboard', label: 'Leaderboard', keys: 'l', title: 'How you stack up', icon: Users },
+    { id: 'history', label: 'XP History', keys: 'i', title: 'Where your XP came from', icon: TrendingUp },
+    { id: 'minigame', label: 'Mini-Game', keys: 'm', title: 'Take a break', icon: Gamepad2 },
+    { id: 'trivia', label: 'Trivia', keys: 'v', title: 'Test what you know', icon: Sparkles },
+    { id: 'feed', label: 'Feed', keys: 'f', title: 'What players are doing', icon: MessageSquare },
   ];
+
 
   // ---------------------------------------------------------------------------
   // Render
@@ -851,41 +855,32 @@ export default function GameApp() {
     <LensShell lensId="game" asMain={false}>
       <FirstRunTour lensId="game" />
       <DepthBadge lensId="game" size="sm" className="ml-2" />
-    <div className="p-6 space-y-6 min-h-screen">
+    <div data-lens-theme="game" className="px-8 pb-28 pt-6 space-y-6 min-h-screen">
       {/* Header */}
-      <header className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-            <Swords className="w-6 h-6 text-amber-500" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Game Lens</h1>
-            <p className="text-sm text-gray-400">Gamification platform &mdash; level up your skills and track progress</p>
-          </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="game" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[14px] text-zinc-500">Game</p>
+          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+            {activeTab === 'dashboard' ? `Ready to level up${who ? `, ${who}` : ''}` : (TABS.find((t) => t.id === activeTab)?.title ?? 'Game')}
+          </h1>
+          <p className="max-w-3xl text-[14px] leading-relaxed text-zinc-500">
+            Quests, habits, achievements, leaderboards, a design lab, trivia and a mini-game, all earning real XP.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-neon-yellow font-mono text-sm">
-            <Zap className="w-4 h-4" />
-            {playerXp.toLocaleString()} XP
+        <div className="flex shrink-0 flex-col items-end gap-3 pt-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="game" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1 text-neon-pink font-mono text-sm">
-            <Flame className="w-4 h-4" />
-            {profile.streak || 0}d streak
-          </div>
-          <div className="flex items-center gap-1 text-neon-cyan font-mono text-sm">
-            <Star className="w-4 h-4" />
-            Lv {level}
+          <div className="flex items-center gap-4 font-mono text-sm">
+            <span className="flex items-center gap-1 text-neon-yellow"><Zap className="w-4 h-4" />{playerXp.toLocaleString()} XP</span>
+            <span className="flex items-center gap-1 text-neon-pink"><Flame className="w-4 h-4" />{profile.streak || 0}d streak</span>
+            <span className="flex items-center gap-1 text-neon-cyan"><Star className="w-4 h-4" />Lv {level}</span>
           </div>
         </div>
       </header>
@@ -907,24 +902,29 @@ export default function GameApp() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 flex-wrap pb-2 border-b border-lattice-border scrollbar-thin">
+      <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Game views">
         {TABS.map((tab) => {
           const Icon = tab.icon;
+          const on = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
+              aria-current={on ? 'page' : undefined}
+              title={`${tab.label} (${tab.keys})`}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap text-sm',
-                activeTab === tab.id ? 'bg-neon-purple/20 text-neon-purple border-b-2 border-neon-purple' : 'text-gray-400 hover:text-white',
+                'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
               )}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="h-3.5 w-3.5" />
               {tab.label}
+              <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{tab.keys}</kbd>
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* ================================================================= */}
       {/* DASHBOARD TAB                                                      */}
@@ -1558,6 +1558,15 @@ export default function GameApp() {
           compact
         />
       )}      <CrossLensRecentsPanel lensId="game" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <button
+        type="button"
+        onClick={() => { setActiveTab('quests'); setShowCreateChallenge(true); }}
+        title="Create a challenge (N)"
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+      >
+        <Plus className="h-4 w-4" />
+        New challenge
+      </button>
     </div>
     </LensShell>
   );

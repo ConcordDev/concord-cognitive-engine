@@ -46,6 +46,13 @@ const BLOCK_TYPES: { id: string; label: string }[] = [
 type Tab = 'editor' | 'database';
 type SidePanel = 'none' | 'versions' | 'comments' | 'backlinks' | 'share';
 
+export const DOCS_NEW_EVENT = 'docs:new';
+let docsNewPending = false;
+export function requestNewDoc() {
+  docsNewPending = true;
+  window.dispatchEvent(new Event(DOCS_NEW_EVENT));
+}
+
 export function DocsWorkspace() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [active, setActive] = useState<Page | null>(null);
@@ -92,6 +99,20 @@ export function DocsWorkspace() {
     await refreshTree();
     if (r.data?.ok) await openPage(r.data.result?.page.id as string);
   }
+  const createRootRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    createRootRef.current = () => { void createPage(null); };
+  });
+  useEffect(() => {
+    const run = () => {
+      docsNewPending = false;
+      createRootRef.current();
+    };
+    if (docsNewPending) run();
+    window.addEventListener(DOCS_NEW_EVENT, run);
+    return () => window.removeEventListener(DOCS_NEW_EVENT, run);
+  }, []);
+
   async function deletePage(id: string) {
     await lensRun('docs', 'page-delete', { id });
     if (active?.id === id) setActive(null);
@@ -163,7 +184,6 @@ export function DocsWorkspace() {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <FileText className="w-4 h-4 text-zinc-300" />
         <h3 className="text-sm font-bold text-zinc-100">Docs Workspace</h3>
-        <span className="text-[11px] text-zinc-400">Notion / Confluence shape</span>
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-zinc-800 p-0.5">
           <button onClick={() => setTab('editor')}
             className={cn('px-2 py-0.5 rounded text-[11px]', tab === 'editor' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400')}>

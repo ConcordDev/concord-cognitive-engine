@@ -6,15 +6,13 @@
 // privacy, profile, "On this day" memories and notifications are all wired
 // to real macros; nothing here is placeholder data.
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
+import { TimelineRoadmap } from '@/components/timeline/TimelineRoadmap';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { PostComposer } from '@/components/timeline/PostComposer';
 import { PostCard } from '@/components/timeline/PostCard';
@@ -28,20 +26,22 @@ import { lensRun } from '@/lib/api/client';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
-  LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock,
+  ArrowLeft, LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock,
 } from 'lucide-react';
 import type { FeedPost } from '@/components/timeline/types';
 
-type Tab = 'feed' | 'timeline' | 'albums' | 'memories' | 'notifications' | 'profile';
+type Tab = 'roadmap' | 'feed' | 'timeline' | 'albums' | 'memories' | 'notifications' | 'profile';
 
 interface FeedResult {
   posts: FeedPost[];
   total: number;
 }
 
-const TABS: { id: Tab; label: string; icon: typeof LayoutList }[] = [
+// Social views (posts, albums, memories, profile). North star 10 makes the
+// roadmap the lens; these stay reachable from "More", hidden by default.
+const TABS: { id: Exclude<Tab, 'roadmap'>; label: string; icon: typeof LayoutList }[] = [
   { id: 'feed', label: 'Feed', icon: LayoutList },
-  { id: 'timeline', label: 'Timeline', icon: GitBranch },
+  { id: 'timeline', label: 'Post history', icon: GitBranch },
   { id: 'albums', label: 'Albums', icon: LayoutGrid },
   { id: 'memories', label: 'Memories', icon: Clock },
   { id: 'notifications', label: 'Alerts', icon: Bell },
@@ -55,12 +55,54 @@ const PRIVACY_TONE: Record<string, TimelineEvent['tone']> = {
   private: 'warn',
 };
 
+function SocialMenu({ unread, onPick }: { unread: number; onPick: (t: Tab) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        More{unread > 0 && <span className="ml-1 text-teal-300">·</span>}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              role="menuitem"
+              type="button"
+              onClick={() => { setOpen(false); onPick(t.id); }}
+              className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50"
+            >
+              <span className="flex-1">{t.label}</span>
+              {t.id === 'notifications' && unread > 0 && <span className="text-[11px] text-teal-300">{unread}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TimelineLensPage() {
   useLensNav('timeline');
   const { user } = useAuth();
   const viewerId = user?.id || 'anon';
 
-  const [tab, setTab] = useState<Tab>('feed');
+  const [tab, setTab] = useState<Tab>('roadmap');
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
 
@@ -79,6 +121,7 @@ export default function TimelineLensPage() {
         return [] as string[];
       }
     },
+    enabled: tab !== 'roadmap',
   });
 
   // The personal feed — privacy-aware, real macro.
@@ -99,6 +142,7 @@ export default function TimelineLensPage() {
       if (!r.data.ok) throw new Error(r.data.error || 'Could not load feed');
       return r.data.result ?? { posts: [], total: 0 };
     },
+    enabled: tab !== 'roadmap',
   });
 
   // Unread notification badge.
@@ -140,8 +184,9 @@ export default function TimelineLensPage() {
 
   useLensCommand(
     [
+      { id: 'goto-roadmap', keys: 'g r', description: 'Go to roadmap', category: 'navigation', action: () => setTab('roadmap') },
       { id: 'goto-feed', keys: 'g f', description: 'Go to Feed', category: 'navigation', action: () => setTab('feed') },
-      { id: 'goto-timeline', keys: 'g t', description: 'Go to Timeline', category: 'navigation', action: () => setTab('timeline') },
+      { id: 'goto-timeline', keys: 'g t', description: 'Go to post history', category: 'navigation', action: () => setTab('timeline') },
       { id: 'goto-albums', keys: 'g a', description: 'Go to Albums', category: 'navigation', action: () => setTab('albums') },
       { id: 'goto-memories', keys: 'g m', description: 'Go to Memories', category: 'navigation', action: () => setTab('memories') },
       { id: 'goto-alerts', keys: 'g n', description: 'Go to Notifications', category: 'navigation', action: () => setTab('notifications') },
@@ -152,40 +197,39 @@ export default function TimelineLensPage() {
 
   return (
     <LensShell lensId="timeline" asMain={false}>
-      <FirstRunTour lensId="timeline" />      <DepthBadge lensId="timeline" size="sm" className="ml-2" />
-
-      <div data-lens-theme="timeline" className="min-h-full bg-[#18191a]">
-        {/* Header */}
-        <header className="sticky top-0 z-20 bg-[#242526] shadow-lg">
-          <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">📅</span>
-              <span className="text-xl font-bold text-blue-500">Timeline</span>
-            </div>
-            <div className="flex items-center gap-1 flex-wrap">
-              {TABS.map((t) => {
-                const Icon = t.icon;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    className={cn(
-                      'relative px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors',
-                      tab === t.id ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#3a3b3c]',
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {t.label}
-                    {t.id === 'notifications' && (unread ?? 0) > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {unread}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div data-lens-theme="timeline" className="relative min-h-full">
+        <div className="absolute right-8 top-4 z-20">
+          <SocialMenu unread={unread ?? 0} onPick={setTab} />
+        </div>
+        {tab === 'roadmap' ? (
+          <TimelineRoadmap />
+        ) : (
+        <>
+        <header className="px-8 pt-4">
+          <button
+            type="button"
+            onClick={() => setTab('roadmap')}
+            className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Timeline
+          </button>
+          <nav className="mt-3 flex flex-wrap items-center gap-5" aria-label="Social views">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'border-b pb-1 text-[14px] transition-colors',
+                  tab === t.id ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                {t.label}
+                {t.id === 'notifications' && (unread ?? 0) > 0 && <span className="ml-1 text-teal-300">{unread}</span>}
+              </button>
+            ))}
+          </nav>
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
@@ -282,8 +326,10 @@ export default function TimelineLensPage() {
             <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
               <TimelineWiki />
             </section>
-          )}          <CrossLensRecentsPanel lensId="timeline" sinceDays={7} limit={6} hideWhenEmpty />
+          )}
         </div>
+        </>
+        )}
       </div>
     </LensShell>
   );

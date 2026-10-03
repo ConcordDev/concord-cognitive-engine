@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { FmTopicsPanel } from './FmTopicsPanel';
+import { FmTopicsPanel, FORUM_COMPOSE_EVENT } from './FmTopicsPanel';
 import { FmCategoriesPanel } from './FmCategoriesPanel';
 import { FmModerationPanel } from './FmModerationPanel';
 import { FmProfilePanel } from './FmProfilePanel';
@@ -53,6 +53,12 @@ export function ForumSection() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  useEffect(() => {
+    const onCompose = () => setTab('topics');
+    window.addEventListener(FORUM_COMPOSE_EVENT, onCompose);
+    return () => window.removeEventListener(FORUM_COMPOSE_EVENT, onCompose);
+  }, []);
+
   // Opening a topic from trending/inbox/profile jumps to the Topics tab
   // and tells FmTopicsPanel which thread to auto-open.
   const openTopic = useCallback((id: string) => {
@@ -66,7 +72,6 @@ export function ForumSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-orange-600/15 to-transparent">
         <MessagesSquare className="w-5 h-5 text-orange-400" />
         <h2 className="text-sm font-bold text-zinc-100">Community Forum</h2>
-        <span className="text-[11px] text-zinc-400">Discourse + Reddit shape</span>
       </header>
 
       {loading ? (

@@ -79,7 +79,6 @@ export function CodeAdvancedPanel() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-[#161b22]">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-cyan-300">Advanced IDE</h3>
-        <span className="text-[10px] text-gray-400">Cursor-parity tools</span>
       </div>
 
       <div className="px-3 pt-3">

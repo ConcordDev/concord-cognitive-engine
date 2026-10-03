@@ -28,7 +28,7 @@ import {
   ChevronRight, ChevronDown, DollarSign, Calculator,
   MapPin, Phone, Mail,
   Brain, Layers, ArrowUpRight, ArrowDownRight, Minus,
-  ClipboardList, UserPlus, Eye, FileText, AlertTriangle,
+  ClipboardList, UserPlus, Eye, FileText,
   Flame,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -327,6 +327,7 @@ export default function FitnessApp() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fitness');
 
   /* ---------- core state ---------- */
+  const [surface, setSurface] = useState<'training' | 'coaching'>('training');
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -728,56 +729,52 @@ export default function FitnessApp() {
     <LensShell lensId="fitness" asMain={false}>
       <FirstRunTour lensId="fitness" />
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <FitnessStravaSection />
-      </div>
     <div className={ds.pageContainer}>
-      {/* Fitness Disclaimer */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-        <p className="text-sm text-amber-200">
-          Not medical advice. Consult a physician before starting any exercise program. This tool is for fitness tracking and programming, not clinical guidance.
-        </p>
-      </div>
-      {/* ========== Header ========== */}
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3">
-          <Dumbbell className="w-7 h-7 text-red-400" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className={ds.heading1}>Fitness & Wellness</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className={ds.textMuted}>Client management, programming, scheduling, and recruiting</p>
+      {/* One compact header. Fitness holds two products — a personal training
+          log (Strava-shaped) and a coach's client app — shown one at a time. */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Dumbbell className="h-4 w-4 shrink-0 text-red-400" />
+          <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] p-0.5" role="tablist" aria-label="Fitness mode">
+            {(['training', 'coaching'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={surface === s}
+                onClick={() => setSurface(s)}
+                className={cn(
+                  'rounded px-3 py-1 text-[13px] capitalize transition-colors',
+                  surface === s ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-zinc-100',
+                )}
+              >
+                {s}
+              </button>
+            ))}
           </div>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setActiveTab('Activity')}
-            className={cn(ds.btnSecondary, activeTab === 'Activity' && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
-            <Flame className="w-4 h-4" /> Daily Tracker
-          </button>
-          <button onClick={() => setShowBodyComp(true)} className={ds.btnSecondary}>
-            <Calculator className="w-4 h-4" /> Body Comp Tools
-          </button>
-          <button onClick={openNewEditor} className={ds.btnPrimary}>
-            <Plus className="w-4 h-4" /> New Record
-          </button>
-          {runAction.isPending && <span className="text-xs text-red-500 animate-pulse">Running...</span>}
-        </div>
+        {surface === 'coaching' && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setActiveTab('Activity')}
+              className={cn(ds.btnSecondary, activeTab === 'Activity' && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
+              <Flame className="w-4 h-4" /> Daily Tracker
+            </button>
+            <button onClick={() => setShowBodyComp(true)} className={ds.btnSecondary}>
+              <Calculator className="w-4 h-4" /> Body Comp Tools
+            </button>
+            <button onClick={openNewEditor} className={ds.btnPrimary}>
+              <Plus className="w-4 h-4" /> New Record
+            </button>
+            {runAction.isPending && <span className="text-xs text-red-500 animate-pulse">Running...</span>}
+          </div>
+        )}
       </header>
 
+      {surface === 'training' && <FitnessStravaSection />}
 
-      {/* AI Actions */}
-      {/* Health & Fitness Wire — CDC Physical Activity + MMWR live feed */}
-      <LiveFeed
-        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-        domain="fitness"
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        limit={10}
-      />
-      <RealtimeDataPanel domain="fitness" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="fitness" data={{}} compact />
+      {surface === 'coaching' && (
+      <>
       {/* ========== Mode Tabs ========== */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
         {MODE_TABS.map(tab => (
@@ -1358,6 +1355,24 @@ export default function FitnessApp() {
           </div>
         </div>
       )}
+
+      </>
+      )}
+
+      {/* AI Actions */}
+      {/* Health & Fitness Wire — CDC Physical Activity + MMWR live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="fitness"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
+      <RealtimeDataPanel domain="fitness" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      <DTUExportButton domain="fitness" data={{}} compact />
+      <p className="border-t border-white/5 pt-3 text-center text-[11px] text-zinc-500">
+        Not medical advice. Consult a physician before starting any exercise program. This tool is for fitness tracking and programming, not clinical guidance.
+      </p>
 
       {/* ========== Body Composition Calculator Modal ========== */}
       {showBodyComp && (

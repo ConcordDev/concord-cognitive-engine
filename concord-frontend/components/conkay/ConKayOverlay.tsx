@@ -1672,23 +1672,9 @@ export function ConKayOverlay() {
   // works, and the command palette still has "Summon Kay" — this just makes the
   // front door visible for people who don't know the shortcut). Suppressed on
   // the chat lens, which hosts its own ConKay mode.
-  if (!open) {
-    if (onChatLens) return null;
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Summon ConKay (⌘/Ctrl+J)"
-        title="Summon Kay — ask in one sentence (⌘/Ctrl+J)"
-        className="group fixed bottom-6 right-6 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
-      >
-        <Sparkles className="h-5 w-5" />
-        <span className="pointer-events-none absolute right-14 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-xs text-cyan-100 opacity-0 transition group-hover:opacity-100">
-          Ask Kay
-        </span>
-      </button>
-    );
-  }
+  // Closed: no floating summon button. Kay is summoned from the lens header
+  // toolbar (LensToolbar), ⌘/Ctrl+J, or the command palette.
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">

@@ -31,13 +31,20 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, BarChart3,
   Sparkles, Activity, Loader2, Bookmark, Play, Radio,
-  MessageSquare, Shield,
+  MessageSquare, Shield, Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -80,6 +87,9 @@ interface FollowingActivityItem {
 }
 
 export default function SocialHubPage() {
+  useLensNav('social');
+  useLensIdentity('social');
+  const { isLive, lastUpdated } = useRealtimeLens('social');
   const [activeTab, setActiveTab] = useState<TabId>('feed');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   // Phase 12 — Spaces stage modal target. RoomList sets this when the
@@ -127,102 +137,103 @@ export default function SocialHubPage() {
   });
   const unreadCount = unreadData?.count ?? 0;
 
-  const TABS: { id: TabId; label: string; icon: typeof Globe2; badge?: number }[] = [
-    { id: 'feed',          label: 'Feed',          icon: MessageSquare },
-    { id: 'discover',      label: 'For You',       icon: Sparkles },
-    { id: 'reels',         label: 'Reels',         icon: Play },
-    { id: 'spaces',        label: 'Spaces',        icon: Radio },
-    { id: 'following',     label: 'Following',     icon: Users },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
-    { id: 'saved',         label: 'Saved',         icon: Bookmark },
-    { id: 'analytics',     label: 'Analytics',     icon: BarChart3 },
-    { id: 'moderation',    label: 'Moderation',    icon: Shield },
+  const TABS: { id: TabId; label: string; keys: string; title: string; icon: typeof Globe2; badge?: number }[] = [
+    { id: 'feed',          label: 'Feed',          keys: '1', title: "What's moving",          icon: MessageSquare },
+    { id: 'discover',      label: 'For You',       keys: '2', title: 'What you might like',    icon: Sparkles },
+    { id: 'reels',         label: 'Reels',         keys: '3', title: 'Watch something short', icon: Play },
+    { id: 'spaces',        label: 'Spaces',        keys: '4', title: 'Who is talking live',    icon: Radio },
+    { id: 'following',     label: 'Following',     keys: '5', title: 'What your people did',   icon: Users },
+    { id: 'notifications', label: 'Notifications', keys: '6', title: 'What you missed',        icon: Bell, badge: unreadCount },
+    { id: 'saved',         label: 'Saved',         keys: '7', title: 'What you kept',          icon: Bookmark },
+    { id: 'analytics',     label: 'Analytics',     keys: '8', title: 'How your posts land',    icon: BarChart3 },
+    { id: 'moderation',    label: 'Moderation',    keys: '9', title: 'What needs a look',      icon: Shield },
   ];
+
+  const who = titleCaseDisplayName(me?.user?.username || me?.user?.displayName);
+  const currentTab = TABS.find((t) => t.id === activeTab)!;
+
+  const startPost = () => {
+    setActiveTab('feed');
+    requestAnimationFrame(() => {
+      const box = document.querySelector<HTMLElement>('#social-main textarea, #social-main [contenteditable="true"]');
+      box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      box?.focus();
+    });
+  };
+
+  useLensCommand(
+    [
+      ...TABS.map((t) => ({
+        id: `tab-${t.id}`,
+        keys: t.keys,
+        description: t.label,
+        category: 'navigation' as const,
+        action: () => setActiveTab(t.id),
+      })),
+      { id: 'social-post', keys: 'n', description: 'New post', category: 'actions' as const, action: startPost },
+    ],
+    { lensId: 'social' },
+  );
 
   return (
     <LensShell lensId="social" asMain={false}>
       <FirstRunTour lensId="social" />
-      {/* <ManifestActionBar/> removed (R1-2 wave 6): 9 of its 10 manifest
-          actions ('follow'/'unfollow'/'comment'/'share'/'post'/
-          'story_create'/'discover'/'notifications'/'trending') matched no
-          registered social macro at all — see lib/lenses/manifest.ts for
-          the full audit. Every real social macro already has a bespoke,
-          designed home below (FeedView, PostCard, NotificationCenter,
-          ModerationPanel, DMInbox, LiveStreams, …). */}
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
-      <div className="min-h-screen bg-lattice-void text-zinc-100">
-        {/* ── Topbar: streak + DM + notification bell ───────────────── */}
-        <header className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/60">
-          <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Globe2 className="w-5 h-5 text-indigo-300" />
-              <h1 className="text-base font-semibold">Social</h1>
-              <span className="text-[10px] text-zinc-400 font-mono">pan-social hub</span>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <StreakIndicator userId={currentUserId} />
-              <DMIndicator userId={currentUserId} />
-              {/* Real unread-count badge + realtime socket invalidation +
-                  quick-preview dropdown — a fully-built component that
-                  sat unused; previously this was a bare Bell icon with no
-                  indicator at all. Full inbox still lives one click away
-                  on the Notifications tab for anyone who wants more than
-                  the quick peek. */}
-              <NotificationBell userId={currentUserId} />
-            </div>
+      <div data-lens-theme="social" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Social</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {currentTab.title}{activeTab === 'feed' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          {/* Stories strip — 24h ephemeral activity from people you follow */}
-          <div className="max-w-7xl mx-auto px-4 pb-2">
-            <StoriesBar currentUserId={currentUserId} />
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <StreakIndicator userId={currentUserId} />
+            <DMIndicator userId={currentUserId} />
+            <NotificationBell userId={currentUserId} />
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="social" data={{}} compact />
           </div>
-        </header>
+        </div>
 
-        {/* ── Main column + right rail ─────────────────────────────── */}
-        <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        <nav className="mb-5 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Social views">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setActiveTab(t.id)}
+                title={`${t.label} (${t.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                {!!t.badge && (
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {t.badge > 99 ? '99+' : t.badge}
+                  </span>
+                )}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-          {/* MAIN COLUMN */}
-          <main className="min-w-0 space-y-4">
-            {/* Phase 10d — top-of-feed composer (post + 24h story modes).
-                Hidden on the Feed tab specifically: FeedView below mounts
-                its own richer FeedComposer (media + polls + quotes), and
-                having both visible at once read as two unrelated,
-                unlabeled post boxes with no shared feed between them —
-                see audit/LENS_DESIGN_UPGRADE_PLAN.md #218. Still shown on
-                every other tab (Following/For You/etc.) since those don't
-                have their own composer. */}
+        <div className="mb-5 rounded-2xl border border-white/10 bg-[#111] px-4 py-2.5">
+          <StoriesBar currentUserId={currentUserId} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+          <main id="social-main" className="min-w-0 space-y-4">
             {activeTab !== 'feed' && <QuickPostComposer currentUserId={currentUserId} />}
-
-            {/* Tab nav */}
-            <nav className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto" role="tablist">
-              {TABS.map(t => {
-                const Icon = t.icon;
-                const isActive = activeTab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveTab(t.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                      isActive
-                        ? 'border-indigo-400 text-indigo-200'
-                        : 'border-transparent text-zinc-400 hover:text-zinc-200',
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {t.label}
-                    {!!t.badge && (
-                      <span className="min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                        {t.badge > 99 ? '99+' : t.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
 
             {/* Tab content */}
             {activeTab === 'feed' && (
@@ -272,26 +283,36 @@ export default function SocialHubPage() {
           </main>
 
           {/* RIGHT RAIL */}
-          <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
+          <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
             {profileUserId && (
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+              <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
                 <UserProfile userId={profileUserId} currentUserId={currentUserId} />
               </div>
             )}
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingDomains />
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <SuggestedFollows currentUserId={currentUserId} />
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <SocialPresenceRail />
             </div>
           </aside>
         </div>
+
+        <button
+          type="button"
+          onClick={startPost}
+          title="New post (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Post
+        </button>
       </div>
 
       {/* Mobile tab bar */}

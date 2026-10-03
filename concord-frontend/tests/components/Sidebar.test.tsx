@@ -70,6 +70,13 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: (string | boolean | undefined | null)[]) => args.filter(Boolean).join(' '),
 }));
 
+// RailAccount (search / bell / theme / sessions / avatar) has its own data
+// hooks; stub it here — the sidebar test covers navigation.
+vi.mock('@/components/shell/RailAccount', () => ({
+  RailAccount: ({ expanded }: { expanded: boolean }) => <div data-testid="rail-account" data-expanded={String(expanded)} />,
+  TOGGLE_SESSIONS_EVENT: 'concord:toggle-sessions',
+}));
+
 import { Sidebar } from '@/components/shell/Sidebar';
 
 describe('Sidebar', () => {
@@ -244,10 +251,9 @@ describe('Sidebar', () => {
   });
 
   describe('version footer', () => {
-    it('shows version info', () => {
+    it('renders the account / search footer on the rail', () => {
       render(<Sidebar />);
-      expect(screen.getByText('Concord OS v1.0')).toBeInTheDocument();
-      expect(screen.getByText('Sovereign')).toBeInTheDocument();
+      expect(screen.getByTestId('rail-account')).toBeInTheDocument();
     });
   });
 

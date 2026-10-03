@@ -1,231 +1,216 @@
 'use client';
 
+/**
+ * Eco lens: the north-star look (serif title, pill views, teal floating CTA)
+ * over every real eco tool, grouped by intent and all kept on screen.
+ * Air = Open-Meteo weather/AQI + saved-location alerts; Life = species ID,
+ * GBIF sightings, life list; Footprint = calculator, trend, solar; Do = cited
+ * climate actions + streak challenges; Organization = ESG scoring.
+ */
+
 import { useCallback, useState } from 'react';
+import { Bird, Building2, Flame, Leaf, Plus, Wind } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { WeatherPanel } from '@/components/eco/WeatherPanel';
-import { WeatherRadar } from '@/components/eco/WeatherRadar';
-import { AQIPanel } from '@/components/eco/AQIPanel';
-import { ClimateActions } from '@/components/eco/ClimateActions';
-import { SpeciesIdentifier } from '@/components/eco/SpeciesIdentifier';
-import { EnergyEstimator } from '@/components/eco/EnergyEstimator';
-import { BiodiversityLog } from '@/components/eco/BiodiversityLog';
-import { ObservationFeed } from '@/components/eco/ObservationFeed';
-import { FootprintTrend } from '@/components/eco/FootprintTrend';
-import { CarbonCalculator } from '@/components/eco/CarbonCalculator';
-import { EcoChallenges } from '@/components/eco/EcoChallenges';
-import { EnvAlerts } from '@/components/eco/EnvAlerts';
-import { SpeciesSuggest } from '@/components/eco/SpeciesSuggest';
-import { OrganizationESGPanel } from '@/components/eco/OrganizationESGPanel';
-import { api } from '@/lib/api/client';
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import {
-  Leaf, Sun, Wind, TreeDeciduous, Cloud, Bug, Globe, Bird, LineChart, Flame, Bell, Building2,
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { cn } from '@/lib/utils';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
-import { EcoOverviewHero } from '@/components/eco/EcoOverviewHero';
+import { WeatherPanel } from '@/components/eco/WeatherPanel';
+import { WeatherRadar } from '@/components/eco/WeatherRadar';
+import { AQIPanel } from '@/components/eco/AQIPanel';
+import { EnvAlerts } from '@/components/eco/EnvAlerts';
+import { ClimateActions } from '@/components/eco/ClimateActions';
+import { EcoChallenges } from '@/components/eco/EcoChallenges';
+import { SpeciesIdentifier } from '@/components/eco/SpeciesIdentifier';
+import { SpeciesSuggest } from '@/components/eco/SpeciesSuggest';
+import { BiodiversityLog } from '@/components/eco/BiodiversityLog';
+import { ObservationFeed } from '@/components/eco/ObservationFeed';
+import { CarbonCalculator } from '@/components/eco/CarbonCalculator';
+import { FootprintTrend } from '@/components/eco/FootprintTrend';
+import { EnergyEstimator } from '@/components/eco/EnergyEstimator';
+import { OrganizationESGPanel } from '@/components/eco/OrganizationESGPanel';
+import { api } from '@/lib/api/client';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { useUIStore } from '@/store/ui';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type View = 'air' | 'life' | 'footprint' | 'do' | 'org';
 
-type EcoTab = 'overview' | 'weather' | 'air' | 'actions' | 'species' | 'energy' | 'lifelist' | 'feed' | 'footprint' | 'challenges' | 'alerts' | 'org-esg';
-
-// ── Component ─────────────────────────────────────────────────────────────────
+const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Wind }[] = [
+  { id: 'air', label: 'Air', keys: '1', title: 'The air around you', hint: 'Weather, radar, AQI and alerts', icon: Wind },
+  { id: 'life', label: 'Life', keys: '2', title: 'What lives near you', hint: 'Identify, log and browse species', icon: Bird },
+  { id: 'footprint', label: 'Footprint', keys: '3', title: 'What you leave behind', hint: 'Carbon, trend and solar', icon: Leaf },
+  { id: 'do', label: 'Do', keys: '4', title: 'What you can change', hint: 'Cited actions and habit streaks', icon: Flame },
+  { id: 'org', label: 'Organization', keys: '5', title: 'How an organization scores', hint: 'Corporate ESG, not personal', icon: Building2 },
+];
 
 export default function EcoLensPage() {
   useLensNav('eco');
+  useLensIdentity('eco');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('eco');
-
-  const [activeTab, setActiveTab] = useState<EcoTab>('overview');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<View>('air');
   const [footprintRefreshKey, setFootprintRefreshKey] = useState(0);
+  const [lifeRefreshKey, setLifeRefreshKey] = useState(0);
 
-  // Lens-scoped keyboard commands (auto-wired by codemod; remapped to the
-  // real, backend-wired tabs after the fabricated overview/populations/
-  // climate/biodiversity-sim/impact scaffold was removed — see the eco
-  // capability map for why).
+  const logSighting = useCallback(() => {
+    setView('life');
+    requestAnimationFrame(() => document.getElementById('eco-species-id')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, []);
+
   useLensCommand(
     [
-      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
-      { id: 'tab-weather', keys: 'w', description: 'Weather', category: 'navigation', action: () => setActiveTab('weather') },
-      { id: 'tab-air', keys: 'q', description: 'Air quality', category: 'navigation', action: () => setActiveTab('air') },
-      { id: 'tab-species', keys: 's', description: 'Species ID', category: 'navigation', action: () => setActiveTab('species') },
-      { id: 'tab-footprint', keys: 'f', description: 'Footprint trend', category: 'navigation', action: () => setActiveTab('footprint') },
-      { id: 'tab-org-esg', keys: 'g', description: 'Org ESG (not personal)', category: 'navigation', action: () => setActiveTab('org-esg') },
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
+      {
+        id: 'eco-log-sighting',
+        keys: 'n',
+        description: 'Log a sighting',
+        category: 'actions' as const,
+        action: logSighting,
+      },
     ],
-    { lensId: 'eco' }
+    { lensId: 'eco' },
   );
 
   const handleAcceptSpecies = useCallback(async (s: { commonName: string; scientificName: string }, imageDataUrl?: string) => {
     try {
-      await api.post('/api/lens/run', {
+      const res = await api.post('/api/lens/run', {
         domain: 'eco', action: 'biodiversity-log',
         input: { commonName: s.commonName, scientificName: s.scientificName, imageDataUrl, observedAt: new Date().toISOString() },
       });
+      if (res.data?.ok === false) throw new Error(res.data?.error || 'Could not log that sighting.');
+      useUIStore.getState().addToast({ type: 'success', message: `Logged ${s.commonName}.` });
+      setLifeRefreshKey((k) => k + 1);
     } catch (e) {
-      console.error('[Eco] log species failed', e);
+      useUIStore.getState().addToast({ type: 'error', message: (e as Error).message || 'Could not log that sighting.' });
     }
   }, []);
 
-  const handleFootprintSaved = useCallback(() => {
-    setFootprintRefreshKey((k) => k + 1);
-  }, []);
-
-  const tabs: { id: EcoTab; label: string; icon: React.ComponentType<{ className?: string }>; blurb: string; shortcut?: string }[] = [
-    { id: 'weather', label: 'Weather', icon: Cloud, blurb: '7-day forecast + hourly detail from Open-Meteo, live for any coordinate.', shortcut: 'w' },
-    { id: 'air', label: 'Air quality', icon: Wind, blurb: 'US AQI + PM2.5/PM10/O₃/NO₂/SO₂/CO from Open-Meteo Air Quality.', shortcut: 'q' },
-    { id: 'actions', label: 'Climate actions', icon: Leaf, blurb: 'Curated high-impact actions cited to Drawdown/IPCC/EPA — log what you do.' },
-    { id: 'species', label: 'Species ID', icon: Bug, blurb: 'Photograph an organism; LLaVA vision suggests candidate species.', shortcut: 's' },
-    { id: 'feed', label: 'Sightings feed', icon: Bird, blurb: 'Real biodiversity occurrence records near you, from GBIF.' },
-    { id: 'lifelist', label: 'Life list', icon: TreeDeciduous, blurb: 'Your personal species log, with a Shannon/Simpson diversity index.' },
-    { id: 'footprint', label: 'Footprint trend', icon: LineChart, blurb: 'Compute a real carbon footprint and track it as a trend over time.', shortcut: 'f' },
-    { id: 'challenges', label: 'Challenges', icon: Flame, blurb: 'Recurring sustainability habits with streaks, JouleBug-style.' },
-    { id: 'alerts', label: 'Eco alerts', icon: Bell, blurb: 'Save locations; get AQI/UV/pollen alerts against published thresholds.' },
-    { id: 'energy', label: 'Solar estimator', icon: Sun, blurb: 'Deterministic PVWatts-style solar production estimate for any site.' },
-  ];
-
-  // Deliberately kept OUT of `tabs` above: this one scores an ORGANIZATION,
-  // not a person, so it's rendered as its own visually-distinct section
-  // (amber, not the lens's personal-ecology green) rather than mixed into
-  // the personal-tool grid where it could be mistaken for a personal score.
-  const orgTab = { id: 'org-esg' as const, label: 'Org ESG', icon: Building2, blurb: 'Corporate ESG scoring (board diversity, compliance, labor practices) for an organization or team — not a personal footprint metric.', shortcut: 'g' };
+  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="eco" asMain={false}>
       <FirstRunTour lensId="eco" />
       <DepthBadge lensId="eco" size="sm" className="ml-2" />
-    <div data-lens-theme="eco" className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🌿</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">Eco Lens</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+      <div data-lens-theme="eco" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Ecosystem</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{view === 'air' && who ? `, ${who}` : ''}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <DTUExportButton domain="eco" data={{}} compact />
+          </div>
+        </div>
+
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Eco views">
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = view === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setView(v.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {v.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+
+        {view === 'air' && (
+          <div className="space-y-5">
+            <WeatherHero data={realtimeData as WeatherPayload | null} isLive={isLive} lastUpdated={lastUpdated} />
+            <div className="grid gap-5 xl:grid-cols-2">
+              <AQIPanel />
+              <WeatherRadar />
             </div>
-            <p className="text-sm text-gray-400">
-              Weather, air quality, species ID, carbon footprint, and sustainability tracking — all real data, no simulation.
-            </p>
+            <div className="grid gap-5 xl:grid-cols-2">
+              <EnvAlerts />
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4"><WeatherPanel /></section>
+            </div>
+            <RealtimeDataPanel domain="eco" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <DTUExportButton domain="eco" data={{}} compact />
-        </div>
-      </header>
+        )}
 
-      {/* Live Open-Meteo weather hero — temperature + conditions + 7-day strip */}
-      <WeatherHero
-        data={realtimeData as WeatherPayload | null}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-      />
+        {view === 'life' && (
+          <div className="space-y-5">
+            <div id="eco-species-id" className="grid scroll-mt-6 gap-5 xl:grid-cols-2">
+              <SpeciesIdentifier onAccept={handleAcceptSpecies} />
+              <BiodiversityLog key={lifeRefreshKey} />
+            </div>
+            <div className="grid gap-5 xl:grid-cols-2">
+              <ObservationFeed />
+              <SpeciesSuggest />
+            </div>
+          </div>
+        )}
 
-      <RealtimeDataPanel domain="eco" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+        {view === 'footprint' && (
+          <div className="space-y-5">
+            <div className="grid gap-5 xl:grid-cols-2">
+              <CarbonCalculator onSaved={() => setFootprintRefreshKey((k) => k + 1)} />
+              <FootprintTrend key={footprintRefreshKey} />
+            </div>
+            <EnergyEstimator />
+          </div>
+        )}
 
-      {/* Tab Navigation — a shared `motion.span` layoutId slides between
-          whichever button is active, driven purely by real `activeTab`
-          state (a data-driven transition, not a page-mount fade). */}
-      <nav className={cn('flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap')}>
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={cn(
-            'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
-            activeTab === 'overview' ? 'text-neon-green' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors'
-          )}
-        >
-          {activeTab === 'overview' && (
-            <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-neon-green/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
-          )}
-          <Globe className="w-4 h-4 relative" />
-          <span className="relative">Overview</span>
-        </button>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
-              activeTab === tab.id ? 'text-neon-green' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors'
-            )}
-          >
-            {activeTab === tab.id && (
-              <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-neon-green/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
-            )}
-            <tab.icon className="w-4 h-4 relative" />
-            <span className="relative">{tab.label}</span>
-          </button>
-        ))}
-        {/* Visually separated (divider + amber accent) — an organization
-            tool living among personal-ecology tabs, kept honestly distinct. */}
-        <span className="w-px h-5 bg-lattice-border mx-1" aria-hidden="true" />
-        <button
-          onClick={() => setActiveTab('org-esg')}
-          title="Organization ESG — not a personal footprint metric"
-          className={cn(
-            'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
-            activeTab === 'org-esg' ? 'text-amber-300' : 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-500/10 transition-colors'
-          )}
-        >
-          {activeTab === 'org-esg' && (
-            <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-amber-500/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
-          )}
-          <orgTab.icon className="w-4 h-4 relative" />
-          <span className="relative">{orgTab.label}</span>
-        </button>
-      </nav>
-
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <EcoOverviewHero tabs={tabs} orgTab={orgTab} onSelectTab={(id) => setActiveTab(id as EcoTab)} />
-      )}
-      {activeTab === 'weather' && <WeatherRadar />}
-      {activeTab === 'air' && <AQIPanel />}
-      {activeTab === 'actions' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
+        {view === 'do' && (
+          <div className="grid gap-5 xl:grid-cols-2">
             <ClimateActions />
+            <EcoChallenges />
           </div>
-          <div className="lens-card text-xs text-gray-400 space-y-2">
-            <h3 className="text-sm font-bold text-white">Why this matters</h3>
-            <p>Each action below cites real lifecycle research. The kgCO₂e saved is a per-instance estimate; the more you log, the more accurate your annual delta.</p>
-            <p>Log the actions you take below; the Footprint trend tab turns your running total into a tracked delta over time.</p>
-          </div>
-        </div>
-      )}
-      {activeTab === 'species' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <SpeciesIdentifier onAccept={handleAcceptSpecies} />
-            <BiodiversityLog />
-          </div>
-          <SpeciesSuggest />
-        </div>
-      )}
-      {activeTab === 'feed' && <ObservationFeed />}
-      {activeTab === 'lifelist' && <BiodiversityLog />}
-      {activeTab === 'footprint' && (
-        <div className="space-y-4">
-          <CarbonCalculator onSaved={handleFootprintSaved} />
-          <FootprintTrend key={footprintRefreshKey} />
-        </div>
-      )}
-      {activeTab === 'challenges' && <EcoChallenges />}
-      {activeTab === 'alerts' && <EnvAlerts />}
-      {activeTab === 'energy' && <EnergyEstimator />}
-      {activeTab === 'org-esg' && <OrganizationESGPanel />}
+        )}
 
-      {/* Bespoke Open-Meteo weather + AQI with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <WeatherPanel />
-      </section>
-    </div>          <CrossLensRecentsPanel lensId="eco" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {view === 'org' && (
+          <div className="max-w-5xl">
+            <p className="mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-500">
+              Scores an organization or team on board diversity, compliance and labor practices. It is not a personal footprint metric.
+            </p>
+            <OrganizationESGPanel />
+          </div>
+        )}
+
+        <CrossLensRecentsPanel lensId="eco" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={logSighting}
+          title="Log a sighting (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Log a sighting
+        </button>
+      </div>
     </LensShell>
   );
 }

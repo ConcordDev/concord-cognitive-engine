@@ -1,10 +1,11 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useUIStore } from '@/store/ui';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { Search, Command, Menu } from 'lucide-react';
-import { SyncStatusDot, useOnlineStatus } from '@/components/common/OfflineIndicator';
+import { useOnlineStatus } from '@/components/common/OfflineIndicator';
 import { HeartbeatBar } from '@/components/live/HeartbeatBar';
 import { XPWidget } from '@/components/gamification/XPWidget';
 import { WalletBadge } from '@/components/economy/WalletBadge';
@@ -16,7 +17,7 @@ import { UserMenu } from './topbar/UserMenu';
 import { usePowerMode } from '@/hooks/usePowerMode';
 import { safeGetItem } from '@/lib/safe-storage';
 
-export function Topbar() {
+export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
@@ -66,15 +67,13 @@ export function Topbar() {
     retry: false,
   });
 
-  const userName = userData?.username || userData?.displayName || userData?.name || userData?.email?.split('@')[0] || null;
-
   const affectLabel = affectData?.state?.label as string | undefined;
   const affectSummary = affectData?.state?.summary as string | undefined;
 
   return (
     <header
       role="banner"
-      className={`h-14 lg:h-16 bg-lattice-surface border-b border-lattice-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 transition-all duration-300 ${
+      className={`h-14 bg-lattice-surface border-b border-lattice-border flex items-center justify-between gap-3 px-4 sticky top-0 z-30 transition-all duration-300 ${
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
       }`}
     >
@@ -93,23 +92,18 @@ export function Topbar() {
       {/* Center - Search (hidden on small mobile) */}
       <button
         onClick={() => setCommandPaletteOpen(true)}
-        className="hidden sm:flex items-center gap-2 px-3 lg:px-4 py-2 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-blue/50 transition-colors group"
+        className="hidden sm:flex h-8 w-full max-w-sm items-center gap-2 px-2.5 rounded-md border border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05] transition-colors group"
         aria-label="Open command palette"
       >
-        <Search className="w-4 h-4 text-gray-400 group-hover:text-neon-blue" />
-        <span className="text-sm text-gray-400 hidden md:inline">Search...</span>
-        <div className="hidden lg:flex items-center gap-1 ml-4 lg:ml-8">
-          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-400">
-            <Command className="w-3 h-3 inline" />
-          </kbd>
-          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-400">
-            K
-          </kbd>
-        </div>
+        <Search className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300" />
+        <span className="text-[13px] text-zinc-500 hidden md:inline">Search or jump to…</span>
+        <kbd className="ml-auto hidden lg:inline-flex items-center gap-0.5 rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
+          <Command className="w-2.5 h-2.5" />K
+        </kbd>
       </button>
 
       {/* Right Side */}
-      <div className="flex items-center gap-2 lg:gap-3">
+      <div className="flex flex-shrink-0 items-center gap-1.5">
         {/* Mobile search button */}
         <button
           onClick={() => setCommandPaletteOpen(true)}
@@ -133,17 +127,6 @@ export function Topbar() {
           </div>
         )}
 
-        {/* FE-010: Online/offline status indicator */}
-        <div
-          className="hidden sm:flex items-center gap-2 px-2 py-1.5"
-          title={isOnline ? 'Online' : 'Offline — changes saved locally'}
-        >
-          <SyncStatusDot status={isOnline ? 'synced' : 'offline'} />
-          <span className="hidden md:inline text-xs text-gray-400">
-            {isOnline ? 'Online' : 'Offline'}
-          </span>
-        </div>
-
         <WalletBadge />
 
         {powerMode && (
@@ -161,23 +144,18 @@ export function Topbar() {
         {/* Social indicators: DM + Notifications */}
         <DMIndicator userId={userData?.id || userData?._id} />
         <NotificationBell userId={userData?.id || userData?._id} />
+        {trailing}
 
         {/* User name + avatar with online status dot */}
         <div className="flex items-center gap-1.5">
-          {userName && (
-            <span className="hidden lg:inline text-xs text-gray-400 max-w-[100px] truncate">
-              {userName}
-            </span>
-          )}
           <div className="relative">
             <UserMenu powerMode={powerMode} onTogglePowerMode={togglePowerMode} />
             {/* Online status indicator */}
-            {isOnline && (
-              <span
-                className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-lattice-surface"
-                title="Online"
-              />
-            )}
+            {/* Connection state: green when online, gray "saved locally" when offline */}
+            <span
+              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-lattice-surface ${isOnline ? 'bg-green-400' : 'bg-zinc-500'}`}
+              title={isOnline ? 'Online' : 'Offline — changes saved locally'}
+            />
           </div>
         </div>
       </div>

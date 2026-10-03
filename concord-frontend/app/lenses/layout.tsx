@@ -10,19 +10,16 @@ import { GlobalPanelHost } from '@/components/panels/GlobalPanelHost';
 import { CrossMountedPanels } from '@/components/panels/CrossMountedPanels';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { RepairBoundary } from '@/components/RepairBoundary';
-import { SmartContextBar } from '@/components/common/SmartContextBar';
 import { QuickCapture } from '@/components/common/QuickCapture';
-import { ExportMenu } from '@/components/common/ExportMenu';
+import { LensToolbar } from '@/components/lens/LensToolbar';
+import { DepthBadge, DepthBadgeHostContext } from '@/components/lens/DepthBadge';
 import { ActivityTimeline } from '@/components/common/ActivityTimeline';
 import DomainAssistant from '@/components/common/DomainAssistant';
 import { CrossDomainConnections } from '@/components/common/CrossDomainConnections';
-import { BrainMonitor } from '@/components/common/BrainMonitor';
 import { SkeletonCard } from '@/components/common/Skeleton';
-import { ContentPublisher } from '@/components/lens/ContentPublisher';
 import { LensStateProvider } from '@/components/lens/LensStateProvider';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useDiegetic } from '@/hooks/useDiegetic';
-import { useWorldHudHidden } from '@/hooks/useWorldHudHidden';
 import {
   isCoreLens,
   getParentCoreLens,
@@ -75,44 +72,40 @@ function useLensMeta() {
 }
 
 /**
- * Universal features that render on every lens page:
- * - SmartContextBar (top): DTU count, insights, trending, "Ask about" button
- * - ExportMenu (top-right): JSON/CSV export, Cmd+E
- * - QuickCapture (floating FAB): Create DTUs fast, Cmd+N
- * - DomainAssistant (floating): AI chat panel, Cmd+/
- * - CrossDomainConnections (floating): Graph-based cross-domain panel, Cmd+J
- * - BrainMonitor (top-left): Three-brain cognitive architecture status
- * - ActivityTimeline (bottom): Collapsible activity log
+ * Universal features on every lens page, behind ONE header row:
+ *   left  — workspace tabs (core lens / destination) when the lens has any
+ *   right — LensToolbar: DTU count, Ask, and one button per mounted tool
+ *           (capture ⌘N, assistant ⌘/, agent, connections, cross-lens panels,
+ *           activity), share, export
+ * The tools render their panels on demand and no floating triggers of their
+ * own, so nothing stacks over the lens. System status lives in the Topbar.
  */
 function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
   const { slug, label } = useLensMeta();
 
   // Apply per-lens visual identity (CSS variables)
   useLensIdentity(slug);
-  // World Lens's manual "hide HUD" toggle (H key) used to leave this
-  // globally-mounted debug/status chrome on screen regardless — it's now
-  // one of the ~15 elements that respect it, without affecting any other
-  // lens (see the hook doc comment).
-  const worldHudHidden = useWorldHudHidden();
 
   if (!slug) return <>{children}</>;
 
   return (
+    <DepthBadgeHostContext.Provider value={true}>
     <div className="flex flex-col h-full min-h-0">
-      {/* Top bar: SmartContextBar + ExportMenu */}
-      <div className="flex items-center">
-        <div className="flex-1 min-w-0">
-          <SmartContextBar domain={slug} domainLabel={label} />
+      {/* One quiet header row (lens north stars): lens label + data tier +
+          workspace tabs on the left; share / export / ⋯ tools on the right. */}
+      <div className="flex h-12 flex-shrink-0 items-center gap-3 px-4">
+        <span className="flex-shrink-0 text-[13px] text-zinc-500">{label}</span>
+        <DepthBadge lensId={slug} size="sm" inToolbar />
+        <div className="min-w-0 flex-1">
+          <CoreLensNavWrapper />
         </div>
-        <div className="flex-shrink-0 pr-2">
-          <ExportMenu domain={slug} />
-        </div>
+        <LensToolbar domain={slug} domainLabel={label} />
       </div>
 
       {/* Main lens content — per-lens Suspense boundary.
           LensStateProvider preserves scroll/filter/draft state across
           lens navigation, keyed by the current domain slug. */}
-      <LensStateProvider domain={slug} className="flex-1 min-h-0 lg:pr-16">
+      <LensStateProvider domain={slug} className="flex-1 min-h-0">
         <Suspense
           fallback={
             <div className="space-y-4 p-6">
@@ -134,23 +127,13 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
       {/* Bottom: Activity Timeline */}
       <ActivityTimeline domain={slug} />
 
-      {/* Floating overlays */}
+      {/* Tool panels — opened from LensToolbar, no floating triggers */}
       <QuickCapture domain={slug} />
       <DomainAssistant domain={slug} domainLabel={label} />
       <CrossDomainConnections domain={slug} domainLabel={label} />
 
-      {/* Universal Share — floating button (bottom-right) */}
-      <div className="fixed bottom-[23rem] right-6 z-40">
-        <ContentPublisher domain={slug} compact />
-      </div>
-
-      {/* Brain status monitor (top-left floating) */}
-      {!worldHudHidden && (
-        <div className="fixed top-20 left-4 z-40">
-          <BrainMonitor />
-        </div>
-      )}
     </div>
+    </DepthBadgeHostContext.Provider>
   );
 }
 
@@ -217,7 +200,6 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
           (lib/panel-dispatcher openPanel + command palette). The ad-hoc half of
           cross-mounting; the inverse of ConKay (a feature into any lens). */}
       <GlobalPanelHost />
-      <CoreLensNavWrapper />
       <LensErrorBoundary name="Lens">
         <RepairBoundary lens={lensName}>
           <Suspense

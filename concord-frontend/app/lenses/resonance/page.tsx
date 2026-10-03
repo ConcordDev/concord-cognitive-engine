@@ -31,6 +31,9 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -79,6 +82,9 @@ const VIEWS: { id: ResonanceView; label: string; keys: string; icon: typeof Radi
 
 export default function ResonanceBoundaryPage() {
   useLensNav('resonance');
+  useLensIdentity('resonance');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('resonance');
 
@@ -177,77 +183,45 @@ export default function ResonanceBoundaryPage() {
     <LensShell lensId="resonance" asMain={false}>
       <FirstRunTour lensId="resonance" />
       <DepthBadge lensId="resonance" size="sm" className="ml-2" />
-      <div data-lens-theme="resonance" className="h-[calc(100vh-4rem)] flex flex-col bg-[#050510]">
-        <header
-          className="flex items-center justify-between px-6 py-3 border-b border-white/5"
-          style={{ background: 'rgba(5, 5, 16, 0.95)' }}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <Radio className="w-5 h-5 shrink-0" style={{ color: meta.color }} />
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                Resonance Interface
-              </h1>
-              <p className="text-[11px] text-gray-400">
-                x&sup2; &minus; x = 0 &middot; boundary detection &middot; constraint alignment
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-              <DTUExportButton domain="resonance" data={realtimeData || {}} compact />
-              {realtimeAlerts.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                  {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
+      <div data-lens-theme="resonance" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Resonance</p>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              What still resonates{who ? `, ${who}` : ''}
+            </h1>
+            <p className="mb-5 text-[13px] text-zinc-500">
+              x&sup2; &minus; x = 0 &middot; boundary detection &middot; constraint alignment &middot;{' '}
+              <span style={{ color: meta.color }}>{meta.label}</span>
+            </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-0.5 bg-white/[0.03] rounded-lg p-0.5" aria-label="Resonance views">
-              {VIEWS.map((tab) => {
-                const Icon = tab.icon;
-                const on = active === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActive(tab.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all',
-                      on ? 'text-white bg-white/[0.08]' : 'text-gray-600 hover:text-gray-400',
-                    )}
-                    aria-current={on ? 'page' : undefined}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
-
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="resonance" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-gray-300 border border-white/5 hover:border-white/10 transition-all"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200"
                 title="Export resonance data"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="h-3.5 w-3.5" />
                 Export
               </button>
               {exportMenuOpen && (
-                <div
-                  className="absolute right-0 top-full mt-1 z-50 border border-white/10 rounded-lg overflow-hidden shadow-xl"
-                  style={{ background: 'rgba(10,10,20,0.98)' }}
-                >
+                <div className="absolute right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-white/10 bg-[#111] shadow-xl">
                   <button
                     type="button"
                     onClick={() => {
                       exportResonanceData(scan, history, 'json');
                       setExportMenuOpen(false);
                     }}
-                    className="block w-full text-left px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="block w-full px-4 py-2 text-left text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     Export as JSON
                   </button>
@@ -257,48 +231,54 @@ export default function ResonanceBoundaryPage() {
                       exportResonanceData(scan, history, 'csv');
                       setExportMenuOpen(false);
                     }}
-                    className="block w-full text-left px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="block w-full px-4 py-2 text-left text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     Export as CSV
                   </button>
                 </div>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={runScan}
-              disabled={isScanning}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all border"
-              style={{
-                borderColor: isScanning ? 'rgba(255,255,255,0.05)' : meta.color + '40',
-                color: isScanning ? '#666' : meta.color,
-                background: isScanning ? 'rgba(255,255,255,0.02)' : meta.glow.replace(')', ',0.08)'),
-              }}
-            >
-              <Scan className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-              {isScanning ? 'Scanning...' : 'Scan Boundary'}
-            </button>
-
             <button
               type="button"
               onClick={() => setAutoScan(!autoScan)}
               className={cn(
-                'p-2 rounded-lg transition-all',
-                autoScan ? 'bg-[#00ffc8]/10 text-[#00ffc8]' : 'bg-white/[0.02] text-gray-600',
+                'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs transition-colors',
+                autoScan ? 'border-teal-400/40 bg-teal-400/10 text-teal-300' : 'border-white/10 text-zinc-500 hover:text-zinc-200',
               )}
               title={autoScan ? 'Auto-scan ON (15s)' : 'Auto-scan OFF'}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${autoScan ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+              <RefreshCw className={`h-3.5 w-3.5 ${autoScan ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+              Auto-scan
+              <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30">a</kbd>
             </button>
           </div>
-        </header>
+        </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          <aside
-            className="w-20 border-r border-white/5 flex flex-col items-center py-4 gap-3"
-            style={{ background: 'rgba(5, 5, 16, 0.98)' }}
-          >
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Resonance views">
+          {VIEWS.map((tab) => {
+            const Icon = tab.icon;
+            const on = active === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActive(tab.id)}
+                aria-current={on ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{tab.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="flex h-[calc(100vh-19rem)] min-h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#050510]">
+          <aside className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-white/5 py-4">
             <SignalMeter value={signal} label="signal" />
             <SignalMeter value={scan?.gradient ?? 0} label="∇C" />
             <SignalMeter value={Math.max(0, scan?.coherenceDirection ?? 0)} label="coher" />
@@ -353,7 +333,18 @@ export default function ResonanceBoundaryPage() {
           />
         )}
 
-        <CrossLensRecentsPanel lensId="resonance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3 px-4" />
+        <CrossLensRecentsPanel lensId="resonance" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
+
+        <button
+          type="button"
+          onClick={runScan}
+          disabled={isScanning}
+          title="Scan the boundary now"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          <Scan className={`h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
+          {isScanning ? 'Scanning…' : 'Scan boundary'}
+        </button>
       </div>
     </LensShell>
   );

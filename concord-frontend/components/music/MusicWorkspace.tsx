@@ -12,6 +12,8 @@ import { SessionClipPicker } from '@/components/music/SessionClipPicker';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -71,7 +73,21 @@ import type {
 
 /** One nav machine for the whole music app — catalog views + previously
  *  welded MusicBrainz / workbench accordions. */
-export type MusicAppView = MusicLensView | 'artists' | 'tools';
+export type MusicAppView = MusicLensView | 'artists' | 'tools' | 'listen';
+
+const VIEW_TITLES: Partial<Record<MusicAppView, string>> = {
+  home: 'What are we hearing',
+  listen: 'What is playing',
+  browse: 'What is out there',
+  session: 'What are we making',
+  marketplace: 'What is for sale',
+  library: 'What you keep',
+  search: 'What are you looking for',
+  artists: 'Who is making it',
+  tools: 'What the numbers say',
+  upload: 'What are we releasing',
+  revenue: 'What it earned',
+};
 import { previewRoyaltyObligations, ROYALTY_CONSTANTS } from '@/lib/music/royalty-cascade';
 import { TrackCard } from '@/components/music/TrackCard';
 import { ArtistProfile } from '@/components/music/ArtistProfile';
@@ -259,6 +275,8 @@ export function MusicWorkspace() {
 
   // ---- View State (single union — Apple Music sidebar + Ableton session) ----
   const [view, setView] = useState<MusicAppView>('home');
+  const { user: authUser } = useAuth();
+  const who = titleCaseDisplayName(authUser?.username);
 
   // ---- Session (Ableton-shape clip launcher) — real, persisted arrangement ----
   const {
@@ -820,71 +838,61 @@ export function MusicWorkspace() {
     <LensShell lensId="music" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="music" />
       <DepthBadge lensId="music" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <LensFeedButton domain="music" />
-        <MusicStreamingSection />
-      </div>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">
-        <div className="flex items-center gap-1">
-          {[
-            { id: 'home' as MusicAppView, icon: Home, label: 'Home' },
-            { id: 'browse' as MusicAppView, icon: Disc3, label: 'Browse' },
-            { id: 'session' as MusicAppView, icon: Music2, label: 'Session' },
-            { id: 'marketplace' as MusicAppView, icon: ShoppingBag, label: 'Market' },
-            { id: 'library' as MusicAppView, icon: Library, label: 'Library' },
-            { id: 'search' as MusicAppView, icon: Search, label: 'Search' },
-            { id: 'artists' as MusicAppView, icon: Users, label: 'Artists' },
-            { id: 'tools' as MusicAppView, icon: Sparkles, label: 'Tools' },
-          ].map((nav) => (
-            <button
-              key={nav.id}
-              onClick={() => setView(nav.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
-                view === nav.id
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                  : 'text-gray-400 hover:text-purple-300 hover:bg-purple-500/10'
-              )}
-            >
-              <nav.icon className="w-4 h-4" />
-              {nav.label}
-            </button>
-          ))}
-        </div>
+      <header className="flex-shrink-0 px-8 pt-6">
+        <p className="text-[14px] text-zinc-500">Music</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {VIEW_TITLES[view] ?? 'Music'}{view === 'home' && who ? `, ${who}` : ''}
+        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 no-scrollbar" aria-label="Music views">
+            {[
+              { id: 'home' as MusicAppView, icon: Home, label: 'Home' },
+              // Streaming player (library, releases, now playing, radio, stats) —
+              // used to be a second app stacked above this one.
+              { id: 'listen' as MusicAppView, icon: Headphones, label: 'Listen' },
+              { id: 'browse' as MusicAppView, icon: Disc3, label: 'Browse' },
+              { id: 'session' as MusicAppView, icon: Music2, label: 'Session' },
+              { id: 'marketplace' as MusicAppView, icon: ShoppingBag, label: 'Market' },
+              { id: 'library' as MusicAppView, icon: Library, label: 'Library' },
+              { id: 'search' as MusicAppView, icon: Search, label: 'Search' },
+              { id: 'artists' as MusicAppView, icon: Users, label: 'Artists' },
+              { id: 'tools' as MusicAppView, icon: Sparkles, label: 'Tools' },
+              { id: 'revenue' as MusicAppView, icon: DollarSign, label: 'Revenue' },
+            ].map((nav) => (
+              <button
+                key={nav.id}
+                type="button"
+                onClick={() => setView(nav.id)}
+                aria-current={view === nav.id ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  view === nav.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
+                )}
+              >
+                <nav.icon className="h-3.5 w-3.5" />
+                {nav.label}
+              </button>
+            ))}
+          </nav>
 
-        <div className="flex items-center gap-3">
-          {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />}
-          {realtimeAlerts.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-              {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          <VisionAnalyzeButton
-            domain="music"
-            prompt="Analyze this image related to music (album cover, concert photo, instrument, etc.). Describe what you see and suggest relevant genre tags, mood, and metadata for music cataloging."
-            onResult={(res) => {
-              handleCreatePlaylist(res);
-            }}
-          />
-          <button
-            onClick={() => setView('upload')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
-          >
-            <Upload className="w-4 h-4" /> Upload
-          </button>
-          <button
-            onClick={() => setView('revenue')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
-              view === 'revenue'
-                ? 'bg-neon-green/10 text-neon-green'
-                : 'text-gray-400 hover:text-white'
+          <div className="flex shrink-0 items-center gap-2">
+            <LensFeedButton domain="music" compact />
+            {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />}
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
             )}
-          >
-            <DollarSign className="w-4 h-4" /> Revenue
-          </button>
+            <VisionAnalyzeButton
+              domain="music"
+              prompt="Analyze this image related to music (album cover, concert photo, instrument, etc.). Describe what you see and suggest relevant genre tags, mood, and metadata for music cataloging."
+              onResult={(res) => {
+                handleCreatePlaylist(res);
+              }}
+            />
+          </div>
         </div>
       </header>
 
@@ -988,29 +996,9 @@ export function MusicWorkspace() {
                   </div>
                 )}
 
-                {/* Hero */}
-                <div className="bg-gradient-to-r from-neon-cyan/10 via-neon-purple/10 to-neon-pink/10 rounded-2xl p-8 border border-white/5">
-                  <h1 className="text-3xl font-bold mb-2 text-pink-400">Music Lens</h1>
-                  <p className="text-gray-400 max-w-2xl">
-                    Post your music for free. Background play. Real artist profiles. Listeners
-                    purchase your artifacts and get remix rights. You keep 90%+. No ads. No
-                    algorithmic gatekeeping.
-                  </p>
-                  <div className="flex gap-3 mt-4">
-                    <button
-                      onClick={() => setView('upload')}
-                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-neon-cyan text-black text-sm font-semibold hover:brightness-110 transition"
-                    >
-                      <Upload className="w-4 h-4" /> Upload Track
-                    </button>
-                    <button
-                      onClick={() => setView('browse')}
-                      className="flex items-center gap-2 px-5 py-2 rounded-lg bg-white/5 text-sm hover:bg-white/10 transition"
-                    >
-                      <Search className="w-4 h-4" /> Browse Music
-                    </button>
-                  </div>
-                </div>
+                <p className="max-w-2xl text-[14px] leading-relaxed text-zinc-500">
+                  Post your music for free. Background play, real artist profiles, remix rights for listeners. You keep 90%+. No ads, no algorithmic gatekeeping.
+                </p>
 
                 {/* New Releases (chronological) */}
                 <section>
@@ -2270,6 +2258,8 @@ export function MusicWorkspace() {
               </div>
             )}
 
+            {view === 'listen' && <MusicStreamingSection />}
+
             {view === 'tools' && (
               <PipingProvider>
                 <div className="space-y-3">
@@ -2408,6 +2398,19 @@ export function MusicWorkspace() {
           />
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setView('upload')}
+        title="Upload a track (U)"
+        className={cn(
+          'fixed right-8 z-[60] inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300',
+          nowPlaying ? 'bottom-28' : 'bottom-8'
+        )}
+      >
+        <Upload className="h-4 w-4" />
+        Upload track
+      </button>
 
     </div>
 

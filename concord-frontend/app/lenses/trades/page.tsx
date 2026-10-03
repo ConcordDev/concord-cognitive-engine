@@ -37,7 +37,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ShellPreview } from '@/components/lens/ShellPreview';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -46,8 +45,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
-import { ds } from '@/lib/design-system';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 import ProjectDeskPanel from '@/components/trades/ProjectDeskPanel';
@@ -159,18 +158,11 @@ export default function TradesLensPage() {
   useLensNav('trades');
   useLensIdentity('trades');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('trades');
   const [active, setActive] = useState<TradesView>('project');
-  const [chartSymbol, setChartSymbol] = useState<string>(() => {
-    if (typeof window === 'undefined') return '^IXIC';
-    return localStorage.getItem('concord_trades_chart_symbol') || '^IXIC';
-  });
-
   const go = useCallback((id: TradesView) => setActive(id), []);
-  const handleChangeSymbol = useCallback((s: string) => {
-    setChartSymbol(s);
-    try { localStorage.setItem('concord_trades_chart_symbol', s); } catch { /* private mode */ }
-  }, []);
 
   useLensCommand(
     [
@@ -196,53 +188,28 @@ export default function TradesLensPage() {
     <LensShell lensId="trades" asMain={false}>
       <FirstRunTour lensId="trades" />
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
-      <div data-lens-theme="trades" className={cn(ds.pageContainer, 'lens-trades pb-6')}>
+      <div data-lens-theme="trades" className="lens-trades relative min-h-full px-8 pb-28 pt-6">
         <a href="#trades-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-teal-500">
           Skip to trades content
         </a>
-        <ShellPreview lensId="trades" defaultOpen={true} />
-
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-md bg-teal-500/20 flex items-center justify-center shrink-0">
-              <HardHat className="w-5 h-5 text-teal-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Trades & Construction</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={cn(ds.textMuted, 'font-mono text-xs tracking-wide')}>
-                {activeLabel} · ServiceTitan density · kbd j / d / c / w
-              </p>
-            </div>
+        <header className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Trades &amp; Construction · {activeLabel}</p>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {active === 'project' ? `What is on the job${who ? `, ${who}` : ''}` : activeLabel}
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             <DTUExportButton domain="trades" data={{}} compact />
           </div>
         </header>
 
-        <QuoteChart
-          symbol={chartSymbol}
-          quotes={(realtimeData as { quotes?: QuoteSnapshot[] } | null)?.quotes}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          onChangeSymbol={handleChangeSymbol}
-        />
-        <RealtimeDataPanel
-          domain="trades"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={insights}
-          compact
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-[13rem_minmax(0,1fr)] gap-4 items-start">
-          <nav aria-label="Trades ops" className="lg:sticky lg:top-3 space-y-4">
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]">
+          <nav aria-label="Trades ops" className="space-y-4 rounded-2xl border border-white/10 bg-[#111] p-3 lg:sticky lg:top-3">
             {GROUPS.map((group) => (
               <div key={group.label}>
-                <p className={cn(ds.overline, 'px-2 mb-1')}>{group.label}</p>
+                <p className="mb-1 px-2 text-[11px] uppercase tracking-wider text-zinc-600">{group.label}</p>
                 <ul className="space-y-0.5">
                   {group.items.map((t) => {
                     const Icon = t.icon;
@@ -252,14 +219,13 @@ export default function TradesLensPage() {
                         <button
                           type="button"
                           onClick={() => go(t.id)}
+                          aria-current={on ? 'page' : undefined}
                           className={cn(
-                            'w-full text-left px-2 py-1 rounded-sm text-xs font-mono tracking-tight transition-colors flex items-center gap-2',
-                            on
-                              ? 'bg-teal-500/20 text-white border-l-2 border-teal-400'
-                              : 'text-gray-400 hover:text-white hover:bg-lattice-elevated border-l-2 border-transparent',
+                            'flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-left text-[13px] transition-colors',
+                            on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                           )}
                         >
-                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
                           {t.label}
                         </button>
                       </li>
@@ -285,7 +251,28 @@ export default function TradesLensPage() {
           </main>
         </div>
 
-        <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {/* Industry wire (PPI / industrial production) — renders only with data. */}
+        <RealtimeDataPanel
+          domain="trades"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={insights}
+          compact
+        />
+        <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
+
+        {active !== 'quotes' && (
+          <button
+            type="button"
+            onClick={() => go('quotes')}
+            title="Write a quote (Q)"
+            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          >
+            <FileText className="h-4 w-4" />
+            New quote
+          </button>
+        )}
       </div>
     </LensShell>
   );

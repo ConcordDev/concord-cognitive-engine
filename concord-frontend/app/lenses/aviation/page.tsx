@@ -91,7 +91,7 @@ export default function AviationLensPage() {
                 <h1 className={ds.heading1}>Aviation</h1>
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
               </div>
-              <p className={ds.textMuted}>ForeFlight-shaped EFB — flights, fleet, W&amp;B, weather, moving map.</p>
+              <p className={ds.textMuted}>Flights, fleet, W&amp;B, weather, moving map.</p>
             </div>
           </div>
         </header>

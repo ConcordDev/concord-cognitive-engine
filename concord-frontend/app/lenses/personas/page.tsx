@@ -18,7 +18,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { CharacterStudio } from '@/components/personas/CharacterStudio';
 import { PersonaEditor, type PersonaDetail } from '@/components/personas/PersonaEditor';
 import { PersonaMarketplace } from '@/components/personas/PersonaMarketplace';
@@ -144,7 +143,6 @@ export default function PersonasPage() {
     <LensShell lensId="personas">
       <FirstRunTour lensId="personas" />
       <DepthBadge lensId="personas" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="personas" className="mx-6 mt-4" />
       <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-5">
           <h1 className="text-2xl font-bold text-zinc-100">AI Personas</h1>

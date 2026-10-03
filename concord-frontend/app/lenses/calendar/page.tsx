@@ -1,11 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GCalSection } from '@/components/calendar/GCalSection';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
@@ -18,33 +15,69 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { cn } from '@/lib/utils';
-import { CalendarDays, Clock, Share2, Globe, Sparkles, Wrench } from 'lucide-react';
-import { DensityToggle } from '@/components/ui/DensityToggle';
 
-/** Linear / Fantastical: the grid is the product; tools are views, not accordions. */
+/**
+ * Calendar lens, per docs/lens-northstar/08: the month grid is the page.
+ * The other tools (Google sync, booking pages, sharing, conflicts,
+ * timezones, scheduler) are full views reached from a quiet "More" menu.
+ */
 export type CalendarView = 'calendar' | 'google' | 'book' | 'sync' | 'analyze' | 'tools' | 'bench';
 
-const VIEWS: { id: CalendarView; label: string; icon: typeof CalendarDays }[] = [
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'google', label: 'Google + tasks', icon: Sparkles },
-  { id: 'book', label: 'Booking pages', icon: Clock },
-  { id: 'sync', label: 'Sync & share', icon: Share2 },
-  { id: 'analyze', label: 'Conflicts', icon: Sparkles },
-  { id: 'tools', label: 'Timezones', icon: Globe },
-  { id: 'bench', label: 'Scheduler', icon: Wrench },
+const SECONDARY: { id: Exclude<CalendarView, 'calendar'>; label: string; key?: string }[] = [
+  { id: 'google', label: 'Google + tasks', key: 'O' },
+  { id: 'book', label: 'Booking pages', key: 'B' },
+  { id: 'sync', label: 'Sync & share', key: 'S' },
+  { id: 'analyze', label: 'Conflicts', key: 'C' },
+  { id: 'tools', label: 'Timezones' },
+  { id: 'bench', label: 'Scheduler' },
 ];
 
-function prefersReducedMotion() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function MoreMenu({ onPick }: { onPick: (v: CalendarView) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        More
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+          {SECONDARY.map((v) => (
+            <button
+              key={v.id}
+              role="menuitem"
+              type="button"
+              onClick={() => { setOpen(false); onPick(v.id); }}
+              className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50"
+            >
+              <span className="flex-1">{v.label}</span>
+              {v.key && <kbd className="font-mono text-[11px] text-zinc-500">{v.key}</kbd>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CalendarLensPage() {
   useLensNav('calendar');
   useLensIdentity('calendar');
   const [activeView, setActive] = useState<CalendarView>('calendar');
-  const reduced = prefersReducedMotion();
 
   useLensCommand(
     [
@@ -57,93 +90,39 @@ export default function CalendarLensPage() {
     { lensId: 'calendar' },
   );
 
+  const secondary = SECONDARY.find((v) => v.id === activeView);
+
   return (
     <LensShell lensId="calendar" asMain={false}>
-      <FirstRunTour lensId="calendar" />
-      <DepthBadge lensId="calendar" size="sm" className="ml-2" />
-      <div data-lens-theme="calendar" className="flex flex-col min-h-[calc(100vh-4rem)]">
-        <header className="flex items-center justify-between gap-3 px-4 py-2 border-b border-lattice-border">
-          <div className="flex items-center gap-3 min-w-0">
-            <CalendarDays className="w-5 h-5 text-sky-400 shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-sm font-semibold tracking-tight">Calendar</h1>
-              <p className="text-[11px] text-gray-400 truncate">
-                Fantastical density — month, week, day, agenda.
-                <kbd className="ml-2 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">G</kbd> grid
-                <kbd className="ml-1 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">N</kbd> new
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <DensityToggle />
-            <nav className="flex items-center gap-0.5 overflow-x-auto" aria-label="Calendar views">
-              {VIEWS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActive(tab.id)}
-                  className={cn(
-                    'px-2.5 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors',
-                    activeView === tab.id
-                      ? 'bg-sky-500/20 text-sky-200 border border-sky-500/30'
-                      : 'text-gray-400 hover:text-white border border-transparent',
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </header>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeView}
-            initial={reduced ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduced ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 min-h-0"
-          >
-            {activeView === 'calendar' && <CalendarGridWorkbench />}
-            {activeView === 'google' && (
-              <div className="p-4">
-                <GCalSection />
-              </div>
-            )}
-            {activeView === 'book' && (
-              <div className="p-4">
-                <AppointmentSchedules />
-              </div>
-            )}
-            {activeView === 'sync' && (
-              <div className="p-4">
-                <CalendarParityHub />
-              </div>
-            )}
-            {activeView === 'analyze' && (
-              <div className="p-4">
-                <ScheduleAnalyzer />
-              </div>
-            )}
-            {activeView === 'tools' && (
-              <div className="p-4">
-                <TimezoneTools />
-              </div>
-            )}
+      <div data-lens-theme="calendar" className="flex min-h-[calc(100vh-4rem)] flex-col">
+        {activeView === 'calendar' ? (
+          <CalendarGridWorkbench headerExtra={<MoreMenu onPick={setActive} />} />
+        ) : (
+          <div className="px-8 pt-4 pb-8">
+            <button
+              type="button"
+              onClick={() => setActive('calendar')}
+              className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Calendar
+            </button>
+            <h1 className="mt-2 mb-6 font-vault text-[2.25rem] leading-tight text-zinc-100">{secondary?.label}</h1>
+            {activeView === 'google' && <GCalSection />}
+            {activeView === 'book' && <AppointmentSchedules />}
+            {activeView === 'sync' && <CalendarParityHub />}
+            {activeView === 'analyze' && <ScheduleAnalyzer />}
+            {activeView === 'tools' && <TimezoneTools />}
             {activeView === 'bench' && (
-              <div className="p-4 space-y-3">
+              <div className="space-y-3">
                 <LensFeedButton domain="calendar" />
                 <PipingProvider>
                   <CalendarActionPanel />
                 </PipingProvider>
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
-        <div className="px-4 pb-3">
-          <CrossLensRecentsPanel lensId="calendar" sinceDays={7} limit={6} hideWhenEmpty />
-        </div>
+          </div>
+        )}
       </div>
     </LensShell>
   );

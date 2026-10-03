@@ -18,6 +18,9 @@
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { IntelDesk } from '@/components/news/intel/IntelDesk';
@@ -25,6 +28,7 @@ import { NEWS_CATEGORIES, type NewsCategory } from '@/components/news/intel/inte
 
 function NewsLensInner() {
   useLensNav('news');
+  useLensIdentity('news');
   const params = useSearchParams();
 
   // Deep-link support: /lenses/news?category=tech opens that live query.
@@ -50,6 +54,8 @@ function NewsLensInner() {
 
   return (
     <LensShell lensId="news" asMain={false}>
+      <FirstRunTour lensId="news" />
+      <DepthBadge lensId="news" size="sm" className="ml-2" />
       <IntelDesk initialCategory={initialCategory} />
     </LensShell>
   );

@@ -17,7 +17,6 @@ import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ShellPreview } from '@/components/lens/ShellPreview';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -413,6 +412,7 @@ export function EducationSection() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('education');
 
   /* ---------- core state ---------- */
+  const [surface, setSurface] = useState<'learning' | 'teaching'>('learning');
   const [activeTab, setActiveTab] = useState<ModeTab>('Students');
   const [activeCategory, setActiveCategory] = useState<string>(() => categoryForTab('Students'));
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -1218,23 +1218,33 @@ export function EducationSection() {
   return (
     <>
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent pb-20 lg:pb-6">
-      <ShellPreview lensId="education" defaultOpen={true} />
-      <KhanCourseraWorkbenchSection />
-      {/* Header */}
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center">
-            <GraduationCap className="w-6 h-6 text-amber-400" />
+      {/* One compact header. Education holds two products — a learner's
+          workbench (progress, catalog, courses, player) and a teacher's LMS
+          (students, courses, assignments, grades) — shown one at a time. */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <GraduationCap className="h-4 w-4 shrink-0 text-amber-400" />
+          <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] p-0.5" role="tablist" aria-label="Education mode">
+            {(['learning', 'teaching'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={surface === s}
+                onClick={() => setSurface(s)}
+                className={cn(
+                  'rounded px-3 py-1 text-[13px] capitalize transition-colors',
+                  surface === s ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-zinc-100',
+                )}
+              >
+                {s}
+              </button>
+            ))}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-amber-50">Education</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className={ds.textMuted}>Student management, courses, assignments, and academic tracking</p>
-          </div>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
         </div>
-        <div className="flex items-center gap-2">
+        {surface === 'teaching' && (
+          <div className="flex items-center gap-2">
           <DTUExportButton domain="education" data={{}} compact />
           <VisionAnalyzeButton
             domain="education"
@@ -1252,19 +1262,13 @@ export function EducationSection() {
             <Plus className="w-4 h-4" /> New Record
           </button>
         </div>
+        )}
       </header>
 
-      {/* Education Wire — Department of Education + NCES live feed */}
-      <LiveFeed
-        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-        domain="education"
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        limit={10}
-      />
+      {surface === 'learning' && <KhanCourseraWorkbenchSection />}
 
-      <RealtimeDataPanel domain="education" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
+      {surface === 'teaching' && (
+      <>
       {/* Mode categories — 27 flat tabs grouped into 4 sections so the nav
           reads as a short strip, not a wall of buttons above the content. */}
       <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-2" aria-label="Education sections">
@@ -2801,6 +2805,20 @@ export function EducationSection() {
           )}
         </section>
       )}
+
+      </>
+      )}
+
+      {/* Education Wire — Department of Education + NCES live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="education"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
+
+      <RealtimeDataPanel domain="education" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       {/* ============================================================ */}
       {/*  Editor Modal                                                 */}

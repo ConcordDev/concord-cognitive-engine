@@ -42,7 +42,6 @@ export function CompetitiveIntelligence() {
       <div className="flex items-center gap-2 mb-3">
         <Swords className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Competitive Intelligence</h3>
-        <span className="text-[10px] text-zinc-400">Crayon / Klue parity</span>
       </div>
       <div className="flex flex-wrap gap-1 mb-4">
         {TABS.map((t) => (

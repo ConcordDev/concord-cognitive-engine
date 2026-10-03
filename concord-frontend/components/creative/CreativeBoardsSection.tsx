@@ -73,7 +73,7 @@ export function CreativeBoardsSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-amber-600/15 to-transparent">
         <LayoutDashboard className="w-5 h-5 text-amber-400" />
         <h2 className="text-sm font-bold text-zinc-100">Creative Boards</h2>
-        <span className="text-[11px] text-zinc-400">Milanote shape · visual boards for ideas</span>
+        <span className="text-[11px] text-zinc-400">Visual boards for ideas</span>
       </header>
 
       <div className="p-4">

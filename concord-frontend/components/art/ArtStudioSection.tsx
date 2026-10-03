@@ -82,7 +82,7 @@ export function ArtStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-violet-600/15 to-transparent">
         <Palette className="w-5 h-5 text-violet-400" />
         <h2 className="text-sm font-bold text-zinc-100">Art Studio</h2>
-        <span className="text-[11px] text-zinc-400">Procreate + Krita shape · layered canvas, real brushes</span>
+        <span className="text-[11px] text-zinc-400">Layered canvas, real brushes</span>
       </header>
 
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">

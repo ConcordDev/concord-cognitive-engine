@@ -21,7 +21,7 @@ import {
 export function ComponentsPanel() {
   const { data, isLoading } = useQuery<ComponentEntry[]>({
     queryKey: ['inventory-components'],
-    queryFn: () => api.get('/api/inventory/components').then((r) => r.data),
+    queryFn: () => api.get('/api/inventory/components').then((r) => (r.data?.components ?? []) as ComponentEntry[]),
   });
 
   const [search, setSearch] = useState('');

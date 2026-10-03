@@ -158,7 +158,6 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
       <div className="flex items-center gap-2 mb-3">
         <FileText className="w-4 h-4 text-neon-cyan" />
         <h2 className="font-semibold text-white">Contract Lifecycle</h2>
-        <span className="text-[10px] text-gray-400">Ironclad shape</span>
         <button onClick={() => setShowNew(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New contract
         </button>
@@ -181,7 +180,6 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
           <div className="flex items-center gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-neon-cyan" />
             <h3 className="text-xs font-semibold text-white">Trend analytics</h3>
-            <span className="text-[9px] text-gray-400">Ironclad shape</span>
           </div>
 
           <div>

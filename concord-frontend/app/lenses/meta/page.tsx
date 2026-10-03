@@ -1,15 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+/**
+ * Meta lens: the north-star look (serif title, pill views, teal floating CTA)
+ * over the live codebase inventory. Every view is a real /api/inventory*
+ * scan or the system-health / dev-portal workbenches; the CTA re-scans.
+ */
+
+import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  Layers, Search, AlertTriangle, Package, Eye, GitBranch, Cog, Server, Activity,
+  Activity, AlertTriangle, Cog, Eye, GitBranch, Layers, Loader2, Package, RefreshCw, Search, Server,
 } from 'lucide-react';
+import { api } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { useUIStore } from '@/store/ui';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -25,117 +35,128 @@ import { OrphansPanel } from '@/components/meta/OrphansPanel';
 import { WiringPanel } from '@/components/meta/WiringPanel';
 import { SearchPanel } from '@/components/meta/SearchPanel';
 import { LensInfraPanel } from '@/components/meta/LensInfraPanel';
-import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 type TabKey = 'overview' | 'health' | 'dev-portal' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
 
-const TABS: { key: TabKey; label: string; icon: typeof Layers }[] = [
-  { key: 'overview', label: 'Overview', icon: Layers },
-  { key: 'health', label: 'System Health', icon: Activity },
-  { key: 'dev-portal', label: 'Dev Portal', icon: Server },
-  { key: 'components', label: 'Components', icon: Package },
-  { key: 'lenses', label: 'Lenses', icon: Eye },
-  { key: 'orphans', label: 'Orphans', icon: AlertTriangle },
-  { key: 'wiring', label: 'Wiring Map', icon: GitBranch },
-  { key: 'search', label: 'Search', icon: Search },
-  { key: 'lens-infra', label: 'Lens Infrastructure', icon: Cog },
+const TABS: { key: TabKey; label: string; keys: string; title: string; hint: string; icon: typeof Layers }[] = [
+  { key: 'overview', label: 'Overview', keys: '1', title: 'What the system is', hint: 'Inventory totals and import graph', icon: Layers },
+  { key: 'health', label: 'Health', keys: '2', title: 'Whether it is holding up', hint: 'Live system health', icon: Activity },
+  { key: 'lenses', label: 'Lenses', keys: '3', title: 'Every lens, and what backs it', hint: 'Lens catalog and wiring', icon: Eye },
+  { key: 'components', label: 'Components', keys: '4', title: 'Every component in the tree', hint: 'Component inventory', icon: Package },
+  { key: 'wiring', label: 'Wiring', keys: '5', title: 'How the pieces connect', hint: 'Frontend-to-backend wiring map', icon: GitBranch },
+  { key: 'orphans', label: 'Orphans', keys: '6', title: 'What nothing points to', hint: 'Unreferenced files and routes', icon: AlertTriangle },
+  { key: 'search', label: 'Search', keys: '7', title: 'Find anything in the codebase', hint: 'Inventory search', icon: Search },
+  { key: 'lens-infra', label: 'Infrastructure', keys: '8', title: 'What every lens shares', hint: 'Shared lens infrastructure', icon: Cog },
+  { key: 'dev-portal', label: 'Dev portal', keys: '9', title: 'Build against Concord', hint: 'API explorer and developer tools', icon: Server },
 ];
 
 export default function MetaLensPage() {
-  const viewLog = useArtifacts<{ at: string }>('meta', { type: 'view-event', limit: 5 });
-  const recordView = useCreateArtifact<{ at: string }>('meta');
-  void viewLog; void recordView;
   useLensNav('meta');
   useLensIdentity('meta');
   const { isLive, lastUpdated } = useRealtimeLens('meta');
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TabKey>('overview');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshInventory = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await api.post('/api/inventory/refresh');
+      if (res.data?.ok === false) throw new Error(res.data?.error || 'The re-scan failed.');
+      await queryClient.invalidateQueries({
+        predicate: (q) => typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('inventory'),
+      });
+      useUIStore.getState().addToast({ type: 'success', message: 'Inventory re-scanned.' });
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: (e as Error).message || 'The re-scan failed.' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   useLensCommand(
     [
-      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActive('overview') },
-      { id: 'tab-health', keys: 'h', description: 'System Health', category: 'navigation', action: () => setActive('health') },
-      { id: 'tab-dev-portal', keys: 'd', description: 'Dev Portal', category: 'navigation', action: () => setActive('dev-portal') },
-      { id: 'tab-components', keys: 'c', description: 'Components', category: 'navigation', action: () => setActive('components') },
-      { id: 'tab-lenses', keys: 'l', description: 'Lenses', category: 'navigation', action: () => setActive('lenses') },
-      { id: 'tab-orphans', keys: 'r', description: 'Orphans', category: 'navigation', action: () => setActive('orphans') },
-      { id: 'tab-wiring', keys: 'w', description: 'Wiring', category: 'navigation', action: () => setActive('wiring') },
-      { id: 'tab-search', keys: 's', description: 'Search', category: 'navigation', action: () => setActive('search') },
-      { id: 'tab-lens-infra', keys: 'e', description: 'Lens Infra', category: 'navigation', action: () => setActive('lens-infra') },
+      ...TABS.map((t) => ({
+        id: `tab-${t.key}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setActive(t.key),
+      })),
+      { id: 'meta-refresh', keys: 'r', description: 'Re-scan inventory', category: 'actions' as const, action: () => void refreshInventory() },
     ],
     { lensId: 'meta' },
   );
+
+  const current = TABS.find((t) => t.key === active)!;
 
   return (
     <LensShell lensId="meta" asMain={false}>
       <FirstRunTour lensId="meta" />
       <DepthBadge lensId="meta" size="sm" className="ml-2" />
-      <div data-lens-theme="meta" className="p-6 space-y-6">
-        <motion.header
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between flex-wrap gap-3"
-        >
-          <div className="flex items-center gap-3">
-            <Layers className="w-6 h-6 text-neon-purple" />
-            <div>
-              <h1 className="text-xl font-bold">Codebase Inventory</h1>
-              <p className="text-sm text-gray-400">
-                Components, lenses, wiring, and orphan analysis
-              </p>
-            </div>
+      <div data-lens-theme="meta" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Meta</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'overview' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="meta" data={{}} compact />
           </div>
-        </motion.header>
-
-        <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1 overflow-x-auto" role="tablist" aria-label="Meta catalog">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              role="tab"
-              aria-selected={active === tab.key}
-              onClick={() => setActive(tab.key)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap',
-                active === tab.key
-                  ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-surface',
-              )}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-          >
-            {active === 'overview' && <OverviewPanel />}
-            {active === 'health' && (
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <SystemHealth />
-              </section>
-            )}
-            {active === 'dev-portal' && <DevPortal />}
-            {active === 'components' && <ComponentsPanel />}
-            {active === 'lenses' && <LensesPanel />}
-            {active === 'orphans' && <OrphansPanel />}
-            {active === 'wiring' && <WiringPanel />}
-            {active === 'search' && <SearchPanel />}
-            {active === 'lens-infra' && <LensInfraPanel />}
-          </motion.div>
-        </AnimatePresence>
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Meta views">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = active === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setActive(t.key)}
+                aria-current={on ? 'page' : undefined}
+                title={`${t.hint} (${t.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+
+        {active === 'overview' && <OverviewPanel />}
+        {active === 'health' && <section className="rounded-2xl border border-white/10 bg-[#111] p-4"><SystemHealth /></section>}
+        {active === 'dev-portal' && <DevPortal />}
+        {active === 'components' && <ComponentsPanel />}
+        {active === 'lenses' && <LensesPanel />}
+        {active === 'orphans' && <OrphansPanel />}
+        {active === 'wiring' && <WiringPanel />}
+        {active === 'search' && <SearchPanel />}
+        {active === 'lens-infra' && <LensInfraPanel />}
+
+        <CrossLensRecentsPanel lensId="meta" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => void refreshInventory()}
+          disabled={refreshing}
+          title="Re-scan inventory (R)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {refreshing ? 'Re-scanning…' : 'Refresh inventory'}
+        </button>
       </div>
-      <a href="#meta-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to meta content</a>
-      <CrossLensRecentsPanel lensId="meta" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

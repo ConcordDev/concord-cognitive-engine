@@ -108,7 +108,6 @@ export function ChoreBoard() {
       <div className="flex items-center gap-2 mb-3">
         <Home className="w-4 h-4 text-teal-400" />
         <h3 className="text-sm font-bold text-zinc-100">Chore Board</h3>
-        <span className="text-[11px] text-zinc-400">Tody shape</span>
         <button onClick={toggleVacation}
           className={cn('ml-auto px-2.5 py-1 text-xs rounded-lg inline-flex items-center gap-1',
             dash?.paused ? 'bg-amber-600 text-white' : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800')}>
