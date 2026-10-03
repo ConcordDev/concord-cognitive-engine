@@ -74,19 +74,13 @@ import {
   Video,
   FileType,
   ExternalLink,
-  Flame,
   Timer,
-  Zap,
   Dna,
   Route,
   ClipboardCheck,
   Coins,
-  Send,
   Brain,
   MessageSquare,
-  UserPlus,
-  Trophy,
-  Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { FlashcardDeck } from '@/components/education/FlashcardDeck';
@@ -99,7 +93,11 @@ import { LearningPaths } from '@/components/education/LearningPaths';
 import { LiveCohorts } from '@/components/education/LiveCohorts';
 import { MasteryDashboard } from '@/components/education/MasteryDashboard';
 import { LessonQA } from '@/components/education/LessonQA';
-import { MasteryBadge, LearningStreak, CourseProgressBar, StudySessionTimer } from '@/components/education/EducationStudyChrome';
+import { StudySessionTimer } from '@/components/education/EducationStudyChrome';
+import StreakDashboard from '@/components/education/StreakDashboard';
+import { NorthStarFrame, type NorthStarTab } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { StudyModePanel } from '@/components/education/StudyModePanel';
 import {
   GenomePanel,
@@ -111,7 +109,7 @@ import {
   CredentialsPanel,
   EarningsPanel,
 } from '@/components/education/EducationEnginePanels';
-import { KhanCourseraWorkbenchSection } from '@/components/education/KhanCourseraWorkbenchSection';
+import { KhanCourseraWorkbenchSection, LEARNING_VIEWS, type LearningView } from '@/components/education/KhanCourseraWorkbenchSection';
 
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -413,6 +411,14 @@ export function EducationSection() {
 
   /* ---------- core state ---------- */
   const [surface, setSurface] = useState<'learning' | 'teaching'>('learning');
+  const [learnView, setLearnView] = useState<LearningView>('dashboard');
+  const { user } = useAuth();
+  const eduWho = titleCaseDisplayName(user?.username);
+  const eduTitle = surface === 'teaching' ? 'Your classroom' : `The lesson${eduWho ? `, ${eduWho}` : ''}`;
+  const eduTabs: NorthStarTab[] = [
+    ...LEARNING_VIEWS.map((v) => ({ id: v.id, label: v.label })),
+    { id: 'teaching', label: 'Teaching', icon: GraduationCap, hint: 'Classroom: students, courses, assignments, grades' },
+  ];
   const [activeTab, setActiveTab] = useState<ModeTab>('Students');
   const [activeCategory, setActiveCategory] = useState<string>(() => categoryForTab('Students'));
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -1217,58 +1223,56 @@ export function EducationSection() {
 
   return (
     <>
-    <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent pb-20 lg:pb-6">
-      {/* One compact header. Education holds two products — a learner's
-          workbench (progress, catalog, courses, player) and a teacher's LMS
-          (students, courses, assignments, grades) — shown one at a time. */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <GraduationCap className="h-4 w-4 shrink-0 text-amber-400" />
-          <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] p-0.5" role="tablist" aria-label="Education mode">
-            {(['learning', 'teaching'] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                role="tab"
-                aria-selected={surface === s}
-                onClick={() => setSurface(s)}
-                className={cn(
-                  'rounded px-3 py-1 text-[13px] capitalize transition-colors',
-                  surface === s ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-zinc-100',
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+    <NorthStarFrame
+      lensId="education"
+      theme="education"
+      crumb="Education"
+      title={eduTitle}
+      subtitle={surface === 'teaching'
+        ? 'Your classroom: students, courses, assignments, grades, lesson plans and study tools.'
+        : 'Learn your way: catalog, courses, a lesson player, skills, certificates, assignments, notes and discussion.'}
+      tabs={eduTabs}
+      activeTab={surface === 'teaching' ? 'teaching' : learnView}
+      onTab={(id) => {
+        if (id === 'teaching') { setSurface('teaching'); return; }
+        setSurface('learning');
+        setLearnView(id as LearningView);
+      }}
+      tabsLabel="Education views"
+      actions={(
+        <div className="flex items-center gap-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+          {surface === 'teaching' && (
+            <>
+              <DTUExportButton domain="education" data={{}} compact />
+              <VisionAnalyzeButton
+                domain="education"
+                prompt="Analyze this education-related image (whiteboard, diagram, textbook page, student work, etc.). Extract key concepts, suggest lesson content, and provide relevant educational tags."
+                onResult={(res) => {
+                  setFormDescription(res.analysis);
+                  if (res.suggestedTags?.length) setFormNotes(prev => prev ? `${prev}\nVision tags: ${res.suggestedTags!.join(', ')}` : `Vision tags: ${res.suggestedTags!.join(', ')}`);
+                }}
+              />
+              <button onClick={() => setShowStudyPanel(p => !p)}
+                className={cn(ds.btnSecondary, showStudyPanel && 'bg-amber-500/20 border-amber-500/40 text-amber-400')}>
+                <Timer className="w-4 h-4" /> Study Mode
+              </button>
+              <button onClick={openNewEditor} className={ds.btnPrimary}>
+                <Plus className="w-4 h-4" /> New Record
+              </button>
+            </>
+          )}
         </div>
-        {surface === 'teaching' && (
-          <div className="flex items-center gap-2">
-          <DTUExportButton domain="education" data={{}} compact />
-          <VisionAnalyzeButton
-            domain="education"
-            prompt="Analyze this education-related image (whiteboard, diagram, textbook page, student work, etc.). Extract key concepts, suggest lesson content, and provide relevant educational tags."
-            onResult={(res) => {
-              setFormDescription(res.analysis);
-              if (res.suggestedTags?.length) setFormNotes(prev => prev ? `${prev}\nVision tags: ${res.suggestedTags!.join(', ')}` : `Vision tags: ${res.suggestedTags!.join(', ')}`);
-            }}
-          />
-          <button onClick={() => setShowStudyPanel(p => !p)}
-            className={cn(ds.btnSecondary, showStudyPanel && 'bg-amber-500/20 border-amber-500/40 text-amber-400')}>
-            <Timer className="w-4 h-4" /> Study Mode
-          </button>
-          <button onClick={openNewEditor} className={ds.btnPrimary}>
-            <Plus className="w-4 h-4" /> New Record
-          </button>
-        </div>
-        )}
-      </header>
-
-      {surface === 'learning' && <KhanCourseraWorkbenchSection />}
+      )}
+      cta={surface === 'teaching'
+        ? { label: 'New record', icon: Plus, onClick: openNewEditor, title: 'Create a new classroom record' }
+        : { label: 'Open a lesson', icon: BookOpen, onClick: () => { setSurface('learning'); setLearnView('player'); }, title: 'Open the lesson player' }}
+    >
+    <div className="space-y-6 pb-20 lg:pb-6">
+      {surface === 'learning' && <KhanCourseraWorkbenchSection view={learnView} onViewChange={setLearnView} />}
 
       {surface === 'teaching' && (
-      <>
+      <div className="space-y-6">
       {/* Mode categories — 27 flat tabs grouped into 4 sections so the nav
           reads as a short strip, not a wall of buttons above the content. */}
       <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-2" aria-label="Education sections">
@@ -1335,40 +1339,8 @@ export function EducationSection() {
             className="overflow-hidden"
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              {/* Streak */}
-              <div className="panel p-4 space-y-3">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-400" /> Learning Streak
-                </h3>
-                <LearningStreak streak={5} best={21} />
-                <div className="space-y-2">
-                  <CourseProgressBar label="Mathematics" pct={72} color="neon-cyan" />
-                  <CourseProgressBar label="Literature" pct={55} color="amber-400" />
-                  <CourseProgressBar label="Science" pct={88} color="neon-green" />
-                </div>
-              </div>
-              {/* Mastery Levels */}
-              <div className="panel p-4 space-y-3">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-neon-cyan" /> Mastery Levels
-                </h3>
-                <div className="space-y-3">
-                  {[
-                    { subject: 'Mathematics', score: 78 },
-                    { subject: 'Literature',  score: 55 },
-                    { subject: 'Science',     score: 91 },
-                    { subject: 'History',     score: 63 },
-                  ].map(item => (
-                    <div key={item.subject} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-300">{item.subject}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">{item.score}%</span>
-                        <MasteryBadge score={item.score} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <StreakDashboard />
+              <MasteryDashboard />
               {/* Study Timer */}
               <StudySessionTimer />
             </div>
@@ -2806,7 +2778,7 @@ export function EducationSection() {
         </section>
       )}
 
-      </>
+      </div>
       )}
 
       {/* Education Wire — Department of Education + NCES live feed */}
@@ -3179,6 +3151,7 @@ export function EducationSection() {
         </section>
       </PipingProvider>
     </div>
+    </NorthStarFrame>
     {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
     <MobileTabBar
       tabs={[

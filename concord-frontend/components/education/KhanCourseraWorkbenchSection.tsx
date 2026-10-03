@@ -12,25 +12,39 @@ import AssignmentsBoard from '@/components/education/AssignmentsBoard';
 import LessonNotes from '@/components/education/LessonNotes';
 import CourseDiscussions from '@/components/education/CourseDiscussions';
 
-export function KhanCourseraWorkbenchSection() {
-  const [active, setActive] = useState<'dashboard' | 'catalog' | 'enrolled' | 'player' | 'skills' | 'certs' | 'assignments' | 'notes' | 'discussions'>('dashboard');
+export type LearningView = 'dashboard' | 'catalog' | 'enrolled' | 'player' | 'skills' | 'certs' | 'assignments' | 'notes' | 'discussions';
+
+export const LEARNING_VIEWS: { id: LearningView; label: string }[] = [
+  { id: 'dashboard', label: 'Progress' },
+  { id: 'catalog', label: 'Catalog' },
+  { id: 'enrolled', label: 'My courses' },
+  { id: 'player', label: 'Player' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'certs', label: 'Certificates' },
+  { id: 'assignments', label: 'Assignments' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'discussions', label: 'Discussions' },
+];
+
+interface WorkbenchProps {
+  /** Controlled view; when set, the host renders the view nav (e.g. the north-star pill tabs). */
+  view?: LearningView;
+  onViewChange?: (v: LearningView) => void;
+}
+
+export function KhanCourseraWorkbenchSection({ view, onViewChange }: WorkbenchProps = {}) {
+  const controlled = view !== undefined && !!onViewChange;
+  const [localActive, setLocalActive] = useState<LearningView>('dashboard');
+  const active = controlled ? view : localActive;
+  const setActive = (v: LearningView) => (controlled ? onViewChange(v) : setLocalActive(v));
   const [activeCourse, setActiveCourse] = useState<EduCourse | null>(null);
-  const TABS = [
-    { id: 'dashboard', label: 'Progress' },
-    { id: 'catalog', label: 'Catalog' },
-    { id: 'enrolled', label: 'My courses' },
-    { id: 'player', label: 'Player' },
-    { id: 'skills', label: 'Skills' },
-    { id: 'certs', label: 'Certificates' },
-    { id: 'assignments', label: 'Assignments' },
-    { id: 'notes', label: 'Notes' },
-    { id: 'discussions', label: 'Discussions' },
-  ] as const;
   return (
-    <section className="mt-6 space-y-3">
+    <section className={controlled ? 'space-y-3' : 'mt-6 space-y-3'}>
+      {!controlled && (
+        <>
       <h2 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">Learning workbench</h2>
       <nav className="flex items-center gap-1 border-b border-amber-900/30 pb-2 overflow-x-auto">
-        {TABS.map(t => (
+        {LEARNING_VIEWS.map(t => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
@@ -45,6 +59,8 @@ export function KhanCourseraWorkbenchSection() {
           </button>
         ))}
       </nav>
+        </>
+      )}
       <div>
         {active === 'dashboard' && <StreakDashboard />}
         {active === 'catalog' && <CoursesCatalog onEnroll={(c) => { setActiveCourse(c); setActive('enrolled'); }} onSelect={setActiveCourse} />}

@@ -79,6 +79,8 @@ vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
 vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: (p: Record<string, unknown>) => React.createElement('textarea', p) }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ada' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
@@ -141,7 +143,7 @@ import EducationLensPage from '@/app/lenses/education/page';
 
 /** The teacher LMS sits behind the Learning / Teaching switch (Learning is default). */
 function openTeaching(getByRole: (role: string, opts: { name: RegExp }) => HTMLElement) {
-  fireEvent.click(getByRole('tab', { name: /teaching/i }));
+  fireEvent.click(getByRole('button', { name: /^teaching/i }));
 }
 
 const STUDENT = {
@@ -177,7 +179,7 @@ describe('education lens — four UX states', () => {
 
   it('defaults to the learner workbench; Teaching opens the LMS', async () => {
     const { getByRole, queryByTestId } = render(<EducationLensPage />);
-    expect(getByRole('tab', { name: /learning/i })).toHaveAttribute('aria-selected', 'true');
+    expect(getByRole('button', { name: /^progress/i })).toHaveAttribute('aria-current', 'page');
     expect(queryByTestId('education-subtab-nav')).not.toBeInTheDocument();
     openTeaching(getByRole);
     expect(queryByTestId('education-subtab-nav')).toBeInTheDocument();
