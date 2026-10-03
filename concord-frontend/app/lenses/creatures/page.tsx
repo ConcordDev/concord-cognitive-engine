@@ -74,7 +74,7 @@ export default function CreaturesLensPage() {
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={active}
         onTab={(id) => setActive(id as CreaturesView)}
-        cta={{ label: 'Breed a pair', icon: Dna, onClick: () => setActive('populations'), title: 'Open the crossbreeding pen (N)' }}
+        cta={{ label: 'Open the pen', icon: Dna, onClick: () => setActive('populations'), title: 'Open the crossbreeding pen (N)' }}
       >
         <section key={active}>
           <CreaturesPane active={active} worldId={worldId} />
