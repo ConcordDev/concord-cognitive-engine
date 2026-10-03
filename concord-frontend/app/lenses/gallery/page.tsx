@@ -10,8 +10,12 @@
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -31,7 +35,7 @@ import { Recommendations } from '@/components/gallery/Recommendations';
 import { PipingProvider } from '@/components/panel-polish';
 import {
   Loader2, Image as ImageIcon, Sparkles, Palette, BookOpen,
-  Columns3, User, Home, Maximize2,
+  Columns3, User, Home, Maximize2, Plus, RefreshCw,
 } from 'lucide-react';
 
 interface Sigil {
@@ -120,39 +124,61 @@ function SigilSvg({ shape }: { shape: Shape }) {
 
 type GalleryTab = 'browse' | 'foryou' | 'visual' | 'zoom' | 'compare' | 'artist' | 'exhibits' | 'rooms';
 
-const TABS: { id: GalleryTab; label: string; icon: typeof ImageIcon }[] = [
-  { id: 'browse', label: 'Browse', icon: ImageIcon },
-  { id: 'foryou', label: 'For you', icon: Sparkles },
-  { id: 'visual', label: 'Visual search', icon: Palette },
-  { id: 'zoom', label: 'Deep zoom', icon: Maximize2 },
-  { id: 'compare', label: 'Compare', icon: Columns3 },
-  { id: 'artist', label: 'Artists', icon: User },
-  { id: 'exhibits', label: 'Exhibits', icon: BookOpen },
-  { id: 'rooms', label: 'Virtual rooms', icon: Home },
+const TABS: { id: GalleryTab; label: string; keys: string; title: string; hint: string; icon: typeof ImageIcon }[] = [
+  { id: 'browse', label: 'Browse', keys: '1', title: 'The wall', hint: 'Museum collections, saved works and your sigils', icon: ImageIcon },
+  { id: 'foryou', label: 'For you', keys: '2', title: 'Hung for you', hint: 'Recommendations from what you save', icon: Sparkles },
+  { id: 'visual', label: 'Visual search', keys: '3', title: 'Find it by eye', hint: 'Search by color and look', icon: Palette },
+  { id: 'zoom', label: 'Deep zoom', keys: '4', title: 'Closer than the gallery allows', hint: 'Deep-zoom viewer', icon: Maximize2 },
+  { id: 'compare', label: 'Compare', keys: '5', title: 'Two works, side by side', hint: 'Compare artworks', icon: Columns3 },
+  { id: 'artist', label: 'Artists', keys: '6', title: 'The hands behind the work', hint: 'Artist pages', icon: User },
+  { id: 'exhibits', label: 'Exhibits', keys: '7', title: 'Curated exhibits', hint: 'Curated exhibits', icon: BookOpen },
+  { id: 'rooms', label: 'Virtual rooms', keys: '8', title: 'Walk the rooms', hint: 'Virtual rooms', icon: Home },
 ];
 
 export default function GalleryPage() {
-  useLensCommand([
-    { id: 'gallery-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'gallery' });
-
+  useLensNav('gallery');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [sigils, setSigils] = useState<Sigil[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [tab, setTab] = useState<GalleryTab>('browse');
 
+  const hangWork = useCallback(() => {
+    setTab('browse');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="gallery"] input[type="text"], [data-lens-theme="gallery"] input[type="search"], [data-lens-theme="gallery"] input:not([type])');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
+      if (++tries < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, []);
+
+  useLensCommand(
+    [
+      ...TABS.map((t) => ({
+        id: `tab-${t.id}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setTab(t.id),
+      })),
+      { id: 'gallery-hang', keys: 'n', description: 'Hang a work (search museums to save)', category: 'actions' as const, action: hangWork },
+    ],
+    { lensId: 'gallery' },
+  );
+
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setError(null);
     (async () => {
       const r = await macro('compression_art', 'list_for_user');
       if (!alive) return;
       if (r?.ok) {
         setSigils(r.sigils || []);
+        setError(null);
       } else {
-        // Surface a real error state (network failure → null; macro error → r.error).
         setError(r?.error || 'Could not load your sigil gallery. Check your connection and retry.');
       }
       setLoading(false);
@@ -160,128 +186,132 @@ export default function GalleryPage() {
     return () => { alive = false; };
   }, [reloadKey]);
 
-  if (loading) return (
-    <LensShell lensId="gallery">
-      <FirstRunTour lensId="gallery" />
-      <DepthBadge lensId="gallery" size="sm" className="ml-2" />
-      <div role="status" aria-live="polite" aria-busy="true" className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-        Loading your gallery…
-      </div>          <CrossLensRecentsPanel lensId="gallery" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-    </LensShell>
-  );
-
-  if (error) return (
-    <LensShell lensId="gallery">
-      <FirstRunTour lensId="gallery" />
-      <DepthBadge lensId="gallery" size="sm" className="ml-2" />
-      <div role="alert" className="m-6 sm:m-8 rounded-xl border border-red-800/50 bg-red-950/30 p-6 text-center">
-        <p className="text-sm text-red-300">{error}</p>
-        <button
-          type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-700/60 bg-red-900/30 px-3 py-1.5 text-[12px] font-medium text-red-200 hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-        >
-          Retry
-        </button>
-      </div>
-    </LensShell>
-  );
+  const current = TABS.find((t) => t.id === tab)!;
 
   return (
-    <LensShell lensId="gallery">
-    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-      <header className="mb-4 flex items-center gap-2">
-        <ImageIcon className="w-5 h-5 text-amber-400" />
-        <h1 className="text-2xl font-bold text-zinc-100">Gallery</h1>
-        <DepthBadge lensId="gallery" size="sm" className="ml-1" />
-        <p className="ml-2 hidden sm:block text-sm text-zinc-400">
-          Live multi-museum browsing, deep-zoom, curated exhibits, visual search & virtual rooms.
-        </p>
-      </header>
+    <LensShell lensId="gallery" asMain={false}>
+      <FirstRunTour lensId="gallery" />
+      <DepthBadge lensId="gallery" size="sm" className="ml-2" />
+      <div data-lens-theme="gallery" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Gallery</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {current.title}{tab === 'browse' && who ? `, ${who}` : ''}
+        </h1>
 
-      {/* Tab navigation across the full gallery feature surface */}
-      <nav className="mb-5 flex flex-wrap gap-1.5" aria-label="Gallery sections">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
-          return (
-            <button
-              key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium border transition-colors ${
-                isActive
-                  ? 'border-amber-500/50 bg-amber-500/15 text-amber-200'
-                  : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-              }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Gallery sections">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${t.hint} (${t.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-      {tab === 'browse' && (
-        <div className="space-y-6">
-          {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
-          <MetMuseumPanel domain="gallery" />
+        {tab === 'browse' && (
+          <div className="space-y-6">
+            <MetMuseumPanel domain="gallery" />
 
-          {/* Bespoke Cleveland Museum of Art browser with Save-as-DTU */}
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <CmaBrowser />
-          </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <CmaBrowser />
+            </section>
 
-          <section>
-            <LensFeedButton domain="gallery" />
-            <SavedCollections />
-          </section>
+            <section>
+              <LensFeedButton domain="gallery" />
+              <SavedCollections />
+            </section>
 
-          {/* CMA + Smithsonian + AIC search workbench */}
-          <PipingProvider>
-            <section><GalleryActionPanel /></section>
-          </PipingProvider>
+            <PipingProvider>
+              <section><GalleryActionPanel /></section>
+            </PipingProvider>
 
-          {/* Compression-art sigil gallery — MEGA/HYPER DTUs as procedural sigils */}
-          <section>
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-200">
-              <ImageIcon className="w-4 h-4 text-purple-400" /> Sigil gallery
-              <span className="text-[11px] font-normal text-zinc-400">— your consolidated knowledge, rendered</span>
-            </h2>
-            {sigils.length === 0 ? (
-              <div className="text-center text-zinc-400 italic py-10 border border-zinc-800 rounded-xl">
-                No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
-              </div>
-            ) : (
-              <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {sigils.map(s => {
-                  const shape = deriveShape(s.shape_seed);
-                  return (
-                    <li key={s.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-3 hover:border-purple-700/50 transition-colors">
-                      <div className="aspect-square bg-zinc-950 rounded mb-2 flex items-center justify-center">
-                        <div className="w-full h-full p-2"><SigilSvg shape={shape} /></div>
-                      </div>
-                      <h3 className="text-xs font-medium text-zinc-100 truncate">{s.title || s.mega_dtu_id}</h3>
-                      <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        </div>
-      )}
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-[15px] font-medium text-zinc-200">
+                <ImageIcon className="h-4 w-4 text-teal-300" /> Sigil gallery
+                <span className="text-[12px] font-normal text-zinc-500">your consolidated knowledge, rendered</span>
+                <button
+                  type="button"
+                  onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}
+                  aria-label="Reload sigils"
+                  title="Reload sigils"
+                  className="ml-auto rounded-full border border-white/10 bg-white/[0.03] p-1.5 text-zinc-400 transition-colors hover:text-zinc-100"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              </h2>
+              {loading ? (
+                <div role="status" aria-live="polite" aria-busy="true" className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#111] p-6 text-[14px] text-zinc-400">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading your sigils…
+                </div>
+              ) : error ? (
+                <div role="alert" className="rounded-2xl border border-red-800/50 bg-red-950/30 p-5 text-center">
+                  <p className="text-[14px] text-red-300">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}
+                    className="mt-3 rounded-full border border-red-700/60 bg-red-900/30 px-4 py-1.5 text-[13px] font-medium text-red-200 hover:bg-red-900/50"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : sigils.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-[#111] py-10 text-center text-[14px] text-zinc-400">
+                  No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
+                </div>
+              ) : (
+                <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                  {sigils.map((sg) => {
+                    const shape = deriveShape(sg.shape_seed);
+                    return (
+                      <li key={sg.id} className="rounded-2xl border border-white/10 bg-[#111] p-3 transition-colors hover:border-white/20">
+                        <div className="mb-2 flex aspect-square items-center justify-center rounded-xl bg-black/40">
+                          <div className="h-full w-full p-2"><SigilSvg shape={shape} /></div>
+                        </div>
+                        <h3 className="truncate text-[13px] font-medium text-zinc-100">{sg.title || sg.mega_dtu_id}</h3>
+                        <p className="mt-0.5 font-mono text-[11px] text-zinc-500">{sg.tier} · {sg.dominant_element || '—'}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
 
-      {tab === 'foryou' && <Recommendations />}
-      {tab === 'visual' && <VisualSearch />}
-      {tab === 'zoom' && <DeepZoomViewer />}
-      {tab === 'compare' && <ArtworkCompare />}
-      {tab === 'artist' && <ArtistPage />}
-      {tab === 'exhibits' && <CuratedExhibits />}
-      {tab === 'rooms' && <VirtualRooms />}
-    </div>
+        {tab === 'foryou' && <Recommendations />}
+        {tab === 'visual' && <VisualSearch />}
+        {tab === 'zoom' && <DeepZoomViewer />}
+        {tab === 'compare' && <ArtworkCompare />}
+        {tab === 'artist' && <ArtistPage />}
+        {tab === 'exhibits' && <CuratedExhibits />}
+        {tab === 'rooms' && <VirtualRooms />}
 
-      {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}
+        <CrossLensRecentsPanel lensId="gallery" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={hangWork}
+          title="Hang a work (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          Hang a work
+        </button>
+      </div>
     </LensShell>
   );
 }
