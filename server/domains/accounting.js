@@ -972,6 +972,30 @@ export default function registerAccountingActions(registerLensAction) {
     if (lines.length < 2) return { ok: false, error: "journal entry needs at least 2 lines" };
     const date = String(params.date || nowIso().slice(0, 10));
     const memo = String(params.memo || "").slice(0, 200);
+    // Provenance. A journal entry posted from a lens (Finance posts its
+    // ingested ledger rows here) carries the DTU it was built from so the
+    // books can always name the row behind the posting. A hand-built entry
+    // from the Accounting workbench sends no cite and stays valid.
+    const rawCite = String(params.citedDtuId || "").trim();
+    const citedDtuId = rawCite
+      ? (/^[A-Za-z0-9_.:-]{1,80}$/.test(rawCite) ? rawCite : null)
+      : null;
+    if (rawCite && !citedDtuId) return { ok: false, error: "citedDtuId invalid" };
+    // A citation must be a DTU that actually exists (and belongs to the
+    // caller). Accepting a well-formed id we cannot resolve would let the
+    // books print a provenance line that points at nothing.
+    if (citedDtuId) {
+      const store = globalThis._concordSTATE;
+      if (!store?.dtus) return { ok: false, error: "STATE unavailable" };
+      const cited = store.dtus.get(citedDtuId);
+      if (!cited) return { ok: false, error: `cited DTU not found: ${citedDtuId}` };
+      const citedOwner = cited.creator_id || null;
+      if (citedOwner && citedOwner !== userId) {
+        return { ok: false, error: "cited DTU not owned by caller" };
+      }
+    }
+    const source = String(params.source || "accounting-workbench").slice(0, 40);
+    const sourceId = String(params.sourceId || "").trim().slice(0, 80);
     const coa = s.coa.get(userId);
     let totalDebit = 0;
     let totalCredit = 0;
@@ -1005,6 +1029,7 @@ export default function registerAccountingActions(registerLensAction) {
       id: nextId("je"),
       number: `JE-${String(seq.je).padStart(5, "0")}`,
       date, memo,
+      citedDtuId, source, sourceId: sourceId || null,
       lines: normalized,
       totalDebit, totalCredit,
       postedAt: nowIso(),
@@ -1013,8 +1038,8 @@ export default function registerAccountingActions(registerLensAction) {
     s.journal.get(userId).push(entry);
     recordAudit(s, userId, {
       action: "je-post", entityType: "journal-entry", entityId: entry.id,
-      summary: `Posted ${entry.number} — ${normalized.length} lines, ${totalDebit.toFixed(2)} balanced`,
-      after: { number: entry.number, date, memo, totalDebit, totalCredit },
+      summary: `Posted ${entry.number} — ${normalized.length} lines, ${totalDebit.toFixed(2)} balanced${citedDtuId ? `, from DTU ${citedDtuId}` : ""}`,
+      after: { number: entry.number, date, memo, totalDebit, totalCredit, citedDtuId, source, sourceId: sourceId || null },
     });
     saveAccountingState();
     return { ok: true, result: { entry } };
@@ -1049,6 +1074,9 @@ export default function registerAccountingActions(registerLensAction) {
           debit: l.debit,
           credit: l.credit,
           lineMemo: l.memo,
+          citedDtuId: e.citedDtuId || null,
+          source: e.source || "accounting-workbench",
+          sourceId: e.sourceId || null,
           dimensions: Array.isArray(e.dimensions) ? e.dimensions : [],
         });
       }

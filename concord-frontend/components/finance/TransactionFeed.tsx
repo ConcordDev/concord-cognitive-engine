@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Receipt, Plus, Trash2, Loader2, Tag, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { BooksPostMenu, type PostedEntry } from '@/components/finance/BooksPostMenu';
+import { indexPostedEntries, type CoaAccount } from '@/components/finance/financeLedgerEntry';
 
 interface Transaction {
   id: string;
@@ -40,6 +42,8 @@ export function TransactionFeed() {
   const [filter, setFilter] = useState('');
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<{ category: string; confidence: number; source: string } | null>(null);
+  const [coa, setCoa] = useState<CoaAccount[]>([]);
+  const [postedByTxn, setPostedByTxn] = useState<Record<string, PostedEntry>>({});
 
   async function suggestCategory() {
     if (!form.description.trim()) return;
@@ -58,6 +62,19 @@ export function TransactionFeed() {
     }
   }
 
+  const loadBooks = useCallback(async () => {
+    try {
+      const [coaRes, ledgerRes] = await Promise.all([
+        lensRun('accounting', 'coa-list', {}),
+        lensRun('accounting', 'ledger-list', { limit: 200 }),
+      ]);
+      if (!coaRes.data?.ok) return;
+      const accounts = ((coaRes.data.result as { accounts?: CoaAccount[] } | null)?.accounts) || [];
+      setCoa(accounts);
+      setPostedByTxn(indexPostedEntries((ledgerRes.data as { result?: { rows?: unknown[] } } | undefined)?.result?.rows));
+    } catch (e) { console.error('[TxFeed] books index failed', e); }
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -72,6 +89,7 @@ export function TransactionFeed() {
   }, []);
 
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(loadBooks); }, [loadBooks]);
 
   async function ingest() {
     const amount = Number(form.amount);
@@ -197,55 +215,63 @@ export function TransactionFeed() {
         ) : (
           <ul className="divide-y divide-white/5">
             {visible.map((t) => (
-              <li key={t.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3 text-xs">
-                <span className="text-[10px] text-gray-400 font-mono w-20 shrink-0">{t.date}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{t.description}</div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {editing?.id === t.id ? (
-                      <span className="inline-flex items-center gap-1">
-                        <select
-                          value={editing.value}
-                          onChange={(e) => setEditing({ id: t.id, value: e.target.value })}
-                          className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-cyan-500/40 rounded text-white"
+              <li key={t.id} className="px-3 py-2 hover:bg-white/[0.03] group text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-gray-400 font-mono w-20 shrink-0">{t.date}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white truncate">{t.description}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {editing?.id === t.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <select
+                            value={editing.value}
+                            onChange={(e) => setEditing({ id: t.id, value: e.target.value })}
+                            className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-cyan-500/40 rounded text-white"
+                          >
+                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <button onClick={() => recategorise(t.id, editing.value)} className="text-emerald-300" aria-label="Save category">
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => setEditing(null)} className="text-gray-400" aria-label="Cancel">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setEditing({ id: t.id, value: t.category })}
+                          className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-white"
                         >
-                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <button onClick={() => recategorise(t.id, editing.value)} className="text-emerald-300" aria-label="Save category">
-                          <Check className="w-3 h-3" />
+                          <Tag className="w-2.5 h-2.5" /> {t.category}
                         </button>
-                        <button onClick={() => setEditing(null)} className="text-gray-400" aria-label="Cancel">
-                          <X className="w-3 h-3" />
-                        </button>
+                      )}
+                      <span className={cn('text-[9px] uppercase px-1 py-0.5 rounded', SOURCE_COLOR[t.categorySource])}>
+                        {SOURCE_LABEL[t.categorySource]}
                       </span>
-                    ) : (
-                      <button
-                        onClick={() => setEditing({ id: t.id, value: t.category })}
-                        className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-white"
-                      >
-                        <Tag className="w-2.5 h-2.5" /> {t.category}
-                      </button>
-                    )}
-                    <span className={cn('text-[9px] uppercase px-1 py-0.5 rounded', SOURCE_COLOR[t.categorySource])}>
-                      {SOURCE_LABEL[t.categorySource]}
-                    </span>
+                    </div>
                   </div>
+                  <span
+                    className={cn(
+                      'font-mono text-sm tabular-nums shrink-0',
+                      t.amount >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                    )}
+                  >
+                    {t.amount >= 0 ? '+' : '-'}${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    onClick={() => remove(t.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
+                    aria-label="Delete transaction"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
-                <span
-                  className={cn(
-                    'font-mono text-sm tabular-nums shrink-0',
-                    t.amount >= 0 ? 'text-emerald-300' : 'text-rose-300',
-                  )}
-                >
-                  {t.amount >= 0 ? '+' : '-'}${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <button
-                  onClick={() => remove(t.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
-                  aria-label="Delete transaction"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <BooksPostMenu
+                  row={t}
+                  accounts={coa}
+                  posted={postedByTxn[t.id]}
+                  onPosted={() => { void loadBooks(); }}
+                />
               </li>
             ))}
           </ul>
