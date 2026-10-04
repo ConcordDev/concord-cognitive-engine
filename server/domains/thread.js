@@ -1,3 +1,4 @@
+import { connectBluesky, publishBluesky, blueskyEngagement, connectMastodon, publishMastodon, mastodonEngagement, forgetSocialCredential, blueskyConnectorId, mastodonConnectorId } from "../lib/social-publish.js";
 // server/domains/thread.js
 export default function registerThreadActions(registerLensAction) {
   // The lineage/branching tree (thread.branch / thread.merge, registered in
@@ -326,10 +327,13 @@ export default function registerThreadActions(registerLensAction) {
     return { ok: true, result: { draft } };
   });
 
+  // Marks a draft as posted by you elsewhere (it publishes nothing itself);
+  // publish-to-account is the path that actually posts.
   registerLensAction("thread", "draft-publish", (ctx, _a, params = {}) => {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const draft = trList(s, trActor(ctx)).find((d) => d.id === params.id);
     if (!draft) return { ok: false, error: "draft not found" };
+    draft.postedManually = true;
     draft.status = "published";
     draft.publishedAt = trNow();
     draft.updatedAt = trNow();
@@ -443,29 +447,47 @@ export default function registerThreadActions(registerLensAction) {
     return ` ${i}/${n}`;
   };
 
-  registerLensAction("thread", "account-connect", (ctx, _a, params = {}) => {
+  // Bluesky (handle + app password) and Mastodon (instance + access token)
+  // are verified live and publish for real. X, Threads and LinkedIn need an
+  // approved OAuth app Concord doesn't have, so those accounts are "manual":
+  // publishing prepares the formatted posts for you to paste, and is never
+  // reported as posted.
+  const API_PLATFORMS = ["bluesky", "mastodon"];
+  registerLensAction("thread", "account-connect", async (ctx, _a, params = {}) => {
   try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const platform = PLATFORMS.includes(params.platform) ? params.platform : null;
     if (!platform) return { ok: false, error: "valid platform required" };
-    const handle = trClean(params.handle, 60);
+    const userId = trActor(ctx);
+    let handle = trClean(params.handle, 60).replace(/^@/, "");
+    let remote = null;
+    if (platform === "bluesky") {
+      if (!ctx?.db) return { ok: false, error: "db unavailable" };
+      const r = await connectBluesky(ctx.db, userId, { handle, appPassword: params.appPassword, service: params.service });
+      if (!r.ok) return { ok: false, error: r.reason };
+      handle = r.account.handle;
+      remote = { did: r.account.did, service: r.account.service };
+    } else if (platform === "mastodon") {
+      if (!ctx?.db) return { ok: false, error: "db unavailable" };
+      const r = await connectMastodon(ctx.db, userId, { instance: params.instance, accessToken: params.accessToken });
+      if (!r.ok) return { ok: false, error: r.reason };
+      handle = r.account.acct;
+      remote = { instance: r.account.instance, acct: r.account.acct };
+    }
     if (handle.length < 1) return { ok: false, error: "handle required" };
-    const list = trAccounts(s, trActor(ctx));
+    const list = trAccounts(s, userId);
     if (list.some((a) => a.platform === platform && a.handle.toLowerCase() === handle.toLowerCase())) {
       return { ok: false, error: "account already connected" };
     }
-    // OAuth token is supplied by the caller after completing the platform's
-    // OAuth flow client-side; we store only a redacted reference, never the
-    // raw secret. Without a token the account is "pending" and publish is
-    // blocked until OAuth completes.
-    const hasToken = !!trClean(params.oauthToken, 400);
+    const api = API_PLATFORMS.includes(platform);
     const account = {
       id: trId("acc"),
       platform,
-      handle: handle.replace(/^@/, ""),
-      displayName: trClean(params.displayName, 80) || handle.replace(/^@/, ""),
-      status: hasToken ? "connected" : "pending",
-      tokenRef: hasToken ? `oauth_${trId("tk").slice(3, 14)}` : null,
+      handle,
+      displayName: trClean(params.displayName, 80) || handle,
+      status: api ? "connected" : "manual",
+      publishMode: api ? "api" : "manual",
+      remote,
       defaults: {
         numberingStyle: NUMBERING_STYLES.includes(params.numberingStyle) ? params.numberingStyle : "slash",
         ctaTemplate: trClean(params.ctaTemplate, 280) || null,
@@ -483,7 +505,7 @@ export default function registerThreadActions(registerLensAction) {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const accounts = trAccounts(s, trActor(ctx)).map((a) => ({
       id: a.id, platform: a.platform, handle: a.handle, displayName: a.displayName,
-      status: a.status, defaults: a.defaults, connectedAt: a.connectedAt,
+      status: a.status, publishMode: a.publishMode || "manual", defaults: a.defaults, connectedAt: a.connectedAt,
     }));
     return { ok: true, result: { accounts, count: accounts.length } };
   });
@@ -496,10 +518,6 @@ export default function registerThreadActions(registerLensAction) {
     if (params.numberingStyle && NUMBERING_STYLES.includes(params.numberingStyle)) acc.defaults.numberingStyle = params.numberingStyle;
     if (params.ctaTemplate !== undefined) acc.defaults.ctaTemplate = trClean(params.ctaTemplate, 280) || null;
     if (params.autoPlug !== undefined) acc.defaults.autoPlug = trClean(params.autoPlug, 280) || null;
-    if (params.oauthToken !== undefined && trClean(params.oauthToken, 400)) {
-      acc.status = "connected";
-      acc.tokenRef = `oauth_${trId("tk").slice(3, 14)}`;
-    }
     saveThread();
     return { ok: true, result: { account: { id: acc.id, platform: acc.platform, handle: acc.handle, displayName: acc.displayName, status: acc.status, defaults: acc.defaults } } };
   });
@@ -509,7 +527,11 @@ export default function registerThreadActions(registerLensAction) {
     const list = trAccounts(s, trActor(ctx));
     const i = list.findIndex((a) => a.id === params.id);
     if (i < 0) return { ok: false, error: "account not found" };
-    list.splice(i, 1);
+    const [gone] = list.splice(i, 1);
+    if (ctx?.db && gone?.remote) {
+      if (gone.platform === "bluesky") forgetSocialCredential(ctx.db, trActor(ctx), blueskyConnectorId(gone.remote.did));
+      if (gone.platform === "mastodon") forgetSocialCredential(ctx.db, trActor(ctx), mastodonConnectorId(new URL(gone.remote.instance).host, gone.remote.acct));
+    }
     saveThread();
     return { ok: true, result: { disconnected: params.id } };
   });
@@ -704,9 +726,7 @@ export default function registerThreadActions(registerLensAction) {
     if (!draft) return { ok: false, error: "draft not found" };
     const account = trAccounts(s, userId).find((a) => a.id === params.accountId);
     if (!account) return { ok: false, error: "account not found — connect an account first" };
-    if (account.status !== "connected") {
-      return { ok: false, error: `account "${account.handle}" is pending OAuth — complete the connection before publishing` };
-    }
+    const mode = account.publishMode === "api" && account.status === "connected" ? "api" : "manual";
     // Apply the account's default numbering + CTA so the published shape
     // matches what the account owner configured.
     const style = account.defaults.numberingStyle || "slash";
@@ -714,7 +734,7 @@ export default function registerThreadActions(registerLensAction) {
     const ctaText = ctaTpl
       ? ctaTpl.text.replace("{handle}", account.handle).replace("{link}", draft.autoPlug || account.defaults.autoPlug || "")
       : (account.defaults.ctaTemplate || null);
-    const limit = account.platform === "linkedin" ? 2800 : account.platform === "bluesky" ? 300 : 270;
+    const limit = account.platform === "linkedin" ? 2800 : account.platform === "bluesky" ? 300 : account.platform === "mastodon" ? 480 : 270;
     const raw = splitThread(draft.content, limit);
     const n = raw.length;
     const posts = raw.map((p, idx) => {
@@ -724,11 +744,20 @@ export default function registerThreadActions(registerLensAction) {
       return { index: idx + 1, text, chars: text.length };
     });
     const mediaCount = Array.isArray(draft.media) ? draft.media.length : 0;
-    // Dispatch to the platform. The platform API call is performed via the
-    // account's OAuth token by the host (server-side relay). The result of
-    // that dispatch is recorded; if the relay is unavailable the publish is
-    // still recorded as queued so no work is lost.
-    const dispatch = { delivered: true, relay: "host", attemptedAt: trNow() };
+    // Publish for real where the platform allows it; otherwise prepare the
+    // posts to paste. `delivered` is true only when the platform returned
+    // every created post.
+    let dispatch;
+    if (mode === "api") {
+      const parts = posts.map((p) => p.text);
+      const r = account.platform === "bluesky"
+        ? await publishBluesky(ctx.db, userId, account.remote, parts)
+        : await publishMastodon(ctx.db, userId, account.remote, parts);
+      dispatch = { delivered: r.ok, method: "api", posted: r.posted || [], error: r.ok ? null : r.reason, attemptedAt: trNow() };
+      posts.forEach((p, i) => { if (r.posted?.[i]) { p.url = r.posted[i].url || null; p.remoteId = r.posted[i].uri || r.posted[i].id; } });
+    } else {
+      dispatch = { delivered: false, method: "manual", posted: [], error: null, attemptedAt: trNow() };
+    }
     const record = {
       id: trId("pub"),
       draftId: draft.id,
@@ -746,11 +775,15 @@ export default function registerThreadActions(registerLensAction) {
       engagement: { impressions: 0, likes: 0, reposts: 0, replies: 0, perPost: [], lastSyncedAt: null },
     };
     trPublished(s, userId).push(record);
-    draft.status = "published";
-    draft.publishedAt = record.publishedAt;
+    record.status = dispatch.delivered ? "published" : mode === "manual" ? "ready_to_post" : (dispatch.posted.length ? "partially_published" : "failed");
+    draft.status = dispatch.delivered ? "published" : mode === "manual" ? "ready_to_post" : "publish_failed";
+    if (dispatch.delivered) draft.publishedAt = record.publishedAt;
     draft.lastPublishId = record.id;
     draft.updatedAt = trNow();
     saveThread();
+    if (mode === "api" && !dispatch.delivered) {
+      return { ok: false, error: `publish failed: ${dispatch.error}`, result: { published: record } };
+    }
     return { ok: true, result: { published: record } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -783,6 +816,43 @@ export default function registerThreadActions(registerLensAction) {
     };
     saveThread();
     return { ok: true, result: { engagement: rec.engagement, publishId: rec.id } };
+  });
+
+  // Real like/repost/reply counts from the platform for API-published threads.
+  registerLensAction("thread", "engagement-fetch", async (ctx, _a, params = {}) => {
+    const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = trActor(ctx);
+    const rec = trPublished(s, userId).find((p) => p.id === params.publishId);
+    if (!rec) return { ok: false, error: "published thread not found" };
+    if (!rec.dispatch?.delivered || rec.dispatch.method !== "api") return { ok: false, error: "only threads published through Bluesky or Mastodon can fetch engagement; enter numbers for others" };
+    const account = trAccounts(s, userId).find((a) => a.id === rec.accountId);
+    const r = rec.platform === "bluesky"
+      ? await blueskyEngagement(rec.dispatch.posted.map((p) => p.uri))
+      : account ? await mastodonEngagement(ctx.db, userId, account.remote, rec.dispatch.posted.map((p) => p.id)) : { ok: false, reason: "account disconnected" };
+    if (!r.ok) return { ok: false, error: r.reason };
+    const sum = (k) => r.perPost.reduce((t, m) => t + (m[k] || 0), 0);
+    rec.engagement = { impressions: null, likes: sum("likes"), reposts: sum("reposts"), replies: sum("replies"), perPost: r.perPost, lastSyncedAt: trNow(), source: rec.platform };
+    saveThread();
+    return { ok: true, result: { engagement: rec.engagement, publishId: rec.id } };
+  });
+
+  // The user confirms they pasted a ready-to-post thread themselves. This is
+  // their attestation, recorded as such — never an API delivery.
+  registerLensAction("thread", "publish-mark-posted", (ctx, _a, params = {}) => {
+    const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = trActor(ctx);
+    const rec = trPublished(s, userId).find((p) => p.id === params.publishId);
+    if (!rec) return { ok: false, error: "published thread not found" };
+    if (rec.status !== "ready_to_post") return { ok: false, error: "only a ready-to-post thread can be marked as posted" };
+    const url = typeof params.url === "string" && /^https:\/\//i.test(params.url.trim()) ? params.url.trim().slice(0, 500) : null;
+    rec.status = "published";
+    rec.postedManually = true;
+    rec.publishedAt = trNow();
+    if (url && rec.posts?.[0]) rec.posts[0].url = url;
+    const draft = trList(s, userId).find((d) => d.id === rec.draftId);
+    if (draft) { draft.status = "published"; draft.publishedAt = rec.publishedAt; draft.postedManually = true; }
+    saveThread();
+    return { ok: true, result: { published: rec } };
   });
 
   registerLensAction("thread", "engagement-report", (ctx, _a, params = {}) => {
@@ -819,13 +889,21 @@ export default function registerThreadActions(registerLensAction) {
         impressions: e.impressions, likes: e.likes, reposts: e.reposts, replies: e.replies,
         engagementRate: e.impressions > 0 ? Math.round((eng / e.impressions) * 1000) / 10 : 0,
         synced: !!e.lastSyncedAt,
+        metricsSource: e.source || (e.lastSyncedAt ? "manual" : null),
+        status: rec.status || "published",
+        method: rec.dispatch?.method || "manual",
+        postedManually: !!rec.postedManually,
+        posts: (rec.posts || []).map((p, i) => ({ index: i + 1, text: p.text, url: p.url || null })),
       };
     }).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     const totals = threads.reduce((t, x) => ({
       impressions: t.impressions + x.impressions, likes: t.likes + x.likes,
       reposts: t.reposts + x.reposts, replies: t.replies + x.replies,
     }), { impressions: 0, likes: 0, reposts: 0, replies: 0 });
-    const totalEng = totals.likes + totals.reposts + totals.replies;
+    // Rate only over threads that report impressions (Bluesky/Mastodon don't),
+    // so engagement without impressions doesn't inflate the average.
+    const withImpr = threads.filter((x) => x.impressions > 0);
+    const totalEng = withImpr.reduce((t, x) => t + x.likes + x.reposts + x.replies, 0);
     return {
       ok: true,
       result: {

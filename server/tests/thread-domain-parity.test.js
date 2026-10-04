@@ -1,9 +1,12 @@
 // Contract tests for the thread lens — Typefully-shape thread composer
 // in server/domains/thread.js.
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import registerThreadActions from "../domains/thread.js";
+import Database from "better-sqlite3";
+import { up as migrate331 } from "../migrations/331_connector_oauth_tokens.js";
+import { _setSocialFetchForTest } from "../lib/social-publish.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -111,28 +114,28 @@ describe("thread — analysis macros still intact", () => {
 });
 
 describe("thread.account multi-account management", () => {
-  it("account-connect stores a pending account without a token", () => {
-    const r = call("account-connect", ctxA, { platform: "x", handle: "@me" });
+  it("X / Threads / LinkedIn accounts are manual (copy-and-post), never 'connected' by a pasted token", async () => {
+    const r = await call("account-connect", ctxA, { platform: "x", handle: "@me", oauthToken: "anything" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.account.status, "pending");
+    assert.equal(r.result.account.status, "manual");
+    assert.equal(r.result.account.publishMode, "manual");
     assert.equal(r.result.account.handle, "me");
   });
-  it("account-connect with a token connects, account-list is per-user", () => {
-    call("account-connect", ctxA, { platform: "x", handle: "alice", oauthToken: "tok123" });
+  it("account-list is per-user", async () => {
+    await call("account-connect", ctxA, { platform: "x", handle: "alice" });
     assert.equal(call("account-list", ctxA, {}).result.count, 1);
     assert.equal(call("account-list", ctxB, {}).result.count, 0);
-    assert.equal(call("account-list", ctxA, {}).result.accounts[0].status, "connected");
   });
-  it("account-connect rejects an invalid platform", () => {
-    assert.equal(call("account-connect", ctxA, { platform: "myspace", handle: "x" }).ok, false);
+  it("account-connect rejects an invalid platform", async () => {
+    assert.equal((await call("account-connect", ctxA, { platform: "myspace", handle: "x" })).ok, false);
   });
-  it("account-update changes default numbering style", () => {
-    const a = call("account-connect", ctxA, { platform: "x", handle: "h1" }).result.account;
+  it("account-update changes default numbering style", async () => {
+    const a = (await call("account-connect", ctxA, { platform: "x", handle: "h1" })).result.account;
     const r = call("account-update", ctxA, { id: a.id, numberingStyle: "emoji" });
     assert.equal(r.result.account.defaults.numberingStyle, "emoji");
   });
-  it("account-disconnect removes the account", () => {
-    const a = call("account-connect", ctxA, { platform: "x", handle: "h2" }).result.account;
+  it("account-disconnect removes the account", async () => {
+    const a = (await call("account-connect", ctxA, { platform: "x", handle: "h2" })).result.account;
     call("account-disconnect", ctxA, { id: a.id });
     assert.equal(call("account-list", ctxA, {}).result.count, 0);
   });
@@ -221,36 +224,105 @@ describe("thread.numbering styles + CTA templates", () => {
 });
 
 describe("thread.publish + engagement analytics", () => {
-  it("publish-to-account is blocked for a pending account", async () => {
+  function dbCtx(userId) {
+    const db = new Database(":memory:");
+    migrate331(db);
+    return { actor: { userId }, userId, db };
+  }
+  function fakeBluesky({ failAt = Infinity } = {}) {
+    const calls = [];
+    let n = 0;
+    _setSocialFetchForTest(async (url, init) => {
+      const body = init?.body ? JSON.parse(init.body) : null;
+      calls.push({ url, body });
+      const ok = (data) => ({ ok: true, status: 200, json: async () => data });
+      if (url.endsWith("createSession")) {
+        if (body.password !== "app-pass-1") return { ok: false, status: 401, json: async () => ({ error: "AuthenticationRequired" }) };
+        return ok({ did: "did:plc:abc", handle: "me.bsky.social", accessJwt: "jwt" });
+      }
+      if (url.endsWith("createRecord")) {
+        n++;
+        if (n >= failAt) return { ok: false, status: 500, json: async () => ({ error: "InternalServerError" }) };
+        return ok({ uri: `at://did:plc:abc/app.bsky.feed.post/r${n}`, cid: `c${n}` });
+      }
+      if (url.includes("getPosts")) return ok({ posts: [{ uri: "at://did:plc:abc/app.bsky.feed.post/r1", likeCount: 7, repostCount: 2, replyCount: 1 }] });
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+    return calls;
+  }
+  afterEach(() => _setSocialFetchForTest(null));
+
+  it("a manual account prepares posts to paste and never claims they were posted", async () => {
     const d = call("thread-draft", ctxA, { content: "publish target thread" }).result.draft;
-    const a = call("account-connect", ctxA, { platform: "x", handle: "pend" }).result.account;
+    const a = (await call("account-connect", ctxA, { platform: "x", handle: "pend" })).result.account;
     const r = await call("publish-to-account", ctxA, { draftId: d.id, accountId: a.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.published.status, "ready_to_post");
+    assert.equal(r.result.published.dispatch.delivered, false);
+    assert.ok(r.result.published.posts[0].text.includes("publish target thread"));
+  });
+
+  it("Bluesky: wrong app password is refused; right one connects and publishes a real reply chain", async () => {
+    const ctx = dbCtx("bsky_user");
+    const calls = fakeBluesky();
+    assert.equal((await call("account-connect", ctx, { platform: "bluesky", handle: "me.bsky.social", appPassword: "wrong" })).ok, false);
+    const a = (await call("account-connect", ctx, { platform: "bluesky", handle: "me.bsky.social", appPassword: "app-pass-1" })).result.account;
+    assert.equal(a.status, "connected");
+    const long = Array.from({ length: 30 }, (_, i) => `Sentence number ${i} about building things carefully.`).join(" ");
+    const d = call("thread-draft", ctx, { content: long }).result.draft;
+    const r = await call("publish-to-account", ctx, { draftId: d.id, accountId: a.id });
+    assert.equal(r.ok, true);
+    const pub = r.result.published;
+    assert.equal(pub.status, "published");
+    assert.ok(pub.postCount > 1);
+    const creates = calls.filter((c) => c.url.endsWith("createRecord"));
+    assert.equal(creates.length, pub.postCount);
+    assert.equal(creates[0].body.record.reply, undefined);
+    assert.equal(creates[1].body.record.reply.parent.uri, "at://did:plc:abc/app.bsky.feed.post/r1");
+    assert.equal(creates[1].body.record.reply.root.uri, "at://did:plc:abc/app.bsky.feed.post/r1");
+    assert.equal(pub.posts[0].url, "https://bsky.app/profile/me.bsky.social/post/r1");
+    const eng = await call("engagement-fetch", ctx, { publishId: pub.id });
+    assert.equal(eng.result.engagement.likes, 7);
+    assert.equal(eng.result.engagement.impressions, null);
+  });
+
+  it("Bluesky: a failure mid-thread is reported as failed, not published", async () => {
+    const ctx = dbCtx("bsky_fail");
+    fakeBluesky({ failAt: 2 });
+    const a = (await call("account-connect", ctx, { platform: "bluesky", handle: "me.bsky.social", appPassword: "app-pass-1" })).result.account;
+    const long = Array.from({ length: 30 }, (_, i) => `Sentence number ${i} about building things carefully.`).join(" ");
+    const d = call("thread-draft", ctx, { content: long }).result.draft;
+    const r = await call("publish-to-account", ctx, { draftId: d.id, accountId: a.id });
     assert.equal(r.ok, false);
-    assert.match(r.error, /pending/);
+    assert.equal(r.result.published.status, "partially_published");
+    assert.equal(r.result.published.dispatch.posted.length, 1);
   });
-  it("publish-to-account publishes via a connected account", async () => {
-    const d = call("thread-draft", ctxA, { content: "live publish thread body" }).result.draft;
-    const a = call("account-connect", ctxA, { platform: "x", handle: "live", oauthToken: "tok" }).result.account;
-    const r = await call("publish-to-account", ctxA, { draftId: d.id, accountId: a.id });
-    assert.equal(r.ok, true);
-    assert.ok(r.result.published.id);
-  });
-  it("engagement-sync records real per-post metrics", async () => {
-    const d = call("thread-draft", ctxA, { content: "analytics thread body here" }).result.draft;
-    const a = call("account-connect", ctxA, { platform: "x", handle: "an", oauthToken: "tok" }).result.account;
-    const pub = (await call("publish-to-account", ctxA, { draftId: d.id, accountId: a.id })).result.published;
-    const r = call("engagement-sync", ctxA, { publishId: pub.id, perPost: [{ postIndex: 1, impressions: 100, likes: 10, reposts: 2, replies: 1 }] });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.engagement.impressions, 100);
-  });
-  it("engagement-report aggregates across published threads", async () => {
+
+  it("engagement-sync records user-entered per-post metrics and engagement-report aggregates them", async () => {
     const d = call("thread-draft", ctxA, { content: "report thread body here" }).result.draft;
-    const a = call("account-connect", ctxA, { platform: "x", handle: "rep", oauthToken: "tok" }).result.account;
+    const a = (await call("account-connect", ctxA, { platform: "x", handle: "rep" })).result.account;
     const pub = (await call("publish-to-account", ctxA, { draftId: d.id, accountId: a.id })).result.published;
-    call("engagement-sync", ctxA, { publishId: pub.id, perPost: [{ postIndex: 1, impressions: 200, likes: 20, reposts: 4, replies: 2 }] });
-    const r = call("engagement-report", ctxA, {});
+    const r = call("engagement-sync", ctxA, { publishId: pub.id, perPost: [{ postIndex: 1, impressions: 200, likes: 20, reposts: 4, replies: 2 }] });
+    assert.equal(r.result.engagement.impressions, 200);
+    const rep = call("engagement-report", ctxA, {});
+    assert.equal(rep.ok, true);
+    assert.equal(rep.result.totals.impressions, 200);
+  });
+});
+
+describe("thread.publish-mark-posted", () => {
+  it("records the user's own confirmation for a ready-to-post thread, once", async () => {
+    const d = call("thread-draft", ctxA, { content: "manual post body" }).result.draft;
+    const a = (await call("account-connect", ctxA, { platform: "linkedin", handle: "me" })).result.account;
+    const pub = (await call("publish-to-account", ctxA, { draftId: d.id, accountId: a.id })).result.published;
+    const r = call("publish-mark-posted", ctxA, { publishId: pub.id, url: "https://www.linkedin.com/posts/x" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.publishedCount, 1);
-    assert.equal(r.result.totals.impressions, 200);
+    assert.equal(r.result.published.status, "published");
+    assert.equal(r.result.published.postedManually, true);
+    assert.equal(r.result.published.dispatch.delivered, false);
+    assert.equal(call("publish-mark-posted", ctxA, { publishId: pub.id }).ok, false);
+    const rep = call("engagement-report", ctxA, {}).result.threads.find((t) => t.publishId === pub.id);
+    assert.equal(rep.method, "manual");
+    assert.equal(rep.posts[0].url, "https://www.linkedin.com/posts/x");
   });
 });

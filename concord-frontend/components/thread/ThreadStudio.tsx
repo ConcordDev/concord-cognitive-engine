@@ -42,7 +42,8 @@ type Tab = 'accounts' | 'media' | 'calendar' | 'ai' | 'style' | 'analytics';
 
 interface Account {
   id: string; platform: string; handle: string; displayName: string;
-  status: string; defaults: { numberingStyle: string; ctaTemplate: string | null; autoPlug: string | null };
+  status: string; publishMode?: 'api' | 'manual';
+  defaults: { numberingStyle: string; ctaTemplate: string | null; autoPlug: string | null };
 }
 interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number }
 interface MediaItem { id: string; postIndex: number; kind: string; url: string; alt: string | null; order: number }
@@ -54,7 +55,10 @@ interface PublishedThread {
   publishId: string; platform: string; handle: string; title: string;
   postCount: number; impressions: number; likes: number; reposts: number; replies: number;
   engagementRate: number; synced: boolean;
+  status?: string; method?: string; postedManually?: boolean; metricsSource?: string | null;
+  posts?: Array<{ index: number; text: string; url: string | null }>;
 }
+const API_PLATFORMS = ['bluesky', 'mastodon'];
 
 function Empty({ label }: { label: string }) {
   return <p className="text-[11px] italic text-zinc-400 py-3 text-center">{label}</p>;
@@ -75,7 +79,7 @@ export function ThreadStudio() {
     const r = await lensRun('thread', 'draft-list', {});
     if (r.data?.ok) setDrafts((r.data.result?.drafts as DraftMeta[]) || []);
   }, []);
-  useEffect(() => { void loadDrafts(); }, [loadDrafts]);
+  useEffect(() => { void Promise.resolve().then(loadDrafts); }, [loadDrafts]);
 
   const tabs: Array<{ id: Tab; label: string; icon: typeof Users }> = [
     { id: 'accounts', label: 'Accounts', icon: Users },
@@ -116,9 +120,12 @@ export function ThreadStudio() {
 function AccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [platform, setPlatform] = useState('x');
+  const [platform, setPlatform] = useState('bluesky');
   const [handle, setHandle] = useState('');
-  const [oauthToken, setOauthToken] = useState('');
+  const [appPassword, setAppPassword] = useState('');
+  const [instance, setInstance] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const refresh = useCallback(async () => {
@@ -126,14 +133,21 @@ function AccountsTab() {
     if (r.data?.ok) setAccounts((r.data.result?.accounts as Account[]) || []);
     setLoading(false);
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function connect() {
     setErr('');
-    if (!handle.trim()) { setErr('handle required'); return; }
-    const r = await lensRun('thread', 'account-connect', { platform, handle, oauthToken });
-    if (r.data?.ok) { setHandle(''); setOauthToken(''); await refresh(); }
-    else setErr(r.data?.error || 'connect failed');
+    if (platform !== 'mastodon' && !handle.trim()) { setErr('Handle required'); return; }
+    if (platform === 'bluesky' && !appPassword.trim()) { setErr('App password required'); return; }
+    if (platform === 'mastodon' && (!instance.trim() || !accessToken.trim())) { setErr('Instance and access token required'); return; }
+    setBusy(true);
+    const input = platform === 'bluesky' ? { platform, handle, appPassword }
+      : platform === 'mastodon' ? { platform, instance, accessToken, handle }
+      : { platform, handle };
+    const r = await lensRun('thread', 'account-connect', input);
+    setBusy(false);
+    if (r.data?.ok) { setHandle(''); setAppPassword(''); setAccessToken(''); await refresh(); }
+    else setErr(r.data?.error === 'invalid_credentials' ? `${platform} rejected those credentials` : (r.data?.error || 'connect failed'));
   }
   async function disconnect(id: string) {
     await lensRun('thread', 'account-disconnect', { id });
@@ -145,25 +159,37 @@ function AccountsTab() {
   }
 
   if (loading) return <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />;
+  const field = 'flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200';
 
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
         <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Connect an account</p>
         <div className="flex flex-wrap gap-1.5">
-          <select value={platform} onChange={e => setPlatform(e.target.value)}
+          <select value={platform} onChange={e => { setPlatform(e.target.value); setErr(''); }} aria-label="Platform"
             className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
             {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <input value={handle} onChange={e => setHandle(e.target.value)} placeholder="@handle"
-            className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
-          <input value={oauthToken} onChange={e => setOauthToken(e.target.value)} placeholder="OAuth token (optional)"
-            className="flex-1 min-w-[140px] bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
-          <button onClick={connect} className="px-2 py-1 text-xs rounded bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1">
-            <Plus className="w-3 h-3" />Connect
+          {platform === 'mastodon' ? (
+            <>
+              <input value={instance} onChange={e => setInstance(e.target.value)} placeholder="mastodon.social" aria-label="Mastodon instance" className={field} />
+              <input value={accessToken} onChange={e => setAccessToken(e.target.value)} type="password" autoComplete="off" placeholder="Access token" aria-label="Mastodon access token" className={field} />
+            </>
+          ) : (
+            <input value={handle} onChange={e => setHandle(e.target.value)} placeholder={platform === 'bluesky' ? 'you.bsky.social' : '@handle'} aria-label="Handle" className={field} />
+          )}
+          {platform === 'bluesky' && (
+            <input value={appPassword} onChange={e => setAppPassword(e.target.value)} type="password" autoComplete="off" placeholder="App password" aria-label="Bluesky app password" className={field} />
+          )}
+          <button onClick={connect} disabled={busy} className="px-2 py-1 text-xs rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white inline-flex items-center gap-1">
+            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}{API_PLATFORMS.includes(platform) ? 'Verify & connect' : 'Add'}
           </button>
         </div>
-        <p className="text-[10px] text-zinc-400 mt-1">Paste the token from the platform&apos;s OAuth flow to enable real publishing. Without it the account stays <span className="text-amber-400">pending</span>.</p>
+        <p className="text-[10px] text-zinc-400 mt-1">
+          {platform === 'bluesky' && 'Create an app password in Bluesky → Settings → Privacy and security → App passwords. Concord checks it with Bluesky, stores it encrypted, and posts threads for you.'}
+          {platform === 'mastodon' && 'In your instance go to Preferences → Development → New application with the write:statuses and read:statuses scopes, then paste its access token. Concord checks it and posts threads for you.'}
+          {!API_PLATFORMS.includes(platform) && `${platform} doesn't let personal accounts post through its API without an approved developer app, so Concord prepares each post for you to copy and paste. It never claims to have posted.`}
+        </p>
         {err && <ErrLine msg={err} />}
       </div>
       {accounts.length === 0 ? <Empty label="No accounts connected yet" /> : (
@@ -172,11 +198,11 @@ function AccountsTab() {
             <li key={a.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-zinc-100 truncate">@{a.handle} <span className="text-zinc-400 font-normal">· {a.platform}</span></p>
-                <p className="text-[10px] text-zinc-400">{a.displayName}</p>
+                <p className="text-[10px] text-zinc-400">{a.publishMode === 'api' ? 'Posts directly' : 'Copy & paste'}</p>
               </div>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
-                a.status === 'connected' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-amber-600/20 text-amber-400')}>
-                {a.status}
+                a.status === 'connected' ? 'bg-emerald-600/20 text-emerald-400' : 'bg-zinc-700/40 text-zinc-300')}>
+                {a.status === 'connected' ? 'connected' : 'manual'}
               </span>
               <select value={a.defaults.numberingStyle} onChange={e => setNumbering(a.id, e.target.value)}
                 className="bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[10px] text-zinc-300" aria-label="Numbering style">
@@ -204,14 +230,14 @@ function MediaTab({ drafts }: { drafts: DraftMeta[] }) {
   const [err, setErr] = useState('');
   const [dragId, setDragId] = useState<string | null>(null);
 
-  useEffect(() => { if (!draftId && drafts.length) setDraftId(drafts[0].id); }, [drafts, draftId]);
+  useEffect(() => { if (!draftId && drafts.length) queueMicrotask(() => setDraftId(drafts[0].id)); }, [drafts, draftId]);
 
   const refresh = useCallback(async () => {
     if (!draftId) { setMedia([]); return; }
     const r = await lensRun('thread', 'media-list', { draftId });
     if (r.data?.ok) setMedia((r.data.result?.media as MediaItem[]) || []);
   }, [draftId]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function attach() {
     setErr('');
@@ -327,7 +353,7 @@ function CalendarTab() {
     if (r.data?.ok) setCells((r.data.result?.cells as CalCell[]) || []);
     setLoading(false);
   }, [range, anchor]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   function shift(dir: number) {
     const d = new Date(anchor);
@@ -527,6 +553,12 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
   const [accountId, setAccountId] = useState('');
   const [err, setErr] = useState('');
   const [syncTarget, setSyncTarget] = useState<PublishedThread | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [fetching, setFetching] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [copied, setCopied] = useState('');
+  const [postedUrl, setPostedUrl] = useState('');
 
   const refresh = useCallback(async () => {
     const [accRes, repRes] = await Promise.all([
@@ -540,20 +572,44 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
       setAvgRate(Number(repRes.data.result?.avgEngagementRate || 0));
     }
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function publish() {
-    setErr('');
-    if (!draftId || !accountId) { setErr('select a draft and a connected account'); return; }
+    setErr(''); setNote('');
+    if (!draftId || !accountId) { setErr('select a draft and an account'); return; }
+    setBusy(true);
     const r = await lensRun('thread', 'publish-to-account', { draftId, accountId });
-    if (r.data?.ok) { await refresh(); onChange(); }
-    else setErr(r.data?.error || 'publish failed');
+    setBusy(false);
+    const rec = r.data?.result?.published as { status?: string; id?: string; postCount?: number } | undefined;
+    if (r.data?.ok) {
+      setNote(rec?.status === 'ready_to_post' ? 'Ready to post — copy each post below into the app, then mark it posted.' : `Posted ${rec?.postCount ?? ''} posts.`);
+      if (rec?.status === 'ready_to_post' && rec.id) setOpenId(rec.id);
+      await refresh(); onChange();
+    } else {
+      setErr(r.data?.error || 'publish failed');
+      await refresh();
+    }
+  }
+  async function fetchMetrics(publishId: string) {
+    setErr(''); setFetching(publishId);
+    const r = await lensRun('thread', 'engagement-fetch', { publishId });
+    setFetching(null);
+    if (r.data?.ok) await refresh(); else setErr(r.data?.error || 'fetch failed');
+  }
+  async function markPosted(publishId: string) {
+    setErr('');
+    const r = await lensRun('thread', 'publish-mark-posted', { publishId, url: postedUrl });
+    if (r.data?.ok) { setPostedUrl(''); setOpenId(null); await refresh(); onChange(); }
+    else setErr(r.data?.error || 'could not mark posted');
+  }
+  async function copy(key: string, text: string) {
+    try { await navigator.clipboard.writeText(text); setCopied(key); } catch { setErr('Clipboard unavailable — select the text and copy it'); }
   }
 
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Publish a draft to a connected account</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Publish a draft</p>
         <div className="flex flex-wrap gap-1.5">
           <select value={draftId} onChange={e => setDraftId(e.target.value)}
             className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" aria-label="Draft to publish">
@@ -563,12 +619,13 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
           <select value={accountId} onChange={e => setAccountId(e.target.value)}
             className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" aria-label="Account">
             <option value="">— account —</option>
-            {accounts.map(a => <option key={a.id} value={a.id}>@{a.handle} ({a.status})</option>)}
+            {accounts.map(a => <option key={a.id} value={a.id}>@{a.handle} · {a.platform}{a.publishMode === 'api' ? '' : ' (copy & paste)'}</option>)}
           </select>
-          <button onClick={publish} className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1">
-            <Send className="w-3 h-3" />Publish
+          <button onClick={publish} disabled={busy} className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white inline-flex items-center gap-1">
+            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}{accounts.find(a => a.id === accountId)?.publishMode === 'api' ? 'Post thread' : 'Prepare'}
           </button>
         </div>
+        {note && <p role="status" className="text-[10px] text-emerald-400 mt-1">{note}</p>}
         {err && <ErrLine msg={err} />}
       </div>
 
@@ -582,33 +639,66 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
           ))}
         </div>
       )}
-      {threads.length > 0 && <p className="text-[10px] text-zinc-400">Avg engagement rate: <span className="text-sky-300">{avgRate}%</span></p>}
+      {threads.length > 0 && <p className="text-[10px] text-zinc-400">Avg engagement rate: <span className="text-sky-300">{totals && totals.impressions > 0 ? `${avgRate}%` : 'needs impressions'}</span> · Bluesky and Mastodon don&apos;t report impressions</p>}
 
       {threads.length === 0 ? <Empty label="No published threads yet — publish a draft above" /> : (
         <ul className="space-y-1.5">
-          {threads.map(t => (
+          {threads.map(t => {
+            const ready = t.status === 'ready_to_post';
+            const failed = t.status === 'failed' || t.status === 'partially_published';
+            return (
             <li key={t.publishId} className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-zinc-100 truncate">{t.title}</p>
-                  <p className="text-[10px] text-zinc-400">@{t.handle} · {t.platform} · {t.postCount} posts</p>
+                  <p className="text-[10px] text-zinc-400">
+                    @{t.handle} · {t.platform} · {t.postCount} posts
+                    {t.method === 'api' && t.status === 'published' && ' · posted via API'}
+                    {t.postedManually && ' · you posted it'}
+                    {t.posts?.[0]?.url && <> · <a href={t.posts[0].url} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">view</a></>}
+                  </p>
                 </div>
                 <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
-                  t.synced ? 'bg-emerald-600/20 text-emerald-400' : 'bg-zinc-700/40 text-zinc-400')}>
-                  {t.synced ? `${t.engagementRate}% ER` : 'not synced'}
+                  ready ? 'bg-amber-600/20 text-amber-300' : failed ? 'bg-rose-600/20 text-rose-300'
+                    : t.synced ? 'bg-emerald-600/20 text-emerald-400' : 'bg-zinc-700/40 text-zinc-400')}>
+                  {ready ? 'ready to post' : t.status === 'failed' ? 'failed' : t.status === 'partially_published' ? 'partly posted'
+                    : t.synced ? (t.impressions > 0 ? `${t.engagementRate}% ER` : 'synced') : 'no metrics'}
                 </span>
-                <button onClick={() => setSyncTarget(t)} className="text-sky-400 hover:text-sky-300 text-[11px]">Sync metrics</button>
+                {ready && <button onClick={() => setOpenId(openId === t.publishId ? null : t.publishId)} className="text-amber-300 hover:text-amber-200 text-[11px]">{openId === t.publishId ? 'Hide' : 'Copy posts'}</button>}
+                {!ready && !failed && (t.method === 'api'
+                  ? <button onClick={() => fetchMetrics(t.publishId)} disabled={fetching === t.publishId} className="text-sky-400 hover:text-sky-300 text-[11px] inline-flex items-center gap-1">{fetching === t.publishId && <Loader2 className="w-3 h-3 animate-spin" />}Fetch metrics</button>
+                  : <button onClick={() => setSyncTarget(t)} className="text-sky-400 hover:text-sky-300 text-[11px]">Enter metrics</button>)}
               </div>
               {t.synced && (
                 <div className="flex gap-3 mt-1 text-[10px] text-zinc-400">
-                  <span>{t.impressions.toLocaleString()} impr</span>
+                  {t.impressions > 0 && <span>{t.impressions.toLocaleString()} impr</span>}
                   <span>{t.likes} likes</span>
                   <span>{t.reposts} reposts</span>
                   <span>{t.replies} replies</span>
+                  {t.metricsSource && <span className="text-zinc-500">from {t.metricsSource === 'manual' ? 'your entry' : t.metricsSource}</span>}
+                </div>
+              )}
+              {ready && openId === t.publishId && (
+                <div className="mt-2 space-y-1.5">
+                  {(t.posts || []).map(p => (
+                    <div key={p.index} className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-950 p-1.5">
+                      <span className="text-[10px] text-zinc-500 w-5">{p.index}</span>
+                      <p className="flex-1 whitespace-pre-wrap text-[11px] text-zinc-200">{p.text}</p>
+                      <button onClick={() => copy(`${t.publishId}:${p.index}`, p.text)} className="text-[10px] text-sky-400 hover:text-sky-300 shrink-0">
+                        {copied === `${t.publishId}:${p.index}` ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <input value={postedUrl} onChange={e => setPostedUrl(e.target.value)} placeholder="Link to the first post (optional)" aria-label="Posted thread URL"
+                      className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
+                    <button onClick={() => markPosted(t.publishId)} className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white">I posted it</button>
+                  </div>
                 </div>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
       {syncTarget && <SyncModal thread={syncTarget} onClose={() => setSyncTarget(null)} onDone={() => { setSyncTarget(null); void refresh(); }} />}
@@ -642,7 +732,7 @@ function SyncModal({ thread, onClose, onDone }: { thread: PublishedThread; onClo
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-3" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <p className="text-sm font-bold text-zinc-100 mb-2">Sync engagement · {thread.title}</p>
-        <p className="text-[10px] text-zinc-400 mb-2">Enter the real per-post numbers from {thread.platform}.</p>
+        <p className="text-[10px] text-zinc-400 mb-2">Enter the per-post numbers shown in {thread.platform}&apos;s own analytics.</p>
         <div className="space-y-1 max-h-64 overflow-y-auto">
           {rows.map((row, i) => (
             <div key={i} className="flex items-center gap-1">
