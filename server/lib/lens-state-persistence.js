@@ -32,6 +32,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // stores per-user maps here; without this key a hard restart wiped every
   // map while the UI still showed it.
   "graphLens",
+  // 34 -> 35: "hypothesisLens" so a user's imported datasets, saved
+  // analyses, and pre-registered hypotheses survive a restart. The
+  // Hypothesis domain stores per-user data here; without this key a hard
+  // restart wiped every pre-registration while the registry still showed it.
+  "hypothesisLens",
 ]);
 
 function serializeValue(v) {

@@ -40,7 +40,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // filters, group rules, and layouts survive a restart. The Graph domain
     // stores per-user maps here; without this key a hard restart wiped every
     // map while the UI still showed it.
-    assert.equal(LENS_STATE_KEYS.length, 34);
+    // 34 -> 35: "hypothesisLens" so a user's imported datasets, saved
+    // analyses, and pre-registered hypotheses survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 35);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -52,6 +54,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("threadLens"));
     assert.ok(LENS_STATE_KEYS.includes("codeLens"));
     assert.ok(LENS_STATE_KEYS.includes("graphLens"));
+    assert.ok(LENS_STATE_KEYS.includes("hypothesisLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -147,6 +150,41 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(maps[0].edges.length, 1);
     assert.ok(STATE.graphLens.filters instanceof Map);
     assert.equal(STATE.graphLens.filters.get("user_a")[0].name, "Central only");
+  });
+
+  it("roundtrips STATE.hypothesisLens (a pre-registered hypothesis with a recorded outcome)", () => {
+    // The Hypothesis domain stores per-user data under three Maps:
+    // datasets, analyses, and registry. Without hypothesisLens in
+    // LENS_STATE_KEYS a restart wiped every pre-registration while the
+    // RegistryPanel still showed it.
+    STATE.hypothesisLens = {
+      datasets: new Map([["user_a", new Map([["ds_1", { id: "ds_1", name: "trial.csv", rowCount: 100, columnCount: 3 }]])]]),
+      analyses: new Map([["user_a", new Map([["ana_1", { id: "ana_1", kind: "tTest", summary: "Welch t-test", createdAt: "2026-10-04" }]])]]),
+      registry: new Map([["user_a", new Map([["preg_1", {
+        id: "preg_1",
+        statement: "Treatment group will show higher recovery rate",
+        predictedDirection: "greater",
+        plannedTest: "tTest",
+        alpha: 0.05,
+        status: "resolved",
+        outcome: { verdict: "confirmed", pValue: 0.03, effectSize: 0.5, predictionConfirmed: true },
+        registeredAt: "2026-10-04",
+      }]])]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.hypothesisLens.datasets instanceof Map);
+    assert.ok(STATE.hypothesisLens.datasets.get("user_a") instanceof Map);
+    assert.equal(STATE.hypothesisLens.datasets.get("user_a").get("ds_1").name, "trial.csv");
+    assert.ok(STATE.hypothesisLens.analyses instanceof Map);
+    assert.equal(STATE.hypothesisLens.analyses.get("user_a").get("ana_1").kind, "tTest");
+    assert.ok(STATE.hypothesisLens.registry instanceof Map);
+    const reg = STATE.hypothesisLens.registry.get("user_a").get("preg_1");
+    assert.equal(reg.statement, "Treatment group will show higher recovery rate");
+    assert.equal(reg.status, "resolved");
+    assert.equal(reg.outcome.verdict, "confirmed");
+    assert.equal(reg.outcome.predictionConfirmed, true);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

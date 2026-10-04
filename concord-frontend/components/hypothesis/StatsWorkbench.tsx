@@ -20,6 +20,7 @@ import {
   Layers3, ClipboardCheck, FileText, Loader2, Trash2, Plus, Upload, History, Target,
 } from 'lucide-react';
 import { ExperimentDesignPanel } from './ExperimentDesignPanel';
+import { HypothesisRegistryMenu } from './HypothesisRegistryMenu';
 
 type TabId = 'tests' | 'design' | 'datasets' | 'assumptions' | 'correction' | 'registry' | 'history';
 
@@ -1240,6 +1241,8 @@ function PreRegCard({
           )}
         </div>
       )}
+
+      <HypothesisRegistryMenu record={prereg} />
     </div>
   );
 }
