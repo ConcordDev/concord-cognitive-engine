@@ -227,4 +227,27 @@ describe("player-mail (real migrated DB)", () => {
     const mailCount = db.prepare("SELECT COUNT(*) AS c FROM player_mail").get().c;
     assert.equal(mailCount, 0, "no orphan mail row");
   });
+
+  it("sendMail refuses a DTU the sender does not own", () => {
+    seedUser(db, "u9", 0);
+    seedDtu(db, "dtu_other", "u9");
+    const r = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Nope", attachmentDtuIds: ["dtu_other"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "dtu_not_owned");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS c FROM player_mail`).get().c, 0);
+    assert.equal(db.prepare(`SELECT creator_id FROM dtus WHERE id='dtu_other'`).get().creator_id, "u9");
+    assert.equal(ccOf(db, "u1"), 500);
+  });
+
+  it("claim leaves a DTU the sender never escrowed with its owner", () => {
+    seedUser(db, "u9", 0);
+    seedDtu(db, "dtu_other", "u9");
+    const { id } = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Hi" });
+    db.prepare(`UPDATE player_mail SET attachment_dtu_ids = ? WHERE id = ?`).run(JSON.stringify(["dtu_other"]), id);
+    const r = claimAttachments(db, id, "u2");
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.attachments.transferred, []);
+    assert.deepEqual(r.attachments.skipped, ["dtu_other"]);
+    assert.equal(db.prepare(`SELECT creator_id FROM dtus WHERE id='dtu_other'`).get().creator_id, "u9");
+  });
 });

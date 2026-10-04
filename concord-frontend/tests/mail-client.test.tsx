@@ -13,7 +13,7 @@ vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 const addToast = vi.fn();
 vi.mock('@/store/ui', () => ({ useUIStore: { getState: () => ({ addToast }) } }));
 vi.mock('@/components/mail/MailFolderPanel', () => ({ MailFolderPanel: () => <div>player inbox</div> }));
-vi.mock('@/components/mail/ComposeMailPanel', () => ({ ComposeMailPanel: () => null }));
+vi.mock('@/components/mail/ComposeMailPanel', () => ({ ComposeMailPanel: () => <div>player compose</div> }));
 
 import { MailClient } from '@/components/mail/client/MailClient';
 import { replyDraft } from '@/components/mail/client/gmail';
@@ -93,6 +93,16 @@ describe('MailClient', () => {
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('gmail', 'thread-modify', { threadId: 't1', action: 'archive' }));
     expect(screen.queryByText('Q3 plan')).toBeNull();
     expect(screen.getByText('Archived')).toBeTruthy();
+  });
+
+  it('opens Concord compose from the header signal without sending Gmail', async () => {
+    const { rerender } = render(<MailClient composeSignal={0} />);
+    await screen.findByText('Q3 plan');
+    fireEvent.click(screen.getAllByRole('button', { name: /player mail/i })[0]);
+    expect(await screen.findByText('player inbox')).toBeTruthy();
+    rerender(<MailClient composeSignal={1} />);
+    expect(await screen.findByText('player compose')).toBeTruthy();
+    expect(lensRunMock).not.toHaveBeenCalledWith('gmail', 'send', expect.anything());
   });
 
   it('passes Gmail search syntax through to the server', async () => {

@@ -2,12 +2,9 @@
 //
 // Macro surface for the async player-to-player mail engine (Phase U1).
 //
-// The `/lenses/mail` page drives the REST routes (`/api/mail/*`) directly,
-// but exposing the same engine as `mail.*` macros makes it reachable through
-// the generic `/api/lens/run` + MCP dispatch, lets the Orchestrated Invariant
-// Engine drive a real contract (`content/contracts/overrides/mail.*.json`),
-// and makes the lens manifest's `lens.mail.*` declaration true rather than
-// aspirational.
+// The mail lens calls these macros through `/api/lens/run`. There is no
+// `/api/mail` REST router. The same handlers are what MCP dispatch and the
+// Orchestrated Invariant Engine reach (`content/contracts/overrides/mail.*.json`).
 //
 // Every macro delegates to the single source of truth in
 // `server/lib/player-mail.js`; there is NO duplicated wallet / DTU / COD

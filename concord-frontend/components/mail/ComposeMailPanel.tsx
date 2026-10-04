@@ -7,6 +7,7 @@ import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import { RecipientSearchInput } from '@/components/message/RecipientSearchInput';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { playerMail, sendFailureText } from './playerMail';
 import { MAX_ATTACHMENTS, type DTU } from './types';
 
 export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
@@ -41,26 +42,21 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
     e.preventDefault();
     setBusy('send');
     try {
-      const r = await fetch('/api/mail/send', {
-        method: 'POST', credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          toUserId: composeTo.trim(),
-          subject: composeSubject.trim(),
-          body: composeBody,
-          attachmentCc: composeCc,
-          codCc: composeCod,
-          attachmentDtuIds: composeAttachments.map((d) => d.id),
-        }),
+      const j = await playerMail('send', {
+        toUserId: composeTo.trim(),
+        subject: composeSubject.trim(),
+        body: composeBody,
+        attachmentCc: composeCc,
+        codCc: composeCod,
+        attachmentDtuIds: composeAttachments.map((d) => d.id),
       });
-      const j = await r.json();
-      if (j.ok) {
-        setFlash({ kind: 'ok', msg: 'Mail sent.' });
+      if (j.ok && j.id) {
+        setFlash({ kind: 'ok', msg: `Mail sent. ${j.id}` });
         setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeCc(0); setComposeCod(0);
         setComposeAttachments([]);
         onSent();
       } else {
-        setFlash({ kind: 'err', msg: j.error || 'send failed' });
+        setFlash({ kind: 'err', msg: sendFailureText(j.ok ? undefined : j.error) });
       }
     } finally { setBusy(null); }
   }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments, onSent]);

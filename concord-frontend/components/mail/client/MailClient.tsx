@@ -71,6 +71,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   const [newLabel, setNewLabel] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notice, setNotice] = useState<{ message: string; undo?: () => void } | null>(null);
+  const [concordCompose, setConcordCompose] = useState(0);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showNotice = useCallback((message: string, undo?: () => void) => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -213,8 +214,8 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   useEffect(() => {
     if (composeSignal !== lastSignal.current) {
       lastSignal.current = composeSignal;
-      if (isConcord) return;
-      queueMicrotask(() => openComposer({ mode: 'new', draft: emptyDraft() }));
+      if (isConcord) setConcordCompose((n) => n + 1);
+      else queueMicrotask(() => openComposer({ mode: 'new', draft: emptyDraft() }));
     }
   }, [composeSignal, isConcord, openComposer]);
 
@@ -226,7 +227,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   const current = threads[Math.min(cursor, Math.max(0, threads.length - 1))];
   const openThreadObj = useMemo(() => threads.find((t) => t.id === openId), [threads, openId]);
   useLensCommand([
-    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => openComposer({ mode: 'new', draft: emptyDraft() }) },
+    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => { if (isConcord) setConcordCompose((n) => n + 1); else openComposer({ mode: 'new', draft: emptyDraft() }); } },
     { id: 'mail-search', keys: '/', description: 'Search mail', category: 'navigation', action: () => searchRef.current?.focus() },
     { id: 'mail-next', keys: 'j', description: 'Next conversation', category: 'navigation', action: () => { const i = Math.min(cursor + 1, threads.length - 1); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
     { id: 'mail-prev', keys: 'k', description: 'Previous conversation', category: 'navigation', action: () => { const i = Math.max(cursor - 1, 0); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
@@ -300,7 +301,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
 
   let main: ReactNode;
   if (isConcord) {
-    main = <ConcordMailbox />;
+    main = <ConcordMailbox composeSignal={concordCompose} />;
   } else if (connected === false) {
     main = <Panel className="h-full">{connectCard}</Panel>;
   } else {
@@ -451,8 +452,15 @@ const CONCORD_TABS = [
   { id: 'compose', label: 'Compose' },
 ] as const;
 
-export function ConcordMailbox() {
+export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }) {
   const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
+  const lastCompose = useRef(composeSignal);
+  useEffect(() => {
+    if (composeSignal !== lastCompose.current) {
+      lastCompose.current = composeSignal;
+      setTab('compose');
+    }
+  }, [composeSignal]);
   return (
     <Panel className="flex h-full flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-white/5 px-3 py-2">

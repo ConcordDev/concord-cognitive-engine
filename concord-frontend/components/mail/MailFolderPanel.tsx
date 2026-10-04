@@ -5,6 +5,9 @@ import { Mail, Inbox, Coins, Package, X, Paperclip, Search } from 'lucide-react'
 import { Skeleton, EmptyState, ErrorState } from '@/components/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { MailKeepMenu } from './MailKeepMenu';
+import { mailRecordSentence } from './mailKeep';
+import { claimResultText, playerMail } from './playerMail';
 import { STATUS_FILTERS, type MailRow, type StatusFilter } from './types';
 
 export function MailFolderPanel({
@@ -23,6 +26,7 @@ export function MailFolderPanel({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [claimNote, setClaimNote] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -33,14 +37,21 @@ export function MailFolderPanel({
     setLoadError(null);
     try {
       const [i, s] = await Promise.all([
-        fetch('/api/mail/inbox', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/mail/sent', { credentials: 'include' }).then((r) => r.json()),
+        playerMail('list'),
+        playerMail('sent'),
       ]);
-      if (!i?.ok || !s?.ok) {
-        throw new Error(i?.error || s?.error || 'Mail service returned an error.');
+      if (!i.ok || !s.ok) {
+        const err = !i.ok ? i.error : !s.ok ? s.error : 'mail_failed';
+        throw new Error(err.replace(/_/g, ' '));
       }
-      setInbox(i.mail || []);
-      setSent(s.mail || []);
+      const nextInbox = i.mail || [];
+      const nextSent = s.mail || [];
+      setInbox(nextInbox);
+      setSent(nextSent);
+      setSelected((prev) => {
+        if (!prev) return prev;
+        return [...nextInbox, ...nextSent].find((row) => row.id === prev.id) || prev;
+      });
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not reach the mail service.');
     } finally {
@@ -52,8 +63,7 @@ export function MailFolderPanel({
 
   useEffect(() => {
     if (!selected || selected.status !== 'unread') return;
-    fetch(`/api/mail/${selected.id}/read`, { method: 'POST', credentials: 'include' })
-      .then(() => refresh());
+    playerMail('read', { id: selected.id }).then(() => refresh());
   }, [selected, refresh]);
 
   useEffect(() => {
@@ -70,14 +80,11 @@ export function MailFolderPanel({
   const handleClaim = useCallback(async (mailId: string) => {
     setBusy(`claim-${mailId}`);
     try {
-      const r = await fetch(`/api/mail/${mailId}/claim`, { method: 'POST', credentials: 'include' });
-      const j = await r.json();
-      if (j.ok) {
-        showFlash('ok', `Claimed: ${j?.payout?.attachmentCc || 0} CC + ${j?.attachments?.dtuIds?.length || 0} DTUs.`);
-        refresh();
-      } else {
-        showFlash('err', j.error || 'claim failed');
-      }
+      const j = await playerMail('claim', { id: mailId });
+      const note = claimResultText(j);
+      setClaimNote(note.msg);
+      showFlash(note.kind, note.msg);
+      if (j.ok) refresh();
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
@@ -217,6 +224,7 @@ export function MailFolderPanel({
                     <div className={cn('mt-0.5 truncate text-[12px]', isUnread ? 'font-semibold text-white' : 'text-gray-300')}>
                       {m.subject}
                     </div>
+                    <div className="mt-0.5 truncate text-[10px] text-emerald-200/90">{mailRecordSentence(m, folder)}</div>
                     {hasAttach && (
                       <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
                         {m.attachmentCc > 0 && (
@@ -271,7 +279,9 @@ export function MailFolderPanel({
                 <X className="h-3.5 w-3.5" />
               </button>
             </header>
-            <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-gray-200">{selected.body}</p>
+            <p className="text-[11px] text-emerald-200" role="status">{mailRecordSentence(selected, folder)}</p>
+            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-gray-200">{selected.body}</p>
+            <MailKeepMenu key={selected.id} mail={selected} />
 
             {(selected.attachmentCc > 0 || selected.attachment_dtu_ids?.length > 0 || selected.codCc > 0) && (
               <div className="mt-4 rounded-md border border-lattice-border bg-lattice-void/50 p-2.5 text-[11px]">
@@ -300,6 +310,7 @@ export function MailFolderPanel({
                     Claim {selected.codCc > 0 ? `(pay ${selected.codCc} CC)` : ''}
                   </button>
                 )}
+                {claimNote && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote}</p>}
                 {selected.status === 'claimed' && (
                   <p className="mt-1 text-[10px] italic text-gray-400">
                     Claimed <span className="tabular-nums">{selected.claimedAt ? new Date(selected.claimedAt * 1000).toLocaleString() : ''}</span>
