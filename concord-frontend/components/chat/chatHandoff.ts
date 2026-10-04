@@ -173,3 +173,76 @@ export function handoffOutcome(
   }
   return { claimed: true, text: `Saved Thread draft ${id}. Not posted.` };
 }
+
+/** Id of the record the server says it stored, or "" when it did not. */
+export function handoffRecordId(kind: HandoffKind, data: { ok?: boolean; result?: unknown }): string {
+  const payload = payloadOf(data);
+  if (!payload) return '';
+  if (kind === 'dtu') {
+    const dtu = asRecord(payload.dtu);
+    return String(dtu?.id || payload.id || '');
+  }
+  if (kind === 'timeline-private' || kind === 'timeline-public') {
+    return String(asRecord(payload.post)?.id || '');
+  }
+  if (kind === 'forum') return String(asRecord(payload.topic)?.id || '');
+  return String(asRecord(payload.draft)?.id || '');
+}
+
+/** True only when dtu.get returns the same id create just handed back. */
+export function dtuReadBackMatches(id: string, data: { ok?: boolean; result?: unknown }): boolean {
+  if (!id || data.ok === false) return false;
+  const payload = payloadOf(data);
+  if (!payload) return false;
+  const dtu = asRecord(payload.dtu);
+  return String(dtu?.id || payload.id || '') === id;
+}
+
+export function dtuReadBackCall(id: string): HandoffCall {
+  return { domain: 'dtu', action: 'get', input: { id } };
+}
+
+/**
+ * Post the saved transcript on the author's private Timeline and cite the DTU.
+ * Timeline is a consumer of this DTU: the post keeps citedDtuId.
+ */
+export function sendDtuToTimelineCall(args: {
+  title: string;
+  sessionId: string | null;
+  messages: HandoffMessage[];
+  dtuId: string;
+}): HandoffCall | null {
+  const dtuId = args.dtuId.trim();
+  if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(dtuId)) return null;
+  const timeline = buildTranscript(args.messages, 5000, args.sessionId);
+  if (!timeline) return null;
+  const cite = `\n\nDTU ${dtuId}`;
+  const content = timeline.length + cite.length <= 5000 ? `${timeline}${cite}` : timeline;
+  return {
+    domain: 'timeline',
+    action: 'post-create',
+    input: { content, privacy: 'private', media: [], citedDtuId: dtuId },
+  };
+}
+
+export function sendDtuOutcome(
+  dtuId: string,
+  data: { ok?: boolean; result?: unknown; error?: string | null },
+): { claimed: boolean; text: string; postId: string } {
+  if (data.ok === false) {
+    return { claimed: false, postId: '', text: `Not sent. ${data.error || 'The server refused this.'}` };
+  }
+  const payload = payloadOf(data);
+  const post = asRecord(payload?.post);
+  const postId = String(post?.id || '');
+  const privacy = String(post?.privacy || '');
+  const cited = String(post?.citedDtuId || '');
+  if (!postId) return { claimed: false, postId: '', text: 'Not sent. Timeline returned no post id.' };
+  if (privacy !== 'private') {
+    return { claimed: false, postId, text: `Timeline stored post ${postId} as ${privacy || 'unknown'}. DTU ${dtuId} was not sent as a private post.` };
+  }
+  if (cited !== dtuId) {
+    return { claimed: false, postId, text: `Timeline stored private post ${postId} without DTU ${dtuId}.` };
+  }
+  return { claimed: true, postId, text: `Sent DTU ${dtuId} to your Timeline as private post ${postId}.` };
+}

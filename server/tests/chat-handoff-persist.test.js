@@ -32,6 +32,33 @@ const ctx = { actor: { userId: "user_a" }, userId: "user_a" };
 const transcript = "Source: Concord chat sess-1.\n\nYou: How do tides work?\n\nConcord: The moon pulls the oceans.";
 
 describe("chat handoff persistence", () => {
+  it("keeps a cited DTU id on a private post the author can read back", () => {
+    const created = call("timeline.post-create", ctx, {
+      content: transcript,
+      privacy: "private",
+      media: [],
+      citedDtuId: "dtu_chat_1",
+    });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.post.citedDtuId, "dtu_chat_1");
+    const id = created.result.post.id;
+    const feed = call("timeline.feed-list", ctx, { authorId: "user_a" });
+    const found = feed.result.posts.find((p) => p.id === id);
+    assert.equal(found.citedDtuId, "dtu_chat_1");
+    assert.match(found.content, /Source: Concord chat sess-1/);
+  });
+
+  it("drops a cited DTU id that is not an id", () => {
+    const created = call("timeline.post-create", ctx, {
+      content: transcript,
+      privacy: "private",
+      media: [],
+      citedDtuId: "not an id",
+    });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.post.citedDtuId, null);
+  });
+
   it("stores a private Timeline post the author can read back", () => {
     const created = call("timeline.post-create", ctx, { content: transcript, privacy: "private", media: [] });
     assert.equal(created.ok, true);

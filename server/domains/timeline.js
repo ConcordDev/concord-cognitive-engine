@@ -549,6 +549,10 @@ export default function registerTimelineActions(registerLensAction) {
     }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "private";
+    // A lens may attach a DTU it already created. The id is stored only when
+    // it looks like an id, so a post never pretends to cite a missing record.
+    const rawCite = tlClean(params.citedDtuId, 80);
+    const citedDtuId = /^[A-Za-z0-9_.:-]{1,80}$/.test(rawCite) ? rawCite : null;
     const post = {
       id: tlId("pst"),
       authorId: tlAid(ctx),
@@ -558,6 +562,7 @@ export default function registerTimelineActions(registerLensAction) {
         .slice(0, 12)
         .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) })),
       privacy,
+      citedDtuId,
       taggedUserIds: Array.isArray(params.taggedUserIds)
         ? params.taggedUserIds.map((u) => tlClean(u, 64)).filter(Boolean).slice(0, 20)
         : [],

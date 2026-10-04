@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildTranscript, handoffCalls, handoffOutcome } from '@/components/chat/chatHandoff';
+import {
+  buildTranscript,
+  dtuReadBackMatches,
+  handoffCalls,
+  handoffOutcome,
+  sendDtuOutcome,
+  sendDtuToTimelineCall,
+} from '@/components/chat/chatHandoff';
 
 const messages = [
   { role: 'user', content: 'How do tides work?' },
@@ -49,6 +56,30 @@ describe('chat handoff sentences', () => {
     expect(handoffOutcome('dtu', { ok: true, result: { dtu: { id: 'dtu_9' } } }).text).toBe('Saved as DTU dtu_9.');
     expect(handoffOutcome('dtu', { ok: true, result: {} }).claimed).toBe(false);
     expect(handoffOutcome('forum', { ok: true, result: { topic: { id: 'top_3' } } }).text).toBe('Forum topic top_3 created.');
+  });
+
+  it('sends a read-back DTU to a private Timeline post and says so only when the post cites it', () => {
+    const call = sendDtuToTimelineCall({ title: 'Tides', sessionId: 'sess-1', messages, dtuId: 'dtu_9' });
+    expect(call?.input).toMatchObject({ privacy: 'private', citedDtuId: 'dtu_9' });
+    expect(String(call?.input.content)).toContain('DTU dtu_9');
+    expect(dtuReadBackMatches('dtu_9', { ok: true, result: { dtu: { id: 'dtu_9' } } })).toBe(true);
+    expect(dtuReadBackMatches('dtu_9', { ok: true, result: { dtu: { id: 'other' } } })).toBe(false);
+    const sent = sendDtuOutcome('dtu_9', {
+      ok: true,
+      result: { post: { id: 'pst_9', privacy: 'private', citedDtuId: 'dtu_9' } },
+    });
+    expect(sent).toEqual({
+      claimed: true,
+      postId: 'pst_9',
+      text: 'Sent DTU dtu_9 to your Timeline as private post pst_9.',
+    });
+    const missing = sendDtuOutcome('dtu_9', {
+      ok: true,
+      result: { post: { id: 'pst_8', privacy: 'private', citedDtuId: null } },
+    });
+    expect(missing.claimed).toBe(false);
+    expect(missing.text).toContain('without DTU');
+    expect(missing.text).not.toMatch(/^Sent/);
   });
 
   it('calls a thread draft a draft and says it was not posted', () => {

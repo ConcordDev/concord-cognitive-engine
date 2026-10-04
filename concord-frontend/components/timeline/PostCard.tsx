@@ -115,6 +115,10 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         </div>
       )}
 
+      {post.citedDtuId && (
+        <p className="px-4 pb-2 text-xs text-gray-400">From DTU {post.citedDtuId}</p>
+      )}
+
       {/* Tagged users */}
       {post.taggedUserIds?.length > 0 && (
         <div className="px-4 pb-1 text-xs text-gray-400">

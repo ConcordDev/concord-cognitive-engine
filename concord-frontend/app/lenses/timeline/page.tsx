@@ -6,7 +6,7 @@
 // privacy, profile, "On this day" memories and notifications are all wired
 // to real macros; nothing here is placeholder data.
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -44,6 +44,14 @@ interface FeedResult {
   total: number;
 }
 
+const TAB_IDS: Tab[] = ['roadmap', 'feed', 'timeline', 'albums', 'memories', 'notifications', 'profile'];
+
+function tabFromLocation(): Tab {
+  if (typeof window === 'undefined') return 'roadmap';
+  const value = new URLSearchParams(window.location.search).get('tab');
+  return TAB_IDS.includes(value as Tab) ? (value as Tab) : 'roadmap';
+}
+
 const TABS: { id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof LayoutList }[] = [
   { id: 'roadmap', label: 'Roadmap', keys: 'g r', title: 'When it lands', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
   { id: 'feed', label: 'Feed', keys: 'g f', title: 'What you have shared', hint: 'Your posts, reactions and comments', icon: LayoutList },
@@ -70,6 +78,7 @@ export default function TimelineLensPage() {
   const viewerId = user?.id || 'anon';
 
   const [tab, setTab] = useState<Tab>('roadmap');
+  useEffect(() => { setTab(tabFromLocation()); }, []);
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
 
@@ -113,7 +122,8 @@ export default function TimelineLensPage() {
     return posts.filter(
       (p) =>
         p.content.toLowerCase().includes(q) ||
-        p.authorId.toLowerCase().includes(q),
+        p.authorId.toLowerCase().includes(q) ||
+        (p.citedDtuId || '').toLowerCase().includes(q),
     );
   }, [posts, search]);
 

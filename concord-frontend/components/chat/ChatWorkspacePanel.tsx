@@ -3134,14 +3134,51 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               >
                 <MessageSquare className="w-5 h-5" />
               </button>
-              <button
-                type="button"
-                onClick={() => startNewChat()}
-                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                aria-label="New conversation"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <div className="flex items-center">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMoreMenuOpen((v) => !v)}
+                    className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                    aria-label="Chat options"
+                    aria-expanded={moreMenuOpen}
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                  <AnimatePresence>
+                    {moreMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="absolute top-full right-0 mt-2 w-72 bg-[#1c1c1c] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden"
+                      >
+                        <ChatHandoffMenu
+                          messages={messages.map((m) => ({ role: m.role, content: m.content || '' }))}
+                          sessionId={selectedConversation}
+                          title={conversations.find((c) => c.id === selectedConversation)?.title || 'Chat transcript'}
+                          onNote={(text) => {
+                            setLocalMessages((prev) => [...prev, {
+                              id: `handoff-${Date.now()}`,
+                              role: 'system',
+                              content: text,
+                              timestamp: new Date().toISOString(),
+                            }]);
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startNewChat()}
+                  className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="New conversation"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
             </header>
           )}
           <header className={cn(
