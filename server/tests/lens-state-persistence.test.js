@@ -24,17 +24,35 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 28 lens state keys", () => {
-    // 27 -> 28: "privacyLens" added (Wave 4 gap-closure) so the retention
-    // policy / DSAR / cookie-config / access-log substrate the privacy lens
-    // and the privacy-retention-sweep heartbeat both depend on survives a
-    // restart instead of being silently wiped every boot.
-    assert.equal(LENS_STATE_KEYS.length, 28);
+  it("exposes 29 lens state keys", () => {
+    // 28 -> 29: "calendarLens" so calendar.events-create survives a restart.
+    // The calendar domain stores events in STATE.calendarLens Maps. Those
+    // maps were omitted from the snapshot, so a refresh of the process
+    // dropped every saved event.
+    assert.equal(LENS_STATE_KEYS.length, 29);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
     assert.ok(LENS_STATE_KEYS.includes("eventTimelineLens"));
     assert.ok(LENS_STATE_KEYS.includes("privacyLens"));
+    assert.ok(LENS_STATE_KEYS.includes("calendarLens"));
+  });
+
+  it("roundtrips STATE.calendarLens.events (saved calendar events)", () => {
+    STATE.calendarLens = {
+      calendars: new Map([["user_a", [{ id: "cal_1", name: "Personal", isDefault: true }]]]),
+      events: new Map([["user_a", [{ id: "evt_1", title: "Standup", start: "2026-10-04T17:00:00.000Z" }]]]),
+      tasks: new Map(),
+      seq: new Map([["user_a", { cal: 2, evt: 2, task: 1 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.calendarLens.events instanceof Map);
+    assert.equal(STATE.calendarLens.events.get("user_a")[0].title, "Standup");
+    assert.equal(STATE.calendarLens.events.get("user_a")[0].id, "evt_1");
+    assert.ok(STATE.calendarLens.calendars instanceof Map);
+    assert.equal(STATE.calendarLens.seq.get("user_a").evt, 2);
   });
 
   it("roundtrips STATE.eventTimelineLens.views (event-timeline saved filter presets)", () => {

@@ -17,6 +17,7 @@ import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
+import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
@@ -380,6 +381,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   // notion of "my other real events").
   const [conflicts, setConflicts] = useState<BackendConflict[]>([]);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const [activityNote, setActivityNote] = useState<string | null>(null);
 
   // Fetch real calendars + events from the STATE-backed engine (calendars-list /
   // events-list — server/domains/calendar.js). Range spans 2 months back
@@ -676,14 +678,22 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         }
         const r = await lensRun({ domain: 'calendar', action: 'events-update', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
+        const id = eventIdFromResult(r.data);
+        if (!id) throw new Error('The server returned no event id');
+        setActivityNote(eventUpdatedSentence(id));
       } else {
         const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
+        const id = eventIdFromResult(r.data);
+        if (!id) throw new Error('The server returned no event id');
+        setActivityNote(eventSavedSentence(id));
       }
       await fetchData();
     } catch (e) {
       setEvents(previousEvents);
-      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to save event' });
+      const message = e instanceof Error ? e.message : 'Failed to save event';
+      setActivityNote(eventNotSavedSentence(message));
+      useUIStore.getState().addToast({ type: 'error', message });
     }
   };
 
@@ -1586,6 +1596,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
               Today
             </button>
           </div>
+          {activityNote && (
+            <p className="mt-2 text-[13px] text-zinc-300" role="status">{activityNote}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-5 pb-1">
@@ -1777,6 +1790,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   <div className="pt-4 border-t border-lattice-border">
                     <p className="text-gray-300">{selectedEvent.description}</p>
                   </div>
+                )}
+
+                {eventOnCalendarSentence(selectedEvent.id) && (
+                  <p className="text-[13px] text-zinc-300" role="status">{eventOnCalendarSentence(selectedEvent.id)}</p>
                 )}
 
                 {selectedEvent.eventType === 'release' && (

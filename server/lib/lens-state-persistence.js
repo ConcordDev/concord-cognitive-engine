@@ -16,7 +16,7 @@
 // lens domain file ships its own STATE.<x>Lens store.
 export const LENS_STATE_KEYS = Object.freeze([
   "accountingLens", "agricultureLens", "aviationLens", "bioLens",
-  "chatLens", "cryptoLens", "ecoLens", "educationLens",
+  "calendarLens", "chatLens", "cryptoLens", "ecoLens", "educationLens",
   "eventTimelineLens",
   "financeLens", "fitnessLens", "foodLens", "govLens",
   "healthLens", "insLens", "legalLens", "logLens",
