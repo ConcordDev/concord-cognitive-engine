@@ -132,31 +132,92 @@ export async function writeGoogleCalendarEvent(db, userId, event, opts = {}) {
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1";
 
+// Header values must never carry a CR/LF: a newline in a subject or address
+// would let a caller inject arbitrary headers (Bcc:, extra MIME parts) into
+// the outgoing message.
+function gmailHeaderValue(v) {
+  return String(v ?? "").replace(/[\r\n]+/g, " ").trim();
+}
+// RFC 2047 encoded-word for non-ASCII header text (subjects, display names).
+function gmailEncodeWord(v) {
+  const clean = gmailHeaderValue(v);
+  return /^[\x20-\x7e]*$/.test(clean) ? clean : `=?UTF-8?B?${Buffer.from(clean, "utf8").toString("base64")}?=`;
+}
+function b64Wrap(b64) {
+  return String(b64).replace(/(.{76})/g, "$1\r\n");
+}
+
+/**
+ * Build an RFC-822 message: To/Cc/Bcc, Subject, reply threading
+ * (In-Reply-To / References), a text and/or HTML body, and optional
+ * attachments [{ filename, mimeType, data (standard base64) }].
+ */
+export function buildGmailRfc822(mail = {}) {
+  const headers = [
+    `To: ${gmailHeaderValue(mail.to)}`,
+    mail.from ? `From: ${gmailHeaderValue(mail.from)}` : null,
+    mail.cc ? `Cc: ${gmailHeaderValue(mail.cc)}` : null,
+    mail.bcc ? `Bcc: ${gmailHeaderValue(mail.bcc)}` : null,
+    `Subject: ${gmailEncodeWord(mail.subject || "(no subject)")}`,
+    mail.inReplyTo ? `In-Reply-To: ${gmailHeaderValue(mail.inReplyTo)}` : null,
+    mail.references ? `References: ${gmailHeaderValue(mail.references)}` : null,
+    "MIME-Version: 1.0",
+  ].filter(Boolean);
+  const text = mail.body != null ? String(mail.body) : "";
+  const html = mail.html ? String(mail.html) : "";
+  const attachments = Array.isArray(mail.attachments) ? mail.attachments.filter((a) => a && a.data && a.filename) : [];
+
+  const bodyPart = () => {
+    if (html && text) {
+      const alt = `alt_${Math.random().toString(36).slice(2)}`;
+      return [
+        `Content-Type: multipart/alternative; boundary="${alt}"`, "",
+        `--${alt}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64Wrap(Buffer.from(text, "utf8").toString("base64")),
+        `--${alt}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64Wrap(Buffer.from(html, "utf8").toString("base64")),
+        `--${alt}--`,
+      ].join("\r\n");
+    }
+    const mime = html ? "text/html" : "text/plain";
+    return [`Content-Type: ${mime}; charset=UTF-8`, "Content-Transfer-Encoding: base64", "", b64Wrap(Buffer.from(html || text, "utf8").toString("base64"))].join("\r\n");
+  };
+
+  if (attachments.length === 0) return `${headers.join("\r\n")}\r\n${bodyPart()}`;
+  const mixed = `mix_${Math.random().toString(36).slice(2)}`;
+  const parts = [`--${mixed}`, bodyPart()];
+  for (const a of attachments) {
+    const name = gmailHeaderValue(a.filename).replace(/"/g, "'");
+    parts.push(
+      `--${mixed}`,
+      `Content-Type: ${gmailHeaderValue(a.mimeType || "application/octet-stream")}; name="${name}"`,
+      `Content-Disposition: attachment; filename="${name}"`,
+      "Content-Transfer-Encoding: base64", "",
+      b64Wrap(String(a.data).replace(/\s+/g, "")),
+    );
+  }
+  parts.push(`--${mixed}--`);
+  return `${headers.join("\r\n")}\r\nContent-Type: multipart/mixed; boundary="${mixed}"\r\n\r\n${parts.join("\r\n")}`;
+}
+
+function toB64url(str) {
+  return Buffer.from(str, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /**
  * Send an email through a user's Gmail (real fan-out, connector_id
  * "google_gmail", scope gmail.send). Builds an RFC-822 message and POSTs the
- * base64url `raw` to the Gmail send endpoint. Honest reasons on missing token.
+ * base64url `raw` to the Gmail send endpoint; a `threadId` keeps a reply in
+ * its conversation. Honest reasons on missing token.
  */
 export async function writeGmailMessage(db, userId, mail = {}, opts = {}) {
-  const to = mail.to;
-  if (!to) return { ok: false, reason: "missing_recipient" };
-  const headers = [
-    `To: ${to}`,
-    mail.from ? `From: ${mail.from}` : null,
-    mail.cc ? `Cc: ${mail.cc}` : null,
-    `Subject: ${mail.subject || "(no subject)"}`,
-    "MIME-Version: 1.0",
-    `Content-Type: ${mail.html ? "text/html" : "text/plain"}; charset=UTF-8`,
-  ].filter(Boolean);
-  const rfc822 = `${headers.join("\r\n")}\r\n\r\n${mail.body || mail.html || ""}`;
-  const raw = Buffer.from(rfc822, "utf8")
-    .toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  if (!mail.to || !gmailHeaderValue(mail.to)) return { ok: false, reason: "missing_recipient" };
+  const payload = { raw: toB64url(buildGmailRfc822(mail)) };
+  if (mail.threadId) payload.threadId = String(mail.threadId);
   return connectorFetch(
     db,
     userId,
     "google_gmail",
     `${GMAIL_BASE}/users/me/messages/send`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw }) },
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
     opts,
   );
 }
@@ -239,7 +300,7 @@ export async function readGmailMessage(db, userId, messageId, query = {}, opts =
   const params = new URLSearchParams({ format });
   // Gmail requires metadataHeaders to be enumerated when format=metadata.
   if (format === "metadata") {
-    for (const h of ["From", "To", "Cc", "Subject", "Date"]) params.append("metadataHeaders", h);
+    for (const h of ["From", "To", "Cc", "Subject", "Date", "Message-ID"]) params.append("metadataHeaders", h);
   }
   const res = await connectorFetch(
     db, userId, "google_gmail",
@@ -282,6 +343,133 @@ export async function listGmailLabels(db, userId, opts = {}) {
   );
   if (!res.ok) return res;
   return { ok: true, labels: (res.data?.labels || []).map((l) => ({ id: l.id, name: l.name, type: l.type })) };
+}
+
+const gmailJson = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+/** Restore a message from Trash. */
+export async function untrashGmailMessage(db, userId, messageId, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/messages/${encodeURIComponent(messageId)}/untrash`, { method: "POST" }, opts);
+}
+
+/** The signed-in mailbox address (used as From and to drop yourself from reply-all). */
+export async function getGmailProfile(db, userId, opts = {}) {
+  const res = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/profile`, { method: "GET" }, opts);
+  if (!res.ok) return res;
+  return { ok: true, profile: { emailAddress: res.data?.emailAddress || "", messagesTotal: res.data?.messagesTotal ?? null, threadsTotal: res.data?.threadsTotal ?? null } };
+}
+
+/** Summarize a thread resource (metadata format) into one inbox row. */
+export function summarizeGmailThread(raw = {}) {
+  const msgs = (raw.messages || []).map(parseGmailMessage);
+  const first = msgs[0] || {};
+  const last = msgs[msgs.length - 1] || {};
+  const labelIds = [...new Set(msgs.flatMap((m) => m.labelIds || []))];
+  const names = [];
+  for (const m of msgs) {
+    const n = String(m.from || "").replace(/<[^>]*>/g, "").replace(/"/g, "").trim() || m.from;
+    if (n && !names.includes(n)) names.push(n);
+  }
+  return {
+    id: raw.id,
+    subject: first.subject || "(no subject)",
+    snippet: last.snippet || raw.snippet || "",
+    participants: names,
+    from: last.from || "",
+    messageCount: msgs.length,
+    lastDate: last.date || "",
+    lastInternalDate: last.internalDate || null,
+    unread: msgs.some((m) => m.unread),
+    starred: msgs.some((m) => m.starred),
+    labelIds,
+  };
+}
+
+/** List conversations (Gmail's default view), each hydrated to a summary row. */
+export async function readGmailThreads(db, userId, query = {}, opts = {}) {
+  const params = new URLSearchParams();
+  params.set("maxResults", String(Math.min(Math.max(Number(query.maxResults) || 25, 1), 50)));
+  if (query.q) params.set("q", String(query.q));
+  if (query.pageToken) params.set("pageToken", String(query.pageToken));
+  const labels = Array.isArray(query.labelIds) ? query.labelIds : query.labelIds ? [query.labelIds] : [];
+  for (const l of labels) params.append("labelIds", String(l));
+  if (query.includeSpamTrash) params.set("includeSpamTrash", "true");
+  const list = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads?${params.toString()}`, { method: "GET" }, opts);
+  if (!list.ok) return list;
+  const ids = (list.data?.threads || []).map((t) => t.id);
+  const meta = new URLSearchParams({ format: "metadata" });
+  for (const h of ["From", "To", "Cc", "Subject", "Date"]) meta.append("metadataHeaders", h);
+  const hydrated = await Promise.all(ids.map((id) =>
+    connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads/${encodeURIComponent(id)}?${meta.toString()}`, { method: "GET" }, opts)));
+  const threads = hydrated.filter((t) => t.ok).map((t) => summarizeGmailThread(t.data));
+  return { ok: true, threads, nextPageToken: list.data?.nextPageToken || null, resultSizeEstimate: list.data?.resultSizeEstimate ?? threads.length };
+}
+
+/** Read a whole conversation with bodies and attachment metadata. */
+export async function readGmailThread(db, userId, threadId, opts = {}) {
+  const res = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads/${encodeURIComponent(threadId)}?format=full`, { method: "GET" }, opts);
+  if (!res.ok) return res;
+  const messages = (res.data?.messages || []).map(parseGmailMessage);
+  return { ok: true, thread: { id: res.data?.id || threadId, messages } };
+}
+
+/** Label changes / trash / untrash on a whole conversation. */
+export async function modifyGmailThread(db, userId, threadId, mods = {}, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads/${encodeURIComponent(threadId)}/modify`,
+    gmailJson("POST", { addLabelIds: Array.isArray(mods.addLabelIds) ? mods.addLabelIds : [], removeLabelIds: Array.isArray(mods.removeLabelIds) ? mods.removeLabelIds : [] }), opts);
+}
+export async function trashGmailThread(db, userId, threadId, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads/${encodeURIComponent(threadId)}/trash`, { method: "POST" }, opts);
+}
+export async function untrashGmailThread(db, userId, threadId, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/threads/${encodeURIComponent(threadId)}/untrash`, { method: "POST" }, opts);
+}
+
+/** Download one attachment; returns standard base64 data. */
+export async function getGmailAttachment(db, userId, messageId, attachmentId, opts = {}) {
+  const res = await connectorFetch(db, userId, "google_gmail",
+    `${GMAIL_BASE}/users/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: "GET" }, opts);
+  if (!res.ok) return res;
+  const data = String(res.data?.data || "").replace(/-/g, "+").replace(/_/g, "/");
+  return { ok: true, attachment: { data, size: res.data?.size ?? null } };
+}
+
+/** Create a user label. */
+export async function createGmailLabel(db, userId, name, opts = {}) {
+  const res = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/labels`,
+    gmailJson("POST", { name: gmailHeaderValue(name), labelListVisibility: "labelShow", messageListVisibility: "show" }), opts);
+  if (!res.ok) return res;
+  return { ok: true, label: { id: res.data?.id, name: res.data?.name, type: res.data?.type || "user" } };
+}
+
+/** Drafts: list (hydrated), create/update, send, delete. */
+export async function listGmailDrafts(db, userId, query = {}, opts = {}) {
+  const params = new URLSearchParams({ maxResults: String(Math.min(Math.max(Number(query.maxResults) || 25, 1), 50)) });
+  const list = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/drafts?${params.toString()}`, { method: "GET" }, opts);
+  if (!list.ok) return list;
+  const drafts = await Promise.all((list.data?.drafts || []).map(async (d) => {
+    const r = await connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/drafts/${encodeURIComponent(d.id)}?format=full`, { method: "GET" }, opts);
+    if (!r.ok) return null;
+    const message = parseGmailMessage(r.data?.message || {});
+    return { id: d.id, message };
+  }));
+  return { ok: true, drafts: drafts.filter(Boolean) };
+}
+export async function saveGmailDraft(db, userId, mail = {}, opts = {}) {
+  const message = { raw: toB64url(buildGmailRfc822({ ...mail, to: mail.to || "" })) };
+  if (mail.threadId) message.threadId = String(mail.threadId);
+  const url = mail.draftId
+    ? `${GMAIL_BASE}/users/me/drafts/${encodeURIComponent(mail.draftId)}`
+    : `${GMAIL_BASE}/users/me/drafts`;
+  const res = await connectorFetch(db, userId, "google_gmail", url, gmailJson(mail.draftId ? "PUT" : "POST", { ...(mail.draftId ? { id: mail.draftId } : {}), message }), opts);
+  if (!res.ok) return res;
+  return { ok: true, draft: { id: res.data?.id, messageId: res.data?.message?.id || null, threadId: res.data?.message?.threadId || null } };
+}
+export async function sendGmailDraft(db, userId, draftId, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/drafts/send`, gmailJson("POST", { id: String(draftId) }), opts);
+}
+export async function deleteGmailDraft(db, userId, draftId, opts = {}) {
+  return connectorFetch(db, userId, "google_gmail", `${GMAIL_BASE}/users/me/drafts/${encodeURIComponent(draftId)}`, { method: "DELETE" }, opts);
 }
 
 // ── Slack (connector_id "slack", Bearer user/bot token) ─────────────────────
@@ -651,7 +839,7 @@ export function parseGmailMessage(raw = {}) {
   for (const h of raw.payload?.headers || []) {
     if (h?.name) headers[h.name.toLowerCase()] = h.value;
   }
-  const { text, html } = extractGmailBody(raw.payload);
+  const { text, html, attachments } = extractGmailBody(raw.payload);
   const labelIds = raw.labelIds || [];
   return {
     id: raw.id,
@@ -666,8 +854,12 @@ export function parseGmailMessage(raw = {}) {
     subject: headers.subject || "(no subject)",
     date: headers.date || "",
     internalDate: raw.internalDate ? Number(raw.internalDate) : null,
+    messageIdHeader: headers["message-id"] || "",
+    references: headers.references || "",
+    replyTo: headers["reply-to"] || "",
     text,
     html,
+    attachments,
   };
 }
 
@@ -675,9 +867,14 @@ export function parseGmailMessage(raw = {}) {
 function extractGmailBody(payload) {
   let text = "";
   let html = "";
+  const attachments = [];
   const walk = (part) => {
     if (!part) return;
     const mime = part.mimeType || "";
+    if (part.filename && part.body?.attachmentId) {
+      attachments.push({ attachmentId: part.body.attachmentId, filename: part.filename, mimeType: mime || "application/octet-stream", size: part.body.size || 0 });
+      return;
+    }
     if (part.body?.data) {
       const decoded = b64urlDecode(part.body.data);
       if (mime === "text/plain" && !text) text = decoded;
@@ -686,7 +883,7 @@ function extractGmailBody(payload) {
     for (const p of part.parts || []) walk(p);
   };
   walk(payload);
-  return { text, html };
+  return { text, html, attachments };
 }
 
 function b64urlDecode(data) {
