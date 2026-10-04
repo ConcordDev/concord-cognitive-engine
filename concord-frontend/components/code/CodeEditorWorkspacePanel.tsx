@@ -49,9 +49,9 @@ import {
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
-import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { CodeRunMenu } from '@/components/code/CodeRunMenu';
+import type { CodeExecResult } from '@/components/code/codeRunReport';
 
 interface FileNode {
   id: string;
@@ -470,18 +470,9 @@ const API_REFERENCE: { category: string; functions: { signature: string; descrip
   },
 ];
 
-function generateScriptOutput(scriptType: ScriptType, code: string): { log: string; visualization: string } {
-  const lines = code.split('\n').length;
-  const typeName = SCRIPT_TYPES.find((s) => s.id === scriptType)?.name || scriptType;
-  return {
-    log: `[Code Engine] Running ${typeName} (${lines} lines)...\n[OK] Execution complete`,
-    visualization: '',
-  };
-}
-
 export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
   const { user, isAuthenticated } = useAuth();
-  const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
+  const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
   const {
     hyperDTUs, megaDTUs, regularDTUs,
@@ -761,6 +752,14 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
   const [runningCodeAction, setRunningCodeAction] = useState<string | null>(null);
 
+  // The real `code.exec` result, kept around so CodeRunMenu can build a
+  // private DTU + Thread draft from it. Null until a run returns; reset
+  // to null whenever the active tab changes so a stale report can never
+  // be saved against a different file.
+  const [runResult, setRunResult] = useState<CodeExecResult | null>(null);
+  const [runElapsedMs, setRunElapsedMs] = useState<number | undefined>(undefined);
+  useEffect(() => { setRunResult(null); setRunElapsedMs(undefined); }, [activeTabId]);
+
   const runScriptMutation = useMutation({
     mutationFn: async () => {
       // Dead-macro-call fix (verification-audit campaign): 'code.generate'
@@ -768,6 +767,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       // back to the local simulation. 'code.exec' is the real macro for
       // this shape (executes JS/TS in a sandboxed node:vm; other
       // languages return an honest "unsupported" result).
+      const started = performance.now();
       const res = await api.post('/api/lens/run', {
         domain: 'code',
         action: 'exec',
@@ -777,38 +777,52 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           scriptType: activeTab.scriptType || activeScriptType,
         },
       });
-      return res.data;
+      return { data: res.data, elapsedMs: Math.round(performance.now() - started) };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ data, elapsedMs }) => {
       // code.exec returns { result: { stdout, stderr, exitCode, supported } },
-      // not a bare string/.content — read the real shape.
-      const result = data?.result as { stdout?: string; stderr?: string; supported?: boolean } | undefined;
-      const serverContent = result?.supported === false
-        ? null
-        : [result?.stdout, result?.stderr].filter(Boolean).join('\n').trim() || null;
-      const localResult = generateScriptOutput(activeTab.scriptType || activeScriptType, activeTab.content);
-      setScriptOutput({
-        log: serverContent
-          ? `[Server] ${serverContent.slice(0, 500)}\n\n${localResult.log}`
-          : localResult.log,
-        visualization: localResult.visualization,
-      });
+      // not a bare string/.content — read the real shape. No fake fallback:
+      // when the sandbox refuses (supported:false) the output panel says so,
+      // and CodeRunMenu refuses to save a report for a run that did not run.
+      const result = (data?.result as CodeExecResult | undefined) || null;
+      setRunResult(result);
+      setRunElapsedMs(elapsedMs);
+      const supported = result?.supported !== false;
+      const stdout = String(result?.stdout || '').trim();
+      const stderr = String(result?.stderr || '').trim();
+      const exitCode = Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null;
+      if (!supported) {
+        const lang = activeTab.language || 'this language';
+        const reason = stderr || `The sandbox does not run ${lang}.`;
+        setScriptOutput({ log: reason, visualization: '' });
+      } else {
+        const lines: string[] = [];
+        if (stdout) lines.push(stdout);
+        if (stderr) lines.push(stderr);
+        if (lines.length === 0) lines.push('(no output)');
+        lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        setScriptOutput({ log: lines.join('\n'), visualization: '' });
+      }
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] Script executed successfully`,
+        `[${new Date().toLocaleTimeString()}] ${supported ? `Script executed (exit ${exitCode ?? '?'})` : 'Sandbox refused this language'}`,
         `[${new Date().toLocaleTimeString()}] Type: ${SCRIPT_TYPES.find((s) => s.id === (activeTab.scriptType || activeScriptType))?.name}`,
-        `[${new Date().toLocaleTimeString()}] Output ready`,
       ]);
       setShowOutput(true);
       setOutputTab('output');
     },
     onError: (error: Record<string, unknown>) => {
-      const result = generateScriptOutput(activeTab.scriptType || activeScriptType, activeTab.content);
-      setScriptOutput(result);
+      // No fake fallback. A failed run is a failed run — the screen says
+      // so and offers no DTU. The prior behaviour invented a "[Code Engine]
+      // Running… [OK] Execution complete" string on every error, which
+      // claimed success the sandbox never produced.
+      setRunResult(null);
+      setRunElapsedMs(undefined);
+      const msg = String(error?.message || 'Run failed');
+      setScriptOutput({ log: `Run failed: ${msg}`, visualization: '' });
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] Script executed (offline mode)`,
-        `[${new Date().toLocaleTimeString()}] ${String(error.message || 'Using local engine')}`,
+        `[${new Date().toLocaleTimeString()}] Run failed: ${msg}`,
       ]);
       setShowOutput(true);
       setOutputTab('output');
@@ -1397,7 +1411,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 whitespace-nowrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="code" data={realtimeData || {}} compact />
         <VisionAnalyzeButton
           domain="code"
           prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
@@ -2097,15 +2110,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                               </div>
                               )}
                               <div className="flex items-center gap-2 pt-2 border-t border-lattice-border">
-                                <SaveAsDtuButton
-                                  apiSource="code-lens"
-                                  title={`Output: ${activeTab.name}`}
-                                  content={`// ${activeTab.name}\n// Language: ${activeTab.language}\n// Script type: ${activeTab.scriptType || activeScriptType}\n\n// Source:\n${activeTab.content}\n\n// Output:\n${scriptOutput.log}${scriptOutput.visualization ? `\n\n// Visualization:\n${scriptOutput.visualization}` : ''}`}
-                                  extraTags={['script', 'output', activeTab.scriptType || activeScriptType, activeTab.language].filter(Boolean) as string[]}
-                                  rawData={{ content: activeTab.content, output: scriptOutput.log, visualization: scriptOutput.visualization, language: activeTab.language, scriptType: activeTab.scriptType || activeScriptType }}
-                                  confirm
-                                  className="!bg-neon-blue/10 !text-neon-blue hover:!bg-neon-blue/20"
-                                />
                                 <button
                                   onClick={() => {
                                     const content = `// ${activeTab.name}\n// Output:\n${scriptOutput.log}\n${scriptOutput.visualization ? `\n// Visualization:\n${scriptOutput.visualization}` : ''}`;
@@ -2122,6 +2126,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                                   <Download className="w-3.5 h-3.5" /> Download Output
                                 </button>
                               </div>
+                              <CodeRunMenu
+                                facts={{
+                                  name: activeTab.name,
+                                  language: activeTab.language,
+                                  scriptType: activeTab.scriptType || activeScriptType,
+                                  code: activeTab.content,
+                                  result: runResult,
+                                  elapsedMs: runElapsedMs,
+                                }}
+                              />
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400">

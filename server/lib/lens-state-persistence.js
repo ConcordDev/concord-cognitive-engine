@@ -23,6 +23,10 @@ export const LENS_STATE_KEYS = Object.freeze([
   "marketsLens", "marketplaceLens", "messageLens", "privacyLens", "projectsLens", "realestateLens", "researchLens",
   "retailLens", "scienceLens", "studioLens", "threadLens", "tradesLens",
   "whiteboardLens", "worldLens",
+  // 32 -> 33: "codeLens" so a virtual project, its files, and its git log
+  // survive a restart. The Code domain stores workspaces here; without this
+  // key a hard restart wiped every project while the editor still showed it.
+  "codeLens",
 ]);
 
 function serializeValue(v) {

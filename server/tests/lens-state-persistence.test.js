@@ -24,7 +24,7 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 32 lens state keys", () => {
+  it("exposes 33 lens state keys", () => {
     // 28 -> 29: "calendarLens" so calendar.events-create survives a restart.
     // 29 -> 30: "marketplaceLens" so a paid shop order survives a restart.
     // The marketplace domain stores orders in STATE.marketplaceLens Maps.
@@ -34,7 +34,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // 31 -> 32: "threadLens" so an unpublished draft citing a DTU survives.
     // Without these two the Projects status report's Thread draft vanished on
     // every process restart while the UI still reported it as drafted.
-    assert.equal(LENS_STATE_KEYS.length, 32);
+    // 32 -> 33: "codeLens" so a virtual Code project, its files, and its git
+    // log survive a restart. Code domain stores workspaces under STATE.codeLens.
+    assert.equal(LENS_STATE_KEYS.length, 33);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -44,6 +46,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("marketplaceLens"));
     assert.ok(LENS_STATE_KEYS.includes("projectsLens"));
     assert.ok(LENS_STATE_KEYS.includes("threadLens"));
+    assert.ok(LENS_STATE_KEYS.includes("codeLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -80,6 +83,32 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.projectsLens.projects.get("user_a")[0].key, "NSI");
     assert.equal(STATE.projectsLens.tasks.get("user_a")[0].points, 3);
     assert.ok(STATE.projectsLens.risks instanceof Map);
+  });
+
+  it("roundtrips STATE.codeLens (a virtual Code project and its files)", () => {
+    // The Code domain stores projects/files/git under STATE.codeLens.
+    // files is Map<userId, Map<projectId, Map<path, FileBlob>>> — three
+    // levels of Map nesting. Without codeLens in LENS_STATE_KEYS a restart
+    // wiped every project while the editor still showed it.
+    STATE.codeLens = {
+      projects: new Map([["user_a", [{ id: "proj_1", name: "demo", language: "javascript" }]]]),
+      files: new Map([["user_a", new Map([["proj_1", new Map([["src/index.js", { content: "console.log('hi')", modifiedAt: "2026-10-04" }]])]])]]),
+      gitState: new Map([["user_a", new Map([["proj_1", { branch: "main", staged: new Set(["src/index.js"]), modified: new Set() }]])]]),
+      agentTasks: new Map(),
+      chatThreads: new Map(),
+      seq: new Map([["user_a", { proj: 2, task: 1, thread: 1 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.codeLens.projects instanceof Map);
+    assert.equal(STATE.codeLens.projects.get("user_a")[0].name, "demo");
+    assert.ok(STATE.codeLens.files.get("user_a") instanceof Map);
+    assert.ok(STATE.codeLens.files.get("user_a").get("proj_1") instanceof Map);
+    assert.equal(STATE.codeLens.files.get("user_a").get("proj_1").get("src/index.js").content, "console.log('hi')");
+    assert.ok(STATE.codeLens.gitState.get("user_a").get("proj_1").staged instanceof Set);
+    assert.ok(STATE.codeLens.gitState.get("user_a").get("proj_1").staged.has("src/index.js"));
+    assert.equal(STATE.codeLens.seq.get("user_a").proj, 2);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
