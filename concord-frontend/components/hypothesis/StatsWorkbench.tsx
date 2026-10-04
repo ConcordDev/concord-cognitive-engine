@@ -17,13 +17,15 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import {
   Calculator, FlaskConical, Sigma, GitCompareArrows, Table2, ShieldCheck,
-  Layers3, ClipboardCheck, FileText, Loader2, Trash2, Plus, Upload, History,
+  Layers3, ClipboardCheck, FileText, Loader2, Trash2, Plus, Upload, History, Target,
 } from 'lucide-react';
+import { ExperimentDesignPanel } from './ExperimentDesignPanel';
 
-type TabId = 'tests' | 'datasets' | 'assumptions' | 'correction' | 'registry' | 'history';
+type TabId = 'tests' | 'design' | 'datasets' | 'assumptions' | 'correction' | 'registry' | 'history';
 
 const TABS: { id: TabId; label: string; icon: typeof Calculator }[] = [
   { id: 'tests', label: 'Test Battery', icon: Sigma },
+  { id: 'design', label: 'A/B, Bayes & Power', icon: Target },
   { id: 'datasets', label: 'Datasets', icon: Table2 },
   { id: 'assumptions', label: 'Assumption Checks', icon: ShieldCheck },
   { id: 'correction', label: 'Multiple Comparison', icon: Layers3 },
@@ -109,6 +111,7 @@ export function StatsWorkbench() {
       </div>
       <div className="p-4">
         {tab === 'tests' && <TestBattery />}
+        {tab === 'design' && <ExperimentDesignPanel />}
         {tab === 'datasets' && <DatasetPanel />}
         {tab === 'assumptions' && <AssumptionsPanel />}
         {tab === 'correction' && <CorrectionPanel />}
@@ -491,7 +494,7 @@ function DatasetPanel() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -970,7 +973,7 @@ function RegistryPanel() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1280,7 +1283,7 @@ function HistoryPanel() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
