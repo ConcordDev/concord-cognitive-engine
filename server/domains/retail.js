@@ -1685,6 +1685,63 @@ export default function registerRetailActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Returns (RMA lifecycle) ───────────────────────────────────
+  // pending → approved → received → closed, or pending/approved → rejected.
+  // Money moves only through refunds-create; a return never refunds itself.
+  const RETURN_TRANSITIONS = {
+    pending: ["approved", "rejected"],
+    approved: ["received", "rejected"],
+    received: ["closed"],
+  };
+
+  registerLensAction("retail", "returns-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const returns = ensureRetailBucket(s, "returns", retailActor(ctx));
+    return { ok: true, result: { returns: [...returns].sort((a, b) => String(b.initiatedAt).localeCompare(String(a.initiatedAt))) } };
+  });
+
+  registerLensAction("retail", "returns-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orderId = String(params.orderId || "");
+    const order = (s.orders.get(userId) || []).find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    const returns = ensureRetailBucket(s, "returns", userId);
+    if (returns.some((r) => r.orderId === orderId && !["rejected", "closed"].includes(r.status))) {
+      return { ok: false, error: "an open return already exists for this order" };
+    }
+    const record = {
+      id: nextRetailId("ret"),
+      orderId,
+      orderNumber: order.number,
+      orderTotal: order.total,
+      reason: String(params.reason || "customer_request").slice(0, 60),
+      note: params.note ? String(params.note).slice(0, 400) : null,
+      restock: params.restock !== false,
+      status: "pending",
+      rmaNumber: `RMA-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+      initiatedAt: nowIsoRet(),
+      history: [{ status: "pending", at: nowIsoRet() }],
+    };
+    returns.push(record);
+    saveRetailState();
+    return { ok: true, result: { return: record } };
+  });
+
+  registerLensAction("retail", "returns-update", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const record = ensureRetailBucket(s, "returns", retailActor(ctx)).find((r) => r.id === String(params.id || ""));
+    if (!record) return { ok: false, error: "return not found" };
+    const next = String(params.status || "");
+    const allowed = RETURN_TRANSITIONS[record.status] || [];
+    if (!allowed.includes(next)) return { ok: false, error: `cannot move a ${record.status} return to ${next || "nothing"}` };
+    record.status = next;
+    if (!Array.isArray(record.history)) record.history = [];
+    record.history.push({ status: next, at: nowIsoRet(), ...(params.note ? { note: String(params.note).slice(0, 400) } : {}) });
+    saveRetailState();
+    return { ok: true, result: { return: record } };
+  });
+
   // ── Collections (product groupings) ───────────────────────────
 
   registerLensAction("retail", "collections-list", (ctx, _a, _p = {}) => {

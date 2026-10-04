@@ -30,6 +30,7 @@ import DiscountsManager from '@/components/retail/DiscountsManager';
 import AbandonedCartsPanel from '@/components/retail/AbandonedCartsPanel';
 import ShippingZonesEditor from '@/components/retail/ShippingZonesEditor';
 import GiftCardsPanel from '@/components/retail/GiftCardsPanel';
+import ReturnsPanel from '@/components/retail/ReturnsPanel';
 import RefundsPanel from '@/components/retail/RefundsPanel';
 import CollectionsPanel from '@/components/retail/CollectionsPanel';
 import InventoryTransfers from '@/components/retail/InventoryTransfers';
@@ -136,7 +137,7 @@ function RetailWorkbenchSection() {
     { id: 'abandoned', label: 'Abandoned' },
     { id: 'shipping', label: 'Shipping' },
     { id: 'gift', label: 'Gift cards' },
-    { id: 'refunds', label: 'Refunds' },
+    { id: 'refunds', label: 'Refunds & returns' },
     { id: 'collections', label: 'Collections' },
     { id: 'transfers', label: 'Transfers' },
   ] as const;
@@ -169,7 +170,12 @@ function RetailWorkbenchSection() {
         {active === 'abandoned' && <AbandonedCartsPanel />}
         {active === 'shipping' && <ShippingZonesEditor />}
         {active === 'gift' && <GiftCardsPanel />}
-        {active === 'refunds' && <RefundsPanel />}
+        {active === 'refunds' && (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <RefundsPanel />
+            <ReturnsPanel />
+          </div>
+        )}
         {active === 'collections' && <CollectionsPanel />}
         {active === 'transfers' && <InventoryTransfers />}
       </div>
