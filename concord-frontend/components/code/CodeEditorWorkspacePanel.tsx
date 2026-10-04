@@ -24,6 +24,7 @@ import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
 import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
+import { PushProposalsPanel } from '@/components/code/PushProposalsPanel';
 import { BrainStatusBadge } from '@/components/code/BrainStatusBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -38,7 +39,7 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
-  ChevronRight, ChevronDown, File, Folder, FolderOpen, Code2 as Github,
+  ChevronRight, ChevronDown, File, Folder, FolderOpen,
   Sparkles, RefreshCw, Copy,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
@@ -49,7 +50,6 @@ import {
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
@@ -481,7 +481,7 @@ function generateScriptOutput(scriptType: ScriptType, code: string): { log: stri
 
 export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
   const { user, isAuthenticated } = useAuth();
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('code');
+  const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
   const {
     hyperDTUs, megaDTUs, regularDTUs,
@@ -590,7 +590,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const [agentPrompt, setAgentPrompt] = useState('');
 
   // Load persisted settings on mount (deferred to avoid SSR hydration issues).
-  useEffect(() => { setSettings(loadCodeSettings()); }, []);
+  useEffect(() => { queueMicrotask(() => setSettings(loadCodeSettings())); }, []);
 
   // ── Command palette (⌘P / ⌘Shift+P) ────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -742,14 +742,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   // Tick elapsed time during in-flight AI requests so the UI never feels
   // frozen.  Both edit + chat share this side-effect.
   useEffect(() => {
-    if (!aiEditPending) { setAiEditElapsed(0); return; }
+    if (!aiEditPending) return;
     const start = Date.now();
+    queueMicrotask(() => setAiEditElapsed(0));
     const t = setInterval(() => setAiEditElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
     return () => clearInterval(t);
   }, [aiEditPending]);
   useEffect(() => {
-    if (!aiChatPending) { setAiChatElapsed(0); return; }
+    if (!aiChatPending) return;
     const start = Date.now();
+    queueMicrotask(() => setAiChatElapsed(0));
     const t = setInterval(() => setAiChatElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
     return () => clearInterval(t);
   }, [aiChatPending]);
@@ -997,7 +999,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     ).slice(0, 50);
   }, [paletteCommands, paletteQuery]);
 
-  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => { queueMicrotask(() => setPaletteIdx(0)); }, [paletteQuery, paletteOpen]);
   useEffect(() => {
     if (paletteOpen) {
       requestAnimationFrame(() => paletteInputRef.current?.focus());
@@ -1790,7 +1792,12 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     onRefresh={refetchDTUs}
                   />
                 )}
-                {activity === 'github' && <GitHubConnectPanel />}
+                {activity === 'github' && (
+                  <div className="flex h-full flex-col">
+                    <div className="min-h-0 flex-1"><GitHubConnectPanel /></div>
+                    <div className="max-h-[50%] shrink-0 overflow-y-auto"><PushProposalsPanel /></div>
+                  </div>
+                )}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
