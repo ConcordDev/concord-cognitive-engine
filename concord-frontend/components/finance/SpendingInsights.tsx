@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, AlertTriangle, Loader2, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, Loader2, BarChart3, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -26,8 +26,25 @@ interface Insights {
 export function SpendingInsights() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [commentary, setCommentary] = useState<{ busy: boolean; text: string | null; error: string | null }>({ busy: false, text: null, error: null });
 
-  useEffect(() => { refresh(); }, []);
+  async function explain() {
+    if (!insights) return;
+    setCommentary({ busy: true, text: null, error: null });
+    const top = [...insights.trends].sort((a, b) => b.current - a.current).slice(0, 5);
+    try {
+      const r = await lensRun<{ text: string; error?: boolean }>('finance', 'weekly-commentary', {
+        week: insights.latestMonth,
+        totalSpent: insights.trends.reduce((s, t) => s + t.current, 0),
+        topCategories: top.map((t) => ({ category: t.category, amount: Math.round(t.current) })),
+      });
+      const res = r.data.result;
+      if (!r.data.ok || !res || res.error) setCommentary({ busy: false, text: null, error: res?.text || r.data.error || 'Commentary failed.' });
+      else setCommentary({ busy: false, text: res.text, error: null });
+    } catch (e) {
+      setCommentary({ busy: false, text: null, error: (e as Error).message });
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -40,6 +57,8 @@ export function SpendingInsights() {
     } catch (e) { console.error('[Spending] insights failed', e); }
     finally { setLoading(false); }
   }
+
+  useEffect(() => { void Promise.resolve().then(refresh); }, []);
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
@@ -62,6 +81,13 @@ export function SpendingInsights() {
                 <AlertTriangle className="w-3 h-3" /> {insights.anomalies.length} anomal{insights.anomalies.length === 1 ? 'y' : 'ies'}
               </span>
             )}
+          </div>
+          <div className="px-4 py-2 border-b border-white/10">
+            <button type="button" onClick={() => void explain()} disabled={commentary.busy} className="inline-flex items-center gap-1.5 text-[11px] text-cyan-300 transition-colors hover:text-cyan-200 disabled:opacity-50">
+              {commentary.busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Explain this month
+            </button>
+            {commentary.text && <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-gray-300">{commentary.text}</p>}
+            {commentary.error && <p role="alert" className="mt-2 text-xs text-rose-300">{commentary.error}</p>}
           </div>
           <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
             {insights.trends.map(t => {

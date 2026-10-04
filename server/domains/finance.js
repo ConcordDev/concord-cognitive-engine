@@ -618,13 +618,13 @@ Categories: Groceries, Dining, Transportation, Gas, Shopping, Entertainment, Sub
     if (!ctx?.llm?.chat) return { ok: true, result: { text: "Commentary unavailable (LLM offline)." } };
     const week = params.week || "current";
     const totalSpent = Number(params.totalSpent) || 0;
+    const hasIncome = params.totalIncome !== undefined && params.totalIncome !== null && params.totalIncome !== "";
     const totalIncome = Number(params.totalIncome) || 0;
     const topCategories = Array.isArray(params.topCategories) ? params.topCategories.slice(0, 5) : [];
     const sys = `You are a personal finance commentator. Write a friendly 2-paragraph summary of the week. Keep it concise, specific, and actionable.`;
     const user = `Week: ${week}
 Total spent: $${totalSpent.toFixed(0)}
-Total income: $${totalIncome.toFixed(0)}
-Top categories: ${topCategories.map(c => `${c.category} $${c.amount}`).join(", ")}
+${hasIncome ? `Total income: $${totalIncome.toFixed(0)}\n` : ""}Top categories: ${topCategories.map(c => `${c.category} $${c.amount}`).join(", ")}
 Generate the summary.`;
     try {
       const out = await ctx.llm.chat({

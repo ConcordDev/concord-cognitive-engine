@@ -79,6 +79,7 @@ export type EngView =
   | 'bom'
   | 'tolerance'
   | 'calcs'
+  | 'physics'
   | 'results'
   | 'feed'
   | 'actions';

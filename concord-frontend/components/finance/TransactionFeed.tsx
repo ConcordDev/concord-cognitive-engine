@@ -38,6 +38,25 @@ export function TransactionFeed() {
   const [form, setForm] = useState({ description: '', amount: '', date: '', category: '' });
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [filter, setFilter] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState<{ category: string; confidence: number; source: string } | null>(null);
+
+  async function suggestCategory() {
+    if (!form.description.trim()) return;
+    setSuggesting(true);
+    try {
+      const r = await lensRun<{ category: string; confidence: number; source: string }>('finance', 'categorize-transaction', {
+        description: form.description, amount: Number(form.amount) || 0,
+      });
+      const res = r.data.result;
+      if (r.data.ok && res?.category) {
+        setSuggestion(res);
+        setForm((f) => ({ ...f, category: CATEGORIES.includes(res.category) ? res.category : f.category }));
+      }
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,7 +71,7 @@ export function TransactionFeed() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function ingest() {
     const amount = Number(form.amount);
@@ -141,6 +160,12 @@ export function TransactionFeed() {
             <option value="">Auto-categorise</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
+          <div className="col-span-6 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+            <button type="button" onClick={() => void suggestCategory()} disabled={suggesting || !form.description.trim()} className="rounded border border-cyan-500/30 px-2 py-1 text-cyan-300 transition-colors hover:bg-cyan-500/10 disabled:opacity-40">
+              {suggesting ? 'Suggesting…' : 'Suggest category'}
+            </button>
+            {suggestion && <span>Suggested <span className="text-white">{suggestion.category}</span> · {Math.round(suggestion.confidence * 100)}% · {suggestion.source === 'rules' ? 'merchant rules' : 'utility brain'}</span>}
+          </div>
           <button
             onClick={ingest}
             className="col-span-6 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"

@@ -4,6 +4,7 @@ import type { ComponentType } from 'react';
 import { BomPanel } from './BomPanel';
 import { TolerancePanel } from './TolerancePanel';
 import { MultiDisciplineCalcPanel } from './MultiDisciplineCalcPanel';
+import { MultiPhysicsPanel } from './MultiPhysicsPanel';
 import { GeometryPanel } from './GeometryPanel';
 import { ModelPanel } from './ModelPanel';
 import { LoadsPanel } from './LoadsPanel';
@@ -23,6 +24,7 @@ const PANELS: Record<EngView, ComponentType> = {
   bom: BomPanel,
   tolerance: TolerancePanel,
   calcs: MultiDisciplineCalcPanel,
+  physics: MultiPhysicsPanel,
   results: ResultsPanel,
   feed: FeedPanel,
   actions: ActionsPanel,

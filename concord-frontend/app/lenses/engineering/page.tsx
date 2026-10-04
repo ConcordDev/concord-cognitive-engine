@@ -25,6 +25,7 @@ import {
   Activity,
   MessageSquare,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -51,6 +52,7 @@ const VIEWS: { id: EngView; label: string; keys: string; title: string; icon: ty
   { id: 'bom', label: 'BOM', keys: 'b', title: 'Everything it takes to build', icon: ClipboardList },
   { id: 'tolerance', label: 'Tolerance', keys: 't', title: 'How tight it has to be', icon: Ruler },
   { id: 'calcs', label: 'Calcs', keys: 'c', title: 'Run the numbers', icon: Calculator },
+  { id: 'physics', label: 'Multi-physics', keys: 'p', title: 'Heat, wind and current', icon: Flame },
   { id: 'results', label: 'Results', keys: 'r', title: 'What the solver found', icon: Activity },
   { id: 'feed', label: 'Feed', keys: 'f', title: 'What engineers are saying', icon: MessageSquare },
   { id: 'actions', label: 'Actions', keys: 'x', title: 'Every engineering tool', icon: Sparkles },
