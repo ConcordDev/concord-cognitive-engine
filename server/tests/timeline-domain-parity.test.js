@@ -70,12 +70,19 @@ describe("timeline.feed-list (privacy-aware)", () => {
     assert.equal(r.result.posts[0].content, "public note");
   });
 
-  it("shows friends-only posts to friends", () => {
-    call("post-create", ctxB, { content: "for friends", privacy: "friends" });
-    const stranger = call("feed-list", ctxA, {});
-    assert.equal(stranger.result.posts.length, 0);
-    const friend = call("feed-list", ctxA, { friendIds: ["user_b"] });
-    assert.equal(friend.result.posts.length, 1);
+  it("shows friends-only posts only to confirmed friends — a claimed friendIds list grants nothing", () => {
+    const author = { actor: { userId: "fl_author" }, userId: "fl_author", db: friendshipsDb };
+    const viewer = { actor: { userId: "fl_viewer" }, userId: "fl_viewer", db: friendshipsDb };
+    call("post-create", author, { content: "for friends", privacy: "friends" });
+    const byAuthor = (r) => r.result.posts.filter((p) => p.authorId === "fl_author");
+    assert.equal(byAuthor(call("feed-list", viewer, {})).length, 0);
+    // Claiming the author as a friend without an accepted friendship must not reveal it.
+    assert.equal(byAuthor(call("feed-list", viewer, { friendIds: ["fl_author"] })).length, 0);
+    const req = sendFriendRequest(friendshipsDb, "fl_viewer", "fl_author");
+    acceptFriendRequest(friendshipsDb, req.id, "fl_author");
+    assert.equal(byAuthor(call("feed-list", viewer, {})).length, 1);
+    // The client list can still narrow: friends-tier posts from owners not in it are hidden.
+    assert.equal(byAuthor(call("feed-list", viewer, { friendIds: ["someone_else"] })).length, 0);
   });
 
   it("author always sees own private posts", () => {
