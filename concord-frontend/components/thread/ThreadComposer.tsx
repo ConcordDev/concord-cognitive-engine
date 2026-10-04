@@ -12,11 +12,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { PenSquare, Plus, Trash2, Copy, Calendar, Check, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { manualPostSentence } from '@/components/thread/manualPost';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import {
+  draftDtuCall,
+  dtuReadBackCall,
+  dtuReadBackMatches,
+  dtuRecordId,
+  manualPostSentence,
+  sendDraftDtuOutcome,
+  sendDraftDtuToTimelineCall,
+} from '@/components/thread/manualPost';
 
 interface Post { index: number; text: string; chars: number }
 interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number; scheduledAt: string | null }
-interface Draft { id: string; title: string; content: string; platform: string; status: string; posts: Post[] }
+interface Draft { id: string; title: string; content: string; platform: string; status: string; posts: Post[]; postedManually?: boolean }
 interface Slot { day: string; time: string; score: number }
 interface Dash { drafts: number; scheduled: number; published: number; total: number }
 
@@ -34,6 +43,8 @@ export function ThreadComposer() {
   const [schedAt, setSchedAt] = useState('');
   const [listErr, setListErr] = useState('');
   const [markNote, setMarkNote] = useState('');
+  const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
+  const [dtuBusy, setDtuBusy] = useState<'save' | 'send' | null>(null);
 
   const refresh = useCallback(async () => {
     const [dl, d, bt] = await Promise.all([
@@ -108,8 +119,69 @@ export function ThreadComposer() {
     if (!active) return;
     setMarkNote('');
     const r = await lensRun('thread', 'draft-publish', { id: active.id });
-    setMarkNote(manualPostSentence(r.data).text);
+    const sentence = manualPostSentence(r.data);
+    setMarkNote(sentence.text);
+    if (sentence.claimed) {
+      const detail = await lensRun('thread', 'draft-detail', { id: active.id });
+      const draft = detail.data?.result?.draft as Draft | undefined;
+      if (detail.data?.ok && draft?.postedManually === true && draft.status === 'published') {
+        setActive(draft);
+      }
+    }
     await refresh();
+  }
+
+  async function saveDtu() {
+    if (!active || dtuBusy) return;
+    const call = draftDtuCall({ ...active, content });
+    if (!call) {
+      setMarkNote('Not saved. This draft has nothing to store.');
+      return;
+    }
+    setDtuBusy('save');
+    try {
+      const response = await lensRun({
+        domain: call.domain,
+        name: call.action,
+        input: withContentLicense(call.input, 'knowledge', ['private']),
+      });
+      const id = dtuRecordId(response.data);
+      if (!id || response.data?.ok === false) {
+        setSavedDtuId(null);
+        setMarkNote(`Not saved. ${response.data?.error || 'No DTU id returned.'}`);
+        return;
+      }
+      const read = await lensRun(dtuReadBackCall(id));
+      if (!dtuReadBackMatches(id, read.data)) {
+        setSavedDtuId(null);
+        setMarkNote(`Not saved. DTU ${id} could not be read back.`);
+        return;
+      }
+      setSavedDtuId(id);
+      setMarkNote(`Saved as DTU ${id}.`);
+    } catch (err) {
+      setMarkNote(`Not saved. ${err instanceof Error ? err.message : 'Request failed.'}`);
+    } finally {
+      setDtuBusy(null);
+    }
+  }
+
+  async function sendDtu() {
+    if (!active || !savedDtuId || dtuBusy) return;
+    const call = sendDraftDtuToTimelineCall({ draft: { ...active, content }, dtuId: savedDtuId });
+    if (!call) {
+      setMarkNote('Not sent. This DTU has no draft to post.');
+      return;
+    }
+    setDtuBusy('send');
+    try {
+      const response = await lensRun({ domain: call.domain, name: call.action, input: call.input });
+      setMarkNote(sendDraftDtuOutcome(savedDtuId, response.data).text);
+    } catch (err) {
+      setMarkNote(`Not sent. ${err instanceof Error ? err.message : 'Request failed.'}`);
+    } finally {
+      setDtuBusy(null);
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
@@ -173,6 +245,14 @@ export function ThreadComposer() {
               <button onClick={markPostedByMe} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 inline-flex items-center gap-1">
                 <Check className="w-3 h-3" />I posted this
               </button>
+              <button onClick={() => { void saveDtu(); }} disabled={dtuBusy !== null} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-40">
+                {dtuBusy === 'save' ? 'Saving DTU…' : 'Save draft as DTU'}
+              </button>
+              {savedDtuId && (
+                <button onClick={() => { void sendDtu(); }} disabled={dtuBusy !== null} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-40">
+                  {dtuBusy === 'send' ? 'Sending DTU…' : 'Send this DTU to Timeline'}
+                </button>
+              )}
             </div>
           )}
           {markNote && (
