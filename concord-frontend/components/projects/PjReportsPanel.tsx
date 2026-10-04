@@ -11,31 +11,47 @@ import {
 import { Gauge, Activity, Timer, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { Skeleton } from '@/components/ui';
+import { ProjectStatusMenu } from './ProjectStatusMenu';
+import type { Risk, Milestone } from './projectStatusReport';
 
 interface Velocity { series: { sprint: string; committed: number; completed: number }[]; avgVelocity: number; completedSprints: number }
 interface Flow { series: { date: string; created: number; completed: number; open: number }[] }
 interface CycleTime { completedTasks: number; avgCycleDays: number; avgLeadDays: number }
 interface Forecast { remainingPoints: number; avgVelocity: number; projectedSprints: number | null; basis: number }
 
-export function PjReportsPanel({ projectId }: { projectId: string }) {
+export function PjReportsPanel({
+  projectId,
+  project,
+  dashboard,
+}: {
+  projectId: string;
+  project: { id: string; name: string; key: string; status?: string; health?: string } | null;
+  dashboard: { totalTasks: number; done: number; completionPct: number; overdue: number; activeSprints: number; openMilestones: number; members: number } | null;
+}) {
   const [velocity, setVelocity] = useState<Velocity | null>(null);
   const [flow, setFlow] = useState<Flow | null>(null);
   const [cycle, setCycle] = useState<CycleTime | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [risks, setRisks] = useState<Risk[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [v, f, c, fc] = await Promise.all([
+    const [v, f, c, fc, r, m] = await Promise.all([
       lensRun('projects', 'report-velocity', { projectId }),
       lensRun('projects', 'report-flow', { projectId, days: 30 }),
       lensRun('projects', 'report-cycle-time', { projectId }),
       lensRun('projects', 'report-forecast', { projectId }),
+      lensRun('projects', 'risk-list', { projectId }),
+      lensRun('projects', 'milestone-list', { projectId }),
     ]);
     setVelocity((v.data?.result as Velocity | null) || null);
     setFlow((f.data?.result as Flow | null) || null);
     setCycle((c.data?.result as CycleTime | null) || null);
     setForecast((fc.data?.result as Forecast | null) || null);
+    setRisks(r.data?.ok === false ? [] : ((r.data?.result?.risks || []) as Risk[]));
+    setMilestones(m.data?.ok === false ? [] : ((m.data?.result?.milestones || []) as Milestone[]));
     setLoading(false);
   }, [projectId]);
 
@@ -58,6 +74,10 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
+      <ProjectStatusMenu
+        facts={{ project, dashboard, velocity, cycle, forecast, risks, milestones }}
+      />
+
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Kpi icon={Gauge} label="Avg velocity" value={velocity?.avgVelocity ?? 0} suffix=" pts" />

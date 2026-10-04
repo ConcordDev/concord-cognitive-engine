@@ -185,6 +185,19 @@ export default function registerThreadActions(registerLensAction) {
     // like an id, so a draft never pretends to cite a missing record.
     const rawCite = trClean(params.citedDtuId, 80);
     const citedDtuId = /^[A-Za-z0-9_.:-]{1,80}$/.test(rawCite) ? rawCite : null;
+    // A well-formed id still has to resolve. Storing a cite that points at
+    // nothing would let the draft claim a source that does not exist.
+    if (citedDtuId) {
+      const store = globalThis._concordSTATE;
+      if (!store?.dtus) return { ok: false, error: "STATE unavailable" };
+      const cited = store.dtus.get(citedDtuId);
+      if (!cited) return { ok: false, error: `cited DTU not found: ${citedDtuId}` };
+      const owner = cited.creator_id || null;
+      const actor = trActor(ctx);
+      if (owner && actor && owner !== actor) {
+        return { ok: false, error: "cited DTU not owned by caller" };
+      }
+    }
     const draft = {
       id: trId("th"),
       title: trClean(params.title, 120) || content.split(/\n/)[0].slice(0, 80),
@@ -212,6 +225,9 @@ export default function registerThreadActions(registerLensAction) {
       id: d.id, title: d.title, platform: d.platform, status: d.status,
       postCount: d.posts.length, scheduledAt: d.scheduledAt, updatedAt: d.updatedAt,
       clonedFromId: d.clonedFromId || null,
+      // The report this draft cites, so a reader can verify where the
+      // numbers came from without opening the draft. Null when hand-written.
+      citedDtuId: d.citedDtuId || null,
     }));
     return { ok: true, result: { drafts: out, count: out.length } };
   });

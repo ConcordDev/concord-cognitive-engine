@@ -14,7 +14,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 export default function ProjectsLensPage() {
@@ -36,7 +35,6 @@ export default function ProjectsLensPage() {
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <DTUExportButton domain="projects" data={{}} compact />
         </div>
       </div>
       <RealtimeDataPanel domain="projects" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />

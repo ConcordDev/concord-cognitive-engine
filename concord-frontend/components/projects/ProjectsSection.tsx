@@ -202,7 +202,7 @@ export function ProjectsSection() {
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
                 {tab === 'sprints' && <PjSprintsPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'reports' && <PjReportsPanel projectId={activeProject} />}
+                {tab === 'reports' && <PjReportsPanel projectId={activeProject} project={project} dashboard={dash} />}
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}

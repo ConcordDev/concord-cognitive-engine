@@ -24,7 +24,7 @@ import {
 } from '@/components/thread/manualPost';
 
 interface Post { index: number; text: string; chars: number }
-interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number; scheduledAt: string | null }
+interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number; scheduledAt: string | null; citedDtuId?: string | null }
 interface Draft { id: string; title: string; content: string; platform: string; status: string; posts: Post[]; postedManually?: boolean }
 interface Slot { day: string; time: string; score: number }
 interface Dash { drafts: number; scheduled: number; published: number; total: number }
@@ -207,6 +207,9 @@ export function ThreadComposer() {
                   className={cn('flex-1 text-left rounded-lg px-2 py-1.5 border', active?.id === d.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                   <p className="text-[11px] font-semibold text-zinc-100 truncate">{d.title}</p>
                   <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}</p>
+                  {d.citedDtuId && (
+                    <p className="text-[9px] text-sky-400/80 truncate" title="The report this draft cites">{d.citedDtuId}</p>
+                  )}
                 </button>
                 <button aria-label="Duplicate" onClick={() => duplicate(d.id)} className="opacity-0 group-hover:opacity-100 text-sky-400"><Copy className="w-3 h-3" /></button>
                 <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>

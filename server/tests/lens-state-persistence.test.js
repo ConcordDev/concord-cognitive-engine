@@ -24,13 +24,17 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 30 lens state keys", () => {
+  it("exposes 32 lens state keys", () => {
     // 28 -> 29: "calendarLens" so calendar.events-create survives a restart.
     // 29 -> 30: "marketplaceLens" so a paid shop order survives a restart.
     // The marketplace domain stores orders in STATE.marketplaceLens Maps.
     // Those maps were omitted from the snapshot, so a refresh of the process
     // dropped every order.
-    assert.equal(LENS_STATE_KEYS.length, 30);
+    // 30 -> 31: "projectsLens" so a project roster survives a restart.
+    // 31 -> 32: "threadLens" so an unpublished draft citing a DTU survives.
+    // Without these two the Projects status report's Thread draft vanished on
+    // every process restart while the UI still reported it as drafted.
+    assert.equal(LENS_STATE_KEYS.length, 32);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -38,6 +42,44 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("privacyLens"));
     assert.ok(LENS_STATE_KEYS.includes("calendarLens"));
     assert.ok(LENS_STATE_KEYS.includes("marketplaceLens"));
+    assert.ok(LENS_STATE_KEYS.includes("projectsLens"));
+    assert.ok(LENS_STATE_KEYS.includes("threadLens"));
+  });
+
+  it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
+    STATE.threadLens = {
+      drafts: new Map([["user_a", [{
+        id: "drf_1",
+        status: "draft",
+        text: "Sprint 1 closed at 8 pts.",
+        citations: ["dtu_1"],
+      }]]]),
+      seq: new Map([["user_a", { d: 1 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.threadLens.drafts instanceof Map);
+    assert.equal(STATE.threadLens.drafts.get("user_a")[0].id, "drf_1");
+    assert.equal(STATE.threadLens.drafts.get("user_a")[0].status, "draft");
+    assert.deepEqual(STATE.threadLens.drafts.get("user_a")[0].citations, ["dtu_1"]);
+  });
+
+  it("roundtrips STATE.projectsLens (the roster a status report is built from)", () => {
+    STATE.projectsLens = {
+      projects: new Map([["user_a", [{ id: "prj_1", key: "NSI", name: "North Star Ingest" }]]]),
+      tasks: new Map([["user_a", [{ id: "tsk_1", projectId: "prj_1", status: "done", points: 3 }]]]),
+      sprints: new Map(),
+      risks: new Map(),
+      milestones: new Map(),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.projectsLens.projects instanceof Map);
+    assert.equal(STATE.projectsLens.projects.get("user_a")[0].key, "NSI");
+    assert.equal(STATE.projectsLens.tasks.get("user_a")[0].points, 3);
+    assert.ok(STATE.projectsLens.risks instanceof Map);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
