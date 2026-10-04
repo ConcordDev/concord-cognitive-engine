@@ -1,4 +1,7 @@
 // server/domains/marketplace.js
+import { executeMarketplacePurchase } from "../economy/transfer.js";
+import { calculateFee } from "../economy/fees.js";
+
 export default function registerMarketplaceActions(registerLensAction) {
   registerLensAction("marketplace", "listingScore", (ctx, artifact, _params) => {
     const listing = artifact.data || {};
@@ -292,6 +295,8 @@ export default function registerMarketplaceActions(registerLensAction) {
       buyerName, buyerEmail,
       buyerAddress: String(params.buyerAddress || ""),
       status: 'paid',
+      // A seller-recorded sale is not a Concord Coin charge.
+      paymentStatus: 'recorded_offline',
       placedAt: isoS(),
       shippedAt: null,
       deliveredAt: null,
@@ -758,7 +763,7 @@ export default function registerMarketplaceActions(registerLensAction) {
         if (maxPrice !== null && l.priceUsd > maxPrice) continue;
         const lReviews = revList.filter(r => r.targetType === 'listing' && r.targetId === l.id);
         const avgRating = lReviews.length ? Math.round((lReviews.reduce((sum, r) => sum + r.rating, 0) / lReviews.length) * 10) / 10 : null;
-        const orderCount = arrayB(s.orders, sid).filter(o => o.listingId === l.id && o.status !== 'refunded').length;
+        const orderCount = arrayB(s.orders, sid).filter(o => o.listingId === l.id && o.status !== 'refunded' && o.status !== 'pending').length;
         out.push({
           listingId: l.id, sellerId: sid, shopName: shop?.name || sid,
           number: l.number, title: l.title, kind: l.kind,
@@ -1318,8 +1323,8 @@ export default function registerMarketplaceActions(registerLensAction) {
           discountUsd: Math.round(discount * 100) / 100,
           totalUsd: Math.round(total * 100) / 100,
           buyerId, buyerName, buyerEmail, buyerAddress,
-          // No payment is taken at checkout: the order waits for the seller to
-          // confirm payment (orders-mark-paid) before it can ship.
+          // No payment is taken at checkout. The buyer pays with orders-pay.
+          // A seller record-offline confirmation does not move Concord Coin.
           status: 'pending',
           paymentStatus: 'awaiting_payment',
           placedAt: isoS(),
@@ -1364,6 +1369,126 @@ export default function registerMarketplaceActions(registerLensAction) {
     return { ok: true, result: { checkouts: list } };
   });
 
+  function findOrderById(s, id) {
+    for (const list of s.orders.values()) {
+      const found = list.find(x => x.id === id);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function ledgerDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  function batchFromLedger(db, refId) {
+    try {
+      const row = db.prepare(
+        "SELECT metadata_json FROM economy_ledger WHERE ref_id = ? AND from_user_id IS NOT NULL ORDER BY created_at ASC LIMIT 1"
+      ).get(refId);
+      if (!row?.metadata_json) return "";
+      const meta = JSON.parse(row.metadata_json);
+      return String(meta.batchId || "");
+    } catch {
+      return "";
+    }
+  }
+
+  function moneyCc(n) {
+    return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+  }
+
+  // The shop sticker is a number. Paying it moves that many Concord Coin.
+  // The sentence names the coin and the ledger batch. It does not say a card was charged.
+  function paidSentence(order) {
+    const batchId = String(order?.batchId || "").trim();
+    const amount = Number(order?.paidCc);
+    if (!order?.id || !batchId || !(amount > 0)) return null;
+    return `Paid ${moneyCc(amount)} CC. Ledger ${batchId}. Shop sticker $${moneyCc(order.totalUsd)}. No card was charged.`;
+  }
+
+  registerLensAction("marketplace", "orders-for-buyer", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const buyerId = aidS(ctx);
+    const orders = [];
+    for (const list of s.orders.values()) {
+      for (const order of list) if (order.buyerId === buyerId) orders.push(order);
+    }
+    orders.sort((a, b) => (b.placedAt || "").localeCompare(a.placedAt || ""));
+    return { ok: true, result: { orders } };
+  });
+
+  // Buyer pays an awaiting-payment checkout with Concord Coin.
+  // A missing ledger, a short balance, or a second click does not invent a payment.
+  registerLensAction("marketplace", "orders-pay", (ctx, _a, params = {}) => {
+    try {
+      const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      extendStore(s);
+      const buyerId = aidS(ctx);
+      const order = findOrderById(s, String(params.id || ""));
+      if (!order) return { ok: false, error: "order not found" };
+      if (order.buyerId !== buyerId) return { ok: false, error: "only the buyer can pay this order" };
+      if (order.sellerId === buyerId) return { ok: false, error: "you cannot pay your own shop" };
+      if (order.batchId && order.paymentStatus === "settled") {
+        return { ok: true, result: { order, idempotent: true, paidSentence: paidSentence(order) } };
+      }
+      if (order.status !== "pending" || order.paymentStatus !== "awaiting_payment") {
+        return { ok: false, error: `order is ${order.status}, not awaiting payment` };
+      }
+      const amount = Math.round(Number(order.totalUsd) * 100) / 100;
+      const db = ledgerDb(ctx);
+      if (!db) return { ok: false, error: "ledger_unavailable" };
+      const refId = `marketplace-order:${order.id}`;
+      const result = executeMarketplacePurchase(db, {
+        buyerId,
+        sellerId: order.sellerId,
+        amount,
+        listingId: order.listingId,
+        refId,
+        metadata: { kind: "marketplace_order", orderId: order.id, orderNumber: order.number },
+        requestId: ctx?.requestId,
+        ip: ctx?.ip,
+      });
+      if (!result?.ok) {
+        return {
+          ok: false,
+          error: result?.error || "not_paid",
+          balance: result?.balance,
+          required: result?.required,
+        };
+      }
+      const priced = calculateFee("MARKETPLACE_PURCHASE", amount);
+      const batchId = String(result.batchId || batchFromLedger(db, refId) || "");
+      if (!batchId) return { ok: false, error: "ledger returned no batch" };
+      order.status = "paid";
+      order.paymentStatus = "settled";
+      order.paidAt = order.paidAt || isoS();
+      order.paidCc = amount;
+      order.feeCc = result.fee ?? priced.fee;
+      order.sellerNetCc = result.net ?? priced.net;
+      order.batchId = batchId;
+      order.ledgerRef = refId;
+      saveStore();
+      return {
+        ok: true,
+        result: {
+          order,
+          idempotent: Boolean(result.idempotent),
+          transfer: {
+            batchId,
+            amount,
+            fee: order.feeCc,
+            net: order.sellerNetCc,
+          },
+          paidSentence: paidSentence(order),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("marketplace", "dashboard-summary", (ctx, _a, _p = {}) => {
@@ -1377,7 +1502,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     const draftCount = listings.filter(l => l.status === 'draft').length;
     const pendingOrders = orders.filter(o => o.status === 'paid' || o.status === 'pending').length; // not yet shipped
     const shippedOrders = orders.filter(o => o.status === 'shipped').length;
-    const lifetimeRevenue = orders.filter(o => o.status !== 'refunded').reduce((sum, o) => sum + o.totalUsd, 0);
+    // Unpaid checkouts are not revenue. Seller-recorded and settled orders are.
+    const lifetimeRevenue = orders.filter(o => o.status !== 'refunded' && o.status !== 'pending').reduce((sum, o) => sum + o.totalUsd, 0);
     return {
       ok: true,
       result: {

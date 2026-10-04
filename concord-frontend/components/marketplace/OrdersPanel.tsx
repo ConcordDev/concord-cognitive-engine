@@ -5,6 +5,7 @@ import { Package, Loader2, CheckCircle, Truck, XCircle, Plus, X } from 'lucide-r
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui/Skeleton';
+import { offlineSentence, paidSentence } from '@/components/marketplace/marketplaceOrder';
 
 interface Order {
   id: string; number: string;
@@ -13,6 +14,9 @@ interface Order {
   subtotalUsd: number; shippingUsd: number; totalUsd: number;
   buyerName: string; buyerEmail: string; buyerAddress: string;
   status: 'paid' | 'shipped' | 'delivered' | 'refunded' | 'pending';
+  paymentStatus?: string;
+  paidCc?: number;
+  batchId?: string;
   placedAt: string; shippedAt: string | null; deliveredAt: string | null;
   trackingNumber?: string; carrier?: string;
 }
@@ -154,7 +158,7 @@ export function OrdersPanel() {
           <ul className="divide-y divide-white/5">
             {list.map(o => (
               <li key={o.id} className="px-4 py-2.5 hover:bg-white/[0.02] flex items-center gap-3">
-                <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_COLOUR[o.status])}>{o.status === 'pending' ? 'awaiting payment' : o.status}</span>
+                <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_COLOUR[o.status])}>{paidSentence(o) ? 'paid' : offlineSentence(o) ? 'recorded offline' : o.status === 'pending' ? 'awaiting payment' : o.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
                     <span className="font-mono text-[10px] text-gray-400">{o.number}</span>
@@ -165,12 +169,14 @@ export function OrdersPanel() {
                     {o.buyerName}{o.buyerEmail && ` · ${o.buyerEmail}`} · placed {o.placedAt.slice(0, 10)}
                     {o.trackingNumber && <span> · 🚚 {o.carrier} {o.trackingNumber}</span>}
                   </div>
+                  {paidSentence(o) && <div className="text-[10px] text-emerald-300">{paidSentence(o)}</div>}
+                  {offlineSentence(o) && <div className="text-[10px] text-gray-400">{offlineSentence(o)}</div>}
                 </div>
                 <div className="text-sm font-mono tabular-nums text-white w-20 text-right">${o.totalUsd.toFixed(2)}</div>
                 {o.status === 'pending' && (
-                  <button onClick={() => void markPaid(o.id)} title="Confirm you received payment for this order"
+                  <button onClick={() => void markPaid(o.id)} title="Record that you took payment outside Concord. Concord Coin is not moved."
                     className="px-2 py-1 text-[10px] rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />Mark paid
+                    <CheckCircle className="w-3 h-3" />Record offline
                   </button>
                 )}
                 {o.status === 'paid' && (

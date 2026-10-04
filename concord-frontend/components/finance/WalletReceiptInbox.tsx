@@ -59,7 +59,7 @@ export function WalletReceiptInbox() {
                 {row.amount.toFixed(2)} CC · ledger {row.batchId}
               </p>
               <p className="text-[11px] text-zinc-400" role="status">
-                Recorded receipt {row.id} from wallet DTU {row.citedDtuId}. Concord Coin was not moved again.
+                Recorded receipt {row.id} from {row.source} DTU {row.citedDtuId}. Concord Coin was not moved again.
               </p>
               <p className="text-[10px] font-mono text-zinc-500">
                 {row.source} {row.sourceId}{row.counterparty ? ` · ${row.counterparty}` : ''}

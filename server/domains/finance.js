@@ -723,7 +723,7 @@ Generate the summary.`;
     const batchId = String(params.batchId || "").trim();
     if (!batchId) return { ok: false, error: "batchId required" };
     const source = String(params.source || "").trim();
-    if (!["wallet-request", "wallet-schedule", "wallet-split"].includes(source)) {
+    if (!["wallet-request", "wallet-schedule", "wallet-split", "marketplace-order"].includes(source)) {
       return { ok: false, error: "source invalid" };
     }
     const sourceId = String(params.sourceId || "").trim();

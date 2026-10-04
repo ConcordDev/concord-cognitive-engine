@@ -24,18 +24,45 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 29 lens state keys", () => {
+  it("exposes 30 lens state keys", () => {
     // 28 -> 29: "calendarLens" so calendar.events-create survives a restart.
-    // The calendar domain stores events in STATE.calendarLens Maps. Those
-    // maps were omitted from the snapshot, so a refresh of the process
-    // dropped every saved event.
-    assert.equal(LENS_STATE_KEYS.length, 29);
+    // 29 -> 30: "marketplaceLens" so a paid shop order survives a restart.
+    // The marketplace domain stores orders in STATE.marketplaceLens Maps.
+    // Those maps were omitted from the snapshot, so a refresh of the process
+    // dropped every order.
+    assert.equal(LENS_STATE_KEYS.length, 30);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
     assert.ok(LENS_STATE_KEYS.includes("eventTimelineLens"));
     assert.ok(LENS_STATE_KEYS.includes("privacyLens"));
     assert.ok(LENS_STATE_KEYS.includes("calendarLens"));
+    assert.ok(LENS_STATE_KEYS.includes("marketplaceLens"));
+  });
+
+  it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
+    STATE.marketplaceLens = {
+      orders: new Map([["seller_1", [{
+        id: "ord_1",
+        buyerId: "buyer_1",
+        status: "paid",
+        paymentStatus: "settled",
+        batchId: "batch_1",
+        paidCc: 20,
+        totalUsd: 20,
+      }]]]),
+      listings: new Map(),
+      shops: new Map(),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.marketplaceLens.orders instanceof Map);
+    const order = STATE.marketplaceLens.orders.get("seller_1")[0];
+    assert.equal(order.id, "ord_1");
+    assert.equal(order.batchId, "batch_1");
+    assert.equal(order.paymentStatus, "settled");
+    assert.equal(order.paidCc, 20);
   });
 
   it("roundtrips STATE.calendarLens.events (saved calendar events)", () => {

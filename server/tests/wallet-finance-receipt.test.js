@@ -60,6 +60,21 @@ describe("finance wallet receipts", () => {
     assert.equal(call("receipt-list", ctxB).result.count, 0);
   });
 
+  it("stores a marketplace order receipt without moving Concord Coin", () => {
+    const saved = call("receipt-record", ctxA, {
+      citedDtuId: "dtu_mkt_1",
+      amount: 20,
+      batchId: "batch_mkt",
+      source: "marketplace-order",
+      sourceId: "ord_1",
+      counterparty: "seller_1",
+    });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.receipt.source, "marketplace-order");
+    assert.equal(saved.result.receipt.citedDtuId, "dtu_mkt_1");
+    assert.equal(call("receipt-list", ctxA).result.receipts[0].sourceId, "ord_1");
+  });
+
   it("refuses a receipt that is not a wallet ledger source", () => {
     const r = call("receipt-record", ctxA, {
       citedDtuId: "dtu_9",
