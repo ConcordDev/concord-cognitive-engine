@@ -7,6 +7,7 @@ import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import {
   FolderPlus, Eye, Heart, MessageSquare, Trash2, X, Plus, Loader2, ImageIcon, ListOrdered, Upload,
+  Pencil,
 } from 'lucide-react';
 
 interface ProjImage { url: string; caption: string; order: number }
@@ -35,13 +36,15 @@ function ResolvedImage({ src, alt, className }: { src: string; alt: string; clas
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!isRef) { setResolved(src); setFailed(false); return; }
-    const cached = RESOLVED_IMG_CACHE.get(src);
-    if (cached) { setResolved(cached); return; }
     let cancelled = false;
-    setResolved(null);
-    setFailed(false);
+    if (!isRef) { queueMicrotask(() => { if (!cancelled) { setResolved(src); setFailed(false); } }); return () => { cancelled = true; }; }
+    const cached = RESOLVED_IMG_CACHE.get(src);
+    if (cached) { queueMicrotask(() => { if (!cancelled) setResolved(cached); }); return () => { cancelled = true; }; }
     (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setResolved(null);
+      setFailed(false);
       const r = await lensRun('artistry', 'project-image-download', { id: src });
       if (cancelled) return;
       if (r.data?.ok && r.data.result) {
@@ -78,6 +81,8 @@ export function ProjectStudio() {
   const [fImages, setFImages] = useState('');
   const [fSteps, setFSteps] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const fFileRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -89,7 +94,7 @@ export function ProjectStudio() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   const openProject = useCallback(async (id: string) => {
     setOpenId(id);
@@ -109,19 +114,39 @@ export function ProjectStudio() {
       const [title, ...det] = line.split('|');
       return { title: title.trim(), detail: det.join('|').trim() };
     });
-    const r = await lensRun('artistry', 'projectCreate', {
+    const fields = {
       title: fTitle, description: fDesc, discipline: fDiscipline,
       tools: fTools.split(',').map((t) => t.trim()).filter(Boolean),
       tags: fTags.split(',').map((t) => t.trim()).filter(Boolean),
       coverUrl: fCover, images, processSteps,
-    });
+    };
+    const r = editingId
+      ? await lensRun('artistry', 'projectUpdate', { projectId: editingId, ...fields })
+      : await lensRun('artistry', 'projectCreate', fields);
     setSaving(false);
     if (r.data?.ok) {
+      const updatedId = editingId;
       setShowForm(false);
+      setEditingId(null);
+      setSaveError(null);
       setFTitle(''); setFDesc(''); setFTools(''); setFTags(''); setFCover(''); setFImages(''); setFSteps('');
       load();
+      if (updatedId && openId === updatedId) void openProject(updatedId);
+    } else {
+      setSaveError(String(r.data?.error || 'Could not save the project.').replace(/_/g, ' '));
     }
-  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, load]);
+  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, load, editingId, openId, openProject]);
+
+  const openEdit = useCallback((p: Project) => {
+    setEditingId(p.id);
+    setSaveError(null);
+    setFTitle(p.title); setFDesc(p.description || ''); setFDiscipline(p.discipline);
+    setFTools((p.tools || []).join(', ')); setFTags((p.tags || []).join(', ')); setFCover(p.coverUrl || '');
+    setFImages([...(p.images || [])].sort((a, b) => a.order - b.order).map((im) => (im.caption ? `${im.url}|${im.caption}` : im.url)).join('\n'));
+    setFSteps((p.processSteps || []).map((st) => (st.detail ? `${st.title}|${st.detail}` : st.title)).join('\n'));
+    setShowForm(true);
+  }, []);
+  const closeForm = useCallback(() => { setShowForm(false); setEditingId(null); setSaveError(null); }, []);
 
   // Reads the selected file as a base64 data: URL (same FileReader.readAsDataURL
   // idiom used by PatientChartPanel.tsx's onPhotoFileSelected / TravelDocsPanel.tsx's
@@ -235,9 +260,14 @@ export function ProjectStudio() {
                 </div>
               </button>
               <div className="px-3 pb-2">
-                <button onClick={() => remove(p.id)} className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1">
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => openEdit(p)} className="text-[11px] text-gray-400 hover:text-neon-pink flex items-center gap-1">
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <button onClick={() => remove(p.id)} className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -246,11 +276,11 @@ export function ProjectStudio() {
 
       {/* Create form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={closeForm} role="presentation" onKeyDown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingId ? 'Edit project' : 'New project'} onKeyDown={(e) => { if (e.key === 'Escape') closeForm(); }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold">New Project Case Study</h3>
-              <button onClick={() => setShowForm(false)} aria-label="Close"><X className="w-4 h-4" /></button>
+              <h3 className="font-semibold">{editingId ? 'Edit Project' : 'New Project Case Study'}</h3>
+              <button onClick={closeForm} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3">
               <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} placeholder="Project title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
@@ -274,8 +304,9 @@ export function ProjectStudio() {
               </div>
               <textarea value={fSteps} onChange={(e) => setFSteps(e.target.value)} placeholder="Process steps — one per line: title|detail" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <button onClick={submit} disabled={saving || !fTitle.trim()} className="w-full py-2 bg-neon-pink/20 rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
-                {saving ? 'Publishing...' : 'Publish Project'}
+                {saving ? 'Saving...' : editingId ? 'Save changes' : 'Publish Project'}
               </button>
+              {saveError && <p role="alert" className="text-xs text-rose-400">{saveError}</p>}
             </div>
           </div>
         </div>
@@ -300,7 +331,10 @@ export function ProjectStudio() {
                       <h3 className="text-lg font-bold">{detail.project.title}</h3>
                       <div className="text-xs text-gray-400 capitalize">{detail.project.discipline}</div>
                     </div>
-                    <button onClick={() => { setOpenId(null); setDetail(null); }} aria-label="Close"><X className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={() => openEdit(detail.project)} className="text-xs text-gray-400 hover:text-neon-pink flex items-center gap-1"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                      <button onClick={() => { setOpenId(null); setDetail(null); }} aria-label="Close"><X className="w-4 h-4" /></button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-300 whitespace-pre-wrap">{detail.project.description}</p>
 
