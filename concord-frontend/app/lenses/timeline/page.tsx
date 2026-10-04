@@ -31,7 +31,6 @@ import { NotificationsPanel } from '@/components/timeline/NotificationsPanel';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
   CalendarRange, LayoutList, GitBranch, LayoutGrid, Clock, Bell, UserCircle, Loader2, Globe, Users, Lock, Plus,
@@ -74,25 +73,9 @@ export default function TimelineLensPage() {
   const [limit, setLimit] = useState(30);
   const [search, setSearch] = useState('');
 
-  // Friends list — used to make the privacy-aware feed-list macro show
-  // friends-only posts from people the viewer follows.
-  const { data: friendIds } = useQuery({
-    queryKey: ['timeline-friend-ids'],
-    queryFn: async () => {
-      try {
-        const res = await apiHelpers.personas.list();
-        const personas = res.data?.personas || [];
-        return personas
-          .map((p: Record<string, unknown>) => String(p.id || ''))
-          .filter(Boolean) as string[];
-      } catch {
-        return [] as string[];
-      }
-    },
-    enabled: tab !== 'roadmap',
-  });
-
-  // The personal feed — privacy-aware, real macro.
+  // Friends-only visibility is decided by the server friend graph.
+  // Sending persona ids as friendIds only hides real friends, because that
+  // list can narrow the feed and cannot grant access.
   const {
     data: feed,
     isLoading,
@@ -100,12 +83,11 @@ export default function TimelineLensPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['timeline-feed', limit, friendIds],
+    queryKey: ['timeline-feed', limit],
     queryFn: async () => {
       const r = await lensRun<FeedResult>('timeline', 'feed-list', {
         limit,
         offset: 0,
-        friendIds: friendIds ?? [],
       });
       if (!r.data.ok) throw new Error(r.data.error || 'Could not load feed');
       return r.data.result ?? { posts: [], total: 0 };

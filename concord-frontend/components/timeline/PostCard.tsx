@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ThumbsUp, Heart, Laugh, Frown, Angry, MessageCircle, Share2,
+  ThumbsUp, Heart, Laugh, Frown, Angry, MessageCircle, Share2, Bookmark,
   Globe, Users, Lock, Film, Trash2, Repeat2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import type { FeedPost, ReactionKind } from './types';
 import { CommentThread } from './CommentThread';
 import { ReactionBreakdown } from './ReactionBreakdown';
 import { ShareModal } from './ShareModal';
+import { PostKeepMenu } from './PostKeepMenu';
 
 const REACTIONS: { id: ReactionKind; icon: typeof ThumbsUp; color: string; label: string }[] = [
   { id: 'like', icon: ThumbsUp, color: 'text-blue-500', label: 'Like' },
@@ -46,6 +47,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const [showComments, setShowComments] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showKeep, setShowKeep] = useState(false);
 
   const reactMutation = useMutation({
     mutationFn: (kind: ReactionKind) => lensRun('timeline', 'react', { postId: post.id, kind }),
@@ -232,7 +234,19 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           <Share2 className="w-5 h-5" />
           <span className="font-medium text-sm">Share</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setShowKeep((open) => !open)}
+          aria-expanded={showKeep}
+          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-[#3a3b3c] text-gray-400 transition-colors"
+        >
+          <Bookmark className="w-5 h-5" />
+          <span className="font-medium text-sm">Keep</span>
+        </button>
       </div>
+
+      {showKeep && <PostKeepMenu post={post} viewerId={viewerId} />}
 
       {/* Comments */}
       {showComments && <CommentThread postId={post.id} viewerId={viewerId} />}
