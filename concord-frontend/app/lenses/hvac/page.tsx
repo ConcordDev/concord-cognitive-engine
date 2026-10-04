@@ -12,7 +12,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Award, BarChart3, Calculator, CalendarDays, ClipboardList, FileText,
-  MessageSquare, Receipt, Thermometer, Users, Wrench,
+  MessageSquare, Receipt, Thermometer, Users, Wind, Wrench,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -30,6 +30,7 @@ import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
 import { FieldService } from '@/components/hvac/FieldService';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
+import { DuctDesigner } from '@/components/hvac/DuctDesigner';
 import { type HvacView, type ModeTab } from '@/components/hvac/hvac-shared';
 
 const VIEWS: { id: HvacView; label: string; keys: string; hint: string; icon: typeof Thermometer }[] = [
@@ -45,6 +46,7 @@ const VIEWS: { id: HvacView; label: string; keys: string; hint: string; icon: ty
   { id: 'field', label: 'Field Service', keys: 'f', hint: 'Dispatch board', icon: CalendarDays },
   { id: 'feed', label: 'Discussion', keys: 'h', hint: 'HVAC discussion', icon: MessageSquare },
   { id: 'manualj', label: 'Manual J', keys: 'j', hint: 'Load calculator', icon: Calculator },
+  { id: 'ducts', label: 'Ducts', keys: 'u', hint: 'Duct sizing and hanger check', icon: Wind },
 ];
 
 const DESK_MODES = new Set<HvacView>([
@@ -89,6 +91,8 @@ export default function HVACLensPage() {
     body = <FieldService />;
   } else if (active === 'feed') {
     body = <HvacFeed />;
+  } else if (active === 'ducts') {
+    body = <DuctDesigner />;
   } else {
     body = <ManualJCalc />;
   }
