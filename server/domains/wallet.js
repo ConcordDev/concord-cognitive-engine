@@ -1,6 +1,14 @@
 // server/domains/wallet.js
 // Domain actions for wallet: portfolio balancing, transaction categorization,
 // budget checking, and spending trend analysis.
+//
+// Money-moving actions (request pay, split settle, scheduled send) go through
+// economy/transfer.js#executeTransfer — the same ledger path as /api/economy/transfer.
+// A status flip without a ledger row is a fake success and is refused.
+
+import { executeTransfer } from "../economy/transfer.js";
+import { calculateFee } from "../economy/fees.js";
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 
 export default function registerWalletActions(registerLensAction) {
   registerLensAction("wallet", "portfolioBalance", (ctx, artifact, _params) => {
@@ -321,6 +329,102 @@ export default function registerWalletActions(registerLensAction) {
     return map.get(userId);
   }
 
+  function ledgerDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  function describeTransfer(result, amount) {
+    const { fee, net } = calculateFee("TRANSFER", Number(amount) || 0);
+    return {
+      batchId: result?.batchId || result?.entries?.[0]?.id || null,
+      amount: result?.amount ?? (Number(amount) || 0),
+      fee: result?.fee ?? fee,
+      net: result?.net ?? net,
+      from: result?.from || null,
+      to: result?.to || null,
+      idempotent: Boolean(result?.idempotent),
+    };
+  }
+
+  /** Move Concord Coin on the real ledger. Refuses when the db is missing. */
+  function moveCc(ctx, { from, to, amount, refId, metadata }) {
+    const db = ledgerDb(ctx);
+    if (!db) return { ok: false, error: "ledger_unavailable" };
+    const amt = Math.round((Number(amount) || 0) * 100) / 100;
+    if (!(amt > 0)) return { ok: false, error: "amount must be positive" };
+    const result = executeTransfer(db, {
+      from,
+      to,
+      amount: amt,
+      type: "TRANSFER",
+      refId,
+      metadata: metadata || {},
+      requestId: ctx?.requestId,
+      ip: ctx?.ip,
+    });
+    if (!result.ok) return result;
+    return { ok: true, transfer: describeTransfer(result, amt) };
+  }
+
+  /**
+   * One scheduled occurrence. Does not advance the schedule unless the
+   * ledger accepts the transfer. `force` sends before nextRunAt (Send now).
+   */
+  function runScheduleOccurrence(ctx, sched, now, { force = false } = {}) {
+    if (!sched || sched.status !== "active") {
+      return { ok: false, error: "schedule is not active" };
+    }
+    const dueAt = new Date(sched.nextRunAt || 0).getTime();
+    const due = Number.isFinite(dueAt) && dueAt <= now.getTime();
+    if (!force && !due) return { ok: false, error: "not_due" };
+    const occurrence = (Number(sched.runsCompleted) || 0) + 1;
+    const moved = moveCc(ctx, {
+      from: sched.ownerId,
+      to: sched.recipientId,
+      amount: sched.amount,
+      refId: `wallet-schedule:${sched.id}:${occurrence}`,
+      metadata: { kind: "wallet_schedule", scheduleId: sched.id, occurrence },
+    });
+    if (!moved.ok) {
+      sched.lastError = moved.error || "transfer_failed";
+      sched.lastAttemptAt = now.toISOString();
+      return moved;
+    }
+    sched.runsCompleted = occurrence;
+    sched.lastError = null;
+    sched.lastTransfer = moved.transfer;
+    sched.lastSettledAt = now.toISOString();
+    const basisMs = Number.isFinite(dueAt) ? dueAt : now.getTime();
+    const basisIso = new Date(basisMs).toISOString();
+    // Overdue: step one period from the missed instant so a later sweep
+    // can catch up. Early send: step from now so this occurrence is not due again.
+    const stepFrom = basisMs > now.getTime() ? now.toISOString() : basisIso;
+    sched.nextRunAt = nextRunDate(stepFrom, sched.frequency);
+    if (sched.occurrences && sched.runsCompleted >= sched.occurrences) {
+      sched.status = "completed";
+    }
+    return { ok: true, transfer: moved.transfer };
+  }
+
+  function sweepDueSchedules(ctx, now = new Date()) {
+    const state = getWalletState();
+    if (!state) return { ok: true, skipped: "no_state", settled: 0, failed: 0 };
+    let settled = 0;
+    let failed = 0;
+    for (const list of state.schedules.values()) {
+      for (const sched of list) {
+        const dueAt = new Date(sched.nextRunAt || 0).getTime();
+        if (sched.status !== "active") continue;
+        if (!(Number.isFinite(dueAt) && dueAt <= now.getTime())) continue;
+        const r = runScheduleOccurrence(ctx, sched, now, { force: false });
+        if (r.ok) settled += 1;
+        else failed += 1;
+      }
+    }
+    if (settled || failed) saveWalletState();
+    return { ok: true, settled, failed };
+  }
+
   // ── Money requests / invoices ──────────────────────────────────────────────
 
   registerLensAction("wallet", "requestList", (ctx, _artifact, params = {}) => {
@@ -391,28 +495,49 @@ export default function registerWalletActions(registerLensAction) {
     const status = params.status;
     const valid = ["pending", "paid", "declined", "canceled"];
     if (status && !valid.includes(status)) return { ok: false, error: "status invalid" };
-    let updated = null;
+    const seen = new Set();
+    const matches = [];
     for (const list of state.requests.values()) {
-      const req = list.find(r => r.id === id);
-      if (req) {
-        if (status) {
-          // only requester may cancel; only payer may decline/pay
-          if (status === "canceled" && req.requesterId !== userId) {
-            return { ok: false, error: "only requester may cancel" };
-          }
-          if ((status === "paid" || status === "declined") && req.payerId !== userId) {
-            return { ok: false, error: "only payer may pay or decline" };
-          }
-          req.status = status;
-          if (status === "paid") req.paidAt = new Date().toISOString();
-        }
-        if (params.note !== undefined && req.requesterId === userId) req.note = String(params.note).trim();
-        updated = req;
+      for (const req of list) {
+        if (req.id !== id || seen.has(req)) continue;
+        seen.add(req);
+        matches.push(req);
       }
     }
-    if (!updated) return { ok: false, error: "request not found" };
+    if (!matches.length) return { ok: false, error: "request not found" };
+    const req = matches[0];
+    if (status === "canceled" && req.requesterId !== userId) {
+      return { ok: false, error: "only requester may cancel" };
+    }
+    if ((status === "paid" || status === "declined") && req.payerId !== userId) {
+      return { ok: false, error: "only payer may pay or decline" };
+    }
+    let transfer = req.transfer || null;
+    if (status === "paid" && req.status !== "paid") {
+      if (req.status !== "pending") return { ok: false, error: "request is not payable" };
+      // Same object is mirrored onto the payer's list. Charge once, then stamp every copy.
+      const moved = moveCc(ctx, {
+        from: req.payerId,
+        to: req.requesterId,
+        amount: req.amount,
+        refId: `wallet-request:${req.id}`,
+        metadata: { kind: "wallet_request", requestId: req.id, requestKind: req.kind },
+      });
+      if (!moved.ok) return moved;
+      transfer = moved.transfer;
+    }
+    for (const m of matches) {
+      if (status === "paid") {
+        m.status = "paid";
+        m.paidAt = m.paidAt || new Date().toISOString();
+        if (transfer) m.transfer = transfer;
+      } else if (status) {
+        m.status = status;
+      }
+      if (params.note !== undefined && m.requesterId === userId) m.note = String(params.note).trim();
+    }
     saveWalletState();
-    return { ok: true, result: { request: updated } };
+    return { ok: true, result: { request: matches[0], transfer: status === "paid" ? transfer : null } };
   });
 
   // ── Recurring / scheduled transfers ────────────────────────────────────────
@@ -508,6 +633,21 @@ export default function registerWalletActions(registerLensAction) {
     list.splice(idx, 1);
     saveWalletState();
     return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("wallet", "scheduleSendNow", (ctx, _artifact, params = {}) => {
+    const state = getWalletState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = uid(ctx);
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const sched = listFor(state.schedules, userId).find(s => s.id === id);
+    if (!sched) return { ok: false, error: "schedule not found" };
+    const now = new Date();
+    const ran = runScheduleOccurrence(ctx, sched, now, { force: true });
+    saveWalletState();
+    if (!ran.ok) return ran;
+    return { ok: true, result: { schedule: sched, transfer: ran.transfer } };
   });
 
   // ── Social transaction feed ────────────────────────────────────────────────
@@ -627,7 +767,15 @@ export default function registerWalletActions(registerLensAction) {
       creatorId: userId,
       title: String(params.title || "Split").trim(),
       total: Math.round(total * 100) / 100,
-      shares: shares.map(s => ({ ...s, paid: s.userId === userId, paidAt: s.userId === userId ? new Date().toISOString() : null })),
+      shares: shares.map(s => ({
+        ...s,
+        // The creator already covered their own portion of the bill. That is
+        // not a Concord Coin transfer, so it is not labeled as ledger-paid.
+        paid: s.userId === userId,
+        paidAt: s.userId === userId ? new Date().toISOString() : null,
+        settlement: s.userId === userId ? "covered" : null,
+        transfer: null,
+      })),
       note: String(params.note || "").trim(),
       status: "open",
       createdAt: new Date().toISOString(),
@@ -677,12 +825,38 @@ export default function registerWalletActions(registerLensAction) {
     }
     const share = split.shares.find(s => s.userId === memberId);
     if (!share) return { ok: false, error: "member is not part of this split" };
+    if (share.paid && share.settlement === "ledger") {
+      const owed = split.shares.filter(s => !s.paid).reduce((sum, s) => sum + s.amount, 0);
+      return { ok: true, result: { split, outstandingOwed: Math.round(owed * 100) / 100, transfer: share.transfer || null, idempotent: true } };
+    }
+    let transfer = null;
+    if (memberId === split.creatorId) {
+      // Creator's own portion was never a transfer. Recording it covered
+      // does not move Concord Coin and does not mean anyone else paid.
+      share.settlement = "covered";
+    } else {
+      // Only the member's own Concord Coin can settle their share.
+      if (memberId !== userId) {
+        return { ok: false, error: "only that member can pay their share" };
+      }
+      const moved = moveCc(ctx, {
+        from: memberId,
+        to: split.creatorId,
+        amount: share.amount,
+        refId: `wallet-split:${split.id}:${memberId}`,
+        metadata: { kind: "wallet_split", splitId: split.id, memberId },
+      });
+      if (!moved.ok) return moved;
+      transfer = moved.transfer;
+      share.settlement = "ledger";
+      share.transfer = transfer;
+    }
     share.paid = true;
-    share.paidAt = new Date().toISOString();
+    share.paidAt = share.paidAt || new Date().toISOString();
     if (split.shares.every(s => s.paid)) split.status = "settled";
     const owed = split.shares.filter(s => !s.paid).reduce((sum, s) => sum + s.amount, 0);
     saveWalletState();
-    return { ok: true, result: { split, outstandingOwed: Math.round(owed * 100) / 100 } };
+    return { ok: true, result: { split, outstandingOwed: Math.round(owed * 100) / 100, transfer } };
   });
 
   // ── Linked funding sources / cards ─────────────────────────────────────────
@@ -888,4 +1062,22 @@ export default function registerWalletActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Due scheduled sends. One occurrence per schedule per sweep. A failed
+  // transfer leaves the schedule due and records lastError — it is not sent.
+  registerHeartbeat("wallet-schedule-sweep", {
+    frequency: 4,
+    scope: "global",
+    lowPriority: true,
+    handler: (hb) => {
+      try {
+        if (process.env.CONCORD_WALLET_SCHEDULE_SWEEP === "0") return { ok: true, skipped: "disabled" };
+        const db = hb?.db || ledgerDb(hb);
+        if (!db) return { ok: true, skipped: "no_ledger" };
+        return sweepDueSchedules({ db, userId: "system", actor: { userId: "system" } });
+      } catch (e) {
+        return { ok: false, error: String(e?.message || e) };
+      }
+    },
+  });
 }
