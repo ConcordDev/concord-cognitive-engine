@@ -74,9 +74,13 @@ describe("thread.queue + publish", () => {
     const d = call("thread-draft", ctxA, { content: "x y z" }).result.draft;
     assert.equal(call("draft-schedule", ctxA, { id: d.id, scheduledAt: "not-a-date" }).ok, false);
   });
-  it("publish flips status and dashboard counts", () => {
+  it("publish flips status and dashboard counts without delivering", () => {
     const d = call("thread-draft", ctxA, { content: "publish me now" }).result.draft;
-    call("draft-publish", ctxA, { id: d.id });
+    const marked = call("draft-publish", ctxA, { id: d.id });
+    assert.equal(marked.result.delivered, false);
+    assert.equal(marked.result.draft.postedManually, true);
+    assert.equal(marked.result.draft.status, "published");
+    assert.equal(marked.result.draft.dispatch, undefined);
     const dash = call("thread-dashboard", ctxA, {});
     assert.equal(dash.result.published, 1);
     assert.equal(dash.result.total, 1);

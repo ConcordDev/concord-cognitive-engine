@@ -338,7 +338,9 @@ export default function registerThreadActions(registerLensAction) {
     draft.publishedAt = trNow();
     draft.updatedAt = trNow();
     saveThread();
-    return { ok: true, result: { draft } };
+    // delivered stays false: this records the user's attestation only.
+    // publish-to-account is the path that actually posts.
+    return { ok: true, result: { draft, delivered: false, postedManually: true } };
   });
 
   registerLensAction("thread", "queue-list", (ctx, _a, _params = {}) => {

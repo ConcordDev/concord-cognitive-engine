@@ -9,9 +9,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { PenSquare, Plus, Trash2, Copy, Calendar, Send, Loader2, Clock, AlertCircle } from 'lucide-react';
+import { PenSquare, Plus, Trash2, Copy, Calendar, Check, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { manualPostSentence } from '@/components/thread/manualPost';
 
 interface Post { index: number; text: string; chars: number }
 interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number; scheduledAt: string | null }
@@ -32,6 +33,7 @@ export function ThreadComposer() {
   const [loading, setLoading] = useState(true);
   const [schedAt, setSchedAt] = useState('');
   const [listErr, setListErr] = useState('');
+  const [markNote, setMarkNote] = useState('');
 
   const refresh = useCallback(async () => {
     const [dl, d, bt] = await Promise.all([
@@ -102,9 +104,11 @@ export function ThreadComposer() {
     setSchedAt('');
     await refresh();
   }
-  async function publish() {
+  async function markPostedByMe() {
     if (!active) return;
-    await lensRun('thread', 'draft-publish', { id: active.id });
+    setMarkNote('');
+    const r = await lensRun('thread', 'draft-publish', { id: active.id });
+    setMarkNote(manualPostSentence(r.data).text);
     await refresh();
   }
 
@@ -166,10 +170,13 @@ export function ThreadComposer() {
               <button onClick={schedule} disabled={!schedAt} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40 inline-flex items-center gap-1">
                 <Calendar className="w-3 h-3" />Queue
               </button>
-              <button onClick={publish} className="px-2 py-1 text-[11px] rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1">
-                <Send className="w-3 h-3" />Publish
+              <button onClick={markPostedByMe} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 inline-flex items-center gap-1">
+                <Check className="w-3 h-3" />I posted this
               </button>
             </div>
+          )}
+          {markNote && (
+            <p className="text-[11px] text-zinc-300 mt-1" role="status">{markNote}</p>
           )}
           {bestSlots.length > 0 && (
             <p className="text-[10px] text-zinc-400 mt-1 inline-flex items-center gap-1">
