@@ -27,6 +27,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // survive a restart. The Code domain stores workspaces here; without this
   // key a hard restart wiped every project while the editor still showed it.
   "codeLens",
+  // 33 -> 34: "graphLens" so a user's saved mind maps, nodes, edges,
+  // filters, group rules, and layouts survive a restart. The Graph domain
+  // stores per-user maps here; without this key a hard restart wiped every
+  // map while the UI still showed it.
+  "graphLens",
 ]);
 
 function serializeValue(v) {

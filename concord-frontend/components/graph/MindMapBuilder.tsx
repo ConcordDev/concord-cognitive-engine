@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Workflow, Plus, Trash2, Loader2, GitBranch, Link2, Route } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { GraphMapMenu } from './GraphMapMenu';
+import type { GraphFacts } from './graphMapReport';
 
 interface GNode { id: string; label: string; notes: string; central: boolean }
 interface GEdge { id: string; from: string; to: string; label: string }
@@ -120,6 +122,10 @@ export function MindMapBuilder() {
     if (!active) return [];
     return active.edges.filter(e => e.from === nodeId).map(e => active.nodes.find(n => n.id === e.to)).filter(Boolean) as GNode[];
   };
+
+  const graphFacts: GraphFacts = active
+    ? { map: active, metrics }
+    : { map: null, metrics: null };
 
   function NodeBranch({ node, depth }: { node: GNode; depth: number }) {
     if (!active) return null;
@@ -254,6 +260,8 @@ export function MindMapBuilder() {
               <p className="mt-2 text-[11px] text-zinc-500">{pathResult.message || 'These ideas are not connected yet.'}</p>
             ))}
           </div>
+
+          <GraphMapMenu facts={graphFacts} />
         </div>
       ) : (
         <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">

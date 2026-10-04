@@ -36,7 +36,11 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // every process restart while the UI still reported it as drafted.
     // 32 -> 33: "codeLens" so a virtual Code project, its files, and its git
     // log survive a restart. Code domain stores workspaces under STATE.codeLens.
-    assert.equal(LENS_STATE_KEYS.length, 33);
+    // 33 -> 34: "graphLens" so a user's saved mind maps, nodes, edges,
+    // filters, group rules, and layouts survive a restart. The Graph domain
+    // stores per-user maps here; without this key a hard restart wiped every
+    // map while the UI still showed it.
+    assert.equal(LENS_STATE_KEYS.length, 34);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -47,6 +51,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("projectsLens"));
     assert.ok(LENS_STATE_KEYS.includes("threadLens"));
     assert.ok(LENS_STATE_KEYS.includes("codeLens"));
+    assert.ok(LENS_STATE_KEYS.includes("graphLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -109,6 +114,39 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.codeLens.gitState.get("user_a").get("proj_1").staged instanceof Set);
     assert.ok(STATE.codeLens.gitState.get("user_a").get("proj_1").staged.has("src/index.js"));
     assert.equal(STATE.codeLens.seq.get("user_a").proj, 2);
+  });
+
+  it("roundtrips STATE.graphLens (a saved mind map with nodes, edges, and filters)", () => {
+    // The Graph domain stores per-user maps under STATE.graphLens.maps as
+    // Map<userId, Array<map>>. Each map has nodes and edges arrays. Filters
+    // live under STATE.graphLens.filters as Map<userId, Array<filter>>.
+    // Without graphLens in LENS_STATE_KEYS a restart wiped every map while
+    // the MindMapBuilder still showed it.
+    STATE.graphLens = {
+      maps: new Map([["user_a", [{
+        id: "map_1",
+        title: "Product Strategy",
+        nodes: [
+          { id: "n_central", label: "Product", notes: "", central: true, createdAt: "2026-10-04" },
+          { id: "n_branch", label: "Pricing", notes: "Tiered model", parentId: "n_central", createdAt: "2026-10-04" },
+        ],
+        edges: [{ id: "e_1", from: "n_central", to: "n_branch", label: "", createdAt: "2026-10-04" }],
+        createdAt: "2026-10-04",
+      }]]]),
+      filters: new Map([["user_a", [{ id: "f_1", name: "Central only", query: { central: true } }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.graphLens.maps instanceof Map);
+    const maps = STATE.graphLens.maps.get("user_a");
+    assert.equal(maps.length, 1);
+    assert.equal(maps[0].title, "Product Strategy");
+    assert.equal(maps[0].nodes.length, 2);
+    assert.equal(maps[0].nodes[0].central, true);
+    assert.equal(maps[0].edges.length, 1);
+    assert.ok(STATE.graphLens.filters instanceof Map);
+    assert.equal(STATE.graphLens.filters.get("user_a")[0].name, "Central only");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
