@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Calculator, Orbit } from 'lucide-react';
 import { PhysicsAdvancedLab } from '@/components/physics/PhysicsAdvancedLab';
 import { PhysicsKeplerianLab } from '@/components/physics/PhysicsKeplerianLab';
+import { PhysicsFieldLab } from '@/components/physics/PhysicsFieldLab';
 import { PhysicsWorkbench } from '@/components/physics/PhysicsWorkbench';
 import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -47,6 +48,8 @@ export function PhysicsSolversPanel() {
         </h3>
         <PhysicsKeplerianLab />
       </section>
+
+      <PhysicsFieldLab />
 
       <PipingProvider>
         <PhysicsActionPanel />

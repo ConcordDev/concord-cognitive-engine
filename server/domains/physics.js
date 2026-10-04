@@ -306,7 +306,10 @@ export default function registerPhysicsActions(registerLensAction) {
           const k = 2 * Math.PI * src.frequency / speed; // wave number
           const omega = 2 * Math.PI * src.frequency;
           const phi = src.phase || 0;
-          const amp = (src.amplitude || 1) / Math.max(Math.sqrt(dist), 0.01); // 2D circular wave 1/√r decay
+          // 2D circular wave, 1/√r decay. A point source sampled at (or
+          // within half a cell of) a grid node is a singularity; the grid
+          // cannot resolve it finer than half its resolution.
+          const amp = (src.amplitude || 1) / Math.sqrt(Math.max(dist, resolution / 2));
           const phase = k * dist - omega * t + phi;
           totalReal += amp * Math.cos(phase);
           totalImag += amp * Math.sin(phase);
@@ -321,7 +324,7 @@ export default function registerPhysicsActions(registerLensAction) {
         // Classify interference type at this point
         const sumIndividual = sources.reduce((s, src) => {
           const dx = px - (src.x || 0), dy = py - (src.y || 0);
-          return s + (src.amplitude || 1) / Math.max(Math.sqrt(Math.sqrt(dx * dx + dy * dy)), 0.01);
+          return s + (src.amplitude || 1) / Math.sqrt(Math.max(Math.sqrt(dx * dx + dy * dy), resolution / 2));
         }, 0);
         if (amplitude > sumIndividual * 0.8) constructiveCount++;
         else if (amplitude < sumIndividual * 0.2) destructiveCount++;
