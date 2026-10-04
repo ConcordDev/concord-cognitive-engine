@@ -46,7 +46,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -115,7 +114,6 @@ export default function LegalLensPage() {
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             <DepthBadge lensId="legal" size="sm" />
-            <DTUExportButton domain="legal" data={{}} compact />
           </div>
         </div>
 

@@ -5,6 +5,8 @@ import { Briefcase, Loader2, Plus, X, Archive, ChevronRight, Pencil, Sparkles } 
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { LegalMatterMenu } from './LegalMatterMenu';
+import type { MatterFacts } from './legalMatterReport';
 
 interface Contact { id: string; name: string; kind: string }
 interface Matter {
@@ -125,6 +127,26 @@ export function MattersPanel() {
     } catch (e) { console.error('[Matters] ai-update failed', e); }
     finally { setAiBusy(false); }
   }
+
+  const matterFacts: MatterFacts = detail
+    ? {
+        matter: detail.matter,
+        parties: detail.parties,
+        totals: detail.totals,
+        time: detail.time,
+        invoices: detail.invoices,
+        documents: detail.documents,
+        events: detail.events,
+      }
+    : {
+        matter: null,
+        parties: [],
+        totals: null,
+        time: [],
+        invoices: [],
+        documents: [],
+        events: [],
+      };
 
   return (
     <div className="grid grid-cols-12 gap-3">
@@ -344,6 +366,8 @@ export function MattersPanel() {
                 <p className="text-[11px] text-gray-400 italic">Draft a short client-update blurb from this matter&apos;s time, documents, invoices and events over the last two weeks.</p>
               )}
             </div>
+
+            <LegalMatterMenu facts={matterFacts} />
           </div>
         </div>
       )}
