@@ -46,7 +46,6 @@ import {
   ChevronDown,
   MessageSquare,
   Zap,
-  BookOpen,
   Eye,
   Activity,
   CheckCircle2,
@@ -61,17 +60,11 @@ import {
   Check,
   ExternalLink,
   Layers,
-  Loader2,
-  Hammer,
   Mic,
-  ChevronRight,
   PauseCircle,
-  PlayCircle,
   GitBranch,
   Key,
   FolderOpen,
-  Clock,
-  LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
@@ -95,7 +88,6 @@ import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { useConkayHudStore, feaResultFromRun } from '@/components/conkay/conkayHudStore';
 import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import { formatBytes } from '@/lib/utils';
-import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
@@ -104,6 +96,7 @@ import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import MessageRenderer from '@/components/chat/MessageRenderer';
+import { SyncedBranchesSection, type SyncedBranch } from '@/components/chat/SyncedBranchesSection';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import ComputeBadge from '@/components/chat/ComputeBadge';
@@ -179,7 +172,6 @@ import {
   recommendLenses,
   createSessionContext,
   createSessionTelemetry,
-  recordLensOpened,
   type LensRecommendation,
   type SessionContext,
   type SessionTelemetry,
@@ -700,10 +692,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   const {
     data: cogStatus,
-    isLoading,
     isError,
-    error,
-    refetch,
   } = useQuery({
     queryKey: ['cognitive-status'],
     queryFn: () => apiHelpers.cognitive.status().then((r) => r.data),
@@ -1595,6 +1584,31 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     setLocalMessages(slice);
     setMoreMenuOpen(false);
   }, [messages, conversations, selectedConversation]);
+
+  const openSyncedBranch = useCallback((branch: SyncedBranch) => {
+    const stamp = Date.now().toString(36);
+    const slice: Message[] = branch.seededMessages.map((m, i) => ({
+      id: `${branch.id}-${i}-${stamp}`, role: m.role, content: m.content, timestamp: m.ts || branch.createdAt,
+    }));
+    const sourceTitle = conversations.find((c) => c.id === branch.sourceThreadId)?.title || 'Synced branch';
+    const newId = generateUUID();
+    const newConv: Conversation = {
+      id: newId,
+      title: `↳ ${branch.note || sourceTitle}`,
+      lastMessage: slice[slice.length - 1]?.content?.slice(0, 100) || '',
+      updatedAt: new Date().toISOString(),
+      messageCount: slice.length,
+    };
+    setStoredConversations((prev) => {
+      const next = [newConv, ...prev];
+      saveConversations(next);
+      return next;
+    });
+    saveMessagesForSession(newId, slice);
+    setSelectedConversation(newId);
+    setLocalMessages(slice);
+  }, [conversations]);
+  const [syncedBranchesKey, setSyncedBranchesKey] = useState(0);
 
   // Global message search — scans every conversation in localStorage,
   // not just the current one.  Closes the gap with Claude.ai/ChatGPT
@@ -2700,12 +2714,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       doneLabel="Synced"
                       title="Save a synced branch to your account (persists across devices, separate from the local branch above)"
                       ariaLabel="Save a server-synced branch from this message"
-                      onForked={() =>
+                      onForked={() => {
+                        setSyncedBranchesKey((k) => k + 1);
                         useUIStore.getState().addToast({
                           type: 'success',
                           message: 'Synced branch saved to your account.',
-                        })
-                      }
+                        });
+                      }}
                       onError={() =>
                         useUIStore.getState().addToast({
                           type: 'error',
@@ -3066,6 +3081,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               </div>
             ))}
           </div>
+          {isAuthenticated && <SyncedBranchesSection onOpen={openSyncedBranch} refreshKey={syncedBranchesKey} />}
         </aside>
 
         {/* Main Chat Area */}
