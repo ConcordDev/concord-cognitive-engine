@@ -1604,7 +1604,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       saveConversations(next);
       return next;
     });
-    saveMessagesForSession(newId, slice);
+    saveMessagesForSession(newId, slice as ChatMessageLike[]);
     setSelectedConversation(newId);
     setLocalMessages(slice);
   }, [conversations]);
