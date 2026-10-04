@@ -97,6 +97,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 import { SyncedBranchesSection, type SyncedBranch } from '@/components/chat/SyncedBranchesSection';
+import { ChatHandoffMenu } from '@/components/chat/ChatHandoffMenu';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import ComputeBadge from '@/components/chat/ComputeBadge';
@@ -3427,7 +3428,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full right-0 mt-2 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
+                    className="absolute top-full right-0 mt-2 w-72 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
                   >
                     <button
                       onClick={() => {
@@ -3465,6 +3466,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       <Copy className="w-4 h-4" />
                       Copy transcript
                     </button>
+                    <ChatHandoffMenu
+                      messages={messages.map((m) => ({ role: m.role, content: m.content || '' }))}
+                      sessionId={selectedConversation}
+                      title={conversations.find((c) => c.id === selectedConversation)?.title || 'Chat transcript'}
+                      onNote={(text) => {
+                        setLocalMessages((prev) => [...prev, {
+                          id: `handoff-${Date.now()}`,
+                          role: 'system',
+                          content: text,
+                          timestamp: new Date().toISOString(),
+                        }]);
+                      }}
+                    />
                     <button
                       onClick={() => {
                         startNewChat();
