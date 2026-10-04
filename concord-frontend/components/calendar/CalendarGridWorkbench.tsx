@@ -17,7 +17,9 @@ import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
+import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // ---------------------------------------------------------------------------
@@ -42,11 +44,12 @@ interface CalendarEvent {
   platforms?: string[];
   linkedProject?: string;
   reminders?: { time: number; unit: 'minutes' | 'hours' | 'days' | 'weeks' }[];
-  recurrence?: {
-    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-    interval: number;
-    endDate?: Date;
-  };
+  recurrence?: UiRecurrence;
+  /** Original start of this occurrence (recurring series only). */
+  occurrenceKey?: string;
+  /** The series' own first start/end, for "all events" edits. */
+  seriesStart?: Date;
+  seriesEnd?: Date;
   artworkColor?: string;
   /** Real calendar (calendars-list) this event lives on — multi-calendar support. */
   calendarId?: string;
@@ -144,6 +147,9 @@ interface BackendRecurrence {
   interval: number;
   count: number | null;
   until: string | null;
+  byDay?: string[];
+  monthlyMode?: 'dayOfMonth' | 'nthWeekday';
+  lastWeek?: boolean;
 }
 
 interface BackendEvent {
@@ -163,6 +169,7 @@ interface BackendEvent {
   createdAt: string;
   occurrenceStart?: string;
   occurrenceEnd?: string;
+  occurrenceKey?: string;
 }
 
 interface BackendConflict { eventId: string; title: string; start: string; end: string }
@@ -244,8 +251,19 @@ function fromBackendEvent(e: BackendEvent): CalendarEvent {
     linkedProject: meta.linkedProject,
     reminders: minutesToReminders(e.reminders),
     recurrence: e.recurrence
-      ? { frequency: e.recurrence.freq, interval: e.recurrence.interval, endDate: e.recurrence.until ? new Date(e.recurrence.until) : undefined }
+      ? {
+        frequency: e.recurrence.freq,
+        interval: e.recurrence.interval,
+        endDate: e.recurrence.until ? new Date(e.recurrence.until) : undefined,
+        count: e.recurrence.count || undefined,
+        byDay: e.recurrence.byDay?.length ? e.recurrence.byDay : undefined,
+        monthlyMode: e.recurrence.monthlyMode,
+        lastWeek: e.recurrence.lastWeek,
+      }
       : undefined,
+    occurrenceKey: e.recurrence ? e.occurrenceKey : undefined,
+    seriesStart: new Date(e.start),
+    seriesEnd: new Date(e.end),
     artworkColor: meta.artworkColor,
     calendarId: e.calendarId,
   };
@@ -272,7 +290,16 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
     attendees: ev.collaborators || [],
     conferenceLink: ev.url || '',
     recurrence: ev.recurrence
-      ? { freq: ev.recurrence.frequency, interval: ev.recurrence.interval, until: ev.recurrence.endDate ? ev.recurrence.endDate.toISOString() : null }
+      ? {
+        freq: ev.recurrence.frequency,
+        interval: ev.recurrence.interval,
+        until: ev.recurrence.endDate ? ev.recurrence.endDate.toISOString().slice(0, 10) : null,
+        count: ev.recurrence.count || null,
+        byDay: ev.recurrence.frequency === 'weekly' ? ev.recurrence.byDay : undefined,
+        monthlyMode: ev.recurrence.frequency === 'monthly' ? ev.recurrence.monthlyMode : undefined,
+        lastWeek: ev.recurrence.lastWeek,
+        tzOffset: ev.startDate.getTimezoneOffset(),
+      }
       : null,
   };
   if (ev.calendarId) params.calendarId = ev.calendarId;
@@ -322,6 +349,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingOriginal, setEditingOriginal] = useState<CalendarEvent | null>(null);
+  const [scopePrompt, setScopePrompt] = useState<{ action: 'save' | 'delete'; run: (scope: RecurrenceScope) => void } | null>(null);
   // North star (docs/lens-northstar/08): the grid is the page; the calendars
   // sidebar is one click away, not always open.
   const [showSidebar, setShowSidebar] = useState(false);
@@ -385,15 +414,15 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { void Promise.resolve().then(fetchData); }, [fetchData]);
 
   // Debounced live conflict check while the composer is open.
   useEffect(() => {
-    if (!showCreateModal || !newEvent.startDate || !newEvent.endDate) { setConflicts([]); return; }
+    if (!showCreateModal || !newEvent.startDate || !newEvent.endDate) { queueMicrotask(() => setConflicts([])); return; }
     const start = newEvent.startDate;
     const end = newEvent.endDate;
     let cancelled = false;
-    setCheckingConflicts(true);
+    queueMicrotask(() => { if (!cancelled) setCheckingConflicts(true); });
     const t = setTimeout(async () => {
       try {
         const r = await lensRun({
@@ -587,8 +616,14 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     setShowCreateModal(true);
   };
 
-  const handleCreateEvent = async () => {
+  const handleCreateEvent = async (scope?: RecurrenceScope) => {
     if (!newEvent.title) return;
+    const original = editingEventId ? editingOriginal : null;
+    const recurringEdit = !!(original?.recurrence && original.occurrenceKey);
+    if (recurringEdit && !scope) {
+      setScopePrompt({ action: 'save', run: (sc) => { setScopePrompt(null); void handleCreateEvent(sc); } });
+      return;
+    }
     const defaultCalId = calendars.find((c) => c.isDefault)?.id || calendars[0]?.id;
 
     const event: CalendarEvent = {
@@ -616,8 +651,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     // once the real events-create/events-update call lands.
     const wasEditing = editingEventId;
     const previousEvents = events;
-    setEvents((prev) => (wasEditing ? prev.map((e) => (e.id === wasEditing ? event : e)) : [...prev, event]));
+    // A recurring edit can touch many occurrences; let the refetch draw it.
+    if (!recurringEdit) setEvents((prev) => (wasEditing ? prev.map((e) => (e.id === wasEditing ? event : e)) : [...prev, event]));
     setEditingEventId(null);
+    setEditingOriginal(null);
     setShowCreateModal(false);
     setNewEvent(defaultNewEventForm());
 
@@ -625,6 +662,18 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       const params = toBackendEventParams(event);
       if (wasEditing) {
         (params as Record<string, unknown>).id = wasEditing;
+        if (recurringEdit && original) {
+          params.scope = scope;
+          params.occurrenceKey = original.occurrenceKey;
+          if (scope === 'all' && original.seriesStart && original.seriesEnd) {
+            // Shift the whole series by however much this occurrence moved.
+            const dStart = event.startDate.getTime() - original.startDate.getTime();
+            const dEnd = event.endDate.getTime() - original.endDate.getTime();
+            params.start = new Date(original.seriesStart.getTime() + dStart).toISOString();
+            params.end = new Date(original.seriesEnd.getTime() + dEnd).toISOString();
+          }
+          if (scope === 'this') delete params.recurrence;
+        }
         const r = await lensRun({ domain: 'calendar', action: 'events-update', input: params });
         if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
       } else {
@@ -680,13 +729,26 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     { lensId: 'calendar' }
   );
 
-  const handleDeleteEvent = async (eventId: string) => {
+  const handleDeleteEvent = async (target: CalendarEvent, scope?: RecurrenceScope) => {
+    const eventId = target.id;
+    const recurring = !!(target.recurrence && target.occurrenceKey);
+    if (recurring && !scope) {
+      setScopePrompt({ action: 'delete', run: (sc) => { setScopePrompt(null); void handleDeleteEvent(target, sc); } });
+      return;
+    }
     const previousEvents = events;
-    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    setEvents((prev) => prev.filter((e) => {
+      if (e.id !== eventId) return true;
+      if (!recurring || scope === 'all') return false;
+      if (scope === 'this') return e.occurrenceKey !== target.occurrenceKey;
+      return (e.occurrenceKey || '') < (target.occurrenceKey || '');
+    }));
     setSelectedEvent(null);
     setShowEventModal(false);
     try {
-      const r = await lensRun({ domain: 'calendar', action: 'events-delete', input: { id: eventId } });
+      const input: Record<string, unknown> = { id: eventId };
+      if (recurring) { input.scope = scope; input.occurrenceKey = target.occurrenceKey; }
+      const r = await lensRun({ domain: 'calendar', action: 'events-delete', input });
       if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete event');
     } catch (e) {
       setEvents(previousEvents);
@@ -1617,11 +1679,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setShowEventModal(false); setEditingEventId(selectedEvent.id); setShowCreateModal(true); setNewEvent(selectedEvent); }} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Edit">
+                  <button onClick={() => { setShowEventModal(false); setEditingEventId(selectedEvent.id); setEditingOriginal(selectedEvent); setShowCreateModal(true); setNewEvent(selectedEvent); }} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteEvent(selectedEvent.id)}
+                    onClick={() => void handleDeleteEvent(selectedEvent)}
                     className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-red-400"
                   aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
@@ -1698,10 +1760,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 {selectedEvent.recurrence && (
                   <div className="flex items-center gap-3 text-gray-400">
                     <Repeat className="w-5 h-5" />
-                    <span className="capitalize">
-                      Repeats {selectedEvent.recurrence.frequency}
-                      {selectedEvent.recurrence.interval > 1 && ` every ${selectedEvent.recurrence.interval}`}
-                    </span>
+                    <span>{describeRecurrence(selectedEvent.recurrence, selectedEvent.seriesStart || selectedEvent.startDate)}</span>
                   </div>
                 )}
 
@@ -1722,10 +1781,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
                 {selectedEvent.eventType === 'release' && (
                   <div className="pt-4 border-t border-lattice-border">
-                    <button onClick={() => { window.location.href = '/lenses/board'; }} className="flex items-center gap-2 text-neon-cyan hover:underline">
+                    <Link href="/lenses/board" className="flex items-center gap-2 text-neon-cyan hover:underline">
                       <ExternalLink className="w-4 h-4" />
                       Open release dashboard
-                    </button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -1737,6 +1796,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           </motion.div>
         )}
       </AnimatePresence>
+
+      {scopePrompt && (
+        <RecurrenceScopeDialog action={scopePrompt.action} onChoose={scopePrompt.run} onCancel={() => setScopePrompt(null)} />
+      )}
 
       {/* ----------------------------------------------------------------- */}
       {/* Create event modal                                                */}
@@ -1877,70 +1940,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   </div>
                 )}
 
-                {/* Repeat (real RRULE-lite recurrence — calendar.expandRecurring via
-                    events-list) — the generic artifact store had no way to do this. */}
-                <div>
-                  <label className="text-xs text-gray-400 mb-2 block flex items-center gap-1.5">
-                    <Repeat className="w-3.5 h-3.5" /> Repeat
-                  </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      value={newEvent.recurrence?.frequency || 'none'}
-                      onChange={(e) => {
-                        const freq = e.target.value;
-                        if (freq === 'none') { setNewEvent({ ...newEvent, recurrence: undefined }); return; }
-                        setNewEvent({
-                          ...newEvent,
-                          recurrence: {
-                            frequency: freq as 'daily' | 'weekly' | 'monthly' | 'yearly',
-                            interval: newEvent.recurrence?.interval || 1,
-                            endDate: newEvent.recurrence?.endDate,
-                          },
-                        });
-                      }}
-                      className="bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                    >
-                      <option value="none">Does not repeat</option>
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </select>
-                    {newEvent.recurrence && (
-                      <>
-                        <span className="text-xs text-gray-400">every</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={30}
-                          value={newEvent.recurrence.interval}
-                          onChange={(e) => setNewEvent({
-                            ...newEvent,
-                            recurrence: { ...newEvent.recurrence!, interval: Math.max(1, parseInt(e.target.value, 10) || 1) },
-                          })}
-                          className="w-16 bg-lattice-deep rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                        />
-                        <span className="text-xs text-gray-400">
-                          {{ daily: 'day(s)', weekly: 'week(s)', monthly: 'month(s)', yearly: 'year(s)' }[newEvent.recurrence.frequency]}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {newEvent.recurrence && (
-                    <div className="mt-2">
-                      <label className="text-xs text-gray-400 mb-1 block">Ends (optional)</label>
-                      <input
-                        type="date"
-                        value={newEvent.recurrence.endDate ? newEvent.recurrence.endDate.toISOString().slice(0, 10) : ''}
-                        onChange={(e) => setNewEvent({
-                          ...newEvent,
-                          recurrence: { ...newEvent.recurrence!, endDate: e.target.value ? new Date(e.target.value) : undefined },
-                        })}
-                        className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                      />
-                    </div>
-                  )}
-                </div>
+                <RecurrenceEditor
+                  value={newEvent.recurrence}
+                  start={newEvent.startDate || new Date()}
+                  onChange={(recurrence) => setNewEvent({ ...newEvent, recurrence })}
+                />
 
                 {/* Link to Project */}
                 <div>
@@ -2102,11 +2106,11 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     Cancel
                   </button>
                   <button
-                    onClick={handleCreateEvent}
+                    onClick={() => void handleCreateEvent()}
                     disabled={!newEvent.title}
                     className="flex-1 py-2 rounded-lg bg-neon-cyan text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Schedule
+                    {editingEventId ? 'Save' : 'Schedule'}
                   </button>
                 </div>
               </div>

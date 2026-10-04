@@ -224,3 +224,57 @@ describe('calendar lens — four UX states', () => {
     }
   });
 });
+
+// A daily series as events-list returns it: one occurrence per day, all sharing
+// the series id, each carrying its own occurrenceKey.
+const SERIES = {
+  ...BACKEND_EVENT,
+  id: 'evt_s',
+  title: 'Standup',
+  start: '2099-06-01T14:00:00.000Z',
+  end: '2099-06-01T14:15:00.000Z',
+  recurrence: { freq: 'daily', interval: 1, count: null, until: null },
+};
+const occurrence = (day: string) => ({
+  ...SERIES,
+  occurrenceStart: `2099-06-${day}T14:00:00.000Z`,
+  occurrenceEnd: `2099-06-${day}T14:15:00.000Z`,
+  occurrenceKey: `2099-06-${day}T14:00:00.000Z`,
+});
+
+describe('calendar lens — recurring events edit like Google Calendar', () => {
+  async function openSecondOccurrence() {
+    setBackend({ events: [occurrence('01'), occurrence('02')] });
+    const utils = render(<CalendarLensPage />);
+    const agenda = await utils.findByText('agenda');
+    await act(async () => { fireEvent.click(agenda); });
+    await waitFor(() => expect(utils.getAllByText(/Standup/).length).toBeGreaterThan(1));
+    await act(async () => { fireEvent.click(utils.getAllByText(/Standup/)[1]); });
+    return utils;
+  }
+
+  it('deleting one occurrence asks for scope and sends scope=this with its occurrenceKey', async () => {
+    const { getByRole, getByText } = await openSecondOccurrence();
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Delete' })); });
+    expect(getByRole('dialog', { name: /delete recurring event/i })).toBeTruthy();
+    await act(async () => { fireEvent.click(getByText('This event')); });
+    await waitFor(() => {
+      const del = lensRunMock.mock.calls.find((c) => actionOf(c as unknown[]) === 'events-delete');
+      expect((del?.[0] as { input: unknown }).input).toEqual({ id: 'evt_s', scope: 'this', occurrenceKey: '2099-06-02T14:00:00.000Z' });
+    });
+  });
+
+  it('saving an edit to "all events" keeps the series start instead of moving it to this occurrence', async () => {
+    const { getByRole, getByText } = await openSecondOccurrence();
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Edit' })); });
+    await act(async () => { fireEvent.click(getByText('Save')); });
+    await act(async () => { fireEvent.click(getByText('All events')); });
+    await waitFor(() => {
+      const upd = lensRunMock.mock.calls.find((c) => actionOf(c as unknown[]) === 'events-update');
+      const input = (upd?.[0] as { input: Record<string, unknown> }).input;
+      expect(input.scope).toBe('all');
+      expect(input.start).toBe('2099-06-01T14:00:00.000Z');
+      expect(input.end).toBe('2099-06-01T14:15:00.000Z');
+    });
+  });
+});

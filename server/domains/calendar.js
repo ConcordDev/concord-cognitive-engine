@@ -360,37 +360,128 @@ export default function registerCalendarActions(registerLensAction) {
 
   // ── Recurrence expansion (RRULE-lite) ─────────────────────────
 
+  // RRULE-lite: freq daily|weekly|monthly|yearly, interval, count, until,
+  // byDay (weekly: ["MO","WE",...]), monthlyMode ("dayOfMonth" | "nthWeekday";
+  // nthWeekday uses the start's weekday and its week-of-month, or the last
+  // one when the start falls in the month's final 7 days and lastWeek is set),
+  // exdates (occurrence starts skipped) and overrides (occurrence start →
+  // field changes for "this event only" edits). A day-of-month that a month
+  // doesn't have (e.g. the 31st) is skipped for that month, as RFC 5545 and
+  // Google Calendar do, rather than rolling into the next month.
+  const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  const DAY_MS = 86_400_000;
+
+  function normalizeRecurrence(raw) {
+    if (!raw || typeof raw !== "object" || !["daily", "weekly", "monthly", "yearly"].includes(raw.freq)) return null;
+    const byDay = Array.isArray(raw.byDay) ? [...new Set(raw.byDay.map((d) => String(d).toUpperCase()).filter((d) => WEEKDAYS.includes(d)))] : [];
+    return {
+      freq: raw.freq,
+      interval: Math.max(1, Number(raw.interval) || 1),
+      count: Number(raw.count) > 0 ? Math.floor(Number(raw.count)) : null,
+      until: raw.until ? String(raw.until) : null,
+      byDay: raw.freq === "weekly" ? byDay : [],
+      monthlyMode: raw.freq === "monthly" && raw.monthlyMode === "nthWeekday" ? "nthWeekday" : "dayOfMonth",
+      lastWeek: raw.freq === "monthly" && raw.monthlyMode === "nthWeekday" && raw.lastWeek === true,
+      // Minutes UTC − local (Date#getTimezoneOffset) of the author, so weekday
+      // and day-of-month rules follow their wall clock, not UTC.
+      tzOffset: Number.isFinite(Number(raw.tzOffset)) ? Math.max(-840, Math.min(840, Math.round(Number(raw.tzOffset)))) : 0,
+      exdates: Array.isArray(raw.exdates) ? raw.exdates.map(String) : [],
+      overrides: raw.overrides && typeof raw.overrides === "object" ? raw.overrides : {},
+    };
+  }
+
+  function utcAt(y, m, d, ref) {
+    return new Date(Date.UTC(y, m, d, ref.getUTCHours(), ref.getUTCMinutes(), ref.getUTCSeconds()));
+  }
+  function nthWeekdayOf(y, m, weekday, nth, last, ref) {
+    if (last) {
+      const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+      for (let d = lastDay; d > lastDay - 7; d--) if (new Date(Date.UTC(y, m, d)).getUTCDay() === weekday) return utcAt(y, m, d, ref);
+      return null;
+    }
+    const first = new Date(Date.UTC(y, m, 1)).getUTCDay();
+    const day = 1 + ((weekday - first + 7) % 7) + (nth - 1) * 7;
+    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return day <= daysInMonth ? utcAt(y, m, day, ref) : null;
+  }
+
+  /** Every series start (before exdates/overrides) in chronological order, lazily. */
+  function* seriesStarts(start, rec) {
+    const y0 = start.getUTCFullYear(), m0 = start.getUTCMonth(), d0 = start.getUTCDate();
+    if (rec.freq === "daily") {
+      for (let i = 0; ; i++) yield new Date(start.getTime() + i * rec.interval * DAY_MS);
+    }
+    if (rec.freq === "weekly") {
+      const days = rec.byDay.length ? rec.byDay.map((d) => WEEKDAYS.indexOf(d)).sort((a, b) => a - b) : [start.getUTCDay()];
+      const weekStart = utcAt(y0, m0, d0 - start.getUTCDay(), start);
+      for (let w = 0; ; w += rec.interval) {
+        for (const wd of days) {
+          const t = new Date(weekStart.getTime() + (w * 7 + wd) * DAY_MS);
+          if (t.getTime() >= start.getTime()) yield t;
+        }
+      }
+    }
+    if (rec.freq === "monthly") {
+      const weekday = start.getUTCDay();
+      const nth = Math.ceil(d0 / 7);
+      for (let k = 0; ; k += rec.interval) {
+        const y = y0 + Math.floor((m0 + k) / 12), m = (m0 + k) % 12;
+        if (rec.monthlyMode === "nthWeekday") {
+          const t = nthWeekdayOf(y, m, weekday, nth, rec.lastWeek, start);
+          if (t && t.getTime() >= start.getTime()) yield t;
+        } else {
+          const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+          if (d0 <= daysInMonth) yield utcAt(y, m, d0, start);
+        }
+      }
+    }
+    if (rec.freq === "yearly") {
+      for (let k = 0; ; k += rec.interval) {
+        const y = y0 + k;
+        const daysInMonth = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
+        if (d0 <= daysInMonth) yield utcAt(y, m0, d0, start);
+      }
+    }
+  }
+
   function expandOccurrences(event, rangeStart, rangeEnd) {
-    // event.start / event.end are ISO; event.recurrence = { freq, interval, count?, until? }
     const start = new Date(event.start);
     const end = new Date(event.end || event.start);
     const durationMs = end.getTime() - start.getTime();
-    const rec = event.recurrence;
-    if (!rec || !rec.freq) {
-      if (start <= rangeEnd && end >= rangeStart) return [{ ...event, occurrenceStart: event.start, occurrenceEnd: event.end || event.start }];
+    const rec = normalizeRecurrence(event.recurrence);
+    if (!rec) {
+      if (start <= rangeEnd && end >= rangeStart) return [{ ...event, occurrenceStart: event.start, occurrenceEnd: event.end || event.start, occurrenceKey: event.start }];
       return [];
     }
-    const interval = Math.max(1, Number(rec.interval) || 1);
-    const maxCount = Number(rec.count) || 730; // safety cap
-    const untilMs = rec.until ? new Date(rec.until).getTime() : rangeEnd.getTime();
+    const untilMs = rec.until ? new Date(rec.until).getTime() + (rec.until.length <= 10 ? DAY_MS - 1 : 0) : Infinity;
+    const maxCount = rec.count || Infinity;
+    const ex = new Set(rec.exdates.map((d) => new Date(d).toISOString()));
     const out = [];
-    const cursor = new Date(start);
-    let i = 0;
-    while (i < maxCount) {
-      const occStart = new Date(cursor);
+    let emitted = 0;
+    let guard = 0;
+    const shift = rec.tzOffset * 60_000;
+    for (const localStart of seriesStarts(new Date(start.getTime() - shift), rec)) {
+      const occStart = new Date(localStart.getTime() + shift);
+      if (++guard > 20000) break;
+      if (emitted >= maxCount) break;
       if (occStart.getTime() > untilMs) break;
-      if (occStart.getTime() > rangeEnd.getTime() + durationMs) break;
-      const occEnd = new Date(occStart.getTime() + durationMs);
-      if (occEnd >= rangeStart && occStart <= rangeEnd) {
-        out.push({ ...event, occurrenceStart: occStart.toISOString(), occurrenceEnd: occEnd.toISOString() });
+      if (occStart.getTime() > rangeEnd.getTime() + Math.max(0, durationMs)) break;
+      emitted++;
+      const key = occStart.toISOString();
+      if (ex.has(key)) continue;
+      const ov = rec.overrides[key] || null;
+      const oStart = ov?.start ? new Date(ov.start) : occStart;
+      const oEnd = ov?.end ? new Date(ov.end) : new Date(occStart.getTime() + durationMs);
+      if (oEnd >= rangeStart && oStart <= rangeEnd) {
+        out.push({
+          ...event,
+          ...(ov ? Object.fromEntries(Object.entries(ov).filter(([k]) => ["title", "description", "location", "conferenceLink"].includes(k))) : {}),
+          occurrenceStart: oStart.toISOString(),
+          occurrenceEnd: oEnd.toISOString(),
+          occurrenceKey: key,
+          isException: !!ov,
+        });
       }
-      // advance
-      if (rec.freq === 'daily') cursor.setUTCDate(cursor.getUTCDate() + interval);
-      else if (rec.freq === 'weekly') cursor.setUTCDate(cursor.getUTCDate() + 7 * interval);
-      else if (rec.freq === 'monthly') cursor.setUTCMonth(cursor.getUTCMonth() + interval);
-      else if (rec.freq === 'yearly') cursor.setUTCFullYear(cursor.getUTCFullYear() + interval);
-      else break;
-      i++;
     }
     return out;
   }
@@ -430,15 +521,7 @@ export default function registerCalendarActions(registerLensAction) {
     if (!end || isNaN(new Date(end).getTime())) end = new Date(new Date(start).getTime() + 3_600_000).toISOString();
     let calendarId = String(params.calendarId || "");
     if (!calendars.find(c => c.id === calendarId)) calendarId = (calendars.find(c => c.isDefault) || calendars[0]).id;
-    let recurrence = null;
-    if (params.recurrence && typeof params.recurrence === 'object' && ['daily','weekly','monthly','yearly'].includes(params.recurrence.freq)) {
-      recurrence = {
-        freq: params.recurrence.freq,
-        interval: Math.max(1, Number(params.recurrence.interval) || 1),
-        count: Number(params.recurrence.count) || null,
-        until: params.recurrence.until ? String(params.recurrence.until) : null,
-      };
-    }
+    const recurrence = normalizeRecurrence(params.recurrence);
     const seq = ensureSeqCal(s, userId);
     const event = {
       id: uidCal('evt'),
@@ -462,10 +545,57 @@ export default function registerCalendarActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // Recurring edits take a scope, like Google Calendar:
+  //  - "this": only the occurrence at params.occurrenceKey (stored as an override)
+  //  - "following": that occurrence and later — the series is split in two
+  //  - "all" (default): the whole series
   registerLensAction("calendar", "events-update", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.id || ""));
+    const userId = aidCal(ctx);
+    const list = listCal(s.events, userId);
+    const e = list.find(x => x.id === String(params.id || ""));
     if (!e) return { ok: false, error: "event not found" };
+    const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
+    if (scope !== "all" && e.recurrence) {
+      const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
+      if (!key || isNaN(key.getTime())) return { ok: false, error: "occurrenceKey required for a single-occurrence edit" };
+      const keyIso = key.toISOString();
+      const rec = normalizeRecurrence(e.recurrence);
+      if (scope === "this") {
+        const ov = { ...(rec.overrides[keyIso] || {}) };
+        for (const k of ['title','description','location','conferenceLink']) if (typeof params[k] === 'string') ov[k] = params[k];
+        for (const k of ['start','end']) if (typeof params[k] === 'string' && !isNaN(new Date(params[k]).getTime())) ov[k] = new Date(params[k]).toISOString();
+        rec.overrides = { ...rec.overrides, [keyIso]: ov };
+        e.recurrence = rec;
+        saveCal();
+        return { ok: true, result: { event: e, scope } };
+      }
+      // "following": end the original series the moment before this occurrence,
+      // and start a new series here carrying the edits.
+      if (key.getTime() <= new Date(e.start).getTime()) {
+        // editing "following" from the very first occurrence is the whole series
+      } else {
+        const durationMs = new Date(e.end || e.start).getTime() - new Date(e.start).getTime();
+        e.recurrence = { ...rec, count: null, until: new Date(key.getTime() - 1000).toISOString() };
+        const seq = ensureSeqCal(s, userId);
+        const tail = {
+          ...e,
+          id: uidCal('evt'),
+          number: `EV-${String(seq.evt).padStart(6, '0')}`,
+          start: keyIso,
+          end: new Date(key.getTime() + durationMs).toISOString(),
+          recurrence: { ...rec, until: rec.until, count: null, exdates: rec.exdates.filter((d) => new Date(d) >= key), overrides: Object.fromEntries(Object.entries(rec.overrides).filter(([k]) => new Date(k) >= key)) },
+          createdAt: isoCal(),
+        };
+        seq.evt++;
+        list.push(tail);
+        return applyEventEdits(tail, params, ctx, s, scope);
+      }
+    }
+    return applyEventEdits(e, params, ctx, s, scope);
+  });
+
+  function applyEventEdits(e, params, ctx, s, scope) {
     for (const k of ['title','description','location','conferenceLink']) if (typeof params[k] === 'string') e[k] = params[k];
     for (const k of ['start','end']) {
       if (typeof params[k] === 'string' && !isNaN(new Date(params[k]).getTime())) e[k] = params[k];
@@ -477,18 +607,43 @@ export default function registerCalendarActions(registerLensAction) {
     if (typeof params.allDay === 'boolean') e.allDay = params.allDay;
     if (Array.isArray(params.reminders)) e.reminders = params.reminders.map(r => Math.max(0, Number(r) || 0));
     if (params.recurrence === null) e.recurrence = null;
-    else if (params.recurrence && ['daily','weekly','monthly','yearly'].includes(params.recurrence.freq)) {
-      e.recurrence = { freq: params.recurrence.freq, interval: Math.max(1, Number(params.recurrence.interval) || 1), count: Number(params.recurrence.count) || null, until: params.recurrence.until || null };
+    else if (params.recurrence) {
+      const next = normalizeRecurrence(params.recurrence);
+      if (next) {
+        // A rule change keeps the exceptions the user already made.
+        const prev = normalizeRecurrence(e.recurrence);
+        if (prev && !Array.isArray(params.recurrence.exdates)) next.exdates = prev.exdates;
+        if (prev && !params.recurrence.overrides) next.overrides = prev.overrides;
+        e.recurrence = next;
+      }
     }
     saveCal();
-    return { ok: true, result: { event: e } };
-  });
+    return { ok: true, result: { event: e, scope } };
+  }
 
   registerLensAction("calendar", "events-delete", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = listCal(s.events, aidCal(ctx));
     const i = list.findIndex(e => e.id === String(params.id || ""));
     if (i < 0) return { ok: false, error: "event not found" };
+    const ev = list[i];
+    const scope = params.scope === "this" || params.scope === "following" ? params.scope : "all";
+    if (scope !== "all" && ev.recurrence) {
+      const key = params.occurrenceKey ? new Date(params.occurrenceKey) : null;
+      if (!key || isNaN(key.getTime())) return { ok: false, error: "occurrenceKey required for a single-occurrence delete" };
+      const rec = normalizeRecurrence(ev.recurrence);
+      if (scope === "this") {
+        rec.exdates = [...new Set([...rec.exdates, key.toISOString()])];
+        ev.recurrence = rec;
+        saveCal();
+        return { ok: true, result: { deleted: true, scope } };
+      }
+      if (key.getTime() > new Date(ev.start).getTime()) {
+        ev.recurrence = { ...rec, count: null, until: new Date(key.getTime() - 1000).toISOString() };
+        saveCal();
+        return { ok: true, result: { deleted: true, scope } };
+      }
+    }
     list.splice(i, 1);
     saveCal();
     return { ok: true, result: { deleted: true } };
