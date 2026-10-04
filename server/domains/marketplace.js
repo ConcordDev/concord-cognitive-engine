@@ -306,11 +306,25 @@ export default function registerMarketplaceActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("marketplace", "orders-mark-paid", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const o = arrayB(s.orders, aidS(ctx)).find(x => x.id === String(params.id || ""));
+    if (!o) return { ok: false, error: "order not found" };
+    if (o.status !== 'pending') return { ok: false, error: `order is ${o.status}, not awaiting payment` };
+    o.status = 'paid';
+    o.paymentStatus = 'confirmed_by_seller';
+    o.paidAt = isoS();
+    o.paymentNote = String(params.note || "").slice(0, 200);
+    saveStore();
+    return { ok: true, result: { order: o } };
+  });
+
   registerLensAction("marketplace", "orders-mark-shipped", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const o = arrayB(s.orders, aidS(ctx)).find(x => x.id === String(params.id || ""));
     if (!o) return { ok: false, error: "order not found" };
     if (o.status === 'delivered' || o.status === 'refunded') return { ok: false, error: "order already closed" };
+    if (o.status === 'pending') return { ok: false, error: "confirm payment before shipping" };
     o.status = 'shipped';
     o.shippedAt = isoS();
     o.trackingNumber = String(params.trackingNumber || "");
@@ -334,6 +348,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     const o = arrayB(s.orders, aidS(ctx)).find(x => x.id === String(params.id || ""));
     if (!o) return { ok: false, error: "order not found" };
     if (o.status === 'refunded') return { ok: false, error: "already refunded" };
+    // An unpaid order is cancelled, not refunded — no money was taken.
+    if (o.status === 'pending') o.cancelled = true;
     o.status = 'refunded';
     o.refundedAt = isoS();
     o.refundReason = String(params.reason || "");
@@ -1302,7 +1318,10 @@ export default function registerMarketplaceActions(registerLensAction) {
           discountUsd: Math.round(discount * 100) / 100,
           totalUsd: Math.round(total * 100) / 100,
           buyerId, buyerName, buyerEmail, buyerAddress,
-          status: 'paid',
+          // No payment is taken at checkout: the order waits for the seller to
+          // confirm payment (orders-mark-paid) before it can ship.
+          status: 'pending',
+          paymentStatus: 'awaiting_payment',
           placedAt: isoS(),
           shippedAt: null, deliveredAt: null, trackingNumber: '',
           notes: String(params.notes || ""),
@@ -1356,7 +1375,7 @@ export default function registerMarketplaceActions(registerLensAction) {
     const promos = arrayB(s.promotions, userId);
     const publishedCount = listings.filter(l => l.status === 'published').length;
     const draftCount = listings.filter(l => l.status === 'draft').length;
-    const pendingOrders = orders.filter(o => o.status === 'paid').length; // paid but not shipped
+    const pendingOrders = orders.filter(o => o.status === 'paid' || o.status === 'pending').length; // not yet shipped
     const shippedOrders = orders.filter(o => o.status === 'shipped').length;
     const lifetimeRevenue = orders.filter(o => o.status !== 'refunded').reduce((sum, o) => sum + o.totalUsd, 0);
     return {

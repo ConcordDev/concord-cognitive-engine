@@ -50,7 +50,7 @@ export function OrdersPanel() {
     finally { setLoading(false); }
   }, [filter]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function recordManualSale() {
     if (!manual.listingId) { setManualError('Pick a listing.'); return; }
@@ -80,6 +80,11 @@ export function OrdersPanel() {
       setShipForm(null);
       await refresh();
     } catch (e) { console.error('[Orders] ship', e); }
+  }
+
+  async function markPaid(id: string) {
+    try { await lensRun({ domain: 'marketplace', action: 'orders-mark-paid', input: { id } }); await refresh(); }
+    catch (e) { console.error('[Orders] mark paid', e); }
   }
 
   async function deliver(id: string) {
@@ -149,7 +154,7 @@ export function OrdersPanel() {
           <ul className="divide-y divide-white/5">
             {list.map(o => (
               <li key={o.id} className="px-4 py-2.5 hover:bg-white/[0.02] flex items-center gap-3">
-                <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_COLOUR[o.status])}>{o.status}</span>
+                <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_COLOUR[o.status])}>{o.status === 'pending' ? 'awaiting payment' : o.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
                     <span className="font-mono text-[10px] text-gray-400">{o.number}</span>
@@ -162,6 +167,12 @@ export function OrdersPanel() {
                   </div>
                 </div>
                 <div className="text-sm font-mono tabular-nums text-white w-20 text-right">${o.totalUsd.toFixed(2)}</div>
+                {o.status === 'pending' && (
+                  <button onClick={() => void markPaid(o.id)} title="Confirm you received payment for this order"
+                    className="px-2 py-1 text-[10px] rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />Mark paid
+                  </button>
+                )}
                 {o.status === 'paid' && (
                   <button onClick={() => setShipForm({ id: o.id, trackingNumber: '', carrier: '' })} className="px-2 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
                     <Truck className="w-3 h-3" />Ship
@@ -174,7 +185,7 @@ export function OrdersPanel() {
                 )}
                 {o.status !== 'refunded' && (
                   <button onClick={() => refund(o.id)} className="px-2 py-1 text-[10px] rounded text-rose-300 hover:bg-rose-500/20 inline-flex items-center gap-1">
-                    <XCircle className="w-3 h-3" />Refund
+                    <XCircle className="w-3 h-3" />{o.status === 'pending' ? 'Cancel' : 'Refund'}
                   </button>
                 )}
               </li>

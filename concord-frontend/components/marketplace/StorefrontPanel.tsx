@@ -143,10 +143,10 @@ export function StorefrontPanel() {
   }, []);
 
   useEffect(() => {
-    refreshCatalog();
+    void Promise.resolve().then(refreshCatalog);
   }, [refreshCatalog]);
   useEffect(() => {
-    refreshCart();
+    void Promise.resolve().then(refreshCart);
   }, [refreshCart]);
 
   async function addToCart(l: StoreListing) {
@@ -436,6 +436,7 @@ export function StorefrontPanel() {
                     {checkout.orders.length} order{checkout.orders.length !== 1 ? 's' : ''} ·{' '}
                     <span className="font-mono">${checkout.grandTotalUsd.toFixed(2)}</span>
                   </div>
+                  <p className="text-amber-200/90">No payment has been taken. Each seller will confirm payment with you before shipping.</p>
                   <ul className="space-y-0.5 text-emerald-200/80 tabular-nums">
                     {checkout.orders.map((o) => (
                       <li key={o.orderId} className="font-mono">
