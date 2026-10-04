@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, MapPin, CalendarDays, CloudSun, Plane, Hotel, Mail,
   Radar, Users, PieChart, ChevronLeft, RefreshCw, Plus, Trash2, X,
-  ListPlus, Luggage, Check,
+  ListPlus, Luggage, Check, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -181,6 +181,14 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Trip header: live detail + edit + delete
+  const [meta, setMeta] = useState({ name: trip.name, destination: trip.destination, startDate: trip.startDate, endDate: trip.endDate });
+  const [detail, setDetail] = useState<{ travelers: number; notes: string | null; durationDays: number | null; itineraryCount: number; bookedCost: number; checklistOpen: number } | null>(null);
+  const [editingTrip, setEditingTrip] = useState(false);
+  const [tripForm, setTripForm] = useState({ name: '', destination: '', startDate: '', endDate: '', travelers: '1', notes: '' });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editItem, setEditItem] = useState<{ id: string; title: string; day: string; time: string; location: string; note: string } | null>(null);
+
   // Itinerary + map
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [itinForm, setItinForm] = useState({ title: '', day: '', time: '', category: 'sightseeing', location: '', note: '' });
@@ -273,8 +281,52 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   }, [trip.id]);
 
   useEffect(() => {
-    void loadItinerary(); void loadMap(); void loadAgenda(); void loadBookings(); void loadChecklist();
+    void Promise.resolve().then(() => { void loadItinerary(); void loadMap(); void loadAgenda(); void loadBookings(); void loadChecklist(); });
   }, [loadItinerary, loadMap, loadAgenda, loadBookings, loadChecklist]);
+
+  const loadDetail = useCallback(async () => {
+    const r = await lensRun('travel', 'trip-detail', { id: trip.id });
+    const res = r.data?.result as { trip: Record<string, unknown>; itineraryCount: number; bookedCost: number; checklistOpen: number } | null;
+    if (!r.data?.ok || !res) return;
+    const t = res.trip;
+    setMeta({ name: String(t.name ?? ''), destination: String(t.destination ?? ''), startDate: (t.startDate as string) || null, endDate: (t.endDate as string) || null });
+    setDetail({
+      travelers: Number(t.travelers) || 1, notes: (t.notes as string) || null, durationDays: (t.durationDays as number) ?? null,
+      itineraryCount: res.itineraryCount, bookedCost: res.bookedCost, checklistOpen: res.checklistOpen,
+    });
+  }, [trip.id]);
+
+  useEffect(() => { void Promise.resolve().then(loadDetail); }, [loadDetail]);
+
+  const startEditTrip = useCallback(() => {
+    setTripForm({
+      name: meta.name, destination: meta.destination, startDate: meta.startDate || '', endDate: meta.endDate || '',
+      travelers: String(detail?.travelers ?? 1), notes: detail?.notes || '',
+    });
+    setEditingTrip(true);
+  }, [meta, detail]);
+
+  const saveTrip = useCallback(async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'trip-update', {
+        id: trip.id, name: tripForm.name, destination: tripForm.destination,
+        startDate: tripForm.startDate, endDate: tripForm.endDate, travelers: Number(tripForm.travelers) || 1, notes: tripForm.notes,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not save the trip.'); return; }
+      setEditingTrip(false);
+      await loadDetail();
+    } finally { setBusy(false); }
+  }, [trip.id, tripForm, loadDetail]);
+
+  const deleteTrip = useCallback(async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'trip-delete', { id: trip.id });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete the trip.'); setConfirmDelete(false); return; }
+      onBack();
+    } finally { setBusy(false); }
+  }, [trip.id, onBack]);
 
   // ── Itinerary actions ────────────────────────────────────────────────
 
@@ -296,6 +348,17 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     await lensRun('travel', 'itinerary-delete', { tripId: trip.id, id });
     await Promise.all([loadItinerary(), loadAgenda(), loadMap()]);
   }, [trip.id, loadItinerary, loadAgenda, loadMap]);
+
+  const saveItinItem = useCallback(async () => {
+    if (!editItem) return;
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'itinerary-update', { tripId: trip.id, ...editItem });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not update the item.'); return; }
+      setEditItem(null);
+      await Promise.all([loadItinerary(), loadAgenda(), loadMap()]);
+    } finally { setBusy(false); }
+  }, [editItem, trip.id, loadItinerary, loadAgenda, loadMap]);
 
   const geocodeItem = useCallback(async (item: ItineraryItem) => {
     setGeocoding(item.id);
@@ -455,7 +518,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   }, [trip.id, displayCurrency]);
 
   useEffect(() => {
-    if (tab === 'budget') void loadBreakdown();
+    if (tab === 'budget') void Promise.resolve().then(loadBreakdown);
   }, [tab, loadBreakdown]);
 
   const saveBudget = useCallback(async () => {
@@ -505,11 +568,51 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           <ChevronLeft className="w-3.5 h-3.5" /> All trips
         </button>
         <span className="text-xs text-zinc-400">
-          <MapPin className="w-3 h-3 inline mr-1" />{trip.destination}
-          {trip.startDate ? ` · ${trip.startDate}${trip.endDate ? ` → ${trip.endDate}` : ''}` : ''}
+          <MapPin className="w-3 h-3 inline mr-1" />{meta.destination}
+          {meta.startDate ? ` · ${meta.startDate}${meta.endDate ? ` → ${meta.endDate}` : ''}` : ''}
         </span>
       </div>
-      <h3 className="text-base font-bold text-zinc-100">{trip.name}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-zinc-100">{meta.name}</h3>
+          {detail && (
+            <p className="mt-1 text-[11px] text-zinc-400">
+              {detail.travelers} traveler{detail.travelers === 1 ? '' : 's'}
+              {detail.durationDays ? ` · ${detail.durationDays} days` : ''} · {detail.itineraryCount} stops · ${detail.bookedCost.toLocaleString()} booked · {detail.checklistOpen} to pack
+            </p>
+          )}
+          {detail?.notes && <p className="mt-1 text-[11px] italic text-zinc-500">{detail.notes}</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={startEditTrip} className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] text-zinc-300 transition-colors hover:border-sky-500/50 hover:text-sky-200">
+            <Pencil className="w-3 h-3" /> Edit trip
+          </button>
+          {confirmDelete ? (
+            <>
+              <button type="button" onClick={() => void deleteTrip()} disabled={busy} className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-rose-500 disabled:opacity-50">Delete trip and its plans</button>
+              <button type="button" onClick={() => setConfirmDelete(false)} className="text-[11px] text-zinc-400 hover:text-zinc-200">Keep</button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmDelete(true)} aria-label="Delete trip" className="rounded-lg border border-zinc-800 p-1.5 text-zinc-500 transition-colors hover:border-rose-500/40 hover:text-rose-300">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      {editingTrip && (
+        <div className="grid grid-cols-2 gap-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3 sm:grid-cols-3">
+          <input aria-label="Trip name" value={tripForm.name} onChange={(e) => setTripForm({ ...tripForm, name: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input aria-label="Destination" value={tripForm.destination} onChange={(e) => setTripForm({ ...tripForm, destination: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input aria-label="Travelers" type="number" min={1} value={tripForm.travelers} onChange={(e) => setTripForm({ ...tripForm, travelers: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input aria-label="Start date" type="date" value={tripForm.startDate} onChange={(e) => setTripForm({ ...tripForm, startDate: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input aria-label="End date" type="date" value={tripForm.endDate} onChange={(e) => setTripForm({ ...tripForm, endDate: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input aria-label="Notes" placeholder="Notes" value={tripForm.notes} onChange={(e) => setTripForm({ ...tripForm, notes: e.target.value })} className="col-span-2 sm:col-span-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <div className="col-span-2 flex gap-2 sm:col-span-3">
+            <button type="button" onClick={() => void saveTrip()} disabled={busy} className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-40">Save trip</button>
+            <button type="button" onClick={() => setEditingTrip(false)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 flex-wrap bg-zinc-900/60 border border-zinc-800 p-1 rounded-lg">
         {TABS.map((t) => {
@@ -582,7 +685,19 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
             <p className="text-[11px] text-zinc-400 italic">No itinerary items yet. Add the first one above.</p>
           ) : (
             <ul className="space-y-1">
-              {itinerary.map((it) => (
+              {itinerary.map((it) => editItem?.id === it.id ? (
+                <li key={it.id} className="grid grid-cols-2 gap-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-2 sm:grid-cols-5">
+                  <input aria-label="Title" value={editItem.title} onChange={(e) => setEditItem({ ...editItem, title: e.target.value })} className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Day" type="date" value={editItem.day} onChange={(e) => setEditItem({ ...editItem, day: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Time" type="time" value={editItem.time} onChange={(e) => setEditItem({ ...editItem, time: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Location" value={editItem.location} onChange={(e) => setEditItem({ ...editItem, location: e.target.value })} className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Note" value={editItem.note} onChange={(e) => setEditItem({ ...editItem, note: e.target.value })} className="col-span-2 sm:col-span-4 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => void saveItinItem()} disabled={busy} className="rounded-lg bg-sky-600 px-2 py-1 text-[11px] text-white transition-colors hover:bg-sky-500 disabled:opacity-40">Save</button>
+                    <button type="button" onClick={() => setEditItem(null)} aria-label="Cancel edit" className="text-zinc-500 hover:text-zinc-200"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                </li>
+              ) : (
                 <li key={it.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-xs text-zinc-200 truncate">{it.title}</p>
@@ -590,9 +705,14 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                       {[it.day, it.time, it.category, it.location].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <button aria-label="Delete itinerary item" type="button" onClick={() => delItinItem(it.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button aria-label="Edit itinerary item" type="button" onClick={() => setEditItem({ id: it.id, title: it.title, day: it.day || '', time: it.time || '', location: it.location || '', note: (it as { note?: string | null }).note || '' })} className="text-zinc-600 hover:text-sky-300">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button aria-label="Delete itinerary item" type="button" onClick={() => delItinItem(it.id)} className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
