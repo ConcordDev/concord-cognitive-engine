@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { forumAllowed, keepBody, keepCalls, keepOutcome } from '@/components/timeline/postKeep';
+import { forumAllowed, keepBody, keepCalls, keepOutcome, sendDtuToThreadCall, sendDtuToThreadOutcome } from '@/components/timeline/postKeep';
 
 const ownPublic = {
   id: 'pst_1',
@@ -55,5 +55,22 @@ describe('timeline keep sentences', () => {
     const weird = keepOutcome('thread-draft', { ok: true, result: { draft: { id: 'th_5', status: 'published' } } });
     expect(weird.claimed).toBe(false);
     expect(weird.text).toContain('Not posted.');
+  });
+
+  it('sends a read-back DTU to a thread draft only when the draft cites it and stays a draft', () => {
+    const call = sendDtuToThreadCall(ownPublic, 'dtu_9');
+    expect(call?.input).toMatchObject({ citedDtuId: 'dtu_9' });
+    expect(String(call?.input.content)).toContain('DTU dtu_9');
+    const sent = sendDtuToThreadOutcome('dtu_9', {
+      ok: true,
+      result: { draft: { id: 'th_9', status: 'draft', citedDtuId: 'dtu_9' } },
+    });
+    expect(sent.text).toBe('Sent DTU dtu_9 to Thread as draft th_9. Not posted.');
+    const missing = sendDtuToThreadOutcome('dtu_9', {
+      ok: true,
+      result: { draft: { id: 'th_8', status: 'draft', citedDtuId: null } },
+    });
+    expect(missing.claimed).toBe(false);
+    expect(missing.text).toContain('Not posted.');
   });
 });

@@ -181,6 +181,10 @@ export default function registerThreadActions(registerLensAction) {
     if (content.length < 2) return { ok: false, error: "draft content required" };
     const platform = PLATFORMS.includes(params.platform) ? params.platform : "x";
     const limit = platform === "linkedin" ? 2800 : platform === "bluesky" ? 300 : 270;
+    // A lens may attach a DTU it already saved. Stored only when it looks
+    // like an id, so a draft never pretends to cite a missing record.
+    const rawCite = trClean(params.citedDtuId, 80);
+    const citedDtuId = /^[A-Za-z0-9_.:-]{1,80}$/.test(rawCite) ? rawCite : null;
     const draft = {
       id: trId("th"),
       title: trClean(params.title, 120) || content.split(/\n/)[0].slice(0, 80),
@@ -188,6 +192,7 @@ export default function registerThreadActions(registerLensAction) {
       platform,
       posts: splitThread(content, limit),
       status: "draft",
+      citedDtuId,
       scheduledAt: null,
       autoPlug: trClean(params.autoPlug, 280) || null,
       createdAt: trNow(),

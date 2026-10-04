@@ -52,4 +52,22 @@ describe("timeline post keep", () => {
     assert.equal(got.result.draft.status, "draft");
     assert.match(got.result.draft.content, /Harbor lights at dusk/);
   });
+
+  it("keeps a cited DTU id on a thread draft and drops one that is not an id", () => {
+    const cited = call("thread.thread-draft", ctx, {
+      title: "Harbor",
+      content: "Harbor lights at dusk.",
+      citedDtuId: "dtu_tl_1",
+    });
+    assert.equal(cited.result.draft.citedDtuId, "dtu_tl_1");
+    assert.equal(cited.result.draft.status, "draft");
+    const got = call("thread.draft-detail", ctx, { id: cited.result.draft.id });
+    assert.equal(got.result.draft.citedDtuId, "dtu_tl_1");
+    const dropped = call("thread.thread-draft", ctx, {
+      title: "Harbor",
+      content: "Harbor lights at dusk.",
+      citedDtuId: "not an id",
+    });
+    assert.equal(dropped.result.draft.citedDtuId, null);
+  });
 });

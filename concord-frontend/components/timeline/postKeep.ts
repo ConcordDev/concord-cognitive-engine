@@ -152,3 +152,72 @@ export function keepOutcome(
   }
   return { claimed: true, text: `Saved Thread draft ${id}. Not posted.` };
 }
+
+/** Id of the record the server says it stored, or "" when it did not. */
+export function keepRecordId(kind: KeepKind, data: { ok?: boolean; result?: unknown }): string {
+  const payload = payloadOf(data);
+  if (!payload) return '';
+  if (kind === 'dtu') {
+    const dtu = asRecord(payload.dtu);
+    return String(dtu?.id || payload.id || '');
+  }
+  if (kind === 'forum') return String(asRecord(payload.topic)?.id || '');
+  return String(asRecord(payload.draft)?.id || '');
+}
+
+/** True only when dtu.get returns the same id create just handed back. */
+export function dtuReadBackMatches(id: string, data: { ok?: boolean; result?: unknown }): boolean {
+  if (!id || data.ok === false) return false;
+  const payload = payloadOf(data);
+  if (!payload) return false;
+  const dtu = asRecord(payload.dtu);
+  return String(dtu?.id || payload.id || '') === id;
+}
+
+export function dtuReadBackCall(id: string): KeepCall {
+  return { domain: 'dtu', action: 'get', input: { id } };
+}
+
+/**
+ * Save the kept post as a Thread draft that cites the DTU.
+ * The draft stays a draft. Thread does not send it anywhere.
+ */
+export function sendDtuToThreadCall(post: KeepPost, dtuId: string): KeepCall | null {
+  const id = dtuId.trim();
+  if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(id)) return null;
+  const body = keepBody(post, 25000);
+  if (!body) return null;
+  const cite = `\n\nDTU ${id}`;
+  const content = body.length + cite.length <= 25000 ? `${body}${cite}` : body;
+  return {
+    domain: 'thread',
+    action: 'thread-draft',
+    input: {
+      title: titleFor(post, body).slice(0, 120),
+      content,
+      citedDtuId: id,
+    },
+  };
+}
+
+export function sendDtuToThreadOutcome(
+  dtuId: string,
+  data: { ok?: boolean; result?: unknown; error?: string | null },
+): { claimed: boolean; text: string; draftId: string } {
+  if (data.ok === false) {
+    return { claimed: false, draftId: '', text: `Not sent. ${data.error || 'The server refused this.'}` };
+  }
+  const payload = payloadOf(data);
+  const draft = asRecord(payload?.draft);
+  const draftId = String(draft?.id || '');
+  const status = String(draft?.status || '');
+  const cited = String(draft?.citedDtuId || '');
+  if (!draftId) return { claimed: false, draftId: '', text: 'Not sent. Thread returned no draft id.' };
+  if (status !== 'draft') {
+    return { claimed: false, draftId, text: `Thread draft ${draftId} came back as ${status || 'unknown'}. Not posted.` };
+  }
+  if (cited !== dtuId) {
+    return { claimed: false, draftId, text: `Thread stored draft ${draftId} without DTU ${dtuId}. Not posted.` };
+  }
+  return { claimed: true, draftId, text: `Sent DTU ${dtuId} to Thread as draft ${draftId}. Not posted.` };
+}
