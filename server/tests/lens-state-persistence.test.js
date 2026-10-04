@@ -42,7 +42,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // map while the UI still showed it.
     // 34 -> 35: "hypothesisLens" so a user's imported datasets, saved
     // analyses, and pre-registered hypotheses survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 35);
+    // 35 -> 36: "srsLens" so a user's decks, cards, review log, and media
+    // survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 36);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -55,6 +57,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("codeLens"));
     assert.ok(LENS_STATE_KEYS.includes("graphLens"));
     assert.ok(LENS_STATE_KEYS.includes("hypothesisLens"));
+    assert.ok(LENS_STATE_KEYS.includes("srsLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -185,6 +188,30 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(reg.status, "resolved");
     assert.equal(reg.outcome.verdict, "confirmed");
     assert.equal(reg.outcome.predictionConfirmed, true);
+  });
+
+  it("roundtrips STATE.srsLens (a deck with cards and a review log)", () => {
+    // The SRS domain stores per-user Anki-shape data under four Maps:
+    // decks, cards, reviewLog, and media. Without srsLens in
+    // LENS_STATE_KEYS a restart wiped every deck while the study UI still
+    // showed it.
+    STATE.srsLens = {
+      decks: new Map([["user_a", [{ id: "deck_1", name: "Spanish Vocab", options: { scheduler: "fsrs" } }]]]),
+      cards: new Map([["user_a", [{ id: "card_1", deckId: "deck_1", front: "hola", back: "hello", ease: 2.5, interval: 1, reps: 1, state: "review" }]]]),
+      reviewLog: new Map([["user_a", [{ cardId: "card_1", deckId: "deck_1", rating: "good", scheduler: "fsrs", at: "2026-10-04" }]]]),
+      media: new Map([["user_a", []]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.srsLens.decks instanceof Map);
+    assert.equal(STATE.srsLens.decks.get("user_a")[0].name, "Spanish Vocab");
+    assert.ok(STATE.srsLens.cards instanceof Map);
+    assert.equal(STATE.srsLens.cards.get("user_a")[0].front, "hola");
+    assert.equal(STATE.srsLens.cards.get("user_a")[0].ease, 2.5);
+    assert.ok(STATE.srsLens.reviewLog instanceof Map);
+    assert.equal(STATE.srsLens.reviewLog.get("user_a")[0].rating, "good");
+    assert.ok(STATE.srsLens.media instanceof Map);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

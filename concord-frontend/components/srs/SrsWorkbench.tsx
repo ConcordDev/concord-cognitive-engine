@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SrsDeckMenu } from './SrsDeckMenu';
 import { ChartKit } from '@/components/viz';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -366,6 +367,16 @@ function DecksTab({
           </div>
         )}
       </div>
+
+      {/* Keep this deck as a DTU / Draft in Thread */}
+      {activeDeck && (
+        <SrsDeckMenu facts={{
+          deck: activeDeck,
+          dashboard: null,
+          stats: null,
+          cardCount: activeDeck.cardCount,
+        }} />
+      )}
     </div>
   );
 }

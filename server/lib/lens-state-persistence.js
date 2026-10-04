@@ -37,6 +37,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // Hypothesis domain stores per-user data here; without this key a hard
   // restart wiped every pre-registration while the registry still showed it.
   "hypothesisLens",
+  // 35 -> 36: "srsLens" so a user's decks, cards, review log, and media
+  // survive a restart. The SRS domain stores per-user Anki-shape data here;
+  // without this key a hard restart wiped every deck while the study UI
+  // still showed it.
+  "srsLens",
 ]);
 
 function serializeValue(v) {
