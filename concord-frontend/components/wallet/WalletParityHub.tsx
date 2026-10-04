@@ -33,6 +33,7 @@ import {
 import { lensRun, api } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { WalletReceiptMenu } from '@/components/wallet/WalletReceiptMenu';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -426,7 +427,21 @@ function RequestsTab() {
                 </ul>
               )}
               {req.status === 'paid' && req.transfer?.batchId && (
-                <p className="mt-1 text-[10px] font-mono text-gray-500 truncate">Ledger {req.transfer.batchId}</p>
+                <WalletReceiptMenu
+                  receipt={{
+                    kind: 'request',
+                    sourceId: req.id,
+                    amount: req.amount,
+                    batchId: req.transfer.batchId,
+                    counterparty: req.requesterId,
+                    note: req.note,
+                  }}
+                />
+              )}
+              {req.status === 'paid' && !req.transfer?.batchId && (
+                <p className="mt-1 text-[11px] text-amber-400" role="status">
+                  Marked paid without a ledger batch. Concord Coin movement was not confirmed.
+                </p>
               )}
               {req.status === 'pending' && (
                 <div className="mt-2 flex items-center gap-2">
@@ -575,7 +590,16 @@ function SchedulesTab() {
                   {s.runsCompleted ? ` · sent ${s.runsCompleted}` : ' · not sent yet'}
                 </p>
                 {s.lastTransfer?.batchId && (
-                  <p className="text-[10px] font-mono text-gray-500 truncate">Ledger {s.lastTransfer.batchId}</p>
+                  <WalletReceiptMenu
+                    receipt={{
+                      kind: 'schedule',
+                      sourceId: s.id,
+                      amount: s.amount,
+                      batchId: s.lastTransfer.batchId,
+                      counterparty: s.recipientId,
+                      note: s.note,
+                    }}
+                  />
                 )}
                 {s.lastError && (
                   <p className="text-[11px] text-red-400">{walletErr(s.lastError)}</p>
@@ -873,10 +897,12 @@ function SplitsTab() {
                         <span className="font-mono text-white">{s.amount.toLocaleString()} CC</span>
                         {s.paid && s.settlement !== 'ledger' ? (
                           <span className="text-gray-400">your share</span>
-                        ) : s.paid ? (
-                          <span className="text-green-400 flex items-center gap-0.5" title={s.transfer?.batchId || undefined}>
+                        ) : s.paid && s.transfer?.batchId ? (
+                          <span className="text-green-400 flex items-center gap-0.5">
                             <Check className="w-3 h-3" /> paid
                           </span>
+                        ) : s.paid ? (
+                          <span className="text-amber-400">marked paid, ledger not confirmed</span>
                         ) : (
                           <button onClick={() => settle(sp.id, s.userId)} className="text-neon-cyan hover:underline">
                             Pay share
@@ -886,6 +912,19 @@ function SplitsTab() {
                     </li>
                   ))}
                 </ul>
+                {sp.shares.filter((s) => s.settlement === 'ledger' && s.transfer?.batchId).map((s) => (
+                  <WalletReceiptMenu
+                    key={`${sp.id}-${s.userId}`}
+                    receipt={{
+                      kind: 'split',
+                      sourceId: sp.id,
+                      amount: s.amount,
+                      batchId: s.transfer!.batchId!,
+                      counterparty: sp.creatorId,
+                      note: sp.title,
+                    }}
+                  />
+                ))}
               </div>
             );
           })}

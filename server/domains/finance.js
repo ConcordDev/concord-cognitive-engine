@@ -709,6 +709,49 @@ Generate the summary.`;
     return { ok: true, result: { id, deleted: true } };
   });
 
+  // A wallet receipt is a record of a transfer the ledger already accepted.
+  // Recording it does not move Concord Coin again.
+  registerLensAction("finance", "receipt-record", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const citedDtuId = String(params.citedDtuId || "").trim();
+    if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(citedDtuId)) {
+      return { ok: false, error: "citedDtuId required" };
+    }
+    const amount = Math.round((Number(params.amount) || 0) * 100) / 100;
+    if (!(amount > 0)) return { ok: false, error: "amount must be positive" };
+    const batchId = String(params.batchId || "").trim();
+    if (!batchId) return { ok: false, error: "batchId required" };
+    const source = String(params.source || "").trim();
+    if (!["wallet-request", "wallet-schedule", "wallet-split"].includes(source)) {
+      return { ok: false, error: "source invalid" };
+    }
+    const sourceId = String(params.sourceId || "").trim();
+    if (!sourceId) return { ok: false, error: "sourceId required" };
+    const receipt = {
+      id: uid("rcpt"),
+      citedDtuId,
+      amount,
+      batchId,
+      source,
+      sourceId,
+      counterparty: String(params.counterparty || "").trim(),
+      note: String(params.note || "").trim(),
+      recordedAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "receipts", userId).push(receipt);
+    saveStateIfAvailable();
+    return { ok: true, result: { receipt } };
+  });
+
+  registerLensAction("finance", "receipt-list", (ctx, _a, _params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const receipts = [...ensureBucket(state, "receipts", userId)]
+      .sort((a, b) => (b.recordedAt || "").localeCompare(a.recordedAt || ""));
+    return { ok: true, result: { receipts, count: receipts.length } };
+  });
+
   registerLensAction("finance", "cashflow-forecast", (ctx, _a, params = {}) => {
   try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
