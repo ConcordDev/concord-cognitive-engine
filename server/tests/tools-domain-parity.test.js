@@ -4,6 +4,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerToolsActions from "../domains/tools.js";
+import { viewSigningLink, signViaLink } from "../lib/esign-links.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -151,26 +152,41 @@ describe("tools e-signature workflow", () => {
     assert.ok(r.result.envelope.documentHash);
   });
 
-  it("runs a full multi-party signing flow to completion", () => {
+  it("runs a full multi-party signing flow: sender signs in-app, the other party signs from their link", async () => {
     const env = call("esign-create", ctxA, {
       title: "Agreement",
       document: "Binding terms.",
-      parties: [{ name: "Alice" }, { name: "Bob" }],
+      parties: [{ name: "Alice", isSender: true }, { name: "Bob", email: "bob@example.com" }],
     }).result.envelope;
+    // The sender can't sign on Bob's behalf.
+    assert.equal(call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[1].id }).ok, false);
     const first = call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[0].id });
     assert.equal(first.ok, true);
     assert.equal(first.result.completed, false);
-    const second = call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[1].id });
+    const sent = await call("esign-send", ctxA, { envelopeId: env.id });
+    assert.equal(sent.ok, true);
+    assert.equal(sent.result.links.length, 1);
+    assert.equal(sent.result.links[0].delivered, "link_only"); // no Gmail in this test — never claims an email went out
+    const token = sent.result.links[0].url.split("/sign/")[1];
+    const view = await viewSigningLink(token);
+    assert.equal(view.result.signer.name, "Bob");
+    assert.equal((await signViaLink(token, { typedName: "Bob Smith", consent: false })).ok, false);
+    const second = await signViaLink(token, { typedName: "Bob Smith", consent: true, ip: "203.0.113.5" });
     assert.equal(second.ok, true);
     assert.equal(second.result.completed, true);
-    assert.equal(second.result.envelope.status, "completed");
+    const detail = call("esign-detail", ctxA, { envelopeId: env.id }).result.envelope;
+    assert.equal(detail.status, "completed");
+    assert.equal(detail.parties[1].signedVia, "link");
+    assert.equal(detail.parties[1].typedName, "Bob Smith");
+    // A used link can't sign twice.
+    assert.equal((await signViaLink(token, { typedName: "Bob", consent: true })).ok, false);
   });
 
   it("verifies signatures and detects document tampering", () => {
     const env = call("esign-create", ctxA, {
       title: "Contract",
       document: "Original document body.",
-      parties: [{ name: "Alice" }],
+      parties: [{ name: "Alice", isSender: true }],
     }).result.envelope;
     call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[0].id });
     const verify = call("esign-verify", ctxA, { envelopeId: env.id });
@@ -188,7 +204,7 @@ describe("tools e-signature workflow", () => {
 
   it("verifies a standalone signature token", () => {
     const env = call("esign-create", ctxA, {
-      title: "Doc", document: "body", parties: [{ name: "Alice" }],
+      title: "Doc", document: "body", parties: [{ name: "Alice", isSender: true }],
     }).result.envelope;
     const signed = call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[0].id });
     const sig = signed.result.envelope.parties[0].signature;

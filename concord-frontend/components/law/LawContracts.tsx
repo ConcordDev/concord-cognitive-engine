@@ -139,7 +139,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
   }
   async function sign() {
     if (!active) return;
-    const party = prompt('Signing party name?');
+    const party = prompt('Your name — you sign your side; the counterparty signs from the link you send them');
     if (!party?.trim()) return;
     const r = await lensRun('law', 'contract-sign', { id: active.id, party: party.trim() });
     if (!r.data?.ok) alert(r.data?.error || 'Could not sign.');

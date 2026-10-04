@@ -36,7 +36,7 @@ function envelope(overrides: Record<string, unknown> = {}) {
     sentAt: '2026-07-01T00:00:00.000Z',
     completedAt: null,
     recipients: [
-      { id: 'r1', name: 'Alice Chen', email: 'alice@example.com', role: 'client', status: 'pending' as const, signedAt: null },
+      { id: 'r1', name: 'Alice Chen', email: 'alice@example.com', role: 'client', status: 'pending' as const, signedAt: null, isSender: true },
       { id: 'r2', name: 'Bo Reyes', email: 'bo@example.com', role: 'counsel', status: 'signed' as const, signedAt: '2026-07-02T00:00:00.000Z' },
     ],
     ...overrides,
@@ -49,6 +49,20 @@ beforeEach(() => {
 });
 
 describe('ESignaturePanel', () => {
+  it('never offers to sign for another recipient — they get a signing link instead', async () => {
+    lensRun.mockResolvedValueOnce({ data: { result: { envelopes: [envelope({ recipients: [
+      { id: 'r1', name: 'Alice Chen', email: 'alice@example.com', role: 'client', status: 'pending', signedAt: null },
+    ] })] } } });
+    render(<ESignaturePanel />);
+    await waitFor(() => expect(screen.getByText('Alice Chen')).toBeInTheDocument());
+    expect(screen.queryByText('Sign as you')).not.toBeInTheDocument();
+    expect(screen.queryByText(/simulate/i)).not.toBeInTheDocument();
+    lensRun.mockResolvedValueOnce({ data: { ok: true, result: { links: [{ recipientId: 'r1', url: 'https://concord-os.org/sign/abc', delivered: 'link_only', reason: 'no_token' }] } } });
+    lensRun.mockResolvedValueOnce({ data: { result: { envelopes: [envelope()] } } });
+    fireEvent.click(screen.getByText('Send link'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('legal', 'esign-envelope-send', { envelopeId: 'env-1', recipientId: 'r1' }));
+  });
+
   it('renders a real per-envelope progress bar reflecting signed/total', async () => {
     lensRun.mockResolvedValueOnce({ data: { result: { envelopes: [envelope()] } } });
     render(<ESignaturePanel />);
@@ -61,19 +75,19 @@ describe('ESignaturePanel', () => {
     lensRun.mockResolvedValueOnce({ data: { result: { envelopes: [envelope()] } } });
     render(<ESignaturePanel />);
     await waitFor(() => expect(screen.getByText('Alice Chen')).toBeInTheDocument());
-    expect(screen.getByText('Simulate sign')).toBeInTheDocument();
+    expect(screen.getByText('Sign as you')).toBeInTheDocument();
 
     // Sign call never resolves during this assertion window — if the UI
     // waited for it, "signed" would not appear yet.
     let resolveSign!: (v: unknown) => void;
     lensRun.mockImplementationOnce(() => new Promise((res) => { resolveSign = res; }));
 
-    fireEvent.click(screen.getByText('Simulate sign'));
+    fireEvent.click(screen.getByText('Sign as you'));
 
     // Optimistic: the row already reads "signed" and progress is 2/2,
     // even though the network call above is still pending. A quiet
     // "saving…" affordance marks the still-unconfirmed state honestly.
-    expect(screen.queryByText('Simulate sign')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sign as you')).not.toBeInTheDocument();
     expect(screen.getByText('2/2')).toBeInTheDocument();
     expect(screen.getByText(/saving…/)).toBeInTheDocument();
 
@@ -94,20 +108,20 @@ describe('ESignaturePanel', () => {
 
     lensRun.mockRejectedValueOnce(new Error('network down'));
 
-    fireEvent.click(screen.getByText('Simulate sign'));
+    fireEvent.click(screen.getByText('Sign as you'));
 
     await waitFor(() => expect(addToast).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'error' })
     ));
-    // Rolled back: still 1/2, "Simulate sign" button is back.
+    // Rolled back: still 1/2, "Sign as you" button is back.
     expect(screen.getByText('1/2')).toBeInTheDocument();
-    expect(screen.getByText('Simulate sign')).toBeInTheDocument();
+    expect(screen.getByText('Sign as you')).toBeInTheDocument();
   });
 
   it('celebrates real completion only when every recipient has actually signed', async () => {
     const almostDone = envelope({
       recipients: [
-        { id: 'r1', name: 'Alice Chen', email: 'alice@example.com', role: 'client', status: 'pending', signedAt: null },
+        { id: 'r1', name: 'Alice Chen', email: 'alice@example.com', role: 'client', status: 'pending', signedAt: null, isSender: true },
       ],
     });
     lensRun.mockResolvedValueOnce({ data: { result: { envelopes: [almostDone] } } });
@@ -121,7 +135,7 @@ describe('ESignaturePanel', () => {
       completedAt: '2026-07-03T00:00:00.000Z',
     })] } } });
 
-    fireEvent.click(screen.getByText('Simulate sign'));
+    fireEvent.click(screen.getByText('Sign as you'));
 
     await waitFor(() => expect(addToast).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'success', message: expect.stringMatching(/completed/i) })

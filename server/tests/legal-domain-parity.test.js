@@ -1,6 +1,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerLegalActions from "../domains/legal.js";
+import { signViaLink } from "../lib/esign-links.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -225,12 +226,20 @@ describe("legal — documents + e-signature", () => {
     assert.ok(r.result.document.body.includes("Doe v. Roe"));
   });
 
-  it("esign-envelope: all recipients sign → envelope completes + doc marked signed", () => {
+  it("esign-envelope: draft until sent; client signs from their link, counsel in-app → completes + doc signed", async () => {
     const tpls = call("doc-templates-list", ctxA).result.templates;
     const m = call("matters-create", ctxA, { name: "M", clientName: "Sig Client" }).result.matter;
     const doc = call("doc-generate", ctxA, { templateId: tpls[0].id, matterId: m.id }).result.document;
-    const env = call("esign-envelope-create", ctxA, { documentId: doc.id, recipients: [{ name: "Client", email: "c@x.com" }, { name: "Counsel", email: "l@x.com" }] }).result.envelope;
-    call("esign-envelope-sign", ctxA, { envelopeId: env.id, recipientId: env.recipients[0].id });
+    const env = call("esign-envelope-create", ctxA, { documentId: doc.id, recipients: [{ name: "Client", email: "c@x.com" }, { name: "Counsel", email: "l@x.com", isSender: true }] }).result.envelope;
+    assert.equal(env.status, "draft");
+    assert.ok(env.documentHash);
+    // Counsel can't sign for the client.
+    assert.equal(call("esign-envelope-sign", ctxA, { envelopeId: env.id, recipientId: env.recipients[0].id }).ok, false);
+    const sent = await call("esign-envelope-send", ctxA, { envelopeId: env.id });
+    assert.equal(sent.result.envelope.status, "sent");
+    assert.equal(sent.result.links[0].delivered, "link_only");
+    const token = sent.result.links[0].url.split("/sign/")[1];
+    assert.equal((await signViaLink(token, { typedName: "Client Person", consent: true })).ok, true);
     const r2 = call("esign-envelope-sign", ctxA, { envelopeId: env.id, recipientId: env.recipients[1].id });
     assert.equal(r2.result.envelope.status, "completed");
     const docNow = call("documents-list", ctxA).result.documents.find(d => d.id === doc.id);

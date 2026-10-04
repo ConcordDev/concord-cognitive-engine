@@ -19,6 +19,10 @@ import {
 
 interface Party {
   id: string; order: number; name: string; email: string; role: string;
+  isSender?: boolean;
+  signedVia?: 'sender' | 'link';
+  typedName?: string;
+  delivery?: { method: 'email' | 'link_only'; reason: string | null; at: string } | null;
   status: 'pending' | 'signed';
   signature: { alg: string; token: string; payload: Record<string, any> } | null;
   signedAt: string | null;
@@ -45,7 +49,7 @@ interface VerifyResult {
   allValid: boolean; verifiedAt: string;
 }
 
-interface PartyDraft { name: string; email: string; role: string }
+interface PartyDraft { name: string; email: string; role: string; isSender?: boolean }
 
 export function ESignatureTool() {
   const [view, setView] = useState<'create' | 'list'>('list');
@@ -59,14 +63,15 @@ export function ESignatureTool() {
   // Create-envelope form state.
   const [title, setTitle] = useState('');
   const [document, setDocument] = useState('');
-  const [parties, setParties] = useState<PartyDraft[]>([{ name: '', email: '', role: 'signer' }]);
+  const [parties, setParties] = useState<PartyDraft[]>([{ name: '', email: '', role: 'signer', isSender: true }, { name: '', email: '', role: 'signer' }]);
+  const [links, setLinks] = useState<Record<string, { url: string; delivered: string; reason: string | null }>>({});
 
   const loadList = useCallback(async () => {
     const r = await lensRun<{ envelopes: EnvelopeSummary[]; total: number }>('tools', 'esign-list', { status: statusFilter });
     if (r.data?.ok && r.data.result) setList(r.data.result.envelopes);
   }, [statusFilter]);
 
-  useEffect(() => { loadList(); }, [loadList]);
+  useEffect(() => { void Promise.resolve().then(loadList); }, [loadList]);
 
   const openDetail = useCallback(async (id: string) => {
     setVerify(null);
@@ -76,7 +81,7 @@ export function ESignatureTool() {
 
   const createEnvelope = useCallback(async () => {
     const cleanParties = parties
-      .map((p) => ({ name: p.name.trim(), email: p.email.trim(), role: p.role.trim() || 'signer' }))
+      .map((p) => ({ name: p.name.trim(), email: p.email.trim(), role: p.role.trim() || 'signer', isSender: p.isSender === true }))
       .filter((p) => p.name);
     if (!title.trim() || !document.trim() || cleanParties.length === 0) {
       setError('title, document text, and at least one named party are required');
@@ -91,7 +96,7 @@ export function ESignatureTool() {
     if (r.data?.ok && r.data.result) {
       setTitle('');
       setDocument('');
-      setParties([{ name: '', email: '', role: 'signer' }]);
+      setParties([{ name: '', email: '', role: 'signer', isSender: true }, { name: '', email: '', role: 'signer' }]);
       setView('list');
       await loadList();
       setSelected(r.data.result.envelope);
@@ -110,6 +115,20 @@ export function ESignatureTool() {
       loadList();
     } else {
       setError(r.data?.error || 'sign failed');
+    }
+  }, [loadList]);
+
+  const sendEnvelope = useCallback(async (envelopeId: string, partyId?: string) => {
+    setBusy(true);
+    setError(null);
+    const r = await lensRun<{ envelope: Envelope; links: { partyId: string; url: string; delivered: string; reason: string | null }[] }>('tools', 'esign-send', { envelopeId, ...(partyId ? { partyId } : {}) });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) {
+      setSelected(r.data.result.envelope);
+      setLinks((prev) => ({ ...prev, ...Object.fromEntries(r.data.result!.links.map((l) => [l.partyId, l])) }));
+      loadList();
+    } else {
+      setError(r.data?.error || 'send failed');
     }
   }, [loadList]);
 
@@ -239,6 +258,10 @@ export function ESignatureTool() {
                     className="w-32 rounded border border-yellow-900/40 bg-black/40 px-2 py-1 text-xs text-yellow-100 focus:border-yellow-500 focus:outline-none"
                     aria-label={`Party ${i + 1} email`}
                   />
+                  <label className="flex items-center gap-1 whitespace-nowrap text-[10px] text-yellow-500" title="You sign this party yourself; everyone else gets a signing link">
+                    <input type="radio" name="esign-me" checked={!!p.isSender} onChange={() => setParties((prev) => prev.map((x, idx) => ({ ...x, isSender: idx === i })))} />
+                    me
+                  </label>
                   <input
                     type="text"
                     value={p.role}
@@ -342,20 +365,41 @@ export function ESignatureTool() {
                     <div className="text-xs">
                       <span className="text-yellow-200">{p.name}</span>
                       <span className="ml-1.5 text-yellow-700">· {p.role}</span>
-                      {p.signedAt && <div className="text-[10px] text-emerald-500">signed {new Date(p.signedAt).toLocaleString()}</div>}
+                      {p.signedAt && <div className="text-[10px] text-emerald-500">signed {new Date(p.signedAt).toLocaleString()}{p.signedVia === 'link' ? ` via their link${p.typedName ? ` as "${p.typedName}"` : ''}` : ''}</div>}
                     </div>
                     {p.status === 'signed' ? (
                       <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
                         <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> signed
                       </span>
-                    ) : selected.status === 'out_for_signature' ? (
+                    ) : selected.status === 'out_for_signature' && p.isSender ? (
                       <button
                         onClick={() => signParty(selected.id, p.id)}
                         disabled={busy}
                         className="inline-flex items-center gap-1 rounded bg-yellow-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-yellow-500 disabled:opacity-40"
                       >
-                        <Lock className="h-3 w-3" aria-hidden /> Sign
+                        <Lock className="h-3 w-3" aria-hidden /> Sign as you
                       </button>
+                    ) : selected.status === 'out_for_signature' ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => sendEnvelope(selected.id, p.id)}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1 rounded border border-yellow-700/60 px-2 py-1 text-[11px] font-medium text-yellow-300 hover:bg-yellow-900/30 disabled:opacity-40"
+                        >
+                          {p.delivery ? 'Resend link' : 'Send signing link'}
+                        </button>
+                        {p.delivery && (
+                          <span className="text-[10px] text-yellow-700">
+                            {p.delivery.method === 'email' ? `emailed to ${p.email}` : `not emailed (${(p.delivery.reason || '').replace(/_/g, ' ')}) — share the link`}
+                          </span>
+                        )}
+                        {links[p.id] && (
+                          <button type="button" onClick={() => void navigator.clipboard?.writeText(links[p.id].url)}
+                            className="max-w-[16rem] truncate font-mono text-[10px] text-cyan-300 hover:underline" title="Copy signing link">
+                            {links[p.id].url}
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-[11px] text-yellow-700">pending</span>
                     )}

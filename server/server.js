@@ -7557,7 +7557,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/", "/api/esign/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -8132,6 +8132,15 @@ function authMiddleware(req, res, next) {
   if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
+  // E-signature signing links (server/lib/esign-links.js) — a recipient
+  // with no Concord account opens /sign/:token. The token IS the access
+  // control: crypto.randomBytes(24), scoped server-side to exactly one
+  // signer slot of one envelope. The routes call the esign-links module
+  // directly (view / sign only), never /api/lens/run, so the token can't be
+  // widened to any other action or envelope.
+  if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
+  if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
+
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
   // anonymous visitor with a share link opens `/share/animation/:token`.
@@ -8360,7 +8369,7 @@ function requireRole(...roles) {
 // submissions were 401ing on every metric per page load, silently wasting
 // the same 30-req/min anonymous IP bucket real anonymous traffic (including
 // registration) also depends on.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -57368,6 +57377,39 @@ app.post("/api/welding/portal/:token/pay", async (req, res) => {
       reason: "payment_capture_not_wired",
       message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── E-signature signing links (tools / legal / law) ─────────────────────
+// Public, token-scoped view + sign for a recipient with no Concord account.
+// Same security shape as the welding portal above: the token is the only
+// caller-supplied identifier and resolves server-side to one signer slot;
+// identity evidence (typed name, consent, IP, user agent) is captured here
+// from the request, never trusted from the envelope owner.
+app.get("/api/esign/:token", async (req, res) => {
+  try {
+    const { viewSigningLink } = await import("./lib/esign-links.js");
+    const r = await viewSigningLink(req.params.token);
+    if (!r?.ok) return res.status(404).json({ ok: false, error: "link_not_found" });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/esign/:token/sign", perEndpointRateLimit("write.esign"), async (req, res) => {
+  try {
+    const { signViaLink } = await import("./lib/esign-links.js");
+    const r = await signViaLink(req.params.token, {
+      typedName: req.body?.typedName,
+      consent: req.body?.consent === true,
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+    if (!r?.ok) return res.status(r?.error === "link_not_found" ? 404 : 400).json(r);
+    res.json(r);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

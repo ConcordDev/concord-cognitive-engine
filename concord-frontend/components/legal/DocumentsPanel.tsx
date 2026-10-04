@@ -31,6 +31,10 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
   const [viewDoc, setViewDoc] = useState<LegalDoc | null>(null);
   const [esignDoc, setEsignDoc] = useState<LegalDoc | null>(null);
   const [esignRecipients, setEsignRecipients] = useState([{ name: '', email: '' }]);
+  const [esignIncludeMe, setEsignIncludeMe] = useState(false);
+  const [esignMyName, setEsignMyName] = useState('');
+  const [esignError, setEsignError] = useState<string | null>(null);
+  const [esignResult, setEsignResult] = useState<Array<{ name: string; url: string; delivered: string; reason: string | null }> | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -73,20 +77,35 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
     } catch (e) { console.error('[Templates] create failed', e); }
   }
 
+  function closeEsign() {
+    setEsignDoc(null);
+    setEsignRecipients([{ name: '', email: '' }]);
+    setEsignIncludeMe(false);
+    setEsignMyName('');
+    setEsignError(null);
+    setEsignResult(null);
+  }
+
+  // Create the envelope, then really send it: links are emailed from the
+  // user's Gmail when connected, otherwise shown here to share.
   async function sendEsign() {
     if (!esignDoc) return;
-    const recipients = esignRecipients.filter(r => r.name && r.email);
-    if (recipients.length === 0) { alert('Add at least one recipient with name + email.'); return; }
+    const others = esignRecipients.filter(r => r.name && r.email);
+    if (others.length === 0) { setEsignError('Add at least one recipient with name and email.'); return; }
+    if (esignIncludeMe && !esignMyName.trim()) { setEsignError('Enter your name to sign as yourself.'); return; }
+    setEsignError(null);
+    const recipients = [...others, ...(esignIncludeMe ? [{ name: esignMyName.trim(), email: '', isSender: true }] : [])];
     try {
-      const r = await lensRun({
-        domain: 'legal', action: 'esign-envelope-create',
-        input: { documentId: esignDoc.id, recipients },
-      });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
-      setEsignDoc(null);
-      setEsignRecipients([{ name: '', email: '' }]);
+      const r = await lensRun<{ envelope: { id: string } }>('legal', 'esign-envelope-create', { documentId: esignDoc.id, recipients });
+      if (r.data?.ok === false || !r.data?.result) { setEsignError(r.data?.error || 'Could not create the envelope.'); return; }
+      const sent = await lensRun<{ envelope: { recipients: Array<{ id: string; name: string }> }; links: Array<{ recipientId: string; url: string; delivered: string; reason: string | null }> }>(
+        'legal', 'esign-envelope-send', { envelopeId: r.data.result.envelope.id },
+      );
+      if (sent.data?.ok === false || !sent.data?.result) { setEsignError(sent.data?.error || 'Envelope created but not sent.'); await refresh(); return; }
+      const byId = Object.fromEntries(sent.data.result.envelope.recipients.map((x) => [x.id, x.name]));
+      setEsignResult(sent.data.result.links.map((l) => ({ name: byId[l.recipientId] || '', url: l.url, delivered: l.delivered, reason: l.reason })));
       await refresh();
-    } catch (e) { console.error('[Esign] failed', e); }
+    } catch (e) { setEsignError((e as Error).message || 'Send failed.'); }
   }
 
   return (
@@ -211,12 +230,12 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
 
       {/* E-sign envelope modal */}
       {esignDoc && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEsignDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-lattice-surface border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeEsign} role="presentation" onKeyDown={(e) => { if (e.key === 'Escape') closeEsign(); }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-lattice-surface border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden" role="dialog" aria-modal="true" aria-label="Send for e-signature" onKeyDown={(e) => { if (e.key === 'Escape') closeEsign(); }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Send className="w-4 h-4 text-amber-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Send for e-signature</span>
-              <button onClick={() => setEsignDoc(null)} className="text-gray-400 hover:text-white text-xl">×</button>
+              <button onClick={closeEsign} aria-label="Close" className="text-gray-400 hover:text-white text-xl">×</button>
             </header>
             <div className="p-4 space-y-3">
               <div className="text-xs text-gray-300">Document: <span className="text-white">{esignDoc.name}</span></div>
@@ -229,8 +248,31 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
                 ))}
                 <button onClick={() => setEsignRecipients([...esignRecipients, { name: '', email: '' }])} className="text-[11px] text-amber-300 hover:text-amber-200">+ Add another recipient</button>
               </div>
-              <div className="text-[10px] text-gray-400 italic">Consents recorded under E-SIGN Act 15 USC § 7001 + UETA § 7.</div>
-              <button onClick={sendEsign} className="w-full px-3 py-2 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Create envelope + mark sent</button>
+              <label className="flex flex-wrap items-center gap-2 text-[11px] text-gray-300">
+                <input type="checkbox" checked={esignIncludeMe} onChange={(e) => setEsignIncludeMe(e.target.checked)} className="accent-amber-500" />
+                I also sign
+                {esignIncludeMe && (
+                  <input value={esignMyName} onChange={(e) => setEsignMyName(e.target.value)} placeholder="Your full name" aria-label="Your full name" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                )}
+              </label>
+              <div className="text-[10px] text-gray-400 italic">Each recipient gets their own signing link and signs themselves. Consents recorded under E-SIGN Act 15 USC § 7001 + UETA § 7.</div>
+              {esignError && <p role="alert" className="text-[11px] text-rose-300">{esignError}</p>}
+              {esignResult ? (
+                <div className="space-y-1.5 rounded border border-white/10 bg-black/20 p-2.5">
+                  {esignResult.map((l) => (
+                    <div key={l.url} className="text-[11px]">
+                      <span className="text-white">{l.name}</span>{' '}
+                      <span className="text-gray-400">{l.delivered === 'email' ? '— emailed' : `— not emailed (${(l.reason || '').replace(/_/g, ' ')}); share this link:`}</span>
+                      {l.delivered !== 'email' && (
+                        <button type="button" onClick={() => void navigator.clipboard?.writeText(l.url)} className="block max-w-full truncate font-mono text-cyan-300 hover:underline" title="Copy signing link">{l.url}</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={closeEsign} className="mt-1 w-full px-3 py-1.5 text-xs rounded border border-white/10 text-gray-200 hover:bg-white/5">Done</button>
+                </div>
+              ) : (
+                <button onClick={() => void sendEsign()} className="w-full px-3 py-2 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Send for signature</button>
+              )}
             </div>
           </div>
         </div>

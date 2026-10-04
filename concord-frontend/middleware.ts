@@ -198,6 +198,11 @@ const PUBLIC_PREFIXES = [
   // customer to /login before the page ever renders, defeating the whole
   // point of a no-account customer portal.
   '/welding-portal/',
+  // E-signature signing page — a recipient with no Concord account opens
+  // the `/sign/:token` link a sender emailed or shared, backed by the
+  // public `/api/esign/:token` routes (server.js). Without this prefix the
+  // middleware would 307 them to /login before they could sign.
+  '/sign/',
   // Animation public share viewer — an anonymous visitor with a share
   // link opens `/share/animation/:token`, backed by the public
   // `/api/animation/share/:token` route (server.js). Without this prefix

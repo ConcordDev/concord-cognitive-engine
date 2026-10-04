@@ -14,6 +14,7 @@
 
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE using it.
 // An absent/null field is fine (the macro uses its default). Returns null when
@@ -348,10 +349,14 @@ export default function registerToolsActions(register) {
       name: String(p?.name || `Party ${i + 1}`).slice(0, 120),
       email: String(p?.email || "").slice(0, 200),
       role: String(p?.role || "signer").slice(0, 40),
+      // The one party the creator signs as. Everyone else signs from their own link.
+      isSender: p?.isSender === true,
       status: "pending",
       signature: null,
       signedAt: null,
+      delivery: null,
     }));
+    if (parties.filter((p) => p.isSender).length > 1) return { ok: false, error: "only one party can be you" };
     const envelope = {
       id: uid("env"),
       number: `ENV-${String(seq.env).padStart(5, "0")}`,
@@ -374,23 +379,13 @@ export default function registerToolsActions(register) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  // A party applies their signature. Produces a tamper-evident HMAC over
-  // the document hash + signer identity + timestamp.
-  registerLensAction("tools", "esign-sign", (ctx, _artifact, params = {}) => {
-    const s = getToolsState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = aid(ctx);
-    const envelopeId = String(params.envelopeId || "");
-    const partyId = String(params.partyId || "");
-    const env = bucket(s.envelopes, userId).find((e) => e.id === envelopeId);
-    if (!env) return { ok: false, error: "envelope not found" };
+  // Apply one party's signature: a tamper-evident HMAC over the document
+  // hash + signer identity + timestamp, plus an audit entry saying how the
+  // signer was identified (the sender in-app, or a recipient via their link).
+  function applyPartySignature(env, party, { via, typedName = "", ip = "", userAgent = "", signedAt = isoNow() }) {
     if (env.status === "completed") return { ok: false, error: "envelope already completed" };
     if (env.status === "voided") return { ok: false, error: "envelope was voided" };
-    const party = env.parties.find((p) => p.id === partyId);
-    if (!party) return { ok: false, error: "party not found" };
     if (party.status === "signed") return { ok: false, error: "party already signed" };
-
-    const signedAt = isoNow();
     const sigPayload = {
       envelopeId: env.id,
       documentHash: env.documentHash,
@@ -400,12 +395,15 @@ export default function registerToolsActions(register) {
     };
     party.status = "signed";
     party.signedAt = signedAt;
+    party.signedVia = via;
+    if (typedName) party.typedName = typedName;
     party.signature = {
       alg: "HS256",
       token: signPayload(sigPayload),
       payload: sigPayload,
     };
-    env.audit.push({ event: "signed", actor: party.name, at: signedAt, detail: `${party.name} (${party.role}) signed` });
+    const how = via === "link" ? `via their signing link${typedName ? ` as "${typedName}"` : ""}${ip ? ` from ${ip}` : ""}` : "in the app as the sender";
+    env.audit.push({ event: "signed", actor: party.name, at: signedAt, detail: `${party.name} (${party.role}) signed ${how}`, ...(userAgent ? { userAgent } : {}) });
 
     const allSigned = env.parties.every((p) => p.status === "signed");
     if (allSigned) {
@@ -415,6 +413,68 @@ export default function registerToolsActions(register) {
     }
     saveToolsState();
     return { ok: true, result: { envelope: env, completed: allSigned } };
+  }
+
+  // The sender signs as themselves. Every other party signs from their own
+  // link (esign-send) — the creator can't sign on someone else's behalf.
+  registerLensAction("tools", "esign-sign", (ctx, _artifact, params = {}) => {
+    const s = getToolsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const env = bucket(s.envelopes, userId).find((e) => e.id === String(params.envelopeId || ""));
+    if (!env) return { ok: false, error: "envelope not found" };
+    const party = env.parties.find((p) => p.id === String(params.partyId || ""));
+    if (!party) return { ok: false, error: "party not found" };
+    if (!party.isSender) return { ok: false, error: "this party signs from their own link — send the envelope instead" };
+    return applyPartySignature(env, party, { via: "sender", typedName: String(params.typedName || "").slice(0, 120) });
+  });
+
+  // Send signing links to every party who isn't you and hasn't signed:
+  // emailed from your Gmail when connected, otherwise returned to share.
+  registerLensAction("tools", "esign-send", async (ctx, _artifact, params = {}) => {
+    const s = getToolsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const env = bucket(s.envelopes, userId).find((e) => e.id === String(params.envelopeId || ""));
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status !== "out_for_signature") return { ok: false, error: `envelope is ${env.status}` };
+    const targets = env.parties.filter((p) => !p.isSender && p.status !== "signed"
+      && (!params.partyId || p.id === String(params.partyId)));
+    if (targets.length === 0) return { ok: false, error: "no one left to send to" };
+    const links = issueSigningLinks("tools", userId, env.id, targets);
+    const delivery = await deliverSigningLinks(ctx?.db, userId, links, { title: env.title, senderName: ctx?.actor?.displayName || ctx?.actor?.username || "A Concord user" });
+    const at = isoNow();
+    for (const d of delivery) {
+      const p = env.parties.find((x) => x.id === d.recipientId);
+      if (p) p.delivery = { method: d.delivered, reason: d.reason || null, at };
+      env.audit.push({ event: d.delivered === "email" ? "emailed" : "link_created", actor: userId, at, detail: d.delivered === "email" ? `Signing link emailed to ${p?.email}` : `Signing link created for ${p?.name} (not emailed: ${d.reason})` });
+    }
+    saveToolsState();
+    return { ok: true, result: { envelope: env, links: delivery.map((d) => ({ partyId: d.recipientId, url: d.url, delivered: d.delivered, reason: d.reason || null })) } };
+  });
+
+  registerEsignProvider("tools", {
+    view(entry) {
+      const s = getToolsState();
+      const env = s && bucket(s.envelopes, entry.ownerId).find((e) => e.id === entry.envelopeId);
+      const party = env?.parties.find((p) => p.id === entry.recipientId);
+      if (!env || !party) return { ok: false, error: "link_not_found" };
+      return { ok: true, result: {
+        document: { title: env.title, text: env.document, hash: env.documentHash },
+        signer: { name: party.name, email: party.email, role: party.role, status: party.status, signedAt: party.signedAt },
+        envelopeStatus: env.status,
+        parties: env.parties.map((p) => ({ name: p.name, role: p.role, status: p.status })),
+        disclosure: env.esignDisclosure,
+      } };
+    },
+    sign(entry, sig) {
+      const s = getToolsState();
+      const env = s && bucket(s.envelopes, entry.ownerId).find((e) => e.id === entry.envelopeId);
+      const party = env?.parties.find((p) => p.id === entry.recipientId);
+      if (!env || !party) return { ok: false, error: "link_not_found" };
+      const r = applyPartySignature(env, party, { via: "link", ...sig });
+      return r.ok ? { ok: true, result: { signed: true, envelopeStatus: env.status, completed: r.result.completed } } : r;
+    },
   });
 
   // Verify every applied signature in an envelope against the platform key.
@@ -523,6 +583,7 @@ export default function registerToolsActions(register) {
     if (!env) return { ok: false, error: "envelope not found" };
     if (env.status === "completed") return { ok: false, error: "cannot void a completed envelope" };
     env.status = "voided";
+    revokeSigningLinks("tools", userId, env.id);
     env.audit.push({ event: "voided", actor: userId, at: isoNow(), detail: String(params.reason || "Voided by sender") });
     saveToolsState();
     return { ok: true, result: { envelope: env } };

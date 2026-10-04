@@ -37,6 +37,7 @@ const LIMITS = {
   'write.social':       { max: 120, windowMs: 60000 },   // relaxed, but a spam/abuse vector
   'write.media.upload': { max: 30,  windowMs: 60000 },   // bandwidth/disk, not tokens
   'write.mail':         { max: 30,  windowMs: 60000 },   // REAL outbound email — anti-spam
+  'write.esign':        { max: 30,  windowMs: 60000 },   // anonymous signing-link submits
   'write.client-error': { max: 200, windowMs: 60000 },   // anon telemetry; an error storm must not self-DoS
 };
 

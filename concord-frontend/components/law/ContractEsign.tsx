@@ -27,13 +27,26 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
   const [busy, setBusy] = useState(false);
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [cpName, setCpName] = useState('');
+  const [cpEmail, setCpEmail] = useState('');
+  const [request, setRequest] = useState<{ url: string; delivered: string; reason: string | null } | null>(null);
 
   const runVerify = useCallback(async () => {
     const r = await lensRun('law', 'contract-verify', { id: contractId });
     if (r.data?.ok) setVerify(r.data.result as VerifyResult);
   }, [contractId]);
 
-  useEffect(() => { void runVerify(); }, [runVerify]);
+  useEffect(() => { void Promise.resolve().then(runVerify); }, [runVerify]);
+
+  async function requestCounterparty() {
+    setBusy(true); setErr(null);
+    const r = await lensRun<{ url: string; delivered: string; reason: string | null }>('law', 'contract-request-signature', {
+      id: contractId, name: cpName.trim() || undefined, email: cpEmail.trim() || undefined,
+    });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) setRequest(r.data.result);
+    else setErr(r.data?.error || 'Could not create the signature request.');
+  }
 
   async function esign() {
     if (!party.trim()) { setErr('Enter the signing party name.'); return; }
@@ -52,7 +65,7 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
         <span className="text-[10px] text-gray-400">SHA-256 audit certificate</span>
       </div>
       <div className="space-y-1.5">
-        <input value={party} onChange={(e) => setParty(e.target.value)} placeholder="Signing party name"
+        <input value={party} onChange={(e) => setParty(e.target.value)} placeholder="Your name (you sign your side once)"
           className="w-full bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
         <input value={intent} onChange={(e) => setIntent(e.target.value)} placeholder="Signing intent"
           className="w-full bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
@@ -60,7 +73,7 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
           <button onClick={esign} disabled={busy}
             className="px-3 py-1.5 text-xs rounded bg-neon-green/20 text-neon-green hover:bg-neon-green/30 disabled:opacity-50 inline-flex items-center gap-1">
             {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <PenTool className="w-3 h-3" />}
-            E-sign &amp; certify
+            Sign your side
           </button>
           <button onClick={runVerify}
             className="px-3 py-1.5 text-xs rounded bg-white/10 text-gray-300 hover:bg-white/20 inline-flex items-center gap-1">
@@ -68,7 +81,26 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
           </button>
         </div>
       </div>
-      {err && <p className="text-xs text-rose-400">{err}</p>}
+      <div className="space-y-1.5 border-t border-white/10 pt-2">
+        <p className="text-[11px] text-gray-400">The counterparty signs from their own link — you can&apos;t sign for them.</p>
+        <div className="flex flex-wrap gap-1.5">
+          <input value={cpName} onChange={(e) => setCpName(e.target.value)} placeholder="Counterparty signer" aria-label="Counterparty signer name"
+            className="flex-1 min-w-[8rem] bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
+          <input value={cpEmail} onChange={(e) => setCpEmail(e.target.value)} placeholder="Their email" aria-label="Counterparty email"
+            className="flex-1 min-w-[8rem] bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
+          <button onClick={() => void requestCounterparty()} disabled={busy}
+            className="px-3 py-1.5 text-xs rounded bg-white/10 text-gray-200 hover:bg-white/20 disabled:opacity-50">Request signature</button>
+        </div>
+        {request && (
+          <p className="text-[11px] text-gray-300">
+            {request.delivered === 'email' ? 'Signing link emailed.' : `Not emailed (${(request.reason || '').replace(/_/g, ' ')}). Share this link:`}{' '}
+            {request.delivered !== 'email' && (
+              <button type="button" onClick={() => void navigator.clipboard?.writeText(request.url)} className="font-mono text-cyan-300 hover:underline break-all" title="Copy signing link">{request.url}</button>
+            )}
+          </p>
+        )}
+      </div>
+      {err && <p role="alert" className="text-xs text-rose-400">{err}</p>}
 
       {verify && verify.certifiedSignatures > 0 && (
         <div className={cn('rounded-lg p-2 border',

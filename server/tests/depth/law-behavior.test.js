@@ -9,6 +9,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { signViaLink } from "../../lib/esign-links.js";
 
 describe("law — calc contracts (exact computed values)", () => {
   it("caseAnalysis: duration, win rate, and median are computed exactly", async () => {
@@ -230,7 +231,7 @@ describe("law — review, signatures, dashboard (shared ctx)", () => {
     assert.ok(rev.result.findings.some((f) => f.severity === "high" && f.message.includes("no clauses")));
   });
 
-  it("contract-sign: two distinct parties flip status to 'signed'; duplicate party rejected", async () => {
+  it("contract-sign: you sign once; the counterparty signs from their own link, then status flips to 'signed'", async () => {
     const c = await lensRun("law", "contract-create", { params: { title: "To Sign" } }, ctx);
     const id = c.result.contract.id;
     const s1 = await lensRun("law", "contract-sign", { params: { id, party: "Alice" } }, ctx);
@@ -238,9 +239,13 @@ describe("law — review, signatures, dashboard (shared ctx)", () => {
     const dup = await lensRun("law", "contract-sign", { params: { id, party: "alice" } }, ctx);
     assert.equal(dup.result.ok, false);
     assert.match(dup.result.error, /already signed/);
-    const s2 = await lensRun("law", "contract-sign", { params: { id, party: "Bob" } }, ctx);
-    assert.equal(s2.result.status, "signed");
-    assert.equal(s2.result.signatures.length, 2);
+    // Typing the other side's name doesn't sign for them.
+    const forged = await lensRun("law", "contract-sign", { params: { id, party: "Bob" } }, ctx);
+    assert.equal(forged.result.ok, false);
+    const req = await lensRun("law", "contract-request-signature", { params: { id, name: "Bob", email: "bob@example.com" } }, ctx);
+    const token = req.result.url.split("/sign/")[1];
+    const s2 = await signViaLink(token, { typedName: "Bob", consent: true });
+    assert.equal(s2.result.envelopeStatus, "signed");
   });
 
   it("contract-sign: missing party name is rejected", async () => {

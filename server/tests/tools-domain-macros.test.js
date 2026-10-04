@@ -17,6 +17,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerToolsMacros from "../domains/tools.js";
+import { signViaLink } from "../lib/esign-links.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) {
@@ -53,7 +54,7 @@ describe("tools — e-signature full workflow (create → sign → complete → 
     const created = await call("esign-create", ctxA, {
       title: "Mutual NDA",
       document: "This agreement binds Alice and Bob.",
-      parties: [{ name: "Alice", role: "signer" }, { name: "Bob", role: "signer" }],
+      parties: [{ name: "Alice", role: "signer", isSender: true }, { name: "Bob", role: "signer", email: "bob@example.com" }],
     });
     assert.equal(created.ok, true);
     const env = created.result.envelope;
@@ -87,13 +88,17 @@ describe("tools — e-signature full workflow (create → sign → complete → 
     assert.equal(dbl.ok, false);
     assert.equal(dbl.error, "party already signed");
 
-    // sign party 2 — now completed
-    const sign2 = await call("esign-sign", ctxA, { envelopeId: env.id, partyId: p2 });
-    assert.equal(sign2.result.completed, true);
-    assert.equal(sign2.result.envelope.status, "completed");
-    assert.ok(sign2.result.envelope.completedAt);
-    // audit trail recorded created + 2 signed + completed = 4 events
-    assert.equal(sign2.result.envelope.audit.length, 4);
+    // the sender can't sign Bob's slot; Bob signs from his own link
+    assert.equal((await call("esign-sign", ctxA, { envelopeId: env.id, partyId: p2 })).ok, false);
+    const sent = await call("esign-send", ctxA, { envelopeId: env.id });
+    const token = sent.result.links[0].url.split("/sign/")[1];
+    const viaLink = await signViaLink(token, { typedName: "Bob", consent: true });
+    assert.equal(viaLink.result.completed, true);
+    const final = (await call("esign-detail", ctxA, { envelopeId: env.id })).result.envelope;
+    assert.equal(final.status, "completed");
+    assert.ok(final.completedAt);
+    // audit trail: created, signed (sender), link_created, signed (link), completed
+    assert.deepEqual(final.audit.map((a) => a.event), ["created", "signed", "link_created", "signed", "completed"]);
 
     // verify — all signatures valid, document intact
     const verified = await call("esign-verify", ctxA, { envelopeId: env.id });
@@ -105,7 +110,7 @@ describe("tools — e-signature full workflow (create → sign → complete → 
 
   it("detects post-signing document tampering", async () => {
     const created = await call("esign-create", ctxA, {
-      title: "Contract", document: "original text", parties: [{ name: "Alice" }],
+      title: "Contract", document: "original text", parties: [{ name: "Alice", isSender: true }],
     });
     const env = created.result.envelope;
     await call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[0].id });
@@ -122,7 +127,7 @@ describe("tools — e-signature full workflow (create → sign → complete → 
 
   it("verifies a standalone token and rejects an altered one", async () => {
     const created = await call("esign-create", ctxA, {
-      title: "Doc", document: "text", parties: [{ name: "Alice" }],
+      title: "Doc", document: "text", parties: [{ name: "Alice", isSender: true }],
     });
     const env = created.result.envelope;
     const signed = await call("esign-sign", ctxA, { envelopeId: env.id, partyId: env.parties[0].id });
@@ -139,7 +144,7 @@ describe("tools — e-signature full workflow (create → sign → complete → 
 
   it("voids an out-for-signature envelope but not a completed one", async () => {
     const created = await call("esign-create", ctxA, {
-      title: "Voidable", document: "text", parties: [{ name: "Alice" }],
+      title: "Voidable", document: "text", parties: [{ name: "Alice", isSender: true }],
     });
     const env = created.result.envelope;
     const voided = await call("esign-void", ctxA, { envelopeId: env.id, reason: "duplicate" });

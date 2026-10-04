@@ -361,10 +361,10 @@ describe("legal — document assembly + e-sign + intake CRUD (wave 7 top-up)", (
     const documentId = gen.result.document.id;
 
     const env = await lensRun("legal", "esign-envelope-create", {
-      params: { documentId, recipients: [{ name: "Signer One", email: "s1@example.com", role: "signer" }] },
+      params: { documentId, recipients: [{ name: "Signer One", email: "s1@example.com", role: "signer", isSender: true }] },
     }, ctx);
     assert.match(env.result.envelope.number, /^ENV-\d{5}$/);
-    assert.equal(env.result.envelope.status, "sent");
+    assert.equal(env.result.envelope.status, "draft"); // nothing is sent until esign-envelope-send
     const envelopeId = env.result.envelope.id;
     const recipientId = env.result.envelope.recipients[0].id;
 
@@ -869,12 +869,13 @@ describe("legal — templates / esign list / ai-digest / billing branches (wave 
     const envA = await lensRun("legal", "esign-envelope-create", {
       params: { documentId: genA.result.document.id, recipients: [{ name: "A", email: "a@x.com" }] },
     }, eCtx);
+    await lensRun("legal", "esign-envelope-send", { params: { envelopeId: envA.result.envelope.id } }, eCtx);
     // Envelope B — fully signed → completed.
     const mB = await lensRun("legal", "matters-create", { params: { name: `EnvB ${randomUUID().slice(0, 8)}` } }, eCtx);
     const tplB = await lensRun("legal", "doc-templates-create", { params: { name: "TB", body: "y" } }, eCtx);
     const genB = await lensRun("legal", "doc-generate", { params: { templateId: tplB.result.template.id, matterId: mB.result.matter.id } }, eCtx);
     const envB = await lensRun("legal", "esign-envelope-create", {
-      params: { documentId: genB.result.document.id, recipients: [{ name: "B", email: "b@x.com" }] },
+      params: { documentId: genB.result.document.id, recipients: [{ name: "B", email: "b@x.com", isSender: true }] },
     }, eCtx);
     await lensRun("legal", "esign-envelope-sign", { params: { envelopeId: envB.result.envelope.id, recipientId: envB.result.envelope.recipients[0].id } }, eCtx);
 
