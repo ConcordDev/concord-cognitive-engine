@@ -23,6 +23,7 @@ import {
   Layers, Plus, Trash2, GraduationCap, Loader2, BarChart3, FolderTree,
   Filter, Image as ImageIcon, Volume2, Download, Upload, Settings2,
   Search, Ban, EyeOff, Tags, Sparkles, Flame, CalendarDays, Library, Clock,
+  Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -146,7 +147,7 @@ export function SrsWorkbench() {
     setTree((t.data?.result?.tree as DeckTreeNode[]) || []);
     setLoading(false);
   }, []);
-  useEffect(() => { void refreshDecks(); }, [refreshDecks]);
+  useEffect(() => { void Promise.resolve().then(refreshDecks); }, [refreshDecks]);
 
   const activeDeck = useMemo(() => decks.find(d => d.id === active) || null, [decks, active]);
 
@@ -356,7 +357,7 @@ function DecksTab({
       {/* Deck options panel */}
       <div>
         {activeDeck && !activeDeck.filtered ? (
-          <DeckOptionsPanel deck={activeDeck} decks={decks} refreshDecks={refreshDecks}
+          <DeckOptionsPanel key={activeDeck.id} deck={activeDeck} decks={decks} refreshDecks={refreshDecks}
             moveDeck={moveDeck} flash={flash} />
         ) : (
           <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
@@ -376,13 +377,19 @@ function DeckOptionsPanel({
   moveDeck: (id: string, parentId: string) => Promise<void>;
   flash: (m: string) => void;
 }) {
-  const [opts, setOpts] = useState<DeckOptions>(deck.options);
-  const [stepsText, setStepsText] = useState((deck.options.learningSteps || []).join(' '));
+  const [opts, setOpts] = useState<DeckOptions>(() => deck.options ?? ({} as DeckOptions));
+  const [stepsText, setStepsText] = useState((deck.options?.learningSteps || []).join(' '));
 
   useEffect(() => {
-    setOpts(deck.options);
-    setStepsText((deck.options.learningSteps || []).join(' '));
-  }, [deck]);
+    let stale = false;
+    void lensRun('srs', 'deck-options-get', { deckId: deck.id }).then((r) => {
+      const o = r.data?.result?.options as DeckOptions | undefined;
+      if (stale || !o) return;
+      setOpts(o);
+      setStepsText((o.learningSteps || []).join(' '));
+    });
+    return () => { stale = true; };
+  }, [deck.id]);
 
   async function save() {
     const learningSteps = stepsText.split(/[\s,]+/).map(Number)
@@ -421,14 +428,14 @@ function DeckOptionsPanel({
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">New cards / day</span>
-        <input type="number" min={0} max={9999} value={opts.newPerDay}
+        <input type="number" min={0} max={9999} value={opts.newPerDay ?? ''}
           onChange={e => setOpts({ ...opts, newPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Reviews / day cap</span>
-        <input type="number" min={0} max={99999} value={opts.reviewsPerDay}
+        <input type="number" min={0} max={99999} value={opts.reviewsPerDay ?? ''}
           onChange={e => setOpts({ ...opts, reviewsPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
@@ -683,7 +690,7 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
     const r = await lensRun('srs', 'media-list', {});
     setMedia((r.data?.result?.media as MediaAsset[]) || []);
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   async function add() {
     if (!url.trim()) return;
@@ -765,7 +772,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
     setAllTags((r.data?.result?.tags as string[]) || []);
     setLoading(false);
   }, [query, deckId, stateFilter, typeFilter, tag, sort]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -804,6 +811,30 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
   }
   async function del(id: string) {
     await lensRun('srs', 'card-delete', { id });
+    await refresh();
+  }
+
+  const [editing, setEditing] = useState<{ id: string; front: string; back: string; tags: string; frontImage: string; backImage: string } | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  function startEdit(c: Card) {
+    setEditError(null);
+    setEditing({ id: c.id, front: c.front, back: c.back, tags: (c.tags || []).join(', '), frontImage: c.media?.frontImage || '', backImage: c.media?.backImage || '' });
+  }
+  async function saveEdit() {
+    if (!editing) return;
+    const card = cards.find((c) => c.id === editing.id);
+    const r = await lensRun('srs', 'card-update', {
+      id: editing.id, front: editing.front, back: editing.back,
+      tags: editing.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+    if (!r.data?.ok) { setEditError(r.data?.error || 'Could not save the card.'); return; }
+    const mediaChanged = (card?.media?.frontImage || '') !== editing.frontImage || (card?.media?.backImage || '') !== editing.backImage;
+    if (mediaChanged) {
+      const m = await lensRun('srs', 'card-set-media', { id: editing.id, frontImage: editing.frontImage.trim() || null, backImage: editing.backImage.trim() || null });
+      if (!m.data?.ok) { setEditError(m.data?.error || 'Saved the text, but the images did not save.'); return; }
+    }
+    setEditing(null);
+    flash('Card updated.');
     await refresh();
   }
 
@@ -896,11 +927,33 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
               <th className="p-2 w-14 text-center">Reps</th>
               <th className="p-2 w-16 text-center">Interval</th>
               <th className="p-2 w-20">State</th>
-              <th className="p-2 w-8"></th>
+              <th className="p-2 w-14"></th>
             </tr>
           </thead>
           <tbody>
-            {cards.map(c => (
+            {cards.map(c => editing?.id === c.id ? (
+              <tr key={c.id} className="border-b border-purple-500/30 bg-purple-950/20">
+                <td colSpan={7} className="p-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <textarea aria-label="Front" rows={2} value={editing.front} onChange={e => setEditing({ ...editing, front: e.target.value })}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
+                    <textarea aria-label="Back" rows={2} value={editing.back} onChange={e => setEditing({ ...editing, back: e.target.value })}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
+                    <input aria-label="Front image URL" placeholder="Front image URL" value={editing.frontImage} onChange={e => setEditing({ ...editing, frontImage: e.target.value })}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
+                    <input aria-label="Back image URL" placeholder="Back image URL" value={editing.backImage} onChange={e => setEditing({ ...editing, backImage: e.target.value })}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100" />
+                    <input aria-label="Tags" placeholder="Tags, comma separated" value={editing.tags} onChange={e => setEditing({ ...editing, tags: e.target.value })}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 sm:col-span-2" />
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button type="button" onClick={() => void saveEdit()} className="px-2.5 py-1 rounded bg-purple-600 text-white text-xs transition-colors hover:bg-purple-500">Save card</button>
+                    <button type="button" onClick={() => setEditing(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+                    {editError && <span role="alert" className="text-xs text-rose-400">{editError}</span>}
+                  </div>
+                </td>
+              </tr>
+            ) : (
               <tr key={c.id} className="border-b border-zinc-800/60 hover:bg-zinc-900/40">
                 <td className="p-2">
                   <input type="checkbox" checked={selected.has(c.id)}
@@ -926,9 +979,14 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
                   </span>
                 </td>
                 <td className="p-2">
-                  <button onClick={() => del(c.id)} className="text-rose-400" aria-label="Delete card">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => startEdit(c)} className="text-zinc-400 transition-colors hover:text-purple-300" aria-label="Edit card">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => del(c.id)} className="text-rose-400" aria-label="Delete card">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -968,7 +1026,7 @@ function StudyTab({
     setRemaining(r.data?.result?.remaining || 0);
     setRevealed(false);
   }, []);
-  useEffect(() => { if (deckId) void fetchNext(deckId); }, [deckId, fetchNext]);
+  useEffect(() => { if (deckId) void Promise.resolve().then(() => fetchNext(deckId)); }, [deckId, fetchNext]);
 
   async function rate(rating: string) {
     if (!card || !deckId) return;
@@ -1098,7 +1156,7 @@ function StatsTab({
     setStudyStats((ss.data?.result as StudyStats) || null);
     setLoading(false);
   }, [deckId]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   const maxHeat = useMemo(
     () => Math.max(1, ...(heatmap?.calendar || []).map(d => d.count)),
