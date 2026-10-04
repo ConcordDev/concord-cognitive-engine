@@ -39,6 +39,29 @@ const MAX_SESSIONS_PER_MENTORSHIP = 3;
  *
  * @returns { ok, mentorshipId?, price?, reason? }
  */
+/**
+ * Recipes an NPC can actually teach: the same eligibility requestMentorship
+ * enforces (a recipe DTU the NPC created, at revision depth >= 1), so a
+ * player is only ever offered requests that can succeed.
+ */
+export function listTeachableRecipes(db, mentorNpcId, opts = {}) {
+  if (!db || !mentorNpcId) return [];
+  try {
+    const rows = db.prepare(`SELECT id, title, meta_json FROM dtus WHERE creator_id = ? LIMIT 200`).all(mentorNpcId);
+    return rows
+      .map((r) => {
+        let meta = {};
+        try { meta = JSON.parse(r.meta_json || "{}"); } catch { /* ignore */ }
+        return { recipeDtuId: r.id, title: r.title || "Untitled", depth: Number(meta.revision_num) || 0 };
+      })
+      .filter((r) => r.depth >= 1)
+      .sort((a, b) => b.depth - a.depth)
+      .slice(0, Math.max(1, Math.min(50, opts.limit || 20)));
+  } catch {
+    return [];
+  }
+}
+
 export function requestMentorship(db, { mentorNpcId, studentUserId, recipeDtuId }) {
   if (!db || !mentorNpcId || !studentUserId || !recipeDtuId) {
     return { ok: false, reason: "missing_inputs" };
