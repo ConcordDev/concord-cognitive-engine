@@ -81,7 +81,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         <div className="flex gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-white text-sm">{post.authorId}</h3>
+            <h3 className="font-semibold text-white text-sm" title={post.authorId}>{isOwner ? 'You' : post.authorId}</h3>
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <span>{timeAgo(post.createdAt)}</span>
               <span>·</span>

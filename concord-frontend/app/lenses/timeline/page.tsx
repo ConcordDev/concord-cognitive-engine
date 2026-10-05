@@ -19,7 +19,6 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { TimelineRoadmap } from '@/components/timeline/TimelineRoadmap';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { PostComposer } from '@/components/timeline/PostComposer';
@@ -185,7 +184,6 @@ export default function TimelineLensPage() {
             </div>
             <div className="flex shrink-0 items-center gap-3 pt-2">
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-              <DTUExportButton domain="timeline" data={{}} compact />
             </div>
           </div>
 
