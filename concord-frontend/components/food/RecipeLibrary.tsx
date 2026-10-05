@@ -292,6 +292,9 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                         <Flame className="w-3 h-3" /> Cooked it again
                       </button>
                       <button
+                        type="button"
+                        data-testid="food-recipe-keep-toggle"
+                        aria-expanded={keepId === r.id}
                         onClick={() => setKeepId(keepId === r.id ? null : r.id)}
                         className={cn(
                           'px-2 py-1 rounded border flex items-center gap-1',
