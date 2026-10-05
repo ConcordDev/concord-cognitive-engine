@@ -25,7 +25,7 @@ type Tab = 'map' | 'filing' | 'plates' | 'logbook' | 'efis';
 
 const TABS: { id: Tab; label: string; icon: typeof Map }[] = [
   { id: 'map', label: 'Moving map', icon: Map },
-  { id: 'filing', label: 'ATC filing', icon: Send },
+  { id: 'filing', label: 'Filing record', icon: Send },
   { id: 'plates', label: 'Approach plates', icon: FileText },
   { id: 'logbook', label: 'Endorsements', icon: Stamp },
   { id: 'efis', label: 'Synthetic vision', icon: Gauge },

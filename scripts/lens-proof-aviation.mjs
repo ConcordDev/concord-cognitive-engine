@@ -1,6 +1,9 @@
 // scripts/lens-proof-aviation.mjs — REAL browser proof for the Aviation lens.
 //
 // Headless Chrome via Playwright (channel: 'chrome'), shared proof user:
+//   0. header depth chip reads "Real" (never "Demo"); no DEMO copy; EFB →
+//      Moving map → "Filing record" says sending to ATC isn't supported yet
+//      (no "File with ATC" button, no "Simulated DUATS" caption) → aviation-filing.png
 //   1. /lenses/aviation → EFB tab → "Logbook & tracks" sub-nav → Aircraft
 //      sub-tab → add a real aircraft (aviation.aircraft-add)
 //   2. → Logbook sub-tab → fill the real flight form (aircraft, date, from,
@@ -37,8 +40,28 @@ try {
   // Navigate to the EFB tab.
   const efbTab = page.getByRole('button', { name: /^EFB$/ }).first();
   await efbTab.waitFor({ state: 'visible', timeout: 90000 });
+  await page.getByText('Real', { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 });
+  result.badge = 'Real';
+  result.demoChips = await page.getByText('Demo', { exact: true }).count();
+  const demoCopy = /\bDEMO\b|Simulated DUATS/.test(await page.locator('body').innerText());
+  log('header depth chip: Real — "Demo" chips:', result.demoChips, '— DEMO copy:', demoCopy);
+  if (result.demoChips !== 0 || demoCopy) throw new Error('Aviation still shows a Demo chip or DEMO copy');
+  await page.getByRole('button', { name: /^Reject$/ }).first()
+    .waitFor({ state: 'visible', timeout: 10000 }).then((b) => page.getByRole('button', { name: /^Reject$/ }).first().click(), () => {});
   await efbTab.click();
   await page.waitForTimeout(1000);
+
+  // Honest filing panel: ATC submission is labelled not supported yet.
+  await page.getByRole('button', { name: /^Moving map$/ }).first().click();
+  await page.getByRole('button', { name: /^Filing record$/ }).first().click();
+  const notSupported = page.getByTestId('efb-filing-not-supported');
+  await notSupported.waitFor({ state: 'visible', timeout: 30000 });
+  result.filingLabel = (await notSupported.innerText()).trim();
+  result.fileWithAtcButtons = await page.getByRole('button', { name: /File with ATC/ }).count();
+  if (result.fileWithAtcButtons !== 0) throw new Error('a "File with ATC" button is still rendered');
+  await notSupported.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: shot('aviation-filing.png') });
+  log('filing panel label:', result.filingLabel, '— "File with ATC" buttons: 0 — aviation-filing.png');
 
   // Click "Logbook & tracks" sub-nav to expand the records sub-tabs.
   const recordsNav = page.getByRole('button', { name: /Logbook & tracks/i }).first();
@@ -87,6 +110,15 @@ try {
   const entryRow = page.locator('body', { hasText: `${FROM}→${TO}` }).first();
   await entryRow.waitFor({ state: 'visible', timeout: 60000 });
   log('flight rendered in the logbook:', `${FROM}→${TO}`);
+  const lb = await pageLensRun(page, 'aviation', 'logbook-list', {});
+  const entries = lb?.result?.entries || lb?.result?.logbook || [];
+  const mine = entries.find((e) => e.from === FROM && e.to === TO); // newest first
+  result.entryId = mine?.id || null;
+  result.routeRows = entries.filter((e) => e.from === FROM && e.to === TO).length;
+  if (!result.entryId) throw new Error('new flight not in aviation.logbook-list');
+  const routeRows = page.locator('li', { hasText: `${FROM}→${TO}` });
+  for (let i = 0; i < 30 && (await routeRows.count()) < result.routeRows; i++) await page.waitForTimeout(500);
+  log('logbook-list entry id:', result.entryId, '— route rows (server/UI):', result.routeRows, await routeRows.count());
 
   // The AviationKeepMenu renders under the form once the entry is saved.
   const menu = keepMenu(page, 'Keep this flight');
@@ -119,7 +151,10 @@ try {
   await logbookSubTab2.waitFor({ state: 'visible', timeout: 15000 });
   await logbookSubTab2.click();
   await page.waitForTimeout(1000);
-  await page.locator('body', { hasText: `${FROM}→${TO}` }).first().waitFor({ state: 'visible', timeout: 60000 });
+  await page.locator('li', { hasText: `${FROM}→${TO}` }).first().waitFor({ state: 'visible', timeout: 60000 });
+  const after = await page.locator('li', { hasText: `${FROM}→${TO}` }).count();
+  if (after !== result.routeRows) throw new Error(`logbook rows for ${FROM}→${TO} after reload: ${after}, expected ${result.routeRows}`);
+  log('after reload the UI lists', after, `${FROM}→${TO} rows (matches logbook-list incl. ${result.entryId})`);
   result.survivedReload = true;
   log('after full reload the flight is still in the logbook:', `${FROM}→${TO}`);
 

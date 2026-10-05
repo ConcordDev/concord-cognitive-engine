@@ -66,6 +66,14 @@ describe('aviation logbook handoff', () => {
     expect(String((draftCall?.[2] as Record<string, unknown>).content)).toContain('KSEA');
   });
 
+  it('titles the DTU with the tail and entry id so two same-route flights do not collide', async () => {
+    const { avDtuCall } = await import('@/components/aviation/aviationReport');
+    const a = avDtuCall({ entry, tail: 'N123AB' })!.input.title as string;
+    const b = avDtuCall({ entry: { ...entry, id: 'log_2' }, tail: 'N123AB' })!.input.title as string;
+    expect(a).toBe('2026-10-05 KSEA→KPDX: 1.5h VFR. N123AB · log_1');
+    expect(b).not.toBe(a);
+  });
+
   it('does not claim a save when the read-back fails', async () => {
     lensRunMock.mockImplementation(async (domain: string, action: string) => {
       if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };

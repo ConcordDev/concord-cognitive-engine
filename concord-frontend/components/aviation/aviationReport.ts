@@ -116,11 +116,17 @@ export function avDtuCall(facts: AvReportFacts): ReceiptCall | null {
   const machine = avMachine(facts);
   if (!body || !sentence || !machine) return null;
   const tags = ['aviation', 'logbook', 'flight'];
+  // The DTU store blocks an exact-title duplicate across the whole store, so
+  // two flights on the same route/date/hours would collide on the bare
+  // sentence ("duplicate_blocked"). The tail + the entry's own id make the
+  // title unique per logbook entry without inventing anything.
+  const e = facts.entry!;
+  const tail = facts.tail ? ` ${str(facts.tail, 10)}` : '';
   return {
     domain: 'dtu',
     action: 'create',
     input: {
-      title: sentence.slice(0, 80),
+      title: `${sentence}${tail} · ${str(e.id, 40)}`.slice(0, 120),
       tags,
       source: 'aviation-lens:logbook-report',
       human: { summary: body },

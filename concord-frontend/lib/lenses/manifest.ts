@@ -1881,23 +1881,23 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === AVIATION ===
   {
     domain: 'aviation',
-    label: 'Aviation & Maritime',
+    label: 'Aviation',
     artifacts: ['Flight', 'Aircraft', 'Vessel', 'Slip', 'Charter', 'CrewMember', 'LogbookEntry'],
     macros: { list: 'lens.aviation.list', get: 'lens.aviation.get', create: 'lens.aviation.create', update: 'lens.aviation.update', delete: 'lens.aviation.delete', run: 'lens.aviation.run', export: 'lens.aviation.export' },
     exports: ['json', 'csv', 'pdf', 'kml'],
-    actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'slipUtilization', 'weightBalance', 'flightPlan', 'crewSchedule', 'regulatoryCompliance'],
+    actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'dutyTimeCheck', 'flightSummary', 'calculate-wb', 'plan-create'],
     category: 'operations',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Aviation + maritime ops.",
-      caption: "Flights, aircraft, vessels, slips, charters, crew \u2014 currency, weight & balance, logbook.",
+      headline: "Your flying, on the record.",
+      caption: "Aircraft, logbook, flight plans, currency and weight & balance \u2014 saved to your account, with live METAR/TAF, NOTAMs and FAA plates. Sending plans to ATC and maritime (vessels, slips) aren't supported yet.",
       firstActionLabel: "Open the operations board",
     },
     firstRunGuide: {
       steps: [
-        { caption: "weightBalance enforces aircraft envelope." },
-        { caption: "currencyCheck flags pilots / crew approaching expiry." },
-        { caption: "regulatoryCompliance composes the standard audit pack." },
+        { caption: "Add your aircraft and log a flight in EFB \u2192 Logbook; totals and currency come from your own entries." },
+        { caption: "Weight & balance checks your load against the aircraft's envelope." },
+        { caption: "Keep a flight as a private DTU, then draft it in Thread." },
       ],
     },
   },
