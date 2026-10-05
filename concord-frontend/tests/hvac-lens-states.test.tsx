@@ -163,9 +163,11 @@ beforeEach(() => {
 });
 
 describe('hvac lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the hvac domain', () => {
+  it('WIRING: the desk reads hvac records and builds no dead action runner', () => {
+    // The desk's "Activate" button (a generic analyze whose result was
+    // discarded) is gone, so no hvac action runner is constructed for it.
     render(<HVACLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('hvac');
+    expect(useRunArtifactSpy).not.toHaveBeenCalledWith('hvac');
   });
 
   it('LOADING: an in-flight feed shows a role=status indicator', async () => {

@@ -3347,17 +3347,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    // Jobs, estimates, CRM, field service and saved load estimates are the
+    // user's own records, persisted server-side — not simulated data.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "HVAC management.",
-      caption: "Systems, zones, sensors, schedules, maintenance \u2014 analyze, generate, validate.",
-      firstActionLabel: "Add a system",
+      caption: "Jobs, estimates, CRM, invoices, field service, duct sizing and load estimates, saved to your account. Load estimates are a square-foot rule of thumb, not an ACCA Manual J calculation. No live sensor or building data feeds yet.",
+      firstActionLabel: "Add a job",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Zones + sensors stream against real building data." },
-        { caption: "Schedule optimization runs against occupancy + weather." },
-        { caption: "Export maintenance pack per equipment." },
+        { caption: "Track jobs, estimates, clients, invoices and inspections on the desk tabs." },
+        { caption: "Dispatch technicians and log field visits under Field Service." },
+        { caption: "Loads gives a rule-of-thumb load estimate you can keep as a DTU and draft in Thread." },
       ],
     },
   },

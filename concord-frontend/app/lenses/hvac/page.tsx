@@ -4,7 +4,7 @@
  * HVAC — one ServiceTitan / Manual-J field desk.
  *
  * Single view union. Inline Jobs/CRM/Estimates/etc CRUD extracted to
- * HvacDeskPanel; Field Service / Feed / Manual J folded into the active
+ * HvacDeskPanel; Field Service / Feed / Loads folded into the active
  * union (no accordion booleans). Page is a thin shell.
  */
 
@@ -44,7 +44,7 @@ const VIEWS: { id: HvacView; label: string; keys: string; hint: string; icon: ty
   { id: 'dashboard', label: 'Dashboard', keys: 'd', hint: 'Ops overview', icon: BarChart3 },
   { id: 'field', label: 'Field Service', keys: 'f', hint: 'Dispatch board', icon: CalendarDays },
   { id: 'feed', label: 'Discussion', keys: 'h', hint: 'HVAC discussion', icon: MessageSquare },
-  { id: 'manualj', label: 'Manual J', keys: 'j', hint: 'Load calculator', icon: Calculator },
+  { id: 'manualj', label: 'Loads', keys: 'j', hint: 'Load estimate (rule of thumb, not Manual J)', icon: Calculator },
   { id: 'ducts', label: 'Ducts', keys: 'u', hint: 'Duct sizing and hanger check', icon: Wind },
 ];
 
@@ -104,7 +104,7 @@ export default function HVACLensPage() {
         lensId="hvac"
         crumb="HVAC"
         title={`Climate work${who ? `, ${who}` : ''}`}
-        subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and Manual J loads"
+        subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and load estimates"
         actions={
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         }

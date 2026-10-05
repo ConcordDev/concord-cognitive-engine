@@ -5,16 +5,15 @@
  * CRUD + dashboard + stats strip. Extracted from hvac/page.tsx consolidation.
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import {
   Thermometer, Wrench, ClipboardList, DollarSign, Users, Plus, Search, X, Trash2,
-  BarChart3, CheckCircle2, FileText, Award, Calculator, Receipt, Fan, Gauge, Zap,
+  BarChart3, CheckCircle2, FileText, Award, Calculator, Receipt, Fan, Gauge,
 } from 'lucide-react';
 import {
   type ModeTab, type ArtifactType, type Status, type TradeArtifact,
@@ -61,7 +60,6 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const activeArtifactType = MODE_TABS.find((t) => t.id === deskMode)?.artifactType || 'Job';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
     useLensData<TradeArtifact>('hvac', activeArtifactType, { seed: [] });
-  const runAction = useRunArtifact('hvac');
 
   const filtered = useMemo(() => {
     let result = items;
@@ -78,18 +76,6 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     return result;
   }, [items, searchQuery, filterStatus]);
 
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || filtered[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [filtered, runAction]
-  );
 
   const openCreate = () => {
     setEditingItem(null);
@@ -171,10 +157,13 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const allItems = items.map((i) => i.data as unknown as TradeArtifact);
-  const systemCount = allItems.length;
-  const maintenanceDue = allItems.filter((j) => j.status === 'scheduled' || j.status === 'pending').length;
+  // Counts of the records on this desk tab. (These were labelled "Systems",
+  // "Maintenance Due" and "Efficiency Avg", but they count the tab's own
+  // records and their statuses; nothing measures equipment efficiency.)
+  const recordCount = allItems.length;
+  const openCount = allItems.filter((j) => j.status === 'scheduled' || j.status === 'pending').length;
   const completedCount = allItems.filter((j) => j.status === 'completed' || j.status === 'paid').length;
-  const efficiencyAvg = systemCount > 0 ? ((completedCount / systemCount) * 100).toFixed(0) : '0';
+  const completedPct = recordCount > 0 ? ((completedCount / recordCount) * 100).toFixed(0) : '0';
 
   const renderDashboard = () => {
     const all = allItems;
@@ -396,13 +385,6 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     {sc.label}
                   </span>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleAction('analyze', item.id); }}
-                    className={ds.btnGhost}
-                    aria-label="Activate"
-                  >
-                    <Zap className="w-4 h-4 text-neon-cyan" />
-                  </button>
-                  <button
                     onClick={(e) => { e.stopPropagation(); remove(item.id); }}
                     className={ds.btnGhost}
                     aria-label="Delete"
@@ -420,29 +402,26 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
 
   return (
     <div className="space-y-4">
-      {runAction.isPending && (
-        <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-      )}
       <div className="grid grid-cols-3 gap-4">
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Fan className="w-5 h-5 text-cyan-400" />
           <div>
-            <p className="text-lg font-bold text-white">{systemCount}</p>
-            <p className="text-xs text-gray-400">Systems</p>
+            <p className="text-lg font-bold text-white">{recordCount}</p>
+            <p className="text-xs text-gray-400">{activeArtifactType} records</p>
           </div>
         </div>
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Wrench className="w-5 h-5 text-yellow-400" />
           <div>
-            <p className="text-lg font-bold text-white">{maintenanceDue}</p>
-            <p className="text-xs text-gray-400">Maintenance Due</p>
+            <p className="text-lg font-bold text-white">{openCount}</p>
+            <p className="text-xs text-gray-400">Scheduled or pending</p>
           </div>
         </div>
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Gauge className="w-5 h-5 text-green-400" />
           <div>
-            <p className="text-lg font-bold text-white">{efficiencyAvg}%</p>
-            <p className="text-xs text-gray-400">Efficiency Avg</p>
+            <p className="text-lg font-bold text-white">{completedPct}%</p>
+            <p className="text-xs text-gray-400">Completed or paid</p>
           </div>
         </div>
       </div>

@@ -12959,6 +12959,13 @@ if (db) {
       structuredLog("info", "lens_artifact_store_boot_migration", artifactStore.migrateMemoryToSQLite());
       structuredLog("info", "lens_artifact_store_boot_hydrate", artifactStore.rehydrateFromSQLite());
       STATE.lensArtifacts = artifactStore;
+      // The domain index was built from the snapshot, which omits
+      // lensArtifacts once this store is active, so it is empty here. Without
+      // this rebuild every lens list (GET /api/lens/:domain) came back empty
+      // until the staggered index_reconciliation ran ~14 s after boot, and a
+      // page loaded in that window showed "No items yet" for real records.
+      _rebuildLensDomainIndex();
+      structuredLog("info", "lens_domain_index_rebuilt", { domains: STATE.lensDomainIndex.size, artifacts: STATE.lensArtifacts.size });
     } else {
       structuredLog("warn", "lens_artifact_store_unavailable", {
         reason: "lens_artifact_store table missing — artifacts stay snapshot-only",

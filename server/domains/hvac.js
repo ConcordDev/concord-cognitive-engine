@@ -39,7 +39,7 @@ export default function registerHVACActions(registerLensAction) {
     const heatingBTU = Math.round(totalBTU * (isCold ? 1.1 : 0.85));
     const tons = Math.round(coolingBTU / 12000 * 10) / 10;
     const equipmentSize = `${Math.ceil(tons * 2) / 2} ton system`;
-    return { ok: true, result: {
+    const loadResult = {
       squareFootage: sqft,
       heatingBTU,
       coolingBTU,
@@ -58,9 +58,38 @@ export default function registerHVACActions(registerLensAction) {
         : isCold
           ? "Cold climate — size for the heating load and consider a cold-climate heat pump or dual-fuel."
           : "Temperate climate — a properly-sealed SEER 14+ system meets this load.",
-    } };
+      method: "Square-foot rule of thumb (25 BTU/hr per sf) adjusted for climate, insulation and stories. Not an ACCA Manual J room-by-room calculation.",
+    };
+    // `save: true` (the Loads view) records the estimate in the user's load
+    // history so it survives a reload and a server restart.
+    const wantSave = data.save === true || _params?.save === true;
+    const uid = ctx?.actor?.userId || ctx?.userId;
+    if (wantSave && uid && uid !== "anon") {
+      const s = getHvacState();
+      if (s) {
+        const entry = {
+          id: `load_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+          inputs: { squareFootage: sqft, stories, insulation, climate },
+          result: loadResult,
+          createdAt: new Date().toISOString(),
+        };
+        const list = s.loads.get(uid) || [];
+        list.unshift(entry);
+        if (list.length > 50) list.length = 50;
+        s.loads.set(uid, list);
+        saveHvacState();
+        return { ok: true, result: { ...loadResult, loadId: entry.id, createdAt: entry.createdAt } };
+      }
+    }
+    return { ok: true, result: loadResult };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+  // The user's saved load estimates, newest first.
+  registerLensAction("hvac", "load-list", (ctx, _a, _params = {}) => {
+    const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { loads: (s.loads.get(uid) || []).slice(0, 50) } };
+  });
   registerLensAction("hvac", "energyAudit", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
@@ -384,7 +413,7 @@ export default function registerHVACActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.hvacLens) STATE.hvacLens = {};
     const s = STATE.hvacLens;
-    for (const k of ["technicians", "appointments", "bookings", "assets", "payments", "agreements", "fieldVisits"]) {
+    for (const k of ["technicians", "appointments", "bookings", "assets", "payments", "agreements", "fieldVisits", "loads"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;

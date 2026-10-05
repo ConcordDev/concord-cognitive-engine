@@ -123,11 +123,17 @@ describe('HvacDeskPanel', () => {
     expect(remove).toHaveBeenCalledWith('art_1');
   });
 
-  it('the Activate action runs the compute action via useRunArtifact', async () => {
+  it('has no dead "Activate" button and labels the stats as record counts', () => {
+    // The Zap "Activate" button ran a generic analyze whose result was thrown
+    // away, and the stats said "Systems" / "Efficiency Avg" for plain record
+    // counts. Both were misleading and are gone.
     lensDataState.items = [JOB];
     render(<HvacDeskPanel mode="jobs" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Activate' }));
-    await waitFor(() => expect(runMutateAsync).toHaveBeenCalledWith({ id: 'art_1', action: 'analyze' }));
+    expect(screen.queryByRole('button', { name: 'Activate' })).toBeNull();
+    expect(screen.queryByText('Efficiency Avg')).toBeNull();
+    expect(screen.queryByText('Systems')).toBeNull();
+    expect(screen.getByText('Completed or paid')).toBeInTheDocument();
+    expect(runMutateAsync).not.toHaveBeenCalled();
   });
 
   it('search narrows the visible list by name', () => {

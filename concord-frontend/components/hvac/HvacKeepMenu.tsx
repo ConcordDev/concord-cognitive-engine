@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HvacKeepMenu — turn a real HVAC Manual J load calculation into a private
+ * HvacKeepMenu — turn a real HVAC load estimate into a private
  * DTU and a Thread draft.
  *
  * The order matters and is enforced here: the load must have run with real

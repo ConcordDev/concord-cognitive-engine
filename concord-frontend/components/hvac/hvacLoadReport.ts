@@ -1,6 +1,7 @@
 /**
- * An HVAC Manual J load report exists because the HVAC domain's
- * `loadCalculation` macro returned the real calculation — heating BTU,
+ * An HVAC load report exists because the HVAC domain's `loadCalculation`
+ * macro returned a real estimate (a square-foot rule of thumb adjusted for
+ * climate, insulation and stories; not an ACCA Manual J calculation) — heating BTU,
  * cooling BTU, tonnage, equipment size, and a recommendation. This module
  * turns exactly that result into a sentence, saves it as a private DTU,
  * reads that DTU back, and hands it to Thread as a draft.
@@ -42,6 +43,8 @@ export interface HvacLoadResult {
 export interface HvacLoadFacts {
   inputs: HvacLoadInputs;
   result: HvacLoadResult | null;
+  /** Id of the saved estimate in the user's load history, when saved. */
+  loadId?: string;
 }
 
 /**
@@ -78,7 +81,8 @@ export function loadBody(facts: HvacLoadFacts): string {
   if (r.estimatedCost != null) lines.push(`Estimated cost: $${r.estimatedCost.toLocaleString()}.`);
   if (r.energyEstimate) lines.push(`Energy: ${r.energyEstimate}.`);
   if (r.recommendation) lines.push(`Note: ${r.recommendation}`);
-  lines.push('Every figure here came from the HVAC domain Manual J calculation in Concord. Nothing was published by saving this.');
+  if (facts.loadId) lines.push(`Load estimate id: ${facts.loadId}.`);
+  lines.push('Every figure here came from the HVAC domain load estimate in Concord (square-foot rule of thumb adjusted for climate, insulation and stories; not an ACCA Manual J calculation). Nothing was published by saving this.');
   return lines.join('\n');
 }
 
@@ -88,6 +92,8 @@ export function loadMachine(facts: HvacLoadFacts): Record<string, unknown> | nul
   const r = facts.result!;
   return {
     kind: 'hvac_load_report',
+    loadId: facts.loadId ?? null,
+    method: 'square-foot rule of thumb (not ACCA Manual J)',
     squareFootage: r.squareFootage ?? facts.inputs.squareFootage,
     stories: facts.inputs.stories,
     insulation: facts.inputs.insulation,
@@ -113,8 +119,10 @@ export function loadReportDtuCall(facts: HvacLoadFacts): ReceiptCall | null {
     domain: 'dtu',
     action: 'create',
     input: {
-      title: sentence.slice(0, 80),
-      tags: ['hvac', 'load-calc', 'manual-j', String(facts.inputs.climate || 'climate').toLowerCase()],
+      // The load id keeps two identical estimates from colliding on the
+      // global exact-title dedup (duplicate_blocked).
+      title: `${sentence.slice(0, 80)}${facts.loadId ? ` · ${facts.loadId}` : ''}`,
+      tags: ['hvac', 'load-calc', 'load-estimate', String(facts.inputs.climate || 'climate').toLowerCase()],
       source: 'hvac-lens:load-report',
       human: { summary: body },
       core: { definitions: [sentence], claims: [body.slice(0, 240)] },

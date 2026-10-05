@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * ManualJCalc — Manual J / Wrightsoft-style HVAC load calculator
- * suite. Four bespoke widgets, each visually distinct:
+ * ManualJCalc — HVAC load + service calculator suite. Four bespoke
+ * widgets, each visually distinct:
  *
  *  1. LoadCalculator      — square footage / climate / insulation →
- *                          BTU heating + cooling, tonnage, equipment
+ *                          BTU heating + cooling, tonnage, equipment. A
+ *                          square-foot rule of thumb, NOT ACCA Manual J;
+ *                          each estimate is saved to the user's history.
  *  2. EnergyAudit         — bill / sqft / age → annual cost, savings
  *                          opportunities, ROI score
  *  3. MaintenanceCalendar — system type + last service → ordered
@@ -16,26 +18,29 @@
  * All four call existing hvac.* macros. No mock data.
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Thermometer, Snowflake, Flame, AlertCircle, Wrench, Plus, Trash2,
   Loader2, Home, DollarSign, Wind,
 } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { HvacKeepMenu } from '@/components/hvac/HvacKeepMenu';
 
-async function callHvac<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
-  try {
-    const r = await apiHelpers.lens.runDomain('hvac', action, { input: { artifact: { data } } });
-    const env = (r as { data?: { ok: boolean; result?: T } }).data;
-    if (!env?.ok) return null;
-    const raw = env.result as unknown as { ok?: boolean; result?: T } | T;
-    if (raw && typeof raw === 'object' && 'result' in raw && (raw as { result?: T }).result) {
-      return (raw as { result: T }).result;
-    }
-    return env.result as T;
-  } catch { return null; }
+// Throws on failure so each widget shows the real error instead of quietly
+// falling back to its empty placeholder.
+async function callHvac<T>(action: string, data: Record<string, unknown>): Promise<T> {
+  const r = await apiHelpers.lens.runDomain('hvac', action, { input: { artifact: { data } } });
+  const env = (r as { data?: { ok: boolean; result?: T; error?: string } }).data;
+  if (!env?.ok) throw new Error(env?.error || 'The HVAC service returned no result.');
+  const raw = env.result as unknown as { ok?: boolean; result?: T; error?: string } | T;
+  if (raw && typeof raw === 'object' && 'ok' in raw && (raw as { ok?: boolean }).ok === false) {
+    throw new Error((raw as { error?: string }).error || 'The HVAC service refused this input.');
+  }
+  if (raw && typeof raw === 'object' && 'result' in raw && (raw as { result?: T }).result) {
+    return (raw as { result: T }).result;
+  }
+  return env.result as T;
 }
 
 interface LoadResult { squareFootage?: number; heatingBTU?: number; coolingBTU?: number; tonnageRecommended?: string; equipmentSize?: string; recommendation?: string }
@@ -45,18 +50,66 @@ interface MaintResult { systemType?: string; tasks?: MaintTask[]; lastServiceDat
 interface Zone { name: string; currentTemp: string; targetTemp: string }
 interface ZoneResult { zones?: Array<{ zone: string; current: number; target: number; deviation: number }>; maxDeviation?: number; avgDeviation?: number; balanceScore?: number; verdict?: string; recommendation?: string }
 
+interface SavedLoad {
+  id: string;
+  inputs: { squareFootage: number; stories: number; insulation: Insulation; climate: Climate };
+  result: LoadResult;
+  createdAt: string;
+}
+type Insulation = 'poor' | 'average' | 'good' | 'excellent';
+type Climate = 'hot-humid' | 'hot-dry' | 'temperate' | 'cold' | 'very-cold';
+
 function LoadCalculator() {
   const [sqft, setSqft] = useState(0);
   const [stories, setStories] = useState(1);
-  const [insulation, setInsulation] = useState<'poor' | 'average' | 'good' | 'excellent'>('average');
-  const [climate, setClimate] = useState<'hot-humid' | 'hot-dry' | 'temperate' | 'cold' | 'very-cold'>('temperate');
+  const [insulation, setInsulation] = useState<Insulation>('average');
+  const [climate, setClimate] = useState<Climate>('temperate');
   const [result, setResult] = useState<LoadResult | null>(null);
+  const [loadId, setLoadId] = useState('');
+  const [error, setError] = useState('');
+  const [history, setHistory] = useState<SavedLoad[] | null>(null);
+
+  const restore = useCallback((l: SavedLoad) => {
+    setSqft(l.inputs.squareFootage);
+    setStories(l.inputs.stories);
+    setInsulation(l.inputs.insulation);
+    setClimate(l.inputs.climate);
+    setResult(l.result);
+    setLoadId(l.id);
+    setError('');
+  }, []);
+
+  const refreshHistory = useCallback(async () => {
+    const r = await lensRun<{ loads: SavedLoad[] }>('hvac', 'load-list', {});
+    const loads = r.data?.ok ? r.data.result?.loads || [] : [];
+    setHistory(loads);
+    return loads;
+  }, []);
+
+  // Saved estimates live on the server, so the latest one is back after a
+  // reload or a server restart.
+  useEffect(() => {
+    let live = true;
+    void refreshHistory().then((loads) => {
+      if (live && loads[0]) restore(loads[0]);
+    });
+    return () => { live = false; };
+  }, [refreshHistory, restore]);
 
   const compute = useMutation({
     mutationFn: async () => {
-      const r = await callHvac<LoadResult>('loadCalculation', { squareFootage: sqft, stories, insulation, climate });
-      setResult(r);
-      return r;
+      setError('');
+      const r = await lensRun<LoadResult & { loadId?: string }>('hvac', 'loadCalculation', {
+        squareFootage: sqft, stories, insulation, climate, save: true,
+      });
+      if (!r.data?.ok || !r.data.result) {
+        setError(`Not calculated. ${r.data?.error || 'The HVAC service returned no result.'}`);
+        return null;
+      }
+      setResult(r.data.result);
+      setLoadId(r.data.result.loadId || '');
+      await refreshHistory();
+      return r.data.result;
     },
   });
 
@@ -65,10 +118,13 @@ function LoadCalculator() {
       <header className="flex items-center justify-between border-b border-blue-500/20 bg-zinc-900/40 px-4 py-2">
         <div className="flex items-center gap-2">
           <Home className="h-4 w-4 text-blue-400" />
-          <span className="text-sm font-semibold text-white">Manual J load</span>
+          <span className="text-sm font-semibold text-white">Load estimate</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">hvac.loadCalculation</span>
         </div>
       </header>
+      <p className="border-b border-blue-500/10 px-4 py-1.5 text-[11px] text-zinc-400">
+        Square-foot rule of thumb (25 BTU/hr per sf) adjusted for climate, insulation and stories. Not an ACCA Manual J room-by-room calculation; use it to sanity-check equipment size.
+      </p>
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
@@ -82,7 +138,7 @@ function LoadCalculator() {
           </label>
           <label className="block">
             <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Insulation</span>
-            <select value={insulation} onChange={(e) => setInsulation(e.target.value as typeof insulation)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+            <select value={insulation} onChange={(e) => setInsulation(e.target.value as Insulation)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="poor">Poor (pre-1970)</option>
               <option value="average">Average (1970–2000)</option>
               <option value="good">Good (2000–2015)</option>
@@ -91,7 +147,7 @@ function LoadCalculator() {
           </label>
           <label className="block">
             <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Climate</span>
-            <select value={climate} onChange={(e) => setClimate(e.target.value as typeof climate)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+            <select value={climate} onChange={(e) => setClimate(e.target.value as Climate)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="hot-humid">Hot &amp; humid (FL/Gulf)</option>
               <option value="hot-dry">Hot &amp; dry (SW desert)</option>
               <option value="temperate">Temperate (most US)</option>
@@ -105,7 +161,8 @@ function LoadCalculator() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter dimensions above.</div>}
+          {error && <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] text-red-300">{error}</div>}
+          {!result && !error && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter dimensions above.</div>}
           {result && (
             <>
               <div className="grid grid-cols-2 gap-2">
@@ -131,11 +188,30 @@ function LoadCalculator() {
                 </div>
               </div>
               {result.recommendation && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-200">{result.recommendation}</div>}
+              {loadId && <p data-testid="load-saved" className="text-[11px] text-zinc-400">Saved to your account as {loadId}</p>}
             </>
+          )}
+          {history && history.length > 0 && (
+            <div data-testid="load-history" className="rounded border border-zinc-800 bg-zinc-950/40 p-2">
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Saved estimates</div>
+              <ul className="space-y-1">
+                {history.slice(0, 8).map((l) => (
+                  <li key={l.id}>
+                    <button
+                      type="button"
+                      onClick={() => restore(l)}
+                      className={`w-full rounded px-2 py-1 text-left font-mono text-[11px] hover:bg-zinc-800 ${l.id === loadId ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`}
+                    >
+                      {l.inputs.squareFootage.toLocaleString()} sf {l.inputs.climate} · {l.result.coolingBTU?.toLocaleString()} BTU cool · {l.id}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
         {result && (
-          <HvacKeepMenu facts={{ inputs: { squareFootage: sqft, stories, insulation, climate }, result }} />
+          <HvacKeepMenu key={loadId || 'unsaved'} facts={{ inputs: { squareFootage: sqft, stories, insulation, climate }, result, loadId: loadId || undefined }} />
         )}
       </div>
     </div>
@@ -186,6 +262,7 @@ function EnergyAudit() {
         </div>
 
         <div className="space-y-2">
+          {compute.isError && <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] text-red-300">Not calculated. {(compute.error as Error)?.message}</div>}
           {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter bill + sqft + age.</div>}
           {result && (
             <>
@@ -253,6 +330,7 @@ function MaintenanceCalendar() {
           </button>
         </div>
 
+        {compute.isError && <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] text-red-300">Not calculated. {(compute.error as Error)?.message}</div>}
         {result?.tasks && (
           <div className="space-y-1.5">
             {result.tasks.map((t, i) => (
@@ -323,6 +401,7 @@ function ZoneBalanceMonitor() {
           </button>
         </div>
 
+        {compute.isError && <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] text-red-300">Not calculated. {(compute.error as Error)?.message}</div>}
         {result?.zones && (
           <div className="space-y-1.5">
             {result.zones.map((z, i) => {
