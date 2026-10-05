@@ -24,7 +24,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
 import { AnalyticsDeskPanel } from '@/components/analytics/AnalyticsDeskPanel';
 import { PlatformGrowth } from '@/components/analytics/PlatformGrowth';
@@ -106,7 +105,6 @@ export default function AnalyticsPage() {
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="analytics" data={{}} compact />
           </div>
         </div>
 

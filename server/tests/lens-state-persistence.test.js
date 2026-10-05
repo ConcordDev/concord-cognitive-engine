@@ -60,7 +60,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // 41 -> 42: "boardLens" so a user's Trello-shape boards, columns,
     // cards, checklists, comments, attachments, labels, automation rules,
     // collaborators, and custom fields survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 42);
+    // 42 -> 43: "analyticsLens" so a user's tracked events, saved funnels,
+    // dashboards, alerts, and behavioral cohorts survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 43);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -80,6 +82,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("hvacLens"));
     assert.ok(LENS_STATE_KEYS.includes("petsLens"));
     assert.ok(LENS_STATE_KEYS.includes("boardLens"));
+    assert.ok(LENS_STATE_KEYS.includes("analyticsLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -500,6 +503,60 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(b.automations[0].enabled, true);
     assert.equal(b.collaborators[0].role, "editor");
     assert.equal(b.customFields[0].type, "number");
+  });
+
+  it("roundtrips STATE.analyticsLens (tracked events, saved funnels, dashboards, alerts, and cohorts)", () => {
+    // The Analytics domain stores per-user data under five Maps: events,
+    // funnels, dashboards, alerts, and cohorts. Without analyticsLens in
+    // LENS_STATE_KEYS a restart wiped every tracked event and saved funnel
+    // while the EventAnalytics panel still showed the dashboard counts.
+    STATE.analyticsLens = {
+      events: new Map([["user_a", [
+        { id: "ev_1", name: "signup", distinctId: "u_1", properties: { source: "organic" }, at: "2026-10-05T00:00:00.000Z" },
+        { id: "ev_2", name: "purchase", distinctId: "u_1", properties: { plan: "pro" }, at: "2026-10-05T01:00:00.000Z" },
+      ]]]),
+      funnels: new Map([["user_a", [
+        { id: "fn_1", name: "Signup to purchase", steps: ["signup", "purchase"], createdAt: "2026-10-05T00:00:00.000Z" },
+      ]]]),
+      dashboards: new Map([["user_a", [
+        { id: "db_1", name: "Growth", widgets: [{ id: "wg_1", kind: "metric", title: "Signups", config: { eventName: "signup" }, x: 0, y: 0, w: 4, h: 3 }], createdAt: "2026-10-05T00:00:00.000Z", updatedAt: "2026-10-05T00:00:00.000Z" },
+      ]]]),
+      alerts: new Map([["user_a", [
+        { id: "al_1", name: "Signup spike", kind: "threshold", op: "gt", metric: "count", eventName: "signup", threshold: 100, window: 7, createdAt: "2026-10-05T00:00:00.000Z", updatedAt: "2026-10-05T00:00:00.000Z" },
+      ]]]),
+      cohorts: new Map([["user_a", [
+        { id: "co_1", name: "Paid users", includes: ["purchase"], excludes: [], createdAt: "2026-10-05T00:00:00.000Z", updatedAt: "2026-10-05T00:00:00.000Z" },
+      ]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.analyticsLens.events instanceof Map);
+    const events = STATE.analyticsLens.events.get("user_a");
+    assert.equal(events.length, 2);
+    assert.equal(events[0].name, "signup");
+    assert.equal(events[0].properties.source, "organic");
+    assert.ok(STATE.analyticsLens.funnels instanceof Map);
+    const funnels = STATE.analyticsLens.funnels.get("user_a");
+    assert.equal(funnels.length, 1);
+    assert.equal(funnels[0].name, "Signup to purchase");
+    assert.deepEqual(funnels[0].steps, ["signup", "purchase"]);
+    assert.ok(STATE.analyticsLens.dashboards instanceof Map);
+    const dashboards = STATE.analyticsLens.dashboards.get("user_a");
+    assert.equal(dashboards.length, 1);
+    assert.equal(dashboards[0].name, "Growth");
+    assert.equal(dashboards[0].widgets.length, 1);
+    assert.equal(dashboards[0].widgets[0].kind, "metric");
+    assert.ok(STATE.analyticsLens.alerts instanceof Map);
+    const alerts = STATE.analyticsLens.alerts.get("user_a");
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0].kind, "threshold");
+    assert.equal(alerts[0].threshold, 100);
+    assert.ok(STATE.analyticsLens.cohorts instanceof Map);
+    const cohorts = STATE.analyticsLens.cohorts.get("user_a");
+    assert.equal(cohorts.length, 1);
+    assert.equal(cohorts[0].name, "Paid users");
+    assert.deepEqual(cohorts[0].includes, ["purchase"]);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

@@ -78,6 +78,12 @@ export const LENS_STATE_KEYS = Object.freeze([
   // stores per-user boards here; without this key a hard restart wiped
   // every board while the BoardWorkspace still showed it.
   "boardLens",
+  // 42 -> 43: "analyticsLens" so a user's tracked events, saved funnels,
+  // dashboards, alerts, and behavioral cohorts survive a restart. The
+  // Analytics domain stores per-user event/funnel/dashboard/alert/cohort
+  // Maps here; without this key a hard restart wiped every tracked event
+  // while the EventAnalytics panel still showed the dashboard counts.
+  "analyticsLens",
 ]);
 
 function serializeValue(v) {

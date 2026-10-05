@@ -11,8 +11,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart3, Plus, Filter, Loader2, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { AnalyticsKeepMenu } from './AnalyticsKeepMenu';
 
-interface Dash { totalEvents: number; uniqueUsers: number; eventsToday: number; eventTypes: number; savedFunnels: number }
+interface Dash { totalEvents: number; uniqueUsers: number; eventsToday: number; eventTypes: number; savedFunnels: number; savedDashboards?: number; savedAlerts?: number; behavioralCohorts?: number }
 interface TopEvent { name: string; count: number }
 interface FunnelStep { step: number; event: string; count: number; conversionFromStart: number; conversionFromPrev: number }
 interface FunnelResult { steps: FunnelStep[]; totalStarters: number; overallConversion: number }
@@ -174,6 +175,8 @@ export function EventAnalytics() {
           )}
         </div>
       </div>
+
+      {dash && <AnalyticsKeepMenu dashboard={dash} />}
     </div>
   );
 }
