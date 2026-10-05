@@ -14,6 +14,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
+import { StudioKeepMenu } from '@/components/studio/StudioKeepMenu';
 import { PipingProvider } from '@/components/panel-polish';
 import { DawWorkbenchSection } from '@/components/studio/DawWorkbenchSection';
 import { ShellPreview } from '@/components/lens/ShellPreview';
@@ -56,7 +57,6 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { showToast } from '@/components/common/Toasts';
 import Link from 'next/link';
@@ -1665,7 +1665,6 @@ export function StudioDawWorkspace() {
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="studio" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
@@ -1852,6 +1851,17 @@ export function StudioDawWorkspace() {
             <DawWorkbenchSection />
           </div>
         )}
+        <StudioKeepMenu project={project ? {
+          id: project.id,
+          name: project.title,
+          bpm: project.bpm,
+          timeSignature: `${project.timeSignature?.[0] || 4}/${project.timeSignature?.[1] || 4}`,
+          tracks: (project.tracks || []).map((t) => ({
+            id: t.id, name: t.name, kind: t.type, volume: t.volume, muted: t.mute,
+          })),
+          createdAt: project.createdAt ? new Date(project.createdAt).toISOString() : undefined,
+          updatedAt: project.updatedAt ? new Date(project.updatedAt).toISOString() : undefined,
+        } : null} />
       </div>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
