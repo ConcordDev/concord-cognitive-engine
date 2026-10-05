@@ -97,6 +97,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // without this key a hard restart wiped every target and observation
   // while the AstroTargetsPanel still showed them.
   "astronomyLens",
+  // 45 -> 46: "atlasLens" so a user's saved places, lists, trips,
+  // recent searches, and sequence counters survive a restart. The Atlas
+  // domain stores per-user Maps here; without this key a hard restart
+  // wiped every saved place while the PlacesPanel still showed it.
+  "atlasLens",
 ]);
 
 function serializeValue(v) {

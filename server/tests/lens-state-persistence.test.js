@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 45);
+    assert.equal(LENS_STATE_KEYS.length, 46);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -89,6 +89,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("analyticsLens"));
     assert.ok(LENS_STATE_KEYS.includes("creatorLens"));
     assert.ok(LENS_STATE_KEYS.includes("astronomyLens"));
+    assert.ok(LENS_STATE_KEYS.includes("atlasLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -641,6 +642,35 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.astronomyLens.wishlist.get("user_a")[0].priority, "high");
     assert.ok(STATE.astronomyLens.events instanceof Map);
     assert.equal(STATE.astronomyLens.events.get("user_a")[0].name, "Perseids peak");
+  });
+
+  it("roundtrips STATE.atlasLens (places, lists, trips, recentSearches, seq)", () => {
+    // The Atlas domain stores per-user data under 5 Maps. Without
+    // atlasLens in LENS_STATE_KEYS a restart wiped every saved place
+    // while the PlacesPanel still showed it.
+    STATE.atlasLens = {
+      places: new Map([["user_a", [{ id: "place_1", number: "PL-00001", name: "Eiffel Tower", lat: 48.8584, lng: 2.2945, category: "attraction", address: "Paris", notes: "", rating: 5, savedAt: "2026-10-05T00:00:00Z" }]]]),
+      lists: new Map([["user_a", [{ id: "list_1", name: "Paris Trip", placeIds: ["place_1"], createdAt: "2026-10-05T00:00:00Z" }]]]),
+      trips: new Map([["user_a", [{ id: "trip_1", name: "Summer Trip", stops: [{ placeId: "place_1", order: 0 }], createdAt: "2026-10-05T00:00:00Z" }]]]),
+      recentSearches: new Map([["user_a", ["Eiffel Tower", "Louvre"]]]),
+      seq: new Map([["user_a", { place: 2, list: 2, trip: 2, area: 1 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.atlasLens.places instanceof Map);
+    const p = STATE.atlasLens.places.get("user_a")[0];
+    assert.equal(p.name, "Eiffel Tower");
+    assert.equal(p.number, "PL-00001");
+    assert.equal(p.lat, 48.8584);
+    assert.ok(STATE.atlasLens.lists instanceof Map);
+    assert.equal(STATE.atlasLens.lists.get("user_a")[0].name, "Paris Trip");
+    assert.ok(STATE.atlasLens.trips instanceof Map);
+    assert.equal(STATE.atlasLens.trips.get("user_a")[0].name, "Summer Trip");
+    assert.ok(STATE.atlasLens.recentSearches instanceof Map);
+    assert.equal(STATE.atlasLens.recentSearches.get("user_a")[0], "Eiffel Tower");
+    assert.ok(STATE.atlasLens.seq instanceof Map);
+    assert.equal(STATE.atlasLens.seq.get("user_a").place, 2);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
