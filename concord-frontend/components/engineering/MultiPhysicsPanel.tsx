@@ -6,6 +6,10 @@
  * SAME model the Model/Loads tabs edit, so a ΔT or wind case is a second look
  * at the user's own frame, not a separate toy. Every number shown is the
  * solver's own output; a refused solve shows the solver's own reason.
+ *
+ * Inputs, the circuit and the latest result of each check are saved per user
+ * (engineering.workspace-save, key "physics") and restored on open. The
+ * circuit starts empty (it used to be pre-filled with a sample divider).
  */
 
 import { useState, type ReactNode } from 'react';
@@ -13,6 +17,7 @@ import { CircuitBoard, Droplets, Download, Flame, Layers, Loader2, Plus, Trash2,
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useEngineeringFea } from './EngineeringFeaProvider';
+import { useEngWorkspace, WsBadge, computedAt } from './useEngWorkspace';
 
 // The lens model is imperial (in, in², in⁴, psi, lbf); the thermal/wind gates
 // compute in SI (σ = E·α·ΔT in Pa, F = q·Cd·A in N). The solver is unit-agnostic,
@@ -43,6 +48,8 @@ function toSI(model: { nodes: AnyRec[]; members: AnyRec[]; loads: AnyRec[]; supp
 
 type Run<T> = { loading: boolean; error: string | null; result: T | null };
 const idle = { loading: false, error: null, result: null };
+type RunState = { loading: boolean; error: string | null };
+const idleRun: RunState = { loading: false, error: null };
 
 interface GateResult {
   ok: boolean;
@@ -136,44 +143,65 @@ function memberRows(map: Record<string, number | null> | undefined) {
   return Object.entries(map ?? {}).map(([id, v]) => ({ id, v: typeof v === 'number' ? v : NaN }));
 }
 
-async function run<T>(action: string, input: Record<string, unknown>, set: (r: Run<T>) => void) {
-  set({ loading: true, error: null, result: null });
+async function run<T>(action: string, input: Record<string, unknown>, set: (r: RunState) => void, onResult: (r: T) => void) {
+  set({ loading: true, error: null });
   try {
     const r = await lensRun<T>('engineering', action, input);
-    if (!r.data.ok || !r.data.result) set({ loading: false, error: r.data.error || 'no result', result: null });
-    else set({ loading: false, error: null, result: r.data.result });
+    if (!r.data.ok || !r.data.result) set({ loading: false, error: r.data.error || 'no result' });
+    else { onResult(r.data.result); set({ loading: false, error: null }); }
   } catch (e) {
-    set({ loading: false, error: (e as Error).message, result: null });
+    set({ loading: false, error: (e as Error).message });
   }
+}
+
+type Stamped<T> = { value: T; at: string; model?: string } | null;
+const PHYSICS_DEFAULTS = {
+  deltaT: 40, material: 'steel-a36',
+  velocity: 30, dirDeg: 0, cd: 1.2, area: 0.05,
+  els: [] as CircuitEl[],
+  ground: 'GND',
+  fluidModel: 'powerLaw' as 'powerLaw' | 'carreau',
+  flowIn: { diameter: 0.05, lengthM: 10, pressureDropPa: 20000, n: 0.6, K: 0.8, mu0: 1.0, muInf: 0.001, lambda: 2, density: 1000 },
+  thermal: null as Stamped<GateResult>,
+  aero: null as Stamped<GateResult>,
+  bundle: null as Stamped<BundleResult>,
+  circuit: null as Stamped<CircuitResult>,
+  flow: null as Stamped<FlowResult>,
+};
+
+function Stamp({ s, testId }: { s: { at: string; model?: string } | null; testId: string }) {
+  if (!s) return null;
+  return <p data-testid={testId} className="mt-2 text-[10px] text-zinc-500">Computed {computedAt(s.at)}{s.model ? ` on your model (${s.model})` : ''} · saved</p>;
 }
 
 export function MultiPhysicsPanel() {
   const { model, libMaterials } = useEngineeringFea();
   const hasModel = model.nodes.length > 0 && model.members.length > 0;
 
-  const [deltaT, setDeltaT] = useState(40);
-  const [material, setMaterial] = useState('steel-a36');
-  const [thermal, setThermal] = useState<Run<GateResult>>(idle);
+  const [ws, setWs, wsSave] = useEngWorkspace('physics', PHYSICS_DEFAULTS);
+  const { deltaT, material, velocity, dirDeg, cd, area, els, ground, fluidModel, flowIn } = ws;
+  const field = <K extends keyof typeof PHYSICS_DEFAULTS>(k: K) => (v: (typeof PHYSICS_DEFAULTS)[K]) => setWs((s) => ({ ...s, [k]: v }));
+  const setDeltaT = field('deltaT'); const setMaterial = field('material');
+  const setVelocity = field('velocity'); const setDirDeg = field('dirDeg'); const setCd = field('cd'); const setArea = field('area');
+  const setGround = field('ground'); const setFluidModel = field('fluidModel');
+  const setEls = (f: (xs: CircuitEl[]) => CircuitEl[]) => setWs((s) => ({ ...s, els: f(s.els) }));
+  const setFlowIn = (f: (x: typeof PHYSICS_DEFAULTS.flowIn) => typeof PHYSICS_DEFAULTS.flowIn) => setWs((s) => ({ ...s, flowIn: f(s.flowIn) }));
+  const modelSig = `${model.nodes.length} nodes, ${model.members.length} members`;
+  const stamp = <K extends 'thermal' | 'aero' | 'bundle' | 'circuit' | 'flow'>(k: K, withModel: boolean) =>
+    (value: NonNullable<(typeof PHYSICS_DEFAULTS)[K]>['value']) =>
+      setWs((s) => ({ ...s, [k]: { value, at: new Date().toISOString(), ...(withModel ? { model: modelSig } : {}) } }));
 
-  const [velocity, setVelocity] = useState(30);
-  const [dirDeg, setDirDeg] = useState(0);
-  const [cd, setCd] = useState(1.2);
-  const [area, setArea] = useState(0.05);
-  const [aero, setAero] = useState<Run<GateResult>>(idle);
-
-  const [bundle, setBundle] = useState<Run<BundleResult>>(idle);
-
-  const [els, setEls] = useState<CircuitEl[]>([
-    { id: 'V1', type: 'voltage_source', nodeA: 'N1', nodeB: 'GND', value: 12 },
-    { id: 'R1', type: 'resistor', nodeA: 'N1', nodeB: 'N2', value: 100 },
-    { id: 'R2', type: 'resistor', nodeA: 'N2', nodeB: 'GND', value: 200 },
-  ]);
-  const [ground, setGround] = useState('GND');
-  const [circuit, setCircuit] = useState<Run<CircuitResult>>(idle);
-
-  const [fluidModel, setFluidModel] = useState<'powerLaw' | 'carreau'>('powerLaw');
-  const [flowIn, setFlowIn] = useState({ diameter: 0.05, lengthM: 10, pressureDropPa: 20000, n: 0.6, K: 0.8, mu0: 1.0, muInf: 0.001, lambda: 2, density: 1000 });
-  const [flow, setFlow] = useState<Run<FlowResult>>(idle);
+  const [thermalRun, setThermalRun] = useState<RunState>(idleRun);
+  const [aeroRun, setAeroRun] = useState<RunState>(idleRun);
+  const [bundleRun, setBundleRun] = useState<RunState>(idleRun);
+  const [circuitRun, setCircuitRun] = useState<RunState>(idleRun);
+  const [flowRun, setFlowRun] = useState<RunState>(idleRun);
+  const thermal: Run<GateResult> = { ...thermalRun, result: ws.thermal?.value ?? null };
+  const aero: Run<GateResult> = { ...aeroRun, result: ws.aero?.value ?? null };
+  const bundle: Run<BundleResult> = { ...bundleRun, result: ws.bundle?.value ?? null };
+  const circuit: Run<CircuitResult> = { ...circuitRun, result: ws.circuit?.value ?? null };
+  const flow: Run<FlowResult> = { ...flowRun, result: ws.flow?.value ?? null };
+  void idle;
 
   const [exporting, setExporting] = useState(false);
 
@@ -211,6 +239,8 @@ export function MultiPhysicsPanel() {
           Thermal and wind checks run on your current model, converted from inches/psi/lb to SI: <span className="font-mono text-teal-200">{model.nodes.length}</span> nodes,{' '}
           <span className="font-mono text-teal-200">{model.members.length}</span> members, <span className="font-mono text-teal-200">{model.loads.length}</span> loads,{' '}
           <span className="font-mono text-teal-200">{model.supports.length}</span> supports.
+          <span className="mt-1 block"><WsBadge state={wsSave} testId="physics-save" /></span>
+          <span className="mt-1 block text-[11px] text-zinc-500">Wind, flow and ΔT fields start with example values — replace them with yours.</span>
         </p>
         <RunButton onClick={() => void exportScene()} loading={exporting} disabled={!hasModel}>
           <Download className="h-3.5 w-3.5" /> Export 3D scene
@@ -230,7 +260,7 @@ export function MultiPhysicsPanel() {
               </select>
             </label>
           </div>
-          <div className="mt-3"><RunButton onClick={() => void run('thermalStressCheck', { ...structural, deltaT, material }, setThermal)} loading={thermal.loading} disabled={!hasModel}>Check thermal</RunButton></div>
+          <div className="mt-3"><RunButton onClick={() => void run<GateResult>('thermalStressCheck', { ...structural, deltaT, material }, setThermalRun, stamp('thermal', true))} loading={thermal.loading} disabled={!hasModel}>Check thermal</RunButton></div>
           <Err msg={thermal.error} />
           {thermal.result && (
             <div className="mt-3 space-y-2">
@@ -241,6 +271,7 @@ export function MultiPhysicsPanel() {
                   <li key={m.id} className="rounded bg-black/20 px-2 py-1 font-mono">{m.id}: {fmt(m.v / 1e6, 1)} MPa</li>
                 ))}
               </ul>
+              <Stamp s={ws.thermal} testId="physics-thermal-at" />
             </div>
           )}
         </Card>
@@ -252,7 +283,7 @@ export function MultiPhysicsPanel() {
             <Num label="Drag coeff. Cd" value={cd} onChange={setCd} />
             <Num label="Area / member" unit="m²" value={area} onChange={setArea} />
           </div>
-          <div className="mt-3"><RunButton onClick={() => void run('aeroLoadCheck', { ...structural, ...aeroOpts }, setAero)} loading={aero.loading} disabled={!hasModel}>Check wind</RunButton></div>
+          <div className="mt-3"><RunButton onClick={() => void run<GateResult>('aeroLoadCheck', { ...structural, ...aeroOpts }, setAeroRun, stamp('aero', true))} loading={aero.loading} disabled={!hasModel}>Check wind</RunButton></div>
           <Err msg={aero.error} />
           {aero.result && (
             <div className="mt-3 space-y-2">
@@ -264,6 +295,7 @@ export function MultiPhysicsPanel() {
                   <li key={m.id} className="rounded bg-black/20 px-2 py-1 font-mono">{m.id}: {fmt(m.v, 1)} N</li>
                 ))}
               </ul>
+              <Stamp s={ws.aero} testId="physics-aero-at" />
             </div>
           )}
         </Card>
@@ -271,7 +303,7 @@ export function MultiPhysicsPanel() {
 
       <Card icon={<Layers className="h-4 w-4 text-violet-400" />} title="Thermal + wind together" hint="Runs both legs independently, then one simultaneous solve with mechanical, thermal and wind loads superposed. Uses the inputs above.">
         <RunButton
-          onClick={() => void run('multiPhysicsCheck', { ...structural, legs: { thermal: { deltaT, material }, aero: aeroOpts }, simultaneous: true }, setBundle)}
+          onClick={() => void run<BundleResult>('multiPhysicsCheck', { ...structural, legs: { thermal: { deltaT, material }, aero: aeroOpts }, simultaneous: true }, setBundleRun, stamp('bundle', true))}
           loading={bundle.loading}
           disabled={!hasModel}
         >
@@ -297,11 +329,13 @@ export function MultiPhysicsPanel() {
             </div>
           </div>
         )}
+        <Stamp s={ws.bundle} testId="physics-bundle-at" />
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card icon={<CircuitBoard className="h-4 w-4 text-yellow-300" />} title="DC circuit" hint="Nodal analysis (KCL) over resistors and sources. Voltage sources must touch the ground node.">
-          <div className="space-y-2">
+          <div className="space-y-2" data-testid="circuit-elements">
+            {els.length === 0 && <p className="text-xs text-zinc-500">No elements yet. Add a source and resistors with the buttons below, then solve.</p>}
             {els.map((el, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-2 sm:grid-cols-[4rem_1fr_1fr_1fr_1fr_auto]">
                 <input aria-label="Element id" value={el.id} onChange={(e) => updEl(i, { id: e.target.value })} className="hidden rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs sm:block" />
@@ -327,7 +361,7 @@ export function MultiPhysicsPanel() {
               <input value={ground} onChange={(e) => setGround(e.target.value)} className="w-16 rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs" />
             </label>
           </div>
-          <div className="mt-3"><RunButton onClick={() => void run('circuitSolve', { model: { nodes: circuitNodes, elements: els, groundNodeId: ground } }, setCircuit)} loading={circuit.loading} disabled={els.length === 0}>Solve circuit</RunButton></div>
+          <div className="mt-3"><RunButton onClick={() => void run<CircuitResult>('circuitSolve', { model: { nodes: circuitNodes, elements: els, groundNodeId: ground } }, setCircuitRun, stamp('circuit', false))} loading={circuit.loading} disabled={els.length === 0}>Solve circuit</RunButton></div>
           <Err msg={circuit.error} />
           {circuit.result && (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -343,6 +377,7 @@ export function MultiPhysicsPanel() {
               </div>
             </div>
           )}
+          <Stamp s={ws.circuit} testId="physics-circuit-at" />
         </Card>
 
         <Card icon={<Droplets className="h-4 w-4 text-cyan-300" />} title="Non-Newtonian pipe flow" hint="Laminar flow of a shear-thinning fluid: power-law closed form or Carreau numeric, with generalized Reynolds number.">
@@ -369,7 +404,7 @@ export function MultiPhysicsPanel() {
             )}
             <Num label="Density" unit="kg/m³" value={flowIn.density} onChange={(v) => setFlowIn((f) => ({ ...f, density: v }))} />
           </div>
-          <div className="mt-3"><RunButton onClick={() => void run('nonNewtonianFlow', { fluidModel, ...flowIn }, setFlow)} loading={flow.loading}>Compute flow</RunButton></div>
+          <div className="mt-3"><RunButton onClick={() => void run<FlowResult>('nonNewtonianFlow', { fluidModel, ...flowIn }, setFlowRun, stamp('flow', false))} loading={flow.loading}>Compute flow</RunButton></div>
           <Err msg={flow.error} />
           {flow.result && (
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -378,6 +413,7 @@ export function MultiPhysicsPanel() {
               <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{flow.result.reynolds ? fmt(flow.result.reynolds.value, 1) : '—'}</p><p className="text-[10px] text-zinc-500">{flow.result.reynolds?.regime ?? 'Re'}</p></div>
             </div>
           )}
+          <Stamp s={ws.flow} testId="physics-flow-at" />
         </Card>
       </div>
     </div>

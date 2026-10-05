@@ -235,6 +235,7 @@ function engState() {
   if (!(s.loadCases instanceof Map)) s.loadCases = new Map(); // userId -> Array<lc>
   if (!(s.jobs instanceof Map)) s.jobs = new Map(); // userId -> Array<job>
   if (!(s.models instanceof Map)) s.models = new Map(); // userId -> working FEA model
+  if (!(s.workspaces instanceof Map)) s.workspaces = new Map(); // userId -> { [panelKey]: { state, updatedAt } }
   return s;
 }
 function persist() {
@@ -712,6 +713,54 @@ export default function registerEngineeringActions(registerLensAction) {
           counts: { nodes: model.nodes.length, members: model.members.length, loads: model.loads.length, supports: model.supports.length },
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── workspace-get / workspace-save — Calcs / Multi-physics / Actions ────
+  // Those tabs kept their inputs and last results in React state only, so a
+  // reload lost the user's work. Each panel now saves one JSON blob per user
+  // under a fixed key. Results stored here are the solver's own output from
+  // when the user ran it; the panels show the time they were computed.
+  const WORKSPACE_KEYS = new Set([
+    'calcs.structural', 'calcs.thermal', 'calcs.electrical', 'calcs.hydraulic',
+    'physics', 'bench',
+  ]);
+  const WORKSPACE_MAX_BYTES = 64 * 1024;
+
+  registerLensAction('engineering', 'workspace-get', (ctx, artifact, params) => {
+    try {
+      const key = String(params?.key ?? '');
+      if (!WORKSPACE_KEYS.has(key)) return { ok: false, error: `unknown workspace key: ${key || '(none)'}` };
+      const s = engState();
+      if (!s) return { ok: true, result: { state: null, updatedAt: null } };
+      const mine = s.workspaces.get(egActor(ctx)) || {};
+      const entry = mine[key] || null;
+      return { ok: true, result: { state: entry ? entry.state : null, updatedAt: entry?.updatedAt || null } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'workspace-save', (ctx, artifact, params) => {
+    try {
+      const key = String(params?.key ?? '');
+      if (!WORKSPACE_KEYS.has(key)) return { ok: false, error: `unknown workspace key: ${key || '(none)'}` };
+      const raw = params?.state;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'state object required' };
+      let json;
+      try { json = JSON.stringify(raw); } catch { return { ok: false, error: 'state is not serializable' }; }
+      if (json.length > WORKSPACE_MAX_BYTES) return { ok: false, error: `state too large (${json.length} bytes, max ${WORKSPACE_MAX_BYTES})` };
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const userId = egActor(ctx);
+      const mine = s.workspaces.get(userId) || {};
+      const updatedAt = new Date().toISOString();
+      mine[key] = { state: JSON.parse(json), updatedAt };
+      s.workspaces.set(userId, mine);
+      persist();
+      return { ok: true, result: { key, updatedAt, bytes: json.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

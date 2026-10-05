@@ -13,6 +13,11 @@
  * second, worse ("paste raw JSON") entry point would be the generic-scaffold
  * anti-pattern for zero added capability. `engineering.bom` stays registered
  * and callable — see the engineering capability map for the disposition.
+ *
+ * Parts, inputs, the latest results and the ids of DTUs minted/published here
+ * are saved per user (engineering.workspace-save, key "bench") and restored
+ * on open. The parts list starts empty (it used to be pre-filled with a
+ * sample shaft/bushing pair).
  */
 
 import { useState } from 'react';
@@ -22,6 +27,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { useEngWorkspace, WsBadge } from './useEngWorkspace';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,6 +40,13 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'tol' | 'stress' | 'unit' | 'mint' | 'dm' | 'publish' | 'agent';
+// dtu.create refuses an exact repeat of an existing DTU (duplicate_blocked);
+// say so instead of a bare "No DTU id".
+function dtuRefusal(data: { result?: { error?: string }; error?: string } | undefined): string {
+  const code = data?.result?.error ?? data?.error;
+  if (code === 'duplicate_blocked') return 'This exact analysis is already saved as a DTU. Change an input to save a new one.';
+  return `Not saved: ${code ?? 'no DTU id came back'}`;
+}
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface TolPartInput { name: string; nominal: number; tolerance: number }
@@ -47,29 +60,32 @@ interface UnitResult { input: string; output: string; conversion: string }
 // part of the macro contract (which units are valid).
 const UNIT_PAIRS = [['mm', 'in'], ['in', 'mm'], ['m', 'ft'], ['ft', 'm'], ['kg', 'lb'], ['lb', 'kg'], ['n', 'lbf'], ['lbf', 'n'], ['mpa', 'psi'], ['psi', 'mpa'], ['c', 'f'], ['f', 'c'], ['nm', 'ftlb'], ['ftlb', 'nm'], ['l', 'gal'], ['gal', 'l']];
 
-const TOL_PART_STARTER: TolPartInput[] = [
-  { name: 'Shaft dia', nominal: 12.0, tolerance: 0.02 },
-  { name: 'Bushing ID', nominal: 12.05, tolerance: 0.015 },
-];
+const BENCH_DEFAULTS = {
+  tolParts: [] as TolPartInput[],
+  forceN: '', areaMm2: '', yieldMpa: '',
+  unitValue: '', unitFrom: 'mm', unitTo: 'in',
+  tolResult: null as TolResult | null,
+  stressResult: null as StressResult | null,
+  unitResult: null as UnitResult | null,
+  mintedDtuId: null as string | null,
+  publishedDtuId: null as string | null,
+  agentReply: null as string | null,
+};
+type Bench = typeof BENCH_DEFAULTS;
 
 export function EngineeringActionPanel() {
-  const [tolParts, setTolParts] = useState<TolPartInput[]>(TOL_PART_STARTER);
-  const [forceN, setForceN] = useState('');
-  const [areaMm2, setAreaMm2] = useState('');
-  const [yieldMpa, setYieldMpa] = useState('');
-  const [unitValue, setUnitValue] = useState('');
-  const [unitFrom, setUnitFrom] = useState('mm');
-  const [unitTo, setUnitTo] = useState('in');
+  const [ws, setWs, wsSave] = useEngWorkspace('bench', BENCH_DEFAULTS);
+  const { tolParts, forceN, areaMm2, yieldMpa, unitValue, unitFrom, unitTo, tolResult, stressResult, unitResult, mintedDtuId, publishedDtuId, agentReply } = ws;
+  const put = <K extends keyof Bench>(k: K) => (v: Bench[K]) => setWs((s) => ({ ...s, [k]: v }));
+  const setTolParts = (f: (p: TolPartInput[]) => TolPartInput[]) => setWs((s) => ({ ...s, tolParts: f(s.tolParts) }));
+  const setForceN = put('forceN'); const setAreaMm2 = put('areaMm2'); const setYieldMpa = put('yieldMpa');
+  const setUnitValue = put('unitValue'); const setUnitFrom = put('unitFrom'); const setUnitTo = put('unitTo');
+  const setTolResult = put('tolResult'); const setStressResult = put('stressResult'); const setUnitResult = put('unitResult');
+  const setMintedDtuId = put('mintedDtuId'); const setPublishedDtuId = put('publishedDtuId'); const setAgentReply = put('agentReply');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [tolResult, setTolResult] = useState<TolResult | null>(null);
-  const [stressResult, setStressResult] = useState<StressResult | null>(null);
-  const [unitResult, setUnitResult] = useState<UnitResult | null>(null);
-  const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
-  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
-  const [agentReply, setAgentReply] = useState<string | null>(null);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -118,9 +134,10 @@ export function EngineeringActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Engineering — ${stressResult?.status ?? 'design'}`, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, unit: unitResult } } }, 'software', ['private']) });
+      const title = ['Engineering design', stressResult ? `SF ${stressResult.safetyFactor} ${stressResult.status}` : '', tolResult ? `stack ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance}` : ''].filter(Boolean).join(' · ');
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, unit: unitResult } } }, 'software', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id.slice(0, 8)}…` }); ok(`Design DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id.slice(0, 8)}…` }); ok(`Design DTU ${id.slice(0, 8)}…`); } else err(dtuRefusal(r.data));
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -148,7 +165,7 @@ export function EngineeringActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Engineering analysis card`, tags: ['engineering', 'analysis', 'public'], source: 'engineering:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, tol: tolResult, stress: stressResult } }, 'software', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-        if (!newId) throw new Error('No DTU id.');
+        if (!newId) throw new Error(dtuRefusal(r.data));
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
@@ -162,7 +179,7 @@ export function EngineeringActionPanel() {
       const task = `Mechanical engineering review. ${tolResult ? `Stack-up nominal ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance}).` : ''} ${stressResult ? `Stress ${stressResult.appliedStress} vs yield ${stressResult.yieldStrength}, SF ${stressResult.safetyFactor} (${stressResult.status}).` : ''} Identify the single biggest design risk + one optimization opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('The review agent returned no text.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -173,7 +190,7 @@ export function EngineeringActionPanel() {
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private design DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send eng review', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public analysis', icon: Globe, accent: '#15803d', handler: actPublish },
-    { id: 'agent' as ActionId, label: 'Review', desc: 'Agent: risk + opt', icon: Wand2, accent: '#eab308', handler: actAgent },
+    { id: 'agent' as ActionId, label: 'Review', desc: 'AI review (needs the chat agent)', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
   const STATUS_COLOR: Record<string, string> = { safe: 'text-emerald-300', acceptable: 'text-blue-300', marginal: 'text-amber-300' };
@@ -184,6 +201,7 @@ export function EngineeringActionPanel() {
         <Cog className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Engineering bench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">tolerance · stress · units</span>
+        <span className="ml-auto"><WsBadge state={wsSave} testId="bench-save" /></span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -194,7 +212,8 @@ export function EngineeringActionPanel() {
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="mt-1 space-y-1 max-h-40 overflow-y-auto pr-0.5">
+          <div className="mt-1 space-y-1 max-h-40 overflow-y-auto pr-0.5" data-testid="tol-parts">
+            {tolParts.length === 0 && <p className="text-[10px] text-zinc-500">No parts yet — add each dimension in the stack with +.</p>}
             {tolParts.map((p, i) => (
               <div key={i} className="flex items-center gap-1">
                 <input

@@ -20,6 +20,11 @@
  * displays the sub-results the macro actually returns, rather than
  * pretending they're three independent server calls.
  *
+ * Inputs and the latest results of every section are saved per user
+ * (engineering.workspace-save) and restored on open, so a reload or a server
+ * restart doesn't lose them. Fields start with typical example values and
+ * say so.
+ *
  * Also backs two macros added in this pass — `engineering.connectionCheck`
  * (AISC bolted-connection allowable shear) inside the Structural section and
  * `engineering.transformerSizing` (ANSI kVA-ladder sizing) inside the
@@ -32,11 +37,12 @@
  * a shared "Compute" trigger, since they're independent server calls.
  */
 
-import { useState } from 'react';
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Building2, Thermometer, Zap, Droplets, Loader2, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useEngWorkspace, WsBadge, computedAt, type WsSaveState } from './useEngWorkspace';
 
 // ── Generic result shape every engineering-compute.js function returns ─────
 interface CalcResult {
@@ -153,100 +159,108 @@ function SelectField({
 
 type Num = number | '';
 const n = (v: Num, fb: number) => (v === '' ? fb : v);
+type Rec = Record<string, unknown>;
+
+// Bind a NumField / SelectField to one key of a saved section's `inp` object.
+function binder<S extends { inp: Rec }>(set: Dispatch<SetStateAction<S>>, sub: 'inp' | 'conn' | 'xfmr' = 'inp') {
+  return (k: string) => (v: unknown) =>
+    set((s) => ({ ...s, [sub]: { ...((s as unknown as Record<string, Rec>)[sub] || {}), [k]: v } }));
+}
+
+function Computed({ at, testId }: { at: string | null | undefined; testId: string }) {
+  if (!at) return null;
+  return <p data-testid={testId} className="text-[10px] text-zinc-500">Computed {computedAt(at)} · saved with your inputs</p>;
+}
+
+function SectionHead({ icon, title, save, testId }: { icon: ReactNode; title: string; save: WsSaveState; testId: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="font-semibold text-sm flex items-center gap-2">{icon} {title}</h3>
+      <WsBadge state={save} testId={testId} />
+    </div>
+  );
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // Structural — engineering.structuralCheck → { buckling, bending, weld }
 // ════════════════════════════════════════════════════════════════════════
+type StructRes = { buckling: CalcResult; bending: CalcResult; weld: CalcResult };
+const STRUCT_DEFAULTS = {
+  inp: {
+    loadKips: 50 as Num, lengthFt: 12 as Num, modulusE: 29000000 as Num, momentI: 82.8 as Num, kFactor: 1 as Num,
+    windMph: 110 as Num, wallHeightFt: 10 as Num, wallThicknessIn: 8 as Num, concreteFc: 4000 as Num, rebarSpacingIn: 12 as Num, rebarSize: '5',
+    weldSize: 0.25 as Num, weldLength: 10 as Num, weldMaterial: 'e70xx',
+  },
+  conn: { boltDiameter: 0.75 as Num, boltGrade: 'a325', numBolts: 4 as Num, loadType: 'single' },
+  result: null as StructRes | null,
+  resultAt: null as string | null,
+  connResult: null as CalcResult | null,
+  connAt: null as string | null,
+};
+
 function StructuralSection() {
-  const [loadKips, setLoadKips] = useState<Num>(50);
-  const [lengthFt, setLengthFt] = useState<Num>(12);
-  const [modulusE, setModulusE] = useState<Num>(29000000);
-  const [momentI, setMomentI] = useState<Num>(82.8);
-  const [kFactor, setKFactor] = useState<Num>(1);
-
-  const [windMph, setWindMph] = useState<Num>(110);
-  const [wallHeightFt, setWallHeightFt] = useState<Num>(10);
-  const [wallThicknessIn, setWallThicknessIn] = useState<Num>(8);
-  const [concreteFc, setConcreteFc] = useState<Num>(4000);
-  const [rebarSpacingIn, setRebarSpacingIn] = useState<Num>(12);
-  const [rebarSize, setRebarSize] = useState('5');
-
-  const [weldSize, setWeldSize] = useState<Num>(0.25);
-  const [weldLength, setWeldLength] = useState<Num>(10);
-  const [weldMaterial, setWeldMaterial] = useState('e70xx');
-
-  const [result, setResult] = useState<{ buckling: CalcResult; bending: CalcResult; weld: CalcResult } | null>(null);
+  const [st, setSt, save] = useEngWorkspace('calcs.structural', STRUCT_DEFAULTS);
+  const i = st.inp; const c = st.conn;
+  const b = binder(setSt); const bc = binder(setSt, 'conn');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [connectionLoading, setConnectionLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
 
   const run = async () => {
     setLoading(true); setError('');
-    const r = await lensRun<{ ok: boolean; results: { buckling: CalcResult; bending: CalcResult; weld: CalcResult } }>(
+    const r = await lensRun<{ ok: boolean; results: StructRes }>(
       'engineering', 'structuralCheck',
       {
-        loadKips: n(loadKips, 0), lengthFt: n(lengthFt, 1), modulusE: n(modulusE, 1), momentI: n(momentI, 1), kFactor: n(kFactor, 1),
-        windMph: n(windMph, 0), wallHeightFt: n(wallHeightFt, 1), wallThicknessIn: n(wallThicknessIn, 1),
-        concreteFc: n(concreteFc, 4000), rebarSpacingIn: n(rebarSpacingIn, 12), rebarSize: parseInt(rebarSize, 10),
-        weldSize: n(weldSize, 0.25), length: n(weldLength, 1), material: weldMaterial,
+        loadKips: n(i.loadKips, 0), lengthFt: n(i.lengthFt, 1), modulusE: n(i.modulusE, 1), momentI: n(i.momentI, 1), kFactor: n(i.kFactor, 1),
+        windMph: n(i.windMph, 0), wallHeightFt: n(i.wallHeightFt, 1), wallThicknessIn: n(i.wallThicknessIn, 1),
+        concreteFc: n(i.concreteFc, 4000), rebarSpacingIn: n(i.rebarSpacingIn, 12), rebarSize: parseInt(i.rebarSize, 10),
+        weldSize: n(i.weldSize, 0.25), length: n(i.weldLength, 1), material: i.weldMaterial,
       },
     );
-    if (r.data.ok && r.data.result) setResult(r.data.result.results);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString() }));
     else setError(r.data.error || 'Structural check failed');
     setLoading(false);
   };
 
   // ── Bolted connection (AISC allowable shear) — engineering.connectionCheck ──
-  // Real AISC math (R = Fv·Ab·n·planes) previously unreachable at the macro
-  // layer (server/lib/compute/engineering-compute.js#boltedConnection existed
-  // but no macro called it); wired as its own macro since structuralCheck's
-  // field set is a separate server.js registration this pass may not touch.
-  const [boltDiameter, setBoltDiameter] = useState<Num>(0.75);
-  const [boltGrade, setBoltGrade] = useState('a325');
-  const [numBolts, setNumBolts] = useState<Num>(4);
-  const [loadType, setLoadType] = useState('single');
-  const [connectionResult, setConnectionResult] = useState<CalcResult | null>(null);
-  const [connectionLoading, setConnectionLoading] = useState(false);
-  const [connectionError, setConnectionError] = useState('');
-
   const runConnection = async () => {
     setConnectionLoading(true); setConnectionError('');
     const r = await lensRun<CalcResult>(
       'engineering', 'connectionCheck',
-      { boltDiameter: n(boltDiameter, 0.75), boltGrade, numBolts: n(numBolts, 1), loadType },
+      { boltDiameter: n(c.boltDiameter, 0.75), boltGrade: c.boltGrade, numBolts: n(c.numBolts, 1), loadType: c.loadType },
     );
-    if (r.data.ok && r.data.result) setConnectionResult(r.data.result);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, connResult: r.data.result!, connAt: new Date().toISOString() }));
     else setConnectionError(r.data.error || 'Connection check failed');
     setConnectionLoading(false);
   };
 
   return (
-    <div className="panel p-4 space-y-3">
-      <h3 className="font-semibold text-sm flex items-center gap-2">
-        <Building2 className="w-4 h-4 text-blue-400" /> Structural — column buckling · concrete shear wall · fillet weld
-      </h3>
+    <div className="panel p-4 space-y-3" data-testid="calc-structural">
+      <SectionHead icon={<Building2 className="w-4 h-4 text-blue-400" />} title="Structural — column buckling · concrete shear wall · fillet weld" save={save} testId="calc-structural-save" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Column (Euler buckling)</p>
-          <NumField label="Axial load (kips)" value={loadKips} onChange={setLoadKips} />
-          <NumField label="Unbraced length (ft)" value={lengthFt} onChange={setLengthFt} />
-          <NumField label="Modulus E (psi)" value={modulusE} onChange={setModulusE} />
-          <NumField label="Moment of inertia I (in⁴)" value={momentI} onChange={setMomentI} />
-          <NumField label="Effective length factor k" value={kFactor} onChange={setKFactor} step="0.1" />
+          <NumField label="Axial load (kips)" value={i.loadKips} onChange={b('loadKips')} />
+          <NumField label="Unbraced length (ft)" value={i.lengthFt} onChange={b('lengthFt')} />
+          <NumField label="Modulus E (psi)" value={i.modulusE} onChange={b('modulusE')} />
+          <NumField label="Moment of inertia I (in⁴)" value={i.momentI} onChange={b('momentI')} />
+          <NumField label="Effective length factor k" value={i.kFactor} onChange={b('kFactor')} step="0.1" />
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Concrete shear wall</p>
-          <NumField label="Design wind (mph)" value={windMph} onChange={setWindMph} />
-          <NumField label="Wall height (ft)" value={wallHeightFt} onChange={setWallHeightFt} />
-          <NumField label="Wall thickness (in)" value={wallThicknessIn} onChange={setWallThicknessIn} />
-          <NumField label="Concrete f'c (psi)" value={concreteFc} onChange={setConcreteFc} />
-          <NumField label="Rebar spacing (in)" value={rebarSpacingIn} onChange={setRebarSpacingIn} />
-          <SelectField label="Rebar size (#)" value={rebarSize} onChange={setRebarSize} options={['3', '4', '5', '6', '7', '8']} />
+          <NumField label="Design wind (mph)" value={i.windMph} onChange={b('windMph')} />
+          <NumField label="Wall height (ft)" value={i.wallHeightFt} onChange={b('wallHeightFt')} />
+          <NumField label="Wall thickness (in)" value={i.wallThicknessIn} onChange={b('wallThicknessIn')} />
+          <NumField label="Concrete f'c (psi)" value={i.concreteFc} onChange={b('concreteFc')} />
+          <NumField label="Rebar spacing (in)" value={i.rebarSpacingIn} onChange={b('rebarSpacingIn')} />
+          <SelectField label="Rebar size (#)" value={i.rebarSize} onChange={b('rebarSize')} options={['3', '4', '5', '6', '7', '8']} />
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Fillet weld (AWS D1.1)</p>
-          <NumField label="Leg size w (in)" value={weldSize} onChange={setWeldSize} step="0.01" />
-          <NumField label="Weld length (in)" value={weldLength} onChange={setWeldLength} />
-          <SelectField label="Electrode" value={weldMaterial} onChange={setWeldMaterial} options={['e60xx', 'e70xx', 'e80xx', 'e90xx']} />
+          <NumField label="Leg size w (in)" value={i.weldSize} onChange={b('weldSize')} step="0.01" />
+          <NumField label="Weld length (in)" value={i.weldLength} onChange={b('weldLength')} />
+          <SelectField label="Electrode" value={i.weldMaterial} onChange={b('weldMaterial')} options={['e60xx', 'e70xx', 'e80xx', 'e90xx']} />
         </div>
       </div>
       <button
@@ -257,13 +271,16 @@ function StructuralSection() {
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
         Run Structural Check
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <ResultCard title="Column — critical buckling load (Pcr)" result={result.buckling} />
-          <ResultCard title="Wall — shear factor of safety" result={result.bending} />
-          <ResultCard title="Weld — allowable shear capacity" result={result.weld} />
-        </div>
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+      {st.result && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Column — critical buckling load (Pcr)" result={st.result.buckling} />
+            <ResultCard title="Wall — shear factor of safety" result={st.result.bending} />
+            <ResultCard title="Weld — allowable shear capacity" result={st.result.weld} />
+          </div>
+          <Computed at={st.resultAt} testId="calc-structural-at" />
+        </>
       )}
 
       <div className="pt-2 border-t border-white/5 space-y-3">
@@ -271,10 +288,10 @@ function StructuralSection() {
           <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold md:col-span-4">
             Bolted connection (AISC allowable shear)
           </p>
-          <NumField label="Bolt diameter (in)" value={boltDiameter} onChange={setBoltDiameter} step="0.0625" />
-          <SelectField label="Bolt grade" value={boltGrade} onChange={setBoltGrade} options={['a307', 'a325', 'a490']} />
-          <NumField label="Number of bolts" value={numBolts} onChange={setNumBolts} step="1" />
-          <SelectField label="Load type" value={loadType} onChange={setLoadType} options={['single', 'double']} />
+          <NumField label="Bolt diameter (in)" value={c.boltDiameter} onChange={bc('boltDiameter')} step="0.0625" />
+          <SelectField label="Bolt grade" value={c.boltGrade} onChange={bc('boltGrade')} options={['a307', 'a325', 'a490']} />
+          <NumField label="Number of bolts" value={c.numBolts} onChange={bc('numBolts')} step="1" />
+          <SelectField label="Load type" value={c.loadType} onChange={bc('loadType')} options={['single', 'double']} />
         </div>
         <button
           onClick={runConnection}
@@ -284,11 +301,14 @@ function StructuralSection() {
           {connectionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
           Check Connection
         </button>
-        {connectionError && <p className="text-xs text-red-400">{connectionError}</p>}
-        {connectionResult && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <ResultCard title="Connection — allowable shear capacity" result={connectionResult} />
-          </div>
+        {connectionError && <p role="alert" className="text-xs text-red-400">{connectionError}</p>}
+        {st.connResult && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <ResultCard title="Connection — allowable shear capacity" result={st.connResult} />
+            </div>
+            <Computed at={st.connAt} testId="calc-connection-at" />
+          </>
         )}
       </div>
     </div>
@@ -298,66 +318,61 @@ function StructuralSection() {
 // ════════════════════════════════════════════════════════════════════════
 // Thermal — engineering.thermalAnalysis → { heatLoad, ductSize, cooling }
 // ════════════════════════════════════════════════════════════════════════
+type ThermRes = { heatLoad: CalcResult; ductSize: CalcResult; cooling: CalcResult };
+const THERM_DEFAULTS = {
+  inp: {
+    deltaTemp: 30 as Num, rValue: 13 as Num, areaSqft: 400 as Num, solarGain: 0 as Num, cfm: 400 as Num, velocity: 1200 as Num,
+    roomSqft: 200 as Num, occupants: 2 as Num, equipment: 300 as Num, windows: 2 as Num,
+  },
+  result: null as ThermRes | null,
+  resultAt: null as string | null,
+};
+
 function ThermalSection() {
-  const [deltaTemp, setDeltaTemp] = useState<Num>(30);
-  const [rValue, setRValue] = useState<Num>(13);
-
-  const [areaSqft, setAreaSqft] = useState<Num>(400);
-  const [solarGain, setSolarGain] = useState<Num>(0);
-
-  const [cfm, setCfm] = useState<Num>(400);
-  const [velocity, setVelocity] = useState<Num>(1200);
-
-  const [roomSqft, setRoomSqft] = useState<Num>(200);
-  const [occupants, setOccupants] = useState<Num>(2);
-  const [equipment, setEquipment] = useState<Num>(300);
-  const [windows, setWindows] = useState<Num>(2);
-
-  const [result, setResult] = useState<{ heatLoad: CalcResult; ductSize: CalcResult; cooling: CalcResult } | null>(null);
+  const [st, setSt, save] = useEngWorkspace('calcs.thermal', THERM_DEFAULTS);
+  const i = st.inp; const b = binder(setSt);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const run = async () => {
     setLoading(true); setError('');
-    const r = await lensRun<{ ok: boolean; results: { heatLoad: CalcResult; ductSize: CalcResult; cooling: CalcResult } }>(
+    const r = await lensRun<{ ok: boolean; results: ThermRes }>(
       'engineering', 'thermalAnalysis',
       {
-        areaSqft: n(areaSqft, 1), rValue: n(rValue, 1), deltaTemp: n(deltaTemp, 0), solarGain: n(solarGain, 0),
-        cfm: n(cfm, 1), velocity: n(velocity, 1200),
-        roomSqft: n(roomSqft, 1), occupants: n(occupants, 0), equipment: n(equipment, 0), windows: n(windows, 0),
+        areaSqft: n(i.areaSqft, 1), rValue: n(i.rValue, 1), deltaTemp: n(i.deltaTemp, 0), solarGain: n(i.solarGain, 0),
+        cfm: n(i.cfm, 1), velocity: n(i.velocity, 1200),
+        roomSqft: n(i.roomSqft, 1), occupants: n(i.occupants, 0), equipment: n(i.equipment, 0), windows: n(i.windows, 0),
       },
     );
-    if (r.data.ok && r.data.result) setResult(r.data.result.results);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString() }));
     else setError(r.data.error || 'Thermal analysis failed');
     setLoading(false);
   };
 
   return (
-    <div className="panel p-4 space-y-3">
-      <h3 className="font-semibold text-sm flex items-center gap-2">
-        <Thermometer className="w-4 h-4 text-orange-400" /> Thermal / HVAC — heat load · duct sizing · cooling load
-      </h3>
+    <div className="panel p-4 space-y-3" data-testid="calc-thermal">
+      <SectionHead icon={<Thermometer className="w-4 h-4 text-orange-400" />} title="Thermal / HVAC — heat load · duct sizing · cooling load (rule-of-thumb)" save={save} testId="calc-thermal-save" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <NumField label="Design ΔT (°F, shared)" value={deltaTemp} onChange={setDeltaTemp} />
-        <NumField label="Envelope R-value (shared)" value={rValue} onChange={setRValue} />
+        <NumField label="Design ΔT (°F, shared)" value={i.deltaTemp} onChange={b('deltaTemp')} />
+        <NumField label="Envelope R-value (shared)" value={i.rValue} onChange={b('rValue')} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 border-t border-white/5">
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">Sensible heat load</p>
-          <NumField label="Envelope area (ft²)" value={areaSqft} onChange={setAreaSqft} />
-          <NumField label="Solar gain (BTU/h)" value={solarGain} onChange={setSolarGain} />
+          <NumField label="Envelope area (ft²)" value={i.areaSqft} onChange={b('areaSqft')} />
+          <NumField label="Solar gain (BTU/h)" value={i.solarGain} onChange={b('solarGain')} />
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">Duct sizing</p>
-          <NumField label="Airflow (CFM)" value={cfm} onChange={setCfm} />
-          <NumField label="Target velocity (fpm)" value={velocity} onChange={setVelocity} />
+          <NumField label="Airflow (CFM)" value={i.cfm} onChange={b('cfm')} />
+          <NumField label="Target velocity (fpm)" value={i.velocity} onChange={b('velocity')} />
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">Residential cooling load</p>
-          <NumField label="Room area (ft²)" value={roomSqft} onChange={setRoomSqft} />
-          <NumField label="Occupants" value={occupants} onChange={setOccupants} />
-          <NumField label="Equipment (BTU/h)" value={equipment} onChange={setEquipment} />
-          <NumField label="Windows (count)" value={windows} onChange={setWindows} />
+          <NumField label="Room area (ft²)" value={i.roomSqft} onChange={b('roomSqft')} />
+          <NumField label="Occupants" value={i.occupants} onChange={b('occupants')} />
+          <NumField label="Equipment (BTU/h)" value={i.equipment} onChange={b('equipment')} />
+          <NumField label="Windows (count)" value={i.windows} onChange={b('windows')} />
         </div>
       </div>
       <button
@@ -368,13 +383,16 @@ function ThermalSection() {
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Thermometer className="w-4 h-4" />}
         Run Thermal Analysis
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <ResultCard title="Sensible heat load" result={result.heatLoad} />
-          <ResultCard title="Duct diameter" result={result.ductSize} />
-          <ResultCard title="Cooling load" result={result.cooling} />
-        </div>
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+      {st.result && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Sensible heat load" result={st.result.heatLoad} />
+            <ResultCard title="Duct diameter" result={st.result.ductSize} />
+            <ResultCard title="Cooling load" result={st.result.cooling} />
+          </div>
+          <Computed at={st.resultAt} testId="calc-thermal-at" />
+        </>
       )}
     </div>
   );
@@ -385,97 +403,84 @@ function ThermalSection() {
 // ════════════════════════════════════════════════════════════════════════
 const AWG_OPTIONS = ['14', '12', '10', '8', '6', '4', '3', '2', '1', '1/0', '2/0', '3/0', '4/0', '250', '300', '350', '400', '500'];
 const EMT_SIZES = ['1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2', '3'];
+type ElecRes = { voltageDrop: CalcResult; breakerSize: CalcResult; conduitFill: CalcResult };
+const ELEC_DEFAULTS = {
+  inp: {
+    current: 20 as Num, vdLength: 75 as Num, awg: '12', material: 'copper', voltage: 120 as Num, phase: '1',
+    loadAmps: 16 as Num, continuous: true, wireCount: 3 as Num, wireAWG: '12', conduitSize: '1/2',
+  },
+  xfmr: { loadKva: 100 as Num, voltage: 480 as Num, phase: '3', powerFactor: 0.9 as Num, growthFactor: 1.25 as Num },
+  result: null as ElecRes | null,
+  resultAt: null as string | null,
+  xfmrResult: null as CalcResult | null,
+  xfmrAt: null as string | null,
+};
 
 function ElectricalSection() {
-  const [current, setCurrent] = useState<Num>(20);
-  const [vdLength, setVdLength] = useState<Num>(75);
-  const [awg, setAwg] = useState('12');
-  const [material, setMaterial] = useState('copper');
-  const [voltage, setVoltage] = useState<Num>(120);
-  const [phase, setPhase] = useState('1');
-
-  const [loadAmps, setLoadAmps] = useState<Num>(16);
-  const [continuous, setContinuous] = useState(true);
-
-  const [wireCount, setWireCount] = useState<Num>(3);
-  const [wireAWG, setWireAWG] = useState('12');
-  const [conduitSize, setConduitSize] = useState('1/2');
-
-  const [result, setResult] = useState<{ voltageDrop: CalcResult; breakerSize: CalcResult; conduitFill: CalcResult } | null>(null);
+  const [st, setSt, save] = useEngWorkspace('calcs.electrical', ELEC_DEFAULTS);
+  const i = st.inp; const x = st.xfmr;
+  const b = binder(setSt); const bx = binder(setSt, 'xfmr');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [transformerLoading, setTransformerLoading] = useState(false);
+  const [transformerError, setTransformerError] = useState('');
 
   const run = async () => {
     setLoading(true); setError('');
-    const r = await lensRun<{ ok: boolean; results: { voltageDrop: CalcResult; breakerSize: CalcResult; conduitFill: CalcResult } }>(
+    const r = await lensRun<{ ok: boolean; results: ElecRes }>(
       'engineering', 'electricalCheck',
       {
-        current: n(current, 0), length: n(vdLength, 1), awg, material, voltage: n(voltage, 120), phase: parseInt(phase, 10),
-        loadAmps: n(loadAmps, 0), continuous,
-        wireCount: n(wireCount, 1), wireAWG, conduitSize,
+        current: n(i.current, 0), length: n(i.vdLength, 1), awg: i.awg, material: i.material, voltage: n(i.voltage, 120), phase: parseInt(i.phase, 10),
+        loadAmps: n(i.loadAmps, 0), continuous: i.continuous,
+        wireCount: n(i.wireCount, 1), wireAWG: i.wireAWG, conduitSize: i.conduitSize,
       },
     );
-    if (r.data.ok && r.data.result) setResult(r.data.result.results);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString() }));
     else setError(r.data.error || 'Electrical check failed');
     setLoading(false);
   };
 
   // ── Transformer sizing (ANSI kVA ladder) — engineering.transformerSizing ──
-  // Real ANSI math (required = loadKva·growthFactor → next standard kVA size
-  // → primaryAmps) previously unreachable at the macro layer (server/lib/
-  // compute/engineering-compute.js#transformerSizing existed but no macro
-  // called it); wired as its own macro alongside electricalCheck.
-  const [loadKva, setLoadKva] = useState<Num>(100);
-  const [xfmrVoltage, setXfmrVoltage] = useState<Num>(480);
-  const [xfmrPhase, setXfmrPhase] = useState('3');
-  const [powerFactor, setPowerFactor] = useState<Num>(0.9);
-  const [growthFactor, setGrowthFactor] = useState<Num>(1.25);
-  const [transformerResult, setTransformerResult] = useState<CalcResult | null>(null);
-  const [transformerLoading, setTransformerLoading] = useState(false);
-  const [transformerError, setTransformerError] = useState('');
-
   const runTransformer = async () => {
     setTransformerLoading(true); setTransformerError('');
     const r = await lensRun<CalcResult>(
       'engineering', 'transformerSizing',
       {
-        loadKva: n(loadKva, 1), voltage: n(xfmrVoltage, 480), phase: parseInt(xfmrPhase, 10),
-        powerFactor: n(powerFactor, 0.9), growthFactor: n(growthFactor, 1.25),
+        loadKva: n(x.loadKva, 1), voltage: n(x.voltage, 480), phase: parseInt(x.phase, 10),
+        powerFactor: n(x.powerFactor, 0.9), growthFactor: n(x.growthFactor, 1.25),
       },
     );
-    if (r.data.ok && r.data.result) setTransformerResult(r.data.result);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, xfmrResult: r.data.result!, xfmrAt: new Date().toISOString() }));
     else setTransformerError(r.data.error || 'Transformer sizing failed');
     setTransformerLoading(false);
   };
 
   return (
-    <div className="panel p-4 space-y-3">
-      <h3 className="font-semibold text-sm flex items-center gap-2">
-        <Zap className="w-4 h-4 text-yellow-400" /> Electrical (NEC-aware) — voltage drop · breaker sizing · conduit fill
-      </h3>
+    <div className="panel p-4 space-y-3" data-testid="calc-electrical">
+      <SectionHead icon={<Zap className="w-4 h-4 text-yellow-400" />} title="Electrical (NEC-aware) — voltage drop · breaker sizing · conduit fill" save={save} testId="calc-electrical-save" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold">Voltage drop</p>
-          <NumField label="Current (A)" value={current} onChange={setCurrent} />
-          <NumField label="One-way run length (ft)" value={vdLength} onChange={setVdLength} />
-          <SelectField label="Conductor AWG" value={awg} onChange={setAwg} options={AWG_OPTIONS} />
-          <SelectField label="Material" value={material} onChange={setMaterial} options={['copper', 'aluminum']} />
-          <NumField label="System voltage (V)" value={voltage} onChange={setVoltage} />
-          <SelectField label="Phase" value={phase} onChange={setPhase} options={['1', '3']} />
+          <NumField label="Current (A)" value={i.current} onChange={b('current')} />
+          <NumField label="One-way run length (ft)" value={i.vdLength} onChange={b('vdLength')} />
+          <SelectField label="Conductor AWG" value={i.awg} onChange={b('awg')} options={AWG_OPTIONS} />
+          <SelectField label="Material" value={i.material} onChange={b('material')} options={['copper', 'aluminum']} />
+          <NumField label="System voltage (V)" value={i.voltage} onChange={b('voltage')} />
+          <SelectField label="Phase" value={i.phase} onChange={b('phase')} options={['1', '3']} />
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold">Breaker sizing</p>
-          <NumField label="Load (A)" value={loadAmps} onChange={setLoadAmps} />
+          <NumField label="Load (A)" value={i.loadAmps} onChange={b('loadAmps')} />
           <label className="flex items-center gap-2 text-[11px] text-gray-300 pt-1">
-            <input type="checkbox" checked={continuous} onChange={(e) => setContinuous(e.target.checked)} className="accent-yellow-400" />
+            <input type="checkbox" checked={i.continuous} onChange={(e) => b('continuous')(e.target.checked)} className="accent-yellow-400" />
             Continuous load (×1.25, NEC 210.20)
           </label>
         </div>
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold">Conduit fill (NEC ch. 9)</p>
-          <NumField label="Conductor count" value={wireCount} onChange={setWireCount} />
-          <SelectField label="Conductor AWG" value={wireAWG} onChange={setWireAWG} options={AWG_OPTIONS} />
-          <SelectField label="EMT trade size" value={conduitSize} onChange={setConduitSize} options={EMT_SIZES} />
+          <NumField label="Conductor count" value={i.wireCount} onChange={b('wireCount')} />
+          <SelectField label="Conductor AWG" value={i.wireAWG} onChange={b('wireAWG')} options={AWG_OPTIONS} />
+          <SelectField label="EMT trade size" value={i.conduitSize} onChange={b('conduitSize')} options={EMT_SIZES} />
         </div>
       </div>
       <button
@@ -486,13 +491,16 @@ function ElectricalSection() {
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
         Run Electrical Check
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <ResultCard title="Voltage drop" result={result.voltageDrop} />
-          <ResultCard title="Breaker size" result={result.breakerSize} />
-          <ResultCard title="Conduit fill" result={result.conduitFill} />
-        </div>
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+      {st.result && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Voltage drop" result={st.result.voltageDrop} />
+            <ResultCard title="Breaker size" result={st.result.breakerSize} />
+            <ResultCard title="Conduit fill" result={st.result.conduitFill} />
+          </div>
+          <Computed at={st.resultAt} testId="calc-electrical-at" />
+        </>
       )}
 
       <div className="pt-2 border-t border-white/5 space-y-3">
@@ -500,11 +508,11 @@ function ElectricalSection() {
           <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold md:col-span-3">
             Transformer sizing (ANSI kVA ladder)
           </p>
-          <NumField label="Load (kVA)" value={loadKva} onChange={setLoadKva} />
-          <NumField label="Secondary voltage (V)" value={xfmrVoltage} onChange={setXfmrVoltage} />
-          <SelectField label="Phase" value={xfmrPhase} onChange={setXfmrPhase} options={['1', '3']} />
-          <NumField label="Power factor (0–1)" value={powerFactor} onChange={setPowerFactor} step="0.01" />
-          <NumField label="Growth factor" value={growthFactor} onChange={setGrowthFactor} step="0.05" />
+          <NumField label="Load (kVA)" value={x.loadKva} onChange={bx('loadKva')} />
+          <NumField label="Secondary voltage (V)" value={x.voltage} onChange={bx('voltage')} />
+          <SelectField label="Phase" value={x.phase} onChange={bx('phase')} options={['1', '3']} />
+          <NumField label="Power factor (0–1)" value={x.powerFactor} onChange={bx('powerFactor')} step="0.01" />
+          <NumField label="Growth factor" value={x.growthFactor} onChange={bx('growthFactor')} step="0.05" />
         </div>
         <button
           onClick={runTransformer}
@@ -514,11 +522,14 @@ function ElectricalSection() {
           {transformerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
           Size Transformer
         </button>
-        {transformerError && <p className="text-xs text-red-400">{transformerError}</p>}
-        {transformerResult && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <ResultCard title="Transformer — selected kVA" result={transformerResult} />
-          </div>
+        {transformerError && <p role="alert" className="text-xs text-red-400">{transformerError}</p>}
+        {st.xfmrResult && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <ResultCard title="Transformer — selected kVA" result={st.xfmrResult} />
+            </div>
+            <Computed at={st.xfmrAt} testId="calc-transformer-at" />
+          </>
         )}
       </div>
     </div>
@@ -528,54 +539,51 @@ function ElectricalSection() {
 // ════════════════════════════════════════════════════════════════════════
 // Hydraulic — engineering.hydraulicAnalysis → { pipeSize, pumpHead, pressureLoss }
 // ════════════════════════════════════════════════════════════════════════
+type HydRes = { pipeSize: CalcResult; pumpHead: CalcResult; pressureLoss: CalcResult };
+const HYD_DEFAULTS = {
+  inp: {
+    flowGpm: 50 as Num, velocity: 5 as Num, totalDynamicHead: 80 as Num, efficiency: 0.7 as Num, specificGravity: 1.0 as Num,
+    pipeDiameter: 2 as Num, plLength: 100 as Num, roughness: 0.00015 as Num,
+  },
+  result: null as HydRes | null,
+  resultAt: null as string | null,
+};
+
 function HydraulicSection() {
-  const [flowGpm, setFlowGpm] = useState<Num>(50);
-
-  const [velocity, setVelocity] = useState<Num>(5);
-
-  const [totalDynamicHead, setTotalDynamicHead] = useState<Num>(80);
-  const [efficiency, setEfficiency] = useState<Num>(0.7);
-  const [specificGravity, setSpecificGravity] = useState<Num>(1.0);
-
-  const [pipeDiameter, setPipeDiameter] = useState<Num>(2);
-  const [plLength, setPlLength] = useState<Num>(100);
-  const [roughness, setRoughness] = useState<Num>(0.00015);
-
-  const [result, setResult] = useState<{ pipeSize: CalcResult; pumpHead: CalcResult; pressureLoss: CalcResult } | null>(null);
+  const [st, setSt, save] = useEngWorkspace('calcs.hydraulic', HYD_DEFAULTS);
+  const i = st.inp; const b = binder(setSt);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const run = async () => {
     setLoading(true); setError('');
-    const r = await lensRun<{ ok: boolean; results: { pipeSize: CalcResult; pumpHead: CalcResult; pressureLoss: CalcResult } }>(
+    const r = await lensRun<{ ok: boolean; results: HydRes }>(
       'engineering', 'hydraulicAnalysis',
       {
-        flowGpm: n(flowGpm, 1), velocity: n(velocity, 5),
-        totalDynamicHead: n(totalDynamicHead, 1), efficiency: n(efficiency, 0.7), specificGravity: n(specificGravity, 1),
-        pipeDiameter: n(pipeDiameter, 1), length: n(plLength, 1), roughness: n(roughness, 0.00015),
+        flowGpm: n(i.flowGpm, 1), velocity: n(i.velocity, 5),
+        totalDynamicHead: n(i.totalDynamicHead, 1), efficiency: n(i.efficiency, 0.7), specificGravity: n(i.specificGravity, 1),
+        pipeDiameter: n(i.pipeDiameter, 1), length: n(i.plLength, 1), roughness: n(i.roughness, 0.00015),
       },
     );
-    if (r.data.ok && r.data.result) setResult(r.data.result.results);
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString() }));
     else setError(r.data.error || 'Hydraulic analysis failed');
     setLoading(false);
   };
 
   return (
-    <div className="panel p-4 space-y-3">
-      <h3 className="font-semibold text-sm flex items-center gap-2">
-        <Droplets className="w-4 h-4 text-cyan-400" /> Hydraulic / Plumbing — pipe sizing · pump BHP · Darcy–Weisbach loss
-      </h3>
+    <div className="panel p-4 space-y-3" data-testid="calc-hydraulic">
+      <SectionHead icon={<Droplets className="w-4 h-4 text-cyan-400" />} title="Hydraulic / Plumbing — pipe sizing · pump BHP · Darcy–Weisbach loss" save={save} testId="calc-hydraulic-save" />
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <NumField label="Flow rate (GPM, shared)" value={flowGpm} onChange={setFlowGpm} />
-        <NumField label="Target velocity (ft/s)" value={velocity} onChange={setVelocity} />
-        <NumField label="Total dynamic head (ft)" value={totalDynamicHead} onChange={setTotalDynamicHead} />
-        <NumField label="Pump efficiency (0–1)" value={efficiency} onChange={setEfficiency} step="0.01" />
+        <NumField label="Flow rate (GPM, shared)" value={i.flowGpm} onChange={b('flowGpm')} />
+        <NumField label="Target velocity (ft/s)" value={i.velocity} onChange={b('velocity')} />
+        <NumField label="Total dynamic head (ft)" value={i.totalDynamicHead} onChange={b('totalDynamicHead')} />
+        <NumField label="Pump efficiency (0–1)" value={i.efficiency} onChange={b('efficiency')} step="0.01" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1 border-t border-white/5">
-        <NumField label="Fluid specific gravity" value={specificGravity} onChange={setSpecificGravity} step="0.01" />
-        <NumField label="Pipe diameter (in)" value={pipeDiameter} onChange={setPipeDiameter} />
-        <NumField label="Pipe run length (ft)" value={plLength} onChange={setPlLength} />
-        <NumField label="Roughness ε (ft)" value={roughness} onChange={setRoughness} step="0.00001" />
+        <NumField label="Fluid specific gravity" value={i.specificGravity} onChange={b('specificGravity')} step="0.01" />
+        <NumField label="Pipe diameter (in)" value={i.pipeDiameter} onChange={b('pipeDiameter')} />
+        <NumField label="Pipe run length (ft)" value={i.plLength} onChange={b('plLength')} />
+        <NumField label="Roughness ε (ft)" value={i.roughness} onChange={b('roughness')} step="0.00001" />
       </div>
       <button
         onClick={run}
@@ -585,13 +593,16 @@ function HydraulicSection() {
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Droplets className="w-4 h-4" />}
         Run Hydraulic Analysis
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <ResultCard title="Pipe internal diameter" result={result.pipeSize} />
-          <ResultCard title="Pump brake horsepower" result={result.pumpHead} />
-          <ResultCard title="Pressure loss (friction)" result={result.pressureLoss} />
-        </div>
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+      {st.result && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Pipe internal diameter" result={st.result.pipeSize} />
+            <ResultCard title="Pump brake horsepower" result={st.result.pumpHead} />
+            <ResultCard title="Pressure loss (friction)" result={st.result.pressureLoss} />
+          </div>
+          <Computed at={st.resultAt} testId="calc-hydraulic-at" />
+        </>
       )}
     </div>
   );
@@ -601,6 +612,10 @@ function HydraulicSection() {
 export function MultiDisciplineCalcPanel() {
   return (
     <div className="space-y-4">
+      <p data-testid="calcs-note" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-zinc-400">
+        Fields start with typical example values — replace them with yours. Every result is computed by the server from the
+        formula shown on its card, and your inputs and latest results are saved to your account.
+      </p>
       <StructuralSection />
       <ThermalSection />
       <ElectricalSection />
