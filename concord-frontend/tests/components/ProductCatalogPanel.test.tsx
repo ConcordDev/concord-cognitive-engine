@@ -14,6 +14,7 @@ vi.mock('@/lib/api/client', () => ({
 }));
 
 import { ProductCatalogPanel } from '@/components/retail/ProductCatalogPanel';
+import { RETAIL_CATALOG_CHANGED } from '@/components/retail/retailCatalogEvents';
 
 const PRODUCT = {
   sku: 'WIDGET', name: 'Widget', price: 10, stock: 50, category: 'tools', barcode: '',
@@ -236,5 +237,45 @@ describe('ProductCatalogPanel', () => {
       expect(lensRun).toHaveBeenCalledWith({ domain: 'retail', action: 'product-delete', input: { sku: 'WIDGET' } }),
     );
     await waitFor(() => expect(screen.getByText(/No products yet/)).toBeInTheDocument());
+  });
+
+  it('a successful save announces the catalog change so the Storefront re-reads product-list', async () => {
+    lensRun
+      .mockResolvedValueOnce(listResponse([]))
+      .mockResolvedValueOnce({ data: { ok: true, result: { product: { ...PRODUCT, sku: 'NEW2', name: 'Two' } } } })
+      .mockResolvedValueOnce(listResponse([{ ...PRODUCT, sku: 'NEW2', name: 'Two' }]));
+    const heard = vi.fn();
+    window.addEventListener(RETAIL_CATALOG_CHANGED, heard);
+    try {
+      render(<ProductCatalogPanel />);
+      await waitFor(() => expect(lensRun).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByText('Add product'));
+      fireEvent.change(screen.getByPlaceholderText('SKU'), { target: { value: 'NEW2' } });
+      fireEvent.change(screen.getByPlaceholderText('Product name'), { target: { value: 'Two' } });
+      fireEvent.click(screen.getByText('Save'));
+      await waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+    } finally {
+      window.removeEventListener(RETAIL_CATALOG_CHANGED, heard);
+    }
+  });
+
+  it('a failed save does not announce a catalog change', async () => {
+    lensRun
+      .mockResolvedValueOnce(listResponse([]))
+      .mockResolvedValueOnce({ data: { ok: false, error: 'nope' } });
+    const heard = vi.fn();
+    window.addEventListener(RETAIL_CATALOG_CHANGED, heard);
+    try {
+      render(<ProductCatalogPanel />);
+      await waitFor(() => expect(lensRun).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByText('Add product'));
+      fireEvent.change(screen.getByPlaceholderText('SKU'), { target: { value: 'X' } });
+      fireEvent.change(screen.getByPlaceholderText('Product name'), { target: { value: 'X' } });
+      fireEvent.click(screen.getByText('Save'));
+      expect(await screen.findByRole('alert')).toHaveTextContent('nope');
+      expect(heard).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener(RETAIL_CATALOG_CHANGED, heard);
+    }
   });
 });

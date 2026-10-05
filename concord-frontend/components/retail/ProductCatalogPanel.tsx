@@ -34,6 +34,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
 import { RetailKeepMenu } from './RetailKeepMenu';
+import { announceRetailCatalogChanged } from './retailCatalogEvents';
 import type { RetailProductDetail } from './retailProductReport';
 
 export interface PriceHistoryEntry { oldPrice: number | null; newPrice: number; changedAt: string }
@@ -140,6 +141,7 @@ export function ProductCatalogPanel() {
       setEditingSku(null);
       setDraft(emptyDraft);
       await refresh();
+      announceRetailCatalogChanged();
     } catch (e) { setSaveError((e as Error).message); }
     finally { setSaving(false); }
   };
@@ -149,6 +151,7 @@ export function ProductCatalogPanel() {
       await lensRun({ domain: 'retail', action: 'product-delete', input: { sku } });
       if (expandedSku === sku) setExpandedSku(null);
       await refresh();
+      announceRetailCatalogChanged();
     } catch (e) { console.error(e); }
   };
 

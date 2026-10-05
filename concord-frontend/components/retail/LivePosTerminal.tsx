@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Loader2, CreditCard, AlertTriangle, Receipt, Tag } 
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { SkeletonTableRows } from '@/components/ui';
+import { onRetailCatalogChanged } from './retailCatalogEvents';
 
 interface Product { sku: string; name: string; price: number; stock: number }
 interface CartLine { sku: string; name: string; unitPrice: number; qty: number }
@@ -52,6 +53,8 @@ export function LivePosTerminal() {
 
   useEffect(() => {
     refresh.mutate();
+    // Re-read the real product list when the workbench catalog writes.
+    return onRetailCatalogChanged(() => refresh.mutate());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
