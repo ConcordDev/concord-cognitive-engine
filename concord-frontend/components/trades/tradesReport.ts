@@ -104,7 +104,10 @@ export function tradesDtuCall(facts: TradesReportFacts): ReceiptCall | null {
     domain: 'dtu',
     action: 'create',
     input: {
-      title: sentence.slice(0, 80),
+      // The job id keeps two work orders with the same number/customer (every
+      // user's first job is JOB-00001) from colliding on the global
+      // exact-title dedup (duplicate_blocked).
+      title: `${sentence.slice(0, 80)} · ${facts.job!.id}`,
       tags,
       source: 'trades-lens:job-report',
       human: { summary: body },

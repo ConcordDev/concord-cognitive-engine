@@ -675,16 +675,27 @@ export default function ProjectDeskPanel() {
     const completedValue = allData.filter(d => d.status === 'completed' || d.status === 'paid').reduce((s, d) => s + (d.value || 0), 0);
     const paidValue = allData.filter(d => d.status === 'paid').reduce((s, d) => s + (d.value || 0), 0);
 
-    // Aging receivables simulation
-    const invoicedItems = allData.filter(d => d.status === 'invoiced');
-    const aging30 = invoicedItems.slice(0, Math.ceil(invoicedItems.length * 0.5)).reduce((s, d) => s + (d.value || 0), 0);
-    const aging60 = invoicedItems.slice(Math.ceil(invoicedItems.length * 0.5), Math.ceil(invoicedItems.length * 0.8)).reduce((s, d) => s + (d.value || 0), 0);
-    const aging90 = invoicedItems.slice(Math.ceil(invoicedItems.length * 0.8)).reduce((s, d) => s + (d.value || 0), 0);
+    // Aging receivables: bucket each invoiced record by days since it was
+    // last updated (normally when it was marked invoiced). This used to split
+    // the invoiced list 50/30/20 by position, a made-up spread.
+    const now = Date.now();
+    let aging30 = 0, aging60 = 0, aging90 = 0;
+    for (const it of items) {
+      const d = it.data as unknown as TradesArtifact;
+      if (d.status !== 'invoiced') continue;
+      const t = Date.parse(it.updatedAt || it.createdAt || '');
+      const days = Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / 86400000)) : 0;
+      if (days <= 30) aging30 += d.value || 0;
+      else if (days <= 60) aging60 += d.value || 0;
+      else aging90 += d.value || 0;
+    }
 
-    // Crew utilization
-    const totalCrewSlots = Math.max(activeJobs * 3, 1);
-    const assignedCrew = allData.filter(d => d.foremanAssigned).length;
-    const crewUtilization = Math.min(100, Math.round((assignedCrew / totalCrewSlots) * 100));
+    // Foreman coverage: active jobs with a foreman assigned. (Was "crew
+    // utilization" against an invented capacity of 3 crew per active job.)
+    const activeList = allData.filter(d => d.status === 'in_progress');
+    const assignedCrew = activeList.filter(d => d.foremanAssigned).length;
+    const totalCrewSlots = activeList.length;
+    const crewUtilization = totalCrewSlots > 0 ? Math.round((assignedCrew / totalCrewSlots) * 100) : 0;
 
     return {
       totalValue, byStatus, activeJobs, pendingInspections, unpaidInvoices,
@@ -1919,11 +1930,11 @@ export default function ProjectDeskPanel() {
         {/* Crew Utilization */}
         <div className={ds.panel}>
           <h3 className={cn(ds.heading3, 'mb-4 flex items-center gap-2')}>
-            <Users className="w-5 h-5 text-blue-400" /> Crew Utilization
+            <Users className="w-5 h-5 text-blue-400" /> Foreman Coverage
           </h3>
           <div className="flex items-center justify-center py-4">
             <div className="relative w-32 h-32">
-              {/* Circular progress simulation */}
+              {/* Share of active jobs with a foreman assigned */}
               <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                 <path
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -1947,7 +1958,7 @@ export default function ProjectDeskPanel() {
             </div>
           </div>
           <div className="text-center">
-            <p className={ds.textMuted}>{dashboardMetrics.assignedCrew} assigned / {dashboardMetrics.totalCrewSlots} capacity</p>
+            <p className={ds.textMuted}>{dashboardMetrics.totalCrewSlots > 0 ? `${dashboardMetrics.assignedCrew} of ${dashboardMetrics.totalCrewSlots} active jobs have a foreman` : 'No active jobs'}</p>
           </div>
         </div>
       </div>
@@ -1957,6 +1968,7 @@ export default function ProjectDeskPanel() {
         <h3 className={cn(ds.heading3, 'mb-4 flex items-center gap-2')}>
           <TrendingDown className="w-5 h-5 text-orange-400" /> Aging Receivables
         </h3>
+        <p className={cn(ds.textMuted, 'mb-3 text-xs')}>Invoiced records, by days since each was last updated.</p>
         <div className={ds.grid3}>
           <div className="p-4 rounded-lg bg-lattice-elevated/30 text-center">
             <p className="text-sm text-gray-400 mb-1">0-30 Days</p>

@@ -130,8 +130,11 @@ describe("trades — calc contracts (exact computed values)", () => {
     });
     assert.equal(r.result.ordered[0].id, "near");   // dist 1 < dist 5
     assert.equal(r.result.ordered[1].id, "far");    // then dist 4 from near
-    assert.equal(r.result.totalDistanceUnits, 5);   // 1 + 4
-    assert.equal(r.result.estimatedDriveMin, 15);   // 5 * 3
+    // Great-circle miles: 5° of longitude at the equator ≈ 345.5 mi.
+    assert.ok(Math.abs(r.result.totalMiles - 345.5) < 1, `totalMiles ${r.result.totalMiles}`);
+    // Drive time at the stated 30 mph average.
+    assert.equal(r.result.estimatedDriveMin, Math.round((r.result.totalMiles / 30) * 60));
+    assert.match(r.result.driveAssumption, /30 mph/);
   });
 
   it("route-optimize: empty stops list is rejected", async () => {
@@ -590,7 +593,7 @@ describe("trades — technicians, field ops, payments & inspection (wave 15 top-
     }, ctx);
     assert.equal(sent.result.notification.channel, "sms");
     assert.equal(sent.result.notification.kind, "on_the_way");
-    assert.equal(sent.result.notification.status, "queued");
+    assert.equal(sent.result.notification.status, "not_sent"); // no SMS/email provider: logged, not sent
     const id = sent.result.notification.id;
 
     const list = await lensRun("trades", "notifications-list", {}, ctx);

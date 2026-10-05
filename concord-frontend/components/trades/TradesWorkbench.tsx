@@ -119,11 +119,23 @@ export function TradesWorkbench({ open, onClose, inline = false }: Props) {
   );
 }
 
+// Runs a trades action and throws its error, so a refusal shows on screen
+// instead of being dropped (these tabs used to ignore ok:false and only
+// console.error exceptions).
+async function runOrThrow(spec: { domain: string; action: string; input: Record<string, unknown> }) {
+  const r = await lensRun(spec);
+  if ((r.data as { ok?: boolean } | undefined)?.ok === false) {
+    throw new Error((r.data as { error?: string }).error || `${spec.action} failed`);
+  }
+  return r;
+}
+
 function JobsTab() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
   const [draft, setDraft] = useState<{ customerId: string; description: string; priority: Job['priority']; estimatedHours: number }>({
     customerId: '', description: '', priority: 'normal', estimatedHours: 1,
   });
@@ -132,12 +144,12 @@ function JobsTab() {
     setLoading(true);
     try {
       const [j, c] = await Promise.all([
-        lensRun({ domain: 'trades', action: 'job-list', input: {} }),
-        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
+        runOrThrow({ domain: 'trades', action: 'job-list', input: {} }),
+        runOrThrow({ domain: 'trades', action: 'customer-list', input: {} }),
       ]);
       setJobs(((j.data as { result?: { jobs?: Job[] } }).result?.jobs) || []);
       setCustomers(((c.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }, []);
 
@@ -145,22 +157,25 @@ function JobsTab() {
 
   const save = async () => {
     try {
-      await lensRun({ domain: 'trades', action: 'job-create', input: draft });
+      setError('');
+      await runOrThrow({ domain: 'trades', action: 'job-create', input: draft });
       setCreating(false);
       setDraft({ customerId: '', description: '', priority: 'normal', estimatedHours: 1 });
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   const updateStatus = async (id: string, status: Job['status']) => {
     try {
-      await lensRun({ domain: 'trades', action: 'job-update-status', input: { id, status } });
+      setError('');
+      await runOrThrow({ domain: 'trades', action: 'job-update-status', input: { id, status } });
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   return (
     <div className="p-3 space-y-2">
+      {error && <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">{error}</p>}
       <button type="button" onClick={() => setCreating((v) => !v)}
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-xs text-amber-200">
         <Plus className="w-3 h-3" /> New job
@@ -226,28 +241,31 @@ function JobsTab() {
 function CustomersTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
   const [draft, setDraft] = useState({ name: '', phone: '', email: '', address: '', notes: '' });
 
   const refresh = useCallback(async () => {
     try {
-      const r = await lensRun({ domain: 'trades', action: 'customer-list', input: {} });
+      const r = await runOrThrow({ domain: 'trades', action: 'customer-list', input: {} });
       setCustomers(((r.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const save = async () => {
     try {
-      await lensRun({ domain: 'trades', action: 'customer-upsert', input: draft });
+      setError('');
+      await runOrThrow({ domain: 'trades', action: 'customer-upsert', input: draft });
       setCreating(false);
       setDraft({ name: '', phone: '', email: '', address: '', notes: '' });
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   return (
     <div className="p-3 space-y-2">
+      {error && <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">{error}</p>}
       <button type="button" onClick={() => setCreating((v) => !v)}
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-xs text-amber-200">
         <Plus className="w-3 h-3" /> New customer
@@ -280,6 +298,7 @@ function ContractsTab() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
   const [draft, setDraft] = useState<{ customerId: string; cadence: Contract['cadence']; monthlyRate: number; description: string }>({
     customerId: '', cadence: 'annual', monthlyRate: 50, description: '',
   });
@@ -287,33 +306,36 @@ function ContractsTab() {
   const refresh = useCallback(async () => {
     try {
       const [c, cust] = await Promise.all([
-        lensRun({ domain: 'trades', action: 'contract-list', input: {} }),
-        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
+        runOrThrow({ domain: 'trades', action: 'contract-list', input: {} }),
+        runOrThrow({ domain: 'trades', action: 'customer-list', input: {} }),
       ]);
       setContracts(((c.data as { result?: { contracts?: Contract[] } }).result?.contracts) || []);
       setCustomers(((cust.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const save = async () => {
     try {
-      await lensRun({ domain: 'trades', action: 'contract-create', input: draft });
+      setError('');
+      await runOrThrow({ domain: 'trades', action: 'contract-create', input: draft });
       setCreating(false);
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   const cancel = async (id: string) => {
     try {
-      await lensRun({ domain: 'trades', action: 'contract-cancel', input: { id } });
+      setError('');
+      await runOrThrow({ domain: 'trades', action: 'contract-cancel', input: { id } });
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   return (
     <div className="p-3 space-y-2">
+      {error && <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">{error}</p>}
       <button type="button" onClick={() => setCreating((v) => !v)}
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-xs text-amber-200">
         <Plus className="w-3 h-3" /> New contract

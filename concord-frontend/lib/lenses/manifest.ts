@@ -1489,19 +1489,23 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Job', 'Estimate', 'MaterialsList', 'Permit', 'Equipment', 'Client', 'Inspection'],
     macros: { list: 'lens.trades.list', get: 'lens.trades.get', create: 'lens.trades.create', update: 'lens.trades.update', delete: 'lens.trades.delete', run: 'lens.trades.run', export: 'lens.trades.export' },
     exports: ['json', 'csv', 'pdf', 'xlsx'],
-    actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'codeComplianceCheck', 'changeOrderGenerate', 'progressPhotoLog', 'safetyChecklist'],
+    // Only actions the server registers (codeComplianceCheck,
+    // changeOrderGenerate, progressPhotoLog and safetyChecklist never existed).
+    actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'checkPermits', 'calculatePL', 'generateInvoice', 'generatePO'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    // Customers, jobs, quotes, invoices, timesheets and the project desk are
+    // the user's own records, persisted server-side, not simulated data.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Trades & construction.",
-      caption: "Jobs, estimates, materials, permits, inspections \u2014 calculate, schedule, comply.",
+      caption: "Customers, jobs, dispatch, quotes, invoices, timesheets and the project desk, saved to your account. Not connected yet: online card checkout, SMS/email sending and live GPS (payments and reminders are recorded, not sent).",
       firstActionLabel: "Create a job",
     },
     firstRunGuide: {
       steps: [
-        { caption: "calculateEstimate uses material cost + labor + permit fee tables." },
-        { caption: "scheduleInspection ties to the calendar + permit substrate." },
-        { caption: "safetyChecklist + changeOrderGenerate keep the paper trail clean." },
+        { caption: "Add a customer and dispatch a job from the Workbench." },
+        { caption: "Quote, invoice and record payments under Billing & CRM." },
+        { caption: "Keep a job as a DTU and draft it in Thread from its card." },
       ],
     },
   },
