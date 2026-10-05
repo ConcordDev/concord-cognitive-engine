@@ -18,7 +18,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import type { AvView } from '@/components/aviation/aviation-nav';
@@ -100,7 +99,6 @@ export default function AviationLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            <DTUExportButton domain="aviation" data={{}} compact />
           </>
         )}
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
