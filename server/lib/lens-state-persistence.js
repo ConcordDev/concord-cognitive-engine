@@ -91,6 +91,12 @@ export const LENS_STATE_KEYS = Object.freeze([
   // key a hard restart wiped every content item while the pipeline still
   // showed it.
   "creatorLens",
+  // 44 -> 45: "astronomyLens" so a user's observing targets, observation
+  // log, observing sessions, equipment, wishlist, and astronomical events
+  // survive a restart. The Astronomy domain stores per-user Maps here;
+  // without this key a hard restart wiped every target and observation
+  // while the AstroTargetsPanel still showed them.
+  "astronomyLens",
 ]);
 
 function serializeValue(v) {

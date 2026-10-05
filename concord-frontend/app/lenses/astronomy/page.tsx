@@ -35,7 +35,6 @@ import { Orbit, Plus, Sparkles, CalendarClock, Radio, Bot } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -155,7 +154,6 @@ export default function AstronomyLensPage() {
           <>
             <DepthBadge lensId="astronomy" size="sm" />
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="astronomy" data={{}} compact />
           </>
         )}
         tabs={GROUPS.map((g) => ({ id: g.id, label: g.label, icon: g.icon, keys: g.hotkey }))}

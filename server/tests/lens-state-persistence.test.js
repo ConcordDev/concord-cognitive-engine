@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 44);
+    assert.equal(LENS_STATE_KEYS.length, 45);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -88,6 +88,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("boardLens"));
     assert.ok(LENS_STATE_KEYS.includes("analyticsLens"));
     assert.ok(LENS_STATE_KEYS.includes("creatorLens"));
+    assert.ok(LENS_STATE_KEYS.includes("astronomyLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -609,6 +610,37 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.creatorLens.publishQueue.get("user_a")[0].status, "scheduled");
     assert.ok(STATE.creatorLens.comments instanceof Map);
     assert.equal(STATE.creatorLens.comments.get("user_a")[0].body, "Great!");
+  });
+
+  it("roundtrips STATE.astronomyLens (targets, observations, sessions, equipment, wishlist, events)", () => {
+    // The Astronomy domain stores per-user data under 6 Maps. Without
+    // astronomyLens in LENS_STATE_KEYS a restart wiped every target and
+    // observation while the AstroTargetsPanel still showed them.
+    STATE.astronomyLens = {
+      targets: new Map([["user_a", [{ id: "tgt_1", name: "Andromeda", type: "galaxy", constellation: "Andromeda", magnitude: 3.4, createdAt: "2026-10-05T00:00:00Z" }]]]),
+      observations: new Map([["user_a", [{ id: "obs_1", targetId: "tgt_1", targetName: "Andromeda", date: "2026-10-05", conditions: "clear", notes: "bright", rating: 5, createdAt: "2026-10-05T00:00:00Z" }]]]),
+      sessions: new Map([["user_a", [{ id: "ses_1", date: "2026-10-05", location: "dark site", seeing: 3, transparency: 4 }]]]),
+      equipment: new Map([["user_a", [{ id: "eq_1", name: "Dobsonian 8\"", type: "telescope" }]]]),
+      wishlist: new Map([["user_a", [{ id: "wl_1", name: "Televue 31mm Nagler", priority: "high" }]]]),
+      events: new Map([["user_a", [{ id: "ev_1", name: "Perseids peak", date: "2026-08-12" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.astronomyLens.targets instanceof Map);
+    assert.equal(STATE.astronomyLens.targets.get("user_a")[0].name, "Andromeda");
+    assert.ok(STATE.astronomyLens.observations instanceof Map);
+    const o = STATE.astronomyLens.observations.get("user_a")[0];
+    assert.equal(o.targetId, "tgt_1");
+    assert.equal(o.rating, 5);
+    assert.ok(STATE.astronomyLens.sessions instanceof Map);
+    assert.equal(STATE.astronomyLens.sessions.get("user_a")[0].seeing, 3);
+    assert.ok(STATE.astronomyLens.equipment instanceof Map);
+    assert.equal(STATE.astronomyLens.equipment.get("user_a")[0].name, "Dobsonian 8\"");
+    assert.ok(STATE.astronomyLens.wishlist instanceof Map);
+    assert.equal(STATE.astronomyLens.wishlist.get("user_a")[0].priority, "high");
+    assert.ok(STATE.astronomyLens.events instanceof Map);
+    assert.equal(STATE.astronomyLens.events.get("user_a")[0].name, "Perseids peak");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
