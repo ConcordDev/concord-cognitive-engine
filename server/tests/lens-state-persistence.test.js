@@ -44,7 +44,10 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // analyses, and pre-registered hypotheses survive a restart.
     // 35 -> 36: "srsLens" so a user's decks, cards, review log, and media
     // survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 36);
+    // 36 -> 37: "travelLens" so a user's trips, itineraries, bookings,
+    // budgets, checklists, price watches, docs, and loyalty accounts
+    // survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 37);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -58,6 +61,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("graphLens"));
     assert.ok(LENS_STATE_KEYS.includes("hypothesisLens"));
     assert.ok(LENS_STATE_KEYS.includes("srsLens"));
+    assert.ok(LENS_STATE_KEYS.includes("travelLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -212,6 +216,39 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.srsLens.reviewLog instanceof Map);
     assert.equal(STATE.srsLens.reviewLog.get("user_a")[0].rating, "good");
     assert.ok(STATE.srsLens.media instanceof Map);
+  });
+
+  it("roundtrips STATE.travelLens (a trip with itinerary, bookings, and a budget)", () => {
+    // The Travel domain stores per-user data under 12 Maps. Without
+    // travelLens in LENS_STATE_KEYS a restart wiped every trip while the
+    // TripWorkspace still showed it.
+    STATE.travelLens = {
+      trips: new Map([["user_a", [{ id: "trip_1", name: "Tokyo Trip", destination: "Tokyo", startDate: "2026-11-01", endDate: "2026-11-07", travelers: 2 }]]]),
+      itinerary: new Map([["trip_1", [{ id: "it_1", tripId: "trip_1", title: "Visit Senso-ji", day: 1, time: "10:00", category: "sightseeing" }]]]),
+      places: new Map(),
+      placeReviews: new Map(),
+      bookings: new Map([["trip_1", [{ id: "bk_1", tripId: "trip_1", type: "flight", provider: "JAL", confirmationCode: "JL001", cost: 1200, date: "2026-11-01" }]]]),
+      priceWatches: new Map(),
+      budgets: new Map([["trip_1", { categories: { flight: 1200, hotel: 800, food: 400 }, updatedAt: "2026-10-04" }]]),
+      travelDocs: new Map(),
+      checklists: new Map([["trip_1", [{ id: "cl_1", tripId: "trip_1", item: "Passport", category: "documents", done: true }]]]),
+      travelDocAttachments: new Map(),
+      loyaltyAccounts: new Map(),
+      loyaltyPointsLog: new Map(),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.travelLens.trips instanceof Map);
+    assert.equal(STATE.travelLens.trips.get("user_a")[0].name, "Tokyo Trip");
+    assert.ok(STATE.travelLens.itinerary instanceof Map);
+    assert.equal(STATE.travelLens.itinerary.get("trip_1")[0].title, "Visit Senso-ji");
+    assert.ok(STATE.travelLens.bookings instanceof Map);
+    assert.equal(STATE.travelLens.bookings.get("trip_1")[0].provider, "JAL");
+    assert.ok(STATE.travelLens.budgets instanceof Map);
+    assert.equal(STATE.travelLens.budgets.get("trip_1").categories.flight, 1200);
+    assert.ok(STATE.travelLens.checklists instanceof Map);
+    assert.equal(STATE.travelLens.checklists.get("trip_1")[0].done, true);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

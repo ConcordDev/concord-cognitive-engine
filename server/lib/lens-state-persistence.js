@@ -42,6 +42,12 @@ export const LENS_STATE_KEYS = Object.freeze([
   // without this key a hard restart wiped every deck while the study UI
   // still showed it.
   "srsLens",
+  // 36 -> 37: "travelLens" so a user's trips, itineraries, bookings,
+  // budgets, checklists, price watches, docs, and loyalty accounts survive
+  // a restart. The Travel domain stores per-user data here; without this
+  // key a hard restart wiped every trip while the TripWorkspace still
+  // showed it.
+  "travelLens",
 ]);
 
 function serializeValue(v) {

@@ -31,6 +31,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { GmailSyncPanel } from './GmailSyncPanel';
+import { TravelTripMenu } from './TravelTripMenu';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -1234,6 +1235,25 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           )}
         </div>
       )}
+
+      <TravelTripMenu facts={{
+        detail: {
+          trip: {
+            id: trip.id,
+            name: meta.name,
+            destination: meta.destination,
+            startDate: meta.startDate || undefined,
+            endDate: meta.endDate || undefined,
+            travelers: detail?.travelers,
+            durationDays: detail?.durationDays ?? undefined,
+            notes: detail?.notes ?? undefined,
+          },
+          itineraryCount: detail?.itineraryCount,
+          bookings: bookings.map((b) => ({ id: b.id, type: b.type, provider: b.provider, confirmationCode: b.confirmationCode, cost: b.cost, date: b.date })),
+          bookedCost: detail?.bookedCost,
+          checklistOpen: detail?.checklistOpen,
+        },
+      }} />
 
       </motion.div>
       </AnimatePresence>
