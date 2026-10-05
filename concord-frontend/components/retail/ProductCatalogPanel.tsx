@@ -294,7 +294,15 @@ export function ProductCatalogPanel() {
                   </div>
                 </button>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button type="button" onClick={() => setKeepSku(keepSku === p.sku ? null : p.sku)} aria-label={`Keep ${p.name}`}
+                  <button type="button"
+                    onClick={() => {
+                      const next = keepSku === p.sku ? null : p.sku;
+                      setKeepSku(next);
+                      // The keep menu renders inside the expanded panel — open it
+                      // so clicking Keep on a collapsed row is never a dead click.
+                      if (next && expandedSku !== p.sku) void toggleExpand(p.sku);
+                    }}
+                    aria-label={`Keep ${p.name}`} aria-pressed={keepSku === p.sku} data-testid="retail-product-keep-toggle"
                     className={cn('p-1', keepSku === p.sku ? 'text-rose-300' : 'text-gray-600 hover:text-rose-300')}><ShieldCheck className="w-3 h-3" /></button>
                   <button type="button" onClick={() => startEdit(p)} aria-label={`Edit ${p.name}`}
                     className="p-1 text-gray-600 hover:text-rose-300"><Pencil className="w-3 h-3" /></button>

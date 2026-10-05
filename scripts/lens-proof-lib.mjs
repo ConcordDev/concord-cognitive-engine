@@ -12,6 +12,7 @@ import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 export const { chromium } = require('../server/node_modules/playwright-core/index.js');
@@ -21,10 +22,19 @@ export const PROOF_DIR = join(homedir(), '.zuko/lens-northstar/proof');
 const PROOF_USER = process.env.PROOF_USER || 'wbproof_muv96clt';
 const PROOF_PASS = process.env.PROOF_PASS || 'TestPass123!';
 
+/** Stop line: throw when the boot volume has under 5 GB free. */
+export function checkDisk(log, minGb = 5) {
+  const out = execFileSync('df', ['-k', '/'], { encoding: 'utf8' }).trim().split('\n').pop().split(/\s+/);
+  const freeGb = Number(out[3]) / 1024 / 1024;
+  log(`disk free ${freeGb.toFixed(2)} GB`);
+  if (freeGb < minGb) throw new Error(`DISK STOP LINE: ${freeGb.toFixed(2)} GB free (< ${minGb} GB)`);
+  return freeGb;
+}
+
 export function mkLog(tag) { return (...a) => console.log(`[${tag}-proof]`, ...a); }
 
 export async function openBrowser(log) {
-  const browser = await chromium.launch({ channel: 'chrome' });
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   page.on('console', (m) => { if (m.type() === 'error') log('console error:', m.text().slice(0, 160)); });
