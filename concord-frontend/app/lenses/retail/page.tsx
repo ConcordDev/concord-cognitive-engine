@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { ShoppingCart } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import RetailWorkbench from '@/components/retail/RetailWorkbench';
@@ -73,7 +72,6 @@ export default function RetailLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="retail" data={{}} compact />
           </>
         )}
         cta={{ label: 'Retail Workbench', icon: ShoppingCart, onClick: () => setWorkbenchOpen(true), title: 'Retail Workbench — POS register, catalog, orders, low stock (press W)' }}
