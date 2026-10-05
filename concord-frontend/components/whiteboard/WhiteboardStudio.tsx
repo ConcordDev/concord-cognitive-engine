@@ -38,6 +38,7 @@ import { WhiteboardInspector } from './WhiteboardInspector';
 import { WhiteboardMoodboardPanel } from './WhiteboardMoodboardPanel';
 import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
+import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
 import {
   type BoardMode,
   type SketchTool as Tool,
@@ -1144,6 +1145,20 @@ export function WhiteboardStudio({
       </div>
 
       {showInspector && <WhiteboardInspector boardId={boardArtifacts[0]?.id ?? selectedWbId ?? undefined} />}
+
+      {selectedWbId && boardMode === 'canvas' && (
+        <div className="pointer-events-auto absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
+          <WhiteboardKeepMenu
+            board={{
+              id: selectedWbId,
+              title: boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title),
+              elements,
+              createdAt: String(selectedWb?.whiteboard?.createdAt ?? ''),
+              updatedAt: String(selectedWb?.whiteboard?.updatedAt ?? ''),
+            }}
+          />
+        </div>
+      )}
 
       <AnimatePresence>
         {showCreate && (
