@@ -4,11 +4,12 @@ import { Zap } from 'lucide-react';
 import { FEAResultViewer } from './FEAResultViewer';
 import type { FeaComputationResult } from './fea-verification';
 import { SimHistoryPanel } from './SimHistoryPanel';
+import { EngineeringKeepMenu } from './EngineeringKeepMenu';
 import { useEngineeringFea } from './EngineeringFeaProvider';
 
 /** FEA result viewer + sim history — extracted from Results tab. */
 export function ResultsPanel() {
-  const { feaResult, feaNodes, feaMembers, feaDisplacements, historyKey, setActive } = useEngineeringFea();
+  const { feaResult, feaNodes, feaMembers, feaDisplacements, historyKey, setActive, status, summary } = useEngineeringFea();
 
   return (
     <div className="space-y-4">
@@ -24,16 +25,26 @@ export function ResultsPanel() {
           </button>
         </div>
       ) : (
-        <FEAResultViewer
-          nodes={feaNodes ?? []}
-          members={feaMembers ?? []}
-          displacements={feaDisplacements}
-          amplification={10}
-          showDeformed={true}
-          showStress={true}
-          height="500px"
-          result={feaResult as unknown as FeaComputationResult | null}
-        />
+        <>
+          <FEAResultViewer
+            nodes={feaNodes ?? []}
+            members={feaMembers ?? []}
+            displacements={feaDisplacements}
+            amplification={10}
+            showDeformed={true}
+            showStress={true}
+            height="500px"
+            result={feaResult as unknown as FeaComputationResult | null}
+          />
+          <EngineeringKeepMenu
+            facts={{
+              jobName: status || 'FEA run',
+              result: summary
+                ? { ...(feaResult as Record<string, unknown>), summary }
+                : (feaResult as Record<string, unknown>),
+            }}
+          />
+        </>
       )}
       <SimHistoryPanel refreshKey={historyKey} />
     </div>

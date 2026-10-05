@@ -47,7 +47,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // 36 -> 37: "travelLens" so a user's trips, itineraries, bookings,
     // budgets, checklists, price watches, docs, and loyalty accounts
     // survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 37);
+    // 37 -> 38: "engineeringLens" so a user's saved parts, load cases,
+    // and FEA sim-job history survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 38);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -62,6 +64,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("hypothesisLens"));
     assert.ok(LENS_STATE_KEYS.includes("srsLens"));
     assert.ok(LENS_STATE_KEYS.includes("travelLens"));
+    assert.ok(LENS_STATE_KEYS.includes("engineeringLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -249,6 +252,28 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.travelLens.budgets.get("trip_1").categories.flight, 1200);
     assert.ok(STATE.travelLens.checklists instanceof Map);
     assert.equal(STATE.travelLens.checklists.get("trip_1")[0].done, true);
+  });
+
+  it("roundtrips STATE.engineeringLens (a saved part, load case, and FEA sim job)", () => {
+    // The Engineering domain stores per-user data under 4 Maps. Without
+    // engineeringLens in LENS_STATE_KEYS a restart wiped every part, load
+    // case, and FEA run while the ResultsPanel still showed it.
+    STATE.engineeringLens = {
+      parts: new Map([["user_a", [{ id: "part_1", name: "Bracket", kind: "box", material: "A36 Steel", mass: 12.5 }]]]),
+      assemblies: new Map(),
+      loadCases: new Map([["user_a", [{ id: "lc_1", name: "Wind Load", model: { nodes: [], members: [], loads: [], supports: [] } }]]]),
+      jobs: new Map([["user_a", [{ id: "sim_1", name: "FEA run", type: "fea-frame", status: "completed", elapsedMs: 42, summary: { maxDisplacement: 0.01, maxUtilization: 0.65, allPass: true, memberCount: 3, nodeCount: 4 }, createdAt: "2026-10-05T00:00:00Z" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.engineeringLens.parts instanceof Map);
+    assert.equal(STATE.engineeringLens.parts.get("user_a")[0].name, "Bracket");
+    assert.ok(STATE.engineeringLens.loadCases instanceof Map);
+    assert.equal(STATE.engineeringLens.loadCases.get("user_a")[0].name, "Wind Load");
+    assert.ok(STATE.engineeringLens.jobs instanceof Map);
+    assert.equal(STATE.engineeringLens.jobs.get("user_a")[0].status, "completed");
+    assert.equal(STATE.engineeringLens.jobs.get("user_a")[0].summary.maxUtilization, 0.65);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

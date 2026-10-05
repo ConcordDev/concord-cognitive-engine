@@ -48,6 +48,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // key a hard restart wiped every trip while the TripWorkspace still
   // showed it.
   "travelLens",
+  // 37 -> 38: "engineeringLens" so a user's saved parts, load cases,
+  // and FEA sim-job history survive a restart. The Engineering domain
+  // stores per-user data here; without this key a hard restart wiped
+  // every part and FEA run while the ResultsPanel still showed it.
+  "engineeringLens",
 ]);
 
 function serializeValue(v) {
