@@ -33,7 +33,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -98,7 +97,6 @@ export default function HealthcareLensPage() {
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <HeartPulse className="h-4 w-4 text-blue-300" aria-hidden />
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            <DTUExportButton domain="healthcare" data={{}} compact />
           </div>
         </header>
 

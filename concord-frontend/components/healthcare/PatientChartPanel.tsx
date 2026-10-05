@@ -6,6 +6,7 @@ import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardL
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
+import { HealthcareKeepMenu } from './HealthcareKeepMenu';
 
 interface Patient { id: string; mrn: string; firstName: string; lastName: string; dob: string; sex: string; phone: string; email: string; insurancePlan: string; insuranceMemberId?: string; address: string; emergencyContact?: string; preferredPharmacy?: string }
 interface Problem { id: string; name: string; icd10: string; status: 'active' | 'resolved' | 'inactive'; onsetDate: string; resolvedDate: string | null }
@@ -362,6 +363,8 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           </div>
         )}
       </div>
+
+      <HealthcareKeepMenu facts={{ patient: p, problems: data.problems, allergies: data.allergies, vitals: data.vitals, labs: data.labs, immunizations: data.immunizations, encounters: data.encounters }} />
 
       {/* Chart tabs */}
       <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
