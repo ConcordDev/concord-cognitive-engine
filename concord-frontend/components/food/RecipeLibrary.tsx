@@ -84,9 +84,9 @@ function Stars({ value, onSet }: { value: number; onSet?: (n: number) => void })
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
-          onClick={onSet ? () => onSet(n) : undefined}
-          disabled={!onSet}
-          className={cn(onSet && 'hover:scale-110 transition-transform')}
+          type="button"
+          onClick={() => onSet(n)}
+          className="hover:scale-110 transition-transform"
           aria-label={`${n} star`}
         >
           <Star className={cn('w-3.5 h-3.5', n <= Math.round(value) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600')} />
