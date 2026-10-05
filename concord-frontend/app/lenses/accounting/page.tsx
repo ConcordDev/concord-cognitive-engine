@@ -14,7 +14,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Calculator } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
@@ -111,7 +110,6 @@ export default function AccountingLensPage() {
             )}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             <DepthBadge lensId="accounting" size="sm" />
-            <DTUExportButton domain="accounting" data={{}} compact />
           </div>
         </div>
 
