@@ -18,7 +18,7 @@
 
 import { useCallback, useState } from 'react';
 import {
-  ArrowLeftRight, Loader2, FileCode2, Sparkles, Wand2,
+  ArrowLeftRight, Loader2, FileCode2, Wand2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -40,10 +40,6 @@ interface MergeResult {
   summary?: { totalDirectConflicts: number; autoMergeCandidate: boolean };
 }
 
-const EXAMPLE_BASE = `function greet(name) {\n  return "Hello, " + name + "!";\n}\n`;
-const EXAMPLE_A = `function greet(name) {\n  return \`Hello, \${name}!\`;\n}\n`;
-const EXAMPLE_B = `function greet(name, title) {\n  return "Hello, " + title + " " + name + "!";\n}\n`;
-
 export function ForkAnalysisLab() {
   const [base, setBase] = useState('');
   const [forkA, setForkA] = useState('');
@@ -52,8 +48,6 @@ export function ForkAnalysisLab() {
   const [merge, setMerge] = useState<MergeResult | null>(null);
   const [busy, setBusy] = useState<'divergence' | 'merge' | null>(null);
   const [err, setErr] = useState<string | null>(null);
-
-  const loadExample = () => { setBase(EXAMPLE_BASE); setForkA(EXAMPLE_A); setForkB(EXAMPLE_B); setDivergence(null); setMerge(null); };
 
   const runDivergence = useCallback(async () => {
     setBusy('divergence'); setErr(null); setMerge(null);
@@ -98,9 +92,6 @@ export function ForkAnalysisLab() {
           <h2 className="text-sm font-semibold text-white">Divergence &amp; merge lab</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">3-way text diff · real Levenshtein + conflict regions</span>
         </div>
-        <button onClick={loadExample} className="flex items-center gap-1 rounded bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-200 hover:bg-cyan-500/20">
-          <Sparkles className="h-3 w-3" /> Load example
-        </button>
       </header>
 
       <p className="text-[11px] text-zinc-400">

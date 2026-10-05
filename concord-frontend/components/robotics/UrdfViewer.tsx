@@ -27,63 +27,11 @@ import { useMemo, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html, Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { Box, Boxes, AlertTriangle, RotateCcw, FileCode2 } from 'lucide-react';
+import { Box, Boxes, AlertTriangle, RotateCcw } from 'lucide-react';
 import { parseUrdf } from '@/lib/robotics/urdf-parser';
 import { computeUrdfFk, type Pose } from '@/lib/robotics/urdf-fk';
 import { computeGeometricClearance, type ClearanceReport } from '@/lib/robotics/urdf-clearance';
 import type { UrdfJoint, UrdfLink, UrdfRobot, UrdfVisual } from '@/lib/robotics/urdf-types';
-
-const EXAMPLE_URDF = `<?xml version="1.0"?>
-<robot name="example_2dof_arm">
-  <link name="base_link">
-    <visual>
-      <geometry><cylinder radius="0.08" length="0.06"/></geometry>
-      <material name="base"><color rgba="0.35 0.38 0.42 1"/></material>
-    </visual>
-  </link>
-  <link name="upper_arm">
-    <visual>
-      <origin xyz="0.2 0 0" rpy="0 0 0"/>
-      <geometry><box size="0.4 0.06 0.06"/></geometry>
-      <material name="arm"><color rgba="0.13 0.6 0.75 1"/></material>
-    </visual>
-  </link>
-  <link name="forearm">
-    <visual>
-      <origin xyz="0.15 0 0" rpy="0 0 0"/>
-      <geometry><box size="0.3 0.05 0.05"/></geometry>
-      <material name="arm2"><color rgba="0.9 0.6 0.15 1"/></material>
-    </visual>
-  </link>
-  <link name="end_effector">
-    <visual>
-      <geometry><sphere radius="0.04"/></geometry>
-      <material name="ee"><color rgba="0.9 0.2 0.25 1"/></material>
-    </visual>
-  </link>
-  <joint name="shoulder" type="revolute">
-    <parent link="base_link"/>
-    <child link="upper_arm"/>
-    <origin xyz="0 0 0.05" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-3.14" upper="3.14" effort="10" velocity="1"/>
-  </joint>
-  <joint name="elbow" type="revolute">
-    <parent link="upper_arm"/>
-    <child link="forearm"/>
-    <origin xyz="0.4 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-2.5" upper="2.5" effort="8" velocity="1"/>
-  </joint>
-  <joint name="wrist" type="prismatic">
-    <parent link="forearm"/>
-    <child link="end_effector"/>
-    <origin xyz="0.3 0 0" rpy="0 0 0"/>
-    <axis xyz="1 0 0"/>
-    <limit lower="0" upper="0.15" effort="4" velocity="0.5"/>
-  </joint>
-</robot>
-`;
 
 function poseToMatrix4(pose: Pose): THREE.Matrix4 {
   const [r0, r1, r2, r3, r4, r5, r6, r7, r8] = pose.rotation;
@@ -225,11 +173,6 @@ export function UrdfViewer() {
 
   const parsed = useMemo(() => (urdfText.trim() ? parseUrdf(urdfText) : null), [urdfText]);
 
-  const loadExample = useCallback(() => {
-    setUrdfText(EXAMPLE_URDF);
-    setJointValues({});
-  }, []);
-
   const robot = parsed && parsed.ok ? parsed.robot : null;
 
   const movableJoints = useMemo(
@@ -261,10 +204,6 @@ export function UrdfViewer() {
           <Boxes className="w-4 h-4 text-neon-cyan" /> URDF Viewer — 3D Robot Model
         </h3>
         <div className="flex gap-1.5">
-          <button onClick={loadExample}
-            className="px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 bg-white/5 text-gray-300 hover:bg-white/10">
-            <FileCode2 className="w-3 h-3" /> Load example URDF
-          </button>
           {movableJoints.length > 0 && (
             <button onClick={resetJoints}
               className="px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 bg-white/5 text-gray-300 hover:bg-white/10">
@@ -280,7 +219,7 @@ export function UrdfViewer() {
           <textarea
             value={urdfText}
             onChange={(e) => { setUrdfText(e.target.value); setJointValues({}); }}
-            placeholder={'Paste a URDF <robot> XML document here — no robot renders until you supply one. Or click "Load example URDF" above.'}
+            placeholder="Paste a URDF <robot> XML document here — no robot renders until you supply one."
             spellCheck={false}
             className="w-full h-28 rounded-lg border border-white/10 bg-black/40 p-2 font-mono text-[11px] text-gray-200 focus:outline-none focus:ring-1 focus:ring-neon-cyan/50"
           />
@@ -288,7 +227,7 @@ export function UrdfViewer() {
           {!urdfText.trim() && (
             <div className="panel p-6 text-center text-sm text-gray-400 flex flex-col items-center gap-2">
               <Box className="w-8 h-8 text-gray-600" />
-              No URDF loaded. A real robot needs a real URDF document — this viewer never invents one. Paste your own above, or load the labeled example.
+              No URDF loaded. A real robot needs a real URDF document — this viewer never invents one. Paste your own above.
             </div>
           )}
 

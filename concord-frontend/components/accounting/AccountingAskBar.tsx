@@ -11,14 +11,6 @@ import { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-const SAMPLES = [
-  'Show me overdue invoices',
-  'How much cash do we have?',
-  'YTD profit?',
-  'What bills are open?',
-  'How much runway?',
-];
-
 interface Answer {
   intent: string;
   answer: string;
@@ -60,18 +52,6 @@ export function AccountingAskBar() {
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {SAMPLES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => { setQ(s); ask(s); }}
-              className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 whitespace-nowrap"
-            >
-              {s}
-            </button>
-          ))}
         </div>
       </form>
       {answer && (

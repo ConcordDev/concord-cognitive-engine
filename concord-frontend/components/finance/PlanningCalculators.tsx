@@ -66,7 +66,7 @@ interface GrowthPy { summary: { finalBalance: number; totalContributed: number; 
 
 function GrowthCalculator() {
   const [engine, setEngine] = useState<'js' | 'pandas'>('js');
-  const [f, setF] = useState({ principal: '10000', monthly: '500', rate: '7', years: '20' });
+  const [f, setF] = useState({ principal: '', monthly: '', rate: '', years: '' });
   const [events, setEvents] = useState<Array<{ month: string; amount: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -129,7 +129,7 @@ function GrowthCalculator() {
               <button type="button" aria-label="Remove event" onClick={() => setEvents((xs) => xs.filter((_, j) => j !== i))} className="mb-1.5 p-1 text-gray-500 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           ))}
-          <button type="button" onClick={() => setEvents((xs) => [...xs, { month: '12', amount: '5000' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> One-time deposit or withdrawal</button>
+          <button type="button" onClick={() => setEvents((xs) => [...xs, { month: '', amount: '' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> One-time deposit or withdrawal</button>
         </div>
       )}
       <div className="mt-3"><Go onClick={() => void run()} busy={busy}>Project</Go></div>
@@ -155,7 +155,7 @@ interface DebtOut {
 }
 
 function DebtPayoff() {
-  const [debts, setDebts] = useState([{ name: 'Credit card', balance: '4200', rate: '22.9', minimumPayment: '120' }]);
+  const [debts, setDebts] = useState([{ name: '', balance: '', rate: '', minimumPayment: '' }]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [out, setOut] = useState<DebtOut | null>(null);
@@ -188,7 +188,7 @@ function DebtPayoff() {
         ))}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => setDebts((xs) => [...xs, { name: `Debt ${xs.length + 1}`, balance: '1000', rate: '10', minimumPayment: '50' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> Add a debt</button>
+        <button type="button" onClick={() => setDebts((xs) => [...xs, { name: '', balance: '', rate: '', minimumPayment: '' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> Add a debt</button>
         <Go onClick={() => void run()} busy={busy}>Plan payoff</Go>
       </div>
       <Fail msg={err} />
@@ -216,11 +216,8 @@ interface BudgetOut {
 }
 
 function BudgetCheck() {
-  const [income, setIncome] = useState('5000');
-  const [cats, setCats] = useState([
-    { name: 'Housing', budget: '1600', spent: '1600' },
-    { name: 'Groceries', budget: '500', spent: '0' },
-  ]);
+  const [income, setIncome] = useState('');
+  const [cats, setCats] = useState([{ name: '', budget: '', spent: '' }]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [out, setOut] = useState<BudgetOut | null>(null);
@@ -253,7 +250,7 @@ function BudgetCheck() {
         ))}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => setCats((xs) => [...xs, { name: 'New category', budget: '100', spent: '0' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> Add a category</button>
+        <button type="button" onClick={() => setCats((xs) => [...xs, { name: '', budget: '', spent: '' }])} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"><Plus className="h-3 w-3" /> Add a category</button>
         <Go onClick={() => void run()} busy={busy}>Check budget</Go>
       </div>
       <Fail msg={err} />

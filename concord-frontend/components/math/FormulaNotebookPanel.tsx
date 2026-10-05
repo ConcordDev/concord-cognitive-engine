@@ -43,12 +43,6 @@ const CATEGORY_DIFFICULTY: Record<string, { label: string; color: string; bg: st
   physics:    { label: 'Advanced',     color: 'text-red-400',    bg: 'bg-red-400/15 border-red-400/30' },
 };
 
-const EXAMPLES = [
-  { label: 'Quadratic', expr: '(-5 + sqrt(25 - 4*2*3)) / (2*2)' },
-  { label: 'Fibonacci', expr: '(1.618^10 - (-0.618)^10) / 2.236' },
-  { label: 'Golden Ratio', expr: '(1 + sqrt(5)) / 2' },
-];
-
 const CONSTANTS = [
   { name: '\u03C0 (Pi)', value: '\u03C0 \u2248 3.14159265358979' },
   { name: 'e (Euler)', value: 'e \u2248 2.71828182845905' },
@@ -189,18 +183,6 @@ export function FormulaNotebookPanel() {
             {evaluating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             {evaluating ? 'Evaluating…' : 'Evaluate'}
           </button>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex.label}
-              type="button"
-              onClick={() => setExpression(ex.expr)}
-              className={ds.btnGhost}
-            >
-              {ex.label}
-            </button>
-          ))}
         </div>
         {result && (
           <div

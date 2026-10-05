@@ -22,26 +22,6 @@ export interface KnowledgeGenomeBrowserProps {
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Demo data
-// ---------------------------------------------------------------------------
-
-const DEMO_DTUS: GenomeDTU[] = [
-  { id: 'd1', title: 'Set Theory Basics', tier: 'simple', domain: 'math', parentIds: [], childIds: ['d4'] },
-  { id: 'd2', title: 'Propositional Logic', tier: 'simple', domain: 'math', parentIds: [], childIds: ['d4', 'd5'] },
-  { id: 'd3', title: 'Wave Mechanics', tier: 'simple', domain: 'science', parentIds: [], childIds: ['d6'] },
-  { id: 'd7', title: 'Ethical Axioms', tier: 'simple', domain: 'philosophy', parentIds: [], childIds: ['d8'] },
-  { id: 'd10', title: 'Color Theory', tier: 'simple', domain: 'art', parentIds: [], childIds: ['d11'] },
-  { id: 'd4', title: 'Group Theory', tier: 'regular', domain: 'math', parentIds: ['d1', 'd2'], childIds: ['d9'] },
-  { id: 'd5', title: 'Formal Proof Systems', tier: 'regular', domain: 'math', parentIds: ['d2'], childIds: ['d9'] },
-  { id: 'd6', title: 'Quantum States', tier: 'regular', domain: 'science', parentIds: ['d3'], childIds: ['d12'] },
-  { id: 'd8', title: 'Moral Frameworks', tier: 'regular', domain: 'philosophy', parentIds: ['d7'], childIds: ['d13'] },
-  { id: 'd11', title: 'Generative Art', tier: 'regular', domain: 'art', parentIds: ['d10'], childIds: ['d13'] },
-  { id: 'd9', title: 'Abstract Algebra', tier: 'mega', domain: 'math', parentIds: ['d4', 'd5'], childIds: ['d14'] },
-  { id: 'd12', title: 'Quantum Computing', tier: 'mega', domain: 'science', parentIds: ['d6'], childIds: ['d14'] },
-  { id: 'd13', title: 'AI Ethics & Aesthetics', tier: 'mega', domain: 'philosophy', parentIds: ['d8', 'd11'], childIds: ['d14'] },
-  { id: 'd14', title: 'Unified Cognition Framework', tier: 'hyper', domain: 'technology', parentIds: ['d9', 'd12', 'd13'], childIds: [] },
-];
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -140,7 +120,7 @@ function layoutDTUs(dtus: GenomeDTU[]): { items: LayoutItem[]; width: number; he
 // ---------------------------------------------------------------------------
 
 export default function KnowledgeGenomeBrowser({ dtus: dtusProp, className }: KnowledgeGenomeBrowserProps) {
-  const dtus = dtusProp && dtusProp.length > 0 ? dtusProp : DEMO_DTUS;
+  const dtus = dtusProp ?? [];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 900, h: 500 });

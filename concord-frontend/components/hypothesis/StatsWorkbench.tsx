@@ -136,13 +136,13 @@ function TestBattery() {
   const [result, setResult] = useState<any>(null);
 
   // shared inputs
-  const [sampleA, setSampleA] = useState('5, 6, 7, 8, 9, 7, 8');
-  const [sampleB, setSampleB] = useState('1, 2, 3, 4, 5, 3, 2');
+  const [sampleA, setSampleA] = useState('');
+  const [sampleB, setSampleB] = useState('');
   const [tKind, setTKind] = useState('welch');
   const [popMean, setPopMean] = useState('0');
-  const [groups, setGroups] = useState('1,2,3,2,1\n4,5,6,5,4\n7,8,9,8,7');
-  const [observed, setObserved] = useState('30, 20, 25, 25');
-  const [contTable, setContTable] = useState('10, 20\n20, 10');
+  const [groups, setGroups] = useState('');
+  const [observed, setObserved] = useState('');
+  const [contTable, setContTable] = useState('');
   const [chiMode, setChiMode] = useState<'gof' | 'independence'>('gof');
   const [alpha, setAlpha] = useState('0.05');
 
@@ -477,7 +477,7 @@ function ApaExport({ kind, result }: { kind: string; result: any }) {
 function DatasetPanel() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [name, setName] = useState('');
-  const [csv, setCsv] = useState('group,score\nA,12\nA,15\nA,11\nB,20\nB,22\nB,19\nC,30\nC,28\nC,33');
+  const [csv, setCsv] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Dataset | null>(null);
@@ -739,8 +739,8 @@ function ColSelect({
 // ============================================================================
 
 function AssumptionsPanel() {
-  const [sample, setSample] = useState('4.1, 5.2, 4.8, 6.0, 5.5, 4.9, 5.1, 5.8, 4.4, 5.6, 6.2, 4.7');
-  const [groups, setGroups] = useState('4,5,6,5,4,5\n8,9,7,8,9,8\n2,3,1,2,3,2');
+  const [sample, setSample] = useState('');
+  const [groups, setGroups] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -842,7 +842,7 @@ function AssumptionsPanel() {
 // ============================================================================
 
 function CorrectionPanel() {
-  const [pVals, setPVals] = useState('0.001, 0.013, 0.021, 0.048, 0.06, 0.21, 0.4');
+  const [pVals, setPVals] = useState('');
   const [labels, setLabels] = useState('');
   const [alpha, setAlpha] = useState('0.05');
   const [busy, setBusy] = useState(false);

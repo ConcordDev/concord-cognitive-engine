@@ -75,7 +75,7 @@ interface VisaResult {
 export function TravelActionPanel() {
   // Shared trip-length context
   const [destination, setDestination] = useState('');
-  const [days, setDays] = useState('7');
+  const [days, setDays] = useState('');
 
   // Budget-specific
   const [travelStyle, setTravelStyle] = useState<TravelStyle>('moderate');
@@ -88,12 +88,12 @@ export function TravelActionPanel() {
   // Jet lag-specific (real inputs are an hour offset + direction, NOT
   // timezone names — the backend has no timezone database to resolve
   // "America/Chicago" → an offset, so we don't pretend to compute one).
-  const [timezoneShift, setTimezoneShift] = useState('6');
+  const [timezoneShift, setTimezoneShift] = useState('');
   const [direction, setDirection] = useState<Direction>('east');
 
   // Visa-specific — the real macro compares ISO-2 country codes against
   // built-in Schengen/CTA/USMCA tables, not free-text destination names.
-  const [passportCountry, setPassportCountry] = useState('US');
+  const [passportCountry, setPassportCountry] = useState('');
   const [visaDestination, setVisaDestination] = useState('');
 
   const [recipient, setRecipient] = useState('');
@@ -131,7 +131,7 @@ export function TravelActionPanel() {
     try {
       const input: Record<string, unknown> = {
         destination: destination.trim() || undefined,
-        days: parseInt(days, 10) || 7,
+        days: Number.parseInt(days, 10) || undefined,
         travelStyle,
       };
       if (flightCost.trim()) input.flightCost = parseFloat(flightCost);
@@ -147,7 +147,7 @@ export function TravelActionPanel() {
     setBusy('packing'); setFeedback(null);
     try {
       const r = await callMacro<PackingResult>('packingList', {
-        climate, purpose, days: parseInt(days, 10) || 7,
+        climate, purpose, days: Number.parseInt(days, 10) || undefined,
       });
       if (r.ok && r.result) {
         setPackingResult(r.result);
@@ -174,7 +174,7 @@ export function TravelActionPanel() {
     setBusy('visa'); setFeedback(null);
     try {
       const r = await callMacro<VisaResult>('visaCheck', {
-        passportCountry, destination: visaDestination.trim(), durationDays: parseInt(days, 10) || 14,
+        passportCountry, destination: visaDestination.trim(), durationDays: Number.parseInt(days, 10) || undefined,
       });
       if (r.ok && r.result) {
         setVisaResult(r.result);

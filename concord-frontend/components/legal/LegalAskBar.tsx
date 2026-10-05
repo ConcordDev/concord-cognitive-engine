@@ -5,13 +5,6 @@ import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
-const SAMPLES = [
-  'Show me upcoming deadlines',
-  'How much unbilled time?',
-  'What is my trust balance?',
-  'Open matters?',
-];
-
 interface AnswerData {
   upcomingEvents?: unknown[];
   unbilledHours?: number;
@@ -86,18 +79,6 @@ export function LegalAskBar() {
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {SAMPLES.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => { setQ(s); ask(s); }}
-              className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 whitespace-nowrap"
-            >
-              {s}
-            </button>
-          ))}
         </div>
       </form>
       {loadError && <ErrorState message={loadError} onRetry={() => ask(q)} variant="inline" />}

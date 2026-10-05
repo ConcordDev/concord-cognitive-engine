@@ -84,344 +84,6 @@ const SCRIPT_TYPES: { id: ScriptType; name: string; icon: React.ComponentType<{ 
   { id: 'library', name: 'Library', icon: Sparkles, color: 'text-red-400', description: 'Reusable modules and packages' },
 ];
 
-const TEMPLATE_FILES: FileNode[] = [
-  {
-    id: 'algorithms',
-    name: 'Algorithms',
-    type: 'folder',
-    isExpanded: true,
-    children: [
-      {
-        id: 'binary_search.js', name: 'binary_search.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Binary Search Implementation
-// O(log n) search on sorted arrays
-
-function binarySearch(arr, target) {
-  let left = 0;
-  let right = arr.length - 1;
-
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    if (arr[mid] === target) return mid;
-    if (arr[mid] < target) left = mid + 1;
-    else right = mid - 1;
-  }
-  return -1;
-}
-
-// Test
-const sorted = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
-console.log(binarySearch(sorted, 7));  // 3
-console.log(binarySearch(sorted, 12)); // -1`,
-      },
-      {
-        id: 'graph_bfs.js', name: 'graph_bfs.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Breadth-First Search (BFS)
-// Graph traversal using a queue
-
-function bfs(graph, start) {
-  const visited = new Set();
-  const queue = [start];
-  const order = [];
-
-  while (queue.length > 0) {
-    const node = queue.shift();
-    if (visited.has(node)) continue;
-
-    visited.add(node);
-    order.push(node);
-
-    for (const neighbor of (graph[node] || [])) {
-      if (!visited.has(neighbor)) {
-        queue.push(neighbor);
-      }
-    }
-  }
-  return order;
-}
-
-const graph = {
-  A: ['B', 'C'],
-  B: ['A', 'D', 'E'],
-  C: ['A', 'F'],
-  D: ['B'],
-  E: ['B', 'F'],
-  F: ['C', 'E'],
-};
-
-console.log(bfs(graph, 'A')); // ['A', 'B', 'C', 'D', 'E', 'F']`,
-      },
-      {
-        id: 'merge_sort.js', name: 'merge_sort.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Merge Sort Implementation
-// O(n log n) stable sorting algorithm
-
-function mergeSort(arr) {
-  if (arr.length <= 1) return arr;
-
-  const mid = Math.floor(arr.length / 2);
-  const left = mergeSort(arr.slice(0, mid));
-  const right = mergeSort(arr.slice(mid));
-
-  return merge(left, right);
-}
-
-function merge(left, right) {
-  const result = [];
-  let i = 0, j = 0;
-
-  while (i < left.length && j < right.length) {
-    if (left[i] <= right[j]) result.push(left[i++]);
-    else result.push(right[j++]);
-  }
-
-  return [...result, ...left.slice(i), ...right.slice(j)];
-}
-
-const unsorted = [38, 27, 43, 3, 9, 82, 10];
-console.log(mergeSort(unsorted)); // [3, 9, 10, 27, 38, 43, 82]`,
-      },
-    ],
-  },
-  {
-    id: 'snippets',
-    name: 'Snippets',
-    type: 'folder',
-    children: [
-      {
-        id: 'fetch_api.js', name: 'fetch_api.js', type: 'file', language: 'javascript', scriptType: 'snippet',
-        content: `// REST API Client
-// Reusable fetch wrapper with error handling
-
-async function apiClient(baseUrl) {
-  const headers = { 'Content-Type': 'application/json' };
-
-  return {
-    get: async (path) => {
-      const res = await fetch(baseUrl + path, { headers });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    post: async (path, body) => {
-      const res = await fetch(baseUrl + path, {
-        method: 'POST', headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    put: async (path, body) => {
-      const res = await fetch(baseUrl + path, {
-        method: 'PUT', headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    delete: async (path) => {
-      const res = await fetch(baseUrl + path, { method: 'DELETE', headers });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-  };
-}
-
-// Usage
-const api = await apiClient('https://api.example.com');
-const users = await api.get('/users');
-console.log(users);`,
-      },
-      {
-        id: 'debounce.js', name: 'debounce.js', type: 'file', language: 'javascript', scriptType: 'snippet',
-        content: `// Debounce & Throttle Utilities
-// Common performance optimization patterns
-
-function debounce(fn, delay) {
-  let timer;
-  return function (...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
-
-function throttle(fn, limit) {
-  let inThrottle = false;
-  return function (...args) {
-    if (!inThrottle) {
-      fn.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
-
-// Usage
-const handleSearch = debounce((query) => {
-  console.log('Searching:', query);
-}, 300);
-
-const handleScroll = throttle(() => {
-  console.log('Scroll position:', window.scrollY);
-}, 100);`,
-      },
-      {
-        id: 'event_emitter.js', name: 'event_emitter.js', type: 'file', language: 'javascript', scriptType: 'library',
-        content: `// Event Emitter Pattern
-// Pub/sub implementation for decoupled communication
-
-class EventEmitter {
-  constructor() {
-    this.events = new Map();
-  }
-
-  on(event, listener) {
-    if (!this.events.has(event)) this.events.set(event, []);
-    this.events.get(event).push(listener);
-    return () => this.off(event, listener);
-  }
-
-  off(event, listener) {
-    const listeners = this.events.get(event);
-    if (listeners) {
-      this.events.set(event, listeners.filter(l => l !== listener));
-    }
-  }
-
-  emit(event, ...args) {
-    const listeners = this.events.get(event) || [];
-    listeners.forEach(listener => listener(...args));
-  }
-
-  once(event, listener) {
-    const unsub = this.on(event, (...args) => {
-      unsub();
-      listener(...args);
-    });
-    return unsub;
-  }
-}
-
-// Usage
-const bus = new EventEmitter();
-bus.on('user:login', (user) => console.log('Logged in:', user.name));
-bus.emit('user:login', { name: 'Alice', role: 'admin' });`,
-      },
-    ],
-  },
-  {
-    id: 'pipelines',
-    name: 'Pipelines',
-    type: 'folder',
-    children: [
-      {
-        id: 'data_transform.js', name: 'data_transform.js', type: 'file', language: 'javascript', scriptType: 'pipeline',
-        content: `// Data Transform Pipeline
-// Composable data processing stages
-
-function pipeline(...fns) {
-  return (input) => fns.reduce((acc, fn) => fn(acc), input);
-}
-
-const normalize = (data) => data.map(d => ({
-  ...d,
-  name: d.name?.trim().toLowerCase(),
-  email: d.email?.trim().toLowerCase(),
-}));
-
-const validate = (data) => data.filter(d =>
-  d.name && d.email && d.email.includes('@')
-);
-
-const deduplicate = (data) => {
-  const seen = new Set();
-  return data.filter(d => {
-    if (seen.has(d.email)) return false;
-    seen.add(d.email);
-    return true;
-  });
-};
-
-const enrich = (data) => data.map(d => ({
-  ...d,
-  domain: d.email.split('@')[1],
-  createdAt: new Date().toISOString(),
-}));
-
-// Compose the pipeline
-const process = pipeline(normalize, validate, deduplicate, enrich);
-
-const rawData = [
-  { name: ' Alice ', email: 'ALICE@example.com' },
-  { name: 'Bob', email: 'bob@test.io' },
-  { name: ' alice', email: 'alice@example.com' },
-  { name: '', email: 'invalid' },
-];
-
-console.log(process(rawData));`,
-      },
-      {
-        id: 'csv_processor.js', name: 'csv_processor.js', type: 'file', language: 'javascript', scriptType: 'pipeline',
-        content: `// CSV Stream Processor
-// Parse, transform, and output CSV data
-
-function parseCSV(text, delimiter = ',') {
-  const lines = text.trim().split('\\n');
-  const headers = lines[0].split(delimiter).map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const values = line.split(delimiter);
-    return headers.reduce((obj, header, i) => {
-      obj[header] = values[i]?.trim() || '';
-      return obj;
-    }, {});
-  });
-}
-
-function toCSV(data, delimiter = ',') {
-  if (data.length === 0) return '';
-  const headers = Object.keys(data[0]);
-  const rows = data.map(row =>
-    headers.map(h => row[h] ?? '').join(delimiter)
-  );
-  return [headers.join(delimiter), ...rows].join('\\n');
-}
-
-// Example
-const csv = \`name,age,city
-Alice,30,NYC
-Bob,25,LA
-Charlie,35,Chicago\`;
-
-const parsed = parseCSV(csv);
-const filtered = parsed.filter(r => parseInt(r.age) >= 30);
-console.log(toCSV(filtered));`,
-      },
-    ],
-  },
-];
-
-const DEFAULT_CODE = `// Welcome to the Code Workspace
-// Write, run, and save code snippets
-
-function fibonacci(n) {
-  if (n <= 1) return n;
-  let a = 0, b = 1;
-  for (let i = 2; i <= n; i++) {
-    [a, b] = [b, a + b];
-  }
-  return b;
-}
-
-// Generate first 10 Fibonacci numbers
-const results = Array.from({ length: 10 }, (_, i) => fibonacci(i));
-console.log('Fibonacci:', results);
-
-// Quick benchmark
-const start = performance.now();
-fibonacci(1000);
-const elapsed = (performance.now() - start).toFixed(2);
-console.log(\`Computed fib(1000) in \${elapsed}ms\`);
-`;
-
 const API_REFERENCE: { category: string; functions: { signature: string; description: string }[] }[] = [
   {
     category: 'Console',
@@ -470,22 +132,81 @@ const API_REFERENCE: { category: string; functions: { signature: string; descrip
   },
 ];
 
+
+type CodeDtuLike = {
+  id?: string;
+  domain?: string;
+  source?: string;
+  scope?: string;
+  createdBy?: string;
+  userId?: string;
+  ownerId?: string;
+  creatorId?: string;
+  creator_id?: string;
+  seedOrigin?: boolean;
+  protected?: boolean;
+  immutable?: boolean;
+  tags?: string[];
+  provenance?: { source?: string };
+  meta?: { domain?: string; lens?: string; userId?: string; ownerId?: string; creatorId?: string };
+};
+
+/** Shared bootstrap seed catalog is not this user's code. */
+function isSharedSeedCatalog(d: CodeDtuLike): boolean {
+  if (d.seedOrigin) return true;
+  if (d.provenance?.source === 'bootstrap_ingestion') return true;
+  if (d.source === 'bootstrap_ingestion' || d.source === 'concord_brain_index' || d.source === 'seed') return true;
+  if (d.createdBy === 'bootstrap_ingestion') return true;
+  if (Array.isArray(d.tags) && d.tags.some((t) => t === 'seed')) return true;
+  const id = String(d.id || '');
+  if (/^dtu_\d{3}_/.test(id) || id.startsWith('dtu_root_')) return true;
+  return false;
+}
+
+function isUserCodeDtu(d: CodeDtuLike, userId?: string | null): boolean {
+  if (isSharedSeedCatalog(d)) return false;
+  const domain = d.domain || d.meta?.domain || d.meta?.lens;
+  if (domain !== 'code' && d.source !== 'code') return false;
+  const owner = d.userId || d.ownerId || d.creatorId || d.creator_id || d.meta?.userId || d.meta?.ownerId || d.meta?.creatorId;
+  if (userId && owner && String(owner) !== String(userId)) return false;
+  if (!owner && (d.scope === 'global' || d.protected || d.immutable)) return false;
+  return true;
+}
+
 export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
   const { user, isAuthenticated } = useAuth();
   const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
   const {
     hyperDTUs, megaDTUs, regularDTUs,
-    tierDistribution, publishToMarketplace,
+    publishToMarketplace,
     isLoading: dtusLoading, refetch: refetchDTUs,
-  } = useLensDTUs({ lens: 'code' });
+  } = useLensDTUs({ lens: 'code', crossDomain: false });
+  const codeHyperDTUs = useMemo(
+    () => hyperDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [hyperDTUs, user?.id],
+  );
+  const codeMegaDTUs = useMemo(
+    () => megaDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [megaDTUs, user?.id],
+  );
+  const codeRegularDTUs = useMemo(
+    () => regularDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [regularDTUs, user?.id],
+  );
+  const codeTierDistribution = useMemo(() => ({
+    hyper: codeHyperDTUs.length,
+    mega: codeMegaDTUs.length,
+    regular: codeRegularDTUs.length,
+    total: codeHyperDTUs.length + codeMegaDTUs.length + codeRegularDTUs.length,
+  }), [codeHyperDTUs.length, codeMegaDTUs.length, codeRegularDTUs.length]);
 
   // Persist scripts to backend
   const { isLoading, isError, error, refetch, create: saveScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'main', name: 'untitled.js', language: 'javascript', content: DEFAULT_CODE, isDirty: false, scriptType: 'snippet' },
+    { id: 'main', name: 'untitled.js', language: 'javascript', content: '', isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
@@ -1760,23 +1481,17 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     <div className="flex-1 overflow-y-auto py-2">
                       {files.length === 0 ? (
                         <div className="px-3 py-4 text-center">
-                          <p className="text-xs text-gray-400 mb-2">No files yet</p>
-                          <button
-                            onClick={() => setFiles(TEMPLATE_FILES)}
-                            className="text-xs text-green-400 hover:text-green-300 underline"
-                          >
-                            Load starter templates
-                          </button>
+                          <p className="text-xs text-gray-400">No files yet</p>
                         </div>
                       ) : files.map((file) => renderFileNode(file))}
                     </div>
                     {/* DTU Context */}
                     <div className="p-3 border-t border-white/10 space-y-3">
                       <LensContextPanel
-                        hyperDTUs={hyperDTUs}
-                        megaDTUs={megaDTUs}
-                        regularDTUs={regularDTUs}
-                        tierDistribution={tierDistribution}
+                        hyperDTUs={codeHyperDTUs}
+                        megaDTUs={codeMegaDTUs}
+                        regularDTUs={codeRegularDTUs}
+                        tierDistribution={codeTierDistribution}
                         onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
                         title="Code DTUs"
                         className="!bg-transparent !border-0 !p-0"
