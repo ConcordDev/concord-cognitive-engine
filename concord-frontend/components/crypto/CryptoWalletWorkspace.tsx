@@ -34,7 +34,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import dynamic from 'next/dynamic';
@@ -697,7 +696,6 @@ export function CryptoWalletWorkspace() {
         isLoading={isLoading}
         isLive={isLive}
         lastUpdated={lastUpdated}
-        extraActions={<DTUExportButton domain="crypto" data={{}} compact />}
       />
 
 
@@ -1243,38 +1241,18 @@ export function CryptoWalletWorkspace() {
                     tokens={swappableTokens}
                     defaultFromSymbol={chains[0]?.symbol || 'CC'}
                     defaultToSymbol={chains[1]?.symbol || 'USDC'}
-                    onSwap={async ({ fromId, toId, amountIn, quote }) => {
-                      try {
-                        await createTransaction({
-                          title: `Swap ${amountIn} ${fromId} → ${quote.amountOut.toFixed(6)} ${toId}`,
-                          data: {
-                            type: 'transfer', amount: amountIn,
-                            symbol: fromId.toUpperCase(),
-                            description: `Swap to ${toId.toUpperCase()} at rate ${quote.rate}`,
-                            timestamp: new Date().toISOString(),
-                          } as unknown as Partial<TransactionData>,
-                          meta: { tags: ['swap', fromId, toId], status: 'completed' },
-                        });
-                        refetch2();
-                        useUIStore.getState().addToast({ type: 'success', message: `Swap simulated: got ${quote.amountOut.toFixed(6)} ${toId.toUpperCase()}` });
-                      } catch (e) {
-                        console.error('[Crypto] swap save failed', e);
-                      }
-                    }}
                   />
                 );
               })()}
               <div className="flex-1 lens-card">
-                <h3 className="text-sm font-bold mb-3 text-gray-200">Best execution</h3>
+                <h3 className="text-sm font-bold mb-3 text-gray-200">About this quote</h3>
                 <ul className="text-xs text-gray-400 space-y-1.5">
-                  <li>• Slippage protection — minimum-received guard</li>
-                  <li>• 0.3% LP fee model (Uniswap v3 standard)</li>
-                  <li>• Price impact warning above 5%</li>
-                  <li>• Hard block above 15% — execution risk too high</li>
-                  <li>• Gas estimate built in</li>
+                  <li>• Spot rate from live CoinGecko prices</li>
+                  <li>• 0.3% LP fee model and your slippage floor (minimum received)</li>
+                  <li>• Price impact and gas need pool depth and a gas oracle, so they show as &quot;not estimated&quot;</li>
                 </ul>
-                <p className="mt-4 text-[10px] text-gray-400">
-                  Concord swaps simulate the AMM math against live CoinGecko prices. No external router is contacted; this view is informational + ledger-only.
+                <p className="mt-4 text-[10px] text-amber-300/90">
+                  Executing swaps isn&apos;t supported yet. No wallet or DEX router is connected; nothing is traded or written to your ledger.
                 </p>
               </div>
             </div>
@@ -1374,6 +1352,10 @@ export function CryptoWalletWorkspace() {
                 <h2 className="text-lg font-bold">Send {selectedChainData.symbol}</h2>
                 <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
+              <p data-testid="send-ledger-only" className="text-[11px] text-amber-300/90">
+                This records the transfer in your Concord ledger and lowers the tracked balance.
+                Broadcasting to a blockchain isn&apos;t supported yet: no wallet keys are connected.
+              </p>
               <p className="text-sm text-gray-400">
                 Available: <span className="font-mono tabular-nums">{showBalances ? `${selectedChainData.balance} ${selectedChainData.symbol}` : '••••'}</span>
               </p>
@@ -1409,7 +1391,7 @@ export function CryptoWalletWorkspace() {
                   className="px-4 py-2 rounded-lg text-sm bg-neon-blue text-white hover:bg-neon-blue/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {transacting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Send
+                  Record send
                 </button>
               </div>
             </motion.div>

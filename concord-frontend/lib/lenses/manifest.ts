@@ -2860,7 +2860,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
       steps: [
         { caption: 'The wallet view at the top gives you balances and transfers without leaving the substrate.' },
         { caption: 'Live prices via CoinGecko (no key). Tokens you track are persisted server-side; the list survives reload.' },
-        { caption: 'Send / receive / swap actions remain stubs unless you wire an actual chain integration — the panel is honest about its DEMO status for those flows.' },
+        { caption: "Send records a transfer in your Concord ledger; Swap shows a quote only. Broadcasting to a chain and executing swaps aren't supported yet (no wallet keys or DEX router connected)." },
       ],
     },
   },

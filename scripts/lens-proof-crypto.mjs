@@ -1,6 +1,9 @@
 // scripts/lens-proof-crypto.mjs — REAL browser proof for the Crypto lens.
 //
 // Headless Chrome via Playwright (channel: 'chrome'), shared proof user:
+//   0. honesty: no "Demo" chip, no empty "↓ .dtu" export button; Swap tab is
+//      quote-only (swap-not-supported label, no "Swap X → Y" execute button)
+//      → crypto-swap.png
 //   1. /lenses/crypto → Portfolio tab (default) → "Add Holding" → fill the
 //      real form (CoinGecko id, ticker, qty, total cost, chain) → "Save lot"
 //      (crypto.holdings-add) → the lot renders in the Holdings list
@@ -35,6 +38,29 @@ try {
   checkDisk(log);
   await login(ctx, log);
   await gotoLens(page, '/lenses/crypto', log);
+
+  const swapTab = page.getByRole('button', { name: /^Swap\s*s$/ }).first(); // workspace tab: label + shortcut
+  await swapTab.waitFor({ state: 'visible', timeout: 90000 });
+  await page.getByRole('button', { name: /^Reject$/ }).first()
+    .waitFor({ state: 'visible', timeout: 10000 })
+    .then(() => page.getByRole('button', { name: /^Reject$/ }).first().click(), () => {});
+  result.demoChips = await page.getByText('Demo', { exact: true }).count();
+  result.emptyDtuExportButtons = await page.getByRole('button', { name: /\.dtu/ }).count();
+  // The top "Wallet" preview must not render dead Send/Receive/Swap tiles.
+  result.walletPreviewActionTiles = await page.getByTestId('wallet-shell-actions').count();
+  if (result.walletPreviewActionTiles) throw new Error('wallet preview still renders unwired action tiles');
+  log('"Demo" chips:', result.demoChips, '— "↓ .dtu" export buttons:', result.emptyDtuExportButtons);
+  if (result.demoChips || result.emptyDtuExportButtons) throw new Error('Demo chip or empty .dtu export still rendered');
+  await swapTab.click();
+  const swapNote = page.getByTestId('swap-not-supported');
+  await swapNote.waitFor({ state: 'visible', timeout: 30000 });
+  result.swapLabel = (await swapNote.innerText()).trim();
+  const names = await page.getByRole('button').evaluateAll((bs) => bs.map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim()));
+  result.executeSwapButtons = names.filter((n) => /^Swap \S+ →/.test(n)).length;
+  if (result.executeSwapButtons) throw new Error('a "Swap X → Y" execute button is still rendered');
+  await swapNote.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: shot('crypto-swap.png') });
+  log('swap tab label:', result.swapLabel, '— execute buttons: 0 — crypto-swap.png');
 
   // The PortfolioWorkbench (which owns the "Add Holding" form + the
   // CryptoKeepMenu) lives under the "Holdings" tab, not the default
