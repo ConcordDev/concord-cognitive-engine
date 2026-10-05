@@ -31,7 +31,6 @@ import { PawPrint, RefreshCw, ShieldAlert } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { PetCareSection } from '@/components/pets/PetCareSection';
@@ -114,7 +113,6 @@ export default function PetsLensPage() {
             >
               <RefreshCw className={cn('h-4 w-4', lostLoading && 'animate-spin')} />
             </button>
-            <DTUExportButton domain="pets" data={{}} compact />
           </div>
         }
         cta={{ label: 'Add a pet', icon: PawPrint, onClick: focusAddPet, title: 'Add a pet (N)' }}

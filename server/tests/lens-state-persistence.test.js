@@ -54,7 +54,10 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // 39 -> 40: "hvacLens" so a user's technicians, appointments, bookings,
     // equipment assets, payments, agreements, and field visits survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 40);
+    // 40 -> 41: "petsLens" so a user's pets, vaccines, medications, vet
+    // visits, weights, reminders, photos, appointments, lost-pet profiles,
+    // and household access grants survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 41);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -72,6 +75,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("engineeringLens"));
     assert.ok(LENS_STATE_KEYS.includes("physicsLens"));
     assert.ok(LENS_STATE_KEYS.includes("hvacLens"));
+    assert.ok(LENS_STATE_KEYS.includes("petsLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -372,6 +376,69 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     const visit = STATE.hvacLens.fieldVisits.get("user_a")[0];
     assert.equal(visit.status, "completed");
     assert.equal(visit.partsTotal, 20);
+  });
+
+  it("roundtrips STATE.petsLens (a pet with vaccines, medications, reminders, photos, appointments, and a lost-pet card)", () => {
+    // The Pets domain stores per-user pets, vaccines, medications, vet
+    // visits, weights, care activities, symptoms, reminders, documents,
+    // expenses, caregivers, bookings, access grants, photos,
+    // appointments, and lost-pet profiles under nested Maps. Without
+    // petsLens in LENS_STATE_KEYS a restart wiped every pet health record
+    // while the PetCareSection still showed it.
+    STATE.petsLens = {
+      pets: new Map([["user_a", [
+        { id: "pet_1", name: "Mochi", species: "dog", breed: "Shiba Inu", sex: "female", birthdate: "2022-04-01", weightKg: 9.5, microchipId: "CHIP-123", neutered: true, createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      vaccines: new Map([["pet_1", [
+        { id: "vac_1", petId: "pet_1", name: "Rabies", date: "2026-05-01", nextDueDate: "2027-05-01", vet: "Dr. Lin", createdAt: "2026-05-01T00:00:00Z" },
+      ]]]),
+      medications: new Map([["pet_1", [
+        { id: "med_1", petId: "pet_1", name: "Apoquel", dosage: "16mg", frequency: "daily", startDate: "2026-06-01", endDate: null, active: true, createdAt: "2026-06-01T00:00:00Z" },
+      ]]]),
+      reminders: new Map([["pet_1", [
+        { id: "rem_1", petId: "pet_1", title: "Trim nails", dueDate: "2026-11-01", done: false, createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      weights: new Map([["pet_1", [
+        { id: "w_1", petId: "pet_1", date: "2026-09-01", weightKg: 9.4, createdAt: "2026-09-01T00:00:00Z" },
+      ]]]),
+      photos: new Map([["pet_1", [
+        { id: "ph_1", petId: "pet_1", url: "https://example.com/mochi.jpg", caption: "First day home", takenOn: "2022-04-10", milestone: "adoption", createdAt: "2022-04-10T00:00:00Z" },
+      ]]]),
+      appointments: new Map([["pet_1", [
+        { id: "appt_1", petId: "pet_1", clinic: "Bay Vet", vet: "Dr. Lin", date: "2026-12-01", time: "09:00", reason: "checkup", notes: "", status: "scheduled", reminderId: "rem_2", createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      lostProfiles: new Map([["pet_1",
+        { id: "lost_1", petId: "pet_1", status: "lost", microchipId: "CHIP-123", color: "red sesame", distinguishingMarks: "white sock on front left paw", lastSeenLocation: "Dolores Park", lastSeenDate: "2026-10-04", contactName: "Sam", contactPhone: "555-0142", contactEmail: "sam@example.com", reward: 200, notes: "", publicToken: "tok_abc", createdAt: "2026-10-04T00:00:00Z" },
+      ]]),
+      petAccess: new Map([["user_a", [
+        { id: "acc_1", petId: "pet_1", petName: "Mochi", ownerUserId: "user_a", userId: "user_b", displayName: "Alex", role: "co_owner", revoked: false, createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.petsLens.pets instanceof Map);
+    assert.equal(STATE.petsLens.pets.get("user_a")[0].name, "Mochi");
+    assert.equal(STATE.petsLens.pets.get("user_a")[0].microchipId, "CHIP-123");
+    assert.ok(STATE.petsLens.vaccines instanceof Map);
+    assert.equal(STATE.petsLens.vaccines.get("pet_1")[0].name, "Rabies");
+    assert.equal(STATE.petsLens.vaccines.get("pet_1")[0].nextDueDate, "2027-05-01");
+    assert.ok(STATE.petsLens.medications instanceof Map);
+    assert.equal(STATE.petsLens.medications.get("pet_1")[0].active, true);
+    assert.ok(STATE.petsLens.reminders instanceof Map);
+    assert.equal(STATE.petsLens.reminders.get("pet_1")[0].done, false);
+    assert.ok(STATE.petsLens.weights instanceof Map);
+    assert.equal(STATE.petsLens.weights.get("pet_1")[0].weightKg, 9.4);
+    assert.ok(STATE.petsLens.photos instanceof Map);
+    assert.equal(STATE.petsLens.photos.get("pet_1")[0].milestone, "adoption");
+    assert.ok(STATE.petsLens.appointments instanceof Map);
+    assert.equal(STATE.petsLens.appointments.get("pet_1")[0].clinic, "Bay Vet");
+    assert.ok(STATE.petsLens.lostProfiles instanceof Map);
+    assert.equal(STATE.petsLens.lostProfiles.get("pet_1").status, "lost");
+    assert.equal(STATE.petsLens.lostProfiles.get("pet_1").publicToken, "tok_abc");
+    assert.ok(STATE.petsLens.petAccess instanceof Map);
+    assert.equal(STATE.petsLens.petAccess.get("user_a")[0].role, "co_owner");
+    assert.equal(STATE.petsLens.petAccess.get("user_a")[0].revoked, false);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

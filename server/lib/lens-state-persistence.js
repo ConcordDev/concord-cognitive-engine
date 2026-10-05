@@ -64,6 +64,14 @@ export const LENS_STATE_KEYS = Object.freeze([
   // hard restart wiped every dispatch board and equipment record while the
   // FieldService panels still showed them.
   "hvacLens",
+  // 40 -> 41: "petsLens" so a user's pets, vaccines, medications, vet
+  // visits, weights, care activities, symptoms, reminders, documents,
+  // expenses, caregivers, bookings, pet access grants, photos,
+  // appointments, and lost-pet profiles survive a restart. The Pets
+  // domain stores per-user data here; without this key a hard restart
+  // wiped every pet health record while the PetCareSection still showed
+  // it.
+  "petsLens",
 ]);
 
 function serializeValue(v) {
