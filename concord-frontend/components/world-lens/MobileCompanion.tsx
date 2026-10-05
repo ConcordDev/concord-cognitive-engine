@@ -41,14 +41,6 @@ interface MobileNotification {
   category: string;
 }
 
-interface ChatMessage {
-  id: string;
-  sender: string;
-  text: string;
-  timestamp: string;
-  isOwn: boolean;
-}
-
 // ── Static UI config (legit — navigation + notification-pref defaults) ──────
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -163,10 +155,6 @@ export default function MobileCompanion() {
   // Backed by the real "companion" domain — start empty, fill from the backend.
   const [overnightChanges, setOvernightChanges] = useState<OvernightChange[]>([]);
   const [notifications, setNotifications] = useState<MobileNotification[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [cameraZoom, setCameraZoom] = useState(1);
-  const [cameraAngle, setCameraAngle] = useState(0);
   const [showQuietHours, setShowQuietHours] = useState(false);
   // Real browser connectivity (navigator.onLine + online/offline events) — the
   // status dot used to be a hardcoded green "Synced", which claimed a sync that
@@ -244,19 +232,6 @@ export default function MobileCompanion() {
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     void lensRun('companion', 'notification-mark-read', { id });
-  };
-
-  const sendChat = () => {
-    if (!chatInput.trim()) return;
-    const msg: ChatMessage = {
-      id: `cm-${Date.now()}`,
-      sender: 'You',
-      text: chatInput.trim(),
-      timestamp: 'Just now',
-      isOwn: true,
-    };
-    setChatMessages((prev) => [...prev, msg]);
-    setChatInput('');
   };
 
   const tabs: { key: MobileTab; label: string; icon: string; badge?: number }[] = [
@@ -443,163 +418,35 @@ export default function MobileCompanion() {
     </div>
   );
 
-  // ── Remote View Tab ──────────────────────────────────────────────
+  // ── Remote View / Chat Tabs ──────────────────────────────────────
+  // Neither exists yet. Remote used to draw a fake "LIVE" camera feed of
+  // coloured boxes plus teleport presets that called a world.teleport macro
+  // the server doesn't have; Chat used to echo your text locally as if it had
+  // been sent to a "Firm Chat". Both now say so plainly.
 
-  const renderRemoteView = () => (
+  const renderNotSupported = (title: string, testId: string, body: string) => (
     <div className="flex flex-col gap-4 p-4">
-      <h2 className="text-white font-semibold text-lg">Remote Camera</h2>
-
-      {/* Simulated camera feed */}
-      <div className={`${panel} overflow-hidden`}>
-        <div className="relative aspect-video bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 flex items-center justify-center">
-          {/* Grid overlay */}
-          <div className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-              backgroundSize: `${40 / cameraZoom}px ${40 / cameraZoom}px`,
-            }}
-          />
-          {/* Simulated structures */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-end gap-3"
-            style={{ transform: `translateX(-50%) rotate(${cameraAngle}deg) scale(${cameraZoom})` }}
-          >
-            <div className="w-8 h-16 bg-cyan-500/30 border border-cyan-500/50 rounded-sm" />
-            <div className="w-12 h-24 bg-blue-500/30 border border-blue-500/50 rounded-sm" />
-            <div className="w-6 h-10 bg-purple-500/30 border border-purple-500/50 rounded-sm" />
-            <div className="w-10 h-20 bg-green-500/30 border border-green-500/50 rounded-sm" />
-            <div className="w-7 h-14 bg-yellow-500/30 border border-yellow-500/50 rounded-sm" />
-          </div>
-          {/* HUD overlay */}
-          <div className="absolute top-3 left-3 text-[10px] text-white/40 font-mono space-y-1">
-            <p>CAM: Riverside District</p>
-            <p>ZOOM: {cameraZoom.toFixed(1)}x</p>
-            <p>ANGLE: {cameraAngle}°</p>
-          </div>
-          <div className="absolute top-3 right-3 flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-[10px] text-green-400 font-mono">LIVE</span>
-          </div>
-          <div className="absolute bottom-3 right-3 text-[10px] text-white/30 font-mono">
-            {new Date().toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
-
-      {/* Camera controls */}
-      <div className={`${panel} p-4`}>
-        <h3 className="text-white/70 text-xs uppercase tracking-wider mb-3">
-          Camera Controls
-        </h3>
-        <div className="flex flex-col gap-4">
-          {/* Zoom */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-white/50 text-xs">Zoom</span>
-              <span className="text-white/70 text-xs font-mono">{cameraZoom.toFixed(1)}x</span>
-            </div>
-            <input
-              type="range"
-              min="0.5"
-              max="3"
-              step="0.1"
-              value={cameraZoom}
-              onChange={(e) => setCameraZoom(parseFloat(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500"
-            />
-          </div>
-          {/* Rotation */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-white/50 text-xs">Rotation</span>
-              <span className="text-white/70 text-xs font-mono">{cameraAngle}°</span>
-            </div>
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="5"
-              value={cameraAngle}
-              onChange={(e) => setCameraAngle(parseInt(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500"
-            />
-          </div>
-        </div>
-        {/* Location presets */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          {['Riverside District', 'Quarry Sector', 'Northern Highlands', 'Market Plaza'].map(
-            (loc) => (
-              <button
-                key={loc}
-                onClick={() => { window.dispatchEvent(new CustomEvent('mobile-companion:teleport', { detail: { location: loc } })); }}
-                className="text-xs text-white/60 p-2.5 rounded-md bg-white/5 active:bg-white/15 transition-colors text-center"
-              >
-                {loc}
-              </button>
-            )
-          )}
-        </div>
+      <h2 className="text-white font-semibold text-lg">{title}</h2>
+      <div role="note" data-testid={testId} className={`${panel} p-4 text-sm text-amber-200 border-amber-500/30`}>
+        <p className="font-semibold text-amber-300 mb-1">Not supported yet</p>
+        <p className="text-amber-100/80 text-xs leading-relaxed">{body}</p>
       </div>
     </div>
   );
 
-  // ── Chat Tab ─────────────────────────────────────────────────────
+  const renderRemoteView = () =>
+    renderNotSupported(
+      'Remote Camera',
+      'companion-remote-not-supported',
+      'There is no live camera stream from Concordia to this companion yet, and no remote teleport. Nothing here is a feed of your world.',
+    );
 
-  const renderChat = () => (
-    <div className="flex flex-col h-full p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-white font-semibold text-lg">Firm Chat</h2>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 flex flex-col gap-2 overflow-y-auto mb-4 min-h-0">
-        {chatMessages.length === 0 && (
-          <p className="text-white/40 text-xs py-6 text-center self-center">No messages yet.</p>
-        )}
-        {chatMessages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col max-w-[80%] ${
-              msg.isOwn ? 'self-end items-end' : 'self-start items-start'
-            }`}
-          >
-            {!msg.isOwn && (
-              <span className="text-[10px] text-cyan-400 mb-0.5 px-1">{msg.sender}</span>
-            )}
-            <div
-              className={`px-3 py-2 rounded-2xl text-sm ${
-                msg.isOwn
-                  ? 'bg-cyan-600/30 text-white rounded-br-md'
-                  : 'bg-white/10 text-white/80 rounded-bl-md'
-              }`}
-            >
-              {msg.text}
-            </div>
-            <span className="text-[10px] text-white/30 mt-0.5 px-1">{msg.timestamp}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Input */}
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendChat()}
-          placeholder="Type a message..."
-          className="flex-1 bg-white/10 border border-white/10 rounded-full px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-cyan-500/50 transition-colors"
-        />
-        <button
-          onClick={sendChat}
-          disabled={!chatInput.trim()}
-          className="w-10 h-10 rounded-full bg-cyan-600 active:bg-cyan-500 disabled:bg-white/10 disabled:text-white/20 flex items-center justify-center text-white transition-colors flex-shrink-0"
-        >
-          <span className="text-lg">↑</span>
-        </button>
-      </div>
-    </div>
-  );
+  const renderChat = () =>
+    renderNotSupported(
+      'Chat',
+      'companion-chat-not-supported',
+      'Companion chat is not wired to any message service yet, so nothing typed here would reach anyone. Use the Chat lens instead.',
+    );
 
   // ── Main Render ──────────────────────────────────────────────────
 

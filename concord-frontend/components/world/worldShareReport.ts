@@ -56,7 +56,11 @@ export function shareSentence(facts: WorldShareFacts): string | null {
   const pos = (l.x != null || l.y != null || l.z != null)
     ? ` @ (${coord(l.x)}, ${coord(l.y)}, ${coord(l.z)})`
     : '';
-  return `Concordia share link for ${str(l.worldId, 40)}${pos}.`;
+  // The link id is in the sentence (and so the DTU title): the DTU pipeline
+  // blocks exact-title duplicates, and two different links to the same world
+  // with no position were getting identical titles, so the second one could
+  // never be kept ("duplicate_blocked").
+  return `Concordia share link ${str(l.id, 40)} for ${str(l.worldId, 40)}${pos}.`;
 }
 
 /** The full body saved as the DTU. Empty when there is nothing honest to save. */

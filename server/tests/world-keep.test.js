@@ -32,7 +32,7 @@ describe("world share link keep + thread draft", () => {
     assert.ok(listRow, "share-links-list should contain the created link");
 
     // 3. Save the link as a private DTU.
-    const sentence = `Concordia share link for ${link.worldId} @ (${link.x.toFixed(1)}, ${link.y.toFixed(1)}, ${link.z.toFixed(1)}).`;
+    const sentence = `Concordia share link ${link.id} for ${link.worldId} @ (${link.x.toFixed(1)}, ${link.y.toFixed(1)}, ${link.z.toFixed(1)}).`;
     const dtuCreated = await lensRun("dtu", "create", {
       params: {
         title: sentence.slice(0, 80),

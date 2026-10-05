@@ -172,7 +172,7 @@ describe('world lens page — stable callback/prop identity into child effects',
   it('still uses activeDistrict as a whole object for the unrelated 2D district editor (buildings/terrain/name) — this fix did not remove that model', () => {
     expect(src).toMatch(/activeDistrict\.buildings/);
     expect(src).toMatch(/activeDistrict\.terrain/);
-    expect(src).toMatch(/const \[activeDistrict, setActiveDistrict\] = useState<District>\(DEMO_DISTRICT\);/);
+    expect(src).toMatch(/const \[activeDistrict, setActiveDistrict\] = useState<District>\(EMPTY_DISTRICT\);/);
   });
 
   // The player-facing world display name (loading overlay, HUD header,

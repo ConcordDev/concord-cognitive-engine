@@ -29,6 +29,15 @@ describe('world share link report', () => {
     expect(s).toContain('(10.0, 20.0, 30.0)');
   });
 
+  it('puts the link id in the sentence so two links to one world get distinct DTU titles', () => {
+    const a = shareSentence({ link: { id: 'wlink_a', worldId: 'concordia-hub' } })!;
+    const b = shareSentence({ link: { id: 'wlink_b', worldId: 'concordia-hub' } })!;
+    expect(a).toContain('wlink_a');
+    expect(a).not.toBe(b);
+    expect(shareDtuCall({ link: { id: 'wlink_a', worldId: 'concordia-hub' } })!.input.title)
+      .not.toBe(shareDtuCall({ link: { id: 'wlink_b', worldId: 'concordia-hub' } })!.input.title);
+  });
+
   it('refuses to summarise a link with no id or worldId', () => {
     expect(shareSentence({ link: null })).toBeNull();
     expect(shareSentence({ link: { id: '', worldId: 'x' } })).toBeNull();

@@ -46,7 +46,7 @@ import MarketplacePalette from '@/components/world-lens/MarketplacePalette';
 import ConcordiaHub from '@/components/world-lens/ConcordiaHub';
 
 import dynamic from 'next/dynamic';
-import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
+import { EMPTY_DISTRICT } from '@/lib/world-lens/district-seed';
 import { connectionLabel, connectionDotClass } from '@/lib/realtime/connection-status';
 import {
   deriveWorldDataState,
@@ -2057,7 +2057,9 @@ export default function WorldOsSurface() {
   // world lens is a 2D panel app" with no indication anything went wrong or
   // that 3D is still one click away. See the banner in the 'concordia' branch.
   const [sceneCrashed, setSceneCrashed] = useState(false);
-  const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
+  // Starts as an empty, unsaved local sketch (no seeded demo buildings or
+  // invented capacities; see lib/world-lens/district-seed.ts).
+  const [activeDistrict, setActiveDistrict] = useState<District>(EMPTY_DISTRICT);
   // The real, live-data world id — distinct from `activeDistrict`, which is
   // 2D-district-editor state that boots on DEMO_DISTRICT seed geometry and
   // (by design — see the W4 honesty-overlay comment below) is never swapped
@@ -7304,8 +7306,13 @@ export default function WorldOsSurface() {
           squeezing the `flex-1` 3D canvas down to a ~114px sliver — exactly
           the "game blocked by hella panels, can see the health bar in the
           background" symptom reported live. Confirmed by measuring computed
-          layout: the 3D container's actual rendered height, not a guess. */}
-      {viewMode !== 'explore' && (
+          layout: the 3D container's actual rendered height, not a guess.
+          Hidden in District mode too, for the same reason: with ~30 Earth
+          events listed, these siblings squeezed the `flex-1` district editor
+          (toolbar + Tools panel: DSL Editor, Snap Build…) to zero height, so
+          its Tools button sat under the affordance bar and couldn't be
+          clicked. */}
+      {viewMode !== 'explore' && viewMode !== 'district' && (
       <div className="px-4 py-3 border-t border-white/10">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
@@ -7461,8 +7468,9 @@ export default function WorldOsSurface() {
           HUD, and by far the single biggest space-eater of the four hidden
           here (measured at ~200px). Same reasoning as World Actions/Lens
           Features above: hidden in Explore mode so the 3D canvas actually
-          gets the flex height it's entitled to. */}
-      {viewMode !== 'explore' && (
+          gets the flex height it's entitled to. Same for District mode (see
+          the World Actions comment above). */}
+      {viewMode !== 'explore' && viewMode !== 'district' && (
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <EarthEventsLive />
       </section>
