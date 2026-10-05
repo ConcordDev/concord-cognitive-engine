@@ -58,6 +58,12 @@ export const LENS_STATE_KEYS = Object.freeze([
   // without this key a hard restart wiped every scene while the PhysicsLab
   // still showed it.
   "physicsLens",
+  // 39 -> 40: "hvacLens" so a user's technicians, appointments, bookings,
+  // equipment assets, payments, agreements, and field visits survive a
+  // restart. The HVAC domain stores per-user data here; without this key a
+  // hard restart wiped every dispatch board and equipment record while the
+  // FieldService panels still showed them.
+  "hvacLens",
 ]);
 
 function serializeValue(v) {

@@ -23,7 +23,7 @@ import {
   Loader2, Home, DollarSign, Wind,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
-import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { HvacKeepMenu } from '@/components/hvac/HvacKeepMenu';
 
 async function callHvac<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -68,13 +68,6 @@ function LoadCalculator() {
           <span className="text-sm font-semibold text-white">Manual J load</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">hvac.loadCalculation</span>
         </div>
-        {result && (
-          <SaveAsDtuButton compact apiSource="concord-hvac-load"
-            title={`Load calc — ${sqft}sf / ${climate} → ${result.tonnageRecommended}`}
-            content={`House: ${result.squareFootage} sf, ${stories} story\nInsulation: ${insulation}\nClimate: ${climate}\nHeating: ${result.heatingBTU} BTU\nCooling: ${result.coolingBTU} BTU\nTonnage: ${result.tonnageRecommended}\nEquipment: ${result.equipmentSize}\nNote: ${result.recommendation}`}
-            extraTags={['hvac', 'load-calc', 'manual-j', climate]}
-            rawData={{ sqft, stories, insulation, climate, result }} />
-        )}
       </header>
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
@@ -141,6 +134,9 @@ function LoadCalculator() {
             </>
           )}
         </div>
+        {result && (
+          <HvacKeepMenu facts={{ inputs: { squareFootage: sqft, stories, insulation, climate }, result }} />
+        )}
       </div>
     </div>
   );
@@ -168,12 +164,6 @@ function EnergyAudit() {
           <span className="text-sm font-semibold text-white">Energy audit</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">hvac.energyAudit</span>
         </div>
-        {result && (
-          <SaveAsDtuButton compact apiSource="concord-hvac-audit"
-            title={`Energy audit — $${result.annualCost}/yr · ROI ${result.roiScore}`}
-            content={`Monthly bill: $${result.monthlyBill}\nAnnual: $${result.annualCost}\nCost/sqft: $${result.costPerSqFt}\nSystem efficiency: ${result.systemEfficiency}\nExpected lifespan: ${result.expectedLifespan}\nEstimated annual savings: $${result.estimatedAnnualSavings}\nROI: ${result.roiScore}\n${result.recommendation}\n\nOpportunities:\n${(result.savingsOpportunities || []).map((o) => `  - ${o}`).join('\n')}`}
-            extraTags={['hvac', 'energy-audit']} rawData={{ monthlyBill, sqft, systemAge, result }} />
-        )}
       </header>
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
@@ -246,12 +236,6 @@ function MaintenanceCalendar() {
           <span className="text-sm font-semibold text-white">Maintenance calendar</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">hvac.maintenanceSchedule</span>
         </div>
-        {result && (
-          <SaveAsDtuButton compact apiSource="concord-hvac-maintenance"
-            title={`HVAC maintenance — ${result.systemType} (${result.overdueCount || 0} overdue)`}
-            content={`System: ${result.systemType}\nLast service: ${result.lastServiceDate || 'unknown'}\nOverdue: ${result.overdueCount || 0}\n\nTasks:\n${(result.tasks || []).map((t) => `  [${t.priority}] ${t.task} (${t.frequency})${t.diy ? ' [DIY]' : ' [pro]'}${t.nextDue ? ` — next: ${t.nextDue}` : ''}`).join('\n')}\n\n${result.recommendation || ''}`}
-            extraTags={['hvac', 'maintenance', systemType]} rawData={{ systemType, lastServiceDate, result }} />
-        )}
       </header>
 
       <div className="p-4 space-y-3">
@@ -319,12 +303,6 @@ function ZoneBalanceMonitor() {
           <span className="text-sm font-semibold text-white">Zone balance monitor</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">hvac.zoneBalance</span>
         </div>
-        {result && result.zones && (
-          <SaveAsDtuButton compact apiSource="concord-hvac-zone-balance"
-            title={`Zone balance — ${result.verdict} (max dev ${result.maxDeviation}°F)`}
-            content={`Verdict: ${result.verdict}\nMax dev: ${result.maxDeviation}°F · Avg: ${result.avgDeviation}°F\nBalance score: ${result.balanceScore}\n\nZones:\n${result.zones.map((z) => `  ${z.zone}: ${z.current}°F (target ${z.target}°F, ±${z.deviation}°F)`).join('\n')}\n\n${result.recommendation || ''}`}
-            extraTags={['hvac', 'zone-balance']} rawData={{ zones, result }} />
-        )}
       </header>
 
       <div className="p-4 space-y-3">

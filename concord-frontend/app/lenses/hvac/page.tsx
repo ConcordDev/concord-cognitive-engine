@@ -23,7 +23,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
@@ -107,10 +106,7 @@ export default function HVACLensPage() {
         title={`Climate work${who ? `, ${who}` : ''}`}
         subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and Manual J loads"
         actions={
-          <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="hvac" data={realtimeData || {}} compact />
-          </>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         }
         tabs={VIEWS}
         activeTab={active}

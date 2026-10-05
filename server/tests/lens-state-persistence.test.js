@@ -51,7 +51,10 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // and FEA sim-job history survive a restart.
     // 38 -> 39: "physicsLens" so a user's saved PhET scenes and share
     // codes survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 39);
+    // 39 -> 40: "hvacLens" so a user's technicians, appointments, bookings,
+    // equipment assets, payments, agreements, and field visits survive a
+    // restart.
+    assert.equal(LENS_STATE_KEYS.length, 40);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -68,6 +71,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("travelLens"));
     assert.ok(LENS_STATE_KEYS.includes("engineeringLens"));
     assert.ok(LENS_STATE_KEYS.includes("physicsLens"));
+    assert.ok(LENS_STATE_KEYS.includes("hvacLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -311,6 +315,63 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(sc.shareCode, "phx_abc");
     assert.ok(STATE.physicsLens.shares instanceof Map);
     assert.equal(STATE.physicsLens.shares.get("phx_abc").ownerId, "user_a");
+  });
+
+  it("roundtrips STATE.hvacLens (a technician, appointment, equipment asset, and agreement)", () => {
+    // The HVAC domain stores per-user technicians, appointments, bookings,
+    // assets, payments, agreements, and field visits under nested Maps.
+    // Without hvacLens in LENS_STATE_KEYS a restart wiped every dispatch
+    // board and equipment record while the FieldService panels still
+    // showed them.
+    STATE.hvacLens = {
+      technicians: new Map([["user_a", [
+        { id: "tech_1", name: "Riley", skills: ["heat pump"], phone: "555-0100", color: "#38bdf8", active: true, createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      appointments: new Map([["user_a", [
+        { id: "appt_1", title: "AC swap", client: "Acme", address: "1 Main St", jobType: "service", technicianId: "tech_1", date: "2026-11-01", slot: "morning", durationHrs: 2, status: "scheduled", priority: "normal", notes: "", createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      bookings: new Map([["user_a", [
+        { id: "book_1", customer: "Pat", phone: "555-0142", email: "", address: "9 Oak Rd", serviceType: "diagnostic", preferredDate: "2026-11-02", preferredSlot: "morning", issue: "no cool", status: "requested", confirmation: "HVAC-ABC123", appointmentId: null, createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      assets: new Map([["user_a", [
+        { id: "asset_1", client: "Acme", address: "1 Main St", equipmentType: "central-ac", brand: "Carrier", model: "24ABC", serial: "SN1", installYear: 2014, tonnage: 3, seer: 14, refrigerant: "R-410A", warrantyExpires: "2027-01-01", history: [{ id: "svc_1", date: "2026-09-01", serviceType: "maintenance", technician: "Riley", summary: "Filter swap", partsReplaced: ["Filter"], cost: 90, createdAt: "2026-09-01T00:00:00Z" }], createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      payments: new Map([["user_a", [
+        { id: "pay_1", kind: "payment", invoiceId: "INV-1", client: "Acme", amount: 200, method: "card", processingFee: 6.1, net: 193.9, status: "paid", reference: "TXN-XYZ", paidAt: "2026-10-05T00:00:00Z", createdAt: "2026-10-05T00:00:00Z" },
+      ]]]),
+      agreements: new Map([["user_a", [
+        { id: "agr_1", client: "Acme", address: "1 Main St", tier: "standard", visitsPerYear: 2, annualPrice: 279, perks: ["Spring + fall tune-up", "15% repair discount", "Priority scheduling"], startDate: "2026-01-01", renewalDate: "2027-01-01", autoRenew: true, status: "active", visits: [{ seq: 1, dueDate: "2026-04-01", status: "completed", completedDate: "2026-04-02" }, { seq: 2, dueDate: "2026-10-01", status: "scheduled" }], createdAt: "2026-01-01T00:00:00Z" },
+      ]]]),
+      fieldVisits: new Map([["user_a", [
+        { id: "visit_1", appointmentId: "appt_1", client: "Acme", address: "1 Main St", technician: "Riley", status: "completed", checklist: [{ label: "Inspect air filter", done: true }], partsUsed: [{ id: "part_1", name: "Filter", quantity: 1, unitPrice: 20 }], photos: [], notes: "Done", startedAt: "2026-10-05T00:00:00Z", completedAt: "2026-10-05T01:00:00Z", partsTotal: 20 },
+      ]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.hvacLens.technicians instanceof Map);
+    assert.equal(STATE.hvacLens.technicians.get("user_a")[0].name, "Riley");
+    assert.ok(STATE.hvacLens.appointments instanceof Map);
+    assert.equal(STATE.hvacLens.appointments.get("user_a")[0].title, "AC swap");
+    assert.equal(STATE.hvacLens.appointments.get("user_a")[0].technicianId, "tech_1");
+    assert.ok(STATE.hvacLens.bookings instanceof Map);
+    assert.equal(STATE.hvacLens.bookings.get("user_a")[0].confirmation, "HVAC-ABC123");
+    assert.ok(STATE.hvacLens.assets instanceof Map);
+    const asset = STATE.hvacLens.assets.get("user_a")[0];
+    assert.equal(asset.brand, "Carrier");
+    assert.equal(asset.history[0].serviceType, "maintenance");
+    assert.ok(STATE.hvacLens.payments instanceof Map);
+    assert.equal(STATE.hvacLens.payments.get("user_a")[0].kind, "payment");
+    assert.equal(STATE.hvacLens.payments.get("user_a")[0].net, 193.9);
+    assert.ok(STATE.hvacLens.agreements instanceof Map);
+    const agr = STATE.hvacLens.agreements.get("user_a")[0];
+    assert.equal(agr.tier, "standard");
+    assert.equal(agr.visits[0].status, "completed");
+    assert.equal(agr.visits[0].completedDate, "2026-04-02");
+    assert.ok(STATE.hvacLens.fieldVisits instanceof Map);
+    const visit = STATE.hvacLens.fieldVisits.get("user_a")[0];
+    assert.equal(visit.status, "completed");
+    assert.equal(visit.partsTotal, 20);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
