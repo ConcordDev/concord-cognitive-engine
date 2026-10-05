@@ -1686,19 +1686,25 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Case', 'Contract', 'ComplianceItem', 'Filing', 'IPAsset', 'BriefBundle'],
     macros: { list: 'lens.legal.list', get: 'lens.legal.get', create: 'lens.legal.create', update: 'lens.legal.update', delete: 'lens.legal.delete', run: 'lens.legal.run', export: 'lens.legal.export' },
     exports: ['json', 'csv', 'pdf', 'docx'],
-    actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore', 'clauseChecker', 'citationPackager', 'caseTimelineBuilder', 'briefExport'],
+    // Only macros server/domains/legal.js registers. clauseChecker /
+    // citationPackager / caseTimelineBuilder / briefExport were advertised
+    // but don't exist.
+    actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore'],
     category: 'services',
-    dataTier: 'DEMO',
+    // Matters, time entries, contacts and invoices are the user's own
+    // persisted records (server/domains/legal.js); case-law search hits the
+    // real CourtListener API. DEMO rendered a "Demo" chip over all of it.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: 'No matters opened.',
-      caption: 'Open a case / contract / compliance item. Note: full Westlaw / LexisNexis data is paywalled — this lens runs against authored content.',
+      caption: 'Open a matter, log time, bill it \u2014 saved to your account. Case-law search uses CourtListener; Westlaw / LexisNexis aren\u2019t connected (not supported yet).',
       firstActionLabel: 'Open a matter',
     },
     firstRunGuide: {
       steps: [
-        { caption: 'A document surface — the DocsShell opens by default. Bespoke legal workflow lives below.' },
-        { caption: 'deadlineCheck + conflictCheck + complianceScore run scheduled passes against your active matters.' },
-        { caption: 'Honest tier: this lens is DEMO until we wire a paid case-law feed. The structure works; the data is yours to author.' },
+        { caption: 'Practice: open a matter, log time entries, and see the real unbilled total on the matter.' },
+        { caption: 'Case law searches CourtListener opinions. Westlaw / LexisNexis are not connected yet.' },
+        { caption: 'Keep a matter report as a private DTU, then draft it in Thread. Nothing is filed or published.' },
       ],
     },
   },
