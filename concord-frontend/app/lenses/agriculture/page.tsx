@@ -8,7 +8,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -126,7 +125,6 @@ function AgricultureFarmDesk() {
           <>
             {pending && <span className="animate-pulse text-xs text-neon-blue">Running…</span>}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="agriculture" data={{}} compact />
           </>
         }
         tabs={FARM_DESK_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
