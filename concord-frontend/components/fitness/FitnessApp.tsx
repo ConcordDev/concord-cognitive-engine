@@ -36,7 +36,6 @@ import {
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { WorkoutFinishPanel } from '@/components/fitness/WorkoutFinishPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -1369,7 +1368,6 @@ export default function FitnessApp() {
         limit={10}
       />
       <RealtimeDataPanel domain="fitness" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="fitness" data={{}} compact />
       <p className="border-t border-white/5 pt-3 text-center text-[11px] text-zinc-500">
         Not medical advice. Consult a physician before starting any exercise program. This tool is for fitness tracking and programming, not clinical guidance.
       </p>
