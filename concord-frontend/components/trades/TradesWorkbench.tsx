@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Wrench, Users, Calendar, FileText, Plus, Save, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { TradesKeepMenu } from './TradesKeepMenu';
 
 export interface Customer {
   id: string;
@@ -214,6 +215,7 @@ function JobsTab() {
                 </button>
               ))}
             </div>
+            <TradesKeepMenu job={j} />
           </div>
         ))
       }
