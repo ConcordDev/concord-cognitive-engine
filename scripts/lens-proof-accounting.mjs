@@ -1,6 +1,7 @@
 // scripts/lens-proof-accounting.mjs — REAL browser proof for the Accounting lens.
 //
 // Headless Chrome via Playwright (channel: 'chrome'), shared proof user:
+//   0. the header depth chip reads "Real" (never "Simulated")
 //   1. /lenses/accounting → Workbench → Chart of Accounts → "New account"
 //      twice (a Cash asset and a Service Revenue account) via the real form
 //      (accounting.coa-create) — the desk opens empty, nothing is seeded
@@ -51,6 +52,12 @@ try {
   checkDisk(log);
   await login(ctx, log);
   await gotoLens(page, '/lenses/accounting', log);
+  // Header depth chip must be the real-data chip, never "Simulated".
+  await page.getByText('Real', { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 });
+  result.badge = 'Real';
+  result.simulatedChips = await page.getByText('Simulated', { exact: true }).count();
+  log('header depth chip: Real — "Simulated" chips on page:', result.simulatedChips);
+  if (result.simulatedChips !== 0) throw new Error('Accounting still shows a Simulated chip');
   await openWorkbench(page);
   await page.getByRole('button', { name: /^Chart of Accounts$/ }).first().click();
   await createAccount(page, CASH);

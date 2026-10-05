@@ -1581,7 +1581,11 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'qbo', 'xlsx'],
     actions: ['trialBalance', 'profitLoss', 'invoiceAging', 'budgetVariance', 'rentRoll', 'reconcile', 'categorize', 'taxEstimate', 'auditReport'],
     category: 'finance',
-    dataTier: 'SIM_GRADE_A',
+    // The books are the user's own persisted CoA + journal entries
+    // (server/domains/accounting.js), not a simulation — same tier as the
+    // other user-data lenses (Food, Retail). SIM_GRADE_A rendered a false
+    // "Simulated · Not real data" chip over real ledgers.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Books that close themselves.",
       caption: "Accounts, transactions, invoices, payroll, tax \u2014 reconcile, categorize, audit.",
