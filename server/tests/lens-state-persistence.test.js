@@ -49,7 +49,9 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // survive a restart.
     // 37 -> 38: "engineeringLens" so a user's saved parts, load cases,
     // and FEA sim-job history survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 38);
+    // 38 -> 39: "physicsLens" so a user's saved PhET scenes and share
+    // codes survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 39);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -65,6 +67,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("srsLens"));
     assert.ok(LENS_STATE_KEYS.includes("travelLens"));
     assert.ok(LENS_STATE_KEYS.includes("engineeringLens"));
+    assert.ok(LENS_STATE_KEYS.includes("physicsLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -274,6 +277,40 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.engineeringLens.jobs instanceof Map);
     assert.equal(STATE.engineeringLens.jobs.get("user_a")[0].status, "completed");
     assert.equal(STATE.engineeringLens.jobs.get("user_a")[0].summary.maxUtilization, 0.65);
+  });
+
+  it("roundtrips STATE.physicsLens (a saved scene with bodies, constraints, and a share code)", () => {
+    // The Physics domain stores per-user scenes under nested Maps.
+    // Without physicsLens in LENS_STATE_KEYS a restart wiped every scene
+    // while the PhysicsLab still showed it.
+    STATE.physicsLens = {
+      scenes: new Map([["user_a", new Map([
+        ["scene_1", {
+          id: "scene_1", name: "Pendulum Lab",
+          bodies: [{ id: "b1", mass: 1.0, kind: "circle" }, { id: "b2", mass: 2.0, kind: "box" }],
+          constraints: [{ id: "c1", kind: "rod" }],
+          fluids: [],
+          settings: { gravity: 9.8 },
+          createdAt: "2026-10-05T00:00:00Z",
+          updatedAt: "2026-10-05T01:00:00Z",
+          shareCode: "phx_abc",
+        }],
+      ])]]),
+      shares: new Map([["phx_abc", { ownerId: "user_a", scene: { id: "scene_1", name: "Pendulum Lab" }, createdAt: "2026-10-05T00:00:00Z" }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.physicsLens.scenes instanceof Map);
+    const userScenes = STATE.physicsLens.scenes.get("user_a");
+    assert.ok(userScenes instanceof Map);
+    const sc = userScenes.get("scene_1");
+    assert.equal(sc.name, "Pendulum Lab");
+    assert.equal(sc.bodies.length, 2);
+    assert.equal(sc.constraints[0].kind, "rod");
+    assert.equal(sc.shareCode, "phx_abc");
+    assert.ok(STATE.physicsLens.shares instanceof Map);
+    assert.equal(STATE.physicsLens.shares.get("phx_abc").ownerId, "user_a");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

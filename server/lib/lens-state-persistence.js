@@ -53,6 +53,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // stores per-user data here; without this key a hard restart wiped
   // every part and FEA run while the ResultsPanel still showed it.
   "engineeringLens",
+  // 38 -> 39: "physicsLens" so a user's saved PhET scenes and share codes
+  // survive a restart. The Physics domain stores per-user data here;
+  // without this key a hard restart wiped every scene while the PhysicsLab
+  // still showed it.
+  "physicsLens",
 ]);
 
 function serializeValue(v) {
