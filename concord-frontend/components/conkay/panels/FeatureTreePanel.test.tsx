@@ -1,6 +1,6 @@
 /// <reference types="@testing-library/jest-dom/vitest" />
 import { describe, it, expect } from 'vitest';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+ 
 // @ts-expect-error vitest/vite raw import
 import src from './FeatureTreePanel.tsx?raw';
 
