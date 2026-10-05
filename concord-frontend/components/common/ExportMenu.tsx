@@ -6,6 +6,9 @@ import { apiHelpers } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadFile } from '@/lib/utils';
 
+export const EMPTY_EXPORT_NOTICE =
+  'Nothing to export yet. This menu exports saved lens items, and there are none here. Records kept in this lens\u2019s own panels aren\u2019t included in this export yet, so nothing was downloaded.';
+
 interface ExportMenuProps {
   domain: string;
 }
@@ -13,6 +16,9 @@ interface ExportMenuProps {
 export function ExportMenu({ domain }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  // Set when there is nothing real to export. We never download an empty
+  // "[]" / "No data" file and call it an export.
+  const [notice, setNotice] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -40,9 +46,16 @@ export function ExportMenu({ domain }: ExportMenuProps) {
 
   const exportAs = async (format: 'json' | 'csv') => {
     setExporting(format);
+    setNotice(null);
+    let keepOpen = false;
     try {
       const response = await apiHelpers.lens.list(domain, { limit: 1000 });
       const items = response.data?.items || [];
+      if (items.length === 0) {
+        keepOpen = true;
+        setNotice(EMPTY_EXPORT_NOTICE);
+        return;
+      }
 
       let content: string;
       let mimeType: string;
@@ -54,15 +67,11 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         extension = 'json';
       } else {
         // CSV export
-        if (items.length === 0) {
-          content = 'No data';
-        } else {
-          const headers = ['id', 'title', 'type', 'createdAt', 'updatedAt'];
-          const rows = items.map((item: Record<string, unknown>) =>
-            headers.map(h => JSON.stringify(item[h] ?? '')).join(',')
-          );
-          content = [headers.join(','), ...rows].join('\n');
-        }
+        const headers = ['id', 'title', 'type', 'createdAt', 'updatedAt'];
+        const rows = items.map((item: Record<string, unknown>) =>
+          headers.map(h => JSON.stringify(item[h] ?? '')).join(',')
+        );
+        content = [headers.join(','), ...rows].join('\n');
         mimeType = 'text/csv';
         extension = 'csv';
       }
@@ -70,9 +79,11 @@ export function ExportMenu({ domain }: ExportMenuProps) {
       downloadFile(content, `${domain}-export-${new Date().toISOString().slice(0, 10)}.${extension}`, mimeType);
     } catch (err) {
       console.error('Export failed:', err);
+      keepOpen = true;
+      setNotice('Export failed — nothing was downloaded.');
     } finally {
       setExporting(null);
-      setIsOpen(false);
+      if (!keepOpen) setIsOpen(false);
     }
   };
 
@@ -84,7 +95,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setNotice(null); setIsOpen(!isOpen); }}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
         title="Export (Ctrl+E)"
       >
@@ -119,6 +130,11 @@ export function ExportMenu({ domain }: ExportMenuProps) {
                   )}
                 </button>
               ))}
+              {notice && (
+                <p role="status" data-testid="export-menu-notice" className="px-3 py-2 text-xs text-amber-300">
+                  {notice}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

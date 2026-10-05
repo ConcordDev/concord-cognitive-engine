@@ -1459,19 +1459,25 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Patient', 'Encounter', 'CareProtocol', 'Prescription', 'LabResult', 'Treatment', 'ReferralRecord'],
     macros: { list: 'lens.healthcare.list', get: 'lens.healthcare.get', create: 'lens.healthcare.create', update: 'lens.healthcare.update', delete: 'lens.healthcare.delete', run: 'lens.healthcare.run', export: 'lens.healthcare.export' },
     exports: ['json', 'csv', 'pdf', 'hl7', 'fhir'],
-    actions: ['checkInteractions', 'protocolMatch', 'generateSummary', 'intakeWorkflow', 'riskFlagging', 'carePlanGenerate', 'labImport', 'dischargePackage'],
+    // Only macros server/domains/healthcare.js actually registers. The old
+    // list advertised intakeWorkflow / riskFlagging / carePlanGenerate /
+    // labImport / dischargePackage, none of which exist.
+    actions: ['checkInteractions', 'protocolMatch', 'generateSummary'],
     category: 'healthcare',
-    dataTier: 'DEMO',
+    // Patients, allergies, meds, encounters are the user's own persisted
+    // records (server/domains/healthcare.js), not demo data. DEMO rendered a
+    // "Demo" chip and a "DEMO data" caption over real charts.
+    dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Healthcare workflow scaffold.",
-      caption: "Patient, encounter, prescription, lab \u2014 DEMO data; wire your own EHR via Integrations.",
-      firstActionLabel: "Open the EHR shell",
+      headline: "Your clinic's charts.",
+      caption: "Patients, allergies, medications, encounters and results you enter \u2014 saved to your account. Not connected to an outside EHR yet.",
+      firstActionLabel: "Register a patient",
     },
     firstRunGuide: {
       steps: [
-        { caption: "checkInteractions runs against the same engine the Pharmacy lens uses." },
-        { caption: "intakeWorkflow walks the patient through intake \u2192 encounter \u2192 care plan." },
-        { caption: "labImport ingests results; dischargePackage assembles the handoff." },
+        { caption: "Register a patient, then record allergies, meds and encounters on their chart." },
+        { caption: "checkInteractions screens a medication list for known drug interactions." },
+        { caption: "Keep a patient summary as a private DTU, then draft it in Thread. Nothing is published." },
       ],
     },
   },

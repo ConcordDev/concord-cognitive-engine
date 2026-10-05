@@ -1,6 +1,9 @@
 // scripts/lens-proof-healthcare.mjs — REAL browser proof for the Healthcare lens.
 //
 // Headless Chrome via Playwright (channel: 'chrome'), shared proof user:
+//   0. the header depth chip reads "Real" (never "Demo"), and no "DEMO data"
+//      caption is anywhere on the page; toolbar Export → JSON with no saved
+//      lens items shows a notice and downloads nothing
 //   1. /lenses/healthcare → Patients → New → fill the real registration form
 //      (first/last name, DOB, sex, insurance) → "Register patient"
 //      (healthcare.patients-create) → the chart opens (patients-detail)
@@ -40,6 +43,31 @@ try {
   checkDisk(log);
   await login(ctx, log);
   await gotoLens(page, '/lenses/healthcare', log);
+  await page.getByText('Real', { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 });
+  result.badge = 'Real';
+  result.demoChips = await page.getByText('Demo', { exact: true }).count();
+  const demoCopy = /DEMO data|workflow scaffold/i.test(await page.locator('body').innerText());
+  log('header depth chip: Real — "Demo" chips:', result.demoChips, '— DEMO copy on page:', demoCopy);
+  if (result.demoChips !== 0 || demoCopy) throw new Error('Healthcare still shows a Demo chip or DEMO copy');
+  // Toolbar Export: with no saved lens items it must not download an empty file.
+  let downloads = 0;
+  page.on('download', () => { downloads += 1; });
+  await page.getByTitle('Export (Ctrl+E)').first().click();
+  await page.getByText('Export as JSON').first().click();
+  const notice = page.getByTestId('export-menu-notice');
+  const noticeShown = await notice.waitFor({ state: 'visible', timeout: 30000 }).then(() => true, () => false);
+  await page.waitForTimeout(1500);
+  if (noticeShown) {
+    result.emptyExport = 'notice, no download';
+    log('toolbar Export → JSON: notice shown, downloads =', downloads, '—', (await notice.innerText()).slice(0, 80));
+    if (downloads !== 0) throw new Error('empty export still downloaded a file');
+  } else {
+    result.emptyExport = `downloaded ${downloads} file(s) of real lens items`;
+    log('toolbar Export → JSON: lens has saved items; downloads =', downloads);
+    if (downloads !== 1) throw new Error('export neither downloaded nor explained');
+  }
+  await page.keyboard.press('Escape');
+  await page.mouse.click(5, 5);
   await openPatients(page);
 
   await page.getByRole('button', { name: /^New$/ }).first().click();
