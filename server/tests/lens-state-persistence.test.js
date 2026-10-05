@@ -57,7 +57,10 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // 40 -> 41: "petsLens" so a user's pets, vaccines, medications, vet
     // visits, weights, reminders, photos, appointments, lost-pet profiles,
     // and household access grants survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 41);
+    // 41 -> 42: "boardLens" so a user's Trello-shape boards, columns,
+    // cards, checklists, comments, attachments, labels, automation rules,
+    // collaborators, and custom fields survive a restart.
+    assert.equal(LENS_STATE_KEYS.length, 42);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -76,6 +79,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("physicsLens"));
     assert.ok(LENS_STATE_KEYS.includes("hvacLens"));
     assert.ok(LENS_STATE_KEYS.includes("petsLens"));
+    assert.ok(LENS_STATE_KEYS.includes("boardLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -439,6 +443,63 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.petsLens.petAccess instanceof Map);
     assert.equal(STATE.petsLens.petAccess.get("user_a")[0].role, "co_owner");
     assert.equal(STATE.petsLens.petAccess.get("user_a")[0].revoked, false);
+  });
+
+  it("roundtrips STATE.boardLens (a Trello-shape board with columns, cards, labels)", () => {
+    // The Board domain stores per-user boards under STATE.boardLens.boards
+    // as Map<userId, Array<Board>>. Without boardLens in LENS_STATE_KEYS a
+    // restart wiped every board while the BoardWorkspace still showed it.
+    STATE.boardLens = {
+      boards: new Map([
+        ["user_a", [{
+          id: "bd_1",
+          name: "Sprint Board",
+          columns: [
+            { id: "col_1", name: "To Do" },
+            { id: "col_2", name: "In Progress" },
+            { id: "col_3", name: "Done" },
+          ],
+          cards: [{
+            id: "crd_1",
+            columnId: "col_1",
+            title: "Ship proof",
+            description: "Real card",
+            labels: ["frontend"],
+            dueDate: "2026-11-01",
+            assignee: "alex",
+            checklist: [{ id: "ci_1", text: "Write test", done: false }],
+            position: 0,
+            createdAt: "2026-10-05T00:00:00.000Z",
+          }],
+          labelDefs: [{ id: "lbl_1", name: "frontend", color: "blue" }],
+          automations: [{ id: "aut_1", trigger: "card_moved", columnId: "col_2", action: "add_label", value: "frontend", enabled: true, createdAt: "2026-10-05T00:00:00.000Z" }],
+          collaborators: [{ id: "col_1", userId: "user_b", role: "editor", addedAt: "2026-10-05T00:00:00.000Z" }],
+          customFields: [{ id: "cf_1", name: "Estimate", type: "number", options: [] }],
+          createdAt: "2026-10-05T00:00:00.000Z",
+        }]],
+      ]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.boardLens.boards instanceof Map);
+    const boards = STATE.boardLens.boards.get("user_a");
+    assert.equal(boards.length, 1);
+    const b = boards[0];
+    assert.equal(b.id, "bd_1");
+    assert.equal(b.name, "Sprint Board");
+    assert.equal(b.columns.length, 3);
+    assert.equal(b.columns[0].name, "To Do");
+    assert.equal(b.cards.length, 1);
+    assert.equal(b.cards[0].title, "Ship proof");
+    assert.equal(b.cards[0].columnId, "col_1");
+    assert.equal(b.cards[0].checklist[0].text, "Write test");
+    assert.equal(b.cards[0].checklist[0].done, false);
+    assert.equal(b.labelDefs[0].color, "blue");
+    assert.equal(b.automations[0].action, "add_label");
+    assert.equal(b.automations[0].enabled, true);
+    assert.equal(b.collaborators[0].role, "editor");
+    assert.equal(b.customFields[0].type, "number");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

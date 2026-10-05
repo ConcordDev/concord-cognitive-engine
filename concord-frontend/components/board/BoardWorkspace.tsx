@@ -35,6 +35,7 @@ import {
 } from './workspace-types';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardSettingsPanel } from './BoardSettingsPanel';
+import { BoardKeepMenu } from './BoardKeepMenu';
 import { cn } from '@/lib/utils';
 
 function isOverdue(due: string | null): boolean {
@@ -288,6 +289,9 @@ export function BoardWorkspace() {
           </div>
         </div>
       )}
+
+      {/* Keep this board as a DTU + draft in Thread */}
+      {board && <BoardKeepMenu board={board} />}
 
       {/* Create board row */}
       <div className="flex gap-1.5 mb-4">

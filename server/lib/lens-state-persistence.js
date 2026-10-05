@@ -72,6 +72,12 @@ export const LENS_STATE_KEYS = Object.freeze([
   // wiped every pet health record while the PetCareSection still showed
   // it.
   "petsLens",
+  // 41 -> 42: "boardLens" so a user's Trello-shape boards, columns, cards,
+  // checklists, comments, attachments, labels, automation rules,
+  // collaborators, and custom fields survive a restart. The Board domain
+  // stores per-user boards here; without this key a hard restart wiped
+  // every board while the BoardWorkspace still showed it.
+  "boardLens",
 ]);
 
 function serializeValue(v) {
