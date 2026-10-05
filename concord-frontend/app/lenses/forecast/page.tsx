@@ -31,6 +31,7 @@ import { RegionalForecast } from '@/components/forecast/RegionalForecast';
 import { ForecastAccuracy } from '@/components/forecast/ForecastAccuracy';
 import { ForecastArchive } from '@/components/forecast/ForecastArchive';
 import { AlertSubscriptions } from '@/components/forecast/AlertSubscriptions';
+import { ForecastKeepMenu } from '@/components/forecast/ForecastKeepMenu';
 
 interface Forecast {
   window_hours: number;
@@ -230,6 +231,7 @@ export default function ForecastPage() {
               {forecast.composedAt && (
                 <p className="text-[10px] text-zinc-400 font-mono text-right">composed {new Date(forecast.composedAt * 1000).toLocaleString()}</p>
               )}
+              <ForecastKeepMenu facts={{ worldId, forecast }} />
             </div>
           )
         )}
