@@ -84,6 +84,13 @@ export const LENS_STATE_KEYS = Object.freeze([
   // Maps here; without this key a hard restart wiped every tracked event
   // while the EventAnalytics panel still showed the dashboard counts.
   "analyticsLens",
+  // 43 -> 44: "creatorLens" so a user's platforms, content pipeline,
+  // audience snapshots, revenue entries, goals, demographics, membership
+  // tiers, subscriptions, payouts, publish queue, and comments survive a
+  // restart. The Creator domain stores per-user data here; without this
+  // key a hard restart wiped every content item while the pipeline still
+  // showed it.
+  "creatorLens",
 ]);
 
 function serializeValue(v) {

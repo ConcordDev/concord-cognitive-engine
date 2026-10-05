@@ -62,7 +62,11 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // collaborators, and custom fields survive a restart.
     // 42 -> 43: "analyticsLens" so a user's tracked events, saved funnels,
     // dashboards, alerts, and behavioral cohorts survive a restart.
-    assert.equal(LENS_STATE_KEYS.length, 43);
+    // 43 -> 44: "creatorLens" so a user's platforms, content pipeline,
+    // audience snapshots, revenue entries, goals, demographics, membership
+    // tiers, subscriptions, payouts, publish queue, and comments survive a
+    // restart.
+    assert.equal(LENS_STATE_KEYS.length, 44);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -83,6 +87,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("petsLens"));
     assert.ok(LENS_STATE_KEYS.includes("boardLens"));
     assert.ok(LENS_STATE_KEYS.includes("analyticsLens"));
+    assert.ok(LENS_STATE_KEYS.includes("creatorLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -557,6 +562,53 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(cohorts.length, 1);
     assert.equal(cohorts[0].name, "Paid users");
     assert.deepEqual(cohorts[0].includes, ["purchase"]);
+  });
+
+  it("roundtrips STATE.creatorLens (platforms, content pipeline, audience, revenue, goals, tiers, subscriptions, payouts, queue, comments)", () => {
+    // The Creator domain stores per-user data under 11 Maps. Without
+    // creatorLens in LENS_STATE_KEYS a restart wiped every content item
+    // while the pipeline still showed it.
+    STATE.creatorLens = {
+      platforms: new Map([["user_a", [{ id: "plt_1", name: "YouTube", handle: "@proof", createdAt: "2026-10-05T00:00:00Z" }]]]),
+      content: new Map([["user_a", [{ id: "con_1", title: "Proof Video", format: "video", stage: "idea", views: 0, clicks: 0, conversions: 0, citations: 0, revenue: 0, createdAt: "2026-10-05T00:00:00Z", publishedAt: null }]]]),
+      audience: new Map([["user_a", [{ id: "snap_1", platformId: "plt_1", date: "2026-10-05", followers: 1200 }]]]),
+      revenue: new Map([["user_a", [{ id: "rev_1", date: "2026-10-05", source: "ad_revenue", amount: 12.5, note: "" }]]]),
+      goal: new Map([["user_a", { metric: "followers", target: 5000, deadline: "2026-12-31", setAt: "2026-10-05T00:00:00Z" }]]),
+      demographics: new Map([["user_a", [{ id: "dem_1", segment: "18-24", label: "Gen Z", count: 450, date: "2026-10-05" }]]]),
+      tiers: new Map([["user_a", [{ id: "tier_1", name: "Pro", priceMonthly: 9, perks: ["Early access"], createdAt: "2026-10-05T00:00:00Z" }]]]),
+      subscriptions: new Map([["user_a", [{ id: "sub_1", tierId: "tier_1", supporter: "alex", status: "active", startedAt: "2026-10-05T00:00:00Z", cancelledAt: null }]]]),
+      payouts: new Map([["user_a", [{ id: "pay_1", amount: 50, method: "bank", status: "paid", note: "", at: "2026-10-05T00:00:00Z" }]]]),
+      publishQueue: new Map([["user_a", [{ id: "pq_1", title: "Ep 1", format: "video", body: "", releaseAt: "2026-11-01T00:00:00Z", status: "scheduled", contentId: null, publishedAt: null }]]]),
+      comments: new Map([["user_a", [{ id: "cm_1", contentId: "con_1", author: "sam", body: "Great!", status: "new", pinned: false, at: "2026-10-05T00:00:00Z" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.creatorLens.platforms instanceof Map);
+    assert.equal(STATE.creatorLens.platforms.get("user_a")[0].name, "YouTube");
+    assert.ok(STATE.creatorLens.content instanceof Map);
+    const c = STATE.creatorLens.content.get("user_a")[0];
+    assert.equal(c.title, "Proof Video");
+    assert.equal(c.stage, "idea");
+    assert.equal(c.views, 0, "views start at 0 — never seeded");
+    assert.ok(STATE.creatorLens.audience instanceof Map);
+    assert.equal(STATE.creatorLens.audience.get("user_a")[0].followers, 1200);
+    assert.ok(STATE.creatorLens.revenue instanceof Map);
+    assert.equal(STATE.creatorLens.revenue.get("user_a")[0].amount, 12.5);
+    assert.ok(STATE.creatorLens.goal instanceof Map);
+    assert.equal(STATE.creatorLens.goal.get("user_a").target, 5000);
+    assert.ok(STATE.creatorLens.demographics instanceof Map);
+    assert.equal(STATE.creatorLens.demographics.get("user_a")[0].segment, "18-24");
+    assert.ok(STATE.creatorLens.tiers instanceof Map);
+    assert.equal(STATE.creatorLens.tiers.get("user_a")[0].priceMonthly, 9);
+    assert.ok(STATE.creatorLens.subscriptions instanceof Map);
+    assert.equal(STATE.creatorLens.subscriptions.get("user_a")[0].status, "active");
+    assert.ok(STATE.creatorLens.payouts instanceof Map);
+    assert.equal(STATE.creatorLens.payouts.get("user_a")[0].status, "paid");
+    assert.ok(STATE.creatorLens.publishQueue instanceof Map);
+    assert.equal(STATE.creatorLens.publishQueue.get("user_a")[0].status, "scheduled");
+    assert.ok(STATE.creatorLens.comments instanceof Map);
+    assert.equal(STATE.creatorLens.comments.get("user_a")[0].body, "Great!");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
