@@ -40,6 +40,14 @@ export interface FEAResultViewerProps {
   showStress?: boolean;
   height?: string;
   /**
+   * Unit of the member stress column. The direct-stiffness solver is
+   * unit-agnostic (stress comes out in the caller's force / length² units),
+   * so only a caller that knows its input units should name one. Omitted →
+   * the column just says "Stress" rather than guessing (it used to claim MPa
+   * for the engineering lens's psi numbers).
+   */
+  stressUnit?: string;
+  /**
    * S2-b — optional replacement for the default in-scene <OrbitControls>. When
    * provided (e.g. ConKay's <StepInControls> orbit↔walk cam), it renders inside
    * the Canvas in place of OrbitControls. Omitted everywhere else, so the
@@ -119,7 +127,7 @@ function FEAScene({
   showDeformed,
   showStress,
   cameraControls,
-}: Required<Omit<FEAResultViewerProps, 'height' | 'cameraControls' | 'result'>> & {
+}: Required<Omit<FEAResultViewerProps, 'height' | 'cameraControls' | 'result' | 'stressUnit'>> & {
   cameraControls?: ReactNode;
 }) {
   // Build lookup maps
@@ -273,6 +281,7 @@ export function FEAResultViewer({
   height = '400px',
   cameraControls,
   result,
+  stressUnit,
 }: FEAResultViewerProps) {
   const sortedMembers = useMemo(
     () => [...members].sort((a, b) => b.utilization - a.utilization),
@@ -378,7 +387,7 @@ export function FEAResultViewer({
                     Member ID
                   </th>
                   <th className="px-3 py-2 text-right text-xs text-gray-400 font-medium">
-                    Stress (MPa)
+                    {stressUnit ? `Stress (${stressUnit})` : 'Stress'}
                   </th>
                   <th className="px-3 py-2 text-right text-xs text-gray-400 font-medium">
                     Utilization

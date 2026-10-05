@@ -9,7 +9,7 @@ import { useEngineeringFea } from './EngineeringFeaProvider';
 
 /** FEA result viewer + sim history — extracted from Results tab. */
 export function ResultsPanel() {
-  const { feaResult, feaNodes, feaMembers, feaDisplacements, historyKey, setActive, status, summary } = useEngineeringFea();
+  const { feaResult, feaNodes, feaMembers, feaDisplacements, historyKey, setActive, summary } = useEngineeringFea();
 
   return (
     <div className="space-y-4">
@@ -33,12 +33,13 @@ export function ResultsPanel() {
             amplification={10}
             showDeformed={true}
             showStress={true}
+            stressUnit="psi"
             height="500px"
             result={feaResult as unknown as FeaComputationResult | null}
           />
           <EngineeringKeepMenu
             facts={{
-              jobName: status || 'FEA run',
+              jobName: 'FEA run',
               result: summary
                 ? { ...(feaResult as Record<string, unknown>), summary }
                 : (feaResult as Record<string, unknown>),

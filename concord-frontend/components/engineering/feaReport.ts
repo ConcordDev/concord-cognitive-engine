@@ -120,7 +120,9 @@ export function feaReportDtuCall(facts: EngineeringFacts): ReceiptCall | null {
     domain: 'dtu',
     action: 'create',
     input: {
-      title: sentence.slice(0, 80),
+      // Exact-title duplicates are blocked store-wide, so two runs with the
+      // same summary would collide; the sim job id makes the title unique.
+      title: `${sentence.slice(0, 80)}${facts.result?.jobId ? ` · ${String(facts.result.jobId).slice(0, 40)}` : ''}`,
       tags: ['engineering', 'fea', 'fea-report', String(facts.jobName || 'fea').toLowerCase().replace(/\s+/g, '-')],
       source: 'engineering-lens:fea-report',
       human: { summary: body },

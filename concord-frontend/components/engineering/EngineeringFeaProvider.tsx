@@ -17,10 +17,10 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { lensRun } from '@/lib/api/client';
 import {
-  DEFAULT_FEA_MODEL,
+  EMPTY_FEA_MODEL,
+  feaModelGap,
   MATERIALS,
   type EngView,
   type FEAModel,
@@ -88,7 +88,7 @@ export function useEngineeringFea(): EngineeringFeaStore {
 
 export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<EngView>('model');
-  const [model, setModel] = useState<FEAModel>(DEFAULT_FEA_MODEL);
+  const [model, setModel] = useState<FEAModel>(EMPTY_FEA_MODEL);
   const [feaResult, setFeaResult] = useState<Record<string, unknown> | null>(null);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState('');
@@ -108,8 +108,6 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     avgElementLength: number;
   } | null>(null);
 
-  const runAction = useRunArtifact('engineering');
-  const createArtifact = useCreateArtifact('engineering');
 
   const loadMaterials = useCallback(async () => {
     setMatLoading(true);
@@ -185,42 +183,35 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
   }, [model, meshDivisions]);
 
   const runFEA = useCallback(() => {
+    const gap = feaModelGap(model);
+    if (gap) {
+      // Nothing to solve yet: say what is missing instead of solving a sample.
+      setFeaResult(null);
+      setStatus(`Error: nothing to solve yet. In Model, ${gap}.`);
+      setActive('model');
+      return;
+    }
     setRunning(true);
     setStatus('Solving…');
     setFeaResult(null);
-    const payload = { type: 'fea-model', title: 'FEA Model', data: { model } };
-    createArtifact.mutate(payload, {
-      onSuccess: (res) => {
-        const id = res?.artifact?.id ?? 'temp';
-        runAction.mutate(
-          { id, action: 'runFEA', params: { model } },
-          {
-            onSuccess: (data: unknown) => {
-              const d = data as { ok?: boolean; result?: unknown };
-              if (d?.result) {
-                setFeaResult(d.result as Record<string, unknown>);
-                setRunning(false);
-                setStatus('Analysis complete');
-                setHistoryKey((k) => k + 1);
-                setActive('results');
-              } else {
-                setRunning(false);
-                setStatus('Analysis returned no result');
-              }
-            },
-            onError: (e) => {
-              setRunning(false);
-              setStatus(`Error: ${e.message}`);
-            },
-          },
-        );
-      },
-      onError: (e) => {
-        setRunning(false);
-        setStatus(`Error: ${e.message}`);
-      },
-    });
-  }, [model, createArtifact, runAction]);
+    // Solve through the domain action directly. The old path created a
+    // throwaway "fea-model" artifact and ran the action against its id; with
+    // no id in the create response it ran against a placeholder id, got
+    // "not found", and the UI never showed a solve.
+    lensRun<Record<string, unknown>>('engineering', 'runFEA', { model, name: 'FEA run' })
+      .then((r) => {
+        if (r.data?.ok && r.data.result) {
+          setFeaResult(r.data.result as Record<string, unknown>);
+          setStatus('Analysis complete');
+          setHistoryKey((k) => k + 1);
+          setActive('results');
+        } else {
+          setStatus(`Error: ${r.data?.error || 'the solver returned no result'}`);
+        }
+      })
+      .catch((e: unknown) => setStatus(`Error: ${e instanceof Error ? e.message : String(e)}`))
+      .finally(() => setRunning(false));
+  }, [model]);
 
   const addNode = () => {
     const id = `N${model.nodes.length + 1}`;

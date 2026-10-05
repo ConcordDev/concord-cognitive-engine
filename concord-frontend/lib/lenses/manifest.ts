@@ -3103,17 +3103,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // is left empty rather than duplicating them with a worse surface.
     actions: [],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Engineering workspace.",
-      caption: "Structures, components, materials, simulations, specs \u2014 analyze, generate, export.",
-      firstActionLabel: "Start a project",
+      caption: "Your frame model, load cases, materials and FEA runs \u2014 saved to your account and solved by the built-in linear direct-stiffness solver. Results are engineering estimates, not a stamped analysis. CAD import and nonlinear / dynamic solvers aren't supported yet.",
+      firstActionLabel: "Build a model",
     },
     firstRunGuide: {
       steps: [
-        { caption: "simulation runs against the SIM_GRADE_A engine." },
-        { caption: "validate enforces material spec + safety factor." },
-        { caption: "Export drawings + specs ready for review." },
+        { caption: "Model starts empty: add nodes, a member, a fixed support, then a load in Loads." },
+        { caption: "Run FEA solves your model; Results shows displacement, utilization and pass/fail per member." },
+        { caption: "Keep a run as a private DTU, then draft it in Thread." },
       ],
     },
   },

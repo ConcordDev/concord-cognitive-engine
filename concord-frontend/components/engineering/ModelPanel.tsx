@@ -37,9 +37,9 @@ export function ModelPanel() {
             <thead>
               <tr className="text-gray-400 border-b border-white/10">
                 <th className="text-left py-1 px-2">ID</th>
-                <th className="text-right py-1 px-2">X (ft)</th>
-                <th className="text-right py-1 px-2">Y (ft)</th>
-                <th className="text-right py-1 px-2">Z (ft)</th>
+                <th className="text-right py-1 px-2">X (in)</th>
+                <th className="text-right py-1 px-2">Y (in)</th>
+                <th className="text-right py-1 px-2">Z (in)</th>
                 <th />
               </tr>
             </thead>
