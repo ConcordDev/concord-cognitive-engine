@@ -12,11 +12,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ChefHat, Plus, Star, Camera, Trash2, Flame, History, X, ChevronRight,
+  ChefHat, Plus, Star, Camera, Trash2, Flame, History, X, ChevronRight, ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { FoodKeepMenu } from './FoodKeepMenu';
+import type { FoodRecipeDetail } from './foodRecipeReport';
 
 type Slot = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
 const SLOTS: Slot[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -105,6 +107,9 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
   // step-photo form
   const [photoStep, setPhotoStep] = useState('');
   const [photoCaption, setPhotoCaption] = useState('');
+
+  // keep menu state
+  const [keepId, setKeepId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -286,7 +291,22 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                       >
                         <Flame className="w-3 h-3" /> Cooked it again
                       </button>
+                      <button
+                        onClick={() => setKeepId(keepId === r.id ? null : r.id)}
+                        className={cn(
+                          'px-2 py-1 rounded border flex items-center gap-1',
+                          keepId === r.id
+                            ? 'border-amber-700/50 bg-amber-950/40 text-amber-300'
+                            : 'border-zinc-700 text-zinc-400 hover:text-amber-300',
+                        )}
+                      >
+                        <ShieldCheck className="w-3 h-3" /> {keepId === r.id ? 'Hide keep' : 'Keep'}
+                      </button>
                     </div>
+
+                    {keepId === r.id && (
+                      <FoodKeepMenu facts={{ recipe: r as FoodRecipeDetail }} />
+                    )}
 
                     {/* Cook history */}
                     {cooks.length > 0 && (

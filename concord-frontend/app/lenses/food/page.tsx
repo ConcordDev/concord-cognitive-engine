@@ -32,7 +32,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { AlertTriangle, CalendarDays, ChefHat as TabChef, Compass, Package, Salad, ClipboardList, UtensilsCrossed } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
@@ -101,7 +100,6 @@ export default function FoodLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="food" data={{}} compact />
           </>
         )}
         tabs={tabs}
