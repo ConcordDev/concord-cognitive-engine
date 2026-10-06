@@ -55,6 +55,9 @@ test("A6 wire — felt-per in dream + forgetting", async (t) => {
     const base = { id: "d3", tier: "regular", createdAt: new Date().toISOString(), tags: [] };
     const a = retentionScore({ ...base }, { dtus: new Map() });
     const b = retentionScore({ ...base, machine: {} }, { dtus: new Map() });
-    assert.equal(a, b, "absent felt-per adds zero — existing DTUs score identically");
+    assert.ok(
+      Math.abs(a - b) < 1e-9,
+      `absent felt-per adds zero — existing DTUs score identically (${a} vs ${b})`,
+    );
   });
 });

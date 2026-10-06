@@ -44,9 +44,11 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.doesNotMatch(plaza, /Rib/);
     assert.doesNotMatch(plaza, /GodRays/);
     assert.doesNotMatch(plaza, /RingBoxes/);
-    // Only permitted primitive: the LeanPlay floor, as the LAST fallback after two pack meshes.
-    assert.equal((plaza.match(/PrimitiveType\.Cylinder/g) || []).length, 1);
+    // The continuous main court and the LeanPlay last-resort fallback are the
+    // only permitted primitives; architecture still comes from store packs.
+    assert.equal((plaza.match(/PrimitiveType\.Cylinder/g) || []).length, 2);
     assert.match(plaza, /SpawnStore\("granite_panel", root, Vector3\.zero[^\n]*\n\s*\?\? HubLook\.Prim\(root, PrimitiveType\.Cylinder/);
+    assert.match(plaza, /ContinuousFloor[\s\S]*HubLook\.PrimSurface\(root, PrimitiveType\.Cylinder/);
     assert.doesNotMatch(src("WorldBuilder.cs"), /Material_SandLumpy/);
   });
 

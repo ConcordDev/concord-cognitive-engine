@@ -177,7 +177,7 @@ export function MarketplaceApp() {
               {t.id === 'watchlist' && m.watchlist.size > 0 && (
                 <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">{m.watchlist.size}</span>
               )}
-              <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
             </button>
           ))}
         </nav>

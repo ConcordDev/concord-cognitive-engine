@@ -188,9 +188,9 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     // be present on the very first synchronous render, before any query has
     // had a chance to resolve (there has been no `await`/tick yet).
     expect(screen.getByRole('heading', { level: 1, name: /^What is for sale/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Browse$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Sell$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Cart$/i })).toBeInTheDocument();
+    expect(screen.getByTitle('Browse (B)')).toBeInTheDocument();
+    expect(screen.getByTitle('Sell (M)')).toBeInTheDocument();
+    expect(screen.getByTitle('Cart (C)')).toBeInTheDocument();
   });
 
   it('does NOT mount ShopfrontSection (seller dashboard: 6 backend calls) on the default Browse tab', async () => {
@@ -202,17 +202,17 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     await renderPage();
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Sell$/i }));
+    fireEvent.click(screen.getByTitle('Sell (M)'));
 
     expect(screen.getByTestId('shopfront-section')).toBeInTheDocument();
   });
 
   it('does not mount ShopfrontSection on the Cart or Purchases tabs either', async () => {
     await renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^Cart$/i }));
+    fireEvent.click(screen.getByTitle('Cart (C)'));
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Purchases$/i }));
+    fireEvent.click(screen.getByTitle('Purchases (P)'));
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
   });
 

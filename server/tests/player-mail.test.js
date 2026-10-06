@@ -96,6 +96,14 @@ function memDb() {
   }
   function _all(sql, args) {
     const n = _trim(sql);
+    if (n.startsWith("SELECT id FROM dtus WHERE creator_id = ? AND id IN")) {
+      const [ownerId, idsJson] = args;
+      const ids = JSON.parse(idsJson);
+      return ids
+        .map((id) => t.dtus.get(id))
+        .filter((d) => d?.creator_id === ownerId)
+        .map((d) => ({ id: d.id }));
+    }
     if (n.includes("FROM player_mail") && n.includes("to_user_id = ?")) {
       const userId = args[0];
       const rows = [...t.mail.values()].filter(m => m.to_user_id === userId);
