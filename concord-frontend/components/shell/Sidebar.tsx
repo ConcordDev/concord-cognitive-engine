@@ -8,6 +8,7 @@
  * by category with search/filter and sovereign role gating.
  */
 
+import { RailAccount } from './RailAccount';
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -289,7 +290,8 @@ export function Sidebar() {
               Systems
             </p>
           )}
-          <div className="space-y-0.5 mb-4">
+          {/* System pages: expanded sidebar only — the rail keeps Core + Hub. */}
+          {showLabel && <div className="space-y-0.5 mb-4">
             {[
               { href: '/global', label: 'Global Library', Icon: Globe },
               { href: '/profile', label: 'Profile', Icon: Brain },
@@ -318,7 +320,7 @@ export function Sidebar() {
                 )}
               </Link>
             ))}
-          </div>
+          </div>}
 
           {/* Extensions Toggle */}
           {showLabel && (
@@ -346,18 +348,10 @@ export function Sidebar() {
           )}
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-lattice-border">
-          {showLabel ? (
-            <div className="text-xs text-gray-400">
-              <p>Concord OS v1.0</p>
-              <p className="text-neon-green">Sovereign</p>
-            </div>
-          ) : (
-            <div className="text-center">
-              <span className="text-xs text-neon-green">v1</span>
-            </div>
-          )}
+        {/* Footer — search, notifications, theme, sessions, account (the
+            Topbar is hidden on desktop; these live on the rail). */}
+        <div className={cn('border-t border-lattice-border', showLabel ? 'p-3' : 'flex justify-center py-3')}>
+          <RailAccount expanded={showLabel} />
         </div>
       </aside>
     </>

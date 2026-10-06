@@ -4,6 +4,9 @@ import React from 'react';
 
 // LensShell pulls in next/dynamic + the UI store + a11y hooks; stub it to a
 // passthrough so this test isolates the civic-bonds page's own four states.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),

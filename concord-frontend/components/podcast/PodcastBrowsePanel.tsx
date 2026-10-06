@@ -6,7 +6,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Star, Check, ListPlus, Download, ChevronLeft } from 'lucide-react';
+import { Loader2, Plus, Star, Check, ListPlus, Download, ChevronLeft, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -14,7 +15,7 @@ import { ErrorState } from '@/components/ui';
 interface Show {
   id: string; title: string; author: string | null; category: string;
   description: string | null; episodeCount: number; subscribed: boolean;
-  rating: number; reviewCount: number;
+  rating: number; reviewCount: number; addedBy?: string;
 }
 interface Episode {
   id: string; title: string; durationSec: number; publishDate: string;
@@ -46,6 +47,9 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [epForm, setEpForm] = useState({ title: '', durationMin: '', publishDate: '' });
   const [myRating, setMyRating] = useState(5);
+  const [myReview, setMyReview] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const { user } = useAuth();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -60,10 +64,11 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   const openShow = async (sh: Show) => {
     setSelected(sh);
+    setConfirmRemove(false);
     const [e, d] = await Promise.all([
       lensRun('podcast', 'episode-list', { showId: sh.id }),
       lensRun('podcast', 'show-detail', { id: sh.id }),
@@ -111,8 +116,18 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
   const downloadEp = async (epId: string) => { await lensRun('podcast', 'download-episode', { episodeId: epId }); if (selected) await openShow(selected); onChange(); };
   const rate = async () => {
     if (!selected) return;
-    await lensRun('podcast', 'show-rate', { showId: selected.id, rating: myRating });
+    const r = await lensRun('podcast', 'show-rate', { showId: selected.id, rating: myRating, text: myReview.trim() });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not save your rating.'); return; }
+    setMyReview('');
     await openShow(selected);
+  };
+  const removeShow = async () => {
+    if (!selected) return;
+    const r = await lensRun('podcast', 'show-delete', { id: selected.id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not remove the show.'); setConfirmRemove(false); return; }
+    setSelected(null);
+    await refresh();
+    onChange();
   };
 
   if (loading) {
@@ -144,6 +159,20 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
               {selected.subscribed ? 'Subscribed' : 'Subscribe'}
             </button>
           </div>
+          {user?.id && selected.addedBy === user.id && (
+            <div className="mt-2 flex items-center gap-2 text-[11px]">
+              {confirmRemove ? (
+                <>
+                  <button type="button" onClick={() => void removeShow()} className="rounded-lg bg-rose-600 px-2.5 py-1 font-medium text-white transition-colors hover:bg-rose-500">Remove show, episodes and reviews</button>
+                  <button type="button" onClick={() => setConfirmRemove(false)} className="text-zinc-400 hover:text-zinc-200">Keep</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setConfirmRemove(true)} className="inline-flex items-center gap-1 text-zinc-500 transition-colors hover:text-rose-300">
+                  <Trash2 className="w-3 h-3" /> Remove this show
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {detailError && <ErrorState message={detailError} onRetry={() => openShow(selected)} variant="inline" />}
@@ -192,13 +221,15 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
           <p className="text-xs font-semibold text-zinc-300 mb-1">Rate this show</p>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button aria-label="Favorite" key={n} type="button" onClick={() => setMyRating(n)}>
+              <button aria-label={`Rate ${n} star${n === 1 ? '' : 's'}`} aria-pressed={n === myRating} key={n} type="button" onClick={() => setMyRating(n)}>
                 <Star className={cn('w-5 h-5', n <= myRating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
               </button>
             ))}
             <button type="button" onClick={rate}
               className="ml-2 px-2.5 py-1 text-[11px] bg-violet-600 hover:bg-violet-500 text-white rounded-lg">Submit</button>
           </div>
+          <textarea aria-label="Your review" rows={2} placeholder="Say why (optional)" value={myReview} onChange={(e) => setMyReview(e.target.value)}
+            className="mt-2 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           {reviews.length > 0 && (
             <ul className="mt-2 space-y-1">
               {reviews.map((rv) => (

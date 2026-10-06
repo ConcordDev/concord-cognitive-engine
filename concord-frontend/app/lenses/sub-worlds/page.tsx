@@ -5,16 +5,17 @@
  * Thin shell: single `active` union → panels. Macros live in panels.
  */
 
-import { useState, type ComponentType } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Compass, Boxes, Star, Plus, Code2 as Github } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { GalleryPanel } from '@/components/sub-worlds/GalleryPanel';
 import { SpawnPanel } from '@/components/sub-worlds/SpawnPanel';
 import { MetaverseRepos } from '@/components/sub-worlds/MetaverseRepos';
@@ -32,6 +33,8 @@ const VIEWS: { id: SubWorldsView; label: string; keys: string; icon: typeof Comp
 export default function SubWorldsPage() {
   useLensNav('sub-worlds');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SubWorldsView>('discover');
 
   useLensCommand(
@@ -49,43 +52,18 @@ export default function SubWorldsPage() {
     <LensShell lensId="sub-worlds" asMain={false}>
       <FirstRunTour lensId="sub-worlds" />
       <DepthBadge lensId="sub-worlds" size="sm" className="ml-2" />
-      <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-zinc-100">Sub-Worlds</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Spawn, host, and discover user-created worlds. Each one is reachable via the
-            existing world-travel system — author it in-place, set its privacy, and track visits.
-          </p>
-        </header>
-
-        <nav
-          className="mb-4 flex gap-1 border-b border-zinc-800 overflow-x-auto"
-          aria-label="Sub-worlds views"
-        >
-          {VIEWS.map(({ id, label, keys, icon: Icon }) => {
-            const on = active === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActive(id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500',
-                  on
-                    ? 'border-cyan-500 text-cyan-300'
-                    : 'border-transparent text-zinc-400 hover:text-zinc-300',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="h-4 w-4" /> {label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="sub-worlds"
+        crumb="Sub-Worlds"
+        title={`Worlds to explore${who ? `, ${who}` : ''}`}
+        subtitle="Spawn, host, and discover user-created worlds. Each one is reachable via the existing world-travel system: author it in place, set its privacy, and track visits."
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as SubWorldsView)}
+        tabsLabel="Sub-worlds views"
+        cta={{ label: 'New world', icon: Plus, onClick: () => setActive('spawn'), title: 'Open the world spawner (4)' }}
+      >
+        <div className="max-w-5xl">
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
@@ -110,15 +88,8 @@ export default function SubWorldsPage() {
             )}
           </motion.div>
         </AnimatePresence>
-
-        <CrossLensRecentsPanel
-          lensId="sub-worlds"
-          sinceDays={7}
-          limit={6}
-          hideWhenEmpty
-          className="mt-3"
-        />
-      </div>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

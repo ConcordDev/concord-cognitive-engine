@@ -59,9 +59,10 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { StatTile, StatTileGrid, ErrorState, Skeleton, DensityToggle } from '@/components/ui';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Compass, Globe2, Wrench, Plane } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Compass, Globe2, Wrench, Plane, Plus } from 'lucide-react';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type TopTab = 'trips' | 'reference' | 'tools';
 
@@ -75,14 +76,16 @@ interface TravelDashboard {
   totalBooked: number;
 }
 
-const TOP_TABS: { id: TopTab; label: string; icon: typeof Compass; hint: string }[] = [
-  { id: 'trips', label: 'My Trips', icon: Compass, hint: 'trips · saved places · price watches · documents' },
-  { id: 'reference', label: 'Destination Reference', icon: Globe2, hint: 'country · visa · currency · postal · parks' },
-  { id: 'tools', label: 'Quick Tools', icon: Wrench, hint: 'budget · packing · jet lag · visa calculators' },
+const TOP_TABS: { id: TopTab; label: string; title: string; icon: typeof Compass; hint: string }[] = [
+  { id: 'trips', label: 'My Trips', title: 'Where you are headed', icon: Compass, hint: 'trips · saved places · price watches · documents' },
+  { id: 'reference', label: 'Destination Reference', title: 'What to know before you land', icon: Globe2, hint: 'country · visa · currency · postal · parks' },
+  { id: 'tools', label: 'Quick Tools', title: 'Do the trip math', icon: Wrench, hint: 'budget · packing · jet lag · visa calculators' },
 ];
 
 export default function TravelLensPage() {
   useLensNav('travel');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<TopTab>('trips');
   const dashFeedback = useMacroDispatchFeedback<TravelDashboard>();
 
@@ -106,26 +109,25 @@ export default function TravelLensPage() {
   const dash = dashFeedback.result;
   const dashLoading = dashFeedback.status === 'dispatched' || dashFeedback.status === 'running';
 
+  const current = TOP_TABS.find((t) => t.id === tab)!;
+
   return (
     <LensShell lensId="travel" asMain={false}>
       <FirstRunTour lensId="travel" />
-      <div data-lens-theme="travel" className="p-6 space-y-6">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/30 to-teal-500/30 border border-cyan-500/20 flex items-center justify-center">
-              <Compass className="w-5 h-5 text-neon-cyan" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white">Travel</h1>
-                <DepthBadge lensId="travel" size="sm" />
-              </div>
-              <p className="text-sm text-gray-400">Trip planning &amp; travel management — TripIt + Hopper shape</p>
-            </div>
-          </div>
-          <DensityToggle variant="dropdown" />
-        </header>
-
+      <DepthBadge lensId="travel" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="travel"
+        crumb="Travel"
+        title={`${current.title}${tab === 'trips' && who ? `, ${who}` : ''}`}
+        subtitle="Trip planning, itineraries, price watches and destination reference."
+        actions={<DensityToggle variant="dropdown" />}
+        tabs={TOP_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as TopTab)}
+        tabsLabel="Travel views"
+        cta={{ label: 'Plan a trip', icon: Plus, onClick: () => setTab('trips'), title: 'Open My Trips to start a new trip' }}
+      >
+        <div className="space-y-6">
         {/* ── Real dashboard — travel-dashboard macro, honest loading/error/populated states ── */}
         {dashFeedback.status === 'error' ? (
           <ErrorState
@@ -153,10 +155,8 @@ export default function TravelLensPage() {
               <StatTile label="Saved places" value={dash.savedPlaces} onClick={() => setTab('trips')} />
               <StatTile label="Total booked" value={dash.totalBooked} unit="$" onClick={() => setTab('trips')} />
             </StatTileGrid>
-            <AnimatePresence>
               {dash.nextTrip && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="rounded-xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 via-transparent to-teal-500/10 p-4 flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#111] p-4">
                   <div className="flex items-center gap-3">
                     <Plane className="w-5 h-5 text-neon-cyan" />
                     <div>
@@ -167,53 +167,31 @@ export default function TravelLensPage() {
                     </div>
                   </div>
                   <button type="button" onClick={() => setTab('trips')} className="text-xs text-neon-cyan hover:underline">Open →</button>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
           </div>
         ) : null}
 
-        {/* ── Top-level tabs ── */}
-        <div className="flex gap-1 bg-lattice-surface p-1 rounded-lg border border-lattice-border overflow-x-auto">
-          {TOP_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              title={t.hint}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                tab === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white hover:bg-white/5'
-              )}
-            >
-              <t.icon className="w-4 h-4" /> {t.label}
-            </button>
-          ))}
-        </div>
+          {tab === 'trips' && <TravelTripsSection />}
 
-        <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            {tab === 'trips' && <TravelTripsSection />}
-
-            {tab === 'reference' && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                  <TripPlannerPanel />
-                </div>
-                <ZippopotamPanel domain="travel" />
-                <ParksPanel />
-                <LensFeedButton domain="travel" label="Import real country travel guides (REST Countries → DTUs)" />
+          {tab === 'reference' && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <TripPlannerPanel />
               </div>
-            )}
+              <ZippopotamPanel domain="travel" />
+              <ParksPanel />
+              <LensFeedButton domain="travel" label="Import real country travel guides (REST Countries → DTUs)" />
+            </div>
+          )}
 
-            {tab === 'tools' && (
-              <PipingProvider>
-                <TravelActionPanel />
-              </PipingProvider>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+          {tab === 'tools' && (
+            <PipingProvider>
+              <TravelActionPanel />
+            </PipingProvider>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

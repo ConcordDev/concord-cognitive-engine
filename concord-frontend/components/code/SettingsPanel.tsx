@@ -34,7 +34,10 @@ export interface CodeLensSettings {
 export const DEFAULT_SETTINGS: CodeLensSettings = {
   editor: {
     fontSize: 14,
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    // next/font self-hosts JetBrains Mono under a generated family name, exposed
+    // as --font-jetbrains-mono; the bare 'JetBrains Mono' name only resolves if
+    // the font happens to be installed locally.
+    fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', 'Fira Code', monospace",
     tabSize: 2,
     wordWrap: 'on',
     minimap: true,

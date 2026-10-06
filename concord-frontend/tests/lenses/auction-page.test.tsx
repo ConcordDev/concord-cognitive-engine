@@ -21,6 +21,10 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/re
 // test doesn't, so stub the keyboard binding to a no-op (matches the
 // convention in tests/components/WalletPage.test.tsx).
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
+vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 
 // Capturing socket mock — lets a test fire the real server event names and
 // assert the page's `subscribe('auction:bid-placed'|'auction:settled', ...)`

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckSquare, Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame } from 'lucide-react';
+import { Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProductivityTodayPanel } from './ProductivityTodayPanel';
@@ -83,24 +83,11 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
   useEffect(() => { void refreshDash(); }, [refreshDash]);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent">
-        <CheckSquare className="w-5 h-5 text-red-400" />
-        <h2 className="text-sm font-bold text-zinc-100">Task Manager</h2>
-        {stats && stats.streak > 0 && (
-          <span
-            className="ml-auto inline-flex items-center gap-1 rounded-full border border-amber-800/50 bg-amber-950/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300"
-            title={`${stats.streak}-day completion streak · ${stats.completedWeek} done this week`}
-          >
-            <Flame className="w-3 h-3" /> {stats.streak}-day streak
-          </span>
-        )}
-      </header>
-
+    <div>
       {loading ? (
         <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
-        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 px-4 py-3 border-b border-zinc-800">
+        <div className="mb-5 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-7">
           <Stat label="Active" value={dash.activeTasks} />
           <Stat label="Due today" value={dash.dueToday} alert={dash.dueToday > 0} />
           <Stat label="Done today" value={dash.completedToday} />
@@ -111,27 +98,34 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
         </div>
       )}
 
-      <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto" aria-label="Task manager views">
-        {PRODUCTIVITY_TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          return (
-            <button key={t.id} type="button" onClick={() => setTab(t.id)}
-              aria-pressed={active}
-              title={`${t.label} — press ${t.chord}`}
-              className={cn('group flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-red-500',
-                active ? 'bg-zinc-900 text-red-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
-              <Icon className="w-3.5 h-3.5" /> {t.label}
-              <kbd className={cn('ml-0.5 hidden md:inline rounded border px-1 text-[9px] font-mono leading-none',
-                active ? 'border-red-800/60 text-red-300/80' : 'border-zinc-700 text-zinc-500 group-hover:text-zinc-400')}>
-                {t.hint}
-              </kbd>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Task manager views">
+          {PRODUCTIVITY_TABS.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button key={t.id} type="button" onClick={() => setTab(t.id)}
+                aria-pressed={active}
+                title={`${t.label} — press ${t.chord}`}
+                className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
+                <Icon className="h-3.5 w-3.5" /> {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 md:inline-block">{t.hint}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+        {stats && stats.streak > 0 && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-amber-800/50 bg-amber-950/30 px-3 py-1 text-[12px] font-medium text-amber-300"
+            title={`${stats.streak}-day completion streak · ${stats.completedWeek} done this week`}
+          >
+            <Flame className="w-3 h-3" /> {stats.streak}-day streak
+          </span>
+        )}
+      </div>
 
-      <div className="p-4">
+      <div className="rounded-2xl border border-white/10 bg-[#111] p-5">
         {tab === 'today' && <ProductivityTodayPanel onChange={refreshDash} />}
         {tab === 'quickadd' && <ProductivityQuickAddPanel onChange={refreshDash} />}
         {tab === 'tasks' && <ProductivityTasksPanel onChange={refreshDash} />}
@@ -148,9 +142,9 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
 
 function Stat({ label, value, alert }: { label: string; value: number; alert?: boolean }) {
   return (
-    <div className="text-center">
-      <p className={cn('text-lg font-bold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
+    <div className="bg-[#111] px-2 py-3 text-center">
+      <p className={cn('text-xl font-semibold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</p>
     </div>
   );
 }

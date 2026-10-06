@@ -7,7 +7,6 @@
  */
 
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   Wind,
   MapPin,
@@ -24,11 +23,11 @@ import {
   Droplets,
   Target,
   Map,
-  Globe,
+  Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
@@ -37,8 +36,8 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { WatchPanel } from '@/components/environment/WatchPanel';
 import { FieldOpsPanel, type FieldOpsKind } from '@/components/environment/FieldOpsPanel';
 import { CarbonWorkbenchPanel } from '@/components/environment/CarbonWorkbenchPanel';
@@ -62,22 +61,22 @@ export type EnvView =
   | 'goals'
   | 'map';
 
-const TABS: { id: EnvView; label: string; icon: typeof Wind; keys: string }[] = [
-  { id: 'watch', label: 'Watch', icon: Wind, keys: 'w' },
-  { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'd' },
-  { id: 'sites', label: 'Sites', icon: MapPin, keys: 's' },
-  { id: 'species', label: 'Species', icon: Bug, keys: 'p' },
-  { id: 'sampling', label: 'Sampling', icon: FlaskConical, keys: 'a' },
-  { id: 'trails', label: 'Trails', icon: Footprints, keys: 't' },
-  { id: 'waste', label: 'Waste', icon: Recycle, keys: 'u' },
-  { id: 'compliance', label: 'Permits', icon: ShieldCheck, keys: 'c' },
-  { id: 'diversion', label: 'Diversion', icon: Calculator, keys: 'v' },
-  { id: 'field', label: 'Trends', icon: Trees, keys: 'f' },
-  { id: 'ledger', label: 'Emissions log', icon: Leaf, keys: 'n' },
-  { id: 'ghg', label: 'GHG desk', icon: Factory, keys: 'g' },
-  { id: 'resources', label: 'Resources', icon: Droplets, keys: 'r' },
-  { id: 'goals', label: 'Goals', icon: Target, keys: 'o' },
-  { id: 'map', label: 'Map', icon: Map, keys: 'm' },
+const TABS: { id: EnvView; label: string; icon: typeof Wind; keys: string; title: string }[] = [
+  { id: 'watch', label: 'Watch', icon: Wind, keys: 'w', title: 'The air and water around you' },
+  { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'd', title: 'Your sites at a glance' },
+  { id: 'sites', label: 'Sites', icon: MapPin, keys: 's', title: 'Where you monitor' },
+  { id: 'species', label: 'Species', icon: Bug, keys: 'p', title: 'What lives at your sites' },
+  { id: 'sampling', label: 'Sampling', icon: FlaskConical, keys: 'a', title: 'What the samples show' },
+  { id: 'trails', label: 'Trails', icon: Footprints, keys: 't', title: 'Where you walk and survey' },
+  { id: 'waste', label: 'Waste', icon: Recycle, keys: 'u', title: 'What gets thrown away' },
+  { id: 'compliance', label: 'Permits', icon: ShieldCheck, keys: 'c', title: 'What you are permitted to do' },
+  { id: 'diversion', label: 'Diversion', icon: Calculator, keys: 'v', title: 'How much stays out of landfill' },
+  { id: 'field', label: 'Trends', icon: Trees, keys: 'f', title: 'How conditions are trending' },
+  { id: 'ledger', label: 'Emissions log', icon: Leaf, keys: 'n', title: 'What you have emitted' },
+  { id: 'ghg', label: 'GHG desk', icon: Factory, keys: 'g', title: 'Your greenhouse gas inventory' },
+  { id: 'resources', label: 'Resources', icon: Droplets, keys: 'r', title: 'What you consume' },
+  { id: 'goals', label: 'Goals', icon: Target, keys: 'o', title: 'What you are working toward' },
+  { id: 'map', label: 'Map', icon: Map, keys: 'm', title: 'Everything on the map' },
 ];
 
 const FIELD_KIND: Partial<Record<EnvView, FieldOpsKind>> = {
@@ -96,6 +95,8 @@ const FIELD_KIND: Partial<Record<EnvView, FieldOpsKind>> = {
 export default function EnvironmentLensPage() {
   useLensNav('environment');
   useLensIdentity('environment');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeView, setActiveView] = useState<EnvView>('watch');
 
   useLensCommand(
@@ -109,14 +110,29 @@ export default function EnvironmentLensPage() {
     { lensId: 'environment' },
   );
 
-  const reduceMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const current = TABS.find((t) => t.id === activeView)!;
 
   return (
     <LensShell lensId="environment" asMain={false}>
       <FirstRunTour lensId="environment" />
       <DepthBadge lensId="environment" size="sm" className="ml-2" />
-      <div data-lens-theme="environment" className={ds.pageContainer}>
+      <NorthStarFrame
+        lensId="environment"
+        crumb="Environment"
+        title={`${current.title}${activeView === 'watch' && who ? `, ${who}` : ''}`}
+        subtitle="NOAA / EPA ops: AirNow, Superfund, USGS, field survey and GHG Protocol inventory."
+        actions={
+          <>
+            <LensFeedButton domain="environment" label="Live environment feed" />
+            <DTUExportButton domain="environment" data={{}} compact />
+          </>
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
+        activeTab={activeView}
+        onTab={(id) => setActiveView(id as EnvView)}
+        tabsLabel="Environment views"
+        cta={{ label: 'Log a site', icon: Plus, onClick: () => setActiveView('sites'), title: 'Open Sites to add a monitoring site' }}
+      >
         <a
           href="#environment-main"
           className="sr-only focus:not-sr-only focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -124,76 +140,10 @@ export default function EnvironmentLensPage() {
           Skip to environment content
         </a>
         <ShellPreview lensId="environment" defaultOpen={false} />
-
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Globe className="h-8 w-8 text-emerald-400" />
-            <div>
-              <h1 className={ds.heading1}>Environment</h1>
-              <p className={ds.textMuted}>
-                NOAA / EPA ops — AirNow, Superfund, USGS, field survey, GHG Protocol inventory
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LensFeedButton domain="environment" label="Live environment feed" />
-            <DTUExportButton domain="environment" data={{}} compact />
-          </div>
-        </header>
-
-        <div className="flex flex-col gap-4 md:flex-row">
-          <nav
-            className="flex shrink-0 gap-1 overflow-x-auto border-b border-emerald-900/40 pb-2 md:w-44 md:flex-col md:overflow-visible md:border-b-0 md:border-r md:pb-0 md:pr-3"
-            aria-label="Environment views"
-          >
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const on = activeView === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveView(tab.id)}
-                  className={cn(
-                    'flex items-center gap-2 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium transition-colors',
-                    on
-                      ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
-                      : 'border-transparent text-gray-400 hover:bg-white/[0.04] hover:text-white',
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                  <kbd className="ml-auto hidden font-mono text-[10px] text-gray-500 md:inline">
-                    {tab.keys}
-                  </kbd>
-                </button>
-              );
-            })}
-          </nav>
-
-          <main id="environment-main" className="min-w-0 flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeView}
-                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                transition={reduceMotion ? { duration: 0 } : { duration: 0.18 }}
-              >
-                <EnvironmentView active={activeView} />
-              </motion.div>
-            </AnimatePresence>
-          </main>
-        </div>
-
-        <CrossLensRecentsPanel
-          lensId="environment"
-          sinceDays={7}
-          limit={6}
-          hideWhenEmpty
-          className="mt-3"
-        />
-      </div>
+        <main id="environment-main" className="min-w-0">
+          <EnvironmentView active={activeView} />
+        </main>
+      </NorthStarFrame>
 
       <MobileTabBar
         tabs={[

@@ -5,7 +5,24 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerWalletActions from "../domains/wallet.js";
+import { executePurchase } from "../economy/transfer.js";
+import { getBalance } from "../economy/balances.js";
+import { runHeartbeatModuleNow } from "../emergent/heartbeat-registry.js";
+
+function ledgerDb() {
+  const db = new Database(":memory:");
+  db.exec(`
+    CREATE TABLE economy_ledger (
+      id TEXT PRIMARY KEY, type TEXT NOT NULL, from_user_id TEXT, to_user_id TEXT,
+      amount REAL NOT NULL, fee REAL NOT NULL DEFAULT 0, net REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'complete', metadata_json TEXT DEFAULT '{}',
+      request_id TEXT, ip TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), ref_id TEXT);
+  `);
+  return db;
+}
+const r2 = (n) => Math.round(n * 100) / 100;
 
 const ACTIONS = new Map();
 function register(domain, name, fn) {
@@ -63,15 +80,37 @@ describe("wallet — money requests", () => {
     assert.equal(incoming.result.outstandingTotal, 40);
   });
 
-  it("INVARIANT: only payer may mark a request paid", () => {
+  it("INVARIANT: paying a request requires a real ledger transfer", () => {
     const created = call("requestCreate", ctxA, { payerId: "user_b", amount: 20 });
     const id = created.result.request.id;
     const byRequester = call("requestUpdate", ctxA, { id, status: "paid" });
     assert.equal(byRequester.ok, false);
-    const byPayer = call("requestUpdate", ctxB, { id, status: "paid" });
-    assert.equal(byPayer.ok, true);
-    assert.equal(byPayer.result.request.status, "paid");
-    assert.ok(byPayer.result.request.paidAt);
+    assert.match(byRequester.error, /only payer/);
+
+    const noLedger = call("requestUpdate", ctxB, { id, status: "paid" });
+    assert.equal(noLedger.ok, false);
+    assert.equal(noLedger.error, "ledger_unavailable");
+    assert.equal(call("requestList", ctxB, { direction: "incoming" }).result.requests[0].status, "pending");
+
+    const empty = ledgerDb();
+    const broke = call("requestUpdate", { ...ctxB, db: empty }, { id, status: "paid" });
+    assert.equal(broke.ok, false);
+    assert.equal(broke.error, "insufficient_balance");
+    assert.equal(call("requestList", ctxB, { direction: "incoming" }).result.requests[0].status, "pending");
+
+    const db = ledgerDb();
+    executePurchase(db, { userId: "user_b", amount: 100 });
+    const before = getBalance(db, "user_b").balance;
+    const paid = call("requestUpdate", { ...ctxB, db }, { id, status: "paid" });
+    assert.equal(paid.ok, true);
+    assert.equal(paid.result.request.status, "paid");
+    assert.ok(paid.result.request.paidAt);
+    assert.ok(paid.result.transfer.batchId);
+    assert.equal(r2(before - getBalance(db, "user_b").balance), 20);
+    assert.ok(getBalance(db, "user_a").balance > 0);
+    const again = call("requestUpdate", { ...ctxB, db }, { id, status: "paid" });
+    assert.equal(again.ok, true);
+    assert.equal(r2(getBalance(db, "user_b").balance), r2(before - 20));
   });
 });
 
@@ -108,6 +147,35 @@ describe("wallet — scheduled transfers", () => {
   it("INVARIANT: schedules are per-user (no leak)", () => {
     call("scheduleCreate", ctxA, { recipientId: "user_b", amount: 30, frequency: "weekly" });
     assert.equal(call("scheduleList", ctxB).result.count, 0);
+  });
+
+  it("INVARIANT: send-now and the due sweep move CC, and a refusal leaves the schedule unsent", async () => {
+    const created = call("scheduleCreate", ctxA, { recipientId: "user_b", amount: 10, frequency: "monthly" });
+    const id = created.result.schedule.id;
+    const refused = call("scheduleSendNow", ctxA, { id });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.error, "ledger_unavailable");
+    assert.equal(call("scheduleList", ctxA).result.schedules.find((s) => s.id === id).runsCompleted, 0);
+
+    const db = ledgerDb();
+    executePurchase(db, { userId: "user_a", amount: 100 });
+    const before = getBalance(db, "user_a").balance;
+    const sent = call("scheduleSendNow", { ...ctxA, db }, { id });
+    assert.equal(sent.ok, true);
+    assert.equal(sent.result.schedule.runsCompleted, 1);
+    assert.ok(sent.result.transfer.batchId);
+    assert.equal(r2(before - getBalance(db, "user_a").balance), 10);
+    assert.ok(getBalance(db, "user_b").balance > 0);
+
+    const start = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    const due = call("scheduleCreate", ctxA, { recipientId: "user_b", amount: 10, frequency: "monthly", startDate: start });
+    assert.ok(new Date(due.result.schedule.nextRunAt).getTime() <= Date.now());
+    const sweep = await runHeartbeatModuleNow("wallet-schedule-sweep", { state: globalThis._concordSTATE, db });
+    assert.equal(sweep.ok, true);
+    const after = call("scheduleList", ctxA).result.schedules.find((s) => s.id === due.result.schedule.id);
+    assert.equal(after.runsCompleted, 1);
+    assert.ok(after.lastTransfer.batchId);
+    assert.equal(r2(before - getBalance(db, "user_a").balance), 20);
   });
 });
 
@@ -168,14 +236,34 @@ describe("wallet — split the bill", () => {
     assert.equal(r.ok, false);
   });
 
-  it("splitSettle marks a member share paid and settles when all paid", () => {
+  it("INVARIANT: a split share is paid only after that member's Concord Coin moves", () => {
     const c = call("splitCreate", ctxA, { total: 60, participants: ["user_b"] });
     const id = c.result.split.id;
-    // creator's share auto-paid; settle user_b
-    const s = call("splitSettle", ctxB, { id });
+    const creatorShare = c.result.split.shares.find((s) => s.userId === "user_a");
+    assert.equal(creatorShare.settlement, "covered");
+    assert.equal(creatorShare.paid, true);
+
+    const noLedger = call("splitSettle", ctxB, { id });
+    assert.equal(noLedger.ok, false);
+    assert.equal(noLedger.error, "ledger_unavailable");
+    const unpaid = call("splitList", ctxA).result.splits.find((s) => s.id === id);
+    assert.equal(unpaid.shares.find((s) => s.userId === "user_b").paid, false);
+    assert.equal(unpaid.status, "open");
+
+    const db = ledgerDb();
+    const byCreator = call("splitSettle", { ...ctxA, db }, { id, memberId: "user_b" });
+    assert.equal(byCreator.ok, false);
+    assert.match(byCreator.error, /only that member/);
+
+    executePurchase(db, { userId: "user_b", amount: 100 });
+    const before = getBalance(db, "user_b").balance;
+    const s = call("splitSettle", { ...ctxB, db }, { id });
     assert.equal(s.ok, true);
     assert.equal(s.result.split.status, "settled");
     assert.equal(s.result.outstandingOwed, 0);
+    assert.equal(s.result.split.shares.find((sh) => sh.userId === "user_b").settlement, "ledger");
+    assert.ok(s.result.transfer.batchId);
+    assert.equal(r2(before - getBalance(db, "user_b").balance), 30);
   });
 
   it("splitList shows splits where the user is a participant", () => {

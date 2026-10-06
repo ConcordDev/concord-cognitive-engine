@@ -32,6 +32,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Megaphone, PenSquare, RefreshCcw, Info } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { EmptyState, ErrorState, Skeleton, StatusDot, type StatusDotState } from '@/components/ui';
 import { subscribe } from '@/lib/realtime/socket';
 import { lensRun } from '@/lib/api/client';
@@ -56,6 +59,9 @@ function readDeepLinkId(): string | null {
 }
 
 export default function AnnouncementsLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [reloadKey, setReloadKey] = useState(0);
   const [items, setItems] = useState<Announcement[]>([]);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [state, setState] = useState<LoadState>('loading');
@@ -73,20 +79,25 @@ export default function AnnouncementsLensPage() {
 
   const refresh = useCallback(() => {
     setState((s) => (s === 'ready' ? 'ready' : 'loading'));
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     fetch('/api/announcements?limit=200')
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((d) => {
+        if (cancelled) return;
         if (!d?.ok) throw new Error(d?.error || d?.reason || 'bad_response');
         setItems(Array.isArray(d.announcements) ? d.announcements : []);
         setState('ready');
       })
-      .catch(() => { setState('error'); });
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
+      .catch(() => { if (!cancelled) setState('error'); });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
   useEffect(() => {
     const off = subscribe('concord:announcement', () => { refresh(); });
     return () => off?.();
@@ -100,8 +111,8 @@ export default function AnnouncementsLensPage() {
     const inWindow = items.find((a) => a.id === deepLinkId);
     if (inWindow) {
       deepLinkResolved.current = true;
-      setHighlightId(deepLinkId);
       requestAnimationFrame(() => {
+        setHighlightId(deepLinkId);
         document.getElementById(`announcement-${deepLinkId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       return;
@@ -161,64 +172,42 @@ export default function AnnouncementsLensPage() {
 
   return (
     <LensShell lensId="announcements" asMain={false}>
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-violet-950/10 text-slate-100">
-        <header className="border-b border-violet-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-violet-500/40 bg-violet-500/10 p-2">
-              <Megaphone className="h-5 w-5 text-violet-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Announcements</h1>
-              <p className="mt-0.5 truncate text-xs text-slate-400">What&apos;s shipped, what&apos;s coming.</p>
-            </div>
-            {/* Only rendered once past the initial load: avoids a second, redundant
-                role="status" region competing with the loading placeholder's own
-                (single) live region below. */}
+      <NorthStarFrame
+        lensId="announcements"
+        crumb="Announcements"
+        title={`What's new, ${who || 'traveller'}`}
+        subtitle="What's shipped, what's coming: feature drops, balance changes, events, news and the roadmap."
+        actions={(
+          <>
             {state !== 'loading' && <StatusDot state={LOAD_STATE_TO_DOT[state]} size="sm" />}
-            <button
-              onClick={() => setComposeOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-violet-500/40 bg-violet-500/10 px-2.5 py-1.5 text-xs text-violet-200 hover:bg-violet-500/20"
-            >
-              <PenSquare className="h-3.5 w-3.5" aria-hidden="true" />
-              Compose
-            </button>
             <button onClick={refresh} aria-label="Refresh announcements"
-              className="rounded-full border border-violet-500/30 bg-violet-500/10 p-1.5 text-violet-300 hover:bg-violet-500/20">
-              <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-300 hover:bg-white/10">
+              <RefreshCcw className="h-4 w-4" aria-hidden="true" />
             </button>
-          </div>
-        </header>
-
+          </>
+        )}
+        tabs={[
+          { id: 'all', label: `All${items.length > 0 ? ` (${items.length})` : ''}` },
+          ...VALID_KINDS.map((k) => ({ id: k, label: `${KIND_META[k].label}${(kindCounts[k] || 0) > 0 ? ` (${kindCounts[k]})` : ''}` })),
+        ]}
+        activeTab={filter}
+        onTab={(id) => setFilter(id as FilterKind)}
+        tabsLabel="Filter by kind"
+        cta={{ label: 'Compose', icon: PenSquare, onClick: () => setComposeOpen(true), title: 'Publish an announcement (admins)' }}
+      >
         {toast && (
           <div
             role="status"
             aria-live="polite"
-            className={`mx-auto mt-3 max-w-screen-2xl px-4 sm:px-6 text-[12px] ${toast.kind === 'success' ? 'text-emerald-300' : 'text-red-300'}`}
+            className={`mb-4 text-[12px] ${toast.kind === 'success' ? 'text-emerald-300' : 'text-red-300'}`}
           >
             {toast.text}
           </div>
         )}
 
-        <section className="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
-          <div className="mb-3 flex flex-wrap gap-1 text-xs" role="tablist" aria-label="Filter by kind">
-            <button role="tab" aria-selected={filter === 'all'} onClick={() => setFilter('all')}
-              className={`rounded px-2 py-1 ${filter === 'all' ? 'bg-violet-500/30 text-violet-100' : 'text-slate-400 hover:text-slate-200'}`}>
-              all{items.length > 0 ? ` (${items.length})` : ''}
-            </button>
-            {VALID_KINDS.map((k) => {
-              const meta = KIND_META[k];
-              const count = kindCounts[k] || 0;
-              return (
-                <button key={k} role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}
-                  className={`rounded px-2 py-1 ${filter === k ? 'bg-violet-500/30 text-violet-100' : 'text-slate-400 hover:text-slate-200'}`}>
-                  {meta.label}{count > 0 ? ` (${count})` : ''}
-                </button>
-              );
-            })}
-          </div>
-
+        <section>
           {(deepLinkItem || deepLinkNotFound) && (
-            <div className="mb-4 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+            <div className="mb-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4">
               <p className="mb-2 flex items-center gap-1.5 text-[11px] text-violet-300">
                 <Info size={12} aria-hidden="true" />
                 {deepLinkItem ? 'Linked announcement (outside the current window)' : "Linked announcement wasn't found — it may have expired."}
@@ -268,7 +257,7 @@ export default function AnnouncementsLensPage() {
             {filter !== 'roadmap' && <RoadmapRail items={roadmapItems} />}
           </div>
         </section>
-      </main>
+      </NorthStarFrame>
 
       {composeOpen && (
         <ComposePanel onClose={() => setComposeOpen(false)} onPublished={handlePublished} />

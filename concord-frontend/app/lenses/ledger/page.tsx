@@ -1,6 +1,10 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { BookOpen } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Ledger lens — the analytical overlay you toggle to see the flows the Curtain
@@ -28,6 +32,8 @@ import { toCsv, download, type Anomalies } from '@/components/ledger/ledger-shar
 const WORLD_OPTIONS = ['sere', 'concordia-hub', 'tunya'];
 
 export default function LedgerLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('sere');
   const [data, setData] = useState<Anomalies | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,8 +86,8 @@ export default function LedgerLensPage() {
     return () => { cancelled = true; };
   }, [load]);
 
-  const parity = data?.managedParity ?? [];
-  const liens = data?.extractionLiens ?? [];
+  const parity = useMemo(() => data?.managedParity ?? [], [data]);
+  const liens = useMemo(() => data?.extractionLiens ?? [], [data]);
   const isEmpty = !loading && !error && parity.length + liens.length === 0;
   const hasFlows = parity.length + liens.length > 0;
 
@@ -106,17 +112,17 @@ export default function LedgerLensPage() {
   }, [worldId, parity, liens]);
 
   return (
-    <LensShell lensId="ledger">
-      <div className="min-h-screen bg-black text-zinc-200 p-4 sm:p-6">
-        <header className="mb-6">
-          <h1 className="text-xl font-semibold text-emerald-300">The Ledger</h1>
-          <p className="text-sm text-zinc-400">
-            The flows the Curtain keeps off the public record. Nothing here is told to you — it is read from the books.
-          </p>
-        </header>
-
+    <LensShell lensId="ledger" asMain={false}>
+      <NorthStarFrame
+        lensId="ledger"
+        crumb="Ledger"
+        title={who ? `What the books say, ${who}` : 'What the books say'}
+        subtitle="The flows the Curtain keeps off the public record. Nothing here is told to you — it is read from the books."
+        cta={{ label: 'Re-read the books', icon: BookOpen, onClick: () => void load(), title: `Re-run the anomaly audit for ${worldId}`, disabled: loading }}
+      >
+        <div className="space-y-5">
         {/* ── Workspace controls ─────────────────────────────────────── */}
-        <div className="mb-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center" role="group" aria-label="Ledger controls">
+        <div className="flex flex-col items-stretch gap-3 rounded-2xl border border-white/10 bg-[#111] p-4 sm:flex-row sm:flex-wrap sm:items-center" role="group" aria-label="Ledger controls">
           <label className="text-xs text-zinc-400">
             World&nbsp;
             <select
@@ -184,14 +190,14 @@ export default function LedgerLensPage() {
         )}
 
         {watchedWorlds.length > 0 && (
-          <div className="mb-4 text-xs text-zinc-500" data-testid="watchlist">
+          <div className="text-xs text-zinc-500" data-testid="watchlist">
             Watching: {watchedWorlds.join(', ')}
           </div>
         )}
 
         {/* ── LOADING ────────────────────────────────────────────────── */}
         {loading && (
-          <div role="status" aria-live="polite" className="text-zinc-500 text-sm">
+          <div role="status" aria-live="polite" className="rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-zinc-500">
             Reading the books…
           </div>
         )}
@@ -213,14 +219,14 @@ export default function LedgerLensPage() {
 
         {/* ── EMPTY ──────────────────────────────────────────────────── */}
         {isEmpty && (
-          <div className="text-zinc-500 text-sm">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-zinc-500">
             No anomalous flows surfaced for {worldId}. The record looks clean. (That is usually a sign you have not looked hard enough.)
           </div>
         )}
 
         {/* ── POPULATED ──────────────────────────────────────────────── */}
         {!loading && !error && parity.length > 0 && (
-          <section className="mb-8" data-testid="managed-parity">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" data-testid="managed-parity">
             <h2 className="mb-2 text-sm uppercase tracking-widest text-amber-400/80">
               Managed parity — wars funded on both sides ({parity.length})
             </h2>
@@ -243,7 +249,7 @@ export default function LedgerLensPage() {
         )}
 
         {!loading && !error && liens.length > 0 && (
-          <section data-testid="extraction-liens">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" data-testid="extraction-liens">
             <h2 className="mb-2 text-sm uppercase tracking-widest text-cyan-400/80">
               Extraction liens — rescue as acquisition ({liens.length})
             </h2>
@@ -261,7 +267,8 @@ export default function LedgerLensPage() {
             </ul>
           </section>
         )}
-      </div>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

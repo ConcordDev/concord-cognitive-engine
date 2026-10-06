@@ -24,6 +24,7 @@ import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
 import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
+import { PushProposalsPanel } from '@/components/code/PushProposalsPanel';
 import { BrainStatusBadge } from '@/components/code/BrainStatusBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -38,7 +39,7 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
-  ChevronRight, ChevronDown, File, Folder, FolderOpen, Code2 as Github,
+  ChevronRight, ChevronDown, File, Folder, FolderOpen,
   Sparkles, RefreshCw, Copy,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
@@ -48,10 +49,9 @@ import {
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
-import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { CodeRunMenu } from '@/components/code/CodeRunMenu';
+import type { CodeExecResult } from '@/components/code/codeRunReport';
 
 interface FileNode {
   id: string;
@@ -83,344 +83,6 @@ const SCRIPT_TYPES: { id: ScriptType; name: string; icon: React.ComponentType<{ 
   { id: 'algorithm', name: 'Algorithm', icon: Zap, color: 'text-neon-cyan', description: 'Algorithm implementations and DSA' },
   { id: 'library', name: 'Library', icon: Sparkles, color: 'text-red-400', description: 'Reusable modules and packages' },
 ];
-
-const TEMPLATE_FILES: FileNode[] = [
-  {
-    id: 'algorithms',
-    name: 'Algorithms',
-    type: 'folder',
-    isExpanded: true,
-    children: [
-      {
-        id: 'binary_search.js', name: 'binary_search.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Binary Search Implementation
-// O(log n) search on sorted arrays
-
-function binarySearch(arr, target) {
-  let left = 0;
-  let right = arr.length - 1;
-
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    if (arr[mid] === target) return mid;
-    if (arr[mid] < target) left = mid + 1;
-    else right = mid - 1;
-  }
-  return -1;
-}
-
-// Test
-const sorted = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
-console.log(binarySearch(sorted, 7));  // 3
-console.log(binarySearch(sorted, 12)); // -1`,
-      },
-      {
-        id: 'graph_bfs.js', name: 'graph_bfs.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Breadth-First Search (BFS)
-// Graph traversal using a queue
-
-function bfs(graph, start) {
-  const visited = new Set();
-  const queue = [start];
-  const order = [];
-
-  while (queue.length > 0) {
-    const node = queue.shift();
-    if (visited.has(node)) continue;
-
-    visited.add(node);
-    order.push(node);
-
-    for (const neighbor of (graph[node] || [])) {
-      if (!visited.has(neighbor)) {
-        queue.push(neighbor);
-      }
-    }
-  }
-  return order;
-}
-
-const graph = {
-  A: ['B', 'C'],
-  B: ['A', 'D', 'E'],
-  C: ['A', 'F'],
-  D: ['B'],
-  E: ['B', 'F'],
-  F: ['C', 'E'],
-};
-
-console.log(bfs(graph, 'A')); // ['A', 'B', 'C', 'D', 'E', 'F']`,
-      },
-      {
-        id: 'merge_sort.js', name: 'merge_sort.js', type: 'file', language: 'javascript', scriptType: 'algorithm',
-        content: `// Merge Sort Implementation
-// O(n log n) stable sorting algorithm
-
-function mergeSort(arr) {
-  if (arr.length <= 1) return arr;
-
-  const mid = Math.floor(arr.length / 2);
-  const left = mergeSort(arr.slice(0, mid));
-  const right = mergeSort(arr.slice(mid));
-
-  return merge(left, right);
-}
-
-function merge(left, right) {
-  const result = [];
-  let i = 0, j = 0;
-
-  while (i < left.length && j < right.length) {
-    if (left[i] <= right[j]) result.push(left[i++]);
-    else result.push(right[j++]);
-  }
-
-  return [...result, ...left.slice(i), ...right.slice(j)];
-}
-
-const unsorted = [38, 27, 43, 3, 9, 82, 10];
-console.log(mergeSort(unsorted)); // [3, 9, 10, 27, 38, 43, 82]`,
-      },
-    ],
-  },
-  {
-    id: 'snippets',
-    name: 'Snippets',
-    type: 'folder',
-    children: [
-      {
-        id: 'fetch_api.js', name: 'fetch_api.js', type: 'file', language: 'javascript', scriptType: 'snippet',
-        content: `// REST API Client
-// Reusable fetch wrapper with error handling
-
-async function apiClient(baseUrl) {
-  const headers = { 'Content-Type': 'application/json' };
-
-  return {
-    get: async (path) => {
-      const res = await fetch(baseUrl + path, { headers });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    post: async (path, body) => {
-      const res = await fetch(baseUrl + path, {
-        method: 'POST', headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    put: async (path, body) => {
-      const res = await fetch(baseUrl + path, {
-        method: 'PUT', headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-    delete: async (path) => {
-      const res = await fetch(baseUrl + path, { method: 'DELETE', headers });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
-  };
-}
-
-// Usage
-const api = await apiClient('https://api.example.com');
-const users = await api.get('/users');
-console.log(users);`,
-      },
-      {
-        id: 'debounce.js', name: 'debounce.js', type: 'file', language: 'javascript', scriptType: 'snippet',
-        content: `// Debounce & Throttle Utilities
-// Common performance optimization patterns
-
-function debounce(fn, delay) {
-  let timer;
-  return function (...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
-
-function throttle(fn, limit) {
-  let inThrottle = false;
-  return function (...args) {
-    if (!inThrottle) {
-      fn.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
-
-// Usage
-const handleSearch = debounce((query) => {
-  console.log('Searching:', query);
-}, 300);
-
-const handleScroll = throttle(() => {
-  console.log('Scroll position:', window.scrollY);
-}, 100);`,
-      },
-      {
-        id: 'event_emitter.js', name: 'event_emitter.js', type: 'file', language: 'javascript', scriptType: 'library',
-        content: `// Event Emitter Pattern
-// Pub/sub implementation for decoupled communication
-
-class EventEmitter {
-  constructor() {
-    this.events = new Map();
-  }
-
-  on(event, listener) {
-    if (!this.events.has(event)) this.events.set(event, []);
-    this.events.get(event).push(listener);
-    return () => this.off(event, listener);
-  }
-
-  off(event, listener) {
-    const listeners = this.events.get(event);
-    if (listeners) {
-      this.events.set(event, listeners.filter(l => l !== listener));
-    }
-  }
-
-  emit(event, ...args) {
-    const listeners = this.events.get(event) || [];
-    listeners.forEach(listener => listener(...args));
-  }
-
-  once(event, listener) {
-    const unsub = this.on(event, (...args) => {
-      unsub();
-      listener(...args);
-    });
-    return unsub;
-  }
-}
-
-// Usage
-const bus = new EventEmitter();
-bus.on('user:login', (user) => console.log('Logged in:', user.name));
-bus.emit('user:login', { name: 'Alice', role: 'admin' });`,
-      },
-    ],
-  },
-  {
-    id: 'pipelines',
-    name: 'Pipelines',
-    type: 'folder',
-    children: [
-      {
-        id: 'data_transform.js', name: 'data_transform.js', type: 'file', language: 'javascript', scriptType: 'pipeline',
-        content: `// Data Transform Pipeline
-// Composable data processing stages
-
-function pipeline(...fns) {
-  return (input) => fns.reduce((acc, fn) => fn(acc), input);
-}
-
-const normalize = (data) => data.map(d => ({
-  ...d,
-  name: d.name?.trim().toLowerCase(),
-  email: d.email?.trim().toLowerCase(),
-}));
-
-const validate = (data) => data.filter(d =>
-  d.name && d.email && d.email.includes('@')
-);
-
-const deduplicate = (data) => {
-  const seen = new Set();
-  return data.filter(d => {
-    if (seen.has(d.email)) return false;
-    seen.add(d.email);
-    return true;
-  });
-};
-
-const enrich = (data) => data.map(d => ({
-  ...d,
-  domain: d.email.split('@')[1],
-  createdAt: new Date().toISOString(),
-}));
-
-// Compose the pipeline
-const process = pipeline(normalize, validate, deduplicate, enrich);
-
-const rawData = [
-  { name: ' Alice ', email: 'ALICE@example.com' },
-  { name: 'Bob', email: 'bob@test.io' },
-  { name: ' alice', email: 'alice@example.com' },
-  { name: '', email: 'invalid' },
-];
-
-console.log(process(rawData));`,
-      },
-      {
-        id: 'csv_processor.js', name: 'csv_processor.js', type: 'file', language: 'javascript', scriptType: 'pipeline',
-        content: `// CSV Stream Processor
-// Parse, transform, and output CSV data
-
-function parseCSV(text, delimiter = ',') {
-  const lines = text.trim().split('\\n');
-  const headers = lines[0].split(delimiter).map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const values = line.split(delimiter);
-    return headers.reduce((obj, header, i) => {
-      obj[header] = values[i]?.trim() || '';
-      return obj;
-    }, {});
-  });
-}
-
-function toCSV(data, delimiter = ',') {
-  if (data.length === 0) return '';
-  const headers = Object.keys(data[0]);
-  const rows = data.map(row =>
-    headers.map(h => row[h] ?? '').join(delimiter)
-  );
-  return [headers.join(delimiter), ...rows].join('\\n');
-}
-
-// Example
-const csv = \`name,age,city
-Alice,30,NYC
-Bob,25,LA
-Charlie,35,Chicago\`;
-
-const parsed = parseCSV(csv);
-const filtered = parsed.filter(r => parseInt(r.age) >= 30);
-console.log(toCSV(filtered));`,
-      },
-    ],
-  },
-];
-
-const DEFAULT_CODE = `// Welcome to the Code Workspace
-// Write, run, and save code snippets
-
-function fibonacci(n) {
-  if (n <= 1) return n;
-  let a = 0, b = 1;
-  for (let i = 2; i <= n; i++) {
-    [a, b] = [b, a + b];
-  }
-  return b;
-}
-
-// Generate first 10 Fibonacci numbers
-const results = Array.from({ length: 10 }, (_, i) => fibonacci(i));
-console.log('Fibonacci:', results);
-
-// Quick benchmark
-const start = performance.now();
-fibonacci(1000);
-const elapsed = (performance.now() - start).toFixed(2);
-console.log(\`Computed fib(1000) in \${elapsed}ms\`);
-`;
 
 const API_REFERENCE: { category: string; functions: { signature: string; description: string }[] }[] = [
   {
@@ -470,31 +132,81 @@ const API_REFERENCE: { category: string; functions: { signature: string; descrip
   },
 ];
 
-function generateScriptOutput(scriptType: ScriptType, code: string): { log: string; visualization: string } {
-  const lines = code.split('\n').length;
-  const typeName = SCRIPT_TYPES.find((s) => s.id === scriptType)?.name || scriptType;
-  return {
-    log: `[Code Engine] Running ${typeName} (${lines} lines)...\n[OK] Execution complete`,
-    visualization: '',
-  };
+
+type CodeDtuLike = {
+  id?: string;
+  domain?: string;
+  source?: string;
+  scope?: string;
+  createdBy?: string;
+  userId?: string;
+  ownerId?: string;
+  creatorId?: string;
+  creator_id?: string;
+  seedOrigin?: boolean;
+  protected?: boolean;
+  immutable?: boolean;
+  tags?: string[];
+  provenance?: { source?: string };
+  meta?: { domain?: string; lens?: string; userId?: string; ownerId?: string; creatorId?: string };
+};
+
+/** Shared bootstrap seed catalog is not this user's code. */
+function isSharedSeedCatalog(d: CodeDtuLike): boolean {
+  if (d.seedOrigin) return true;
+  if (d.provenance?.source === 'bootstrap_ingestion') return true;
+  if (d.source === 'bootstrap_ingestion' || d.source === 'concord_brain_index' || d.source === 'seed') return true;
+  if (d.createdBy === 'bootstrap_ingestion') return true;
+  if (Array.isArray(d.tags) && d.tags.some((t) => t === 'seed')) return true;
+  const id = String(d.id || '');
+  if (/^dtu_\d{3}_/.test(id) || id.startsWith('dtu_root_')) return true;
+  return false;
+}
+
+function isUserCodeDtu(d: CodeDtuLike, userId?: string | null): boolean {
+  if (isSharedSeedCatalog(d)) return false;
+  const domain = d.domain || d.meta?.domain || d.meta?.lens;
+  if (domain !== 'code' && d.source !== 'code') return false;
+  const owner = d.userId || d.ownerId || d.creatorId || d.creator_id || d.meta?.userId || d.meta?.ownerId || d.meta?.creatorId;
+  if (userId && owner && String(owner) !== String(userId)) return false;
+  if (!owner && (d.scope === 'global' || d.protected || d.immutable)) return false;
+  return true;
 }
 
 export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () => void }) {
   const { user, isAuthenticated } = useAuth();
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('code');
+  const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('code');
 
   const {
     hyperDTUs, megaDTUs, regularDTUs,
-    tierDistribution, publishToMarketplace,
+    publishToMarketplace,
     isLoading: dtusLoading, refetch: refetchDTUs,
-  } = useLensDTUs({ lens: 'code' });
+  } = useLensDTUs({ lens: 'code', crossDomain: false });
+  const codeHyperDTUs = useMemo(
+    () => hyperDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [hyperDTUs, user?.id],
+  );
+  const codeMegaDTUs = useMemo(
+    () => megaDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [megaDTUs, user?.id],
+  );
+  const codeRegularDTUs = useMemo(
+    () => regularDTUs.filter((d) => isUserCodeDtu(d, user?.id)),
+    [regularDTUs, user?.id],
+  );
+  const codeTierDistribution = useMemo(() => ({
+    hyper: codeHyperDTUs.length,
+    mega: codeMegaDTUs.length,
+    regular: codeRegularDTUs.length,
+    total: codeHyperDTUs.length + codeMegaDTUs.length + codeRegularDTUs.length,
+  }), [codeHyperDTUs.length, codeMegaDTUs.length, codeRegularDTUs.length]);
 
   // Persist scripts to backend
   const { isLoading, isError, error, refetch, create: saveScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'main', name: 'untitled.js', language: 'javascript', content: DEFAULT_CODE, isDirty: false, scriptType: 'snippet' },
+    { id: 'main', name: 'untitled.js', language: 'javascript', content: '', isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
@@ -590,7 +302,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const [agentPrompt, setAgentPrompt] = useState('');
 
   // Load persisted settings on mount (deferred to avoid SSR hydration issues).
-  useEffect(() => { setSettings(loadCodeSettings()); }, []);
+  useEffect(() => { queueMicrotask(() => setSettings(loadCodeSettings())); }, []);
 
   // ── Command palette (⌘P / ⌘Shift+P) ────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -742,14 +454,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   // Tick elapsed time during in-flight AI requests so the UI never feels
   // frozen.  Both edit + chat share this side-effect.
   useEffect(() => {
-    if (!aiEditPending) { setAiEditElapsed(0); return; }
+    if (!aiEditPending) return;
     const start = Date.now();
+    queueMicrotask(() => setAiEditElapsed(0));
     const t = setInterval(() => setAiEditElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
     return () => clearInterval(t);
   }, [aiEditPending]);
   useEffect(() => {
-    if (!aiChatPending) { setAiChatElapsed(0); return; }
+    if (!aiChatPending) return;
     const start = Date.now();
+    queueMicrotask(() => setAiChatElapsed(0));
     const t = setInterval(() => setAiChatElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
     return () => clearInterval(t);
   }, [aiChatPending]);
@@ -759,6 +473,14 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
   const [runningCodeAction, setRunningCodeAction] = useState<string | null>(null);
 
+  // The real `code.exec` result, kept around so CodeRunMenu can build a
+  // private DTU + Thread draft from it. Null until a run returns; reset
+  // to null whenever the active tab changes so a stale report can never
+  // be saved against a different file.
+  const [runResult, setRunResult] = useState<CodeExecResult | null>(null);
+  const [runElapsedMs, setRunElapsedMs] = useState<number | undefined>(undefined);
+  useEffect(() => { setRunResult(null); setRunElapsedMs(undefined); }, [activeTabId]);
+
   const runScriptMutation = useMutation({
     mutationFn: async () => {
       // Dead-macro-call fix (verification-audit campaign): 'code.generate'
@@ -766,6 +488,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       // back to the local simulation. 'code.exec' is the real macro for
       // this shape (executes JS/TS in a sandboxed node:vm; other
       // languages return an honest "unsupported" result).
+      const started = performance.now();
       const res = await api.post('/api/lens/run', {
         domain: 'code',
         action: 'exec',
@@ -775,38 +498,52 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           scriptType: activeTab.scriptType || activeScriptType,
         },
       });
-      return res.data;
+      return { data: res.data, elapsedMs: Math.round(performance.now() - started) };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ data, elapsedMs }) => {
       // code.exec returns { result: { stdout, stderr, exitCode, supported } },
-      // not a bare string/.content — read the real shape.
-      const result = data?.result as { stdout?: string; stderr?: string; supported?: boolean } | undefined;
-      const serverContent = result?.supported === false
-        ? null
-        : [result?.stdout, result?.stderr].filter(Boolean).join('\n').trim() || null;
-      const localResult = generateScriptOutput(activeTab.scriptType || activeScriptType, activeTab.content);
-      setScriptOutput({
-        log: serverContent
-          ? `[Server] ${serverContent.slice(0, 500)}\n\n${localResult.log}`
-          : localResult.log,
-        visualization: localResult.visualization,
-      });
+      // not a bare string/.content — read the real shape. No fake fallback:
+      // when the sandbox refuses (supported:false) the output panel says so,
+      // and CodeRunMenu refuses to save a report for a run that did not run.
+      const result = (data?.result as CodeExecResult | undefined) || null;
+      setRunResult(result);
+      setRunElapsedMs(elapsedMs);
+      const supported = result?.supported !== false;
+      const stdout = String(result?.stdout || '').trim();
+      const stderr = String(result?.stderr || '').trim();
+      const exitCode = Number.isFinite(result?.exitCode) ? Number(result?.exitCode) : null;
+      if (!supported) {
+        const lang = activeTab.language || 'this language';
+        const reason = stderr || `The sandbox does not run ${lang}.`;
+        setScriptOutput({ log: reason, visualization: '' });
+      } else {
+        const lines: string[] = [];
+        if (stdout) lines.push(stdout);
+        if (stderr) lines.push(stderr);
+        if (lines.length === 0) lines.push('(no output)');
+        lines.push(`\n[exit ${exitCode ?? '?'} · ${elapsedMs}ms]`);
+        setScriptOutput({ log: lines.join('\n'), visualization: '' });
+      }
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] Script executed successfully`,
+        `[${new Date().toLocaleTimeString()}] ${supported ? `Script executed (exit ${exitCode ?? '?'})` : 'Sandbox refused this language'}`,
         `[${new Date().toLocaleTimeString()}] Type: ${SCRIPT_TYPES.find((s) => s.id === (activeTab.scriptType || activeScriptType))?.name}`,
-        `[${new Date().toLocaleTimeString()}] Output ready`,
       ]);
       setShowOutput(true);
       setOutputTab('output');
     },
     onError: (error: Record<string, unknown>) => {
-      const result = generateScriptOutput(activeTab.scriptType || activeScriptType, activeTab.content);
-      setScriptOutput(result);
+      // No fake fallback. A failed run is a failed run — the screen says
+      // so and offers no DTU. The prior behaviour invented a "[Code Engine]
+      // Running… [OK] Execution complete" string on every error, which
+      // claimed success the sandbox never produced.
+      setRunResult(null);
+      setRunElapsedMs(undefined);
+      const msg = String(error?.message || 'Run failed');
+      setScriptOutput({ log: `Run failed: ${msg}`, visualization: '' });
       setConsoleLog((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] Script executed (offline mode)`,
-        `[${new Date().toLocaleTimeString()}] ${String(error.message || 'Using local engine')}`,
+        `[${new Date().toLocaleTimeString()}] Run failed: ${msg}`,
       ]);
       setShowOutput(true);
       setOutputTab('output');
@@ -997,7 +734,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     ).slice(0, 50);
   }, [paletteCommands, paletteQuery]);
 
-  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => { queueMicrotask(() => setPaletteIdx(0)); }, [paletteQuery, paletteOpen]);
   useEffect(() => {
     if (paletteOpen) {
       requestAnimationFrame(() => paletteInputRef.current?.focus());
@@ -1269,6 +1006,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     }
   }, [tabs]);
 
+  useEffect(() => {
+    const onRun = () => runScriptMutation.mutate();
+    window.addEventListener('concord:code-run', onRun);
+    return () => window.removeEventListener('concord:code-run', onRun);
+  }, [runScriptMutation]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('concord:code-run-state', { detail: { running: runScriptMutation.isPending } }));
+  }, [runScriptMutation.isPending]);
+
   useLensCommand(
     [
       { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
@@ -1321,27 +1068,29 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {workspaceKind === 'project' && (
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-white/10 bg-[#161b22] shrink-0" role="tablist" aria-label="Workspace kind">
         <button
           type="button"
           role="tab"
-          aria-selected={workspaceKind === 'scratch'}
+          aria-selected={false}
           onClick={() => setWorkspaceKind('scratch')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium ${workspaceKind === 'scratch' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+          className="px-2.5 py-1 rounded text-[11px] font-medium text-gray-400 hover:text-white"
         >
           Scratch
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={workspaceKind === 'project'}
+          aria-selected={true}
           onClick={() => setWorkspaceKind('project')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium ${workspaceKind === 'project' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+          className="px-2.5 py-1 rounded text-[11px] font-medium bg-white/10 text-white"
         >
           Project
         </button>
         <span className="ml-auto text-[10px] text-gray-500 font-mono">⌘⇧N scratch · ⌘⇧E project</span>
       </div>
+      )}
       {workspaceKind === 'project' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
           <CodeWorkbenchSection />
@@ -1349,12 +1098,31 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       ) : null}
       <div className={workspaceKind === 'scratch' ? `flex flex-col font-mono flex-1 min-h-0 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'bg-[#0d1117]'}` : 'hidden'} data-lens-theme="code">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">
-        <div className="flex items-center gap-3">
-          <Terminal className="w-6 h-6 text-green-400" />
-          <div>
-            <h1 className="text-lg font-bold text-green-300 font-mono tracking-tight">Code Workspace</h1>
-            <p className="text-xs text-green-600 font-mono">Write, run & share code</p>
+      {/* One title bar (VS Code-style): workspace switch + project + status on
+          the left; run, analysis and view controls on the right. */}
+      <header className="flex items-center justify-between gap-3 px-3 py-1.5 border-b border-white/10 bg-[#161b22] font-sans">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-0.5 rounded-md bg-black/30 p-0.5" role="tablist" aria-label="Workspace kind">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              onClick={() => setWorkspaceKind('scratch')}
+              className="px-2.5 py-1 rounded text-[11px] font-medium bg-white/10 text-white"
+              title="Scratch editor (⌘⇧N)"
+            >
+              Scratch
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              onClick={() => setWorkspaceKind('project')}
+              className="px-2.5 py-1 rounded text-[11px] font-medium text-gray-400 hover:text-white"
+              title="Project workbench (⌘⇧E)"
+            >
+              Project
+            </button>
           </div>
 
       {/* Shared project pointer — same projectId the virtual-git workspace
@@ -1362,9 +1130,8 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       <QuickScriptProjectBadge />
 
       {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="code" data={realtimeData || {}} compact />
         <VisionAnalyzeButton
           domain="code"
           prompt="Analyze this code screenshot or error image. Identify the programming language, describe what the code does, spot any bugs or issues, and suggest fixes."
@@ -1381,7 +1148,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* Script Type Selector */}
           <div className="flex items-center gap-1 bg-[#0d1117] rounded-lg p-1 border border-green-900/20">
             {SCRIPT_TYPES.map((stype) => {
@@ -1403,10 +1170,33 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
             })}
           </div>
 
+          {/* Code analysis (results open under the title bar) */}
+          <div className="flex items-center gap-0.5" role="group" aria-label="Code analysis">
+            {([
+              ['complexityAnalysis', BarChart3, 'Complexity analysis — cyclomatic & cognitive complexity'],
+              ['dependencyAudit', Layers, 'Dependency audit — vulnerabilities and license risk'],
+              ['coverageAnalysis', RefreshCw, 'Coverage analysis — test coverage gaps'],
+              ['changeRiskAssessment', AlertTriangle, 'Change risk — risk of pending changes'],
+            ] as const).map(([action, Icon, label]) => (
+              <button
+                key={action}
+                type="button"
+                onClick={() => handleCodeAction(action)}
+                disabled={runningCodeAction !== null || !savedScripts[0]}
+                className="p-1.5 rounded-md text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-40"
+                title={!savedScripts[0] ? `${label} (save a script first)` : label}
+                aria-label={label}
+              >
+                {runningCodeAction === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => runScriptMutation.mutate()}
             disabled={runScriptMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-mono text-sm font-bold shadow-lg shadow-green-900/50 transition-all hover:shadow-green-800/60"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors"
+            title="Run (⌘↵)"
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1418,7 +1208,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
 
           <button
             onClick={() => setShowForge(!showForge)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${showForge ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30' : 'bg-lattice-elevated text-gray-300 hover:text-white'}`}
+            className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-[13px] transition-colors ${showForge ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30' : 'bg-lattice-elevated text-gray-300 hover:text-white'}`}
             title="Generate Forge App"
           >
             <Sparkles className="w-4 h-4" />
@@ -1509,53 +1299,9 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
         )}
       </AnimatePresence>
 
-      {/* AI Actions */}
-
-      {/* Backend Code Analysis Actions */}
-      <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Zap className="w-4 h-4 text-neon-yellow" />
-          <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Code Analysis</span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <button
-            onClick={() => handleCodeAction('complexityAnalysis')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Analyze cyclomatic & cognitive complexity'}
-          >
-            {runningCodeAction === 'complexityAnalysis' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <BarChart3 className="w-5 h-5 text-neon-cyan" />}
-            <span className="text-xs text-gray-300">Complexity Analysis</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('dependencyAudit')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Audit dependencies for vulnerabilities and license risk'}
-          >
-            {runningCodeAction === 'dependencyAudit' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Layers className="w-5 h-5 text-neon-purple" />}
-            <span className="text-xs text-gray-300">Dependency Audit</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('coverageAnalysis')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-green-400/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Analyze test coverage gaps'}
-          >
-            {runningCodeAction === 'coverageAnalysis' ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <RefreshCw className="w-5 h-5 text-green-400" />}
-            <span className="text-xs text-gray-300">Coverage Analysis</span>
-          </button>
-          <button
-            onClick={() => handleCodeAction('changeRiskAssessment')}
-            disabled={runningCodeAction !== null || !savedScripts[0]}
-            className="flex flex-col items-center gap-1.5 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-yellow-400/50 transition-colors disabled:opacity-50"
-            title={!savedScripts[0] ? 'Save a script first to run analysis' : 'Assess risk of pending changes'}
-          >
-            {runningCodeAction === 'changeRiskAssessment' ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <AlertTriangle className="w-5 h-5 text-yellow-400" />}
-            <span className="text-xs text-gray-300">Change Risk</span>
-          </button>
-        </div>
-
+      {/* Analysis result (the four analysis actions live in the title bar) */}
+      {codeActionResult && (
+      <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3 font-sans">
         {/* Action Result Display */}
         <AnimatePresence>
           {codeActionResult && (
@@ -1687,6 +1433,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           )}
         </AnimatePresence>
       </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Activity bar — selects which sidebar panel renders */}
@@ -1734,23 +1481,17 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     <div className="flex-1 overflow-y-auto py-2">
                       {files.length === 0 ? (
                         <div className="px-3 py-4 text-center">
-                          <p className="text-xs text-gray-400 mb-2">No files yet</p>
-                          <button
-                            onClick={() => setFiles(TEMPLATE_FILES)}
-                            className="text-xs text-green-400 hover:text-green-300 underline"
-                          >
-                            Load starter templates
-                          </button>
+                          <p className="text-xs text-gray-400">No files yet</p>
                         </div>
                       ) : files.map((file) => renderFileNode(file))}
                     </div>
                     {/* DTU Context */}
                     <div className="p-3 border-t border-white/10 space-y-3">
                       <LensContextPanel
-                        hyperDTUs={hyperDTUs}
-                        megaDTUs={megaDTUs}
-                        regularDTUs={regularDTUs}
-                        tierDistribution={tierDistribution}
+                        hyperDTUs={codeHyperDTUs}
+                        megaDTUs={codeMegaDTUs}
+                        regularDTUs={codeRegularDTUs}
+                        tierDistribution={codeTierDistribution}
                         onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
                         title="Code DTUs"
                         className="!bg-transparent !border-0 !p-0"
@@ -1779,7 +1520,12 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                     onRefresh={refetchDTUs}
                   />
                 )}
-                {activity === 'github' && <GitHubConnectPanel />}
+                {activity === 'github' && (
+                  <div className="flex h-full flex-col">
+                    <div className="min-h-0 flex-1"><GitHubConnectPanel /></div>
+                    <div className="max-h-[50%] shrink-0 overflow-y-auto"><PushProposalsPanel /></div>
+                  </div>
+                )}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
@@ -2079,15 +1825,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                               </div>
                               )}
                               <div className="flex items-center gap-2 pt-2 border-t border-lattice-border">
-                                <SaveAsDtuButton
-                                  apiSource="code-lens"
-                                  title={`Output: ${activeTab.name}`}
-                                  content={`// ${activeTab.name}\n// Language: ${activeTab.language}\n// Script type: ${activeTab.scriptType || activeScriptType}\n\n// Source:\n${activeTab.content}\n\n// Output:\n${scriptOutput.log}${scriptOutput.visualization ? `\n\n// Visualization:\n${scriptOutput.visualization}` : ''}`}
-                                  extraTags={['script', 'output', activeTab.scriptType || activeScriptType, activeTab.language].filter(Boolean) as string[]}
-                                  rawData={{ content: activeTab.content, output: scriptOutput.log, visualization: scriptOutput.visualization, language: activeTab.language, scriptType: activeTab.scriptType || activeScriptType }}
-                                  confirm
-                                  className="!bg-neon-blue/10 !text-neon-blue hover:!bg-neon-blue/20"
-                                />
                                 <button
                                   onClick={() => {
                                     const content = `// ${activeTab.name}\n// Output:\n${scriptOutput.log}\n${scriptOutput.visualization ? `\n// Visualization:\n${scriptOutput.visualization}` : ''}`;
@@ -2104,6 +1841,16 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
                                   <Download className="w-3.5 h-3.5" /> Download Output
                                 </button>
                               </div>
+                              <CodeRunMenu
+                                facts={{
+                                  name: activeTab.name,
+                                  language: activeTab.language,
+                                  scriptType: activeTab.scriptType || activeScriptType,
+                                  code: activeTab.content,
+                                  result: runResult,
+                                  elapsedMs: runElapsedMs,
+                                }}
+                              />
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400">

@@ -10,17 +10,17 @@
 
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Bug, Radar, Shield, ShieldAlert, Siren } from 'lucide-react';
+import { Bug, Radar, Shield, ShieldAlert, Siren, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -54,6 +54,8 @@ export default function SecurityLensPage() {
   useLensIdentity('security');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('security');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SecurityView>('soc');
 
@@ -86,66 +88,28 @@ export default function SecurityLensPage() {
     <LensShell lensId="security" asMain={false}>
       <FirstRunTour lensId="security" />
       <DepthBadge lensId="security" size="sm" className="ml-2" />
-      <div data-lens-theme="security" className={ds.pageContainer}>
-        <a
-          href="#security-skip"
-          className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none"
-        >
-          Skip to security content
-        </a>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Shield className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Security</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="security" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                CrowdStrike SOC + Tenable vulns — SIEM, cases, advisories, scanner.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Security views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="security"
+        crumb="Security"
+        title={`Watch the perimeter${active === 'soc' && who ? `, ${who}` : ''}`}
+        subtitle="SIEM, cases, advisories, scanner and vulnerability management."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="security" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-1 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        }
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as SecurityView)}
+        tabsLabel="Security views"
+        cta={{ label: 'Open a case', icon: Plus, onClick: () => setActive('ops') }}
+      >
         <div id="security-skip">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps} className="pt-4">
@@ -165,8 +129,7 @@ export default function SecurityLensPage() {
           />
         )}
         <SessionRail lensId="security" hideWhenEmpty />
-        <CrossLensRecentsPanel lensId="security" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

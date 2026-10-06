@@ -14,14 +14,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 import { DeityDetailPanel } from '@/components/deities/DeityDetailPanel';
 import { MyDevotionPanel } from '@/components/deities/MyDevotionPanel';
 import { DeitySigil, type ToneVector } from '@/components/deities/DeitySigil';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Compass, Flame, Sparkles } from 'lucide-react';
 
 interface Deity {
   id: string;
@@ -37,11 +39,18 @@ interface Deity {
 type ToneAxis = '' | 'warmth' | 'refusal' | 'mystery';
 type SortKind = 'popularity' | 'newest' | 'tone';
 
-export default function DeitiesPage() {
-  useLensCommand([
-    { id: 'deities-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'deities' });
+type DeityView = 'pantheon' | 'devotion' | 'explore';
 
+const VIEWS: { id: DeityView; label: string; keys: string; title: string; hint: string; icon: typeof Flame }[] = [
+  { id: 'pantheon', label: 'Pantheon', keys: '1', title: 'The gods people made', hint: 'Search, filter, compose and make pilgrimage', icon: Flame },
+  { id: 'devotion', label: 'My devotion', keys: '2', title: 'Where your faith stands', hint: 'Your alignment across every deity', icon: Sparkles },
+  { id: 'explore', label: 'Explore', keys: '3', title: 'Chart the whole pantheon', hint: 'Pantheon explorer', icon: Compass },
+];
+
+export default function DeitiesPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<DeityView>('pantheon');
   const [deities, setDeities] = useState<Deity[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -52,6 +61,23 @@ export default function DeitiesPage() {
   const [composing, setComposing] = useState(false);
   const [form, setForm] = useState({ name: '', domainTitle: '', creed: '', warmth: 0.5, refusal: 0.3, mystery: 0.5 });
   const [status, setStatus] = useState<string | null>(null);
+
+  useLensCommand([
+    ...VIEWS.map((v) => ({
+      id: `deities-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => { setSelectedId(null); setView(v.id); },
+    })),
+    {
+      id: 'deities-compose',
+      keys: 'c',
+      description: 'Compose a deity',
+      category: 'actions' as const,
+      action: () => { setSelectedId(null); setView('pantheon'); setComposing(true); },
+    },
+  ], { lensId: 'deities' });
 
   // search / filter
   const [query, setQuery] = useState('');
@@ -81,7 +107,7 @@ export default function DeitiesPage() {
     setLoading(false);
   }, [query, toneAxis, minTone, minPilgrims, sort]);
 
-  useEffect(() => { void refresh(); }, [refresh, refreshKey]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh, refreshKey]);
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -117,36 +143,45 @@ export default function DeitiesPage() {
     bumpRefresh();
   };
 
+  const current = VIEWS.find((v) => v.id === view)!;
+
+  const frameTitle = selectedId
+    ? 'A deity, up close'
+    : `${current.title}${view === 'pantheon' && who ? `, ${who}` : ''}`;
+
   return (
-    <LensShell lensId="deities">
+    <LensShell lensId="deities" asMain={false}>
       <FirstRunTour lensId="deities" />
       <DepthBadge lensId="deities" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="deities" className="mx-6 mt-4" />
-      <div className="p-6 max-w-5xl mx-auto">
-        {selectedId ? (
-          <DeityDetailPanel
-            deityId={selectedId}
-            onClose={() => { setSelectedId(null); bumpRefresh(); }}
-            onChanged={bumpRefresh}
-          />
-        ) : (
-          <>
-            <header className="mb-6 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-zinc-100">Pantheon</h1>
-                <p className="mt-1 text-sm text-zinc-400">Player-composed patron deities · commune, devote, earn blessings.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setComposing((v) => !v)}
-                className="rounded-lg bg-purple-700 hover:bg-purple-600 px-3 py-1.5 text-sm font-medium text-white"
-              >
-                {composing ? 'Cancel' : 'Compose'}
-              </button>
-            </header>
-
+      <NorthStarFrame
+        lensId="deities"
+        crumb="Deities"
+        title={frameTitle}
+        subtitle="Player-composed patron deities. Commune, devote, earn blessings."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => { setSelectedId(null); setView(id as DeityView); }}
+        tabsLabel="Deity views"
+        cta={{
+          label: 'Compose a deity',
+          icon: Flame,
+          onClick: () => { setSelectedId(null); setView('pantheon'); setComposing(true); },
+          title: 'Birth a new deity (C)',
+        }}
+      >
+        <div className="space-y-5">
+          {selectedId ? (
+            <DeityDetailPanel
+              deityId={selectedId}
+              onClose={() => { setSelectedId(null); bumpRefresh(); }}
+              onChanged={bumpRefresh}
+            />
+          ) : (
+            <>
+              {view === 'pantheon' && (
+                <>
             {composing && (
-              <div className="mb-6 space-y-3 rounded-xl border border-purple-800/50 bg-zinc-900/80 p-4">
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
                 <h2 className="text-sm font-bold text-purple-300">Compose a Deity</h2>
                 <input
                   type="text" placeholder="Name" value={form.name}
@@ -181,13 +216,19 @@ export default function DeitiesPage() {
                 >
                   Birth Deity
                 </button>
+                <button
+                  type="button" onClick={() => setComposing(false)}
+                  className="w-full rounded-lg border border-white/10 py-2 text-sm text-zinc-300 hover:bg-white/5"
+                >
+                  Cancel
+                </button>
                 {status && <p className="text-xs italic text-purple-300">{status}</p>}
               </div>
             )}
-            {!composing && status && <p className="mb-4 text-xs italic text-purple-300">{status}</p>}
+            {!composing && status && <p className="text-xs italic text-purple-300">{status}</p>}
 
             {/* Search / filter */}
-            <div className="mb-5 space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text" placeholder="Search by name / domain / creed" value={query}
@@ -256,7 +297,7 @@ export default function DeitiesPage() {
             ) : (
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {deities.map((d) => (
-                  <li key={d.id} className="rounded-xl border border-zinc-700/50 bg-zinc-900/80 p-4 transition-colors hover:border-purple-700/50">
+                  <li key={d.id} className="rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-purple-700/50">
                     <button type="button" onClick={() => setSelectedId(d.id)} className="block w-full text-left">
                       <div className="flex items-start justify-between">
                         <div>
@@ -296,18 +337,25 @@ export default function DeitiesPage() {
               </ul>
             )}
 
-            {/* My devotion across the pantheon */}
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <h2 className="mb-3 text-sm font-bold text-zinc-200">My devotion</h2>
-              <MyDevotionPanel refreshKey={refreshKey} onPickDeity={(id) => setSelectedId(id)} />
-            </section>
+                </>
+              )}
 
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <PantheonExplorer />
-            </section>
-          </>
-        )}
-      </div>      <CrossLensRecentsPanel lensId="deities" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+              {view === 'devotion' && (
+                <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                  <h2 className="mb-3 text-sm font-semibold text-white">My devotion</h2>
+                  <MyDevotionPanel refreshKey={refreshKey} onPickDeity={(id) => setSelectedId(id)} />
+                </section>
+              )}
+
+              {view === 'explore' && (
+                <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                  <PantheonExplorer />
+                </section>
+              )}
+            </>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

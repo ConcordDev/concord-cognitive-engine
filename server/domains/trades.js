@@ -732,13 +732,29 @@ export default function registerTradesActions(registerLensAction) {
   // ── Route optimization (nearest-neighbour heuristic) ──────────
 
   registerLensAction("trades", "route-optimize", (_ctx, _a, params = {}) => {
-    const start = params.start && Number.isFinite(params.start.lat) ? params.start : { lat: 0, lng: 0 };
+    const hasStart = Boolean(params.start) && Number.isFinite(params.start.lat) && Number.isFinite(params.start.lng);
     const stops = Array.isArray(params.stops) ? params.stops.filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng)) : [];
     if (stops.length === 0) return { ok: false, error: "stops required (each with lat,lng,id)" };
-    const dist = (a, b) => Math.sqrt(Math.pow(a.lat - b.lat, 2) + Math.pow(a.lng - b.lng, 2));
+    // Great-circle (straight-line) miles. This used to be the raw Euclidean
+    // distance in degrees, labelled "units", with a drive time of
+    // degrees × 3 minutes (1° ≈ 69 mi, so ~1,400 mph).
+    const R_MI = 3958.8;
+    const rad = (d) => (d * Math.PI) / 180;
+    const dist = (a, b) => {
+      const dLat = rad(b.lat - a.lat);
+      const dLng = rad(b.lng - a.lng);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+      return 2 * R_MI * Math.asin(Math.min(1, Math.sqrt(h)));
+    };
     const remaining = stops.slice();
     const ordered = [];
-    let cursor = start;
+    // No start given: begin at the first stop instead of (0, 0) in the ocean.
+    let cursor = hasStart ? params.start : null;
+    if (!cursor) {
+      const first = remaining.shift();
+      ordered.push({ ...first, distanceFromPrev: 0 });
+      cursor = first;
+    }
     while (remaining.length > 0) {
       let bestIdx = 0;
       let bestD = dist(cursor, remaining[0]);
@@ -750,13 +766,16 @@ export default function registerTradesActions(registerLensAction) {
       ordered.push({ ...next, distanceFromPrev: Math.round(bestD * 100) / 100 });
       cursor = next;
     }
-    const totalDistance = ordered.reduce((sum, s) => sum + (s.distanceFromPrev || 0), 0);
+    const totalMiles = ordered.reduce((sum, s) => sum + (s.distanceFromPrev || 0), 0);
+    const AVG_MPH = 30;
     return {
       ok: true,
       result: {
         ordered,
-        totalDistanceUnits: Math.round(totalDistance * 100) / 100,
-        estimatedDriveMin: Math.round(totalDistance * 3),
+        totalMiles: Math.round(totalMiles * 100) / 100,
+        estimatedDriveMin: Math.round((totalMiles / AVG_MPH) * 60),
+        driveAssumption: `straight-line miles at a ${AVG_MPH} mph average; real roads are longer`,
+        startedAt: hasStart ? "start" : "first stop",
         algorithm: "nearest_neighbour",
       },
     };
@@ -967,7 +986,10 @@ export default function registerTradesActions(registerLensAction) {
       id: uidTr("pay"), invoiceRef, amount,
       currency: "usd",
       status: "pending",
-      hostedUrl: `/pay/${uidTr("pi")}`,
+      // No checkout provider is connected, so there is no hosted payment
+      // page. (This used to mint "/pay/pi_…", a route that doesn't exist,
+      // and the panel offered to copy it for the customer.)
+      hostedUrl: null,
       createdAt: nowIsoTrades(),
     };
     ensureTrBucket(s, "payments", userId).push(payment);
@@ -1412,7 +1434,11 @@ export default function registerTradesActions(registerLensAction) {
       id: uidTr("notif"), channel, kind, recipient,
       message: message.slice(0, 500),
       jobId: params.jobId ? String(params.jobId) : null,
-      status: "queued",
+      // No SMS or email provider is connected and nothing picks these up, so
+      // they are logged, not sent. ("queued" implied a delivery that never
+      // happened.)
+      status: "not_sent",
+      delivery: "No SMS or email provider is connected; nothing was sent.",
       createdAt: nowIsoTrades(),
     };
     ensureTrBucket(s, "notifications", userId).push(notification);
@@ -1498,8 +1524,13 @@ export default function registerTradesActions(registerLensAction) {
     const accepted = quotes.filter(q => q.status === "accepted").length;
     const closeRate = decided > 0 ? Math.round((accepted / decided) * 1000) / 10 : 0;
 
-    // Tech utilization — clocked hours vs an 8h/day baseline per active tech
-    const totalClockedMin = timesheets.filter(t => t.durationMin != null).reduce((n, t) => n + t.durationMin, 0);
+    // Tech utilization — hours clocked in the last 24 h vs an 8 h day per
+    // technician. (This used to divide ALL-TIME clocked hours by a single
+    // 8 h day, so it pinned at 100% after a day's work.)
+    const since = Date.now() - 24 * 3600 * 1000;
+    const totalClockedMin = timesheets
+      .filter(t => t.durationMin != null && Date.parse(t.clockIn || "") >= since)
+      .reduce((n, t) => n + t.durationMin, 0);
     const totalClockedHours = Math.round((totalClockedMin / 60) * 10) / 10;
     const baselineHours = Math.max(1, technicians.length) * 8;
     const utilization = Math.min(100, Math.round((totalClockedHours / baselineHours) * 1000) / 10);
@@ -1523,7 +1554,7 @@ export default function registerTradesActions(registerLensAction) {
         revenue: { total: totalRevenue, outstanding, avgTicket, fromInvoices: Math.round(invoiceRevenue * 100) / 100, fromLinks: Math.round(linkRevenue * 100) / 100 },
         sales: { quotesTotal: quotes.length, quotesAccepted: accepted, quotesDecided: decided, closeRate },
         jobs: { total: jobs.length, completed, completionRate: jobCompletionRate, byStatus },
-        labor: { technicians: technicians.length, clockedHours: totalClockedHours, baselineHours, utilization },
+        labor: { technicians: technicians.length, clockedHours: totalClockedHours, baselineHours, utilization, window: "last 24 h" },
         satisfaction: { reviewCount: reviews.length, avgRating },
       },
     };

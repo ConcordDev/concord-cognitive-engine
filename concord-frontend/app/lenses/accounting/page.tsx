@@ -9,13 +9,11 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Calculator } from 'lucide-react';
-import { Icon } from '@/components/icons/Icon';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
@@ -51,6 +49,8 @@ import { PipingProvider } from '@/components/panel-polish';
 
 export default function AccountingLensPage() {
   useLensNav('accounting');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('accounting');
 
   // Wallet balance — the platform CC wallet, a distinct concept from the
@@ -90,40 +90,28 @@ export default function AccountingLensPage() {
   return (
     <LensShell lensId="accounting" asMain={false}>
       <FirstRunTour lensId="accounting" />
-      <div data-lens-theme="accounting" className={ds.pageContainer}>
-        {/* Header */}
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Icon name="ledger" size={28} className="text-green-400" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Accounting &amp; Finance</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-                <DepthBadge lensId="accounting" size="sm" />
-              </div>
-              <p className={ds.textMuted}>General ledger, invoicing, payroll &amp; financial reporting</p>
-            </div>
+      <div data-lens-theme="accounting" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Accounting</p>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {booksNav === 'dashboard' ? `Where the books stand${who ? `, ${who}` : ''}` : 'Your books'}
+            </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
             {balance != null && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] uppercase tracking-wider text-gray-400">Wallet</div>
-                <div className="text-sm font-mono tabular-nums text-gray-100">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Wallet</div>
+                <div className="font-mono text-sm tabular-nums text-zinc-100">
                   {Math.round(balance).toLocaleString()} CC
-                  {tier && <span className="ml-1 text-[10px] uppercase text-gray-500">{tier}</span>}
+                  {tier && <span className="ml-1 text-[10px] uppercase text-zinc-500">{tier}</span>}
                 </div>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => setWorkbenchOpen(true)}
-              className={cn(ds.btnSecondary, 'border-emerald-500/30 text-emerald-200 hover:brightness-110')}
-              title="Live accounting workbench (kbd: w)"
-            >
-              <Calculator className="w-4 h-4" /> Workbench
-            </button>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <DepthBadge lensId="accounting" size="sm" />
           </div>
-        </header>
+        </div>
 
         {/* Primary surface — the real books shell */}
         <BooksSection nav={booksNav} onNavChange={setBooksNav} />
@@ -144,10 +132,19 @@ export default function AccountingLensPage() {
         </details>
 
         <RealtimeDataPanel domain="accounting" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-        <DTUExportButton domain="accounting" data={{}} compact />
 
         {/* Lens Features (reference / discoverability, collapsed by default —
             the designed nav above is the primary surface). */}
+
+        <button
+          type="button"
+          onClick={() => setWorkbenchOpen(true)}
+          title="Open the accounting workbench (W)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Calculator className="h-4 w-4" />
+          Workbench
+        </button>
       </div>
 
       {/* Companion drawer — raw CoA / journal-entry / ledger / balance

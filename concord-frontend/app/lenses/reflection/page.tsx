@@ -9,14 +9,17 @@ import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { ReflectionSection } from '@/components/reflection/ReflectionSection';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, AlertTriangle, CheckCircle2,
   Brain, Eye, Shield, BarChart3,
-  BookOpen, Users,
+  BookOpen, Users, Plus,
 } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 
@@ -36,7 +39,17 @@ type Mode = 'journal' | 'selfcritique';
 
 export default function ReflectionLensPage() {
   useLensNav('reflection');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<Mode>('journal');
+  const newEntry = useCallback(() => {
+    setMode('journal');
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="reflection"] textarea');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.focus();
+    });
+  }, []);
 
   const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['reflection-status'],
@@ -73,6 +86,7 @@ export default function ReflectionLensPage() {
 
   useLensCommand(
     [
+      { id: 'new-entry', keys: 'n', description: 'New journal entry', category: 'actions', action: newEntry },
       { id: 'mode-journal', keys: 'j', description: 'Journal',          category: 'view', action: () => setMode('journal') },
       { id: 'mode-critique',keys: 's', description: 'Self-Critique Log',category: 'view', action: () => setMode('selfcritique') },
       { id: 'refresh',     keys: 'r', description: 'Refresh',     category: 'actions',
@@ -84,6 +98,7 @@ export default function ReflectionLensPage() {
     ],
     { lensId: 'reflection' }
   );
+
 
   const avgQuality = reflections.length > 0
     ? reflections.reduce((s, r) => s + r.quality, 0) / reflections.length
@@ -119,50 +134,44 @@ export default function ReflectionLensPage() {
   return (
     <LensShell lensId="reflection" asMain={false}>
       <FirstRunTour lensId="reflection" />
-      <div data-lens-theme="reflection" className="p-6 space-y-6">
-        <header className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🪞</span>
-            <div>
-              <h1 className="text-xl font-bold">Reflection</h1>
-              <p className="text-sm text-gray-400">
-                Two distinct systems share this name — a personal journal, and the engine&apos;s own self-critique log.
-              </p>
+      <div data-lens-theme="reflection" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[14px] text-zinc-500">Reflection</p>
+              <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+                {mode === 'journal' ? `Your reflections${who ? `, ${who}` : ''}` : 'How the engine sees itself'}
+                <DepthBadge lensId="reflection" size="sm" className="ml-2 align-middle" />
+              </h1>
             </div>
-            <DepthBadge lensId="reflection" size="sm" className="ml-2" />
           </div>
+          <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">
+            Two distinct systems share this name: a personal journal, and the engine&apos;s own self-critique log.
+          </p>
 
-          {/* Mode switch — the honest disclosure that Journal (substrate B,
-              a Day One-parity personal journaling companion, backend:
-              server/domains/reflection.js) and Self-Critique Log (substrate
-              A, the cognitive engine's own post-response quality-evaluation
-              loop, backend: server.js "REFLECTION ENGINE MACROS" /
-              ensureReflectionEngine / STATE.reflection) are TWO UNRELATED
-              REAL SYSTEMS that happen to both be registered under the
-              domain name "reflection" — the same naming-collision pattern
-              documented for the `lattice` lens. They are never conflated
-              here: each mode only renders its own data. */}
-          <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-black/30 p-1" role="tablist" aria-label="Reflection mode">
-            <button
-              type="button" role="tab" aria-selected={mode === 'journal'}
-              onClick={() => setMode('journal')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                mode === 'journal' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" /> Journal <kbd className="text-[8px] opacity-60 ml-0.5">j</kbd>
-            </button>
-            <button
-              type="button" role="tab" aria-selected={mode === 'selfcritique'}
-              onClick={() => setMode('selfcritique')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                mode === 'selfcritique' ? 'bg-neon-blue/80 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5" /> Self-Critique Log <kbd className="text-[8px] opacity-60 ml-0.5">s</kbd>
-            </button>
+          {/* The Journal (server/domains/reflection.js) and the Self-Critique Log
+              (the engine's post-response quality loop) are two unrelated real
+              systems registered under one domain name; each mode renders only
+              its own data. */}
+          <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Reflection mode">
+            {([
+              { id: 'journal' as const, label: 'Journal', key: 'j', Icon: BookOpen },
+              { id: 'selfcritique' as const, label: 'Self-Critique Log', key: 's', Icon: Brain },
+            ]).map(({ id, label, key, Icon }) => (
+              <button
+                key={id}
+                type="button" role="tab" aria-selected={mode === id}
+                onClick={() => setMode(id)}
+                className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors ${
+                  mode === id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" /> {label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{key}</kbd>
+              </button>
+            ))}
           </div>
-        </header>
+        </div>
 
         {mode === 'journal' && (
           <div className="space-y-6">
@@ -387,6 +396,18 @@ export default function ReflectionLensPage() {
         {/* ConnectiveTissueBar */}
         <ConnectiveTissueBar lensId="reflection" />
 
+
+        <CrossLensRecentsPanel lensId="reflection" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={newEntry}
+          title="New journal entry (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New entry
+        </button>
 
         <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
       </div>

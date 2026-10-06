@@ -32,9 +32,9 @@
  * macro call.
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  BookOpen, LayoutDashboard, ScrollText, Network, Newspaper,
+  LayoutDashboard, ScrollText, Network, Newspaper, Play,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -47,20 +47,36 @@ import { PhilosophyCuration } from '@/components/philosophy/PhilosophyCuration';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 type Destination = 'overview' | 'dilemma' | 'curation' | 'pulse';
 
-const DESTINATIONS: { id: Destination; label: string; icon: typeof BookOpen; desc: string }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard, desc: 'Live curation KPIs & recent debates' },
-  { id: 'dilemma', label: 'Dilemma Workbench', icon: ScrollText, desc: 'Argument map · thought experiment · dialectic · ethics' },
-  { id: 'curation', label: 'Curation Studio', icon: Network, desc: 'Channels · image grid · discovery · reference pages · debates' },
-  { id: 'pulse', label: 'Community Pulse', icon: Newspaper, desc: 'Real philosophy.stackexchange.com Q&A' },
+const DESTINATIONS: { id: Destination; label: string; title: string; keys: string; icon: typeof LayoutDashboard; desc: string }[] = [
+  { id: 'overview', title: 'The question on the table', keys: 'g o', label: 'Overview', icon: LayoutDashboard, desc: 'Live curation KPIs & recent debates' },
+  { id: 'dilemma', title: 'Work the problem', keys: 'g d', label: 'Dilemma Workbench', icon: ScrollText, desc: 'Argument map · thought experiment · dialectic · ethics' },
+  { id: 'curation', title: 'Collect the ideas', keys: 'g c', label: 'Curation Studio', icon: Network, desc: 'Channels · image grid · discovery · reference pages · debates' },
+  { id: 'pulse', title: 'What others are asking', keys: 'g p', label: 'Community Pulse', icon: Newspaper, desc: 'Real philosophy.stackexchange.com Q&A' },
 ];
 
 export default function PhilosophyLensPage() {
   useLensNav('philosophy');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('overview');
+
+  const begin = useCallback(() => {
+    setDest('dilemma');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="philosophy"] section[aria-label="Dilemma workbench"] textarea, [data-lens-theme="philosophy"] section[aria-label="Dilemma workbench"] input');
+      if (el) el.focus();
+      else if (tries++ < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, []);
 
   // Real navigation shortcuts only — the old "/" focus-search binding
   // targeted the retired generic CRUD library's search box. Curation
@@ -72,6 +88,7 @@ export default function PhilosophyLensPage() {
       { id: 'goto-overview', keys: 'g o', description: 'Go to Overview', category: 'navigation', action: () => setDest('overview') },
       { id: 'goto-dilemma', keys: 'g d', description: 'Go to Dilemma Workbench', category: 'navigation', action: () => setDest('dilemma') },
       { id: 'goto-curation', keys: 'g c', description: 'Go to Curation Studio', category: 'navigation', action: () => setDest('curation') },
+      { id: 'begin', keys: 'b', description: 'Begin — open the dilemma workbench', category: 'actions', action: begin },
       { id: 'goto-pulse', keys: 'g p', description: 'Go to Community Pulse', category: 'navigation', action: () => setDest('pulse') },
     ],
     { lensId: 'philosophy' }
@@ -80,43 +97,32 @@ export default function PhilosophyLensPage() {
   return (
     <LensShell lensId="philosophy" asMain={false}>
       <FirstRunTour lensId="philosophy" />
-      <div data-lens-theme="philosophy" className="space-y-6 p-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">Philosophy</h1>
-                <DepthBadge lensId="philosophy" size="sm" />
-              </div>
-              <p className="text-sm text-gray-400">
-                Argument mapping, ethical frameworks, and an Are.na-shape channel/block idea-curation studio.
-              </p>
-            </div>
-          </div>
-        </header>
+      <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
+      <div data-lens-theme="philosophy" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Philosophy</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {DESTINATIONS.find((d) => d.id === dest)!.title}{dest === 'overview' && who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="flex flex-wrap items-center gap-2 border-b border-lattice-border pb-3" aria-label="Philosophy destinations">
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Philosophy destinations">
           {DESTINATIONS.map((d) => {
             const Icon = d.icon;
-            const active = dest === d.id;
+            const on = dest === d.id;
             return (
               <button
                 key={d.id}
                 type="button"
                 onClick={() => setDest(d.id)}
-                aria-current={active ? 'page' : undefined}
+                aria-current={on ? 'page' : undefined}
+                title={`${d.desc} (${d.keys})`}
                 className={cn(
-                  'group flex flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors min-w-[9rem]',
-                  active ? 'bg-purple-500/15 border border-purple-500/40' : 'border border-transparent hover:bg-lattice-elevated hover:border-lattice-border'
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
               >
-                <span className={cn('flex items-center gap-1.5 text-sm font-medium', active ? 'text-purple-200' : 'text-gray-300 group-hover:text-white')}>
-                  <Icon className="w-4 h-4" /> {d.label}
-                </span>
-                <span className="text-[10px] text-gray-500 leading-tight">{d.desc}</span>
+                <Icon className="h-3.5 w-3.5" />
+                {d.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{d.keys}</kbd>
               </button>
             );
           })}
@@ -133,20 +139,32 @@ export default function PhilosophyLensPage() {
         {dest === 'curation' && (
           <section aria-label="Curation studio" className="space-y-6">
             <WikipediaSearchPanel domain="philosophy" title="Wikipedia · quick search" />
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <PhilosophyChannels />
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <PhilosophyCuration />
             </div>
           </section>
         )}
 
         {dest === 'pulse' && (
-          <section aria-label="Community pulse" className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section aria-label="Community pulse" className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <PhiloFeed />
           </section>
         )}
+
+        <CrossLensRecentsPanel lensId="philosophy" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={begin}
+          title="Begin (B)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Play className="h-4 w-4" />
+          Begin
+        </button>
       </div>
 
       {/* Accessibility skip-link sentinel — never visually displayed. */}

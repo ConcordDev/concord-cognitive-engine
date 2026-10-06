@@ -11,8 +11,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart3, Plus, Filter, Loader2, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { AnalyticsKeepMenu } from './AnalyticsKeepMenu';
 
-interface Dash { totalEvents: number; uniqueUsers: number; eventsToday: number; eventTypes: number; savedFunnels: number }
+interface Dash { totalEvents: number; uniqueUsers: number; eventsToday: number; eventTypes: number; savedFunnels: number; savedDashboards?: number; savedAlerts?: number; behavioralCohorts?: number }
 interface TopEvent { name: string; count: number }
 interface FunnelStep { step: number; event: string; count: number; conversionFromStart: number; conversionFromPrev: number }
 interface FunnelResult { steps: FunnelStep[]; totalStarters: number; overallConversion: number }
@@ -77,7 +78,6 @@ export function EventAnalytics() {
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Event Analytics</h3>
-        <span className="text-[11px] text-zinc-400">Mixpanel / Amplitude shape</span>
       </div>
 
       {dash && (
@@ -175,6 +175,8 @@ export function EventAnalytics() {
           )}
         </div>
       </div>
+
+      {dash && <AnalyticsKeepMenu dashboard={dash} />}
     </div>
   );
 }

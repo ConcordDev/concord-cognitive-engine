@@ -6,10 +6,10 @@
  * Workspace / BGG are routed by the page shell.
  */
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ListTodo, Plus, GripVertical, ChevronDown, Calendar, Paperclip, MessageSquare, Search, Filter, LayoutGrid, BarChart3, Clock, CheckCircle2, AlertTriangle, TrendingUp, Activity, Loader2, XCircle, Zap, Tag,
+  ListTodo, ChevronDown, Search, Filter, LayoutGrid, BarChart3, CheckCircle2, AlertTriangle, TrendingUp, Activity, Loader2, XCircle, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateId } from '@/lib/utils';
@@ -20,10 +20,11 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { TaskDetailPanel } from './TaskDetailPanel';
+import { BoardLanes } from './BoardLanes';
 import {
-  type ColumnId, type Task, type TaskView,
+  type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
-  TASKS_FALLBACK, lensItemToTask, isOverdue, formatDate, avatarColor,
+  TASKS_FALLBACK, lensItemToTask, isOverdue,
   buildBoardActionParams,
 } from './board-shared';
 
@@ -53,10 +54,6 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeProject, setActiveProject] = useState(projects[0]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-  const [dragOverColumn, setDragOverColumn] = useState<ColumnId | null>(null);
-  const [quickAddInputs, setQuickAddInputs] = useState<Record<ColumnId, string>>(
-    Object.fromEntries(columns.map((c) => [c.id, ''])) as Record<ColumnId, string>
-  );
 
   // Filters
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
@@ -107,12 +104,6 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     setIsRunning(null);
   };
 
-  // --- Keyboard navigation state ---
-  const [focusedCol, setFocusedCol] = useState(0);
-  const [focusedCard, setFocusedCard] = useState(0);
-  const boardRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
   // --- filtered tasks ---
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
@@ -124,11 +115,6 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
       return true;
     });
   }, [tasks, filterAssignee, filterPriority, filterType, filterLabel, searchQuery]);
-
-  const getTasksByStatus = useCallback(
-    (status: ColumnId) => filteredTasks.filter((t) => t.status === status),
-    [filteredTasks]
-  );
 
   // --- stats ---
   const stats = useMemo(() => {
@@ -142,75 +128,6 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
         .length,
     };
   }, [tasks]);
-
-  // --- drag and drop ---
-  const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData('taskId', taskId);
-    e.dataTransfer.effectAllowed = 'move';
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent, colId: ColumnId) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverColumn(colId);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setDragOverColumn(null);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, targetCol: ColumnId) => {
-      e.preventDefault();
-      const taskId = e.dataTransfer.getData('taskId');
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) {
-        const newProgress = targetCol === 'done' ? 100 : task.progress;
-        updateLens(taskId, {
-          data: {
-            ...task,
-            status: targetCol,
-            progress: newProgress,
-            id: undefined,
-            title: undefined,
-          } as unknown as Record<string, unknown>,
-        });
-      }
-      setDragOverColumn(null);
-    },
-    [tasks, updateLens]
-  );
-
-  // --- quick add ---
-  const handleQuickAdd = useCallback(
-    (colId: ColumnId) => {
-      const title = quickAddInputs[colId]?.trim();
-      if (!title) return;
-      createLens({
-        title,
-        data: {
-          description: '',
-          status: colId,
-          priority: 'medium',
-          type: 'task',
-          assignee: assignees[0],
-          label: labels[0],
-          progress: 0,
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          attachments: 0,
-          commentCount: 0,
-          subtasks: [],
-          comments: [],
-          activity: [
-            { id: generateId(), action: 'Task created', timestamp: new Date().toISOString() },
-          ],
-          files: [],
-        } as unknown as Partial<Record<string, unknown>>,
-      });
-      setQuickAddInputs((prev) => ({ ...prev, [colId]: '' }));
-    },
-    [quickAddInputs, createLens]
-  );
 
   // --- task detail updates (persisted via backend) ---
   const updateTask = useCallback(
@@ -244,77 +161,6 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     },
     [tasks, updateLens]
   );
-
-  // --- Keyboard navigation handler for the board ---
-  const handleBoardKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Only handle keyboard nav when not typing in an input/select
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-
-      const colTasks = getTasksByStatus(columns[focusedCol].id);
-
-      switch (e.key) {
-        case 'ArrowRight': {
-          e.preventDefault();
-          const nextCol = Math.min(focusedCol + 1, columns.length - 1);
-          setFocusedCol(nextCol);
-          setFocusedCard(0);
-          break;
-        }
-        case 'ArrowLeft': {
-          e.preventDefault();
-          const prevCol = Math.max(focusedCol - 1, 0);
-          setFocusedCol(prevCol);
-          setFocusedCard(0);
-          break;
-        }
-        case 'ArrowDown': {
-          e.preventDefault();
-          setFocusedCard((prev) => Math.min(prev + 1, colTasks.length - 1));
-          break;
-        }
-        case 'ArrowUp': {
-          e.preventDefault();
-          setFocusedCard((prev) => Math.max(prev - 1, 0));
-          break;
-        }
-        case 'Enter': {
-          e.preventDefault();
-          if (colTasks.length > 0 && focusedCard < colTasks.length) {
-            setSelectedTask(colTasks[focusedCard]);
-          }
-          break;
-        }
-        case 'Escape': {
-          e.preventDefault();
-          setSelectedTask(null);
-          break;
-        }
-        default:
-          break;
-      }
-    },
-    [focusedCol, focusedCard, getTasksByStatus, setSelectedTask]
-  );
-
-  // Keep focused card in bounds when filtered tasks change
-  useEffect(() => {
-    const colTasks = getTasksByStatus(columns[focusedCol].id);
-    if (focusedCard >= colTasks.length && colTasks.length > 0) {
-      setFocusedCard(colTasks.length - 1);
-    }
-  }, [filteredTasks, focusedCol, focusedCard, getTasksByStatus]);
-
-  // Scroll focused card into view
-  useEffect(() => {
-    const colTasks = getTasksByStatus(columns[focusedCol].id);
-    if (colTasks.length > 0 && focusedCard < colTasks.length) {
-      const key = `${columns[focusedCol].id}-${focusedCard}`;
-      const el = cardRefs.current.get(key);
-      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [focusedCol, focusedCard, getTasksByStatus]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -351,6 +197,9 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
             selectedTask ? 'mr-0' : ''
           )}
         >
+          {/* Desk chrome (project, stats, search, filters, analysis) stays on
+              every view; the Board view adds the north-star lanes below it. */}
+          <>
           {/* Header */}
           <header className="flex-shrink-0 px-6 pt-5 pb-3 space-y-4">
             <div className="flex items-center justify-between">
@@ -870,253 +719,34 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
             )}
           </div>
 
-          {/* Board columns (kanban) */}
+          </>
+
+          {/* Board view — north-star lanes (docs/lens-northstar/04-board). */}
           {mode === 'board' && (
-          <div className="flex-1 overflow-x-auto px-6 pb-6">
-            <div
-              ref={boardRef}
-              className="flex gap-4 h-full min-w-max"
-              role="grid"
-              aria-label="Project board"
-              tabIndex={0}
-              onKeyDown={handleBoardKeyDown}
-            >
-              {columns.map((column) => {
-                const colTasks = getTasksByStatus(column.id);
-                const ColIcon = column.icon;
-                const isOver = dragOverColumn === column.id;
-                const colIndex = columns.indexOf(column);
-                return (
-                  <div
-                    key={column.id}
-                    role="group"
-                    aria-label={`${column.name} column, ${colTasks.length} tasks`}
-                    className={cn(
-                      'flex flex-col w-64 sm:w-72 flex-shrink-0 rounded-xl border transition-all',
-                      isOver
-                        ? `${column.border} ${column.bg}`
-                        : 'border-white/[0.06] bg-white/[0.02]',
-                      focusedCol === colIndex && 'ring-1 ring-purple-500/40'
-                    )}
-                    onDragOver={(e) => handleDragOver(e, column.id)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, column.id)}
-                  >
-                    {/* Column header */}
-                    <div className="flex items-center justify-between px-3 py-3 border-b border-white/[0.06]">
-                      <div className="flex items-center gap-2">
-                        <div className={cn('p-1 rounded-md', column.bg)}>
-                          <ColIcon className={cn('w-3.5 h-3.5', column.color)} />
-                        </div>
-                        <span className={cn('text-sm font-semibold', column.color)}>
-                          {column.name}
-                        </span>
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
-                          {colTasks.length}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Quick add */}
-                    <div className="px-3 pt-2 pb-1">
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          data-col-input={column.id}
-                          value={quickAddInputs[column.id]}
-                          onChange={(e) =>
-                            setQuickAddInputs((prev) => ({ ...prev, [column.id]: e.target.value }))
-                          }
-                          onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd(column.id)}
-                          placeholder="Add task..."
-                          className="flex-1 px-2 py-1 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-purple-500/40"
-                        />
-                        <button
-                          onClick={() => handleQuickAdd(column.id)}
-                          className={cn(
-                            'p-1 rounded-md transition-colors',
-                            column.bg,
-                            'hover:opacity-80'
-                          )}
-                        aria-label="Add">
-                          <Plus className={cn('w-3.5 h-3.5', column.color)} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Tasks */}
-                    <div
-                      className="flex-1 overflow-y-auto px-3 py-2 space-y-2"
-                      role="list"
-                      aria-label={`${column.name} tasks`}
-                    >
-                      {colTasks.map((task, cardIndex) => {
-                        const isFocused = focusedCol === colIndex && focusedCard === cardIndex;
-                        return (
-                          <motion.div
-                            key={task.id}
-                            ref={(el) => {
-                              if (el) cardRefs.current.set(`${column.id}-${cardIndex}`, el);
-                            }}
-                            layout
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            role="listitem"
-                            aria-label={`${task.title}, ${priorityConfig[task.priority].label} priority, ${task.progress}% complete`}
-                            tabIndex={isFocused ? 0 : -1}
-                            className={cn(
-                              'group rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] p-3 cursor-grab active:cursor-grabbing transition-colors',
-                              isFocused && 'ring-2 ring-purple-500 border-purple-500/50'
-                            )}
-                            draggable
-                            onDragStart={(e) =>
-                              handleDragStart(e as unknown as React.DragEvent, task.id)
-                            }
-                            onClick={() => setSelectedTask(task)}
-                            onFocus={() => {
-                              setFocusedCol(colIndex);
-                              setFocusedCard(cardIndex);
-                            }}
-                          >
-                            {/* Top row: priority dot + title */}
-                            <div className="flex items-start gap-2">
-                              <GripVertical className="w-3.5 h-3.5 text-gray-600 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-200 truncate">
-                                  {task.title}
-                                </p>
-
-                                {/* Badges row */}
-                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                  <span
-                                    className={cn(
-                                      'text-[10px] px-1.5 py-0.5 rounded-full border',
-                                      priorityConfig[task.priority].color
-                                    )}
-                                  >
-                                    {priorityConfig[task.priority].label}
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      'text-[10px] px-1.5 py-0.5 rounded-full',
-                                      typeConfig[task.type].color
-                                    )}
-                                  >
-                                    {typeConfig[task.type].label}
-                                  </span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
-                                    {task.label}
-                                  </span>
-                                </div>
-
-                                {/* Estimate / Tag for tasks */}
-                                {(task.estimate || task.tags?.[0]) && (
-                                  <div className="flex gap-2 mt-1.5">
-                                    {task.estimate && (
-                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                                        <Clock className="w-3 h-3" />
-                                        {task.estimate} Est.
-                                      </span>
-                                    )}
-                                    {task.tags?.[0] && (
-                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                                        <Tag className="w-3 h-3" />
-                                        Tag: {task.tags[0]}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Progress bar */}
-                                <div className="mt-2">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-[10px] text-gray-400">
-                                      {task.progress}%
-                                    </span>
-                                  </div>
-                                  <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                                    <div
-                                      className={cn(
-                                        'h-full rounded-full transition-all',
-                                        task.progress === 100
-                                          ? 'bg-green-500'
-                                          : task.progress > 60
-                                            ? 'bg-purple-500'
-                                            : 'bg-blue-500'
-                                      )}
-                                      style={{ width: `${task.progress}%` }}
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Footer: date, attachments, comments, avatar */}
-                                <div className="flex items-center justify-between mt-2">
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={cn(
-                                        'text-[10px] flex items-center gap-0.5',
-                                        isOverdue(task.dueDate) && task.status !== 'done'
-                                          ? 'text-red-400 font-medium'
-                                          : 'text-gray-400'
-                                      )}
-                                    >
-                                      <Calendar className="w-3 h-3" />
-                                      {formatDate(task.dueDate)}
-                                    </span>
-                                    {task.attachments > 0 && (
-                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                                        <Paperclip className="w-3 h-3" />
-                                        {task.attachments}
-                                      </span>
-                                    )}
-                                    {task.commentCount > 0 && (
-                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                                        <MessageSquare className="w-3 h-3" />
-                                        {task.commentCount}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {/* Avatar */}
-                                  <div
-                                    className={cn(
-                                      'w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white',
-                                      avatarColor(task.assignee)
-                                    )}
-                                    title={task.assignee}
-                                  >
-                                    {task.assignee[0]}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-
-                      {/* Empty state for drop zone */}
-                      {colTasks.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-8 text-gray-600">
-                          <ColIcon className="w-8 h-8 mb-2 opacity-30" />
-                          <p className="text-xs mb-2">Drop tasks here</p>
-                          <button
-                            onClick={() => {
-                              const input = document.querySelector<HTMLInputElement>(
-                                `[data-col-input="${column.id}"]`
-                              );
-                              input?.focus();
-                            }}
-                            className="text-xs text-gray-400 hover:text-neon-cyan flex items-center gap-1 transition-colors"
-                          >
-                            <Plus className="w-3 h-3" /> Add task
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            <BoardLanes
+              tasks={filteredTasks}
+              onOpen={setSelectedTask}
+              onMove={(taskId, status) => {
+                const task = tasks.find((x) => x.id === taskId);
+                if (!task || task.status === status) return;
+                updateLens(taskId, {
+                  data: { status, progress: status === 'done' ? 100 : task.progress } as unknown as Record<string, unknown>,
+                });
+              }}
+              onAdd={(title) => {
+                createLens({
+                  title,
+                  data: {
+                    description: '', status: 'todo', priority: 'medium', type: 'task',
+                    assignee: assignees[0], label: labels[0], progress: 0,
+                    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    attachments: 0, commentCount: 0, subtasks: [], comments: [],
+                    activity: [{ id: generateId(), action: 'Task created', timestamp: new Date().toISOString() }],
+                    files: [],
+                  } as unknown as Partial<Record<string, unknown>>,
+                });
+              }}
+            />
           )}
 
           {/* Timeline view — tasks ordered by dueDate, grouped by week */}

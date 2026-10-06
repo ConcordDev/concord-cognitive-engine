@@ -47,7 +47,7 @@ export function ReportingPanel() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <Kpi icon={DollarSign} tone="emerald" label="Revenue" value={`$${data.revenue.total.toFixed(0)}`} caption={`$${data.revenue.outstanding.toFixed(0)} outstanding`} />
             <Kpi icon={Target} tone="violet" label="Close rate" value={`${data.sales.closeRate.toFixed(0)}%`} caption={`${data.sales.quotesAccepted}/${data.sales.quotesDecided} quotes won`} />
-            <Kpi icon={Users} tone="cyan" label="Tech utilization" value={`${data.labor.utilization.toFixed(0)}%`} caption={`${data.labor.clockedHours}h / ${data.labor.baselineHours}h`} />
+            <Kpi icon={Users} tone="cyan" label="Tech utilization (24 h)" value={`${data.labor.utilization.toFixed(0)}%`} caption={`${data.labor.clockedHours}h clocked / ${data.labor.baselineHours}h (8 h per tech)`} />
             <Kpi icon={Star} tone="amber" label="Avg rating" value={data.satisfaction.avgRating > 0 ? data.satisfaction.avgRating.toFixed(1) : '—'} caption={`${data.satisfaction.reviewCount} reviews`} />
           </div>
 

@@ -899,6 +899,26 @@ function getConversationId(a, b) {
   return [a, b].sort().join(":");
 }
 
+// Conversation ids are `sorted(userIdA):sorted(userIdB)`. Knowing both public
+// ids must not be enough to read or mutate the thread.
+function conversationParts(conversationId) {
+  if (typeof conversationId !== "string" || !conversationId) return null;
+  const parts = conversationId.split(":");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return parts;
+}
+
+function isDmParticipant(conversationId, userId) {
+  if (!userId || userId === "anon") return false;
+  const parts = conversationParts(conversationId);
+  if (!parts) return false;
+  return parts[0] === userId || parts[1] === userId;
+}
+
+function dmDenied() {
+  return { ok: false, status: 404, error: "not found" };
+}
+
 export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) {
   const social = getSocialState(STATE);
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
@@ -927,8 +947,9 @@ export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) 
 export function getConversations(STATE, userId) {
   const social = getSocialState(STATE);
   const convos = [];
+  if (!userId || userId === "anon") return { ok: true, conversations: [] };
   for (const [convId, msgs] of social.messages) {
-    if (!convId.includes(userId)) continue;
+    if (!isDmParticipant(convId, userId)) continue;
     const lastMsg = msgs[msgs.length - 1];
     let unreadCount = 0;
     for (const m of msgs) {
@@ -947,7 +968,8 @@ export function getConversations(STATE, userId) {
   return { ok: true, conversations: convos };
 }
 
-export function getMessages(STATE, conversationId, { limit = 50, offset = 0 } = {}) {
+export function getMessages(STATE, conversationId, { limit = 50, offset = 0, userId } = {}) {
+  if (!isDmParticipant(conversationId, userId)) return dmDenied();
   const social = getSocialState(STATE);
   const msgs = social.messages.get(conversationId);
   if (!msgs) return { ok: true, messages: [], total: 0 };
@@ -964,9 +986,10 @@ export function getMessages(STATE, conversationId, { limit = 50, offset = 0 } = 
 }
 
 export function markMessagesRead(STATE, { userId, conversationId }) {
+  if (!isDmParticipant(conversationId, userId)) return dmDenied();
   const social = getSocialState(STATE);
   const msgs = social.messages.get(conversationId);
-  if (!msgs) return { ok: false, error: "Conversation not found" };
+  if (!msgs) return dmDenied();
   let marked = 0;
   for (const m of msgs) {
     if (!m.readBy.has(userId)) { m.readBy.add(userId); marked++; }
@@ -985,6 +1008,7 @@ export function recallMessage(STATE, { messageId, userId, windowSeconds = 120 })
     const idx = msgs.findIndex((m) => m.id === messageId);
     if (idx === -1) continue;
     const msg = msgs[idx];
+    if (!isDmParticipant(convId, userId)) return dmDenied();
     if (msg.fromUserId !== userId) return { ok: false, error: "only the sender can recall a message" };
     const ageSec = (Date.now() - new Date(msg.createdAt).getTime()) / 1000;
     if (ageSec >= windowSeconds) return { ok: false, error: `recall window (${windowSeconds}s) elapsed` };
@@ -994,7 +1018,7 @@ export function recallMessage(STATE, { messageId, userId, windowSeconds = 120 })
     msg.recalledAt = new Date().toISOString();
     return { ok: true, messageId, conversationId: convId, recalledAt: msg.recalledAt };
   }
-  return { ok: false, error: "message not found" };
+  return dmDenied();
 }
 
 // ── Notifications ────────────────────────────────────────────────────────

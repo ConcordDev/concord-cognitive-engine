@@ -15,10 +15,26 @@ export function ModelPanel() {
     updateMember,
     removeMember,
     toggleSupport,
+    modelSaveState,
   } = useEngineeringFea();
+
+  const saveLabel: Record<typeof modelSaveState, string> = {
+    loading: 'Loading your saved model…',
+    idle: 'New model. Changes save to your account.',
+    saving: 'Saving…',
+    saved: 'Saved to your account',
+    error: 'Not saved. Check your connection.',
+  };
 
   return (
     <div className="space-y-4">
+      <p
+        data-testid="model-save-state"
+        data-state={modelSaveState}
+        className={`text-xs ${modelSaveState === 'error' ? 'text-red-400' : 'text-gray-400'}`}
+      >
+        {saveLabel[modelSaveState]}
+      </p>
       <div className="panel p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -37,9 +53,9 @@ export function ModelPanel() {
             <thead>
               <tr className="text-gray-400 border-b border-white/10">
                 <th className="text-left py-1 px-2">ID</th>
-                <th className="text-right py-1 px-2">X (ft)</th>
-                <th className="text-right py-1 px-2">Y (ft)</th>
-                <th className="text-right py-1 px-2">Z (ft)</th>
+                <th className="text-right py-1 px-2">X (in)</th>
+                <th className="text-right py-1 px-2">Y (in)</th>
+                <th className="text-right py-1 px-2">Z (in)</th>
                 <th />
               </tr>
             </thead>

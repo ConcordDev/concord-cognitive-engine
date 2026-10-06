@@ -29,6 +29,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import {
@@ -42,6 +46,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Coins,
+  Globe2,
 } from 'lucide-react';
 
 // ── Real macro response shapes (server/domains/world-overview.js) ──────────
@@ -145,7 +150,20 @@ function formatOverdue(overdueS: number | undefined): string {
   return `${m}m overdue`;
 }
 
+type ObsView = 'worlds' | 'factions' | 'realms' | 'districts' | 'liveness';
+
+const OBS_TABS: { id: ObsView; label: string; keys: string; title: string; hint: string; icon: typeof Radar }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', title: 'The state of every world', hint: 'Per-world population, factions, realms and districts', icon: Globe2 },
+  { id: 'factions', label: 'Factions', keys: '2', title: 'Who is allied, at war, or watching', hint: 'Faction stance, momentum and relations', icon: Flag },
+  { id: 'realms', label: 'Realms', keys: '3', title: 'Who rules, and how securely', hint: 'Realm legitimacy, treasury, tax and citizens', icon: Crown },
+  { id: 'districts', label: 'Districts', keys: '4', title: 'How densely the world is built', hint: 'District area, buildings and lighting', icon: Building2 },
+  { id: 'liveness', label: 'Liveness', keys: '5', title: 'Whether the simulation is alive', hint: 'Faction scheduler liveness findings', icon: ShieldAlert },
+];
+
 export default function WorldObservatoryPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<ObsView>('worlds');
   const [overview, setOverview] = useState<WorldSummary[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
@@ -221,15 +239,22 @@ export default function WorldObservatoryPage() {
     [loadDetail],
   );
 
+  const openWorld = useCallback(
+    (worldId: string) => {
+      selectWorld(worldId);
+      setView('factions');
+    },
+    [selectWorld],
+  );
+
   const refreshAll = useCallback(() => {
     refreshOverview();
     if (selectedWorldId) loadDetail(selectedWorldId);
   }, [refreshOverview, selectedWorldId, loadDetail]);
 
   useEffect(() => {
-    refreshOverview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void Promise.resolve().then(refreshOverview);
+  }, [refreshOverview]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -243,9 +268,18 @@ export default function WorldObservatoryPage() {
   useLensCommand(
     [
       { id: 'refresh', keys: 'r', description: 'Refresh the observatory now', category: 'actions', action: refreshAll },
+      ...OBS_TABS.map((t) => ({
+        id: `obs-${t.id}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(t.id),
+      })),
     ],
     { lensId: 'world-observatory' },
   );
+
+  const currentTab = OBS_TABS.find((t) => t.id === view)!;
 
   const totalStuck = useMemo(
     () => overview.reduce((sum, w) => sum + (w.stuckFactionSchedulers || 0), 0),
@@ -298,59 +332,51 @@ export default function WorldObservatoryPage() {
   }
 
   return (
-    <LensShell lensId="world-observatory" asMain={false}>      <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
-      <main
-        aria-label="World Observatory"
-        className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100"
-      >
-        <header className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-              <Radar className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">World Observatory</h1>
-              <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-                Population, faction, realm, and district state across every world — read-only mission control.
-              </p>
-            </div>
+    <LensShell lensId="world-observatory" asMain={false}>
+      <FirstRunTour lensId="world-observatory" />
+      <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="world-observatory"
+        crumb="World observatory"
+        title={`${currentTab.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
+        subtitle="Population, faction, realm, and district state across every world — read-only mission control."
+        actions={
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
             {totalStuck > 0 && (
-              <span className="hidden items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-200 sm:flex">
+              <span className="flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-medium text-red-200">
                 <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
-                {totalStuck} stuck scheduler{totalStuck === 1 ? '' : 's'} platform-wide
+                {totalStuck} stuck scheduler{totalStuck === 1 ? '' : 's'}
               </span>
             )}
-            <button
-              onClick={refreshAll}
-              disabled={overviewLoading}
-              aria-label="Refresh the observatory"
-              className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-60"
-            >
-              <RefreshCcw className={`h-3 w-3 ${overviewLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {overviewLoading ? 'refreshing…' : 'refresh'}
-              <kbd className="ml-0.5 rounded border border-cyan-500/30 bg-black/30 px-1 text-[9px] font-mono text-cyan-300/80">R</kbd>
-            </button>
+            {lastRefresh && <span>scanned {lastRefresh.toLocaleTimeString()}</span>}
+            <span>{overview.length} world{overview.length === 1 ? '' : 's'}</span>
+            <span>{totalActiveUsers} active user{totalActiveUsers === 1 ? '' : 's'}</span>
           </div>
+        }
+        tabs={OBS_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as ObsView)}
+        tabsLabel="Observatory views"
+        cta={{
+          label: overviewLoading ? 'Refreshing…' : 'Refresh observatory',
+          icon: RefreshCcw,
+          onClick: refreshAll,
+          title: 'Rescan all worlds (R)',
+          disabled: overviewLoading,
+        }}
+      >
+        <main aria-label="World Observatory" className="space-y-4">
           {overviewError && (
-            <div role="alert" className="mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+            <div role="alert" className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{overviewError}</span>
               <button onClick={refreshOverview} disabled={overviewLoading} className="shrink-0 rounded border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20 disabled:opacity-50">
                 Retry
               </button>
             </div>
           )}
-          <div className="mx-auto mt-1 flex max-w-screen-2xl items-center gap-3 text-[10px] text-slate-500">
-            {lastRefresh && <span>last scanned {lastRefresh.toLocaleTimeString()}</span>}
-            <span aria-hidden="true">·</span>
-            <span>{overview.length} world{overview.length === 1 ? '' : 's'} tracked</span>
-            <span aria-hidden="true">·</span>
-            <span>{totalActiveUsers} active user{totalActiveUsers === 1 ? '' : 's'} platform-wide</span>
-          </div>
-        </header>
 
-        <section className="mx-auto grid max-w-screen-2xl gap-4 px-3 py-4 sm:px-6 sm:py-5">
-          {/* World grid */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+          {view === 'worlds' && (
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Radar className="h-4 w-4" /> Worlds
             </h2>
@@ -364,7 +390,7 @@ export default function WorldObservatoryPage() {
                   return (
                     <button
                       key={w.worldId}
-                      onClick={() => selectWorld(w.worldId)}
+                      onClick={() => openWorld(w.worldId)}
                       aria-pressed={selected}
                       aria-label={`Drill into ${w.name}`}
                       className={`flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors ${
@@ -403,29 +429,52 @@ export default function WorldObservatoryPage() {
             )}
           </div>
 
-          {/* Detail panel */}
-          {selectedWorldId && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
-              <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
-                <Radar className="h-4 w-4" /> World detail
-                <span className="font-mono text-[11px] font-normal normal-case text-slate-400">{selectedWorldId}</span>
+          )}
+
+          {view !== 'worlds' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Choose a world">
+                {overview.length === 0 && <span className="text-[11px] text-zinc-500">No worlds detected on this instance.</span>}
+                {overview.map((w) => (
+                  <button
+                    key={w.worldId}
+                    type="button"
+                    onClick={() => selectWorld(w.worldId)}
+                    aria-pressed={w.worldId === selectedWorldId}
+                    className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                      w.worldId === selectedWorldId
+                        ? 'border-cyan-400/70 bg-cyan-500/10 text-cyan-100'
+                        : 'border-white/10 text-zinc-400 hover:text-zinc-100'
+                    }`}
+                  >
+                    {w.name}
+                  </button>
+                ))}
                 {detailLoading && <RefreshCcw className="h-3 w-3 animate-spin text-cyan-400" aria-hidden="true" />}
-              </h2>
+              </div>
+
+              {!selectedWorldId && overview.length > 0 && (
+                <p className="rounded-2xl border border-white/10 bg-[#111] p-4 text-[12px] text-zinc-400">
+                  Pick a world above to see its {currentTab.label.toLowerCase()}.
+                </p>
+              )}
 
               {detailError && (
-                <div role="alert" className="mb-3 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+                <div role="alert" className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
                   <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{detailError}</span>
                 </div>
               )}
 
               {detail && detail.worldId === selectedWorldId && (
-                <div className="space-y-4">
-                  {/* Population strip */}
-                  <div className="flex flex-wrap gap-3">
-                    <Metric label="active users" value={String(detail.population.activeUsers)} />
-                    <Metric label="scanned platform-wide" value={String(detail.health.platformWideChecked)} />
-                  </div>
-
+                <>
+              {view === 'factions' && (
+                <div className="mb-4 flex flex-wrap gap-3">
+                  <Metric label="active users" value={String(detail.population.activeUsers)} />
+                  <Metric label="scanned platform-wide" value={String(detail.health.platformWideChecked)} />
+                </div>
+              )}
+              {view === 'factions' && (
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   {/* Faction relations + states */}
                   <div>
                     <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-300">
@@ -472,6 +521,10 @@ export default function WorldObservatoryPage() {
                     )}
                   </div>
 
+                </div>
+              )}
+              {view === 'realms' && (
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   {/* Realms */}
                   <div>
                     <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-300">
@@ -514,6 +567,10 @@ export default function WorldObservatoryPage() {
                     )}
                   </div>
 
+                </div>
+              )}
+              {view === 'districts' && (
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   {/* Districts */}
                   <div>
                     <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
@@ -552,6 +609,10 @@ export default function WorldObservatoryPage() {
                     )}
                   </div>
 
+                </div>
+              )}
+              {view === 'liveness' && (
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   {/* Liveness findings */}
                   <div>
                     <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-300">
@@ -575,10 +636,12 @@ export default function WorldObservatoryPage() {
                   </div>
                 </div>
               )}
+                </>
+              )}
             </div>
           )}
-        </section>
-      </main>
+        </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, TreeNode } from '@/components/viz';
+import { SchemaCanvas } from './SchemaCanvas';
 import {
   Database, Plus, Trash2, GitBranch, Beaker, FileCode2, ShieldCheck,
   Network, Download, Loader2, X, Save, RefreshCw, AlertTriangle, Check,
@@ -125,9 +126,9 @@ function schemaToTree(name: string, schema: { fields?: Record<string, any> }): T
 
 /* ── tabs ────────────────────────────────────────────────────────── */
 
-type Tab = 'registry' | 'editor' | 'sample' | 'migration' | 'diff' | 'evolution' | 'conformance' | 'er' | 'import';
+export type SchemaTab = 'canvas' | 'registry' | 'editor' | 'sample' | 'migration' | 'diff' | 'evolution' | 'conformance' | 'er' | 'import';
 
-const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const TABS: { id: SchemaTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'registry', label: 'Registry', icon: Database },
   { id: 'editor', label: 'Visual Editor', icon: FileCode2 },
   { id: 'sample', label: 'Sample Data', icon: Beaker },
@@ -139,8 +140,23 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: 'import', label: 'Import', icon: Download },
 ];
 
-export function SchemaWorkbench() {
-  const [tab, setTab] = useState<Tab>('registry');
+export const SCHEMA_TOOL_TABS = TABS;
+
+/**
+ * `bare` drops the workbench's own tab bar and starts on the entity canvas:
+ * the page owns navigation (`tab`/`onTabChange`) and the "+ New schema" CTA.
+ */
+export function SchemaWorkbench({
+  bare = false, tab: tabProp, onTabChange, newSignal = 0,
+}: {
+  bare?: boolean;
+  tab?: SchemaTab;
+  onTabChange?: (t: SchemaTab) => void;
+  newSignal?: number;
+} = {}) {
+  const [tabState, setTabState] = useState<SchemaTab>(bare ? 'canvas' : 'registry');
+  const tab = tabProp ?? tabState;
+  const setTab = useCallback((t: SchemaTab) => { setTabState(t); onTabChange?.(t); }, [onTabChange]);
   const [registry, setRegistry] = useState<RegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -183,7 +199,7 @@ export function SchemaWorkbench() {
       setTab('editor');
     }
     setBusy(false);
-  }, []);
+  }, [setTab]);
 
   const startNewSchema = useCallback(() => {
     setSelectedId(null);
@@ -192,11 +208,17 @@ export function SchemaWorkbench() {
     setEditorDesc('');
     setEditorNote('');
     setTab('editor');
-  }, []);
+  }, [setTab]);
+
+  useEffect(() => {
+    if (newSignal > 0) startNewSchema();
+    // fire only when the page bumps the signal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newSignal]);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5 border-b border-cyan-500/15 pb-2">
+      {!bare && <div className="flex flex-wrap gap-1.5 border-b border-cyan-500/15 pb-2">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -214,8 +236,11 @@ export function SchemaWorkbench() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
+      {tab === 'canvas' && (
+        <SchemaCanvas registry={registry} loading={loading} err={err} onOpen={loadIntoEditor} onImport={() => setTab('import')} />
+      )}
       {tab === 'registry' && (
         <RegistryPanel
           registry={registry}

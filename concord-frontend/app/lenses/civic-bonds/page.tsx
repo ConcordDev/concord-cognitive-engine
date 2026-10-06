@@ -1,6 +1,10 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Civic Bonds lens — the transparency surface for the micro-bond engine.
@@ -32,7 +36,7 @@ import { LensShell } from '@/components/lens/LensShell';
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Landmark, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 
 interface Bond {
@@ -83,6 +87,8 @@ export default function CivicBondsLens() {
   const [spilloverAmount, setSpilloverAmount] = useState<number | null>(null);
   const [spilloverLoading, setSpilloverLoading] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -95,7 +101,7 @@ export default function CivicBondsLens() {
     finally { setLoading(false); }
   }, [worldId]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   // The real per-scope selector for the spillover balance: fetch the
   // canonical GOVERNANCE_SCOPES tiers (never invented, never free-text).
@@ -108,7 +114,7 @@ export default function CivicBondsLens() {
     } catch { setScopes([]); }
   }, []);
 
-  useEffect(() => { void fetchScopes(); }, [fetchScopes]);
+  useEffect(() => { void Promise.resolve().then(fetchScopes); }, [fetchScopes]);
 
   // Restricted spillover fund balance for the selected scope + this world.
   const fetchSpillover = useCallback(async () => {
@@ -121,7 +127,7 @@ export default function CivicBondsLens() {
     finally { setSpilloverLoading(false); }
   }, [selectedScope, worldId]);
 
-  useEffect(() => { void fetchSpillover(); }, [fetchSpillover]);
+  useEffect(() => { void Promise.resolve().then(fetchSpillover); }, [fetchSpillover]);
 
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
@@ -164,19 +170,26 @@ export default function CivicBondsLens() {
     setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
   }, [act]);
 
-  return (
-    <LensShell lensId="civic-bonds">
-    <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 text-gray-100">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-amber-200">
-          <Landmark className="w-5 h-5" aria-hidden="true" /> Civic Bonds
-          <span className="text-xs text-gray-400 font-normal">· {worldId}</span>
-        </h1>
-        <button onClick={() => void refresh()} className="text-gray-400 hover:text-white self-start sm:self-auto" aria-label="Refresh civic bonds">
-          <RefreshCw className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </header>
+  useLensCommand(
+    [{ id: 'civic-refresh', keys: 'r', description: 'Refresh civic bonds', category: 'actions' as const, action: () => void refresh() }],
+    { lensId: 'civic-bonds' },
+  );
 
+  return (
+    <LensShell lensId="civic-bonds" asMain={false}>
+      <NorthStarFrame
+        lensId="civic-bonds"
+        crumb={`Civic Bonds · ${worldId}`}
+        title={`Fund what the world needs, ${who}`}
+        subtitle="Pledge sparks to community projects, vote on drives, and audit every pledge on the public ledger."
+        actions={
+          <button onClick={() => void refresh()} className="rounded-full border border-white/10 p-2 text-zinc-400 hover:text-white" aria-label="Refresh civic bonds">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          </button>
+        }
+        cta={{ label: 'Refresh bonds', icon: RefreshCw, onClick: () => void refresh(), title: 'Reload bonds, ledger and spillover fund (R)' }}
+      >
+    <div className="w-full">
       {note && <div role="status" aria-live="polite" className="mb-3 text-sm text-amber-300">{note}</div>}
 
       {/* Restricted spillover fund — real GOVERNANCE_SCOPES picker, hidden
@@ -185,7 +198,7 @@ export default function CivicBondsLens() {
         <section
           aria-label="Restricted spillover fund"
           data-testid="civic-bonds-spillover"
-          className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-4"
+          className="mb-4 rounded-2xl border border-white/10 bg-[#111] p-4"
         >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -247,14 +260,14 @@ export default function CivicBondsLens() {
 
       {/* STATE 4 — data */}
       {!error && !loading && !disabled && bonds.length > 0 && (
-        <ul data-testid="civic-bonds-list" className="space-y-4 animate-in fade-in duration-200 motion-reduce:animate-none" aria-label="Active civic bonds">
+        <ul data-testid="civic-bonds-list" className="grid grid-cols-1 gap-4 xl:grid-cols-2 animate-in fade-in duration-200 motion-reduce:animate-none" aria-label="Active civic bonds">
           {bonds.map((b) => {
           const pct = Math.min(100, Math.round((b.current_pledged / b.target_amount) * 100));
           const gatePct = Math.round(b.funding_gate_pct * 100);
           const cleared = b.current_pledged >= b.target_amount * b.funding_gate_pct;
           const amount = amounts[b.id] ?? b.denomination;
           return (
-            <li key={b.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <li key={b.id} className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <div className="font-medium">{b.title}</div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300 self-start sm:self-auto">{b.status}</span>
@@ -361,6 +374,7 @@ export default function CivicBondsLens() {
         </ul>
       )}
     </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -51,8 +51,11 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
     // it permits WASM instantiation only, not arbitrary string-to-JS eval.
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
     // See header comment: nonces cannot cover the `style` HTML attribute,
-    // and this app's React components use it pervasively.
-    `style-src 'self' 'unsafe-inline'`,
+    // and this app's React components use it pervasively. cdn.jsdelivr.net:
+    // @monaco-editor/react loads Monaco from jsdelivr — its script is allowed
+    // by 'strict-dynamic' (injected by trusted code), but without this its
+    // editor.main.css was refused and the code editor rendered unstyled.
+    `style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`,
     // Generous, mirroring the API's own imgSrc precedent: user-uploaded
     // avatars/artifacts, generated thumbnails, and canvas/data-URI content
     // all need this.
@@ -61,7 +64,8 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
     // Audius — see CLAUDE.md's music-lens section) whose CDN hosts aren't
     // enumerable in advance.
     `media-src 'self' https:`,
-    `font-src 'self' data:`,
+    // Monaco's codicon icon font ships next to its CSS on jsdelivr.
+    `font-src 'self' data: https://cdn.jsdelivr.net`,
     // Web Workers (avatar animator, physics offload) are blob: URLs.
     `worker-src 'self' blob:`,
     // 'https:'/'wss:'/'ws:' cover every real production topology (frontend
@@ -194,6 +198,11 @@ const PUBLIC_PREFIXES = [
   // customer to /login before the page ever renders, defeating the whole
   // point of a no-account customer portal.
   '/welding-portal/',
+  // E-signature signing page — a recipient with no Concord account opens
+  // the `/sign/:token` link a sender emailed or shared, backed by the
+  // public `/api/esign/:token` routes (server.js). Without this prefix the
+  // middleware would 307 them to /login before they could sign.
+  '/sign/',
   // Animation public share viewer — an anonymous visitor with a share
   // link opens `/share/animation/:token`, backed by the public
   // `/api/animation/share/:token` route (server.js). Without this prefix

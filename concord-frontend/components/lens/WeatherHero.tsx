@@ -80,13 +80,9 @@ function dayLabel(iso: string, idx: number): string {
 }
 
 export default function WeatherHero({ data, isLive, lastUpdated, className = '' }: WeatherHeroProps) {
-  if (!data?.current) {
-    return (
-      <section className={`rounded-xl border border-white/10 bg-gradient-to-br from-sky-900/30 to-zinc-900/40 backdrop-blur-sm p-6 ${className}`}>
-        <div className="text-xs text-zinc-400">Open-Meteo feed connecting…</div>
-      </section>
-    );
-  }
+  // No reading yet: render nothing (an empty "feed connecting…" hero sat at
+  // the top of the lens). The hero appears with the first real observation.
+  if (!data?.current) return null;
 
   const cur = data.current;
   const decoded = decodeWeatherCode(cur.weather_code);

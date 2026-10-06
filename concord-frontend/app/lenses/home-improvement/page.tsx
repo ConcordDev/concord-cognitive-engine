@@ -12,10 +12,10 @@ import { useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Hammer, DollarSign, Calculator, Camera, Lightbulb, ShoppingCart, Boxes,
-  GanttChartSquare, CalendarClock, Wrench, Home,
+  GanttChartSquare, CalendarClock, Wrench, Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
@@ -33,7 +33,8 @@ import { CalculatorsPanel } from '@/components/home-improvement/CalculatorsPanel
 import type { HiView } from '@/components/home-improvement/hi-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -54,28 +55,28 @@ const TABS: { id: HiView; label: string; keys: string; icon: typeof Hammer }[] =
 ];
 
 function TimelinePanel() {
-  return <div className="panel p-4"><ProjectGantt /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><ProjectGantt /></div>;
 }
 function GalleryPanel() {
-  return <div className="panel p-4"><PhotoGallery /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><PhotoGallery /></div>;
 }
 function IdeasPanel() {
-  return <div className="panel p-4"><IdeaBoards /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><IdeaBoards /></div>;
 }
 function ProsPanel() {
-  return <div className="panel p-4"><ContractorDirectory /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><ContractorDirectory /></div>;
 }
 function ShoppingPanel() {
-  return <div className="panel p-4"><ShoppingList /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><ShoppingList /></div>;
 }
 function InventoryPanel() {
-  return <div className="panel p-4"><HomeInventory /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><HomeInventory /></div>;
 }
 function MaintenancePanel() {
-  return <div className="panel p-4"><MaintenanceReminders /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><MaintenanceReminders /></div>;
 }
 function DiscussionPanel() {
-  return <div className="panel p-4"><HomeImprovementFeed /></div>;
+  return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><HomeImprovementFeed /></div>;
 }
 
 const PANELS: Record<HiView, ComponentType> = {
@@ -95,6 +96,8 @@ const PANELS: Record<HiView, ComponentType> = {
 export default function HomeImprovementLensPage() {
   useLensNav('home-improvement');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('home-improvement');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<HiView>('projects');
 
@@ -115,47 +118,24 @@ export default function HomeImprovementLensPage() {
     <LensShell lensId="home-improvement" asMain={false}>
       <FirstRunTour lensId="home-improvement" />
       <DepthBadge lensId="home-improvement" size="sm" className="ml-2" />
-      <div data-lens-theme="home-improvement" className="p-6 space-y-6">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Home className="w-6 h-6 text-amber-400" />
-            <div>
-              <h1 className="text-xl font-bold">Home Improvement Lens</h1>
-              <p className="text-sm text-gray-400">Renovation &amp; improvement projects</p>
-            </div>
+      <NorthStarFrame
+        lensId="home-improvement"
+        crumb="Home improvement"
+        title={`Build the next room${active === 'projects' && who ? `, ${who}` : ''}`}
+        subtitle="Projects, budget, calculators, timeline, contractors, shopping, inventory and maintenance."
+        actions={
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="home-improvement" data={realtimeData || {}} compact />
-          </div>
-        </header>
-
-        <HiStatsHeader />
-
-        <nav
-          className="flex flex-wrap gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1"
-          aria-label="Home improvement views"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const on = active === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActive(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all justify-center',
-                  on
-                    ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
-                    : 'text-gray-400 hover:text-white hover:bg-lattice-surface',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+          </>
+        }
+        tabs={TABS}
+        activeTab={active}
+        onTab={(id) => setActive(id as HiView)}
+        tabsLabel="Home improvement views"
+        cta={{ label: 'New project', icon: Plus, onClick: () => setActive('projects') }}
+      >
+        <div className="mb-5"><HiStatsHeader /></div>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -171,8 +151,7 @@ export default function HomeImprovementLensPage() {
 
         <RealtimeDataPanel domain="home-improvement" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
         <section className="mt-4"><ProductRecalls /></section>
-        <CrossLensRecentsPanel lensId="home-improvement" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

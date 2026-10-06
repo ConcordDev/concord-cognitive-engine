@@ -168,13 +168,13 @@ describe("hypothesis — classical test battery (exact computed values)", () => 
   });
 
   it("powerAnalysis (sampleSize): closed-form n for d=0.5, power=0.8", async () => {
-    // n = ceil(((z_.975 + z_.8)/0.5)^2) = ceil(((1.95996+0.84162)/0.5)^2) = ceil(31.395) = 32
+    // two groups: n/group = ceil(2·((z_.975 + z_.8)/0.5)^2) = ceil(2·31.395) = ceil(62.79) = 63
     const r = await lensRun("hypothesis", "powerAnalysis", {
       params: { solve: "sampleSize", effectSize: 0.5, power: 0.8, alpha: 0.05 },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.requiredN, 32);
-    assert.equal(r.result.totalForTwoGroups, 64);
+    assert.equal(r.result.requiredN, 63);
+    assert.equal(r.result.totalForTwoGroups, 126);
     assert.equal(r.result.effectMagnitude, "medium");
   });
 

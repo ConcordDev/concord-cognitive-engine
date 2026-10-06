@@ -275,6 +275,47 @@ describe("wallet — scheduled transfers (CRUD + monthly commitment math)", () =
     assert.equal(bad.result.ok, false);
     assert.ok(bad.result.error.includes("schedule not found"));
   });
+
+  it("scheduleSendNow moves Concord Coin and a second call is a new occurrence", async () => {
+    const { executePurchase } = await import("../../economy/transfer.js");
+    const { getBalance } = await import("../../economy/balances.js");
+    const fresh = await depthCtx("wallet-sched-send");
+    executePurchase(fresh.db, { userId: fresh.actor.userId, amount: 200 });
+    const before = getBalance(fresh.db, fresh.actor.userId).balance;
+    const c = await lensRun("wallet", "scheduleCreate", {
+      params: { recipientId: "landlord", amount: 25, frequency: "monthly" },
+    }, fresh);
+    const id = c.result.schedule.id;
+    assert.equal(c.result.schedule.runsCompleted, 0);
+    const sent = await lensRun("wallet", "scheduleSendNow", { params: { id } }, fresh);
+    assert.equal(sent.result.schedule.runsCompleted, 1);
+    assert.ok(sent.result.transfer.batchId);
+    assert.equal(Math.round((before - getBalance(fresh.db, fresh.actor.userId).balance) * 100) / 100, 25);
+    const again = await lensRun("wallet", "scheduleSendNow", { params: { id } }, fresh);
+    assert.equal(again.result.schedule.runsCompleted, 2);
+    assert.equal(Math.round((before - getBalance(fresh.db, fresh.actor.userId).balance) * 100) / 100, 50);
+  });
+
+  it("requestUpdate pays on the ledger and does not charge twice", async () => {
+    const { executePurchase } = await import("../../economy/transfer.js");
+    const { getBalance } = await import("../../economy/balances.js");
+    const payee = await depthCtx("wallet-payee");
+    const payer = await depthCtx("wallet-payer");
+    const c = await lensRun("wallet", "requestCreate", { params: { payerId: payer.actor.userId, amount: 15, note: "lunch" } }, payee);
+    const id = c.result.request.id;
+    const broke = await lensRun("wallet", "requestUpdate", { params: { id, status: "paid" } }, payer);
+    assert.equal(broke.result.ok, false);
+    assert.equal(broke.result.error, "insufficient_balance");
+    executePurchase(payer.db, { userId: payer.actor.userId, amount: 100 });
+    const before = getBalance(payer.db, payer.actor.userId).balance;
+    const paid = await lensRun("wallet", "requestUpdate", { params: { id, status: "paid" } }, payer);
+    assert.equal(paid.result.request.status, "paid");
+    assert.ok(paid.result.transfer.batchId);
+    assert.equal(Math.round((before - getBalance(payer.db, payer.actor.userId).balance) * 100) / 100, 15);
+    const replay = await lensRun("wallet", "requestUpdate", { params: { id, status: "paid" } }, payer);
+    assert.equal(replay.result.request.status, "paid");
+    assert.equal(Math.round(getBalance(payer.db, payer.actor.userId).balance * 100) / 100, Math.round((before - 15) * 100) / 100);
+  });
 });
 
 describe("wallet — social feed (post / list / like)", () => {
@@ -354,14 +395,36 @@ describe("wallet — split-the-bill (share math + settle)", () => {
     assert.ok(bad.result.error.includes("custom shares must sum to total"));
   });
 
-  it("splitSettle marks a member's share paid; remaining outstanding falls", async () => {
+  it("splitSettle does not mark another member paid, and an unfunded member is refused", async () => {
     const c = await lensRun("wallet", "splitCreate", { params: { total: 30, participants: ["m1", "m2"] } }, ctx);
     const id = c.result.split.id;
-    // creator already paid 10 → outstanding 20 (m1 + m2). settle m1.
-    const settled = await lensRun("wallet", "splitSettle", { params: { id, memberId: "m1" } }, ctx);
-    assert.equal(settled.result.outstandingOwed, 10);  // only m2 left
-    const m1 = settled.result.split.shares.find((s) => s.userId === "m1");
-    assert.equal(m1.paid, true);
+    const byCreator = await lensRun("wallet", "splitSettle", { params: { id, memberId: "m1" } }, ctx);
+    assert.equal(byCreator.result.ok, false);
+    assert.match(byCreator.result.error, /only that member/);
+    const payer = await depthCtx("m1");
+    const broke = await lensRun("wallet", "splitSettle", { params: { id } }, payer);
+    assert.equal(broke.result.ok, false);
+    assert.equal(broke.result.error, "insufficient_balance");
+    const list = await lensRun("wallet", "splitList", {}, ctx);
+    const share = list.result.splits.find((s) => s.id === id).shares.find((s) => s.userId === "m1");
+    assert.equal(share.paid, false);
+  });
+
+  it("splitSettle pays the member's share on the ledger", async () => {
+    const { executePurchase } = await import("../../economy/transfer.js");
+    const { getBalance } = await import("../../economy/balances.js");
+    const c = await lensRun("wallet", "splitCreate", { params: { total: 30, participants: ["payer1", "payer2"] } }, ctx);
+    const id = c.result.split.id;
+    executePurchase(ctx.db, { userId: "payer1", amount: 100 });
+    const before = getBalance(ctx.db, "payer1").balance;
+    const payer = await depthCtx("payer1");
+    const settled = await lensRun("wallet", "splitSettle", { params: { id } }, payer);
+    const share = settled.result.split.shares.find((s) => s.userId === "payer1");
+    assert.equal(share.paid, true);
+    assert.equal(share.settlement, "ledger");
+    assert.ok(settled.result.transfer.batchId);
+    assert.equal(Math.round((before - getBalance(ctx.db, "payer1").balance) * 100) / 100, 10);
+    assert.equal(settled.result.outstandingOwed, 10);
   });
 
   it("splitCreate: non-positive total and empty participants are rejected", async () => {

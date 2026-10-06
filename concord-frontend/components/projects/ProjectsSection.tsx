@@ -6,9 +6,9 @@
  * lensRun().
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  FolderKanban, Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
+  Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
   Flag, Users, Settings2, Briefcase, Radio,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -55,6 +55,13 @@ export function ProjectsSection() {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', key: '' });
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const focusNew = () => nameInputRef.current?.focus();
+    window.addEventListener('projects:new', focusNew);
+    return () => window.removeEventListener('projects:new', focusNew);
+  }, []);
 
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('projects', 'project-list', {});
@@ -108,12 +115,7 @@ export function ProjectsSection() {
   };
 
   return (
-    <div className="rounded-2xl border border-lattice-border bg-lattice-void/60 overflow-hidden">
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border bg-gradient-to-r from-indigo-600/15 to-transparent">
-        <FolderKanban className="w-5 h-5 text-indigo-400" />
-        <h2 className="text-sm font-bold text-white">Project Management</h2>
-        <span className="text-[11px] text-gray-400">Linear + Asana + Jira parity</span>
-      </header>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#111]">
 
       {error && <div className="mx-4 mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
@@ -143,7 +145,7 @@ export function ProjectsSection() {
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <input placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              <input ref={nameInputRef} placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
               <input placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
                 className="w-20 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
@@ -181,15 +183,16 @@ export function ProjectsSection() {
                   <Stat label="Team" value={dash.members} />
                 </div>
               )}
-              <nav className="flex gap-1 px-2 pt-2 border-b border-lattice-border overflow-x-auto">
+              <nav className="mx-4 mt-3 inline-flex max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Project views">
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const active = tab === t.id;
                   return (
                     <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                      className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                        active ? 'bg-lattice-surface text-indigo-300 border-x border-t border-lattice-border' : 'text-gray-400 hover:text-gray-200')}>
-                      <Icon className="w-3.5 h-3.5" /> {t.label}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400',
+                        active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
+                      <Icon className="h-3.5 w-3.5" /> {t.label}
                     </button>
                   );
                 })}
@@ -199,7 +202,7 @@ export function ProjectsSection() {
                 {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
                 {tab === 'sprints' && <PjSprintsPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'reports' && <PjReportsPanel projectId={activeProject} />}
+                {tab === 'reports' && <PjReportsPanel projectId={activeProject} project={project} dashboard={dash} />}
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}

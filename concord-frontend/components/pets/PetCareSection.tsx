@@ -23,6 +23,7 @@ import { BreedExplorer } from './BreedExplorer';
 import { CatFactsPanel } from './CatFactsPanel';
 import { DogPanel } from './DogPanel';
 import { PetActionDrawer } from './PetActionDrawer';
+import { PetProfileCard } from './PetProfileCard';
 
 interface Pet {
   id: string; name: string; species: string; breed: string | null;
@@ -72,7 +73,7 @@ export function PetCareSection() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   const addPet = async () => {
     if (!form.name.trim()) { setError('Pet name is required.'); return; }
@@ -173,6 +174,7 @@ export function PetCareSection() {
         </div>
       ) : (
         <>
+          {selected && <PetProfileCard key={selected} petId={selected} onChange={refresh} />}
           <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
             {TABS.map((t) => {
               const Icon = t.icon;

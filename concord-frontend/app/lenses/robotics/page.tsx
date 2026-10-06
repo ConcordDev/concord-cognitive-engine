@@ -3,7 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
@@ -19,7 +19,7 @@ import { TeleopConsole } from '@/components/robotics/TeleopConsole';
 import { SensorLogPanel } from '@/components/robotics/SensorLogPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useState, useEffect, useCallback } from 'react';
-import { Bot } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -64,8 +64,7 @@ export default function RoboticsLensPage() {
 
   // Keep a shared robot list so telemetry/teleop/sensor/mission tabs all
   // have the fleet available without re-fetching per tab.
-  const loadRobots = useCallback(async () => {
-    const r = await lensRun('robotics', 'fleetList', {});
+  const applyRobotResponse = useCallback((r: Awaited<ReturnType<typeof lensRun>>) => {
     if (r.data?.ok && r.data.result) {
       const list = (r.data.result as { robots: RobotRow[] }).robots || [];
       setRobots(list);
@@ -75,42 +74,39 @@ export default function RoboticsLensPage() {
       });
     }
   }, []);
+  const loadRobots = useCallback(async () => {
+    applyRobotResponse(await lensRun('robotics', 'fleetList', {}));
+  }, [applyRobotResponse]);
 
-  useEffect(() => { loadRobots(); }, [loadRobots]);
+  useEffect(() => {
+    let cancelled = false;
+    void lensRun('robotics', 'fleetList', {}).then((r) => { if (!cancelled) applyRobotResponse(r); });
+    return () => { cancelled = true; };
+  }, [applyRobotResponse]);
 
   return (
     <LensShell lensId="robotics" asMain={false}>
-      <FirstRunTour lensId="robotics" />      <DepthBadge lensId="robotics" size="sm" className="ml-2" />
-      <div data-lens-theme="robotics" className="p-6 space-y-6">
-        <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
-
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bot className="w-8 h-8 text-neon-cyan" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">Robotics Lens</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className="text-sm text-gray-400">
-                Fleet ops, telemetry, mission sequencing, kinematics, path planning &amp; teleop
-              </p>
-            </div>
-          </div>
-        </header>
-
+      <FirstRunTour lensId="robotics" />
+      <DepthBadge lensId="robotics" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="robotics"
+        crumb="Robotics"
+        title="Run the fleet"
+        subtitle="Fleet ops, telemetry, mission sequencing, kinematics, path planning and teleop."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="robotics" data={{ robots }} compact />
+          </>
+        }
+        tabs={TABS}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as Tab)}
+        tabsLabel="Robotics views"
+        cta={{ label: 'Register a robot', icon: Plus, onClick: () => setActiveTab('fleet') }}
+      >
         <RealtimeDataPanel domain="robotics" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-        <DTUExportButton domain="robotics" data={{ robots }} compact />
-
-        {/* Tabs */}
-        <div className="flex gap-1.5 border-b border-white/10 pb-2 flex-wrap">
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-neon-cyan/20 text-neon-cyan border-b-2 border-neon-cyan' : 'text-gray-400 hover:text-white'}`}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
 
         {/* Robot selector — shared across the per-robot tabs. */}
         {['telemetry', 'teleop', 'sensors'].includes(activeTab) && robots.length > 0 && (
@@ -165,10 +161,10 @@ export default function RoboticsLensPage() {
           </section>
         </PipingProvider>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <RoboticsRepos />
         </section>
-      </div>      <CrossLensRecentsPanel lensId="robotics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -72,9 +72,9 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Scale, BookOpen, FileText, Briefcase, BarChart3, Keyboard } from 'lucide-react';
+import { BookOpen, FileText, Briefcase, BarChart3, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -85,6 +85,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // Reused, already-real bespoke components.
 import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
@@ -108,28 +110,31 @@ import type { CaseFileSummary } from '@/components/law/case-types';
 
 type GroupId = 'research' | 'contracts' | 'cases' | 'analytics';
 
-const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof BookOpen }[] = [
-  { id: 'research', label: 'Research', hotkey: '1', icon: BookOpen },
-  { id: 'contracts', label: 'Contracts', hotkey: '2', icon: FileText },
-  { id: 'cases', label: 'Case Files', hotkey: '3', icon: Briefcase },
-  { id: 'analytics', label: 'Analytics & Tools', hotkey: '4', icon: BarChart3 },
+const GROUPS: { id: GroupId; label: string; hotkey: string; title: string; hint: string; icon: typeof BookOpen }[] = [
+  { id: 'research', label: 'Research', hotkey: '1', title: 'What the record says', hint: 'Case law, dockets, patents and alerts', icon: BookOpen },
+  { id: 'contracts', label: 'Contracts', hotkey: '2', title: 'Where every contract stands', hint: 'Contract lifecycle, playbooks and obligations', icon: FileText },
+  { id: 'cases', label: 'Case Files', hotkey: '3', title: 'Your matters', hint: 'Case files and deadlines', icon: Briefcase },
+  { id: 'analytics', label: 'Analytics & Tools', hotkey: '4', title: 'Numbers behind the work', hint: 'Case analytics, text search, billing and compliance', icon: BarChart3 },
 ];
 
 function Panel({ title, right, children, className }: { title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn('rounded-lg border border-lattice-border bg-lattice-surface/60 overflow-hidden', className)}>
-      <header className="flex items-center justify-between px-3 py-2 border-b border-lattice-border bg-lattice-elevated/40">
-        <h2 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{title}</h2>
+    <section className={cn('rounded-2xl border border-white/10 bg-[#111] p-4', className)}>
+      <header className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
         {right}
       </header>
-      <div className="p-3">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
 
 export default function LawLensPage() {
   useLensNav('law');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('research');
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [contractList, setContractList] = useState<{ id: string; title: string }[]>([]);
   const [caseSummaries, setCaseSummaries] = useState<CaseFileSummary[]>([]);
   const contractsRef = useRef<LawContractsHandle>(null);
@@ -149,6 +154,15 @@ export default function LawLensPage() {
     ],
     { lensId: 'law' }
   );
+
+  const searchCaseLaw = useCallback(() => {
+    setGroup('research');
+    requestAnimationFrame(() => {
+      bodyRef.current?.querySelector<HTMLInputElement>('input[type="text"], input:not([type]), input[type="search"]')?.focus();
+    });
+  }, []);
+
+  const current = GROUPS.find((g) => g.id === group)!;
 
   const renderGroup = () => {
     switch (group) {
@@ -227,62 +241,34 @@ export default function LawLensPage() {
   return (
     <LensShell lensId="law" asMain={false}>
       <FirstRunTour lensId="law" />
-      <div data-lens-theme="law" className="min-h-full p-4 md:p-6 space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
-              <Scale className="w-5 h-5 text-indigo-500" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white">Law &amp; Contracts</h1>
-                <DepthBadge lensId="law" size="sm" />
-              </div>
-              <p className="text-xs text-gray-400">Case-law &amp; patent research, contract lifecycle, and case-file tooling.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1–4 switch view">
-              <Keyboard className="w-3.5 h-3.5" /> 1–4
-            </span>
+      <DepthBadge lensId="law" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="law"
+        crumb="Law & Contracts"
+        title={`${current.title}${group === 'research' && who ? `, ${who}` : ''}`}
+        subtitle="Case-law and patent research from real public sources, the contract lifecycle, and case-file tooling."
+        actions={
+          <>
             <DensityToggle variant="dropdown" />
             <DTUExportButton domain="law" data={{ contracts: contractList, cases: caseSummaries }} compact />
-          </div>
-        </header>
-
-        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Law views">
-          {GROUPS.map((g) => {
-            const active = group === g.id;
-            return (
-              <button
-                key={g.id}
-                onClick={() => setGroup(g.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
-                  active ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/30' : 'text-gray-400 hover:text-neon-purple hover:bg-neon-purple/10 border-transparent'
-                )}
-              >
-                <span className="text-[10px] text-gray-600 tabular-nums">{g.hotkey}</span>
-                <g.icon className="w-3.5 h-3.5" />
-                {g.label}
-                {g.id === 'cases' && caseSummaries.length > 0 && (
-                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-white/10 text-gray-300">{caseSummaries.length}</span>
-                )}
-                {g.id === 'contracts' && contractList.length > 0 && (
-                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-white/10 text-gray-300">{contractList.length}</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={group} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-            {renderGroup()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+          </>
+        }
+        tabs={GROUPS.map((g) => ({
+          id: g.id,
+          label: g.id === 'cases' && caseSummaries.length > 0 ? `${g.label} (${caseSummaries.length})`
+            : g.id === 'contracts' && contractList.length > 0 ? `${g.label} (${contractList.length})`
+            : g.label,
+          icon: g.icon,
+          keys: g.hotkey,
+          hint: g.hint,
+        }))}
+        activeTab={group}
+        onTab={(id) => setGroup(id as GroupId)}
+        tabsLabel="Law views"
+        cta={{ label: 'Search case law', icon: Search, onClick: searchCaseLaw, title: 'Jump to case-law search' }}
+      >
+        <div ref={bodyRef}>{renderGroup()}</div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

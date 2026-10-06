@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
@@ -13,16 +15,17 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
-  Layers,
   DollarSign,
   CheckCircle2,
   Receipt,
   Hammer,
   CalendarDays,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 
 interface ScheduleJob { status: string }
 interface Invoice { amount: number; amountPaid: number; balance: number }
@@ -72,19 +75,32 @@ function useMasonryStats() {
 }
 
 export default function MasonryLensPage() {
+  useLensNav('masonry');
+  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('masonry');
   const stats = useMasonryStats();
-  const [showFeed, setShowFeed] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="masonry" asMain={false}>
       <FirstRunTour lensId="masonry" />      <DepthBadge lensId="masonry" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="masonry"
-        title="Masonry"
-        description="Contractor operations: takeoff, proposals, scheduling, photos, change orders, price book, invoicing, code library, and clients"
-        headerIcon={<Layers className="w-6 h-6" />}
-        isLoading={false}
-        isError={false}
+      <NorthStarFrame
+        lensId="masonry"
+        crumb="Masonry"
+        title={`Jobs, bids and brick${who ? `, ${who}` : ''}`}
+        subtitle="Takeoff, proposals, scheduling, photos, change orders, price book, invoicing, code library and clients"
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="masonry" data={realtimeData || {}} compact />
+          </>
+        }
+        cta={{
+          label: 'Open job tools',
+          icon: Hammer,
+          onClick: () => document.getElementById('masonry-suite')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          title: 'Jump to the contractor suite',
+        }}
       >
         {/* Stats row — derived live from real schedule/invoice/proposal state */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -115,7 +131,7 @@ export default function MasonryLensPage() {
           </div>
         </div>
 
-        <section className="mt-6">
+        <section id="masonry-suite" className="mt-6 scroll-mt-6">
           <ContractorSuite />
         </section>
 
@@ -123,24 +139,15 @@ export default function MasonryLensPage() {
           <MasonStuff />
         </section>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowFeed(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Industry chatter (Reddit)</span>
-            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showFeed && (
-            <div className="mt-3">
-              <MasonryFeed />
-            </div>
-          )}
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">Industry chatter (Reddit)</h2>
+          <MasonryFeed />
         </section>
-      </LensPageShell>
 
-      <a href="#masonry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to masonry content</a>      <CrossLensRecentsPanel lensId="masonry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {realtimeData && (
+          <RealtimeDataPanel domain="masonry" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

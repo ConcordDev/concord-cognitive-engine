@@ -8,15 +8,19 @@
  * components/worldmodel/. Not the 3D Concordia game client (`world`).
  */
 
-import { useMemo, useState, type ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
-  Globe2, Loader2, Network, Boxes, GitFork, Play, GitCompareArrows,
-  Camera, Library, Upload, FileSearch, RefreshCcw, type LucideIcon,
+  Loader2, Network, Boxes, GitFork, Play, GitCompareArrows, Library as LibraryIcon,
+  Camera, Upload, FileSearch, RefreshCcw, type LucideIcon,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { GraphPanel } from '@/components/worldmodel/GraphPanel';
@@ -41,16 +45,16 @@ type WmView =
   | 'ingest'
   | 'arxiv';
 
-const VIEWS: { id: WmView; label: string; icon: LucideIcon; keys: string; countKey?: 'entities' | 'relations' }[] = [
-  { id: 'graph', label: 'Graph', icon: Network, keys: 'g' },
-  { id: 'entities', label: 'Entities', icon: Boxes, keys: 'e', countKey: 'entities' },
-  { id: 'relations', label: 'Relations', icon: GitFork, keys: 'r', countKey: 'relations' },
-  { id: 'simulate', label: 'Simulate', icon: Play, keys: 'i' },
-  { id: 'compare', label: 'Compare', icon: GitCompareArrows, keys: 'c' },
-  { id: 'snapshots', label: 'Snapshots', icon: Camera, keys: 'n' },
-  { id: 'library', label: 'Library', icon: Library, keys: 'l' },
-  { id: 'ingest', label: 'Ingest', icon: Upload, keys: 'd' },
-  { id: 'arxiv', label: 'arXiv', icon: FileSearch, keys: 'x' },
+const VIEWS: { id: WmView; label: string; icon: LucideIcon; keys: string; title: string; countKey?: 'entities' | 'relations' }[] = [
+  { id: 'graph', label: 'Graph', icon: Network, keys: 'g', title: 'The model' },
+  { id: 'entities', label: 'Entities', icon: Boxes, keys: 'e', title: 'Everything in the model', countKey: 'entities' },
+  { id: 'relations', label: 'Relations', icon: GitFork, keys: 'r', title: 'How things connect', countKey: 'relations' },
+  { id: 'simulate', label: 'Simulate', icon: Play, keys: 'i', title: 'What happens if' },
+  { id: 'compare', label: 'Compare', icon: GitCompareArrows, keys: 'c', title: 'Two futures, side by side' },
+  { id: 'snapshots', label: 'Snapshots', icon: Camera, keys: 'n', title: 'The model, frozen in time' },
+  { id: 'library', label: 'Library', icon: LibraryIcon, keys: 'l', title: 'Models you can open' },
+  { id: 'ingest', label: 'Ingest', icon: Upload, keys: 'd', title: 'Feed the model' },
+  { id: 'arxiv', label: 'arXiv', icon: FileSearch, keys: 'x', title: 'Research behind world models' },
 ];
 
 const PANELS: Record<WmView, ComponentType> = {
@@ -68,7 +72,8 @@ const PANELS: Record<WmView, ComponentType> = {
 export default function WorldmodelLensPage() {
   useLensNav('worldmodel');
   const qc = useQueryClient();
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<WmView>('graph');
 
   useLensCommand(
@@ -115,86 +120,71 @@ export default function WorldmodelLensPage() {
   };
 
   const Panel = PANELS[active];
-  const motionProps = useMemo(
-    () => (reduceMotion
-      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
-      : {
-          initial: { opacity: 0, y: 10 },
-          animate: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -10 },
-          transition: { duration: 0.18 },
-        }),
-    [reduceMotion],
-  );
+  const current = VIEWS.find((v) => v.id === active)!;
+  const stats = status.data;
 
   return (
     <LensShell lensId="worldmodel" asMain={false}>
+      <FirstRunTour lensId="worldmodel" />
       <DepthBadge lensId="worldmodel" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-black pb-12 text-emerald-50">
-        <header className="sticky top-0 z-10 border-b border-emerald-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Globe2 className="h-6 w-6 text-emerald-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Worldmodel</h1>
-              <p className="text-xs text-emerald-700">Digital twin · entity graph · counterfactual simulation</p>
-            </div>
-            <div className="ml-auto flex items-center gap-3 text-xs text-emerald-600">
-              {status.data && (
-                <>
-                  <span>{status.data.entities ?? 0} entities</span>
-                  <span>{status.data.relations ?? 0} relations</span>
-                  <span>{status.data.simulations ?? 0} sims</span>
-                  <span>{status.data.snapshots ?? 0} snapshots</span>
-                </>
-              )}
-            </div>
+      <div data-lens-theme="worldmodel" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">World Model</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'graph' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-        </header>
+          {stats && (
+            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pt-3 text-[13px] text-zinc-500">
+              <span>{stats.entities ?? 0} entities</span>
+              <span>{stats.relations ?? 0} relations</span>
+              <span>{stats.simulations ?? 0} sims</span>
+              <span>{stats.snapshots ?? 0} snapshots</span>
+            </div>
+          )}
+        </div>
 
-        <nav className="border-b border-emerald-900/30 px-4 md:px-8" aria-label="Worldmodel sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {VIEWS.map(({ id, label, icon: Icon, countKey }) => (
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Worldmodel sections">
+          {VIEWS.map(({ id, label, icon: Icon, keys, countKey }) => {
+            const on = active === id;
+            return (
               <button
                 key={id}
                 type="button"
                 onClick={() => setActive(id)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
-                  active === id ? 'border-emerald-400 text-emerald-200' : 'border-transparent text-emerald-700 hover:text-emerald-400'
-                }`}
-                aria-pressed={active === id}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-                {countKey && (
-                  <span className="rounded bg-emerald-900/40 px-1.5 py-0.5 text-[10px] text-emerald-300">
-                    {counts[countKey]}
-                  </span>
+                aria-current={on ? 'page' : undefined}
+                title={`${label} (${keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {label}
+                {countKey && (
+                  <span className="rounded-full bg-white/10 px-1.5 text-[11px] text-zinc-300">{counts[countKey]}</span>
+                )}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{keys}</kbd>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </nav>
 
         {sharedLoading && !sharedError && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 text-xs text-emerald-600 md:px-8"
-          >
+          <div role="status" aria-live="polite" className="mb-4 flex items-center gap-2 text-[13px] text-zinc-500">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             <span>Loading world model…</span>
           </div>
         )}
 
         {sharedError && (
-          <div
-            role="alert"
-            className="mx-auto my-3 flex max-w-7xl flex-wrap items-center gap-3 rounded-lg border border-rose-900/50 bg-rose-950/30 px-4 py-3 text-sm text-rose-200 md:mx-8"
-          >
+          <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-rose-900/50 bg-rose-950/30 px-4 py-3 text-sm text-rose-200">
             <span className="font-medium">Could not load the world model.</span>
             <span className="text-xs text-rose-400/80">{sharedError.message}</span>
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1.5 rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-400"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-400"
               onClick={() => invalidateWorldModel(qc)}
             >
               <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> Retry
@@ -202,13 +192,21 @@ export default function WorldmodelLensPage() {
           </div>
         )}
 
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait">
-            <motion.section key={active} {...motionProps}>
-              <Panel />
-            </motion.section>
-          </AnimatePresence>
-        </main>
+        <section key={active}>
+          <Panel />
+        </section>
+
+        <CrossLensRecentsPanel lensId="worldmodel" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => setActive('library')}
+          title="Open a model (L)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <LibraryIcon className="h-4 w-4" />
+          Open a model
+        </button>
       </div>
     </LensShell>
   );

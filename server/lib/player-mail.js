@@ -46,11 +46,32 @@ export function sendMail(db, input) {
   const body = String(input?.body || "").slice(0, MAX_BODY_LEN);
 
   const attachmentDtuIds = Array.isArray(input?.attachmentDtuIds)
-    ? input.attachmentDtuIds.slice(0, MAX_ATTACHMENTS).map(String)
+    ? [...new Set(input.attachmentDtuIds.map((id) => String(id || "").trim()).filter(Boolean))].slice(0, MAX_ATTACHMENTS)
     : [];
   const attachmentCc = Math.max(0, Number(input?.attachmentCc) || 0);
   const codCc = Math.max(0, Number(input?.codCc) || 0);
   const worldId = input?.worldId || null;
+
+  // A listed DTU is attached only when this sender still owns it. Anything
+  // else is refused before escrow, so the mail row never claims a transfer
+  // that claim cannot honestly perform.
+  if (attachmentDtuIds.length) {
+    const owned = [];
+    const missing = [];
+    for (const dtuId of attachmentDtuIds) {
+      let row = null;
+      try {
+        row = db.prepare(`SELECT id FROM dtus WHERE id = ? AND creator_id = ?`).get(dtuId, fromUserId);
+      } catch {
+        return { ok: false, error: "dtu_lookup_failed" };
+      }
+      if (row) owned.push(dtuId);
+      else missing.push(dtuId);
+    }
+    if (missing.length) return { ok: false, error: "dtu_not_owned", dtuIds: missing };
+    attachmentDtuIds.length = 0;
+    attachmentDtuIds.push(...owned);
+  }
 
   const id = `mail_${crypto.randomBytes(8).toString("hex")}`;
 
@@ -69,15 +90,15 @@ export function sendMail(db, input) {
       if (!debit.ok) { debitError = debit; throw new Error(debit.error || "wallet_debit_failed"); }
     }
 
-    // Lock the DTU attachments to the mail row by stamping their owner to
-    // an escrow account. Done via meta_json marker so we don't need a new
-    // column. Best-effort — non-existent DTUs are silently skipped (the
-    // claim path will surface the mismatch).
+    // Stamp mail_escrow on DTUs this sender still owns. A miss rolls the
+    // escrow debit and the mail row back together.
     for (const dtuId of attachmentDtuIds) {
-      try {
-        db.prepare(`UPDATE dtus SET data = json_set(COALESCE(data,'{}'), '$.mail_escrow', 1) WHERE id = ? AND creator_id = ?`)
-          .run(dtuId, fromUserId);
-      } catch { /* meta_json column may not exist on minimal builds */ }
+      const stamped = db.prepare(`UPDATE dtus SET data = json_set(COALESCE(data,'{}'), '$.mail_escrow', 1) WHERE id = ? AND creator_id = ?`)
+        .run(dtuId, fromUserId);
+      if (!stamped || stamped.changes !== 1) {
+        debitError = { ok: false, error: "dtu_not_owned" };
+        throw new Error("dtu_not_owned");
+      }
     }
 
     db.prepare(`
@@ -108,7 +129,7 @@ export function listInbox(db, userId, opts = {}) {
       : `to_user_id = ?`;
     const params = status ? [userId, status] : [userId];
     return db.prepare(`
-      SELECT id, from_user_id AS fromUser, world_id AS worldId, subject, body,
+      SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
@@ -126,7 +147,7 @@ export function listSent(db, userId, opts = {}) {
   const limit = Math.min(Math.max(1, opts.limit || 50), 200);
   try {
     return db.prepare(`
-      SELECT id, to_user_id AS toUser, world_id AS worldId, subject, body,
+      SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
@@ -201,6 +222,8 @@ export function claimAttachments(db, mailId, userId) {
   const attachmentCc = Number(mail.attachmentCc) || 0;
   const codCc = Number(mail.codCc) || 0;
   const dtuIds = Array.isArray(mail.attachment_dtu_ids) ? mail.attachment_dtu_ids : [];
+  const transferred = [];
+  const skipped = [];
 
   // Single-transaction claim. Rolls back the whole thing on any error.
   const tx = db.transaction(() => {
@@ -216,16 +239,29 @@ export function claimAttachments(db, mailId, userId) {
       _walletCredit(db, userId, attachmentCc, `mail_attachment:${mailId}`);
     }
 
-    // 3. DTU ownership transfer (best-effort per row; minimal builds may
-    //    lack the dtus table entirely, in which case this becomes a no-op).
+    // 3. Transfer only a DTU this sender escrowed. A listed id the sender
+    //    does not own stays with its owner — claim must not reassign it.
     for (const dtuId of dtuIds) {
+      let row = null;
       try {
-        db.prepare(`
-          UPDATE dtus SET creator_id = ?,
-            data = json_remove(COALESCE(data,'{}'), '$.mail_escrow')
-          WHERE id = ?
-        `).run(userId, dtuId);
-      } catch { /* dtus table or json_remove missing — leave the DTU as-is */ }
+        row = db.prepare(`
+          SELECT creator_id, json_extract(COALESCE(data,'{}'), '$.mail_escrow') AS escrow
+          FROM dtus WHERE id = ?
+        `).get(dtuId);
+      } catch {
+        skipped.push(dtuId);
+        continue;
+      }
+      const escrowed = row && String(row.creator_id) === String(fromUserId) && Number(row.escrow) === 1;
+      if (!escrowed) { skipped.push(dtuId); continue; }
+      const moved = db.prepare(`
+        UPDATE dtus SET creator_id = ?,
+          data = json_remove(COALESCE(data,'{}'), '$.mail_escrow')
+        WHERE id = ? AND creator_id = ?
+          AND json_extract(COALESCE(data,'{}'), '$.mail_escrow') = 1
+      `).run(userId, dtuId, fromUserId);
+      if (!moved || moved.changes !== 1) throw new Error("dtu_transfer_failed");
+      transferred.push(dtuId);
     }
 
     // 4. Mark claimed.
@@ -242,7 +278,7 @@ export function claimAttachments(db, mailId, userId) {
       ok: true,
       claimed: true,
       payout: { attachmentCc, codCcPaid: codCc },
-      attachments: { dtuIds },
+      attachments: { dtuIds, transferred, skipped },
     };
   } catch (err) {
     return { ok: false, error: err?.message };

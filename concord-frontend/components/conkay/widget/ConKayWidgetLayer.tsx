@@ -62,6 +62,7 @@
 //     badge for, and the overlay itself is a much richer surface once open.
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { ConKayWidget, type ConKayWidgetState } from './ConKayWidget';
 import { useConKayWidgetState, useConkayAttentionStore } from '../conkayAttentionStore';
 import { useConkayInitiativePoll, useConkayInitiativeStore } from '../conkayInitiativeStore';
@@ -132,6 +133,10 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
   // CK3: real occlusion check — see useConkayOccluded.ts for why this
   // hides rather than relocates.
   const occluded = useConkayOccluded();
+  // Inside a lens, Kay lives in the lens header toolbar (LensToolbar) instead
+  // of floating over the lens's own top-right controls. Hooks above still run,
+  // so the initiative poll that feeds the toolbar badge keeps working.
+  const inLens = (usePathname() ?? '').startsWith('/lenses/');
 
   const dismiss = useCallback(() => {
     setHidden(true);
@@ -155,10 +160,10 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
     window.dispatchEvent(new Event(overlayOpen ? 'conkay:dismiss' : 'conkay:summon'));
   }, [onActivate, overlayOpen]);
 
-  if (hidden || occluded) return null;
+  if (hidden || occluded || inLens) return null;
 
   return (
-    <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-16 right-4 md:top-20 md:right-6">
+    <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-[6.75rem] right-4 md:top-[7.5rem] md:right-6">
       <ConKayWidget state={effectiveState} onActivate={activate} onDismiss={dismiss} pendingCount={pendingCount} />
     </div>
   );

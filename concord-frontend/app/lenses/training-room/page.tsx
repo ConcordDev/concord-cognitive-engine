@@ -18,9 +18,13 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Target, Crosshair, Timer, Sparkles, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { Target, Crosshair, Timer, Sparkles, AlertTriangle, Play, Swords, Scale } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface FrameData {
   skillId: string;
@@ -42,64 +46,170 @@ interface PickerItem {
 }
 
 type FrameStatus = 'idle' | 'loading' | 'error' | 'ready';
+type DojoView = 'study' | 'compare';
+
+const VIEWS: { id: DojoView; label: string; keys: string; title: string; hint: string; icon: typeof Target }[] = [
+  { id: 'study', label: 'Study', keys: '1', title: 'Learn the timing', hint: 'Frame data and a phase replay for one skill', icon: Target },
+  { id: 'compare', label: 'Compare', keys: '2', title: 'Weigh two skills', hint: 'Side-by-side frame data for two skills or weapons', icon: Scale },
+];
+
+function totalMs(f: FrameData) {
+  return f.startup_ms + f.active_ms + f.recovery_ms;
+}
+
+function fetchFrame(skillId: string): Promise<FrameData | null> {
+  return lensRun('training-room', 'frame_data', { skillId })
+    .then((res) => (res?.data?.result as { frameData?: FrameData } | null)?.frameData ?? null)
+    .catch(() => null);
+}
+
+function ComparePanel({
+  items, a, aStatus, rivalId, onRival, b, bStatus,
+}: {
+  items: PickerItem[];
+  a: FrameData | null;
+  aStatus: FrameStatus;
+  rivalId: string | null;
+  onRival: (id: string) => void;
+  b: FrameData | null;
+  bStatus: FrameStatus;
+}) {
+  const rows: Array<{ label: string; pick: (f: FrameData) => number; lowerBetter: boolean }> = [
+    { label: 'Startup', pick: (f) => f.startup_ms, lowerBetter: true },
+    { label: 'Active', pick: (f) => f.active_ms, lowerBetter: false },
+    { label: 'Recovery', pick: (f) => f.recovery_ms, lowerBetter: true },
+    { label: 'Total commitment', pick: totalMs, lowerBetter: true },
+    { label: 'Parry window', pick: (f) => f.parry_window_ms, lowerBetter: false },
+    { label: 'Dodge window', pick: (f) => f.dodge_window_ms, lowerBetter: false },
+  ];
+  return (
+    <div data-testid="compare-panel">
+      <label className="block text-[11px] uppercase tracking-wider text-cyan-300/60" htmlFor="rival-pick">Skill B</label>
+      <select
+        id="rival-pick"
+        value={rivalId ?? ''}
+        onChange={(e) => onRival(e.target.value)}
+        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-[13px] text-zinc-100"
+      >
+        <option value="">Choose a skill or weapon to compare…</option>
+        {items.map((i) => <option key={i.id} value={i.id}>{i.title}</option>)}
+      </select>
+
+      {!rivalId || aStatus === 'idle' ? (
+        <p className="py-10 text-center text-[12px] text-slate-500">Pick Skill A on the left and Skill B above to compare their frame data.</p>
+      ) : aStatus === 'loading' || bStatus === 'loading' ? (
+        <div className="mt-4 space-y-2" role="status" aria-busy="true" aria-label="Loading comparison">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 animate-pulse rounded bg-white/5" />)}
+        </div>
+      ) : !a || !b ? (
+        <p className="py-10 text-center text-[12px] text-amber-200" role="alert">No frame data for one of those skills.</p>
+      ) : (
+        <table className="mt-4 w-full text-[12px]">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500">
+              <th className="py-1 font-medium">Metric</th>
+              <th className="py-1 font-medium text-cyan-200">{a.name}</th>
+              <th className="py-1 font-medium text-violet-200">{b.name}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const av = r.pick(a);
+              const bv = r.pick(b);
+              const better = av === bv ? null : (r.lowerBetter ? av < bv : av > bv) ? 'a' : 'b';
+              return (
+                <tr key={r.label} className="border-t border-white/5">
+                  <td className="py-1.5 text-slate-400">{r.label}</td>
+                  <td className={`py-1.5 tabular-nums ${better === 'a' ? 'font-semibold text-emerald-300' : 'text-slate-200'}`}>{av}ms</td>
+                  <td className={`py-1.5 tabular-nums ${better === 'b' ? 'font-semibold text-emerald-300' : 'text-slate-200'}`}>{bv}ms</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 export default function TrainingRoomPage() {
   const [items, setItems] = useState<PickerItem[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState(false);
+  const [listKey, setListKey] = useState(0);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
-  const [frameData, setFrameData] = useState<FrameData | null>(null);
-  const [frameStatus, setFrameStatus] = useState<FrameStatus>('idle');
+  const [frameKey, setFrameKey] = useState(0);
+  const [frameResult, setFrameResult] = useState<{ id: string; data: FrameData | null } | null>(null);
   const [replayPhase, setReplayPhase] = useState<'idle' | 'startup' | 'active' | 'recovery'>('idle');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<DojoView>('study');
+  const [rivalId, setRivalId] = useState<string | null>(null);
+  const [rivalResult, setRivalResult] = useState<{ id: string; data: FrameData | null } | null>(null);
 
-  const refreshSkills = useCallback(async () => {
+  const refreshSkills = useCallback(() => {
     setListLoading(true);
     setListError(false);
-    try {
-      // The player's acquired skills (may be empty) + always-trainable built-in kinds.
-      const [skillsRes, kindsRes] = await Promise.all([
-        lensRun('training-room', 'list_skills', {}),
-        lensRun('training-room', 'list_kinds', {}),
-      ]);
-      const skills = (skillsRes?.data?.result as { skills?: Array<{ id: string; title: string }> } | null)?.skills ?? [];
-      const kinds = (kindsRes?.data?.result as { kinds?: Array<{ kind: string; name: string }> } | null)?.kinds ?? [];
-
-      const skillItems: PickerItem[] = skills.map((s) => ({ id: s.id, title: s.title, builtin: false }));
-      const kindItems: PickerItem[] = kinds.map((k) => ({ id: k.kind, title: k.name, builtin: true }));
-      const merged = [...skillItems, ...kindItems];
-      setItems(merged);
-      if (!selectedSkillId && merged.length > 0) setSelectedSkillId(merged[0].id);
-    } catch {
-      setListError(true);
-    } finally {
-      setListLoading(false);
-    }
-  }, [selectedSkillId]);
-
-  useEffect(() => { refreshSkills(); }, [refreshSkills]);
-
-  const loadFrameData = useCallback(async (skillId: string) => {
-    setFrameStatus('loading');
-    try {
-      const res = await lensRun('training-room', 'frame_data', { skillId });
-      const result = res?.data?.result as { ok?: boolean; frameData?: FrameData } | null;
-      if (result?.frameData) {
-        setFrameData(result.frameData);
-        setFrameStatus('ready');
-      } else {
-        setFrameData(null);
-        setFrameStatus('error');
-      }
-    } catch {
-      setFrameData(null);
-      setFrameStatus('error');
-    }
+    setListKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    if (!selectedSkillId) { setFrameStatus('idle'); setFrameData(null); return; }
-    loadFrameData(selectedSkillId);
-  }, [selectedSkillId, loadFrameData]);
+    let cancelled = false;
+    // The player's acquired skills (may be empty) + always-trainable built-in kinds.
+    Promise.all([
+      lensRun('training-room', 'list_skills', {}),
+      lensRun('training-room', 'list_kinds', {}),
+    ])
+      .then(([skillsRes, kindsRes]) => {
+        if (cancelled) return;
+        const skills = (skillsRes?.data?.result as { skills?: Array<{ id: string; title: string }> } | null)?.skills ?? [];
+        const kinds = (kindsRes?.data?.result as { kinds?: Array<{ kind: string; name: string }> } | null)?.kinds ?? [];
+        const skillItems: PickerItem[] = skills.map((s) => ({ id: s.id, title: s.title, builtin: false }));
+        const kindItems: PickerItem[] = kinds.map((k) => ({ id: k.kind, title: k.name, builtin: true }));
+        const merged = [...skillItems, ...kindItems];
+        setItems(merged);
+        if (merged.length > 0) setSelectedSkillId((prev) => prev ?? merged[0].id);
+      })
+      .catch(() => { if (!cancelled) setListError(true); })
+      .finally(() => { if (!cancelled) setListLoading(false); });
+    return () => { cancelled = true; };
+  }, [listKey]);
+
+  useEffect(() => {
+    if (!selectedSkillId) return;
+    let cancelled = false;
+    fetchFrame(selectedSkillId).then((data) => {
+      if (!cancelled) setFrameResult({ id: selectedSkillId, data });
+    });
+    return () => { cancelled = true; };
+  }, [selectedSkillId, frameKey]);
+
+  useEffect(() => {
+    if (!rivalId) return;
+    let cancelled = false;
+    fetchFrame(rivalId).then((data) => {
+      if (!cancelled) setRivalResult({ id: rivalId, data });
+    });
+    return () => { cancelled = true; };
+  }, [rivalId]);
+
+  const frameData = frameResult && frameResult.id === selectedSkillId ? frameResult.data : null;
+  const frameStatus: FrameStatus = !selectedSkillId
+    ? 'idle'
+    : !frameResult || frameResult.id !== selectedSkillId
+      ? 'loading'
+      : frameResult.data ? 'ready' : 'error';
+  const rivalData = rivalResult && rivalResult.id === rivalId ? rivalResult.data : null;
+  const rivalStatus: FrameStatus = !rivalId
+    ? 'idle'
+    : !rivalResult || rivalResult.id !== rivalId
+      ? 'loading'
+      : rivalResult.data ? 'ready' : 'error';
+
+  const retryFrame = useCallback(() => {
+    setFrameResult(null);
+    setFrameKey((k) => k + 1);
+  }, []);
 
   const playReplay = useCallback(() => {
     if (!frameData) return;
@@ -110,28 +220,39 @@ export default function TrainingRoomPage() {
       frameData.startup_ms + frameData.active_ms + frameData.recovery_ms);
   }, [frameData]);
 
-  return (
-    <LensShell lensId="training-room" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-        <header className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-              <Target className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Training Room</h1>
-              <p className="mt-0.5 truncate text-xs text-slate-400">
-                Frame data + replay. Easy to pick up, hard to master.
-              </p>
-            </div>
-            <button onClick={refreshSkills} aria-label="Refresh skills" className="rounded-full border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-300 hover:bg-cyan-500/20">
-              <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+  useLensCommand(
+    [
+      ...VIEWS.map((v) => ({
+        id: `training-room-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
+    ],
+    { lensId: 'training-room' },
+  );
 
-        <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
-          <aside className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-3">
-            <h2 className="mb-2 text-[11px] uppercase tracking-wider text-cyan-300/60">Skills &amp; weapons</h2>
+  const current = VIEWS.find((v) => v.id === view)!;
+
+  return (
+    <LensShell lensId="training-room" asMain={false}>
+      <NorthStarFrame
+        lensId="training-room"
+        crumb="Training Room"
+        title={`${current.title}${view === 'study' && who ? `, ${who}` : ''}`}
+        subtitle="A controlled dojo: real frame data for every skill and weapon, a phase replay, and side-by-side comparison. Easy to pick up, hard to master."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as DojoView)}
+        tabsLabel="Training room views"
+        cta={view === 'study'
+          ? { label: replayPhase === 'idle' ? 'Run the drill' : 'Drill running…', icon: Play, onClick: playReplay, disabled: !frameData || replayPhase !== 'idle', title: 'Replay startup, active and recovery phases' }
+          : { label: 'Study this skill', icon: Swords, onClick: () => setView('study'), title: 'Back to single-skill study' }}
+      >
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <aside className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="mb-2 text-[11px] uppercase tracking-wider text-cyan-300/60">{view === 'compare' ? 'Skill A' : 'Skills & weapons'}</h2>
             {listLoading ? (
               <div className="space-y-2" role="status" aria-busy="true" aria-label="Loading skills" data-testid="skills-loading">
                 {[0, 1, 2].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg border border-white/5 bg-white/5" />)}
@@ -177,8 +298,10 @@ export default function TrainingRoomPage() {
             )}
           </aside>
 
-          <div className="lg:col-span-2 rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4" aria-live="polite">
-            {frameStatus === 'idle' ? (
+          <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#111] p-4" aria-live="polite">
+            {view === 'compare' ? (
+              <ComparePanel items={items} a={frameData} aStatus={frameStatus} rivalId={rivalId} onRival={(id) => setRivalId(id || null)} b={rivalData} bStatus={rivalStatus} />
+            ) : frameStatus === 'idle' ? (
               <div className="py-12 text-center text-[12px] text-slate-500" data-testid="frame-empty">
                 Select a skill or weapon to see its frame data.
               </div>
@@ -198,7 +321,7 @@ export default function TrainingRoomPage() {
                 <p className="text-[13px] text-amber-200">No frame data for this skill.</p>
                 <p className="mt-1 text-[11px] text-slate-500">It may not be a recognised combat skill yet.</p>
                 <button
-                  onClick={() => selectedSkillId && loadFrameData(selectedSkillId)}
+                  onClick={retryFrame}
                   className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/20"
                 >
                   Retry
@@ -278,7 +401,7 @@ export default function TrainingRoomPage() {
             )}
           </div>
         </section>
-      </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -16,8 +16,9 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { HeartEventModal } from '@/components/courtship/HeartEventModal';
 import { ConfirmDissolveModal } from '@/components/courtship/ConfirmDissolveModal';
 import { useCourtshipDesk } from '@/components/courtship/useCourtshipDesk';
@@ -41,6 +42,8 @@ export default function CourtshipLensPage() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<CourtshipView>('courtships');
   const desk = useCourtshipDesk();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -65,41 +68,40 @@ export default function CourtshipLensPage() {
     [reduceMotion],
   );
 
+  const tabs = VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }));
+  const titles: Record<CourtshipView, string> = {
+    courtships: `Tend the spark${who ? `, ${who}` : ''}`,
+    marriages: 'Keep the vows',
+    family: 'Raise the next generation',
+    past: 'Remember what ended',
+  };
+
   return (
     <LensShell lensId="courtship" asMain={false}>
       <FirstRunTour lensId="courtship" />
       <DepthBadge lensId="courtship" size="sm" className="ml-2" />
-      <div data-lens-theme="courtship" className={cn(ds.pageContainer, 'max-w-4xl mx-auto space-y-6')}>
-        <header>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-pink-200">
-            <Heart size={22} aria-hidden="true" /> Courtships
-          </h1>
-          <p className="text-sm text-zinc-400">Track affinity, propose, wed, raise children.</p>
-        </header>
-
-        <nav className="flex gap-1 border-b border-pink-500/20 overflow-x-auto" aria-label="Courtship views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on ? 'border-pink-400 text-pink-100' : 'border-transparent text-zinc-400 hover:text-pink-200',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline text-[10px] text-white/30 font-mono">{v.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="courtship"
+        crumb="Courtship"
+        title={titles[active]}
+        subtitle="Track affinity, propose, wed, raise children."
+        actions={(
+          <>
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[12px] text-zinc-400">
+              Engage at {Math.round(desk.engageThreshold * 100)}% · wed at {Math.round(desk.marryThreshold * 100)}%
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[12px] text-zinc-400">
+              {desk.courtships.length} courtships · {desk.marriages.length} marriages
+            </span>
+          </>
+        )}
+        tabs={tabs}
+        activeTab={active}
+        onTab={(id) => setActive(id as CourtshipView)}
+        tabsLabel="Courtship views"
+        cta={{ label: 'Refresh', icon: RefreshCw, onClick: desk.refresh, title: 'Reload courtships and marriages', disabled: desk.pending }}
+      >
+        <div className="max-w-5xl space-y-6">
         {desk.loadState === 'loading' && (
           <div
             data-testid="courtship-loading"
@@ -157,7 +159,8 @@ export default function CourtshipLensPage() {
             <Loader2 className="inline animate-spin" size={11} aria-hidden="true" /> updating…
           </div>
         )}
-      </div>
+        </div>
+      </NorthStarFrame>
 
       {desk.heartEvent && (
         <HeartEventModal

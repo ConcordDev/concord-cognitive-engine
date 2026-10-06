@@ -26,58 +26,6 @@ export interface EntityLifecycleVizProps {
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Demo data
-// ---------------------------------------------------------------------------
-
-const DEMO_ENTITIES: Entity[] = [
-  {
-    id: 'e1', name: 'Concordance Engine',
-    events: [
-      { type: 'creation', timestamp: Date.now() - 86400000 * 6, domain: 'systems' },
-      { type: 'exploration', timestamp: Date.now() - 86400000 * 5, domain: 'systems', detail: 'Initial architecture scan' },
-      { type: 'growth', timestamp: Date.now() - 86400000 * 3, domain: 'systems', detail: 'Module expansion' },
-      { type: 'debate', timestamp: Date.now() - 86400000 * 1.5, domain: 'philosophy', detail: 'Ethical alignment review' },
-      { type: 'creation', timestamp: Date.now() - 3600000, domain: 'systems', detail: 'V2 instantiation' },
-    ],
-  },
-  {
-    id: 'e2', name: 'Knowledge Lattice',
-    events: [
-      { type: 'exploration', timestamp: Date.now() - 86400000 * 5.5, domain: 'mathematics' },
-      { type: 'creation', timestamp: Date.now() - 86400000 * 4, domain: 'mathematics', detail: 'Graph topology defined' },
-      { type: 'growth', timestamp: Date.now() - 86400000 * 2, domain: 'mathematics', detail: 'Node density +400%' },
-      { type: 'exploration', timestamp: Date.now() - 86400000 * 0.5, domain: 'physics', detail: 'Cross-domain bridging' },
-    ],
-  },
-  {
-    id: 'e3', name: 'Ethics Oracle',
-    events: [
-      { type: 'creation', timestamp: Date.now() - 86400000 * 4.5, domain: 'philosophy' },
-      { type: 'debate', timestamp: Date.now() - 86400000 * 3.5, domain: 'philosophy', detail: 'Trolley problem variants' },
-      { type: 'debate', timestamp: Date.now() - 86400000 * 2.5, domain: 'philosophy', detail: 'Consent frameworks' },
-      { type: 'growth', timestamp: Date.now() - 86400000 * 1, domain: 'philosophy', detail: 'Axiom set expanded' },
-      { type: 'exploration', timestamp: Date.now() - 7200000, domain: 'biology', detail: 'Bio-ethics integration' },
-    ],
-  },
-  {
-    id: 'e4', name: 'Quantum Bridge',
-    events: [
-      { type: 'exploration', timestamp: Date.now() - 86400000 * 3, domain: 'physics' },
-      { type: 'creation', timestamp: Date.now() - 86400000 * 2, domain: 'physics', detail: 'Entanglement model' },
-      { type: 'growth', timestamp: Date.now() - 86400000 * 0.8, domain: 'physics', detail: 'Decoherence solved' },
-    ],
-  },
-  {
-    id: 'e5', name: 'Language Nexus',
-    events: [
-      { type: 'creation', timestamp: Date.now() - 86400000 * 5, domain: 'linguistics' },
-      { type: 'exploration', timestamp: Date.now() - 86400000 * 4, domain: 'linguistics', detail: 'Semantic parsing' },
-      { type: 'debate', timestamp: Date.now() - 86400000 * 2.2, domain: 'linguistics', detail: 'Ambiguity resolution' },
-      { type: 'growth', timestamp: Date.now() - 86400000 * 0.3, domain: 'linguistics', detail: 'Polyglot expansion' },
-    ],
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Color constants
@@ -101,7 +49,7 @@ const CANVAS_PAD_RIGHT = 60;
 // ---------------------------------------------------------------------------
 
 export default function EntityLifecycleViz({ entities: entitiesProp, className }: EntityLifecycleVizProps) {
-  const entities = entitiesProp && entitiesProp.length > 0 ? entitiesProp : DEMO_ENTITIES;
+  const entities = entitiesProp ?? [];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef(0);

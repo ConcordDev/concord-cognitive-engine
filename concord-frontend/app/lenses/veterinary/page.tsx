@@ -28,13 +28,13 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, BarChart3, Calendar, Receipt, ClipboardList, Pill, FlaskConical,
-  Boxes, BellRing, UserCircle, Calculator, Keyboard, RefreshCw, DollarSign,
+  Boxes, BellRing, UserCircle, Calculator, RefreshCw, DollarSign, Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -53,6 +53,8 @@ import { CalculatorsPanel } from '@/components/veterinary/CalculatorsPanel';
 import { StatTile, StatTileGrid, Skeleton, ErrorState, DensityToggle } from '@/components/ui';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface DashboardData {
@@ -66,21 +68,23 @@ type ModeTab =
   | 'Dashboard' | 'Patients' | 'Appointments' | 'Billing' | 'Records'
   | 'Pharmacy' | 'Lab' | 'Inventory' | 'Reminders' | 'Owner Portal' | 'Calculators';
 
-const TABS: { key: ModeTab; label: string; icon: typeof Heart; hotkey: string }[] = [
-  { key: 'Dashboard', label: 'Dashboard', icon: BarChart3, hotkey: '1' },
-  { key: 'Patients', label: 'Patients', icon: Heart, hotkey: '2' },
-  { key: 'Appointments', label: 'Appointments', icon: Calendar, hotkey: '3' },
-  { key: 'Billing', label: 'Billing', icon: Receipt, hotkey: '4' },
-  { key: 'Records', label: 'SOAP Records', icon: ClipboardList, hotkey: '5' },
-  { key: 'Pharmacy', label: 'Pharmacy', icon: Pill, hotkey: '6' },
-  { key: 'Lab', label: 'Lab & Imaging', icon: FlaskConical, hotkey: '7' },
-  { key: 'Inventory', label: 'Inventory', icon: Boxes, hotkey: '8' },
-  { key: 'Reminders', label: 'Reminders', icon: BellRing, hotkey: '9' },
-  { key: 'Owner Portal', label: 'Owner Portal', icon: UserCircle, hotkey: '0' },
-  { key: 'Calculators', label: 'Calculators', icon: Calculator, hotkey: 'c' },
+const TABS: { key: ModeTab; label: string; title: string; icon: typeof Heart; hotkey: string }[] = [
+  { key: 'Dashboard', label: 'Dashboard', title: 'Your practice today', icon: BarChart3, hotkey: '1' },
+  { key: 'Patients', label: 'Patients', title: 'The patients in your care', icon: Heart, hotkey: '2' },
+  { key: 'Appointments', label: 'Appointments', title: 'Who is coming in', icon: Calendar, hotkey: '3' },
+  { key: 'Billing', label: 'Billing', title: 'What is owed', icon: Receipt, hotkey: '4' },
+  { key: 'Records', label: 'SOAP Records', title: 'What you charted', icon: ClipboardList, hotkey: '5' },
+  { key: 'Pharmacy', label: 'Pharmacy', title: 'What is in the dispensary', icon: Pill, hotkey: '6' },
+  { key: 'Lab', label: 'Lab & Imaging', title: 'What the tests show', icon: FlaskConical, hotkey: '7' },
+  { key: 'Inventory', label: 'Inventory', title: 'What is on the shelf', icon: Boxes, hotkey: '8' },
+  { key: 'Reminders', label: 'Reminders', title: 'Who is due', icon: BellRing, hotkey: '9' },
+  { key: 'Owner Portal', label: 'Owner Portal', title: 'What owners see', icon: UserCircle, hotkey: '0' },
+  { key: 'Calculators', label: 'Calculators', title: 'Dose and fluid math', icon: Calculator, hotkey: 'c' },
 ];
 
 export default function VeterinaryLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -105,110 +109,76 @@ export default function VeterinaryLensPage() {
   const dash = stats.status === 'done' ? stats.result : null;
   const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
+  const current = TABS.find((t) => t.key === activeMode)!;
+
   return (
     <LensShell lensId="veterinary" asMain={false}>
       <FirstRunTour lensId="veterinary" />
-      <div data-lens-theme="veterinary" className="p-6 space-y-5">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-pink-500/15 border border-pink-500/30 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-pink-400" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Veterinary Practice</h1>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Patients, scheduling, billing, SOAP charting, pharmacy, lab &amp; inventory</span>
-                <DepthBadge lensId="veterinary" size="sm" />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1-0,c switch tab · r refresh stats">
-              <Keyboard className="w-3.5 h-3.5" /> 1-0,c · r
-            </span>
+      <NorthStarFrame
+        lensId="veterinary"
+        crumb="Veterinary"
+        title={`${current.title}${activeMode === 'Dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Patients, scheduling, billing, SOAP charting, pharmacy, lab and inventory."
+        actions={
+          <>
+            <DepthBadge lensId="veterinary" size="sm" />
             <DensityToggle variant="dropdown" />
             <button
               type="button"
               onClick={loadStats}
               disabled={statsLoading}
-              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
+              className="rounded-full border border-white/10 p-2 text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
               aria-label="Refresh practice stats"
+              title="Refresh practice stats (R)"
             >
-              <RefreshCw className={cn('w-4 h-4', statsLoading && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4', statsLoading && 'animate-spin')} />
             </button>
             <DTUExportButton domain="veterinary" data={dash || {}} compact />
-          </div>
-        </header>
+          </>
+        }
+        tabs={TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.hotkey }))}
+        activeTab={activeMode}
+        onTab={(id) => setActiveMode(id as ModeTab)}
+        tabsLabel="Veterinary views"
+        cta={{ label: 'Book an appointment', icon: Plus, onClick: () => setActiveMode('Appointments'), title: 'Open the appointment book' }}
+      >
+        <div className="space-y-5">
+          {statsLoading && !dash ? (
+            <StatTileGrid columns={3}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-white/10 bg-[#111] p-3">
+                  <Skeleton variant="line" lines={2} />
+                </div>
+              ))}
+            </StatTileGrid>
+          ) : stats.status === 'error' ? (
+            <ErrorState message={stats.error || 'Failed to load practice stats.'} onRetry={loadStats} retrying={statsLoading} variant="inline" />
+          ) : dash ? (
+            <StatTileGrid columns={3}>
+              <StatTile label="Patients on file" value={dash.patients} icon={<Heart className="h-3.5 w-3.5" />} />
+              <StatTile label="Visits logged" value={dash.visits} />
+              <StatTile label="Revenue" value={dash.revenue} unit="$" icon={<DollarSign className="h-3.5 w-3.5" />} />
+            </StatTileGrid>
+          ) : null}
 
-        {statsLoading && !dash ? (
-          <StatTileGrid columns={3}>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-md border border-white/10 bg-black/40 p-3">
-                <Skeleton variant="line" lines={2} />
-              </div>
-            ))}
-          </StatTileGrid>
-        ) : stats.status === 'error' ? (
-          <ErrorState message={stats.error || 'Failed to load practice stats.'} onRetry={loadStats} retrying={statsLoading} variant="inline" />
-        ) : dash ? (
-          <StatTileGrid columns={3}>
-            <StatTile label="Patients on file" value={dash.patients} icon={<Heart className="w-3.5 h-3.5" />} />
-            <StatTile label="Visits logged" value={dash.visits} />
-            <StatTile label="Revenue" value={dash.revenue} unit="$" icon={<DollarSign className="w-3.5 h-3.5" />} />
-          </StatTileGrid>
-        ) : null}
+          {activeMode === 'Dashboard' && <DashboardPanel refreshKey={refreshKey} />}
+          {activeMode === 'Patients' && <PatientsPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Appointments' && <AppointmentsPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Billing' && <BillingPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Records' && <RecordsPanel />}
+          {activeMode === 'Pharmacy' && <PharmacyPanel />}
+          {activeMode === 'Lab' && <LabPanel />}
+          {activeMode === 'Inventory' && <InventoryPanel />}
+          {activeMode === 'Reminders' && <RemindersPanel />}
+          {activeMode === 'Owner Portal' && <OwnerPortalPanel />}
+          {activeMode === 'Calculators' && <CalculatorsPanel />}
 
-        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Veterinary views">
-          {TABS.map((t) => {
-            const active = activeMode === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveMode(t.key)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
-                  active ? 'bg-pink-500/15 text-pink-300 border-pink-500/30' : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent',
-                )}
-              >
-                <span className="text-[10px] text-gray-600 tabular-nums">{t.hotkey}</span>
-                <t.icon className="w-3.5 h-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeMode}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-          >
-            {activeMode === 'Dashboard' && <DashboardPanel refreshKey={refreshKey} />}
-            {activeMode === 'Patients' && <PatientsPanel onChanged={bumpDashboard} />}
-            {activeMode === 'Appointments' && <AppointmentsPanel onChanged={bumpDashboard} />}
-            {activeMode === 'Billing' && <BillingPanel onChanged={bumpDashboard} />}
-            {activeMode === 'Records' && <RecordsPanel />}
-            {activeMode === 'Pharmacy' && <PharmacyPanel />}
-            {activeMode === 'Lab' && <LabPanel />}
-            {activeMode === 'Inventory' && <InventoryPanel />}
-            {activeMode === 'Reminders' && <RemindersPanel />}
-            {activeMode === 'Owner Portal' && <OwnerPortalPanel />}
-            {activeMode === 'Calculators' && <CalculatorsPanel />}
-          </motion.div>
-        </AnimatePresence>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <VetFeed />
-        </section>
-        <section>
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <VetFeed />
+          </section>
           <LensFeedButton domain="veterinary" label="Live animal & veterinary safety feed" />
-        </section>
-      </div>
+        </div>
+      </NorthStarFrame>
 
       <div className="sr-only" aria-hidden="true">
         Veterinary practice-management lens with patients, scheduling, billing, charting and pharmacy.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { injectNonce, injectConfigArgs, resolveRequestOrigin } from '../app/godot-client/index.html/route';
+import { injectNonce, injectConfigArgs, resolveRequestOrigin } from '../app/godot-client/index.html/helpers';
 import type { NextRequest } from 'next/server';
 
 function makeRequest(headers: Record<string, string>, protocol = 'http:'): NextRequest {

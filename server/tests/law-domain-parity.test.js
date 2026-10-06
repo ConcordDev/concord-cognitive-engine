@@ -4,6 +4,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerLawActions from "../domains/law.js";
+import { signViaLink } from "../lib/esign-links.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -90,14 +91,20 @@ describe("law.contract-review", () => {
 });
 
 describe("law.contract-sign", () => {
-  it("records signatures and flips status to signed at two", () => {
+  it("you sign your side once; the counterparty signs from their link; status flips to signed at two", async () => {
     const c = newContract();
-    call("contract-sign", ctxA, { id: c.id, party: "Us" });
-    const second = call("contract-sign", ctxA, { id: c.id, party: "Acme Co" });
-    assert.equal(second.result.status, "signed");
-    assert.equal(second.result.signatures.length, 2);
-    // duplicate party rejected
-    assert.equal(call("contract-sign", ctxA, { id: c.id, party: "Us" }).ok, false);
+    assert.equal(call("contract-sign", ctxA, { id: c.id, party: "Us" }).ok, true);
+    // Typing the counterparty's name is not their signature.
+    assert.equal(call("contract-sign", ctxA, { id: c.id, party: "Acme Co" }).ok, false);
+    const req = await call("contract-request-signature", ctxA, { id: c.id, name: "Acme Co", email: "legal@acme.test" });
+    assert.equal(req.ok, true);
+    assert.equal(req.result.delivered, "link_only");
+    const token = req.result.url.split("/sign/")[1];
+    const done = await signViaLink(token, { typedName: "Jane Acme", consent: true });
+    assert.equal(done.ok, true);
+    const now = call("contract-list", ctxA, {}).result.contracts.find((x) => x.id === c.id);
+    assert.equal(now.status, "signed");
+    assert.equal(now.signatureCount, 2);
   });
 });
 

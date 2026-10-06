@@ -10,7 +10,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { isOnboardingComplete } from '@/lib/onboarding-state';
 import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -107,6 +107,7 @@ const ARRIVAL_KEY = 'concord_arrival_seen';
 
 function FirstWinWizard() {
   const router = useRouter();
+  const inWorld = (usePathname() ?? '').startsWith('/lenses/world');
   // Onboarding ceremony — dismissal now COLLAPSES (re-openable via a Resume
   // pill) instead of hiding the wizard forever, so a player who closed it early
   // can pick the First Cycle back up.
@@ -222,6 +223,9 @@ function FirstWinWizard() {
     return () => clearTimeout(t);
   }, [currentStepId, collapsed]);
 
+  // The First Cycle (cook → eat → fight → commune) is a Concordia tutorial; it
+  // only belongs in the World lens, not floating over finance or code.
+  if (!inWorld) return null;
   if (!resolved || resolved.allDone || dismissed) return null;
 
   // Collapsed → a small Resume pill (re-openable), not a permanent hide.

@@ -618,13 +618,13 @@ Categories: Groceries, Dining, Transportation, Gas, Shopping, Entertainment, Sub
     if (!ctx?.llm?.chat) return { ok: true, result: { text: "Commentary unavailable (LLM offline)." } };
     const week = params.week || "current";
     const totalSpent = Number(params.totalSpent) || 0;
+    const hasIncome = params.totalIncome !== undefined && params.totalIncome !== null && params.totalIncome !== "";
     const totalIncome = Number(params.totalIncome) || 0;
     const topCategories = Array.isArray(params.topCategories) ? params.topCategories.slice(0, 5) : [];
     const sys = `You are a personal finance commentator. Write a friendly 2-paragraph summary of the week. Keep it concise, specific, and actionable.`;
     const user = `Week: ${week}
 Total spent: $${totalSpent.toFixed(0)}
-Total income: $${totalIncome.toFixed(0)}
-Top categories: ${topCategories.map(c => `${c.category} $${c.amount}`).join(", ")}
+${hasIncome ? `Total income: $${totalIncome.toFixed(0)}\n` : ""}Top categories: ${topCategories.map(c => `${c.category} $${c.amount}`).join(", ")}
 Generate the summary.`;
     try {
       const out = await ctx.llm.chat({
@@ -707,6 +707,49 @@ Generate the summary.`;
     bills.splice(idx, 1);
     saveStateIfAvailable();
     return { ok: true, result: { id, deleted: true } };
+  });
+
+  // A wallet receipt is a record of a transfer the ledger already accepted.
+  // Recording it does not move Concord Coin again.
+  registerLensAction("finance", "receipt-record", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const citedDtuId = String(params.citedDtuId || "").trim();
+    if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(citedDtuId)) {
+      return { ok: false, error: "citedDtuId required" };
+    }
+    const amount = Math.round((Number(params.amount) || 0) * 100) / 100;
+    if (!(amount > 0)) return { ok: false, error: "amount must be positive" };
+    const batchId = String(params.batchId || "").trim();
+    if (!batchId) return { ok: false, error: "batchId required" };
+    const source = String(params.source || "").trim();
+    if (!["wallet-request", "wallet-schedule", "wallet-split", "marketplace-order"].includes(source)) {
+      return { ok: false, error: "source invalid" };
+    }
+    const sourceId = String(params.sourceId || "").trim();
+    if (!sourceId) return { ok: false, error: "sourceId required" };
+    const receipt = {
+      id: uid("rcpt"),
+      citedDtuId,
+      amount,
+      batchId,
+      source,
+      sourceId,
+      counterparty: String(params.counterparty || "").trim(),
+      note: String(params.note || "").trim(),
+      recordedAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "receipts", userId).push(receipt);
+    saveStateIfAvailable();
+    return { ok: true, result: { receipt } };
+  });
+
+  registerLensAction("finance", "receipt-list", (ctx, _a, _params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const receipts = [...ensureBucket(state, "receipts", userId)]
+      .sort((a, b) => (b.recordedAt || "").localeCompare(a.recordedAt || ""));
+    return { ok: true, result: { receipts, count: receipts.length } };
   });
 
   registerLensAction("finance", "cashflow-forecast", (ctx, _a, params = {}) => {

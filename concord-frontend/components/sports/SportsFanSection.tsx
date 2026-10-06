@@ -44,7 +44,7 @@ export function SportsFanSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent">
         <Trophy className="w-5 h-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Sports Center</h2>
-        <span className="text-[11px] text-zinc-400">ESPN shape — scores, predictions, teams</span>
+        <span className="text-[11px] text-zinc-400">Scores, predictions, teams</span>
       </header>
 
       {loading ? (

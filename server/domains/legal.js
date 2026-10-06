@@ -10,6 +10,8 @@
 // to CURATION because the primary source (state rules of civil procedure)
 // is real public-domain legal text, just not aggregated behind a free API.
 import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
+import { createHash } from "node:crypto";
+import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
 export default function registerLegalActions(registerLensAction) {
   // Fail-CLOSED numeric coercion. parseFloat("Infinity") === Infinity and
@@ -1045,51 +1047,124 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         name: String(r.name || ""),
         email: String(r.email || ""),
         role: String(r.role || "signer"),
+        // The one recipient the sender signs as; everyone else signs from their link.
+        isSender: r.isSender === true,
         status: 'pending',
         signedAt: null,
-        token: Math.random().toString(36).slice(2, 16),
+        delivery: null,
       })),
-      status: 'sent',
+      // Fingerprint of the exact text being signed, so a later edit is detectable.
+      documentHash: createHash("sha256").update(String(doc.body || doc.name || "")).digest("hex"),
+      // Nothing is sent until esign-envelope-send runs.
+      status: 'draft',
       createdAt: isoNow(),
-      sentAt: isoNow(),
+      sentAt: null,
       completedAt: null,
       esignActDisclosure: "Consents recorded under E-SIGN Act 15 USC § 7001 + UETA § 7.",
     };
     seq.env++;
     ensureBucket(s.esignEnv, userId).push(envelope);
-    doc.status = 'sent_for_signature';
     saveLegalState();
     return { ok: true, result: { envelope } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("legal", "esign-envelope-sign", (ctx, _a, params = {}) => {
-    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = aid(ctx);
-    const envelopeId = String(params.envelopeId || "");
-    const recipientId = String(params.recipientId || "");
-    const env = ensureBucket(s.esignEnv, userId).find(e => e.id === envelopeId);
-    if (!env) return { ok: false, error: "envelope not found" };
-    const r = env.recipients.find(x => x.id === recipientId);
-    if (!r) return { ok: false, error: "recipient not found" };
+  function applyRecipientSignature(s, ownerId, env, r, { via, typedName = "", ip = "", userAgent = "", signedAt = isoNow() }) {
+    if (env.status === 'voided') return { ok: false, error: "envelope was voided" };
     if (r.status === 'signed') return { ok: false, error: "recipient already signed" };
     r.status = 'signed';
-    r.signedAt = isoNow();
-    r.ip = String(params.ip || "");
-    r.userAgent = String(params.userAgent || "");
+    r.signedAt = signedAt;
+    r.signedVia = via;
+    r.typedName = typedName || null;
+    r.ip = ip || null;
+    r.userAgent = userAgent || null;
     if (env.recipients.every(x => x.status === 'signed')) {
       env.status = 'completed';
-      env.completedAt = isoNow();
-      const doc = ensureBucket(s.documents, userId).find(d => d.id === env.documentId);
+      env.completedAt = signedAt;
+      const doc = ensureBucket(s.documents, ownerId).find(d => d.id === env.documentId);
       if (doc) doc.status = 'signed';
     }
     saveLegalState();
     return { ok: true, result: { envelope: env } };
+  }
+
+  // The sender signs only as themselves; other recipients sign from their link.
+  registerLensAction("legal", "esign-envelope-sign", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const env = ensureBucket(s.esignEnv, userId).find(e => e.id === String(params.envelopeId || ""));
+    if (!env) return { ok: false, error: "envelope not found" };
+    const r = env.recipients.find(x => x.id === String(params.recipientId || ""));
+    if (!r) return { ok: false, error: "recipient not found" };
+    if (!r.isSender) return { ok: false, error: "this recipient signs from their own link — send the envelope instead" };
+    return applyRecipientSignature(s, userId, env, r, { via: "sender", typedName: String(params.typedName || "").slice(0, 120) });
+  });
+
+  // Send signing links: emailed from the sender's Gmail when connected,
+  // otherwise returned for the sender to share. Status reflects what happened.
+  registerLensAction("legal", "esign-envelope-send", async (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const env = ensureBucket(s.esignEnv, userId).find(e => e.id === String(params.envelopeId || ""));
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status === 'completed' || env.status === 'voided') return { ok: false, error: `envelope is ${env.status}` };
+    const targets = env.recipients.filter(r => !r.isSender && r.status !== 'signed' && (!params.recipientId || r.id === String(params.recipientId)));
+    if (targets.length === 0) return { ok: false, error: "no one left to send to" };
+    const links = issueSigningLinks("legal", userId, env.id, targets);
+    const delivery = await deliverSigningLinks(ctx?.db, userId, links, { title: env.documentName, senderName: ctx?.actor?.fullName || ctx?.actor?.displayName || "A Concord user" });
+    const at = isoNow();
+    for (const d of delivery) {
+      const r = env.recipients.find(x => x.id === d.recipientId);
+      if (r) r.delivery = { method: d.delivered, reason: d.reason || null, at };
+    }
+    env.status = 'sent';
+    env.sentAt = env.sentAt || at;
+    const doc = ensureBucket(s.documents, userId).find(d => d.id === env.documentId);
+    if (doc && doc.status !== 'signed') doc.status = 'sent_for_signature';
+    saveLegalState();
+    return { ok: true, result: { envelope: env, links: delivery.map(d => ({ recipientId: d.recipientId, url: d.url, delivered: d.delivered, reason: d.reason || null })) } };
+  });
+
+  registerLensAction("legal", "esign-envelope-void", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const env = ensureBucket(s.esignEnv, userId).find(e => e.id === String(params.envelopeId || ""));
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status === 'completed') return { ok: false, error: "cannot void a completed envelope" };
+    env.status = 'voided';
+    revokeSigningLinks("legal", userId, env.id);
+    saveLegalState();
+    return { ok: true, result: { envelope: env } };
+  });
+
+  registerEsignProvider("legal", {
+    view(entry) {
+      const s = getLegalState();
+      const env = s && ensureBucket(s.esignEnv, entry.ownerId).find(e => e.id === entry.envelopeId);
+      const r = env?.recipients.find(x => x.id === entry.recipientId);
+      if (!env || !r) return { ok: false, error: "link_not_found" };
+      const doc = ensureBucket(s.documents, entry.ownerId).find(d => d.id === env.documentId);
+      return { ok: true, result: {
+        document: { title: env.documentName, text: doc?.body || "", hash: env.documentHash || null },
+        signer: { name: r.name, email: r.email, role: r.role, status: r.status, signedAt: r.signedAt },
+        envelopeStatus: env.status,
+        parties: env.recipients.map(x => ({ name: x.name, role: x.role, status: x.status })),
+        disclosure: env.esignActDisclosure,
+      } };
+    },
+    sign(entry, sig) {
+      const s = getLegalState();
+      const env = s && ensureBucket(s.esignEnv, entry.ownerId).find(e => e.id === entry.envelopeId);
+      const r = env?.recipients.find(x => x.id === entry.recipientId);
+      if (!env || !r) return { ok: false, error: "link_not_found" };
+      const out = applyRecipientSignature(s, entry.ownerId, env, r, { via: "link", ...sig });
+      return out.ok ? { ok: true, result: { signed: true, envelopeStatus: env.status, completed: env.status === 'completed' } } : out;
+    },
   });
 
   registerLensAction("legal", "esign-envelopes-list", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const status = ['sent','completed','all'].includes(params.status) ? params.status : 'all';
+    const status = ['draft','sent','completed','voided','all'].includes(params.status) ? params.status : 'all';
     let list = ensureBucket(s.esignEnv, aid(ctx));
     if (status !== 'all') list = list.filter(e => e.status === status);
     return { ok: true, result: { envelopes: list.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };

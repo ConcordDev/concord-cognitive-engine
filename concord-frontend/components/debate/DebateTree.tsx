@@ -72,7 +72,6 @@ export function DebateTree() {
       <div className="flex items-center gap-2 mb-3">
         <Scale className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-white">Argument Trees</h3>
-        <span className="text-[11px] text-gray-400">Kialo shape</span>
       </div>
 
       <div className="flex gap-1.5 mb-3">

@@ -28,6 +28,8 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { ds } from '@/lib/design-system';
@@ -35,13 +37,13 @@ import { cn } from '@/lib/utils';
 
 type PodcastView = 'episodes' | 'create' | 'analytics' | 'listen' | 'itunes' | 'actions';
 
-const VIEWS: { id: PodcastView; label: string; keys: string; hint: string; icon: typeof Mic2 }[] = [
-  { id: 'episodes', label: 'Episodes', keys: 'g e', hint: 'Your show episodes', icon: Mic2 },
-  { id: 'create', label: 'New Episode', keys: 'g c', hint: 'Record / upload', icon: Plus },
-  { id: 'analytics', label: 'Analytics', keys: 'g a', hint: 'Plays · DTUs', icon: BarChart3 },
-  { id: 'listen', label: 'Listening Hub', keys: 'g l', hint: 'RSS · sync · rules', icon: Headphones },
-  { id: 'itunes', label: 'iTunes Search', keys: 'g i', hint: 'Apple directory', icon: Search },
-  { id: 'actions', label: 'Studio', keys: 'g x', hint: 'Workbench macros', icon: CircleDot },
+const VIEWS: { id: PodcastView; title: string; label: string; keys: string; hint: string; icon: typeof Mic2 }[] = [
+  { id: 'episodes', title: 'Your show', label: 'Episodes', keys: 'g e', hint: 'Your show episodes', icon: Mic2 },
+  { id: 'create', title: 'Make a new episode', label: 'New Episode', keys: 'g c', hint: 'Record / upload', icon: Plus },
+  { id: 'analytics', title: 'Who is listening', label: 'Analytics', keys: 'g a', hint: 'Plays · DTUs', icon: BarChart3 },
+  { id: 'listen', title: 'What you are listening to', label: 'Listening Hub', keys: 'g l', hint: 'RSS · sync · rules', icon: Headphones },
+  { id: 'itunes', title: 'Find a show', label: 'iTunes Search', keys: 'g i', hint: 'Apple directory', icon: Search },
+  { id: 'actions', title: 'The studio workbench', label: 'Studio', keys: 'g x', hint: 'Workbench macros', icon: CircleDot },
 ];
 
 function ListenPanel() {
@@ -69,6 +71,8 @@ export default function PodcastLensPage() {
   useLensIdentity('podcast');
   const { isLive, lastUpdated } = useRealtimeLens('podcast');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PodcastView>('episodes');
   const [rssCopied, setRssCopied] = useState(false);
 
@@ -99,6 +103,8 @@ export default function PodcastLensPage() {
     }
   }, []);
 
+  const current = VIEWS.find((v) => v.id === active)!;
+
   const Panel: ComponentType<{ onCreated?: () => void }> =
     active === 'episodes' ? EpisodesPanel :
     active === 'create' ? CreateEpisodePanel :
@@ -111,35 +117,29 @@ export default function PodcastLensPage() {
     <LensShell lensId="podcast" asMain={false}>
       <FirstRunTour lensId="podcast" />
       <DepthBadge lensId="podcast" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <PodcastPlayerSection />
-      </div>
-      <div data-lens-theme="podcast" className={cn(ds.pageContainer, 'max-w-6xl mx-auto')}>
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-purple-400/20 flex items-center justify-center shrink-0">
-              <Mic2 className="w-5 h-5 text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Podcast Studio</h1>
-                {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />}
-              </div>
-              <p className={ds.textMuted}>Create, publish, and distribute — one Apple-Podcasts desk.</p>
-            </div>
+      <div data-lens-theme="podcast" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Podcast</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'episodes' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <button
-            type="button"
-            onClick={handleCopyRss}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors text-sm"
-          >
-            {rssCopied ? <Check className="w-4 h-4" /> : <Rss className="w-4 h-4" />}
-            {rssCopied ? 'Copied!' : 'Copy RSS Feed'}
-          </button>
-        </header>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />}
+            <button
+              type="button"
+              onClick={handleCopyRss}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:text-white"
+            >
+              {rssCopied ? <Check className="h-4 w-4 text-teal-300" /> : <Rss className="h-4 w-4" />}
+              {rssCopied ? 'Copied' : 'Copy RSS feed'}
+            </button>
+          </div>
+        </div>
 
         <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
+          className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label="Podcast views"
         >
           {VIEWS.map((v) => {
@@ -150,17 +150,16 @@ export default function PodcastLensPage() {
                 key={v.id}
                 type="button"
                 onClick={() => go(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-purple-400 text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
                 aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">
                   {v.keys}
                 </kbd>
               </button>
@@ -168,7 +167,11 @@ export default function PodcastLensPage() {
           })}
         </nav>
 
-        <main className="py-6">
+        <div className="mb-6">
+          <PodcastPlayerSection />
+        </div>
+
+        <main>
           <AnimatePresence mode="wait">
             <motion.div
               key={active}
@@ -184,7 +187,17 @@ export default function PodcastLensPage() {
           </AnimatePresence>
         </main>
 
-        <CrossLensRecentsPanel lensId="podcast" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel lensId="podcast" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => go('create')}
+          title="New episode (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New episode
+        </button>
       </div>
     </LensShell>
   );

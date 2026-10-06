@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
@@ -20,14 +22,13 @@ import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import {
   Waves,
   Clock,
   Activity,
   BookOpen,
   Map,
+  Plus,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -39,12 +40,12 @@ import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 
 type OceanTab = 'tides' | 'waves' | 'live' | 'logbook' | 'map';
 
-const TABS: { key: OceanTab; label: string; icon: typeof Waves }[] = [
-  { key: 'tides', label: 'Tides', icon: Clock },
-  { key: 'waves', label: 'Waves & Water', icon: Waves },
-  { key: 'live', label: 'Live Marine', icon: Activity },
-  { key: 'logbook', label: 'Logbook', icon: BookOpen },
-  { key: 'map', label: 'Map', icon: Map },
+const TABS: { key: OceanTab; label: string; keys: string; icon: typeof Waves }[] = [
+  { key: 'tides', label: 'Tides', keys: 't', icon: Clock },
+  { key: 'waves', label: 'Waves & Water', keys: 'w', icon: Waves },
+  { key: 'live', label: 'Live Marine', keys: 'l', icon: Activity },
+  { key: 'logbook', label: 'Logbook', keys: 'b', icon: BookOpen },
+  { key: 'map', label: 'Map', keys: 'm', icon: Map },
 ];
 
 interface Spot { id: string; name: string; kind: string; lat: number | null; lon: number | null; notes: string }
@@ -54,6 +55,8 @@ export default function OceanLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('ocean');
 
   const [activeTab, setActiveTab] = useState<OceanTab>('tides');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -75,53 +78,47 @@ export default function OceanLensPage() {
     enabled: activeTab === 'map',
   });
 
+  const tabs = TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys }));
+  const titles: Record<OceanTab, string> = {
+    tides: `Read the tide${who ? `, ${who}` : ''}`,
+    waves: 'Feel the swell',
+    live: 'Watch the water move',
+    logbook: 'Log your time on the water',
+    map: 'Chart your spots',
+  };
+
   return (
     <LensShell lensId="ocean" asMain={false}>
-      <FirstRunTour lensId="ocean" />      <DepthBadge lensId="ocean" size="sm" className="ml-2" />
-      <div data-lens-theme="ocean" className={cn(ds.pageContainer, 'space-y-4')}>
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-              <Waves className="w-5 h-5 text-cyan-400" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Ocean Operations</h1>
-              <p className="text-sm text-gray-400">
-                Tides, marine forecasts, live vessel & buoy data, and a personal dive/surf/fishing logbook
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <FirstRunTour lensId="ocean" />
+      <DepthBadge lensId="ocean" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="ocean"
+        crumb="Ocean Operations"
+        title={titles[activeTab]}
+        subtitle="Tides, marine forecasts, live vessel & buoy data, and a personal dive/surf/fishing logbook"
+        actions={(
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="ocean" data={realtimeData || {}} compact />
-          </div>
-        </header>
-
-        <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-                activeTab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
-              )}
-            >
-              <Icon className="w-4 h-4" /> {label}
-            </button>
-          ))}
-        </div>
-
+          </>
+        )}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as OceanTab)}
+        tabsLabel="Ocean views"
+        cta={{ label: 'Log a spot', icon: Plus, onClick: () => setActiveTab('logbook'), title: 'Open the logbook (B)' }}
+      >
+      <div className="space-y-4">
         {activeTab === 'tides' && (
           <div className="space-y-4">
             <NoaaTidesPanel />
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <TidePredictions />
             </section>
             <section>
               <TideActionStack />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <NoaaStationExplorer />
             </section>
           </div>
@@ -129,10 +126,10 @@ export default function OceanLensPage() {
 
         {activeTab === 'waves' && (
           <div className="space-y-4">
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <WaveEcosystemPanel />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <TidalSalinityPanel />
             </section>
           </div>
@@ -152,7 +149,7 @@ export default function OceanLensPage() {
         )}
 
         {activeTab === 'map' && (
-          <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Map className="w-4 h-4 text-cyan-400" /> Logged Spots
             </h3>
@@ -180,8 +177,7 @@ export default function OceanLensPage() {
         {/* Live Wikipedia oceanography reference. */}
         <WikipediaSearchPanel domain="ocean" title="Wikipedia · oceanography" />
       </div>
-
-      <a href="#ocean-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ocean content</a>      <CrossLensRecentsPanel lensId="ocean" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }

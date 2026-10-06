@@ -152,17 +152,23 @@ export default function WorldUnityShell() {
 
   if (panel === 'advanced') {
     return (
-      <div className="relative h-full min-h-0 w-full" data-testid="world-advanced-os">
-        <div className="pointer-events-auto absolute right-3 top-3 z-[80] flex gap-2">
+      <div className="relative flex h-full min-h-0 w-full flex-col" data-testid="world-advanced-os">
+        {/* Own row, not an absolute overlay: floating at top-right it sat on
+            top of the OS header's view toggle and swallowed clicks on
+            "District" (the DSL Editor / Snap Build tools live there). */}
+        <div className="pointer-events-auto flex shrink-0 justify-end gap-2 border-b border-white/10 bg-black/60 px-3 py-1.5">
           <button
             type="button"
+            data-testid="world-back-to-unity"
             onClick={() => setPanel(null)}
             className="rounded-lg border border-amber-500/40 bg-black/80 px-3 py-1.5 text-xs uppercase tracking-wide text-amber-200 hover:bg-amber-500/20"
           >
             ← Back to Unity
           </button>
         </div>
-        <WorldOsSurface />
+        <div className="min-h-0 flex-1">
+          <WorldOsSurface />
+        </div>
       </div>
     );
   }
@@ -223,6 +229,9 @@ export default function WorldUnityShell() {
             className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setPanel(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setPanel(null);
             }}
           >
             <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-zinc-950/95 p-4 shadow-2xl">

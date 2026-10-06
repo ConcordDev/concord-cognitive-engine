@@ -4,6 +4,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 
 // Stub the lens chrome so we exercise the spectate page's own data + state logic.
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) =>
     React.createElement(React.Fragment, null, children),

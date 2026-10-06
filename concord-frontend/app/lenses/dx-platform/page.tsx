@@ -10,10 +10,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Rocket, SlidersHorizontal, Terminal, Activity } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
@@ -30,13 +32,37 @@ interface OnboardingProgress {
   firstDebit?: boolean;
 }
 
+type DxView = 'start' | 'tune' | 'workbench' | 'pulse';
+
+const VIEWS: { id: DxView; label: string; keys: string; hint: string; icon: typeof Rocket }[] = [
+  { id: 'start', label: 'Get started', keys: '1', hint: 'Install, sign in, first detector, first debit', icon: Rocket },
+  { id: 'tune', label: 'Tune', keys: '2', hint: 'Per-codebase severity weights and shadow DTUs', icon: SlidersHorizontal },
+  { id: 'workbench', label: 'Workbench', keys: '3', hint: 'Chat with a codebase, review diffs, search, CI gate', icon: Terminal },
+  { id: 'pulse', label: 'Pulse', keys: '4', hint: 'Live developer-tooling pulse', icon: Activity },
+];
+
+const TITLES: Record<DxView, string> = {
+  start: 'Concord DX Platform',
+  tune: 'Make the lints yours',
+  workbench: 'Work the whole codebase',
+  pulse: 'How the tooling is running',
+};
+
 export default function DxPlatformPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<DxView>('start');
   useLensCommand([
-    { id: 'dx-platform-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
+    ...VIEWS.map((v) => ({
+      id: `dx-platform-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
   ], { lensId: 'dx-platform' });
 
   const [progress, setProgress] = useState<OnboardingProgress>({});
-  const [showWorkbench, setShowWorkbench] = useState(false);
 
   // Pull live progress from the server when available — falls back to
   // localStorage hint so anonymous browsers can still see the steps.
@@ -57,23 +83,25 @@ export default function DxPlatformPage() {
     } catch { /* anonymous user — skip */ }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   return (
     <LensShell lensId="dx-platform" asMain={false}>
       <FirstRunTour lensId="dx-platform" />
       <DepthBadge lensId="dx-platform" size="sm" className="ml-2" />
-      <div className="p-8 max-w-4xl mx-auto space-y-8">
-        <header>
-          <h1 className="text-3xl font-semibold">Concord DX Platform</h1>
-          <p className="text-zinc-400 mt-2 max-w-2xl">
-            Detectors, repair-cortex proposals, per-codebase severity tuning,
-            and shadow-DTU cross-file context — streamed live to your editor.
-            Pay-as-you-go via your Concord Coin wallet. Install the extension,
-            sign in once via your browser, and the rest is automatic.
-          </p>
-        </header>
-
+      <NorthStarFrame
+        lensId="dx-platform"
+        crumb="DX"
+        title={TITLES[view]}
+        subtitle={view === 'start' ? `Detectors, repair-cortex proposals, per-codebase severity tuning, and shadow-DTU cross-file context, streamed live to your editor${who ? `, ${who}` : ''}. Pay-as-you-go via your Concord Coin wallet.` : VIEWS.find((v) => v.id === view)!.hint}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as DxView)}
+        tabsLabel="DX views"
+        cta={{ label: 'Index a codebase', icon: Terminal, onClick: () => setView('workbench'), title: 'Open the DX workbench' }}
+      >
+        <div className="max-w-4xl space-y-8">
+{view === 'start' && (<>
         {/* Real IDE-chrome visual identity — this product IS an editor
             extension, so its landing page should read as one. The JSON
             snippet is a real, hand-written example of the exact shape
@@ -173,13 +201,18 @@ export default function DxPlatformPage() {
           <Card title="API keys" href="/api-keys">
             Issue / revoke / view scopes for your plugin keys (advanced).
           </Card>
-          <Card title="Per-codebase severity" href="/lenses/dx-platform#severity">
-            How weights tune over time — your fixes shape your team's lints.
-          </Card>
+          <button
+            type="button"
+            onClick={() => setView('tune')}
+            className="block rounded-2xl border border-white/10 bg-[#111] p-4 text-left hover:border-white/20"
+          >
+            <div className="font-medium">Per-codebase severity</div>
+            <div className="mt-1 text-sm text-zinc-400">How weights tune over time — your fixes shape your team&apos;s lints.</div>
+          </button>
         </section>
 
         {/* How it works (architecture, for the curious) */}
-        <section className="rounded border border-zinc-800 p-4 bg-zinc-950">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <h2 className="text-lg font-medium mb-2">How it works</h2>
           <ol className="list-decimal pl-5 space-y-1 text-zinc-400">
             <li>You sign in once via the browser (RFC 8252 loopback redirect to <code>/oauth/dx</code>).</li>
@@ -195,7 +228,7 @@ export default function DxPlatformPage() {
         </section>
 
         {/* Privacy */}
-        <section className="rounded border border-zinc-800 p-4 bg-zinc-950">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <h2 className="text-lg font-medium mb-2">Privacy</h2>
           <ul className="list-disc pl-5 space-y-1 text-zinc-400">
             <li><strong>Code never leaves your machine</strong> in the LSP path. Findings are computed locally by the bundled <code>concord-lsp</code>.</li>
@@ -205,6 +238,8 @@ export default function DxPlatformPage() {
           </ul>
         </section>
 
+</>)}
+{view === 'tune' && (<>
         {/* Per-codebase severity weights — the real dx.list_codebases /
             dx.list_weights registry the "Per-codebase severity" quick-link
             card above points at (id="severity"). */}
@@ -215,36 +250,25 @@ export default function DxPlatformPage() {
             with no frontend surface at all. */}
         <ShadowsPanel />
 
-        {/* DX workbench — chat-with-codebase, PR review, search, team
-            dashboard, detector config, usage analytics, CI integration */}
-        <section aria-labelledby="workbench-heading" className="space-y-3">
-          <button
-            type="button"
-            onClick={() => setShowWorkbench(v => !v)}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <h2 id="workbench-heading" className="text-lg font-medium">DX workbench</h2>
-            {showWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showWorkbench && (
-            <>
+</>)}
+{view === 'workbench' && (
+            <section aria-labelledby="workbench-heading" className="space-y-3">
+              <h2 id="workbench-heading" className="text-lg font-medium">DX workbench</h2>
               <p className="text-sm text-zinc-400">
                 Index a codebase by pasting files, then ask questions about it,
                 review diffs, search across files, share findings with a team,
                 tune detectors, track usage, and emit a CI gate — all in-browser.
               </p>
               <DxWorkbench />
-            </>
+            </section>
           )}
-        </section>
-
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <DevToolingPulse />
-        </section>
-      </div>
-
-      <a href="#dx-platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to dx-platform content</a>
-      {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}          <CrossLensRecentsPanel lensId="dx-platform" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {view === 'pulse' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <DevToolingPulse />
+          </section>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
@@ -253,7 +277,7 @@ function Step({
   n, title, done, children,
 }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
   return (
-    <div className={`rounded border p-4 ${done ? "border-emerald-700/40 bg-emerald-950/10" : "border-zinc-800 bg-zinc-950"}`}>
+    <div className={`rounded rounded-2xl border p-4 ${done ? "border-emerald-700/40 bg-emerald-950/10" : "border-white/10 bg-[#111]"}`}>
       <div className="flex items-center gap-3 mb-2">
         <span className={`grid place-items-center w-7 h-7 rounded-full font-semibold text-sm ${done ? "bg-emerald-600 text-zinc-950" : "bg-zinc-800 text-zinc-300"}`}>
           {done ? "✓" : n}
@@ -272,7 +296,7 @@ function ExtCard({ title, href, helper }: { title: string; href: string; helper:
       href={href}
       target={isExternal ? "_blank" : undefined}
       rel={isExternal ? "noreferrer" : undefined}
-      className="block rounded border border-zinc-800 p-3 hover:border-amber-500 transition"
+      className="block rounded-2xl border border-white/10 bg-[#111] p-3 hover:border-teal-400/60 transition"
     >
       <div className="font-medium text-stone-100">{title}</div>
       <div className="text-xs text-zinc-400 mt-1">{helper}</div>
@@ -288,7 +312,7 @@ function Card({ title, href, children }: { title: string; href: string; children
       href={href}
       target={isExternal ? "_blank" : undefined}
       rel={isExternal ? "noreferrer" : undefined}
-      className="block rounded border border-zinc-800 p-4 hover:border-zinc-700"
+      className="block rounded-2xl border border-white/10 bg-[#111] p-4 hover:border-white/20"
     >
       <div className="font-medium">{title}</div>
       <div className="text-sm text-zinc-400 mt-1">{children}</div>

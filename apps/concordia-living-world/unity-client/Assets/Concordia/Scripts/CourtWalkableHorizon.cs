@@ -244,9 +244,12 @@ namespace Concordia
 
             if (RenderSettings.fog)
             {
-                // Slightly denser than Court plate default so far HDRI peaks melt into mist.
+                // Enough fog that far HDRI peaks melt into mist. The old floor
+                // (0.027 exp2) also buried the Court itself — half fog at 30 m —
+                // so it matches HubLook.EnsureCourtAtmosphere's 0.013 now:
+                // ~70% visible at 50 m, >97% fog past 150 m.
                 float d = RenderSettings.fogDensity;
-                if (d < 0.026f) HubLook.LiveFog(0.027f);
+                if (d < 0.012f) HubLook.LiveFog(0.013f);
             }
         }
 

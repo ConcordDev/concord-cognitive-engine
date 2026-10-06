@@ -19,10 +19,13 @@ import {
   Trophy,
   Users,
   Zap,
+  Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -30,8 +33,6 @@ import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -83,6 +84,8 @@ export default function SportsLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('sports');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SportsView>('scores');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -109,61 +112,41 @@ export default function SportsLensPage() {
     [reduceMotion],
   );
 
+  const titles: Record<SportsView, string> = {
+    scores: `Catch the score${who ? `, ${who}` : ''}`,
+    club: 'Follow your teams',
+    matches: 'Track your fixtures',
+    stats: 'Read your record',
+    training: 'Log the work',
+    leagues: 'Run the league',
+    spectator: 'Call the game',
+    activity: 'Work the numbers',
+  };
+
   return (
     <LensShell lensId="sports" asMain={false}>
       <FirstRunTour lensId="sports" />
       <DepthBadge lensId="sports" size="sm" className="ml-2" />
-      <div data-lens-theme="sports" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Trophy className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Sports</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="sports" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                ESPN scores + FotMob fixtures — live board, personal matches, leagues.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Sports views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
+      <NorthStarFrame
+        lensId="sports"
+        crumb="Sports"
+        title={titles[active]}
+        subtitle="ESPN scores + FotMob fixtures: live board, personal matches, leagues."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="sports" data={realtimeData || {}} compact />
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as SportsView)}
+        tabsLabel="Sports views"
+        cta={{ label: 'Log a match', icon: Plus, onClick: () => setActive('matches'), title: 'Open personal fixtures (3)' }}
+      >
 
         <AnimatePresence mode="wait">
-          <motion.div key={active} {...motionProps} className="pt-4">
+          <motion.div key={active} {...motionProps}>
             {active === 'scores' && (
               <div className="space-y-4">
                 <LiveScoreboard />
@@ -186,8 +169,7 @@ export default function SportsLensPage() {
           <LensFeedButton domain="sports" label="Live fixtures feed" />
         </section>
         <SessionRail lensId="sports" hideWhenEmpty />
-        <CrossLensRecentsPanel lensId="sports" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

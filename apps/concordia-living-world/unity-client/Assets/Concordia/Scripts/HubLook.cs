@@ -279,8 +279,10 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.12f + 0.18f * sun01;
                 RenderSettings.reflectionIntensity = 0.55f + 0.55f * sun01;
                 // Lit fog (matches key), not a dark wash.
-                var fogDay = new Color(0.35f, 0.62f, 0.68f);   // north-star teal mist
-                var fogNight = new Color(0.14f, 0.28f, 0.34f);
+                // North-star teal mist, muted (the saturated 0.35,0.62,0.68 turned every
+                // distant building into a flat teal cut-out); matches EnsureCourtAtmosphere.
+                var fogDay = new Color(0.50f, 0.60f, 0.64f);
+                var fogNight = new Color(0.16f, 0.24f, 0.28f);
                 RenderSettings.fogColor = Color.Lerp(fogNight, fogDay, sun01);
                 LiveFog(0.006f + 0.004f * night);
                 TryHdrSky(world);
@@ -1078,12 +1080,16 @@ namespace Concordia
         {
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            var teal = new Color(0.35f, 0.62f, 0.68f);
-            RenderSettings.fogColor = teal;
-            // Denser RenderSettings fog for teal depth — NOT HubVolumeFog (washes Court white).
-            // SLICE 1: keep fog high enough that far HDRI peaks melt behind CourtHorizonMask.
-            if (_openFog < 0f || _openFog > 0.032f) LiveFog(0.027f);
-            else LiveFog(Mathf.Clamp(_openFog, 0.024f, 0.030f));
+            // Muted blue-grey haze. At the old saturated teal (0.35,0.62,0.68) and
+            // exp2 density 0.027, everything 30 m out was half fog and 50 m out
+            // ~84% — the Court's buildings read as flat teal cut-outs (look
+            // captures, 2026-09-30). 0.013 keeps ~70% visibility at 50 m while far
+            // HDRI peaks (150 m+) still melt behind CourtHorizonMask.
+            var haze = new Color(0.50f, 0.60f, 0.64f);
+            RenderSettings.fogColor = haze;
+            // RenderSettings fog, NOT HubVolumeFog (washes Court white).
+            if (_openFog < 0f || _openFog > 0.020f) LiveFog(0.013f);
+            else LiveFog(Mathf.Clamp(_openFog, 0.010f, 0.016f));
             CourtWalkableHorizon.SoftenSkyband();
 
             var sun = RenderSettings.sun;
@@ -2180,7 +2186,27 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
             }
             var r = go.GetComponent<Renderer>();
             if (r && mat) r.sharedMaterial = mat;
+            if (r && mat && (t == PrimitiveType.Cube || t == PrimitiveType.Cylinder)) WorldTile(r, mat, scale);
             return go;
+        }
+
+        /// Pbr materials are cached and shared, with a fixed repeat count per face,
+        /// so a 40 m x 3.6 m road deck got the same repeats both ways — the texture
+        /// stretched ~11x along the street (the streaked "planks" on the Court).
+        /// Give each cube surface tiling proportional to its real size instead:
+        /// the material's tile counts as repeats per 8 m, so texels stay square.
+        /// A Cube's top face and a Cylinder's caps map U to local X and V to local Z.
+        static void WorldTile(Renderer r, Material mat, Vector3 scale)
+        {
+            if (!mat.HasProperty("_BaseMap") || !mat.GetTexture("_BaseMap")) return;
+            float perMeter = mat.GetTextureScale("_BaseMap").x / 8f;
+            if (perMeter <= 0f) return;
+            var mpb = new MaterialPropertyBlock();
+            r.GetPropertyBlock(mpb);
+            mpb.SetVector("_BaseMap_ST", new Vector4(
+                Mathf.Max(0.25f, Mathf.Abs(scale.x) * perMeter),
+                Mathf.Max(0.25f, Mathf.Abs(scale.z) * perMeter), 0f, 0f));
+            r.SetPropertyBlock(mpb);
         }
 
         /// Hides the primitive's renderer and nests a real model scaled into its footprint.

@@ -74,7 +74,6 @@ export function MaterialShortlist() {
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Material Shortlist</h3>
-        <span className="text-[11px] text-zinc-400">Granta MI shape</span>
         {dashboard && dashboard.shortlisted > 0 && (
           <span className="text-[11px] text-zinc-400">
             &middot; {dashboard.shortlisted} shortlisted across {Object.keys(dashboard.byCategory).length} categor{Object.keys(dashboard.byCategory).length === 1 ? 'y' : 'ies'}

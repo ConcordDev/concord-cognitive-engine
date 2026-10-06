@@ -54,6 +54,51 @@ namespace Concordia // keep-spawn-assign
         }
 
         /// <summary>
+        /// Populate(root, id, includePeople: false), spread across frames: the
+        /// same steps in the same order with the same results, yielding between
+        /// steps (and between Hub birds). Run in one frame from the Hub's
+        /// post-ready dressing, Populate held the frame 3.4 s in the editor —
+        /// many times that on WebGL, which froze the browser build (LookCapture
+        /// perf, 2026-09-30). Steps over 30 ms are logged as [HubStageCost].
+        /// </summary>
+        public static System.Collections.IEnumerator PopulateStaged(Transform root, WorldId id)
+        {
+            var w = Canon.Get(id);
+            if (id != WorldId.Hub) { Timed("RealmFill.DressKit", () => DressKit(root, w)); yield return null; }
+            Timed("RealmFill.Factions", () => Factions(root, w)); yield return null;
+            Timed("RealmFill.Kingdoms", () => Kingdoms(root, w)); yield return null;
+            if (id != WorldId.Hub) { Timed("RealmFill.Roads", () => Roads(root, w)); yield return null; }
+            Timed("RealmFill.Lore", () => Lore(root, w)); yield return null;
+            UnityEngine.Debug.Log("[Concordia] RealmFill: people deferred for staged bind on " + id);
+            Timed("RealmFill.Quests", () => Quests(root, w)); yield return null;
+            if (id != WorldId.Hub)
+            {
+                Timed("RealmFill.Beasts", () => Beasts(root, w)); yield return null;
+                Timed("RealmFill.DungeonHold", () => DungeonHold.Build(root, w)); yield return null;
+            }
+            else
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    bool placed = true;
+                    Timed("RealmFill.HubBird " + i, () => placed = HubBird(root, w, i));
+                    yield return null;
+                    if (!placed) break;
+                }
+            }
+        }
+
+        static void Timed(string name, System.Action step)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try { step(); }
+            catch (System.Exception ex) { UnityEngine.Debug.LogException(ex); }
+            sw.Stop();
+            if (sw.ElapsedMilliseconds > 30)
+                UnityEngine.Debug.Log($"[HubStageCost] {name} held the frame {sw.ElapsedMilliseconds} ms");
+        }
+
+        /// <summary>
         /// Playable Alive Slice rank 3: ambient flock, Hub only (Beasts() is
         /// deliberately skipped for Hub — no monsters in the Flower Law court).
         /// This is the live caller CreatureCompiler.PickBird() was missing —
@@ -65,21 +110,27 @@ namespace Concordia // keep-spawn-assign
         static void HubBirds(Transform root, WorldDef w)
         {
             for (int i = 0; i < 8; i++)
+                if (!HubBird(root, w, i)) break;
+        }
+
+        /// One bird of the Hub flock; false when the compiler can't build one
+        /// (the flock stops there, as before).
+        static bool HubBird(Transform root, WorldDef w, int i)
+        {
+            var go = CreatureCompiler.Compile(root, new CreatureCard
             {
-                var go = CreatureCompiler.Compile(root, new CreatureCard
-                {
-                    id = "hub-flock-" + i,
-                    speciesId = "",
-                    topology = "winged_biped",
-                    generation = 0,
-                    fly = true,
-                    lifestyle = "omnivore",
-                }, Vector3.zero, w);
-                if (!go) break;
-                var orbit = go.GetComponent<FlockOrbit>() ?? go.AddComponent<FlockOrbit>();
-                orbit.radius = 10f + (i % 5) * 3.2f;
-                orbit.height = 6.5f + (i % 4) * 1.4f;
-            }
+                id = "hub-flock-" + i,
+                speciesId = "",
+                topology = "winged_biped",
+                generation = 0,
+                fly = true,
+                lifestyle = "omnivore",
+            }, Vector3.zero, w);
+            if (!go) return false;
+            var orbit = go.GetComponent<FlockOrbit>() ?? go.AddComponent<FlockOrbit>();
+            orbit.radius = 10f + (i % 5) * 3.2f;
+            orbit.height = 6.5f + (i % 4) * 1.4f;
+            return true;
         }
 
         static void DressKit(Transform root, WorldDef w)

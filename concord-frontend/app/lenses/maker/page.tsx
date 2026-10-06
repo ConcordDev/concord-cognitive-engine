@@ -5,16 +5,16 @@
  * Thin shell: single `active` union → panels. Macros live in panels.
  */
 
-import { useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { AppWindow, Wand2, Sparkles, Hammer, GitBranch, LayoutGrid } from 'lucide-react';
+import { useCallback, useState, type ComponentType } from 'react';
+import { AppWindow, Wand2, Sparkles, Hammer, GitBranch, LayoutGrid, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { ProjectBuilder } from '@/components/maker/ProjectBuilder';
 import { QuestGraphEditor } from '@/components/maker/QuestGraphEditor';
@@ -25,13 +25,13 @@ import { CreativePanel } from '@/components/maker/CreativePanel';
 
 type MakerView = 'builder' | 'designer' | 'apps' | 'quests' | 'creative' | 'showcase';
 
-const VIEWS: { id: MakerView; label: string; keys: string; icon: typeof Hammer }[] = [
-  { id: 'builder', label: 'Builder', keys: 'b', icon: Hammer },
-  { id: 'designer', label: 'Quest Designer', keys: 'd', icon: GitBranch },
-  { id: 'apps', label: 'Apps', keys: 'a', icon: AppWindow },
-  { id: 'quests', label: 'Quests', keys: 'q', icon: Wand2 },
-  { id: 'creative', label: 'Creative', keys: 'c', icon: Sparkles },
-  { id: 'showcase', label: 'Showcase', keys: 's', icon: LayoutGrid },
+const VIEWS: { id: MakerView; label: string; keys: string; title: string; hint: string; blurb: string; icon: typeof Hammer }[] = [
+  { id: 'builder', label: 'Builder', keys: 'b', title: 'The make', hint: 'No-code app builder', blurb: 'Drag components onto a canvas, model data, bind sources, wire workflows, snapshot versions, and deploy. No code.', icon: Hammer },
+  { id: 'designer', label: 'Quest Designer', keys: 'd', title: 'The branching path', hint: 'Quest node-graph designer', blurb: 'Author branching quests as a node graph (steps, choices, rewards and endings) and validate the structure.', icon: GitBranch },
+  { id: 'apps', label: 'Apps', keys: 'a', title: 'What you have built', hint: 'Your apps', blurb: '', icon: AppWindow },
+  { id: 'quests', label: 'Quests', keys: 'q', title: 'Quests in the world', hint: 'Quests', blurb: '', icon: Wand2 },
+  { id: 'creative', label: 'Creative', keys: 'c', title: 'Generate something', hint: 'Creative generation', blurb: '', icon: Sparkles },
+  { id: 'showcase', label: 'Showcase', keys: 's', title: 'What makers shipped', hint: 'Showcase', blurb: '', icon: LayoutGrid },
 ];
 
 const PANELS: Record<MakerView, ComponentType> = {
@@ -45,104 +45,85 @@ const PANELS: Record<MakerView, ComponentType> = {
 
 export default function MakerLensPage() {
   useLensNav('maker');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MakerView>('builder');
 
+  const newMake = useCallback(() => {
+    setActive('builder');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="maker"] input[placeholder="New app name"]');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
+      if (++tries < 20) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, []);
+
   useLensCommand(
-    VIEWS.map((v) => ({
-      id: `tab-${v.id}`,
-      keys: v.keys,
-      description: v.label,
-      category: 'navigation' as const,
-      action: () => setActive(v.id),
-    })),
+    [
+      ...VIEWS.map((v) => ({
+        id: `tab-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'maker-new', keys: 'n', description: 'New make (name a new app)', category: 'actions' as const, action: newMake },
+    ],
     { lensId: 'maker' },
   );
 
   const Panel = PANELS[active];
+  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="maker" asMain={false}>
       <FirstRunTour lensId="maker" />
       <DepthBadge lensId="maker" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="maker" className="mx-6 mt-4" />
-      <div className="min-h-screen bg-black pb-12 text-pink-50">
-        <header className="sticky top-0 z-10 border-b border-pink-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Wand2 className="h-6 w-6 text-pink-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Maker</h1>
-              <p className="text-xs text-pink-700">Apps · Quests · Creative generation</p>
-            </div>
-          </div>
-        </header>
+      <div data-lens-theme="maker" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Maker</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {current.title}{active === 'builder' && who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="border-b border-pink-900/30 px-4 md:px-8" aria-label="Maker sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {VIEWS.map(({ id, label, keys, icon: Icon }) => {
-              const on = active === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setActive(id)}
-                  className={cn(
-                    'flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-pink-400',
-                    on
-                      ? 'border-pink-400 text-pink-200'
-                      : 'border-transparent text-pink-700 hover:text-pink-400',
-                  )}
-                  aria-pressed={on}
-                >
-                  <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-                  <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                    {keys}
-                  </kbd>
-                </button>
-              );
-            })}
-          </div>
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Maker sections">
+          {VIEWS.map(({ id, label, keys, hint, icon: Icon }) => {
+            const on = active === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActive(id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${hint} (${keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{keys}</kbd>
+              </button>
+            );
+          })}
         </nav>
 
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2 }}
-            >
-              {active === 'builder' && (
-                <>
-                  <h2 className="mb-3 text-base font-semibold text-pink-200">No-code app builder</h2>
-                  <p className="mb-3 text-xs text-pink-700">
-                    Drag components onto a canvas, model data, bind sources, wire workflows,
-                    snapshot versions, and deploy — no code.
-                  </p>
-                </>
-              )}
-              {active === 'designer' && (
-                <>
-                  <h2 className="mb-3 text-base font-semibold text-pink-200">Quest designer</h2>
-                  <p className="mb-3 text-xs text-pink-700">
-                    Author branching quests as a node graph — steps, choices, rewards and endings —
-                    and validate the structure.
-                  </p>
-                </>
-              )}
-              <Panel />
-            </motion.div>
-          </AnimatePresence>
-        </main>
+        {current.blurb && <p className="mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-500">{current.blurb}</p>}
+        <Panel />
 
-        <CrossLensRecentsPanel
-          lensId="maker"
-          sinceDays={7}
-          limit={6}
-          hideWhenEmpty
-          className="mt-3 px-4 md:px-8"
-        />
+        <CrossLensRecentsPanel lensId="maker" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={newMake}
+          title="New make (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Plus className="h-4 w-4" />
+          New make
+        </button>
       </div>
     </LensShell>
   );

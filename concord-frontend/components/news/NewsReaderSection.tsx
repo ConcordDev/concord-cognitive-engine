@@ -44,7 +44,7 @@ export function NewsReaderSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-rose-600/15 to-transparent">
         <Newspaper className="w-5 h-5 text-rose-400" />
         <h2 className="text-sm font-bold text-zinc-100">News</h2>
-        <span className="text-[11px] text-zinc-400">Apple News shape — personalized reader</span>
+        <span className="text-[11px] text-zinc-400">Personalized reader</span>
       </header>
 
       {loading ? (

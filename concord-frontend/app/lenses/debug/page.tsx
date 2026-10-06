@@ -8,7 +8,8 @@
  * Page is a thin shell; each view owns its hooks.
  */
 
-import { useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useMemo, useState, type ComponentType } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Bug,
@@ -26,6 +27,8 @@ import {
   FileCode,
   ShieldAlert,
   Play,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -38,7 +41,9 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
+import { useAuth } from '@/hooks/useAuth';
+import { useUIStore } from '@/store/ui';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 import { StatusPanel } from '@/components/debug/StatusPanel';
@@ -117,16 +122,35 @@ export default function DebugLensPage() {
   useLensIdentity('debug');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debug');
   const reduceMotion = useReducedMotion();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DebugView>('status');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshDiagnostics = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.refetchQueries({ type: 'active' });
+      useUIStore.getState().addToast({ type: 'success', message: 'Diagnostics refreshed.' });
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: (e as Error).message || 'Refresh failed.' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   useLensCommand(
-    VIEWS.map((v) => ({
-      id: `view-${v.id}`,
-      keys: v.keys,
-      description: `${v.label} — ${v.hint}`,
-      category: 'navigation' as const,
-      action: () => setActive(v.id),
-    })),
+    [
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'debug-refresh', keys: 'shift+r', description: 'Refresh diagnostics', category: 'actions' as const, action: () => void refreshDiagnostics() },
+    ],
     { lensId: 'debug' },
   );
 
@@ -144,28 +168,49 @@ export default function DebugLensPage() {
     [reduceMotion],
   );
 
+  const current = VIEWS.find((v) => v.id === active)!;
+
   return (
     <LensShell lensId="debug" asMain={false}>
       <FirstRunTour lensId="debug" />
       <DepthBadge lensId="debug" size="sm" className="ml-2" />
-      <div data-lens-theme="debug" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <Bug className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Debug</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="debug" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                Sentry + Datadog — issues, traces, metrics, releases, diagnostics.
-              </p>
-            </div>
+      <div data-lens-theme="debug" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Debug</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {active === 'status' ? `What is happening${who ? `, ${who}` : ''}` : current.hint}
+            </h1>
           </div>
-        </header>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="debug" data={realtimeData || {}} compact />
+          </div>
+        </div>
+
+        <nav className="mb-6 inline-flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-white/10 bg-white/[0.03] p-1" aria-label="Debug views">
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {v.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
         <RealtimeDataPanel
           domain="debug"
@@ -176,36 +221,6 @@ export default function DebugLensPage() {
           compact
         />
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Debug views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
         <main className="min-w-0 pt-4">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
@@ -214,7 +229,18 @@ export default function DebugLensPage() {
           </AnimatePresence>
         </main>
 
-        <CrossLensRecentsPanel lensId="debug" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel lensId="debug" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => void refreshDiagnostics()}
+          disabled={refreshing}
+          title="Refresh diagnostics (Shift R)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {refreshing ? 'Refreshing…' : 'Refresh diagnostics'}
+        </button>
       </div>
     </LensShell>
   );

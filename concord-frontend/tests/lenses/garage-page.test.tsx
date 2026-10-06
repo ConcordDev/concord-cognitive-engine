@@ -43,6 +43,8 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 import GarageLensPage from '@/app/lenses/garage/page';
 
 function ok(result: unknown) {

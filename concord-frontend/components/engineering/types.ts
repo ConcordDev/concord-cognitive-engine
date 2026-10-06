@@ -79,28 +79,29 @@ export type EngView =
   | 'bom'
   | 'tolerance'
   | 'calcs'
+  | 'physics'
   | 'results'
   | 'feed'
   | 'actions';
 
-export const DEFAULT_FEA_MODEL: FEAModel = {
-  nodes: [
-    { id: 'N1', x: 0, y: 0, z: 0 },
-    { id: 'N2', x: 0, y: 12, z: 0 },
-    { id: 'N3', x: 20, y: 12, z: 0 },
-    { id: 'N4', x: 20, y: 0, z: 0 },
-  ],
-  members: [
-    { id: 'M1', nodeI: 'N1', nodeJ: 'N2', area: 8.25, momentI: 82.8, elasticModulus: 29e6, allowableStress: 21600, material: 'A36 Steel' },
-    { id: 'M2', nodeI: 'N2', nodeJ: 'N3', area: 11.8, momentI: 171, elasticModulus: 29e6, allowableStress: 21600, material: 'A36 Steel' },
-    { id: 'M3', nodeI: 'N4', nodeJ: 'N3', area: 8.25, momentI: 82.8, elasticModulus: 29e6, allowableStress: 21600, material: 'A36 Steel' },
-  ],
-  loads: [
-    { nodeId: 'N2', Fy: -10000 },
-    { nodeId: 'N3', Fy: -10000 },
-  ],
-  supports: [
-    { nodeId: 'N1', type: 'fixed', fixedDOF: ['x', 'y', 'z', 'rx', 'ry', 'rz'] },
-    { nodeId: 'N4', type: 'fixed', fixedDOF: ['x', 'y', 'z', 'rx', 'ry', 'rz'] },
-  ],
+/**
+ * The model starts EMPTY. It used to be pre-filled with a sample portal
+ * frame, so "Run FEA" solved a structure the user never built and the
+ * result looked like theirs. Now the user adds their own nodes, members,
+ * supports and loads before anything is solved.
+ */
+export const EMPTY_FEA_MODEL: FEAModel = {
+  nodes: [],
+  members: [],
+  loads: [],
+  supports: [],
 };
+
+/** Why a model can't be solved yet, or null when it can. */
+export function feaModelGap(model: FEAModel): string | null {
+  if (model.nodes.length < 2) return 'add at least two nodes';
+  if (model.members.length < 1) return 'add a member between two nodes';
+  if (model.supports.length < 1) return 'fix at least one support';
+  if (model.loads.length < 1) return 'add a load';
+  return null;
+}

@@ -9,6 +9,7 @@
 //   knowledge_trade.mentorship_list_for_student — student-facing list
 //   knowledge_trade.mentorship_list_for_mentor  — mentor-facing list
 //   knowledge_trade.witness — record a player demonstration that an NPC saw
+//   knowledge_trade.mentor_recipes — what an NPC can teach (requestable recipes)
 
 import {
   requestMentorship,
@@ -16,6 +17,7 @@ import {
   listMentorshipsForStudent,
   listMentorshipsForMentor,
   recordDemonstration,
+  listTeachableRecipes,
 } from "../lib/mentorship.js";
 
 export default function registerKnowledgeTradeMacros(register) {
@@ -28,12 +30,25 @@ export default function registerKnowledgeTradeMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const studentUserId = ctx?.actor?.userId;
     if (!studentUserId) return { ok: false, reason: "no_actor" };
-    return requestMentorship(db, {
+    const res = requestMentorship(db, {
       mentorNpcId: input.mentorNpcId,
       studentUserId,
       recipeDtuId: input.recipeDtuId,
     });
+    // Mirror the reason into `error` so lens callers can show why it was refused.
+    return res && res.ok === false && !res.error ? { ...res, error: res.reason } : res;
   }, { note: "request mentorship from an NPC" });
+
+  /**
+   * knowledge_trade.mentor_recipes
+   * input: { mentorNpcId }
+   */
+  register("knowledge_trade", "mentor_recipes", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!input.mentorNpcId) return { ok: false, reason: "missing_inputs" };
+    return { ok: true, recipes: listTeachableRecipes(db, String(input.mentorNpcId)) };
+  }, { note: "recipes an NPC can teach" });
 
   /**
    * knowledge_trade.mentorship_complete_session

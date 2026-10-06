@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { BookOpen, PenLine, Quote } from 'lucide-react';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -17,42 +22,57 @@ import { cn } from '@/lib/utils';
 
 type DailyView = 'journal' | 'studio' | 'inspiration';
 
-const TABS: { id: DailyView; label: string; icon: typeof BookOpen; keys: string }[] = [
-  { id: 'journal', label: 'Today', icon: BookOpen, keys: 'j' },
-  { id: 'studio', label: 'Studio', icon: PenLine, keys: 's' },
-  { id: 'inspiration', label: 'Inspiration', icon: Quote, keys: 'i' },
+const TABS: { id: DailyView; label: string; title: string; hint: string; icon: typeof BookOpen; keys: string }[] = [
+  { id: 'journal', label: 'Today', title: 'Today', hint: 'Mood, habits, reminders and the day journal', icon: BookOpen, keys: 'j' },
+  { id: 'studio', label: 'Studio', title: 'Write it down', hint: 'Journal studio', icon: PenLine, keys: 's' },
+  { id: 'inspiration', label: 'Inspiration', title: 'Something to start from', hint: 'Quotes and prompts', icon: Quote, keys: 'i' },
 ];
 
 export default function DailyLensPage() {
   useLensNav('daily');
   useLensIdentity('daily');
   const reduceMotion = useReducedMotion();
+  const { isLive, lastUpdated } = useRealtimeLens('daily');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DailyView>('journal');
+  const dateTitle = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const current = TABS.find((t) => t.id === view)!;
 
   useLensCommand(
-    TABS.map((t) => ({
-      id: `goto-${t.id}`,
-      keys: t.keys,
-      description: t.label,
-      category: 'navigation' as const,
-      action: () => setView(t.id),
-    })),
+    [
+      ...TABS.map((t) => ({
+        id: `goto-${t.id}`,
+        keys: t.keys,
+        description: t.label,
+        category: 'navigation' as const,
+        action: () => setView(t.id),
+      })),
+      { id: 'daily-write', keys: 'w', description: 'Write today', category: 'actions' as const, action: () => setView('studio') },
+    ],
     { lensId: 'daily' },
   );
 
   return (
     <LensShell lensId="daily" asMain={false}>
       <FirstRunTour lensId="daily" />
-      <div data-lens-theme="daily" className="h-[calc(100vh-4rem)] flex flex-col bg-lattice-deep text-white overflow-hidden">
-        <header className="shrink-0 px-4 pt-3 pb-2 border-b border-lattice-border flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-amber-100">Daily</h1>
-              <DepthBadge lensId="daily" size="sm" />
+      <DepthBadge lensId="daily" size="sm" className="ml-2" />
+      <div data-lens-theme="daily" className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden text-white">
+        <header className="shrink-0 px-8 pt-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[14px] text-zinc-500">Daily · {current.title}</p>
+              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+                {view === 'journal' ? dateTitle : current.title}
+              </h1>
             </div>
-            <p className="text-xs text-white/45 mt-0.5">Journal, mood, habits — one desk.</p>
+            <div className="flex shrink-0 items-center gap-3 pt-2">
+              {who && <span className="hidden text-[13px] text-zinc-500 sm:inline">{who}</span>}
+              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+              <DTUExportButton domain="daily" data={{}} compact />
+            </div>
           </div>
-          <nav aria-label="Daily views" className="flex items-center gap-1">
+          <nav aria-label="Daily views" className="mb-4 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1">
             {TABS.map((t) => {
               const Icon = t.icon;
               const active = view === t.id;
@@ -61,16 +81,16 @@ export default function DailyLensPage() {
                   key={t.id}
                   type="button"
                   onClick={() => setView(t.id)}
+                  aria-current={active ? 'page' : undefined}
+                  title={`${t.hint} (${t.keys})`}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                    active
-                      ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
-                      : 'text-white/55 hover:text-white hover:bg-white/5 border border-transparent',
+                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                   )}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="h-3.5 w-3.5" />
                   {t.label}
-                  <kbd className="hidden sm:inline font-mono text-[10px] text-white/30">{t.keys}</kbd>
+                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
                 </button>
               );
             })}
@@ -87,20 +107,30 @@ export default function DailyLensPage() {
           >
             {view === 'journal' && <DailyTodayPanel />}
             {view === 'studio' && (
-              <div className="h-full overflow-y-auto p-4">
+              <div className="h-full overflow-y-auto px-8 py-2">
                 <JournalStudio />
               </div>
             )}
             {view === 'inspiration' && (
-              <div className="h-full overflow-y-auto p-4 max-w-3xl">
+              <div className="h-full max-w-3xl overflow-y-auto px-8 py-2">
                 <DailyInspiration />
               </div>
             )}
           </motion.div>
         </AnimatePresence>
-        <div className="shrink-0 px-4 py-2">
+        <div className="shrink-0 px-8 py-2">
           <CrossLensRecentsPanel lensId="daily" sinceDays={7} limit={6} hideWhenEmpty />
         </div>
+
+        <button
+          type="button"
+          onClick={() => setView('studio')}
+          title="Write today (W)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <PenLine className="h-4 w-4" />
+          Write
+        </button>
       </div>
     </LensShell>
   );

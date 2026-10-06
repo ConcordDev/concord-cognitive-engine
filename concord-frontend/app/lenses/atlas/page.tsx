@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AtlasSection } from '@/components/atlas/AtlasSection';
@@ -11,10 +14,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { PipingProvider } from '@/components/panel-polish';
 import { SafeCard } from '@/components/common/SafeCard';
-import { motion } from 'framer-motion';
 import {
   Map, Layers, Radio, AlertTriangle, RefreshCw,
-  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info, ShieldCheck, Search,
+  Compass, Globe, Radar, Loader2, MapPinned, Info, ShieldCheck, Search,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapMarker } from '@/components/common/MapView';
@@ -32,74 +34,68 @@ const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: fals
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type Mode = 'map' | 'tomography';
 type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage' | 'privacy' | 'query';
 
 // ── Component ──────────────────────────────────────────────────────────────
 
+type AtlasView = 'map' | TomoTab;
+
+const VIEWS: { id: AtlasView; label: string; keys: string; title: string; hint: string; icon: typeof Map }[] = [
+  { id: 'map', label: 'Map & trips', keys: 'g m', title: 'Where to next', hint: 'Places, trips and navigation', icon: MapPinned },
+  { id: 'terrain', label: 'Terrain', keys: 'g t', title: 'What the ground is made of', hint: 'Reconstructed terrain and material for a tile', icon: Map },
+  { id: 'signals', label: 'Signals', keys: 'g s', title: 'What the air is carrying', hint: 'Signal taxonomy, spectrum and classification', icon: Radio },
+  { id: 'anomalies', label: 'Anomalies', keys: 'g a', title: 'What changed that should not have', hint: 'Detected signal anomalies', icon: AlertTriangle },
+  { id: 'coverage', label: 'Coverage', keys: 'g c', title: 'How much of the world is mapped', hint: 'Tomography coverage', icon: Layers },
+  { id: 'privacy', label: 'Privacy', keys: 'g p', title: 'What the atlas refuses to see', hint: 'Privacy zones and interior-never-generated verification', icon: ShieldCheck },
+  { id: 'query', label: 'Query', keys: 'g q', title: 'Ask the atlas a spatial question', hint: 'Spatial queries', icon: Search },
+];
+
 export default function AtlasLensPage() {
   useLensNav('atlas');
-  const [mode, setMode] = useState<Mode>('map');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<AtlasView>('map');
 
   useLensCommand(
-    [
-      { id: 'mode-map', keys: 'g m', description: 'Map & trips', category: 'navigation', action: () => setMode('map') },
-      { id: 'mode-tomo', keys: 'g s', description: 'Signal tomography', category: 'navigation', action: () => setMode('tomography') },
-    ],
+    VIEWS.map((v) => ({
+      id: `atlas-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
     { lensId: 'atlas' }
   );
+
+  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="atlas" asMain={false}>
       <FirstRunTour lensId="atlas" />
-      <div data-lens-theme="atlas" className="min-h-screen bg-lattice-void text-gray-100 p-4 sm:p-6 space-y-4">
-        {/* Header + mode toggle. Two distinct backends live under this one
-            lens: a real Google-Maps-parity places/trips/directions tool
-            (server/domains/atlas.js) and a sci-fi signal-tomography
-            reconstruction concept (server/lib/foundation-atlas.js +
-            atlas-signal-cortex.js). See docs/lens-specs/atlas-capability-map.md
-            for why these are two modes instead of one blended surface. */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center">
-              <Map className="w-5 h-5 text-teal-400" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Atlas</h1>
-              <p className="text-sm text-gray-400">{mode === 'map' ? 'Places, trips & navigation' : 'Signal tomography & spatial intelligence'}</p>
-            </div>
-            <DepthBadge lensId="atlas" size="sm" className="ml-1" />
-          </div>
-          <div className="flex items-center gap-1 rounded-lg bg-lattice-surface border border-lattice-border p-1" role="tablist" aria-label="Atlas mode">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'map'}
-              onClick={() => setMode('map')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'map' ? 'bg-teal-500/20 text-teal-200' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              <MapPinned className="w-3.5 h-3.5" /> Map &amp; trips
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'tomography'}
-              onClick={() => setMode('tomography')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'tomography' ? 'bg-purple-500/20 text-purple-200' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              <Satellite className="w-3.5 h-3.5" /> Signal tomography
-            </button>
-          </div>
-        </div>
-
-        {mode === 'map' ? (
+      <DepthBadge lensId="atlas" size="sm" className="ml-2" />
+      {/* Two distinct backends live under this one lens: a real Google-Maps-parity
+          places/trips/directions tool (server/domains/atlas.js) and a signal-tomography
+          reconstruction product (server/lib/foundation-atlas.js + atlas-signal-cortex.js).
+          See docs/lens-specs/atlas-capability-map.md for why they stay separate views. */}
+      <NorthStarFrame
+        lensId="atlas"
+        crumb="Atlas"
+        title={`${current.title}${view === 'map' && who ? `, ${who}` : ''}`}
+        subtitle={view === 'map' ? 'Places, trips and navigation' : 'Signal tomography and spatial intelligence'}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as AtlasView)}
+        tabsLabel="Atlas views"
+        cta={{ label: 'Query a tile', icon: Compass, onClick: () => setView('terrain'), title: 'Look up reconstructed terrain for a latitude/longitude' }}
+      >
+        {view === 'map' ? (
           <PipingProvider>
             <AtlasSection />
           </PipingProvider>
         ) : (
-          <SignalTomography />
+          <SignalTomography tab={view} setTab={setView} />
         )}
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
@@ -115,8 +111,7 @@ export default function AtlasLensPage() {
 // zero results until that pipeline exists. The banner below says so
 // explicitly instead of leaving the user to guess why every panel is blank.
 
-function SignalTomography() {
-  const [tab, setTab] = useState<TomoTab>('terrain');
+function SignalTomography({ tab, setTab }: { tab: TomoTab; setTab: (t: TomoTab) => void }) {
   const [queryLat, setQueryLat] = useState('');
   const [queryLng, setQueryLng] = useState('');
 
@@ -188,15 +183,6 @@ function SignalTomography() {
     refetchTile();
   }
 
-  const TABS: { id: TomoTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'terrain', label: 'Terrain', icon: <Map className="w-4 h-4" /> },
-    { id: 'signals', label: 'Signals', icon: <Radio className="w-4 h-4" /> },
-    { id: 'anomalies', label: 'Anomalies', icon: <AlertTriangle className="w-4 h-4" /> },
-    { id: 'coverage', label: 'Coverage', icon: <Layers className="w-4 h-4" /> },
-    { id: 'privacy', label: 'Privacy', icon: <ShieldCheck className="w-4 h-4" /> },
-    { id: 'query', label: 'Query', icon: <Search className="w-4 h-4" /> },
-  ];
-
   return (
     <div className="space-y-4">
       {/* Honest disclosure — this is not a "currently empty, might fill in"
@@ -215,7 +201,7 @@ function SignalTomography() {
 
       {/* ── Four UX states ── */}
       {(coverageLoading || anomalyLoading) && !coverageError && !anomalyError && (
-        <div role="status" aria-live="polite" className="bg-lattice-surface border border-lattice-border rounded-lg p-3 flex items-center gap-2">
+        <div role="status" aria-live="polite" className="bg-[#111] border border-white/10 rounded-lg p-3 flex items-center gap-2">
           <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
           <p className="text-sm text-gray-400">Scanning signal tomography…</p>
         </div>
@@ -248,20 +234,17 @@ function SignalTomography() {
           { label: 'Signals', value: (taxonomyData as { signals?: unknown[] })?.signals?.length || (taxonomyData as { total?: number })?.total || 0, icon: Radio, color: 'text-cyan-400 bg-cyan-500/10' },
           { label: 'Anomalies', value: (anomalyData as { anomalies?: unknown[] })?.anomalies?.length || (anomalyData as { total?: number })?.total || 0, icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/10' },
           { label: 'Coverage', value: (coverageData as { coverage?: number })?.coverage ? `${((coverageData as { coverage: number }).coverage * 100).toFixed(0)}%` : '--', icon: Globe, color: 'text-blue-400 bg-blue-500/10' },
-        ].map((stat, i) => (
-          <motion.div
+        ].map((stat) => (
+          <div
             key={stat.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
-            className="rounded-lg bg-lattice-surface border border-lattice-border p-3"
+            className="rounded-2xl border border-white/10 bg-[#111] p-3"
           >
             <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center mb-2`}>
               <stat.icon className="w-4 h-4" />
             </div>
             <p className="text-xl font-bold text-white font-mono tabular-nums">{stat.value}</p>
             <p className="text-xs text-gray-400">{stat.label}</p>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -276,7 +259,7 @@ function SignalTomography() {
       </div>
 
       {/* Map */}
-      <div className="rounded-lg overflow-hidden border border-lattice-border">
+      <div className="rounded-2xl overflow-hidden border border-white/10">
         <SafeCard label="Signal tomography map" className="h-[320px]">
           <MapView markers={markers} className="h-[320px]" onMarkerClick={handleMarkerClick} />
         </SafeCard>
@@ -290,7 +273,7 @@ function SignalTomography() {
           placeholder="Latitude"
           value={queryLat}
           onChange={(e) => setQueryLat(e.target.value)}
-          className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-sm text-gray-200 w-32"
+          className="bg-[#111] border border-white/10 rounded px-3 py-1.5 text-sm text-gray-200 w-32"
         />
         <input
           type="number"
@@ -298,12 +281,12 @@ function SignalTomography() {
           placeholder="Longitude"
           value={queryLng}
           onChange={(e) => setQueryLng(e.target.value)}
-          className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-sm text-gray-200 w-32"
+          className="bg-[#111] border border-white/10 rounded px-3 py-1.5 text-sm text-gray-200 w-32"
         />
         <button
           onClick={() => refetchTile()}
           disabled={!queryLat || !queryLng}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-teal-400 hover:bg-teal-300 text-black disabled:opacity-40 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Query Tile
         </button>
@@ -311,22 +294,6 @@ function SignalTomography() {
           // @modal-escape-ok: AtlasOverlay is an inline attribution card, not a focus-trap modal
           <AtlasOverlay query={`${queryLat}, ${queryLng}`} result={tileData} loading={tileLoading} />
         )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-lattice-surface rounded-lg p-1">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-lattice-elevated text-white' : 'text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
       </div>
 
       {/* Tab Content */}

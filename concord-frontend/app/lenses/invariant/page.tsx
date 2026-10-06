@@ -11,7 +11,9 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Shield, ListChecks, Zap, Gauge, Play, FolderGit2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -21,8 +23,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { OverviewPanel } from '@/components/invariant/OverviewPanel';
 import { RulesPanel } from '@/components/invariant/RulesPanel';
 import { ActionTesterPanel } from '@/components/invariant/ActionTesterPanel';
@@ -46,6 +46,8 @@ export default function InvariantLensPage() {
   useLensIdentity('invariant');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('invariant');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<InvariantView>('overview');
 
   useLensCommand(
@@ -75,51 +77,28 @@ export default function InvariantLensPage() {
     <LensShell lensId="invariant" asMain={false}>
       <FirstRunTour lensId="invariant" />
       <DepthBadge lensId="invariant" size="sm" className="ml-2" />
-      <div data-lens-theme="invariant" className={cn(ds.pageContainer, 'space-y-4')}>
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">🛡️</span>
-            <div>
-              <h1 className="text-xl font-bold">Invariant Lens</h1>
-              <p className="text-sm text-gray-400">Interactive ethos enforcer and capability tester</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <NorthStarFrame
+        lensId="invariant"
+        crumb="Invariant"
+        title={`What must always hold${active === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="Rules, tester and workbench for system invariants"
+        actions={
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="invariant" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
-          </div>
-        </header>
-
-        <nav className="flex gap-1 border-b border-lattice-border overflow-x-auto" aria-label="Invariant views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline text-[10px] text-white/30 font-mono">{v.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
+          </>
+        }
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as InvariantView)}
+        tabsLabel="Invariant views"
+        cta={{ label: 'Test an action', icon: Zap, onClick: () => setActive('tester'), title: 'Run the action tester' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
             {active === 'overview' && <OverviewPanel />}
@@ -141,9 +120,7 @@ export default function InvariantLensPage() {
             compact
           />
         )}
-
-        <CrossLensRecentsPanel lensId="invariant" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

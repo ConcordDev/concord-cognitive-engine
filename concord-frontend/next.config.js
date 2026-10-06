@@ -112,7 +112,10 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
-      {
+      // Production only: `next dev` serves /_next/static chunks under stable,
+      // NON-hashed URLs, so an immutable header there pins the browser to stale
+      // code across edits (Next warns about exactly this at dev startup).
+      ...(process.env.NODE_ENV === 'production' ? [{
         // Launch edge-offload (docs/LAUNCH_EDGE_OFFLOAD.md) — explicit reinforcement of
         // Next.js's own built-in immutable-caching behavior for hashed build output.
         // Next's standalone server already emits this Cache-Control for /_next/static/*
@@ -125,7 +128,7 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
-      },
+      }] : []),
       {
         // Root-level /public assets (favicon, logos, PWA icons) are NOT content-hashed
         // (unlike /_next/static), so they must NOT be marked immutable — a logo swap at
@@ -231,6 +234,7 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/signup', destination: '/register', permanent: true },
+      { source: '/conkay', destination: '/lenses/chat?mode=conkay', permanent: false },
       { source: '/chat', destination: '/lenses/chat', permanent: false },
       { source: '/dashboard', destination: '/hub', permanent: false },
       { source: '/marketplace', destination: '/lenses/marketplace', permanent: false },

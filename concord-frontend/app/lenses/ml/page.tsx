@@ -21,8 +21,11 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useState } from 'react';
 import {
   Brain, TestTube, Beaker, Database, Trophy, Wand2, Rocket, Sparkles,
-  ChevronDown, ChevronRight,
+  BookOpen, SlidersHorizontal, GitBranch,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -31,17 +34,20 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type Tab =
   | 'hub' | 'playground' | 'experiments' | 'datasets'
-  | 'compare' | 'automl' | 'deployments' | 'spaces';
+  | 'compare' | 'automl' | 'deployments' | 'spaces' | 'bench' | 'arxiv' | 'repos';
 
-const TABS: { id: Tab; label: string; Icon: typeof Brain; key: string }[] = [
-  { id: 'hub', label: 'Model Hub', Icon: Brain, key: 'm' },
-  { id: 'playground', label: 'Playground', Icon: TestTube, key: 'l' },
-  { id: 'experiments', label: 'Experiments', Icon: Beaker, key: 'e' },
-  { id: 'datasets', label: 'Datasets', Icon: Database, key: 'd' },
-  { id: 'compare', label: 'Compare', Icon: Trophy, key: 'c' },
-  { id: 'automl', label: 'AutoML', Icon: Wand2, key: 'a' },
-  { id: 'deployments', label: 'Deployments', Icon: Rocket, key: 'p' },
-  { id: 'spaces', label: 'Spaces', Icon: Sparkles, key: 's' },
+const TABS: { id: Tab; label: string; Icon: typeof Brain; key: string; title: string }[] = [
+  { id: 'hub', label: 'Model Hub', Icon: Brain, key: 'm', title: 'Your models' },
+  { id: 'playground', label: 'Playground', Icon: TestTube, key: 'l', title: 'Try a model' },
+  { id: 'experiments', label: 'Experiments', Icon: Beaker, key: 'e', title: 'Every run, tracked' },
+  { id: 'datasets', label: 'Datasets', Icon: Database, key: 'd', title: 'The data behind it' },
+  { id: 'compare', label: 'Compare', Icon: Trophy, key: 'c', title: 'Which model wins' },
+  { id: 'automl', label: 'AutoML', Icon: Wand2, key: 'a', title: 'Let it search for you' },
+  { id: 'deployments', label: 'Deployments', Icon: Rocket, key: 'p', title: 'What is serving now' },
+  { id: 'spaces', label: 'Spaces', Icon: Sparkles, key: 's', title: 'Demos you can share' },
+  { id: 'bench', label: 'Analysis bench', Icon: SlidersHorizontal, key: 'b', title: 'Evaluate, profile, tune' },
+  { id: 'arxiv', label: 'arXiv', Icon: BookOpen, key: 'x', title: 'New papers in cs.LG' },
+  { id: 'repos', label: 'Repos', Icon: GitBranch, key: 'g', title: 'ML repositories on GitHub' },
 ];
 
 export default function MLLensPage() {
@@ -50,17 +56,20 @@ export default function MLLensPage() {
 
   const [tab, setTab] = useState<Tab>('hub');
   const [playgroundModel, setPlaygroundModel] = useState('');
-  const [showArxiv, setShowArxiv] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
-  const [showRepos, setShowRepos] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
-    TABS.map((t) => ({
-      id: `tab-${t.id}`, keys: t.key, description: t.label,
-      category: 'navigation', action: () => setTab(t.id),
-    })),
+    [
+      ...TABS.map((t) => ({
+        id: `tab-${t.id}`, keys: t.key, description: t.label,
+        category: 'navigation' as const, action: () => setTab(t.id),
+      })),
+      { id: 'run-model', keys: 'n', description: 'Run a model', category: 'actions' as const, action: () => setTab('playground') },
+    ],
     { lensId: 'ml' },
   );
+  const current = TABS.find((t) => t.id === tab)!;
 
   // Selecting a model anywhere routes it into the inference playground.
   const useInPlayground = (modelId: string) => {
@@ -71,52 +80,44 @@ export default function MLLensPage() {
 
   return (
     <LensShell lensId="ml" asMain={false}>
-      <FirstRunTour lensId="ml" />      <DepthBadge lensId="ml" size="sm" className="ml-2" />
-      <div data-lens-theme="ml" className="p-6 space-y-6">
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowArxiv(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>arXiv · Machine Learning (cs.LG)</span>
-            {showArxiv ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showArxiv && (
-            <div className="mt-3">
-              <ArxivPanel domain="ml" title="arXiv · Machine Learning (cs.LG)" />
-            </div>
-          )}
-        </section>
-
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🤖</span>
-            <div>
-              <h1 className="text-xl font-bold">ML Lens</h1>
-              <p className="text-sm text-gray-400">
-                Model hub, inference, experiment tracking, deployment & demo spaces
-              </p>
-            </div>
+      <FirstRunTour lensId="ml" />
+      <DepthBadge lensId="ml" size="sm" className="ml-2" />
+      <div data-lens-theme="ml" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">ML</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{tab === 'hub' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="ml" data={realtimeData || {}} compact />
           </div>
-        </header>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 bg-lattice-surface/50 p-1 rounded-lg w-fit flex-wrap">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-                tab === t.id ? 'bg-neon-purple/20 text-neon-purple' : 'hover:bg-white/5'
-              }`}>
-              <t.Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          ))}
         </div>
+
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="ML views">
+          {TABS.map((t) => {
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${t.label} (${t.key})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <t.Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.key}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
         {/* Tab content — every panel wired to real backend macros */}
         {tab === 'hub' && <ModelHubPanel onUseInPlayground={useInPlayground} />}
@@ -128,43 +129,40 @@ export default function MLLensPage() {
         {tab === 'deployments' && <DeploymentsPanel defaultModelId={playgroundModel} />}
         {tab === 'spaces' && <SpacesPanel defaultModelId={playgroundModel} />}
 
-        <RealtimeDataPanel data={realtimeInsights} />
+        {tab === 'bench' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
+            <PipingProvider>
+              <MlActionPanel />
+            </PipingProvider>
+          </section>
+        )}
+        {tab === 'arxiv' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
+            <ArxivPanel domain="ml" title="arXiv · Machine Learning (cs.LG)" />
+          </section>
+        )}
+        {tab === 'repos' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
+            <MlRepos />
+          </section>
+        )}
 
-        {/* ML analysis bench — modelEvaluate / featureImportance / datasetProfile / hyperparameterSuggest */}
-        <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Analysis bench</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
-              <PipingProvider>
-                <MlActionPanel />
-              </PipingProvider>
-            </div>
-          )}
-        </section>
+        <div className="mt-6">
+          <RealtimeDataPanel data={realtimeInsights} />
+        </div>
 
-        <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowRepos(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>ML repos (GitHub)</span>
-            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showRepos && (
-            <div className="mt-3">
-              <MlRepos />
-            </div>
-          )}
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="ml" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel lensId="ml" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => setTab('playground')}
+          title="Run a model (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <TestTube className="h-4 w-4" />
+          Run a model
+        </button>
+      </div>
     </LensShell>
   );
 }

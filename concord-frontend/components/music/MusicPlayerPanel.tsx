@@ -25,6 +25,8 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
   const [queue, setQueue] = useState<Track[]>([]);
   const [recent, setRecent] = useState<Track[]>([]);
   const [lyrics, setLyrics] = useState<{ lines: LyricLine[]; synced: boolean } | null>(null);
+  const [lyricsDraft, setLyricsDraft] = useState<string | null>(null);
+  const [lyricsError, setLyricsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -56,7 +58,27 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
     onChange();
   }, [onChange]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+
+  const startLyricsEdit = () => {
+    setLyricsError(null);
+    setLyricsDraft((lyrics?.lines || []).map((l) => (l.timeSec != null
+      ? `[${Math.floor(l.timeSec / 60)}:${(l.timeSec % 60).toFixed(2).padStart(5, '0')}] ${l.line}`
+      : l.line)).join('\n'));
+  };
+  const saveLyrics = async () => {
+    if (!nowPlaying || lyricsDraft == null) return;
+    const rows = lyricsDraft.split(/\r?\n/).filter((r) => r.trim());
+    const timed = rows.map((r) => r.match(/^\[(\d+):(\d{1,2}(?:\.\d+)?)\]\s*(.*)$/));
+    // Timed only when every line carries a [m:ss] stamp; otherwise saved as plain lines.
+    const payload = rows.length > 0 && timed.every(Boolean)
+      ? timed.map((m) => ({ timeSec: Number(m![1]) * 60 + Number(m![2]), line: m![3] }))
+      : lyricsDraft;
+    const r = await lensRun('music', 'track-lyrics-set', { id: nowPlaying.track.id, lyrics: payload });
+    if (r.data?.ok === false) { setLyricsError(r.data?.error || 'Could not save lyrics.'); return; }
+    setLyricsDraft(null);
+    await refresh();
+  };
 
   const scrub = async (positionSec: number) => {
     await lensRun('music', 'playback-progress', { positionSec });
@@ -113,13 +135,29 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
       </section>
 
       {/* Lyrics */}
-      {nowPlaying && lyrics && (
+      {nowPlaying && (lyrics || lyricsDraft != null) && (
         <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Mic2 className="w-3.5 h-3.5 text-emerald-300" />
             <h3 className="text-xs font-semibold text-zinc-300">Lyrics</h3>
-            {lyrics.synced && <span className="text-[10px] text-zinc-400">synced</span>}
+            {lyrics?.synced && <span className="text-[10px] text-zinc-400">synced</span>}
+            {lyricsDraft == null && (
+              <button type="button" onClick={startLyricsEdit} className="ml-auto text-[10px] text-zinc-400 transition-colors hover:text-emerald-300">Edit</button>
+            )}
           </div>
+          {lyricsDraft != null ? (
+            <div className="space-y-2">
+              <textarea aria-label="Lyrics" rows={8} value={lyricsDraft} onChange={(e) => setLyricsDraft(e.target.value)}
+                placeholder={'Plain lines, or timed lines like [0:12.50] First line'}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 font-mono text-xs text-zinc-100" />
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => void saveLyrics()} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] transition-colors hover:bg-emerald-500">Save lyrics</button>
+                <button type="button" onClick={() => setLyricsDraft(null)} className="text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                <span className="text-[10px] text-zinc-500">Stamp every line with [m:ss] to sync them to playback.</span>
+              </div>
+              {lyricsError && <p role="alert" className="text-[11px] text-rose-400">{lyricsError}</p>}
+            </div>
+          ) : lyrics && (
           <div className="max-h-44 overflow-y-auto space-y-0.5">
             {lyrics.lines.map((l, i) => {
               const active = lyrics.synced && l.timeSec != null
@@ -134,7 +172,13 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
               );
             })}
           </div>
+          )}
         </section>
+      )}
+      {nowPlaying && !lyrics && lyricsDraft == null && (
+        <button type="button" onClick={startLyricsEdit} className="flex items-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-emerald-300">
+          <Mic2 className="w-3 h-3" /> Add lyrics for this track
+        </button>
       )}
 
       {/* Queue */}

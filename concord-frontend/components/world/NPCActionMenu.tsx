@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { sfx, juice } from '@/lib/concordia/juice';
+import { lensRun } from '@/lib/api/client';
 import {
   MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X, Network,
 } from 'lucide-react';
@@ -38,9 +39,17 @@ interface MenuState extends NPCContext {
   isHirable: boolean;
 }
 
+const REFUSAL: Record<string, string> = {
+  mentor_depth_insufficient: 'is not experienced enough to teach that yet',
+  recipe_not_owned_by_mentor: 'does not know that recipe',
+  recipe_not_found: 'no longer has that recipe',
+  no_actor: 'needs you to sign in first',
+};
+
 export function NPCActionMenu() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [recipes, setRecipes] = useState<Array<{ recipeDtuId: string; title: string; depth: number }> | null>(null);
 
   // Listen for the raycaster dispatch.
   useEffect(() => {
@@ -105,19 +114,24 @@ export function NPCActionMenu() {
     setMenu(null);
   }, [menu]);
 
+  const requestFor = useCallback(async (npcId: string, npcName: string, recipe: { recipeDtuId: string; title: string }) => {
+    const r = await lensRun<{ ok?: boolean }>('knowledge_trade', 'mentorship_request', { mentorNpcId: npcId, recipeDtuId: recipe.recipeDtuId });
+    if (r.data.ok) showFlash(`${npcName} will teach you ${recipe.title}`);
+    else showFlash(`${npcName} ${REFUSAL[r.data.error || ''] || `could not take you on (${(r.data.error || 'request failed').replace(/_/g, ' ')})`}`);
+    setRecipes(null);
+    setMenu(null);
+  }, [showFlash]);
+
+  // Mentorship is per recipe: ask the NPC what they can teach, then request one.
   const onMentor = useCallback(async () => {
     if (!menu) return;
-    try {
-      const r = await fetch('/api/mentorship/request', {
-        method: 'POST', credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ mentorNpcId: menu.npcId }),
-      });
-      const j = await r.json();
-      showFlash(j?.ok ? `Mentorship requested with ${menu.npcName}` : (j?.error || 'request failed'));
-    } catch { showFlash('network error'); }
-    setMenu(null);
-  }, [menu, showFlash]);
+    const r = await lensRun<{ recipes?: Array<{ recipeDtuId: string; title: string; depth: number }> }>('knowledge_trade', 'mentor_recipes', { mentorNpcId: menu.npcId });
+    const list = r.data.result?.recipes || [];
+    if (!r.data.ok) { showFlash('Could not reach the mentor registry'); setMenu(null); return; }
+    if (list.length === 0) { showFlash(`${menu.npcName} has nothing they can teach yet`); setMenu(null); return; }
+    if (list.length === 1) { await requestFor(menu.npcId, menu.npcName, list[0]); return; }
+    setRecipes(list);
+  }, [menu, showFlash, requestFor]);
 
   const onBrawl = useCallback(async () => {
     if (!menu) return;
@@ -231,6 +245,23 @@ export function NPCActionMenu() {
         </button>
       </header>
 
+      {recipes ? (
+        <div>
+          <p className="mb-1 px-1 text-[10px] uppercase tracking-wide text-amber-300/70">Learn which recipe?</p>
+          <ul className="max-h-48 space-y-0.5 overflow-y-auto">
+            {recipes.map((rec) => (
+              <li key={rec.recipeDtuId}>
+                <button type="button" onClick={() => void requestFor(menu.npcId, menu.npcName, rec)}
+                  className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs text-zinc-200 transition-colors hover:bg-amber-500/20 hover:text-amber-100">
+                  <span className="truncate">{rec.title}</span>
+                  <span className="shrink-0 text-[10px] text-amber-300/60">rev {rec.depth}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => setRecipes(null)} className="mt-1 w-full rounded px-2 py-1 text-left text-[11px] text-zinc-400 hover:text-zinc-200">Back</button>
+        </div>
+      ) : (
       <ul className="space-y-0.5">
         <MenuItem icon={MessageCircle} label="Talk" onClick={onTalk} />
         {menu.isMentor && (
@@ -249,6 +280,7 @@ export function NPCActionMenu() {
           <MenuItem icon={Briefcase} label="Hire" onClick={onHire} accent="violet" />
         )}
       </ul>
+      )}
 
       {menu.occupation && (
         <footer className="mt-1 border-t border-amber-500/20 pt-1 text-[10px] text-amber-300/60">

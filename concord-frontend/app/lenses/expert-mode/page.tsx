@@ -20,7 +20,7 @@
  * user's own provider; otherwise the free Ollama default.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -29,7 +29,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
 import { FocusModeBar } from '@/components/expert-mode/FocusModeBar';
@@ -38,7 +37,9 @@ import { ThreadSidebar } from '@/components/expert-mode/ThreadSidebar';
 import { SpacesPanel } from '@/components/expert-mode/SpacesPanel';
 import { ConversationTurn, type Turn } from '@/components/expert-mode/ConversationTurn';
 import { PipingProvider } from '@/components/panel-polish';
-import { Globe2, Loader2, Search } from 'lucide-react';
+import { Globe2, Loader2, MessageSquarePlus, Search } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface TurnWithRelated extends Turn {
   related: string[];
@@ -53,18 +54,13 @@ interface SharedAnswer {
 }
 
 export default function ExpertModeLens() {
-  useLensCommand(
-    [
-      {
-        id: 'expert-mode-help',
-        keys: '?',
-        description: 'Lens help',
-        category: 'navigation',
-        action: () => { /* surfaced via tooltip */ },
-      },
-    ],
-    { lensId: 'expert-mode' },
-  );
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const queryRef = useRef<HTMLInputElement>(null);
+  const focusQuery = useCallback(() => {
+    queryRef.current?.focus();
+    queryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   const searchParams = useSearchParams();
 
@@ -104,10 +100,7 @@ export default function ExpertModeLens() {
   // ---- sources preview (cheap, before committing the brain call) --------
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 4) {
-      setPreviewCount(null);
-      return;
-    }
+    if (q.length < 4) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       const r = await lensRun<{ sources: any[] }>('expert_mode', 'sources_preview', {
@@ -230,6 +223,26 @@ export default function ExpertModeLens() {
     setShared(null);
   }, []);
 
+  useLensCommand(
+    [
+      {
+        id: 'expert-mode-ask',
+        keys: 'n',
+        description: 'Ask the desk',
+        category: 'actions',
+        action: focusQuery,
+      },
+      {
+        id: 'expert-mode-new-thread',
+        keys: 't',
+        description: 'Start a new thread',
+        category: 'actions',
+        action: () => { newThread(); focusQuery(); },
+      },
+    ],
+    { lensId: 'expert-mode' },
+  );
+
   const lastTurn = turns.length > 0 ? turns[turns.length - 1] : null;
   const pendingForSpace = lastTurn
     ? {
@@ -242,13 +255,16 @@ export default function ExpertModeLens() {
     : null;
 
   return (
-    <LensShell lensId="expert-mode">
+    <LensShell lensId="expert-mode" asMain={false}>
       <FirstRunTour lensId="expert-mode" />
       <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="expert-mode" className="mx-6 mt-4" />
 
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-8">
-        <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+      <div data-lens-theme="expert-mode" className="relative min-h-full px-8 pb-28 pt-6 text-zinc-100">
+        <p className="text-[14px] text-zinc-500">Expert Mode</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {shared ? 'A shared answer' : turns.length > 0 ? 'The research thread' : `The expert desk${who ? `, ${who}` : ''}`}
+        </h1>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
           {/* ---- left rail: threads + spaces + uploads ---- */}
           <div className="space-y-4">
             <ThreadSidebar
@@ -268,13 +284,12 @@ export default function ExpertModeLens() {
           {/* ---- main column ---- */}
           <div className="min-w-0">
             <header className="mb-5">
-              <h1 className="text-2xl font-semibold mb-1">Expert Mode</h1>
-              <p className="text-sm text-zinc-400 leading-relaxed">
+              <p className="max-w-3xl text-[13px] leading-relaxed text-zinc-500">
                 Threaded, cited research. Every claim is sourced from your DTUs, the global
                 Concord corpus, and live web search. Set your{' '}
                 <Link
                   href="/lenses/byo-keys"
-                  className="text-amber-400 hover:text-amber-300 underline"
+                  className="text-teal-300 underline hover:text-teal-200"
                 >
                   BYO API keys
                 </Link>{' '}
@@ -330,6 +345,7 @@ export default function ExpertModeLens() {
             <div className="flex items-center gap-2 mb-2">
               <input
                 type="text"
+                ref={queryRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -340,14 +356,13 @@ export default function ExpertModeLens() {
                     ? 'Ask a follow-up — context carries across the thread…'
                     : 'Ask anything — cited, sourced, terse.'
                 }
-                className="flex-1 px-4 py-2.5 rounded-lg bg-zinc-900 text-zinc-100 ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
-                autoFocus
+                className="flex-1 rounded-full border border-white/10 bg-[#111] px-5 py-3 text-[15px] text-zinc-100 placeholder:text-zinc-500 focus:border-teal-400/60 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => ask(query)}
                 disabled={busy || !query.trim()}
-                className="px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-amber-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-5 py-3 text-[14px] font-medium text-zinc-50 transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -359,7 +374,7 @@ export default function ExpertModeLens() {
             </div>
 
             {/* sources preview */}
-            {previewCount != null && !busy && (
+            {previewCount != null && query.trim().length >= 4 && !busy && (
               <p className="mb-4 text-[11px] text-zinc-400">
                 {uploadId
                   ? 'Next answer will be grounded in your uploaded document.'
@@ -411,7 +426,7 @@ export default function ExpertModeLens() {
 
             {/* empty state */}
             {turns.length === 0 && !busy && !shared && (
-              <div className="mt-10 text-center text-sm text-zinc-400">
+              <div className="mt-2 flex min-h-[16rem] flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#111] p-8 text-center text-sm text-zinc-400">
                 <p className="mb-2">
                   Ask a question to open a research thread. Follow-ups carry context, focus
                   modes scope the sources, live web search runs alongside the corpus, and any
@@ -424,22 +439,24 @@ export default function ExpertModeLens() {
               </div>
             )}
 
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
               <BrainPoolStatus />
             </section>
           </div>
         </div>
-      </div>
 
-      <div className="sr-only" aria-hidden="true">
-        EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
-      </div>      <CrossLensRecentsPanel
-        lensId="expert-mode"
-        sinceDays={7}
-        limit={6}
-        hideWhenEmpty
-        className="mt-3"
-      />
+        <CrossLensRecentsPanel lensId="expert-mode" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={focusQuery}
+          title="Ask the desk (N)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          Ask the desk
+        </button>
+      </div>
     </LensShell>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
@@ -11,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import {
-  AlertTriangle, Heart, Brain, Layers, Activity,
+  AlertTriangle, Heart, Brain, Layers, Activity, RefreshCw, Inbox, Grid2x2, Network, GitBranch, Wrench, TrendingUp, LayoutList,
 } from 'lucide-react';
 import { PainBoard } from '@/components/suffering/PainBoard';
 import type { Pain, Theme } from '@/components/suffering/PainBoard';
@@ -31,19 +33,21 @@ import { StatTile, StatTileGrid } from '@/components/ui/StatTile';
 
 type Tab = 'board' | 'import' | 'matrix' | 'themes' | 'rootcause' | 'interventions' | 'trends' | 'wellbeing';
 
-const TABS: { id: Tab; label: string; keys: string }[] = [
-  { id: 'board', label: 'Pain Board', keys: 'b' },
-  { id: 'import', label: 'Feedback Import', keys: 'i' },
-  { id: 'matrix', label: 'Priority Matrix', keys: 'm' },
-  { id: 'themes', label: 'Themes', keys: 't' },
-  { id: 'rootcause', label: 'Root Cause', keys: 'c' },
-  { id: 'interventions', label: 'Interventions', keys: 'v' },
-  { id: 'trends', label: 'Trends', keys: 'n' },
-  { id: 'wellbeing', label: 'Engine Wellbeing', keys: 'w' },
+const TABS: { id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof Heart }[] = [
+  { id: 'board', label: 'Pain Board', keys: 'b', title: 'Where it hurts', hint: 'Every logged pain point, grouped by theme', icon: LayoutList },
+  { id: 'import', label: 'Feedback Import', keys: 'i', title: 'Bring in raw feedback', hint: 'Analyze feedback text and promote it to pains', icon: Inbox },
+  { id: 'matrix', label: 'Priority Matrix', keys: 'm', title: 'What to fix first', hint: 'Severity against frequency', icon: Grid2x2 },
+  { id: 'themes', label: 'Themes', keys: 't', title: 'What the pains have in common', hint: 'Clustered themes and unthemed pains', icon: Network },
+  { id: 'rootcause', label: 'Root Cause', keys: 'c', title: 'Why it keeps happening', hint: 'Root-cause analysis per pain', icon: GitBranch },
+  { id: 'interventions', label: 'Interventions', keys: 'v', title: 'What you are doing about it', hint: 'Plan and track interventions', icon: Wrench },
+  { id: 'trends', label: 'Trends', keys: 'n', title: 'Whether it is getting better', hint: 'Trend view and report export', icon: TrendingUp },
+  { id: 'wellbeing', label: 'Engine Wellbeing', keys: 'w', title: 'How the engine is holding up', hint: 'Operator-only reality-gate metrics', icon: Brain },
 ];
 
 export default function SufferingLensPage() {
   useLensNav('suffering');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('board');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -85,8 +89,7 @@ export default function SufferingLensPage() {
     loadAll();
   }, [loadAll]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { void Promise.resolve().then(loadAll); }, [loadAll]);
 
   useLensCommand(
     [
@@ -99,59 +102,37 @@ export default function SufferingLensPage() {
   );
 
   const openPains = pains.filter((p) => p.status !== 'resolved').length;
+  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="suffering" asMain={false}>
       <FirstRunTour lensId="suffering" />
-      <div className="p-6 space-y-6">
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
+      <DepthBadge lensId="suffering" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="suffering"
+        crumb="Suffering"
+        title={`${current.title}${tab === 'board' && who ? `, ${who}` : ''}`}
+        subtitle="Pain-point mapping, root-cause analysis and intervention tracking."
+        actions={
+          <div className="flex flex-wrap gap-2 text-sm">
+            <span className="rounded-full bg-rose-500/15 px-3 py-1 text-rose-300"><span className="font-bold">{openPains}</span> open pains</span>
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300"><span className="font-bold">{pains.length - openPains}</span> resolved</span>
+            <span className="rounded-full bg-sky-500/15 px-3 py-1 text-sky-300"><span className="font-bold">{interventions.length}</span> interventions</span>
+          </div>
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: `g ${t.keys}`, hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as Tab)}
+        tabsLabel="Suffering lens sections"
+        cta={{ label: 'Refresh data', icon: RefreshCw, onClick: onChanged, title: 'Reload pains, themes and interventions (R)' }}
+      >
+      <div className="space-y-5">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-200">
             Not medical advice. This lens analyzes pain points and system-level wellbeing.
             For personal health concerns, consult a qualified healthcare provider.
           </p>
-        </div>
-
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">💔</span>
-            <div>
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                Suffering Lens <DepthBadge lensId="suffering" size="sm" />
-              </h1>
-              <p className="text-sm text-gray-400">Pain-point mapping, root-cause analysis &amp; intervention tracking</p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <div className="px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-300 text-sm">
-              <span className="font-bold">{openPains}</span> open pains
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-sm">
-              <span className="font-bold">{pains.length - openPains}</span> resolved
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-sky-500/15 text-sky-300 text-sm">
-              <span className="font-bold">{interventions.length}</span> interventions
-            </div>
-          </div>
-        </header>
-
-        {/* Tab nav */}
-        <div className="flex gap-1 border-b border-white/10 overflow-x-auto" role="tablist" aria-label="Suffering lens sections">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-3.5 py-2 text-sm whitespace-nowrap border-b-2 transition-colors ${
-                tab === t.id
-                  ? 'border-neon-cyan text-neon-cyan'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
         </div>
 
         {loadErr && (
@@ -193,10 +174,11 @@ export default function SufferingLensPage() {
         )}
         {tab === 'wellbeing' && <EngineWellbeing />}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <SufferingRef />
         </section>
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

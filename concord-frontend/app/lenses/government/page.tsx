@@ -9,7 +9,6 @@
  * accordion is folded into the single `active` union.
  */
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useCallback, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -25,10 +24,16 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
-import { ds } from '@/lib/design-system';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import {
   Landmark,
+  Megaphone,
+  Inbox,
+  FolderOpen,
+  MapPin,
   FileCheck as MTabPermit,
   HardHat as MTabPW,
   Archive as MTabRec,
@@ -88,9 +93,9 @@ type GovView =
   | 'records'
   | 'court';
 
-const GROUPS: { label: string; items: { id: GovView; label: string }[] }[] = [
+const GROUPS: { id: string; label: string; title: string; hint: string; icon: typeof Landmark; items: { id: GovView; label: string }[] }[] = [
   {
-    label: 'Oversight',
+    id: 'oversight', label: 'Oversight', title: 'How your government is doing', hint: 'Caseload, bills, spending, FOIA, alerts and open data', icon: Landmark,
     items: [
       { id: 'overview', label: 'Caseload' },
       { id: 'bills', label: 'Bills' },
@@ -101,7 +106,7 @@ const GROUPS: { label: string; items: { id: GovView; label: string }[] }[] = [
     ],
   },
   {
-    label: 'Congress',
+    id: 'congress', label: 'Congress', title: 'Who speaks for you', hint: 'Representatives, advocacy, elections, meetings and lookups', icon: Megaphone,
     items: [
       { id: 'reps', label: 'My reps' },
       { id: 'advocacy', label: 'Advocacy' },
@@ -111,7 +116,7 @@ const GROUPS: { label: string; items: { id: GovView; label: string }[] }[] = [
     ],
   },
   {
-    label: '311 / Permits',
+    id: 'services', label: '311 / Permits', title: 'Get something fixed or approved', hint: '311, pin-drop reports, permit desk, inspections, payments and routing', icon: Inbox,
     items: [
       { id: 'sr', label: '311' },
       { id: 'reporter', label: 'Pin-drop' },
@@ -126,7 +131,7 @@ const GROUPS: { label: string; items: { id: GovView; label: string }[] }[] = [
     ],
   },
   {
-    label: 'Case files',
+    id: 'cases', label: 'Case files', title: 'Every file on record', hint: 'Permits, public works, code, emergency, records and court', icon: FolderOpen,
     items: [
       { id: 'permits', label: 'Permits' },
       { id: 'works', label: 'Public works' },
@@ -201,7 +206,8 @@ function CivicPane({
 export default function GovernmentLensPage() {
   useLensNav('government');
   useLensIdentity('government');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('government');
   const [active, setActive] = useState<GovView>('overview');
 
@@ -225,100 +231,83 @@ export default function GovernmentLensPage() {
     { lensId: 'government' },
   );
 
-  const activeLabel = useMemo(
-    () => GROUPS.flatMap((g) => g.items).find((t) => t.id === active)?.label ?? active,
+  const group = useMemo(
+    () => GROUPS.find((g) => g.items.some((i) => i.id === active)) ?? GROUPS[0],
     [active],
   );
+  const activeLabel = group.items.find((t) => t.id === active)?.label ?? active;
 
   return (
     <LensShell lensId="government" asMain={false}>
       <FirstRunTour lensId="government" />
       <DepthBadge lensId="government" size="sm" className="ml-2" />
-      <div data-lens-theme="government" className={cn(ds.pageContainer, 'pb-20 lg:pb-6')}>
+      <NorthStarFrame
+        lensId="government"
+        crumb="Government"
+        title={`${group.title}${active === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="Civic ops: caseload, bills, spending, FOIA, 311 and permits, representatives and case files, all against real government macros."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="government" data={{}} compact />
+          </>
+        )}
+        tabs={GROUPS.map((g) => ({ id: g.id, label: g.label, icon: g.icon, hint: g.hint }))}
+        activeTab={group.id}
+        onTab={(id) => go(GROUPS.find((g) => g.id === id)!.items[0].id)}
+        tabsLabel="Civic ops areas"
+        cta={{ label: 'Report an issue', icon: MapPin, onClick: () => go('reporter'), title: 'Drop a pin and file a 311 report' }}
+      >
         <a href="#government-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-[var(--lens-accent)]">
           Skip to civic ops
         </a>
         <ShellPreview lensId="government" defaultOpen={true} />
 
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-md bg-[var(--lens-accent)]/20 flex items-center justify-center shrink-0">
-              <Landmark className="w-5 h-5 text-[var(--lens-secondary)]" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Civic ops</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={cn(ds.textMuted, 'font-mono text-xs tracking-wide')}>
-                {activeLabel} · USAspending density · kbd g o / p / 3
-              </p>
-            </div>
-          </div>
-          <DTUExportButton domain="government" data={{}} compact />
-        </header>
-
-        <LiveFeed
-          articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-          domain="government"
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          limit={8}
-        />
-        <RealtimeDataPanel
-          domain="government"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={insights}
-          compact
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-[13rem_minmax(0,1fr)] gap-4 items-start">
-          <nav aria-label="Civic ops" className="lg:sticky lg:top-3 space-y-4">
-            {GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className={cn(ds.overline, 'px-2 mb-1')}>{group.label}</p>
-                <ul className="space-y-0.5">
-                  {group.items.map((t) => {
-                    const on = active === t.id;
-                    return (
-                      <li key={t.id}>
-                        <button
-                          type="button"
-                          onClick={() => go(t.id)}
-                          className={cn(
-                            'w-full text-left px-2 py-1 rounded-sm text-xs font-mono tracking-tight transition-colors',
-                            on
-                              ? 'bg-[var(--lens-accent)]/20 text-white border-l-2 border-[var(--lens-secondary)]'
-                              : 'text-gray-400 hover:text-white hover:bg-lattice-elevated border-l-2 border-transparent',
-                          )}
-                        >
-                          {t.label}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </nav>
-
-          <main id="government-main" className="min-w-0">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={active}
-                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-                transition={{ duration: reduceMotion ? 0 : 0.16 }}
+        <nav aria-label={`${group.label} sections`} className="mb-5 flex flex-wrap items-center gap-1.5">
+          {group.items.map((t) => {
+            const on = active === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => go(t.id)}
+                aria-current={on ? 'true' : undefined}
+                className={cn(
+                  'rounded-full border px-3.5 py-1 text-[13px] transition-colors',
+                  on
+                    ? 'border-white/20 bg-white/10 text-zinc-50'
+                    : 'border-white/10 text-zinc-500 hover:text-zinc-200',
+                )}
               >
-                <CivicPane active={active} onNavigateType={onNavigateType} />
-              </motion.div>
-            </AnimatePresence>
-          </main>
+                {t.label}
+              </button>
+            );
+          })}
+          <span className="ml-auto font-mono text-[11px] text-zinc-600">{activeLabel} · kbd g o / p / 3</span>
+        </nav>
+
+        <div className="mb-5 space-y-4">
+          <LiveFeed
+            articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+            domain="government"
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            limit={8}
+          />
+          <RealtimeDataPanel
+            domain="government"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={insights}
+            compact
+          />
         </div>
-      </div>
+
+        <div id="government-main" className="min-w-0">
+          <CivicPane active={active} onNavigateType={onNavigateType} />
+        </div>
+      </NorthStarFrame>
 
       <MobileTabBar
         tabs={[

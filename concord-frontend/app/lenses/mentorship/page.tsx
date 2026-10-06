@@ -14,19 +14,17 @@
  * overlap + availability + experience) surfaced honestly in the Coaching
  * Tools tab instead of faked in a list card.
  *
- * Generic scaffold retired: `ManifestActionBar`, `AutoActionStrip`,
- * `RecentMineCard`, `CrossLensRecentsPanel`, `UniversalActions`,
- * `LensFeaturePanel` — replaced with a designed, keyboard-navigable
- * workspace (mirrors the Finance/News flagship pattern).
+ * The generic action-strip scaffold was retired in favor of a designed,
+ * keyboard-navigable workspace (mirrors the Finance/News flagship pattern).
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BadgeCheck, Users, Inbox, Calendar, Target, MessageSquare, Wrench,
-  BarChart3, MessagesSquare, RefreshCw, Keyboard,
+  Users, Inbox, Calendar, Target, MessageSquare, Wrench,
+  BarChart3, MessagesSquare, RefreshCw, Search,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -47,6 +45,8 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface ProgramReport {
   mentors: number;
@@ -62,20 +62,22 @@ interface ProgramReport {
 
 type TabId = 'directory' | 'requests' | 'sessions' | 'goals' | 'messages' | 'tools' | 'program' | 'community';
 
-const TABS: { id: TabId; label: string; icon: typeof Users; hotkey: string }[] = [
-  { id: 'directory', label: 'Directory', icon: Users, hotkey: '1' },
-  { id: 'requests', label: 'Requests', icon: Inbox, hotkey: '2' },
-  { id: 'sessions', label: 'Sessions', icon: Calendar, hotkey: '3' },
-  { id: 'goals', label: 'Goals', icon: Target, hotkey: '4' },
-  { id: 'messages', label: 'Messages', icon: MessageSquare, hotkey: '5' },
-  { id: 'tools', label: 'Coaching Tools', icon: Wrench, hotkey: '6' },
-  { id: 'program', label: 'Program', icon: BarChart3, hotkey: '7' },
-  { id: 'community', label: 'Community', icon: MessagesSquare, hotkey: '8' },
+const TABS: { id: TabId; label: string; icon: typeof Users; hotkey: string; title: string; hint: string }[] = [
+  { id: 'directory', label: 'Directory', icon: Users, hotkey: '1', title: 'Find someone to learn from', hint: 'Mentor directory and matching' },
+  { id: 'requests', label: 'Requests', icon: Inbox, hotkey: '2', title: 'Who is asking for you', hint: 'Mentorship requests in and out' },
+  { id: 'sessions', label: 'Sessions', icon: Calendar, hotkey: '3', title: 'Time on the calendar', hint: 'Scheduled and completed sessions' },
+  { id: 'goals', label: 'Goals', icon: Target, hotkey: '4', title: 'What you are working toward', hint: 'Mentorship goals and progress' },
+  { id: 'messages', label: 'Messages', icon: MessageSquare, hotkey: '5', title: 'Keep the conversation going', hint: 'Mentor / mentee messages' },
+  { id: 'tools', label: 'Coaching Tools', icon: Wrench, hotkey: '6', title: 'Run the numbers on a pairing', hint: 'Match scoring, progress, feedback and development plans' },
+  { id: 'program', label: 'Program', icon: BarChart3, hotkey: '7', title: 'How the program is doing', hint: 'Program-level reporting' },
+  { id: 'community', label: 'Community', icon: MessagesSquare, hotkey: '8', title: 'Mentors talking shop', hint: 'Mentorship community feed' },
 ];
 
 export default function MentorshipLensPage() {
   useLensNav('mentorship');
   const { isLive, lastUpdated, latestData, insights } = useRealtimeLens('mentorship');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<TabId>('directory');
 
   const stats = useMacroDispatchFeedback<ProgramReport>();
@@ -97,43 +99,41 @@ export default function MentorshipLensPage() {
   const report = stats.status === 'done' ? stats.result : null;
   const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
+  const current = TABS.find((t) => t.id === tab)!;
+
   return (
     <LensShell lensId="mentorship" asMain={false}>
       <FirstRunTour lensId="mentorship" />
-      <div data-lens-theme="mentorship" className="p-6 space-y-5">
-        {/* Command bar */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-neon-blue/15 border border-neon-blue/30 flex items-center justify-center">
-              <BadgeCheck className="w-5 h-5 text-neon-blue" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Mentorship</h1>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Mentor marketplace, matching &amp; program tracking</span>
-                <DepthBadge lensId="mentorship" size="sm" />
-              </div>
-            </div>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          </div>
+      <DepthBadge lensId="mentorship" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="mentorship"
+        crumb="Mentorship"
+        title={`${current.title}${tab === 'directory' && who ? `, ${who}` : ''}`}
+        subtitle="Mentor marketplace, matching and program tracking. Every number and score comes from the mentorship engine."
+        actions={
           <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1-8 switch tab · r refresh stats">
-              <Keyboard className="w-3.5 h-3.5" /> 1-8 · r
-            </span>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DensityToggle variant="dropdown" />
             <button
               type="button"
               onClick={loadStats}
               disabled={statsLoading}
-              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
+              className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-white disabled:opacity-50"
               aria-label="Refresh program stats"
+              title="Refresh program stats (R)"
             >
-              <RefreshCw className={cn('w-4 h-4', statsLoading && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4', statsLoading && 'animate-spin')} />
             </button>
             <DTUExportButton domain="mentorship" data={report || {}} compact />
           </div>
-        </header>
-
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hotkey, hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as TabId)}
+        tabsLabel="Mentorship views"
+        cta={{ label: 'Find a mentor', icon: Search, onClick: () => setTab('directory'), title: 'Open the mentor directory' }}
+      >
+      <div className="space-y-5">
         {/* KPI strip — real program-report macro, via honest macro-dispatch feedback */}
         {statsLoading && !report ? (
           <StatTileGrid columns={5}>
@@ -160,40 +160,8 @@ export default function MentorshipLensPage() {
           </StatTileGrid>
         ) : null}
 
-        {/* Tab bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Mentorship views">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
-                  active
-                    ? 'bg-neon-blue/15 text-neon-blue border-neon-blue/30'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'
-                )}
-              >
-                <span className="text-[10px] text-gray-600 tabular-nums">{t.hotkey}</span>
-                <t.icon className="w-3.5 h-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
-
         {/* Tab content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-          >
+        <div>
             {tab === 'directory' && <MentorDirectoryPanel />}
             {tab === 'requests' && <MentorshipRequestsPanel />}
             {tab === 'sessions' && <MentorshipSessionsPanel />}
@@ -216,17 +184,17 @@ export default function MentorshipLensPage() {
             )}
             {tab === 'program' && <MentorshipProgramPanel />}
             {tab === 'community' && (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <MentorshipFeed />
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
+        </div>
 
         {latestData && (
           <RealtimeDataPanel domain="mentorship" data={latestData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
         )}
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

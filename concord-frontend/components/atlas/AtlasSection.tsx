@@ -11,6 +11,8 @@ import {
 import { AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AtlasKeepMenu } from './AtlasKeepMenu';
+import type { AtlasPlace } from './atlasReport';
 import { AtlasShell, AtlasNav } from './AtlasShell';
 import { Skeleton } from '@/components/ui';
 import { PlacesGraph } from './PlacesGraph';
@@ -49,6 +51,7 @@ export function AtlasSection() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [keepPlace, setKeepPlace] = useState<AtlasPlace | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -94,7 +97,10 @@ export function AtlasSection() {
         ) : (
           <>
             {nav === 'explore'    && <ExplorePanel onSaved={refresh} onShowOnMap={showOnMap} />}
-            {nav === 'places'     && <PlacesPanel places={places} onChanged={refresh} onShowOnMap={showOnMap} />}
+            {nav === 'places'     && <PlacesPanel places={places} onChanged={refresh} onShowOnMap={showOnMap} keepPlace={keepPlace} onPlaceCreated={setKeepPlace} />}
+            {keepPlace && nav === 'places' && (
+              <AtlasKeepMenu place={keepPlace} />
+            )}
             {nav === 'lists'      && <ListsPanel lists={lists} places={places} onChanged={refresh} onShowOnMap={showOnMap} />}
             {nav === 'trips'      && <TripsPanel trips={trips} places={places} onChanged={refresh} onShowOnMap={showOnMap} />}
             {nav === 'directions' && <DirectionsPanel places={places} onShowOnMap={showOnMap} />}
@@ -300,7 +306,7 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
 
 // ── Saved places ──────────────────────────────────────────────
 
-function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onChanged: () => void; onShowOnMap: (m: MapMarker[]) => void }) {
+function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated }: { places: Place[]; onChanged: () => void; onShowOnMap: (m: MapMarker[]) => void; keepPlace: AtlasPlace | null; onPlaceCreated: (p: AtlasPlace | null) => void }) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -312,6 +318,8 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
     try {
       const r = await lensRun({ domain: 'atlas', action: 'places-save', input: { ...draft, lat: Number(draft.lat), lng: Number(draft.lng) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
+      const place = (r.data as { result?: { place?: AtlasPlace } })?.result?.place;
+      if (place) onPlaceCreated(place);
       setDraft({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
       setCreating(false);
       onChanged();
@@ -776,7 +784,7 @@ function PlannerPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap: (
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <header className="px-3 py-2.5 border-b border-white/10 text-xs font-semibold text-gray-200">AI trip planner (Ask Maps parity)</header>
+      <header className="px-3 py-2.5 border-b border-white/10 text-xs font-semibold text-gray-200">AI trip planner</header>
       <div className="p-2 space-y-2">
         <p className="text-[11px] text-gray-400">Builds a multi-day itinerary from your {places.length} saved place(s).</p>
         <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="e.g. relaxed foodie weekend" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

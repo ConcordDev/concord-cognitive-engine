@@ -95,6 +95,7 @@ describe("build loop — integration with real run + lint", () => {
   before(async () => {
     process.env.CONCORD_CODE_EXEC_ENABLED = "1"; // enable the node:vm run step in test
     globalThis._concordSTATE = globalThis._concordSTATE || {};
+    delete globalThis._concordSTATE.codeLens;
     delete globalThis._concordSTATE.codeWorkspace;
     const registerCodeActions = (await import("../domains/code.js")).default;
     registerCodeActions((domain, name, fn) => ACTIONS.set(`${domain}.${name}`, fn));

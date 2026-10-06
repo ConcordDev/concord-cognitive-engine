@@ -55,6 +55,13 @@ const SHELL_TITLES: Record<SupportedLens, string> = {
   environment: 'Emissions',
 };
 
+const PLACEHOLDER_ONLY = ['code', 'legal', 'message', 'healthcare'] as const;
+// These lenses' own body renders the same KPIs/board right below the preview
+// (checked by screenshot 2026-10-02), so the preview was a duplicate block at
+// the top of the page. Crypto (wallet), retail (storefront) and studio
+// keep theirs — there it IS the primary surface.
+const DUPLICATES_BODY = ['education', 'agriculture', 'logistics', 'government', 'aviation', 'environment', 'realestate', 'trades', 'whiteboard'] as const;
+
 export interface ShellPreviewProps {
   lensId: string;
   defaultOpen?: boolean;
@@ -65,6 +72,10 @@ export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPre
   const [open, setOpen] = useState(defaultOpen);
   const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
+  // These lenses have no data-backed preview — only a sentence pointing at the
+  // real workbench below, so the section is pure chrome. Render nothing.
+  if ((PLACEHOLDER_ONLY as readonly string[]).includes(lensId)) return null;
+  if ((DUPLICATES_BODY as readonly string[]).includes(lensId)) return null;
   const label = SHELL_TITLES[lensId as SupportedLens];
 
   return (
@@ -133,12 +144,15 @@ function PreviewLoading() {
 /* ── Crypto: hydrate from existing wallet macros if present ────── */
 
 function CryptoPreview() {
-  const [data, setData] = useState<{ assets: Array<{ id: string; symbol: string; name: string; amount: number; fiatValue: number; changePct?: number }>; txs: Array<{ id: string; kind: 'send' | 'receive' | 'swap' | 'reward' | 'fee'; asset: string; amount: number; fiatValue?: number; counterparty?: string; timestamp: string }>; totalFiat: number; totalDeltaPct: number } | null>(null);
+  const [data, setData] = useState<{ assets: Array<{ id: string; symbol: string; name: string; amount: number; fiatValue: number; changePct?: number }>; txs: Array<{ id: string; kind: 'send' | 'receive' | 'swap' | 'reward' | 'fee'; asset: string; amount: number; fiatValue?: number; counterparty?: string; timestamp: string }>; totalFiat: number; totalDeltaPct?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     (async () => {
       try {
-        const w = await lensRun({ domain: 'crypto', action: 'wallet-list', input: {} }).catch(() => null);
+        const [w, t] = await Promise.all([
+          lensRun({ domain: 'crypto', action: 'wallet-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'crypto', action: 'transactions-list', input: { limit: 5 } }).catch(() => null),
+        ]);
         const items = (w?.data?.result?.wallets || w?.data?.result?.assets || []) as Array<{ id?: string; symbol?: string; name?: string; balance?: number; usdValue?: number }>;
         const assets = items.map(it => ({
           id: String(it.id || it.symbol || ''),
@@ -148,8 +162,25 @@ function CryptoPreview() {
           fiatValue: Number(it.usdValue) || 0,
         }));
         const totalFiat = assets.reduce((s, a) => s + a.fiatValue, 0);
-        setData({ assets, txs: [], totalFiat, totalDeltaPct: 0 });
-      } catch { setData({ assets: [], txs: [], totalFiat: 0, totalDeltaPct: 0 }); }
+        // The user's real recorded transactions (crypto.transactions-list),
+        // not a hard-coded empty list that always says "No transactions yet".
+        const rows = (t?.data?.result?.transactions || []) as Array<{ id?: string; kind?: string; ticker?: string; symbol?: string; qty?: number; totalUsd?: number; counterparty?: string; at?: string }>;
+        const KIND: Record<string, 'send' | 'receive' | 'swap' | 'reward' | 'fee'> = {
+          buy: 'receive', receive: 'receive', unstake: 'receive', sell: 'send', send: 'send', stake: 'send',
+          swap: 'swap', reward: 'reward', fee: 'fee',
+        };
+        const txs = rows.map((r) => ({
+          id: String(r.id || ''),
+          kind: KIND[String(r.kind)] || 'swap',
+          asset: String(r.ticker || r.symbol || '').toUpperCase(),
+          amount: Number(r.qty) || 0,
+          fiatValue: Number(r.totalUsd) || undefined,
+          counterparty: r.counterparty || undefined,
+          timestamp: String(r.at || ''),
+        }));
+        // No 24h delta: nothing here computes one, so none is shown.
+        setData({ assets, txs, totalFiat });
+      } catch { setData({ assets: [], txs: [], totalFiat: 0 }); }
       finally { setLoading(false); }
     })();
   }, []);

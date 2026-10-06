@@ -19,10 +19,12 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { FilePlus, HeartHandshake, Users, MessagesSquare } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
@@ -52,8 +54,18 @@ interface PayoutHistoryResult {
   totalReceivedSparks: number;
 }
 
+type DeskView = 'pacts' | 'payouts' | 'community';
+
+const VIEWS: { id: DeskView; label: string; keys: string; title: string; hint: string; icon: typeof Users }[] = [
+  { id: 'pacts', label: 'Pacts', keys: '1', title: 'Who inherits what', hint: 'Write pacts, review the inheritance graph and pacts you benefit from', icon: Users },
+  { id: 'payouts', label: 'Payouts', keys: '2', title: 'What has been paid out', hint: 'Fired payout history and notifications', icon: HeartHandshake },
+  { id: 'community', label: 'Community', keys: '3', title: 'Talk it through', hint: 'Inheritance community chatter', icon: MessagesSquare },
+];
+
 export default function DeathInsurancePage() {
-  const [desk, setDesk] = useState<'pacts' | 'community'>('pacts');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<DeskView>('pacts');
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
   const [notifications, setNotifications] = useState<PactNotification[]>([]);
@@ -67,50 +79,45 @@ export default function DeathInsurancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useCallback(() => {
     setError(null);
-    try {
-      const [list, notif, hist] = await Promise.all([
-        lensRun<ListResult>('insurance', 'pact-list', {}),
-        lensRun<NotificationsResult>('insurance', 'pact-notifications', { windowDays: 14 }),
-        lensRun<PayoutHistoryResult>('insurance', 'pact-payout-history', {}),
-      ]);
-      // pact-list is the load-bearing read; if it failed, surface the real
-      // backend reason instead of silently rendering an empty workspace.
-      if (!list.data?.ok) {
-        setError(list.data?.error || 'Could not load your inheritance pacts. Try refreshing.');
-      } else if (list.data.result) {
-        // Defensive normalization: PactCard + InheritanceGraph both index into
-        // pact.beneficiaries directly (filter/map/length) with no guard of
-        // their own — a pact record missing the array (a degraded backend
-        // response, or a brand-new pact created before any beneficiary was
-        // added) would otherwise throw and blank the whole page. Never
-        // fabricates data — just fills the honest empty case the type
-        // already allows for "no beneficiaries yet".
-        const normalizedWritten = (list.data.result.written || []).map((p) => ({
-          ...p,
-          beneficiaries: p.beneficiaries || [],
-        }));
-        setWritten(normalizedWritten);
-        setBeneficiaryOf(list.data.result.beneficiaryOf || []);
-      }
-      if (notif.data?.ok && notif.data.result) {
-        setNotifications(notif.data.result.notifications || []);
-        setUnreadHigh(notif.data.result.unreadHigh || 0);
-      }
-      if (hist.data?.ok && hist.data.result) {
-        setPayouts(hist.data.result);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error loading pacts.');
-    } finally {
-      setLoading(false);
-    }
+    setReloadKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    Promise.all([
+      lensRun<ListResult>('insurance', 'pact-list', {}),
+      lensRun<NotificationsResult>('insurance', 'pact-notifications', { windowDays: 14 }),
+      lensRun<PayoutHistoryResult>('insurance', 'pact-payout-history', {}),
+    ])
+      .then(([list, notif, hist]) => {
+        if (cancelled) return;
+        // pact-list is the load-bearing read; if it failed, surface the real
+        // backend reason instead of silently rendering an empty workspace.
+        if (!list.data?.ok) {
+          setError(list.data?.error || 'Could not load your inheritance pacts. Try refreshing.');
+        } else if (list.data.result) {
+          // PactCard + InheritanceGraph index pact.beneficiaries directly, so a
+          // record missing the array would blank the page; fill the honest empty case.
+          setWritten((list.data.result.written || []).map((p) => ({ ...p, beneficiaries: p.beneficiaries || [] })));
+          setBeneficiaryOf(list.data.result.beneficiaryOf || []);
+        }
+        if (notif.data?.ok && notif.data.result) {
+          setNotifications(notif.data.result.notifications || []);
+          setUnreadHigh(notif.data.result.unreadHigh || 0);
+        }
+        if (hist.data?.ok && hist.data.result) {
+          setPayouts(hist.data.result);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Network error loading pacts.');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   useLensCommand(
     [
@@ -120,112 +127,113 @@ export default function DeathInsurancePage() {
         description: 'Refresh pacts',
         category: 'navigation',
         action: () => {
-          void refresh();
+          refresh();
         },
       },
+      ...VIEWS.map((v) => ({
+        id: `death-insurance-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
     ],
     { lensId: 'death-insurance' },
   );
 
+  const current = VIEWS.find((v) => v.id === view)!;
+  const card = 'rounded-2xl border border-white/10 bg-[#111] p-4';
+
   return (
-    <LensShell lensId="death-insurance">
+    <LensShell lensId="death-insurance" asMain={false}>
       <FirstRunTour lensId="death-insurance" />
       <DepthBadge lensId="death-insurance" size="sm" className="ml-2" />
-      <div className="mx-auto max-w-3xl p-6 sm:p-8" aria-busy={loading} data-testid="death-insurance-root">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-zinc-100">Inheritance Pact</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Write a contract: if you fall in Concordia, named friends inherit a share of your sparks.{' '}
-            <strong>Currency: ⚡ Sparks only.</strong> CC stays separate per the no-pay-to-win
-            invariant. Suicide-pact prevention: a beneficiary cannot equal the insured; payouts
-            cannot fire within 24h of writing.
-          </p>
-        </header>
-
-        {error && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            data-testid="death-insurance-error"
-            className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-rose-700/60 bg-rose-950/40 px-4 py-3 text-sm text-rose-200"
-          >
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="shrink-0 rounded-md border border-rose-600/60 px-2 py-1 text-xs font-medium text-rose-100 hover:bg-rose-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+      <NorthStarFrame
+        lensId="death-insurance"
+        crumb="Inheritance"
+        title={`${current.title}${view === 'pacts' && who ? `, ${who}` : ''}`}
+        subtitle="If you fall in Concordia, named friends inherit a share of your sparks. Currency: Sparks only. CC stays separate per the no-pay-to-win invariant. A beneficiary cannot equal the insured, and payouts cannot fire within 24h of writing."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.id === 'pacts' && unreadHigh > 0 ? `${v.label} (${unreadHigh} urgent)` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as DeskView)}
+        tabsLabel="Inheritance views"
+        cta={{ label: 'Write a pact', icon: FilePlus, onClick: () => setView('pacts'), title: 'Open the pact writer' }}
+      >
+        <div className="space-y-5" aria-busy={loading} data-testid="death-insurance-root">
+          {error && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              data-testid="death-insurance-error"
+              className="flex items-center justify-between gap-3 rounded-lg border border-rose-700/60 bg-rose-950/40 px-4 py-3 text-sm text-rose-200"
             >
-              Retry
-            </button>
-          </div>
-        )}
-
-        <div className="mb-6">
-          <PactWriter onWritten={() => void refresh()} />
-        </div>
-
-        <div className="mb-6">
-          <PactNotifications notifications={notifications} unreadHigh={unreadHigh} />
-        </div>
-
-        {!loading && <InheritanceGraph written={written} beneficiaryOf={beneficiaryOf} />}
-
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-zinc-300">
-          Pacts You Wrote
-        </h2>
-        {loading ? (
-          <p role="status" className="mb-6 text-sm italic text-zinc-400">Loading…</p>
-        ) : written.length === 0 ? (
-          <p data-testid="death-insurance-written-empty" className="mb-6 text-sm italic text-zinc-400">
-            No pacts yet — write one above.
-          </p>
-        ) : (
-          <ul className="mb-6 space-y-2">
-            {written.map((p) => (
-              <PactCard key={p.id} pact={p} onChanged={() => void refresh()} />
-            ))}
-          </ul>
-        )}
-
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-zinc-300">
-          You Are a Beneficiary Of
-        </h2>
-        {loading ? (
-          <p className="mb-6 text-sm italic text-zinc-400">Loading…</p>
-        ) : beneficiaryOf.length === 0 ? (
-          <p className="mb-6 text-sm italic text-zinc-400">No data yet.</p>
-        ) : (
-          <ul className="mb-6 space-y-2">
-            {beneficiaryOf.map((p) => (
-              <BeneficiaryPactCard key={p.id} pact={p} onChanged={() => void refresh()} />
-            ))}
-          </ul>
-        )}
-
-        <div className="mb-6">
-          <PayoutHistory
-            paidOut={payouts.paidOut}
-            received={payouts.received}
-            totalPaidOutSparks={payouts.totalPaidOutSparks}
-            totalReceivedSparks={payouts.totalReceivedSparks}
-          />
-        </div>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setDesk(d => d === 'community' ? 'pacts' : 'community')}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>{desk === 'community' ? 'Back to pacts' : 'Community'}</span>
-          </button>
-          {desk === 'community' && (
-            <div className="mt-3">
-              <InsuranceChatter />
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => refresh()}
+                className="shrink-0 rounded-md border border-rose-600/60 px-2 py-1 text-xs font-medium text-rose-100 hover:bg-rose-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                Retry
+              </button>
             </div>
           )}
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="death-insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+          {view === 'pacts' && (
+            <>
+              <PactWriter onWritten={() => refresh()} />
+              <PactNotifications notifications={notifications} unreadHigh={unreadHigh} />
+              {!loading && <InheritanceGraph written={written} beneficiaryOf={beneficiaryOf} />}
+              <section className={card}>
+                <h2 className="mb-2 text-sm font-semibold text-white">Pacts You Wrote</h2>
+                {loading ? (
+                  <p role="status" className="text-sm italic text-zinc-400">Loading…</p>
+                ) : written.length === 0 ? (
+                  <p data-testid="death-insurance-written-empty" className="text-sm italic text-zinc-400">
+                    No pacts yet — write one above.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {written.map((p) => (
+                      <PactCard key={p.id} pact={p} onChanged={() => refresh()} />
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <section className={card}>
+                <h2 className="mb-2 text-sm font-semibold text-white">You Are a Beneficiary Of</h2>
+                {loading ? (
+                  <p className="text-sm italic text-zinc-400">Loading…</p>
+                ) : beneficiaryOf.length === 0 ? (
+                  <p className="text-sm italic text-zinc-400">No data yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {beneficiaryOf.map((p) => (
+                      <BeneficiaryPactCard key={p.id} pact={p} onChanged={() => refresh()} />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </>
+          )}
+
+          {view === 'payouts' && (
+            <>
+              <PayoutHistory
+                paidOut={payouts.paidOut}
+                received={payouts.received}
+                totalPaidOutSparks={payouts.totalPaidOutSparks}
+                totalReceivedSparks={payouts.totalReceivedSparks}
+              />
+            </>
+          )}
+
+          {view === 'community' && (
+            <section className={card}>
+              <InsuranceChatter />
+            </section>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

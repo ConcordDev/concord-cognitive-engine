@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowDownUp, Loader2, Settings, AlertTriangle } from 'lucide-react';
+import { ArrowDownUp, Loader2, Settings, AlertTriangle, Ban } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -18,15 +18,20 @@ interface SwapPanelProps {
   tokens: SwappableToken[];
   defaultFromSymbol?: string;
   defaultToSymbol?: string;
-  onSwap?: (input: { fromId: string; toId: string; amountIn: number; quote: SwapQuote }) => Promise<void> | void;
 }
+
+/** Shown under the quote: executing a swap is not something Concord can do. */
+export const SWAP_NOT_SUPPORTED =
+  "Quote only. Executing swaps isn't supported yet: no wallet or DEX router is connected, so nothing is traded or recorded.";
 
 export interface SwapQuote {
   amountOut: number;
   rate: number;
-  priceImpactPercent: number;
+  /** null: needs live pool depth (an aggregator) — the indicative quote can't know it. */
+  priceImpactPercent: number | null;
   minimumReceived: number;
-  gasEstimateUsd: number;
+  /** null: needs a gas oracle — the indicative quote can't know it. */
+  gasEstimateUsd: number | null;
   feeUsd: number;
   route: string[];
 }
@@ -34,11 +39,13 @@ export interface SwapQuote {
 const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
 
 /**
- * Uniswap-style swap panel — input token + output token, live quote via
- * the backend (with deterministic fallback math), slippage preset, gas
- * estimate, price impact warning.
+ * Indicative swap QUOTE — input token + output token, spot quote from the
+ * backend crypto.swap-quote (CoinGecko prices, 0.3% fee model, slippage
+ * floor). Price impact and gas come back null (they need pool depth and a
+ * gas oracle) and are shown as "not estimated", never invented. There is no
+ * swap button: executing a swap isn't supported yet.
  */
-export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 'USDC', onSwap }: SwapPanelProps) {
+export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 'USDC' }: SwapPanelProps) {
   const initialFrom = tokens.find(t => t.symbol.toUpperCase() === defaultFromSymbol.toUpperCase()) || tokens[0];
   const initialTo = tokens.find(t => t.symbol.toUpperCase() === defaultToSymbol.toUpperCase()) || tokens[1] || tokens[0];
 
@@ -49,7 +56,6 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
   const [showSettings, setShowSettings] = useState(false);
   const [quote, setQuote] = useState<SwapQuote | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fromToken = tokens.find(t => t.id === fromId);
@@ -77,24 +83,17 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
           signal: ac.signal,
         });
         const result = res.data?.result as SwapQuote | undefined;
-        if (result) setQuote(result);
+        if (res.data?.ok !== false && result) {
+          setQuote(result);
+        } else {
+          // No invented fallback numbers — say the quote is unavailable.
+          setQuote(null);
+          setError(`Quote unavailable: ${String(res.data?.error || 'no price')}`);
+        }
       } catch (e) {
         if (!(e as { name?: string })?.name?.includes('Canceled')) {
-          // Deterministic fallback so UX doesn't grey out when backend isn't deployed yet
-          const fallbackRate = (fromToken.priceUsd || 0) / Math.max(0.000001, toToken.priceUsd || 0);
-          const amountOut = Number(amountIn) * fallbackRate;
-          const fee = amountOut * 0.003;
-          const slip = slippage / 100;
-          setQuote({
-            amountOut: amountOut - fee,
-            rate: fallbackRate,
-            priceImpactPercent: 0.12,
-            minimumReceived: (amountOut - fee) * (1 - slip),
-            gasEstimateUsd: 1.2,
-            feeUsd: fee * (toToken.priceUsd || 1),
-            route: [fromToken.symbol, toToken.symbol],
-          });
-          setError('Using fallback rate (backend quote unavailable)');
+          setQuote(null);
+          setError('Quote unavailable: the price service could not be reached.');
         }
       } finally { setLoadingQuote(false); }
     }, 250);
@@ -106,17 +105,6 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
   }, [fromId, toId, quote]);
 
   const fromBalanceOk = fromToken?.balance != null ? Number(amountIn) <= fromToken.balance : true;
-  const canSwap = !!quote && Number(amountIn) > 0 && fromBalanceOk && !loadingQuote && !!fromToken && !!toToken && fromId !== toId;
-
-  async function handleSwap() {
-    if (!canSwap || !quote || !fromToken || !toToken) return;
-    setSubmitting(true);
-    try {
-      await onSwap?.({ fromId, toId, amountIn: Number(amountIn), quote });
-      setAmountIn('');
-      setQuote(null);
-    } finally { setSubmitting(false); }
-  }
 
   const priceImpactWarn = (quote?.priceImpactPercent || 0) > 5;
   const priceImpactCrit = (quote?.priceImpactPercent || 0) > 15;
@@ -124,7 +112,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
   return (
     <div className="bg-lattice-void border border-cyan-500/20 rounded-xl p-4 space-y-3 w-full max-w-md">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-cyan-300">Swap</h3>
+        <h3 className="text-sm font-bold text-cyan-300">Swap quote</h3>
         <button
           onClick={() => setShowSettings(v => !v)}
           className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white"
@@ -199,12 +187,13 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
             {quote.minimumReceived.toLocaleString(undefined, { maximumFractionDigits: 6 })} {toToken?.symbol}
           </Row>
           <Row label="Fee">${quote.feeUsd.toFixed(4)}</Row>
-          <Row label="Gas est.">~${quote.gasEstimateUsd.toFixed(2)}</Row>
+          <Row label="Gas est.">{quote.gasEstimateUsd != null ? `~$${quote.gasEstimateUsd.toFixed(2)}` : 'not estimated'}</Row>
+          <Row label="Price impact">{quote.priceImpactPercent != null ? `${quote.priceImpactPercent.toFixed(2)}%` : 'not estimated'}</Row>
           <Row label="Route">{quote.route.join(' → ')}</Row>
           {priceImpactWarn && (
             <div className={cn('flex items-center gap-1.5 text-xs px-2 py-1 rounded', priceImpactCrit ? 'bg-red-500/10 text-red-300' : 'bg-yellow-500/10 text-yellow-300')}>
               <AlertTriangle className="w-3.5 h-3.5" />
-              Price impact {quote.priceImpactPercent.toFixed(2)}% — {priceImpactCrit ? 'execution risk high' : 'review before swapping'}
+              Price impact {(quote.priceImpactPercent ?? 0).toFixed(2)}% — {priceImpactCrit ? 'execution risk high' : 'review before swapping'}
             </div>
           )}
         </div>
@@ -215,19 +204,14 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
         <p className="text-[10px] text-red-400">Insufficient {fromToken.symbol} balance ({fromToken.balance}).</p>
       )}
 
-      <button
-        onClick={handleSwap}
-        disabled={!canSwap || submitting}
-        className="w-full py-2.5 rounded-lg text-sm font-bold bg-cyan-500 hover:bg-cyan-400 text-black disabled:opacity-40 inline-flex items-center justify-center gap-2"
+      <p
+        data-testid="swap-not-supported"
+        className="flex items-start gap-1.5 text-[11px] text-amber-300/90 px-1"
       >
-        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {!fromToken || !toToken ? 'Pick tokens'
-          : fromId === toId ? 'Pick different tokens'
-          : !amountIn || Number(amountIn) <= 0 ? 'Enter amount'
-          : !fromBalanceOk ? 'Insufficient balance'
-          : loadingQuote ? 'Quoting…'
-          : `Swap ${fromToken.symbol} → ${toToken.symbol}`}
-      </button>
+        <Ban className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        {loadingQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+        {SWAP_NOT_SUPPORTED}
+      </p>
     </div>
   );
 }

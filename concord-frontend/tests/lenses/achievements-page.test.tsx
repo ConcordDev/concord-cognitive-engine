@@ -31,6 +31,7 @@ vi.mock('@/lib/realtime/socket', () => {
   };
 });
 
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 import AchievementsLensPage from '@/app/lenses/achievements/page';
 import * as socketMock from '@/lib/realtime/socket';
 
@@ -89,6 +90,7 @@ describe('AchievementsLensPage — four UX states', () => {
     expect(screen.getByText(/loading catalog/i)).toBeInTheDocument();
 
     // Let it finish so we don't leak a pending promise.
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     resolveCatalog({ ok: true, catalog: CATALOG });
     await waitFor(() => expect(screen.queryByText(/loading catalog/i)).not.toBeInTheDocument());
   });

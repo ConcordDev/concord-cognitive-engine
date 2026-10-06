@@ -288,14 +288,10 @@ export function PersistentChatRail({
 
   // ── Mode state ─────────────────────────────────────────────
 
-  const [chatMode, setChatMode] = useState<ChatMode>('welcome');
+  const [chatModeState, setChatMode] = useState<ChatMode>('welcome');
 
   // Auto-switch from welcome mode when first message is sent
-  useEffect(() => {
-    if (messages.length > 0 && chatMode === 'welcome') {
-      setChatMode('chat');
-    }
-  }, [messages.length, chatMode]);
+  const chatMode: ChatMode = messages.length > 0 && chatModeState === 'welcome' ? 'chat' : chatModeState;
 
   // ── Cross-lens memory ──────────────────────────────────────
 
@@ -786,7 +782,7 @@ export function PersistentChatRail({
         isExpanded ? 'w-[600px]' : 'w-[380px]'
       )}
       /* This expanded rail genuinely covers the top-right corner
-         (components/conkay/widget/ConKayWidgetLayer.tsx's mount point).
+         (components/conkay/widget/ConKayWidgetLayer.tsx, the widget mount point).
          See the matching marker + comment in SystemGuidePanel.tsx. */
       data-conkay-occludes-top-right="true"
     >

@@ -1,15 +1,13 @@
 'use client';
 
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { Wheat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -20,8 +18,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { AgricultureActionPanel } from '@/components/agriculture/AgricultureActionPanel';
 import { ActionResultPanel } from '@/components/agriculture/ActionResultPanel';
 import { DeereWorkbenchPanel } from '@/components/agriculture/DeereWorkbenchPanel';
@@ -47,9 +45,19 @@ export default function AgricultureLensPage() {
   );
 }
 
+const DESK_TITLES: Partial<Record<FarmDeskView, string>> = {
+  ops: 'Your farm today',
+  map: 'Every field on the map',
+  workbench: 'The Ops Center',
+  precision: 'The view from the field',
+  operator: 'Plans for the season',
+  scout: 'What is out in the field',
+};
+
 function AgricultureFarmDesk() {
   useLensIdentity('agriculture');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('agriculture');
   const {
     latestData: weatherData,
@@ -101,112 +109,71 @@ function AgricultureFarmDesk() {
     body = <ScoutPanel />;
   }
 
+  const label = FARM_DESK_TABS.find((t) => t.id === active)?.label;
+  const title = DESK_TITLES[active] ?? `Your ${label?.toLowerCase() ?? 'farm'} records`;
+
   return (
     <LensShell lensId="agriculture" asMain={false}>
       <FirstRunTour lensId="agriculture" />
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
-      <div data-lens-theme="agriculture" className={ds.pageContainer}>
-        <ShellPreview lensId="agriculture" defaultOpen />
-        <a href="#agriculture-desk" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-          Skip to farm desk
-        </a>
-
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Wheat className="w-8 h-8 text-green-400" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Farm desk</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={ds.textMuted}>
-                John Deere Ops Center / Granular — fields, fleet, FieldView, harvest
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <DTUExportButton domain="agriculture" data={{}} compact />
-            {pending && <span className="text-xs text-neon-blue animate-pulse">Running…</span>}
-          </div>
-        </header>
-
-        <WeatherHero
-          data={weatherData as WeatherPayload | null}
-          isLive={weatherLive}
-          lastUpdated={weatherUpdated}
-        />
-
-        <LiveFeed
-          articles={
-            (realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as ComponentProps<
-              typeof LiveFeed
-            >['articles']
-          }
-          domain="agriculture"
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          limit={10}
-        />
-        <RealtimeDataPanel
-          domain="agriculture"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={insights}
-          compact
-        />
-
-        <nav
-          id="agriculture-desk"
-          className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto"
-          aria-label="Farm desk"
-        >
-          {FARM_DESK_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActive(tab.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
-                active === tab.id
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                  : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent',
-              )}
-            >
-              <tab.icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <motion.div
-          key={active}
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.16 }}
-        >
-          {body}
-        </motion.div>
-
-        <ActionResultPanel />
-
-        <div className="px-4 mb-2">
-          <LensFeedPanel lensId="agriculture" />
-        </div>
-        <section className="mt-4">
-          <LensFeedButton domain="agriculture" label="Live crop-yield feed" />
-        </section>
-          <CrossLensRecentsPanel lensId="agriculture" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setWorkbenchOpen(true)}
-        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-emerald-50 shadow-2xl text-sm font-medium"
-        title="Farm Workbench — fields, weather + soil, scouting log"
+      <NorthStarFrame
+        lensId="agriculture"
+        crumb="Agriculture"
+        title={`${title}${active === 'ops' && who ? `, ${who}` : ''}`}
+        subtitle="Fields, fleet, field view and harvest."
+        actions={
+          <>
+            {pending && <span className="animate-pulse text-xs text-neon-blue">Running…</span>}
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          </>
+        }
+        tabs={FARM_DESK_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as FarmDeskView)}
+        tabsLabel="Farm desk"
+        cta={{ label: 'Farm Workbench', icon: Wheat, onClick: () => setWorkbenchOpen(true), title: 'Farm Workbench — fields, weather + soil, scouting log (Shift+W)' }}
       >
-        <Wheat className="w-4 h-4" /> Farm Workbench
-      </button>
+        <div className="space-y-5">
+          <ShellPreview lensId="agriculture" defaultOpen />
+
+          {active === 'ops' && (
+            <>
+              <WeatherHero
+                data={weatherData as WeatherPayload | null}
+                isLive={weatherLive}
+                lastUpdated={weatherUpdated}
+              />
+              <LiveFeed
+                articles={
+                  (realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as ComponentProps<
+                    typeof LiveFeed
+                  >['articles']
+                }
+                domain="agriculture"
+                isLive={isLive}
+                lastUpdated={lastUpdated}
+                limit={10}
+              />
+              <RealtimeDataPanel
+                domain="agriculture"
+                data={realtimeData}
+                isLive={isLive}
+                lastUpdated={lastUpdated}
+                insights={insights}
+                compact
+              />
+            </>
+          )}
+
+          <div id="agriculture-desk">{body}</div>
+
+          <ActionResultPanel />
+
+          <LensFeedPanel lensId="agriculture" />
+          <LensFeedButton domain="agriculture" label="Live crop-yield feed" />
+        </div>
+      </NorthStarFrame>
+
       <FarmWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );

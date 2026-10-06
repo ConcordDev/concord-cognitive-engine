@@ -1,10 +1,18 @@
 'use client';
 
-import { useRef, type RefObject } from 'react';
+/**
+ * HR: north-star chrome over a real BambooHR/Rippling-parity HRIS. The ~50
+ * `hr` macros are surfaced by purpose-built sections: `HrHrisSection` (11-tab
+ * HRIS workbench), `HrActionPanel` (people-ops calculators) and the BLS labor
+ * data explorer + wage forecast. No separate CRUD store, no macro-button wall.
+ */
+
+import { useCallback, useState } from 'react';
+import { Users, Calculator, LineChart, UserPlus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { HrHrisSection } from '@/components/hr/HrHrisSection';
 import { HrActionPanel } from '@/components/hr/HrActionPanel';
 import { BlsSeriesExplorer } from '@/components/hr/BlsSeriesExplorer';
@@ -12,90 +20,92 @@ import { BlsWageForecast } from '@/components/hr/BlsWageForecast';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
-import { Users, Calculator, LineChart } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-/**
- * HR lens — a real BambooHR/Rippling-parity HRIS.
- *
- * The domain's ~50 macros (employee records, org chart, time off, payroll
- * with real federal-bracket withholding, benefits enrollment, time clock,
- * learning/compliance, recruiting pipeline, self-service portal, workforce
- * analytics) are already fully surfaced by three purpose-built, macro-wired
- * sections below — `HrHrisSection` owns the 11-tab HRIS workbench,
- * `HrActionPanel` is the people-ops calculator desk (comp benchmark /
- * turnover / interview scorecard / PTO), and `BlsSeriesExplorer` pulls real
- * US Bureau of Labor Statistics series. This page is their shell: no
- * separate fake CRUD store, no generic macro-button wall — every element
- * here traces to a real handler in `server/domains/hr.js`.
- */
+type View = 'people' | 'calc' | 'bls';
+
+const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Users }[] = [
+  { id: 'people', label: 'People hub', keys: 'g p', title: 'Your people', hint: 'Records, org chart, time off, payroll, benefits, recruiting, learning', icon: Users },
+  { id: 'calc', label: 'Calculators', keys: 'g c', title: 'Run the numbers', hint: 'Comp benchmark, turnover, interview scorecard, PTO', icon: Calculator },
+  { id: 'bls', label: 'Labor data', keys: 'g w', title: 'What the market pays', hint: 'US Bureau of Labor Statistics series and wage forecast', icon: LineChart },
+];
+
 export default function HRLensPage() {
   useLensNav('hr');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('hr');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<View>('people');
 
-  const hrisRef = useRef<HTMLDivElement>(null);
-  const calcRef = useRef<HTMLDivElement>(null);
-  const wageRef = useRef<HTMLDivElement>(null);
-  const scrollTo = (ref: RefObject<HTMLDivElement | null>) => () =>
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const addPerson = useCallback(() => {
+    setView('people');
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="hr"] input:not([type="file"]), [data-lens-theme="hr"] textarea');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.focus();
+    });
+  }, []);
 
   useLensCommand(
     [
-      { id: 'jump-hris', keys: 'g p', description: 'Jump to People Hub', category: 'navigation', action: scrollTo(hrisRef) },
-      { id: 'jump-calc', keys: 'g c', description: 'Jump to People-Ops Calculators', category: 'navigation', action: scrollTo(calcRef) },
-      { id: 'jump-wage', keys: 'g w', description: 'Jump to Wage Data (BLS)', category: 'navigation', action: scrollTo(wageRef) },
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: v.label,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
+      { id: 'hr-add-person', keys: 'n', description: 'Add a person', category: 'actions' as const, action: addPerson },
     ],
-    { lensId: 'hr' }
+    { lensId: 'hr' },
   );
+
+  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="hr" asMain={false}>
       <FirstRunTour lensId="hr" />
       <DepthBadge lensId="hr" size="sm" className="ml-2" />
-
-      <div data-lens-theme="hr" className="space-y-6 p-6">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2"><h1 className={ds.heading1}>Human Resources</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div>
-              <p className={ds.textMuted}>People, time off, payroll, benefits, recruiting, learning, and compliance</p>
-            </div>
-          </div>
-          <DTUExportButton domain="hr" data={{}} compact />
-        </header>
-
-        <RealtimeDataPanel domain="hr" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-        <div ref={hrisRef}>
-          <HrHrisSection />
-        </div>
-
-        <section ref={calcRef} className="space-y-2">
-          <h2 className={cnHeading()}><Calculator className="w-4 h-4 text-blue-400" /> People-Ops Calculators</h2>
+      <NorthStarFrame
+        lensId="hr"
+        crumb="Human Resources"
+        title={`${current.title}${view === 'people' && who ? `, ${who}` : ''}`}
+        subtitle="People, time off, payroll, benefits, recruiting, learning and compliance."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="hr" data={{}} compact />
+          </>
+        }
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
+        activeTab={view}
+        onTab={(id) => setView(id as View)}
+        cta={{ label: 'Add a person', icon: UserPlus, onClick: addPerson, title: 'Add a person (N)' }}
+      >
+        {view === 'people' && <HrHrisSection />}
+        {view === 'calc' && (
           <PipingProvider>
             <HrActionPanel />
           </PipingProvider>
-        </section>
+        )}
+        {view === 'bls' && (
+          <section className="space-y-4 rounded-2xl border border-white/10 bg-[#111] p-5">
+            <BlsSeriesExplorer />
+            <div className="border-t border-white/10 pt-4">
+              <BlsWageForecast />
+            </div>
+          </section>
+        )}
 
-        <section ref={wageRef} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-2">
-          <h2 className={cnHeading()}><LineChart className="w-4 h-4 text-blue-400" /> Labor Market Data (BLS)</h2>
-          <BlsSeriesExplorer />
-          <div className="mt-4 border-t border-zinc-800 pt-4">
-            <BlsWageForecast />
-          </div>
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="hr" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <div className="mt-6">
+          <RealtimeDataPanel domain="hr" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
-}
-
-function cnHeading() {
-  return 'flex items-center gap-2 text-sm font-semibold text-white px-1';
 }

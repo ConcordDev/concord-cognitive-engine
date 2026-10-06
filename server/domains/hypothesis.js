@@ -464,9 +464,11 @@ export default function registerHypothesisActions(rawRegister) {
         const d = params.effectSize || 0.5;
         if (d <= 0) return { ok: false, error: "effectSize must be > 0." };
 
+        // Two independent groups, equal size, two-sided z approximation:
+        // n per group = 2·((z₁₋α/₂ + z₁₋β) / d)².
         const zAlpha = normInv(1 - alpha / 2);
         const zBeta = normInv(power);
-        const n = Math.ceil(Math.pow((zAlpha + zBeta) / d, 2));
+        const n = Math.ceil(2 * Math.pow((zAlpha + zBeta) / d, 2));
 
         const result = {
           solve: "sampleSize", requiredN: n, perGroup: n,
@@ -482,14 +484,15 @@ export default function registerHypothesisActions(rawRegister) {
         const n = params.sampleSize || 100;
         const d = params.effectSize || 0.5;
         const zAlpha = normInv(1 - alpha / 2);
-        const nonCentrality = d * Math.sqrt(n);
+        // n is the per-group size of a two-group comparison.
+        const nonCentrality = d * Math.sqrt(n / 2);
         const power = 1 - normCDF(zAlpha - nonCentrality);
 
         const result = {
           solve: "power", power: rd(power), powerPercent: rd(power * 100) + "%",
           sampleSize: n, effectSize: d, alpha,
           adequate: power >= 0.8,
-          recommendation: power < 0.8 ? `Need ~${Math.ceil(Math.pow((normInv(1 - alpha / 2) + normInv(0.8)) / d, 2))} per group for 80% power` : "Adequate power",
+          recommendation: power < 0.8 ? `Need ~${Math.ceil(2 * Math.pow((normInv(1 - alpha / 2) + normInv(0.8)) / d, 2))} per group for 80% power` : "Adequate power",
         };
         recordAnalysis(ctx, "powerAnalysis", "Power: achieved power", result);
         return { ok: true, result };
@@ -500,7 +503,7 @@ export default function registerHypothesisActions(rawRegister) {
         const power = params.power || 0.8;
         const zAlpha = normInv(1 - alpha / 2);
         const zBeta = normInv(power);
-        const d = (zAlpha + zBeta) / Math.sqrt(n);
+        const d = (zAlpha + zBeta) * Math.sqrt(2 / n);
 
         const result = {
           solve: "effectSize", minimumDetectableEffect: rd(d),

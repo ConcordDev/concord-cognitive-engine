@@ -28,6 +28,10 @@ vi.mock('@/components/lens/LensShell', () => ({
 // parent. Production mounts that via the lens shell; this isolated page
 // test doesn't, so stub the keyboard binding to a no-op.
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'sam' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
+vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 
 import MoveBuilderLensPage from '@/app/lenses/move-builder/page';
 

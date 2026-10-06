@@ -9,9 +9,14 @@ import { Loader2, Plus, ChevronRight, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { CreatorKeepMenu } from './CreatorKeepMenu';
 
 interface Content {
   id: string; title: string; format: string; platform: string | null; stage: string;
+  scheduledDate?: string | null;
+  notes?: string | null;
+  views?: number; clicks?: number; conversions?: number; citations?: number; revenue?: number;
+  createdAt?: string; publishedAt?: string | null;
 }
 
 const STAGES = [
@@ -118,6 +123,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
+                    <CreatorKeepMenu item={c} />
                   </li>
                 ))}
                 {stageItems.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}

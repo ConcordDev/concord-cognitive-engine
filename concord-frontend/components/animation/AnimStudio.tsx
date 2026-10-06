@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, ArrowLeft, Undo2, Redo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
   Wrench, ChevronLeft, ChevronRight, ImageIcon,
+  Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -243,7 +244,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   // actually changes (not on every stroke), so drawing stays chatter-free.
   const framesSignature = anim ? `${anim.frames.length}:${anim.frames.map((f) => f.exposure).join(',')}` : '';
   useEffect(() => {
-    if (!anim) { setDuration(null); return; }
+    if (!anim) { queueMicrotask(() => setDuration(null)); return; }
     let active = true;
     void lensRun('animation', 'playback-frames', { id: anim.id }).then((r) => {
       if (!active) return;
@@ -258,7 +259,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     const r = await lensRun('animation', 'brush-list', {});
     if (r.data?.ok) setCustomBrushes((r.data.result as { brushes: CustomBrush[] }).brushes || []);
   }, []);
-  useEffect(() => { void loadBrushes(); }, [loadBrushes]);
+  useEffect(() => { void Promise.resolve().then(loadBrushes); }, [loadBrushes]);
 
   // Live guide updates from the Canvas tools tab.
   useEffect(() => {
@@ -286,10 +287,10 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     const fallback = (paintable.length ? paintable : layers)[
       (paintable.length ? paintable : layers).length - 1
     ]?.id || '';
-    setActiveLayer((prev) => {
+    queueMicrotask(() => setActiveLayer((prev) => {
       const prevLayer = layers.find((l) => l.id === prev);
       return prevLayer && prevLayer.type !== 'reference' ? prev : fallback;
-    });
+    }));
   }, [anim, frameIdx]);
 
   // Publish "the frame currently open in the studio" so the Reference tab's
@@ -310,7 +311,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     if (!playing || !anim) return;
     const sequence: number[] = [];
     anim.frames.forEach((f, i) => { for (let k = 0; k < f.exposure; k++) sequence.push(i); });
-    if (!sequence.length) { setPlaying(false); return; }
+    if (!sequence.length) { queueMicrotask(() => setPlaying(false)); return; }
     playRef.current.pos = 0;
     const timer = window.setInterval(() => {
       const pos = playRef.current.pos % sequence.length;
@@ -508,6 +509,27 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     }
   };
 
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const saveTitle = async () => {
+    if (!anim || renaming == null) return;
+    const title = renaming.trim();
+    if (!title || title === anim.title) { setRenaming(null); return; }
+    const r = await lensRun('animation', 'anim-rename', { id: anim.id, title });
+    if (r.data?.ok) setAnim((prev) => prev && ({ ...prev, title }));
+    setRenaming(null);
+  };
+
+  const clearFrame = async (allLayers: boolean) => {
+    if (!anim) return;
+    const frame = anim.frames[frameIdx];
+    const layerId = activeLayer || frame.layers[0]?.id;
+    if (!layerId) return;
+    await lensRun('animation', 'frame-clear', { animId: anim.id, frameId: frame.id, layerId, allLayers });
+    await reloadAnim();
+    setLastAction('structural');
+    setCanRedo(false);
+  };
+
   const deleteFrame = async () => {
     if (!anim || anim.frames.length <= 1) return;
     const fid = anim.frames[frameIdx].id;
@@ -578,7 +600,18 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
           <ArrowLeft className="w-3.5 h-3.5" /> Gallery
         </button>
-        <span className="text-sm font-semibold text-zinc-100 flex-1 truncate">{anim.title}</span>
+        {renaming != null ? (
+          <input aria-label="Animation title" autoFocus value={renaming} onChange={(e) => setRenaming(e.target.value)}
+            onBlur={() => void saveTitle()}
+            onKeyDown={(e) => { if (e.key === 'Enter') void saveTitle(); if (e.key === 'Escape') setRenaming(null); }}
+            className="flex-1 min-w-0 bg-zinc-900 border border-cyan-700 rounded-lg px-2 py-1 text-sm font-semibold text-zinc-100" />
+        ) : (
+          <button type="button" onClick={() => setRenaming(anim.title)} title="Rename"
+            className="group flex flex-1 min-w-0 items-center gap-1.5 text-left text-sm font-semibold text-zinc-100">
+            <span className="truncate">{anim.title}</span>
+            <Pencil className="w-3 h-3 shrink-0 text-zinc-500 opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
         <button type="button" onClick={() => setOnion(!onion)}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
             onion ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
@@ -650,6 +683,14 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           <button type="button" onClick={() => addFrame(true)}
             className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
             <Copy className="w-3 h-3" /> Duplicate
+          </button>
+          <button type="button" onClick={() => void clearFrame(false)} title="Clear strokes on the active layer of this frame (undoable)"
+            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+            <Eraser className="w-3 h-3" /> Clear layer
+          </button>
+          <button type="button" onClick={() => void clearFrame(true)} title="Clear strokes on every layer of this frame (undoable)"
+            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+            Clear frame
           </button>
           <button aria-label="Delete" type="button" onClick={deleteFrame}
             className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">

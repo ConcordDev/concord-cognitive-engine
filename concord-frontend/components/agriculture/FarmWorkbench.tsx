@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AgricultureKeepMenu } from './AgricultureKeepMenu';
+import type { AgField } from './agricultureReport';
 
 export interface Field {
   id: string;
@@ -146,12 +148,15 @@ function FieldsTab({
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: '', acreage: 0, soilType: '', currentCrop: '' });
+  const [lastField, setLastField] = useState<AgField | null>(null);
 
   const save = async () => {
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'agriculture', action: 'field-create', input: draft,
       });
+      const field = (res.data as { result?: { field?: AgField } })?.result?.field;
+      if (field) setLastField(field);
       setCreating(false);
       setDraft({ name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn' });
       await onChange();
@@ -242,6 +247,10 @@ function FieldsTab({
             <Save className="w-3 h-3" /> Save field
           </button>
         </div>
+      )}
+
+      {lastField && (
+        <AgricultureKeepMenu field={lastField} />
       )}
 
       {loading ? (

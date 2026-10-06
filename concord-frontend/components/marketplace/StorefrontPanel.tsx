@@ -11,10 +11,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Store, Loader2, ShoppingCart, Search, Plus, Trash2, Check, X, Star, Receipt, ExternalLink } from 'lucide-react';
+import { Store, Loader2, ShoppingCart, Search, Plus, Trash2, Check, X, Star, Receipt } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { MarketplaceOrderMenu, PayOrderButton, type BuyerOrder } from '@/components/marketplace/MarketplaceOrderMenu';
+import { checkoutFromLensResult, paidSentence } from '@/components/marketplace/marketplaceOrder';
 
 interface StoreListing {
   listingId: string;
@@ -98,7 +100,9 @@ export function StorefrontPanel() {
   const [shopLoading, setShopLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<CheckoutHistoryEntry[] | null>(null);
+  const [buyerOrders, setBuyerOrders] = useState<BuyerOrder[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [settled, setSettled] = useState<Record<string, BuyerOrder>>({});
 
   const refreshCatalog = useCallback(async () => {
     setLoading(true);
@@ -143,10 +147,10 @@ export function StorefrontPanel() {
   }, []);
 
   useEffect(() => {
-    refreshCatalog();
+    void Promise.resolve().then(refreshCatalog);
   }, [refreshCatalog]);
   useEffect(() => {
-    refreshCart();
+    void Promise.resolve().then(refreshCart);
   }, [refreshCart]);
 
   async function addToCart(l: StoreListing) {
@@ -196,14 +200,24 @@ export function StorefrontPanel() {
     setShowHistory(true);
     setHistoryLoading(true);
     try {
-      const r = await lensRun<{ checkouts: CheckoutHistoryEntry[] }>('marketplace', 'checkout-history', {});
+      const [r, mine] = await Promise.all([
+        lensRun<{ checkouts: CheckoutHistoryEntry[] }>('marketplace', 'checkout-history', {}),
+        lensRun<{ orders: BuyerOrder[] }>('marketplace', 'orders-for-buyer', {}),
+      ]);
       setHistory((r.data?.result?.checkouts || []) as CheckoutHistoryEntry[]);
+      setBuyerOrders((mine.data?.result?.orders || []) as BuyerOrder[]);
     } catch (e) {
       console.error('[Storefront] checkout-history failed', e);
       setHistory([]);
+      setBuyerOrders([]);
     } finally {
       setHistoryLoading(false);
     }
+  }
+
+  function rememberPaid(order: BuyerOrder) {
+    setSettled((prev) => ({ ...prev, [order.id]: order }));
+    setBuyerOrders((prev) => prev.map((row) => (row.id === order.id ? { ...row, ...order } : row)));
   }
 
   async function updateLine(lineId: string, qty: number) {
@@ -234,11 +248,12 @@ export function StorefrontPanel() {
         buyerEmail: buyer.buyerEmail.trim(),
         buyerAddress: buyer.buyerAddress.trim(),
       });
-      if (r.data?.ok === false) {
-        setError(r.data.error || 'Checkout failed');
+      const placed = checkoutFromLensResult(r.data?.result);
+      if (r.data?.ok === false || !placed) {
+        setError(r.data?.error || 'Checkout did not return an order. Concord Coin has not moved.');
         return;
       }
-      setCheckout((r.data?.result as CheckoutResult) || null);
+      setCheckout(placed);
       await refreshCart();
     } catch (e) {
       console.error('[Storefront] checkout failed', e);
@@ -436,12 +451,29 @@ export function StorefrontPanel() {
                     {checkout.orders.length} order{checkout.orders.length !== 1 ? 's' : ''} ·{' '}
                     <span className="font-mono">${checkout.grandTotalUsd.toFixed(2)}</span>
                   </div>
-                  <ul className="space-y-0.5 text-emerald-200/80 tabular-nums">
-                    {checkout.orders.map((o) => (
-                      <li key={o.orderId} className="font-mono">
-                        {o.number} — ${o.totalUsd.toFixed(2)}
-                      </li>
-                    ))}
+                  <p className="text-amber-200/90">Order placed. Awaiting payment. Concord Coin has not moved.</p>
+                  <ul className="space-y-2 text-emerald-200/80 tabular-nums">
+                    {checkout.orders.map((o) => {
+                      const paid = settled[o.orderId];
+                      const row: BuyerOrder = paid || {
+                        id: o.orderId,
+                        number: o.number,
+                        sellerId: o.sellerId,
+                        status: 'pending',
+                        paymentStatus: 'awaiting_payment',
+                        totalUsd: o.totalUsd,
+                      };
+                      return (
+                        <li key={o.orderId} className="font-mono">
+                          <div>{o.number} — ${o.totalUsd.toFixed(2)} sticker</div>
+                          {paidSentence(row) ? (
+                            <MarketplaceOrderMenu order={row} />
+                          ) : (
+                            <PayOrderButton order={row} onPaid={rememberPaid} />
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
                 <button
@@ -641,22 +673,31 @@ export function StorefrontPanel() {
             <div className="p-4">
               {historyLoading ? (
                 <div className="py-8 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
-              ) : !history || history.length === 0 ? (
+              ) : buyerOrders.length === 0 && (!history || history.length === 0) ? (
                 <div className="py-8 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No past checkouts yet.</div>
               ) : (
                 <ul className="space-y-2">
-                  {history.map((h) => (
+                  {buyerOrders.map((o) => (
+                    <li key={o.id} className="rounded border border-white/10 bg-black/30 p-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-gray-400">{o.number}</span>
+                        <span className="font-mono tabular-nums text-orange-300 font-bold">${o.totalUsd.toFixed(2)} sticker</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 truncate">{o.listingTitle || o.id}</div>
+                      {paidSentence(o) ? (
+                        <MarketplaceOrderMenu order={o} />
+                      ) : (
+                        <PayOrderButton order={o} onPaid={rememberPaid} />
+                      )}
+                    </li>
+                  ))}
+                  {history && history.length > 0 && buyerOrders.length === 0 && history.map((h) => (
                     <li key={h.id} className="rounded border border-white/10 bg-black/30 p-2.5 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-gray-400">{h.number}</span>
                         <span className="font-mono tabular-nums text-orange-300 font-bold">${h.grandTotalUsd.toFixed(2)}</span>
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 tabular-nums">{new Date(h.placedAt).toLocaleString()} · {h.orders.length} order{h.orders.length !== 1 ? 's' : ''}</div>
-                      <ul className="mt-1 space-y-0.5 text-[10px] text-gray-400 tabular-nums">
-                        {h.orders.map((o) => (
-                          <li key={o.orderId} className="font-mono inline-flex items-center gap-1">{o.number} — ${o.totalUsd.toFixed(2)}<ExternalLink className="w-2.5 h-2.5 opacity-50" /></li>
-                        ))}
-                      </ul>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Awaiting a readable order. Concord Coin has not moved.</div>
                     </li>
                   ))}
                 </ul>

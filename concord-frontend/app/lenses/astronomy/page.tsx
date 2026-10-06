@@ -31,19 +31,20 @@
  */
 
 import { useRef, useState } from 'react';
-import { Orbit, Keyboard, Sparkles, CalendarClock, Radio, Bot } from 'lucide-react';
+import { Orbit, Plus, Sparkles, CalendarClock, Radio, Bot } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { cn } from '@/lib/utils';
 
 import { AstronomySkySection } from '@/components/astronomy/AstronomySkySection';
 import { SkyChartWorkbench } from '@/components/astronomy/SkyChartWorkbench';
@@ -69,6 +70,8 @@ export default function AstronomyLensPage() {
   useLensNav('astronomy');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('astronomy');
   const [group, setGroup] = useState<GroupId>('sky');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
@@ -104,7 +107,7 @@ export default function AstronomyLensPage() {
             <section className="rounded-xl">
               <NasaLivePanel />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <NasaExplorer />
             </section>
           </div>
@@ -124,70 +127,49 @@ export default function AstronomyLensPage() {
         // GROUPS without a matching case, this keeps the user looking at
         // an honest message instead of a blank screen.
         return (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 text-center text-sm text-zinc-400">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-6 text-center text-sm text-zinc-400">
             No panel is wired for this view yet.
           </div>
         );
     }
   };
 
+  const titles: Record<GroupId, string> = {
+    sky: `Look up${who ? `, ${who}` : ''}`,
+    log: 'Log what you observed',
+    calc: 'Work out the orbit',
+    live: 'Follow the sky live',
+    assistant: 'Ask the observatory',
+  };
+
   return (
     <LensShell lensId="astronomy" asMain={false}>
       <FirstRunTour lensId="astronomy" />
-      <div data-lens-theme="astronomy" className="min-h-full p-4 space-y-4">
-        {/* Command bar */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
-              <Orbit className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">Astronomy</h1>
-                <DepthBadge lensId="astronomy" size="sm" />
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <span>Celestial catalog, observation logging, and mission-planning calculators</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–5 switch view · / focus search">
-              <Keyboard className="w-3.5 h-3.5" /> 1–5 · /
-            </span>
-            <DTUExportButton domain="astronomy" data={{}} compact />
-          </div>
-        </header>
-
-        {/* Tabs */}
-        <nav className="flex gap-2 border-b border-white/10 pb-2 overflow-x-auto">
-          {GROUPS.map((g) => {
-            const Icon = g.icon;
-            const active = group === g.id;
-            return (
-              <button
-                key={g.id}
-                onClick={() => setGroup(g.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors',
-                  active
-                    ? 'bg-indigo-400/20 text-indigo-400 border-b-2 border-indigo-400'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" /> {g.label}
-              </button>
-            );
-          })}
-        </nav>
-
+      <NorthStarFrame
+        lensId="astronomy"
+        crumb="Astronomy"
+        title={titles[group]}
+        subtitle="Celestial catalog, observation logging, and mission-planning calculators"
+        actions={(
+          <>
+            <DepthBadge lensId="astronomy" size="sm" />
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          </>
+        )}
+        tabs={GROUPS.map((g) => ({ id: g.id, label: g.label, icon: g.icon, keys: g.hotkey }))}
+        activeTab={group}
+        onTab={(id) => setGroup(id as GroupId)}
+        tabsLabel="Astronomy views"
+        cta={{ label: 'Log an observation', icon: Plus, onClick: () => setGroup('log'), title: 'Open the observing log (2)' }}
+      >
         <div className="min-h-[240px]">{renderGroup()}</div>
 
         {insights && (
-          <RealtimeDataPanel domain="astronomy" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+          <div className="mt-5">
+            <RealtimeDataPanel domain="astronomy" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+          </div>
         )}
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

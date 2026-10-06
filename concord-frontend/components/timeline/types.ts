@@ -27,6 +27,8 @@ export interface FeedPost {
   media: MediaItem[];
   privacy: Privacy;
   taggedUserIds: string[];
+  /** Set when another lens sent a saved DTU onto this post. */
+  citedDtuId?: string | null;
   sharedFrom: SharedFrom | null;
   createdAt: string;
   reactionCounts: Record<ReactionKind, number>;

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
@@ -27,11 +27,11 @@ import {
   ShieldAlert,
   Map,
   BookMarked,
+  Plus,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
-import { LensPageShell } from '@/components/lens/LensPageShell';
 
 type GeoTab = 'field' | 'identify' | 'structure' | 'seismic' | 'map' | 'collection';
 
@@ -62,44 +62,37 @@ export default function GeologyLensPage() {
 
   return (
     <LensShell lensId="geology" asMain={false}>
-      <FirstRunTour lensId="geology" />      <DepthBadge lensId="geology" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="geology"
-        title="Geology Lens"
-        description="Field observations, rock & mineral ID, structural geology, seismic hazard, and stratigraphy"
-        headerIcon={<Mountain className="w-6 h-6 text-orange-400" />}
+      <FirstRunTour lensId="geology" />
+      <DepthBadge lensId="geology" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="geology"
+        crumb="Geology"
+        title="Read the ground"
+        subtitle="Field observations, rock and mineral ID, structural geology, seismic hazard and stratigraphy."
+        tabs={TABS.map(({ key, label, icon }) => ({ id: key, label, icon }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as GeoTab)}
+        tabsLabel="Geology views"
+        cta={{ label: 'Log a field note', icon: Plus, onClick: () => setActiveTab('field') }}
       >
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-white/10 pb-2 flex-wrap">
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === key ? 'bg-orange-400/20 text-orange-400 border-b-2 border-orange-400' : 'text-gray-400 hover:text-white'}`}
-            >
-              <Icon className="w-3.5 h-3.5" /> {label}
-            </button>
-          ))}
-        </div>
-
         {activeTab === 'field' && (
-          <div className="panel p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <FieldLog />
           </div>
         )}
 
         {activeTab === 'identify' && (
-          <div className="panel p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <RockMineralIdPanel />
           </div>
         )}
 
         {activeTab === 'structure' && (
           <div className="space-y-4">
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <StructuralCompass />
             </div>
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <StratigraphicColumnPanel />
             </div>
           </div>
@@ -107,13 +100,13 @@ export default function GeologyLensPage() {
 
         {activeTab === 'seismic' && (
           <div className="space-y-4">
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <SeismicHazardPanel />
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <UsgsQuakePanel />
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <EarthquakeList />
             </div>
           </div>
@@ -121,7 +114,7 @@ export default function GeologyLensPage() {
 
         {activeTab === 'map' && (
           <div className="space-y-4">
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <Map className="w-4 h-4 text-orange-400" /> Field Sites Map
               </h3>
@@ -131,7 +124,7 @@ export default function GeologyLensPage() {
               </p>
             </div>
             {/* Macrostrat geologic-map overlay + "rocks near me" bedrock lookup */}
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <GeologicMapPanel />
             </div>
           </div>
@@ -140,15 +133,15 @@ export default function GeologyLensPage() {
         {activeTab === 'collection' && (
           <div className="space-y-4">
             {/* Geotagged sample photos with EXIF GPS */}
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <SamplePhotoCapture />
             </div>
             {/* Minerals & rocks identified checklist */}
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <SpecimenCollection />
             </div>
             {/* Field-trip / outcrop sequencing */}
-            <div className="panel p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <FieldTripPlanner />
             </div>
           </div>
@@ -163,10 +156,10 @@ export default function GeologyLensPage() {
           <WikipediaSearchPanel domain="geology" title="Wikipedia · geology" />
         </section>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4 mx-4">
           <LensFeedButton domain="geology" />
         </section>
-      </LensPageShell>      <CrossLensRecentsPanel lensId="geology" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }

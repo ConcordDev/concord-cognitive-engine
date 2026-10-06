@@ -9,6 +9,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Sparkles, ChevronLeft, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AstronomyKeepMenu } from './AstronomyKeepMenu';
+import type { AstroObservation } from './astronomyReport';
 
 interface Target {
   id: string; name: string; type: string; constellation: string | null;
@@ -30,6 +32,7 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
   const [selected, setSelected] = useState<Target | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsForm, setObsForm] = useState({ conditions: '', notes: '', rating: 4 });
+  const [lastObs, setLastObs] = useState<AstroObservation | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -80,10 +83,12 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
   const del = async (id: string) => { await lensRun('astronomy', 'target-delete', { id }); await refresh(); onChange(); };
   const logObs = async () => {
     if (!selected) return;
-    await lensRun('astronomy', 'observation-log', {
+    const r = await lensRun('astronomy', 'observation-log', {
       targetId: selected.id, conditions: obsForm.conditions.trim(),
       notes: obsForm.notes.trim(), rating: obsForm.rating,
     });
+    const obs = (r.data as { result?: { observation?: AstroObservation } })?.result?.observation;
+    if (obs) setLastObs(obs);
     setObsForm({ conditions: '', notes: '', rating: 4 });
     await openTarget(selected);
     await refresh(); onChange();
@@ -127,6 +132,10 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
           <button type="button" onClick={logObs}
             className="mt-2 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Log observation</button>
         </div>
+
+        {lastObs && (
+          <AstronomyKeepMenu observation={lastObs} />
+        )}
 
         {observations.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No observations logged for this target.</p>

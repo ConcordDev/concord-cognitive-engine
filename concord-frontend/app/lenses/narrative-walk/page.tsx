@@ -24,12 +24,21 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { BookOpen, Play, Check, RefreshCcw, AlertTriangle, Film, Clock } from 'lucide-react';
+import { BookOpen, Play, Check, RefreshCcw, AlertTriangle, Film, Clock, Footprints, Eye, Layers } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'concordia:narrative-walk:watched';
 
 type LoadState = 'loading' | 'ready' | 'error';
+type Filter = 'all' | 'unwatched' | 'watched';
 
 interface CinematicSummary {
   id: string;
@@ -49,6 +58,10 @@ function formatDuration(ms: number): string {
 }
 
 export default function NarrativeWalkLensPage() {
+  useLensNav('narrative-walk');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [filter, setFilter] = useState<Filter>('all');
   const [catalog, setCatalog] = useState<CinematicSummary[]>([]);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
@@ -114,6 +127,25 @@ export default function NarrativeWalkLensPage() {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* quota */ }
   }, []);
 
+  const beginWalk = useCallback(() => {
+    const next = catalog.find((c) => !watched.has(c.id)) ?? catalog[0];
+    if (next) void play(next);
+  }, [catalog, watched, play]);
+
+  useLensCommand(
+    [
+      { id: 'filter-all', keys: '1', description: 'All chapters', category: 'navigation', action: () => setFilter('all') },
+      { id: 'filter-unwatched', keys: '2', description: 'Unwatched chapters', category: 'navigation', action: () => setFilter('unwatched') },
+      { id: 'filter-watched', keys: '3', description: 'Watched chapters', category: 'navigation', action: () => setFilter('watched') },
+      { id: 'begin-walk', keys: 'b', description: 'Begin the walk (next unwatched chapter)', category: 'actions', action: beginWalk },
+    ],
+    { lensId: 'narrative-walk' },
+  );
+
+  const shown = catalog
+    .map((c, idx) => ({ c, idx }))
+    .filter(({ c }) => filter === 'all' || (filter === 'watched') === watched.has(c.id));
+
   // Keyboard nav: arrow keys move focus between story-beat play buttons.
   const onListKeyDown = useCallback((e: React.KeyboardEvent<HTMLOListElement>) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -130,29 +162,58 @@ export default function NarrativeWalkLensPage() {
   }, []);
 
   return (
-    <LensShell lensId="narrative-walk" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-violet-950/10 text-slate-100">
-        <header className="border-b border-violet-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-violet-500/40 bg-violet-500/10 p-2">
-              <BookOpen className="h-5 w-5 text-violet-400" aria-hidden="true" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Narrative trail</h1>
-              <p className="mt-0.5 truncate text-xs text-slate-400">Authored story beats. Walk through the world as a film.</p>
-            </div>
-            <span className="text-[10px] text-slate-500" aria-live="polite">{watched.size} / {catalog.length} watched</span>
+    <LensShell lensId="narrative-walk" asMain={false}>
+      <FirstRunTour lensId="narrative-walk" />
+      <DepthBadge lensId="narrative-walk" size="sm" className="ml-2" />
+      <div data-lens-theme="narrative-walk" className="relative min-h-full px-8 pb-28 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">Narrative trail</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              The next step{who ? `, ${who}` : ''}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 pt-2">
+            <span className="text-[13px] text-zinc-500" aria-live="polite">{watched.size} / {catalog.length} watched</span>
             <button
+              type="button"
               onClick={clearWatched}
               disabled={watched.size === 0}
               aria-label="Reset watched journal"
-              className="rounded-full border border-violet-500/30 bg-violet-500/10 p-1.5 text-violet-300 hover:bg-violet-500/20 disabled:opacity-30"
+              title="Reset watched journal"
+              className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-400 transition-colors hover:text-zinc-100 disabled:opacity-30"
             >
               <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
-        </header>
+        </div>
 
-        <section className="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Chapter filter">
+          {([
+            ['all', 'All chapters', Layers, '1', catalog.length],
+            ['unwatched', 'Unwatched', Footprints, '2', catalog.length - watched.size],
+            ['watched', 'Watched', Eye, '3', watched.size],
+          ] as const).map(([id, label, Icon, k, n]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              aria-current={filter === id ? 'page' : undefined}
+              title={`${label} (${k})`}
+              className={cn(
+                'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                filter === id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+              <span className="font-mono text-[11px] text-white/40">{n}</span>
+              <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{k}</kbd>
+            </button>
+          ))}
+        </nav>
+
+        <section>
           {/* LOADING state — content imports async (Next dynamic import). */}
           {loadState === 'loading' && (
             <div role="status" aria-live="polite" className="py-12 text-center text-[12px] text-slate-500">
@@ -187,19 +248,19 @@ export default function NarrativeWalkLensPage() {
               aria-label="Authored story beats"
               className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {catalog.map((c, idx) => {
+              {shown.map(({ c, idx }) => {
                 const seen = watched.has(c.id);
                 return (
                   <li
                     key={c.id}
-                    className={`rounded-xl border p-3 transition ${seen ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-violet-500/20 bg-zinc-950/60'}`}
+                    className={`rounded-2xl border p-4 transition ${seen ? 'border-teal-400/30 bg-teal-400/5' : 'border-white/10 bg-[#111]'}`}
                   >
                     <header className="mb-1 flex items-center justify-between">
-                      <span className="text-[10px] text-violet-300/60">CH {idx + 1}</span>
-                      {seen && <Check size={12} className="text-emerald-300" aria-label="Watched" />}
+                      <span className="text-[10px] text-zinc-500">CH {idx + 1}</span>
+                      {seen && <Check size={12} className="text-teal-300" aria-label="Watched" />}
                     </header>
-                    <h2 className="text-sm font-medium text-violet-100">{c.name}</h2>
-                    {c.summary && <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{c.summary}</p>}
+                    <h2 className="font-vault text-lg text-zinc-100">{c.name}</h2>
+                    {c.summary && <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">{c.summary}</p>}
                     <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-500">
                       <span className="inline-flex items-center gap-1"><Film size={10} aria-hidden="true" />{c.shotCount} shot{c.shotCount === 1 ? '' : 's'}</span>
                       <span className="inline-flex items-center gap-1"><Clock size={10} aria-hidden="true" />{formatDuration(c.durationMs)}</span>
@@ -209,7 +270,7 @@ export default function NarrativeWalkLensPage() {
                       onClick={() => play(c)}
                       disabled={busy === c.id}
                       aria-label={`${seen ? 'Re-watch' : 'Play'} ${c.name}`}
-                      className="mt-3 inline-flex items-center gap-1 rounded bg-violet-500/20 px-2 py-1 text-[11px] text-violet-100 hover:bg-violet-500/30 disabled:opacity-40"
+                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] text-zinc-100 hover:bg-white/15 disabled:opacity-40"
                     >
                       <Play size={11} aria-hidden="true" />
                       {busy === c.id ? 'Playing…' : seen ? 'Re-watch' : 'Play'}
@@ -219,8 +280,26 @@ export default function NarrativeWalkLensPage() {
               })}
             </ol>
           )}
+          {loadState === 'ready' && catalog.length > 0 && shown.length === 0 && (
+            <p className="rounded-2xl border border-white/10 bg-[#111] p-6 text-[14px] text-zinc-400">
+              {filter === 'watched' ? 'No chapters watched yet. Begin the walk to start your journal.' : 'Every chapter is watched. Re-watch any from All chapters.'}
+            </p>
+          )}
         </section>
-      </main>
+
+        <CrossLensRecentsPanel lensId="narrative-walk" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={beginWalk}
+          disabled={loadState !== 'ready' || catalog.length === 0 || busy !== null}
+          title="Begin the walk (B)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          <Play className="h-4 w-4" />
+          {busy ? 'Playing…' : watched.size > 0 && watched.size < catalog.length ? 'Continue the walk' : 'Begin the walk'}
+        </button>
+      </div>
     </LensShell>
   );
 }

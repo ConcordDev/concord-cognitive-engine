@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -19,12 +19,16 @@ import { RecentLensesStrip } from '@/components/all/RecentLensesStrip';
 import { CommandPalette } from '@/components/all/CommandPalette';
 import { SubstratePulsePanel } from '@/components/all/SubstratePulsePanel';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface LensBadge { count: number; lastSeenAt: string | null; total: number }
 interface BadgesResult { badges: Record<string, LensBadge> }
 
 export default function AllLensesPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('all', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('all');
@@ -59,17 +63,15 @@ export default function AllLensesPage() {
   const total = flatLenses.length;
 
   // Per-lens last-activity badges, sourced from the usage ledger + DTU store.
-  const loadBadges = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
     const ids = Object.values(getLensesByCategory()).flat().map((l) => l.id);
     if (!ids.length) return;
-    const r = await lensRun<BadgesResult>('all', 'lens-badges', { lensIds: ids });
-    if (r.data?.ok && r.data.result) setBadges(r.data.result.badges || {});
-  }, []);
-
-  useEffect(() => { void loadBadges(); }, [loadBadges, launcherRefresh]);
-
-  // Reset arrow-nav selection whenever the filtered set changes.
-  useEffect(() => { setActiveIdx(-1); }, [q]);
+    lensRun<BadgesResult>('all', 'lens-badges', { lensIds: ids })
+      .then((r) => { if (!cancelled && r.data?.ok && r.data.result) setBadges(r.data.result.badges || {}); })
+      .catch(() => { /* badges are decorative; the grid still works without them */ });
+    return () => { cancelled = true; };
+  }, [launcherRefresh]);
 
   // Records a lens open in the usage ledger, then navigates.
   const openLens = useCallback(async (lensId: string, path: string) => {
@@ -118,41 +120,28 @@ export default function AllLensesPage() {
   return (
     <LensShell lensId="all" asMain={false}>
       <FirstRunTour lensId="all" />      <DepthBadge lensId="all" size="sm" className="ml-2" />
-    <div data-lens-theme="all" className="p-6 space-y-5">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs uppercase text-gray-400 tracking-wider">Lens Hub</p>
-          <h1 className="text-3xl font-bold text-gradient-neon">All Lenses</h1>
-          <p className="text-sm text-gray-400 mt-1">Search, pin, and jump to any lens or action.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          className="flex items-center gap-2 rounded-lg border border-neon-cyan/30 bg-neon-cyan/10 px-3 py-2 text-sm text-neon-cyan hover:bg-neon-cyan/20"
-        >
-          <Command className="w-4 h-4" /> Command palette
-          <kbd className="text-[10px] border border-neon-cyan/30 rounded px-1">⌘K</kbd>
-        </button>
-      </header>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-      </div>
-
+    <NorthStarFrame
+      lensId="all"
+      crumb="Lens Hub"
+      title={`Where to next${who ? `, ${who}` : ''}`}
+      subtitle="Search, pin, and jump to any lens or action."
+      actions={<LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />}
+      cta={{ label: 'Command palette', icon: Command, onClick: () => setPaletteOpen(true), title: 'Open the command palette (Cmd/Ctrl+K)' }}
+    >
+    <div className="space-y-5">
       <PinnedShelf refreshKey={launcherRefresh} onChange={() => setLauncherRefresh((n) => n + 1)} />
       <RecentLensesStrip refreshKey={launcherRefresh} />
       <SubstratePulsePanel />
 
-      <div className="panel p-4">
+      <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
         <label className="relative block">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             ref={searchInputRef}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setActiveIdx(-1); }}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') { setQ(''); searchInputRef.current?.blur(); }
+              if (e.key === 'Escape') { setQ(''); setActiveIdx(-1); searchInputRef.current?.blur(); }
               else if (e.key === 'ArrowDown' && total) { e.preventDefault(); setActiveIdx(0); }
             }}
             placeholder="Search by lens name, description, or keyword  ·  / focuses  ·  ↓ enters grid"
@@ -166,7 +155,7 @@ export default function AllLensesPage() {
 
       <div className="space-y-4" onKeyDown={onGridKey} role="grid" aria-label="All lenses">
         {Object.entries(grouped).map(([cat, lenses]) => (
-          <section key={cat} className="panel p-4">
+          <section key={cat} className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <h2 className={`text-sm uppercase tracking-wider mb-3 ${LENS_CATEGORIES[cat as keyof typeof LENS_CATEGORIES]?.color || 'text-gray-400'}`}>
               {LENS_CATEGORIES[cat as keyof typeof LENS_CATEGORIES]?.label || cat}
             </h2>
@@ -212,17 +201,18 @@ export default function AllLensesPage() {
           </section>
         ))}
         {total === 0 && (
-          <div className="panel p-8 text-center text-sm text-gray-400">No lenses match your search.</div>
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-8 text-center text-sm text-gray-400">No lenses match your search.</div>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
         <CrossDomainSearch />
       </section>
     </div>
+    </NorthStarFrame>
 
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-      <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>          <CrossLensRecentsPanel lensId="all" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>
     </LensShell>
   );
 }

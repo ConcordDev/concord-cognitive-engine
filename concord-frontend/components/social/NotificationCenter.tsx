@@ -66,6 +66,8 @@ interface NotificationCenterProps {
   onNavigateToUser?: (userId: string) => void;
   onNavigateToContent?: (contentId: string) => void;
   mode?: 'panel' | 'dropdown';
+  /** Dropdown anchor: below the bell (Topbar) or beside it (sidebar rail). */
+  placement?: 'below' | 'side';
   className?: string;
 }
 
@@ -364,6 +366,7 @@ function NotificationCenter({
   onNavigateToUser,
   onNavigateToContent,
   mode = 'panel',
+  placement = 'below',
   className,
 }: NotificationCenterProps) {
   const queryClient = useQueryClient();
@@ -657,7 +660,10 @@ function NotificationCenter({
           initial={{ opacity: 0, y: -10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
-          className="absolute right-0 top-full mt-2 w-[400px] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden"
+          className={cn(
+            'absolute w-[400px] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden',
+            placement === 'side' ? 'left-full bottom-0 ml-3' : 'right-0 top-full mt-2',
+          )}
         >
           {content}
         </motion.div>

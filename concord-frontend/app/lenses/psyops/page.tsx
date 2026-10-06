@@ -15,12 +15,14 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState } from 'react';
-import { ShieldCheck, Activity } from 'lucide-react';
+import { Activity, Radar, Siren, SlidersHorizontal, GitMerge, BookOpen } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun, isForbidden } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { AdminRequiredState } from '@/components/common/EmptyState';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PsyopsReference } from '@/components/psyops/PsyopsReference';
@@ -63,16 +65,19 @@ async function skillMacro(name: string, input: Record<string, unknown> = {}) {
 
 type Tab = 'console' | 'incidents' | 'rules' | 'skill' | 'reference';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'console', label: 'Console' },
-  { id: 'incidents', label: 'Incidents' },
-  { id: 'rules', label: 'Rules' },
-  { id: 'skill', label: 'Skill divergence' },
-  { id: 'reference', label: 'Reference' },
+const TABS: { id: Tab; label: string; title: string; hint: string; icon: typeof Siren }[] = [
+  { id: 'console', label: 'Console', title: 'What is moving out of pattern', hint: 'Signal scanner, alert triage and quarantine log', icon: Siren },
+  { id: 'incidents', label: 'Incidents', title: 'How the alerts connect', hint: 'Correlate selected alerts into incidents', icon: GitMerge },
+  { id: 'rules', label: 'Rules', title: 'What counts as an anomaly', hint: 'Configurable detection rules', icon: SlidersHorizontal },
+  { id: 'skill', label: 'Skill divergence', title: 'Who is learning wrong', hint: 'NPC skill-divergence reflex scan', icon: Activity },
+  { id: 'reference', label: 'Reference', title: 'How detection works', hint: 'Signals, thresholds and methodology', icon: BookOpen },
 ];
 
 export default function PsyopsPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   useLensCommand([
+    ...TABS.map((t, i) => ({ id: `psyops-tab-${t.id}`, keys: String(i + 1), description: `${t.label} — ${t.hint}`, category: 'navigation' as const, action: () => setTab(t.id) })),
     { id: 'psyops-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'psyops' });
 
@@ -122,10 +127,8 @@ export default function PsyopsPage() {
   }, []);
 
   useEffect(() => {
-    void refreshConsole();
-    void refreshSkill();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    Promise.resolve().then(() => { void refreshConsole(); void refreshSkill(); });
+  }, [refreshConsole, refreshSkill]);
 
   const scanSkill = async () => {
     setScanning(true);
@@ -155,162 +158,146 @@ export default function PsyopsPage() {
     </LensShell>
   );
 
+  const current = TABS.find((t) => t.id === tab)!;
+
   return (
-    <LensShell lensId="psyops">
+    <LensShell lensId="psyops" asMain={false}>
       <FirstRunTour lensId="psyops" />
       <DepthBadge lensId="psyops" size="sm" className="ml-2" />
-      <div className="mx-auto max-w-4xl p-6 sm:p-8">
-        <header className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-zinc-100">
-              <ShieldCheck className="h-6 w-6 text-rose-400" /> Psyops Watch
-            </h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Behavioral threat-detection console — statistical anomaly scanning across
-              skill, economy, content and network signals, with triage, incident
-              correlation and audited quarantine.
-            </p>
-          </div>
+      <NorthStarFrame
+        lensId="psyops"
+        crumb="Psyops Watch"
+        title={`${current.title}${tab === 'console' && who ? `, ${who}` : ''}`}
+        subtitle="Behavioral threat-detection console: statistical anomaly scanning across skill, economy, content and network signals, with triage, incident correlation and audited quarantine."
+        actions={(
           <NotificationBell
             notifications={notifications}
             unacknowledged={unacked}
             onChange={refreshConsole}
           />
-        </header>
-
-        <nav className="mb-5 flex flex-wrap gap-1.5 border-b border-zinc-800 pb-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${
-                tab === t.id
-                  ? 'bg-rose-700 text-white'
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
-        {tab === 'console' && (
-          <div className="space-y-6">
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <SignalScanner onScanned={refreshConsole} />
-            </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <AlertBoard
-                alerts={alerts}
-                counts={counts}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onChange={refreshConsole}
-              />
-            </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <QuarantineLog log={qlog} />
-            </section>
-          </div>
         )}
-
-        {tab === 'incidents' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <IncidentPanel
-              incidents={incidents}
-              selectedIds={selectedIds}
-              onChange={refreshConsole}
-              onClearSelection={() => setSelectedIds([])}
-            />
-            {selectedIds.length === 0 && (
-              <p className="mt-3 text-[11px] text-zinc-400">
-                Tip: select alerts on the Console tab&apos;s alert board, then return here to
-                correlate them into an incident.
-              </p>
-            )}
-          </section>
-        )}
-
-        {tab === 'rules' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <DetectionRules rules={rules} onChange={refreshConsole} />
-          </section>
-        )}
-
-        {tab === 'skill' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
-                  <Activity className="h-4 w-4 text-rose-400" /> NPC skill-divergence reflex
-                </h2>
-                <p className="mt-1 text-[11px] text-zinc-400">
-                  Flags NPCs whose <code>skill_revisions</code> diverge &gt;2.5σ from the
-                  cohort baseline — a signal of adversarial demonstrations.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={scanSkill}
-                disabled={scanning}
-                className="rounded bg-rose-700 px-3 py-2 text-xs font-medium text-white hover:bg-rose-600 disabled:opacity-50"
-              >
-                {scanning ? 'Scanning…' : 'Run scan'}
-              </button>
+        tabs={TABS.map((t, i) => ({ id: t.id, label: t.id === 'incidents' && incidents.length ? `Incidents (${incidents.length})` : t.label, icon: t.icon, keys: String(i + 1), hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as Tab)}
+        tabsLabel="Psyops views"
+        cta={{ label: scanning ? 'Scanning…' : 'Scan NPC skills', icon: Radar, onClick: () => { setTab('skill'); void scanSkill(); }, disabled: scanning, title: 'Run the skill-divergence scan now' }}
+      >
+          {tab === 'console' && (
+            <div className="space-y-6">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <SignalScanner onScanned={refreshConsole} />
+              </section>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <AlertBoard
+                  alerts={alerts}
+                  counts={counts}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onChange={refreshConsole}
+                />
+              </section>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <QuarantineLog log={qlog} />
+              </section>
             </div>
-            {status && (
-              <div className="mb-3 rounded-lg border border-rose-700/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
-                {status}
-              </div>
-            )}
-            {skillAlerts.length === 0 ? (
-              <p className="rounded-lg border border-zinc-800 py-6 text-center text-xs italic text-zinc-400">
-                No skill-divergence alerts. Run a scan above.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {skillAlerts.map((a) => (
-                  <li
-                    key={a.id}
-                    className={`rounded-lg border p-3 ${a.quarantined ? 'border-zinc-700/50 bg-zinc-900/40 opacity-60' : 'border-rose-700/40 bg-rose-950/30'}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-zinc-100">{a.npc_id}</p>
-                        <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
-                          {a.revision_count_window} revs · {a.sigma_above.toFixed(2)}σ above {a.cohort_baseline.toFixed(1)} baseline
-                          {a.suspect_mentor_id ? ` · mentor ${a.suspect_mentor_id.slice(0, 8)}` : ''}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
-                          {new Date(a.detected_at * 1000).toLocaleString()}
-                        </p>
-                      </div>
-                      {a.quarantined ? (
-                        <span className="text-[10px] uppercase text-zinc-400">quarantined</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => quarantineSkill(a.id)}
-                          className="rounded bg-zinc-700 px-3 py-1 text-[11px] text-white hover:bg-zinc-600"
-                        >
-                          Quarantine
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
+          )}
 
-        {tab === 'reference' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <PsyopsReference />
-          </section>
-        )}
-      </div>      <CrossLensRecentsPanel lensId="psyops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {tab === 'incidents' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <IncidentPanel
+                incidents={incidents}
+                selectedIds={selectedIds}
+                onChange={refreshConsole}
+                onClearSelection={() => setSelectedIds([])}
+              />
+              {selectedIds.length === 0 && (
+                <p className="mt-3 text-[11px] text-zinc-400">
+                  Tip: select alerts on the Console tab&apos;s alert board, then return here to
+                  correlate them into an incident.
+                </p>
+              )}
+            </section>
+          )}
+
+          {tab === 'rules' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <DetectionRules rules={rules} onChange={refreshConsole} />
+            </section>
+          )}
+
+          {tab === 'skill' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+                    <Activity className="h-4 w-4 text-rose-400" /> NPC skill-divergence reflex
+                  </h2>
+                  <p className="mt-1 text-[11px] text-zinc-400">
+                    Flags NPCs whose <code>skill_revisions</code> diverge &gt;2.5σ from the
+                    cohort baseline — a signal of adversarial demonstrations.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={scanSkill}
+                  disabled={scanning}
+                  className="rounded bg-rose-700 px-3 py-2 text-xs font-medium text-white hover:bg-rose-600 disabled:opacity-50"
+                >
+                  {scanning ? 'Scanning…' : 'Run scan'}
+                </button>
+              </div>
+              {status && (
+                <div className="mb-3 rounded-lg border border-rose-700/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
+                  {status}
+                </div>
+              )}
+              {skillAlerts.length === 0 ? (
+                <p className="rounded-lg border border-zinc-800 py-6 text-center text-xs italic text-zinc-400">
+                  No skill-divergence alerts. Run a scan above.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {skillAlerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className={`rounded-lg border p-3 ${a.quarantined ? 'border-zinc-700/50 bg-zinc-900/40 opacity-60' : 'border-rose-700/40 bg-rose-950/30'}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-zinc-100">{a.npc_id}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
+                            {a.revision_count_window} revs · {a.sigma_above.toFixed(2)}σ above {a.cohort_baseline.toFixed(1)} baseline
+                            {a.suspect_mentor_id ? ` · mentor ${a.suspect_mentor_id.slice(0, 8)}` : ''}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
+                            {new Date(a.detected_at * 1000).toLocaleString()}
+                          </p>
+                        </div>
+                        {a.quarantined ? (
+                          <span className="text-[10px] uppercase text-zinc-400">quarantined</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => quarantineSkill(a.id)}
+                            className="rounded bg-zinc-700 px-3 py-1 text-[11px] text-white hover:bg-zinc-600"
+                          >
+                            Quarantine
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {tab === 'reference' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <PsyopsReference />
+            </section>
+          )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

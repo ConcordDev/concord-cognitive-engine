@@ -10,6 +10,7 @@ import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
 import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
 import TaxEstimator from '@/components/finance/TaxEstimator';
 import RetirementSimulator from '@/components/finance/RetirementSimulator';
+import { PlanningCalculators } from '@/components/finance/PlanningCalculators';
 import SubscriptionDetector from '@/components/finance/SubscriptionDetector';
 import BillsCalendar from '@/components/finance/BillsCalendar';
 import GoalsTracker from '@/components/finance/GoalsTracker';
@@ -29,6 +30,7 @@ import HouseholdBudgets from '@/components/finance/HouseholdBudgets';
 import CreditScoreMonitor from '@/components/finance/CreditScoreMonitor';
 import CashFlowSankey from '@/components/finance/CashFlowSankey';
 import BillReminders from '@/components/finance/BillReminders';
+import { WalletReceiptInbox } from '@/components/finance/WalletReceiptInbox';
 import RolloverRules from '@/components/finance/RolloverRules';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import { FredSeriesPanel } from '@/components/finance/FredSeriesPanel';
@@ -73,11 +75,14 @@ export function AccountsGroupPanel() {
 
 export function PlanningGroupPanel() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <GoalsTracker />
-      <RetirementSimulator />
-      <TaxEstimator />
-      <TaxLossHarvester />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GoalsTracker />
+        <RetirementSimulator />
+        <TaxEstimator />
+        <TaxLossHarvester />
+      </div>
+      <PlanningCalculators />
     </div>
   );
 }
@@ -85,6 +90,7 @@ export function PlanningGroupPanel() {
 export function BillsBudgetGroupPanel() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <WalletReceiptInbox />
       <BillsCalendar />
       <BillReminders />
       <EnvelopeBudget />

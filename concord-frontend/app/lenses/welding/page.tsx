@@ -1,80 +1,83 @@
 'use client';
 
 /**
- * Welding lens — field-service operations console + engineering
- * calculators for a working welder/fabrication shop.
- *
- * Backed entirely by `server/domains/welding.js`'s 28 registered macros:
- *   - WeldingOperations mounts the Jobber/ServiceTitan-parity console
- *     (schedule / quotes / invoices / WPS / certs / photos / codes),
- *     each tab calling its own `welding.*` macro directly.
- *   - WelderProcedures mounts the four Lincoln/Miller-style engineering
- *     calculators (joint strength, rod selection, heat input, weld
- *     inspection) against `welding.jointStrength` / `rodSelection` /
- *     `heatInput` / `inspectionChecklist`.
- *   - WeldingFeed pulls real-world welding-community chatter (Reddit).
- *
- * A prior version of this page additionally ran a generic artifact-CRUD
- * dashboard (Jobs/Estimates/Codes/Materials/CRM/Invoices/Inspections/
- * Certs tabs over `useLensData`/`useRunArtifact`) that persisted to the
- * *generic* `/api/lens/welding` artifact store — a parallel, disconnected
- * data model that never touched the real `welding.job-schedule` /
- * `estimate-create` / `invoice-from-job` / `cert-add` / `code-search`
- * macros above. Its "Activate" button routed through the generic
- * analyze/generate/suggest catch-all rather than any welding-specific
- * macro. That fake system has been removed; WeldingOperations already
- * covers the same jobs/estimates/invoices/certs/codes surface against
- * the real, persisted backend state.
+ * Welding lens: the north-star look over three views, each a real workbench.
+ *   - Shop: WeldingOperations (Jobber/ServiceTitan-parity console: schedule,
+ *     quotes, invoices, WPS, certs, photos, codes) on the `welding.*` macros.
+ *   - Calculators: WelderProcedures (joint strength, rod selection, heat
+ *     input, inspection checklist) on `welding.jointStrength` / `rodSelection`
+ *     / `heatInput` / `inspectionChecklist`.
+ *   - Community: WeldingFeed (live Reddit welding chatter).
  */
 
+import { useState } from 'react';
+import { Calculator, MessageSquare, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeldingFeed } from '@/components/welding/WeldingFeed';
 import { WelderProcedures } from '@/components/welding/WelderProcedures';
 import { WeldingOperations } from '@/components/welding/WeldingOperations';
-import { LensPageShell } from '@/components/lens/LensPageShell';
-import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
+type WeldingView = 'shop' | 'calculators' | 'community';
+
+const VIEWS: { id: WeldingView; label: string; keys: string; title: string; hint: string; icon: typeof Wrench }[] = [
+  { id: 'shop', label: 'Shop', keys: '1', title: 'Run the shop', hint: 'Schedule, quotes, invoices, WPS, certs, photos and codes', icon: Wrench },
+  { id: 'calculators', label: 'Calculators', keys: '2', title: 'Get the procedure right', hint: 'Joint strength, rod selection, heat input and inspection', icon: Calculator },
+  { id: 'community', label: 'Community', keys: '3', title: 'What welders are talking about', hint: 'Live welding community chatter', icon: MessageSquare },
+];
 
 export default function WeldingLensPage() {
-  const [showFeed, setShowFeed] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<WeldingView>('shop');
+
+  useLensCommand(
+    VIEWS.map((v) => ({
+      id: `welding-${v.id}`,
+      keys: v.keys,
+      description: `${v.label}: ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
+    { lensId: 'welding' },
+  );
+
+  const current = VIEWS.find((v) => v.id === view)!;
+
   return (
     <LensShell lensId="welding" asMain={false}>
-      <FirstRunTour lensId="welding" />      <DepthBadge lensId="welding" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="welding"
-        title="Welding"
-        description="Field-service operations, welding-engineering calculators, WPS + certification tracking, and real-world welding chatter"
-        headerIcon={<Flame className="w-6 h-6" />}
+      <FirstRunTour lensId="welding" />
+      <DepthBadge lensId="welding" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="welding"
+        crumb="Welding"
+        title={`${current.title}${view === 'shop' && who ? `, ${who}` : ''}`}
+        subtitle="Field-service operations, welding-engineering calculators, WPS and certification tracking, and real-world welding chatter."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as WeldingView)}
+        tabsLabel="Welding views"
+        cta={{ label: 'Open calculators', icon: Calculator, onClick: () => setView('calculators'), title: 'Joint strength, rod selection, heat input, inspection' }}
       >
-        <section className="rounded-xl border border-orange-500/15 bg-zinc-950/40 p-4">
-          <WeldingOperations />
-        </section>
-
-        <section>
-          <WelderProcedures />
-        </section>
-
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowFeed(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Welding community chatter (Reddit)</span>
-            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showFeed && (
-            <div className="mt-3">
-              <WeldingFeed />
-            </div>
+        <div id="welding-skip">
+          {view === 'shop' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <WeldingOperations />
+            </section>
           )}
-        </section>
-      </LensPageShell>
-
-      <a href="#welding-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to welding content</a>      <CrossLensRecentsPanel lensId="welding" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {view === 'calculators' && <WelderProcedures />}
+          {view === 'community' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <WeldingFeed />
+            </section>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -31,8 +31,15 @@ namespace Concordia
         {
             if (!person) return;
             EnsureSockets(person);
-            if (TryApplyHeroPlate(person, look, steelLive)) return;
-            if (TryApplyNamedPlate(person, look)) return;
+            // CX_Hero_* / CX_Guest_* "plates" are 2D concept paintings (portrait
+            // jpgs), not UV-unwrapped skins, so binding one onto a Rocketbox
+            // skinned mesh can't produce a correct look. Their material GUIDs had
+            // also gone stale, so the hero and every named guest rendered flat
+            // grey (look captures, 2026-09-30). Authored bodies keep their own
+            // albedo/normal maps below; the plates stay available for UI
+            // portraits. TryApplyHeroPlate / TryApplyNamedPlate are left
+            // unused rather than deleted.
+            RestoreRocketboxSkin(person);
 
             // Authored Rocketbox/CX bodies already carry their real albedo and normal maps.
             // Never flatten them to a white-tinted material; only procedural fallback bodies
@@ -152,6 +159,46 @@ namespace Concordia
             if (!root || !material) return;
             foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
                 ApplyMaterialToRenderers(renderer, material);
+        }
+
+        static readonly string[] RocketboxParts = { "_body", "_head", "_opacity" };
+
+        /// The generated hero/guest prefabs have CX_* plate materials baked into
+        /// their Rocketbox body, so skipping the plate binding alone left them
+        /// wearing the plate (flat grey — its texture GUID is stale). Rebuild
+        /// each plated or empty slot from the mesh's Rocketbox naming
+        /// ("m002_hipoly_81_bones_opacity" -> m002_body / m002_head /
+        /// m002_opacity, slot order as on un-plated Rocketbox humans) through the
+        /// same skin lookup every other human uses.
+        static void RestoreRocketboxSkin(ModularPerson person)
+        {
+            if (!person) return;
+            foreach (var smr in person.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                if (!smr || !smr.sharedMesh) continue;
+                var slots = smr.sharedMaterials;
+                bool plated = false;
+                foreach (var m in slots)
+                    if (!m || m.name.StartsWith("CX_Hero_", System.StringComparison.Ordinal)
+                           || m.name.StartsWith("CX_Guest_", System.StringComparison.Ordinal)) { plated = true; break; }
+                if (!plated) continue;
+                var meshName = smr.sharedMesh.name;
+                int cut = meshName.IndexOf('_');
+                if (cut <= 0) continue;
+                var prefix = meshName.Substring(0, cut);
+                var next = (Material[])slots.Clone();
+                bool any = false;
+                for (int i = 0; i < slots.Length && i < RocketboxParts.Length; i++)
+                {
+                    var m = HubLook.Lit(Color.white, 0.02f, 0.30f);
+                    if (FreePacks.SkinByName(m, prefix + RocketboxParts[i])) { next[i] = m; any = true; }
+                }
+                if (any)
+                {
+                    smr.sharedMaterials = next;
+                    Debug.Log("[Concordia] Rocketbox skin restored owner=" + person.name + " mesh=" + meshName);
+                }
+            }
         }
 
         static bool TryApplyNamedPlate(ModularPerson person, Appearance look)

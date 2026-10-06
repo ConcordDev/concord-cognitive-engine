@@ -8,9 +8,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Workflow, Plus, Trash2, Loader2, GitBranch, Link2 } from 'lucide-react';
+import { Workflow, Plus, Trash2, Loader2, GitBranch, Link2, Route } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { GraphMapMenu } from './GraphMapMenu';
+import type { GraphFacts } from './graphMapReport';
 
 interface GNode { id: string; label: string; notes: string; central: boolean }
 interface GEdge { id: string; from: string; to: string; label: string }
@@ -29,6 +31,10 @@ export function MindMapBuilder() {
   const [linkTo, setLinkTo] = useState('');
   const [linkLabel, setLinkLabel] = useState('');
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [pathFrom, setPathFrom] = useState('');
+  const [pathTo, setPathTo] = useState('');
+  const [pathResult, setPathResult] = useState<{ found: boolean; path: string[] | null; message?: string } | null>(null);
+  const [pathBusy, setPathBusy] = useState(false);
   const [dashboard, setDashboard] = useState<{ maps: number; totalNodes: number; totalEdges: number } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -100,10 +106,26 @@ export function MindMapBuilder() {
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   // children of a node (tree rendering via edges)
+  const findPath = async () => {
+    if (!active || !pathFrom || !pathTo) return;
+    setPathBusy(true);
+    try {
+      const r = await lensRun<{ found?: boolean; path: string[] | null; message?: string }>('graph', 'pathFind', {
+        edges: active.edges.map((e) => ({ source: e.from, target: e.to })), from: pathFrom, to: pathTo, directed: false,
+      });
+      const res = r.data?.result;
+      setPathResult(res ? { found: !!res.path, path: res.path, message: res.message } : { found: false, path: null, message: r.data?.error || 'Path search failed.' });
+    } finally { setPathBusy(false); }
+  };
+
   const childrenOf = (nodeId: string): GNode[] => {
     if (!active) return [];
     return active.edges.filter(e => e.from === nodeId).map(e => active.nodes.find(n => n.id === e.to)).filter(Boolean) as GNode[];
   };
+
+  const graphFacts: GraphFacts = active
+    ? { map: active, metrics }
+    : { map: null, metrics: null };
 
   function NodeBranch({ node, depth }: { node: GNode; depth: number }) {
     if (!active) return null;
@@ -133,7 +155,6 @@ export function MindMapBuilder() {
       <div className="flex items-center gap-2 mb-3">
         <Workflow className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-bold text-zinc-100">Mind Map Builder</h3>
-        <span className="text-[11px] text-zinc-400">XMind shape</span>
         {dashboard && (
           <span className="ml-auto text-[10px] text-zinc-500">{dashboard.maps} map{dashboard.maps === 1 ? '' : 's'} · {dashboard.totalNodes} nodes · {dashboard.totalEdges} edges</span>
         )}
@@ -205,6 +226,42 @@ export function MindMapBuilder() {
             </div>
             {linkError && <p className="mt-1 text-[10px] text-rose-400">{linkError}</p>}
           </div>
+
+          {/* Shortest connection between any two ideas — graph.pathFind over this map's edges */}
+          <div className="mt-3 bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
+            <div className="flex items-center gap-1.5 mb-2 text-[11px] uppercase tracking-wide text-zinc-400">
+              <Route className="w-3 h-3" /> How are these connected?
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <select aria-label="Path start" value={pathFrom} onChange={e => { setPathFrom(e.target.value); setPathResult(null); }} className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300">
+                <option value="">From…</option>
+                {active.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+              </select>
+              <span className="text-zinc-600 text-xs">↔</span>
+              <select aria-label="Path end" value={pathTo} onChange={e => { setPathTo(e.target.value); setPathResult(null); }} className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300">
+                <option value="">To…</option>
+                {active.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+              </select>
+              <button type="button" onClick={() => void findPath()} disabled={!pathFrom || !pathTo || pathBusy} className="px-2 py-0.5 rounded bg-violet-600/30 text-[11px] text-violet-200 transition-colors hover:bg-violet-600/50 disabled:opacity-30">
+                {pathBusy ? 'Searching…' : 'Find path'}
+              </button>
+            </div>
+            {pathResult && (pathResult.found && pathResult.path ? (
+              <ol className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
+                {pathResult.path.map((id, i) => (
+                  <li key={`${id}-${i}`} className="flex items-center gap-1">
+                    {i > 0 && <span className="text-zinc-600">→</span>}
+                    <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-200">{active.nodes.find(n => n.id === id)?.label || id}</span>
+                  </li>
+                ))}
+                <li className="text-zinc-500">· {pathResult.path.length - 1} step{pathResult.path.length === 2 ? '' : 's'}</li>
+              </ol>
+            ) : (
+              <p className="mt-2 text-[11px] text-zinc-500">{pathResult.message || 'These ideas are not connected yet.'}</p>
+            ))}
+          </div>
+
+          <GraphMapMenu facts={graphFacts} />
         </div>
       ) : (
         <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">

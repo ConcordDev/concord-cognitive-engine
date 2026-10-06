@@ -738,7 +738,10 @@ export default function registerCryptoActions(registerLensAction) {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
-    return { ok: true, result: { id, revoked: true } };
+    // This only drops Concord's record. The ERC-20 approval itself stays live
+    // on-chain until the owner signs approve(spender, 0) in their wallet, so
+    // never report it as revoked.
+    return { ok: true, result: { id, removedFromList: true, onChainRevoked: false } };
   });
 
   /**

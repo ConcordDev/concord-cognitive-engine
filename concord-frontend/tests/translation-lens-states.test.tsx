@@ -36,6 +36,13 @@ vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
+vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
+
 import TranslationLens from '@/app/lenses/translation/page';
 
 const CATALOG = {

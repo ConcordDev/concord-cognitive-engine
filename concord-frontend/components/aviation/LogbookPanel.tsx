@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AviationKeepMenu } from './AviationKeepMenu';
+import type { AvLogEntry } from './aviationReport';
 
 interface Entry {
   id: string; aircraftId: string; date: string; from: string; to: string;
@@ -20,6 +22,7 @@ export function LogbookPanel() {
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ aircraftId: '', date: new Date().toISOString().slice(0, 10), from: '', to: '', totalHours: '', pic: '', night: '', instrument: '', dayLandings: '1', nightLandings: '0', conditions: 'VFR' as 'VFR' | 'MVFR' | 'IFR' | 'LIFR', remarks: '' });
+  const [lastEntry, setLastEntry] = useState<AvLogEntry | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -41,7 +44,9 @@ export function LogbookPanel() {
   async function add() {
     if (!form.aircraftId || !form.date || !form.from.trim() || !form.to.trim() || !form.totalHours) return;
     try {
-      await lensRun({ domain: 'aviation', action: 'logbook-add', input: { ...form, totalHours: Number(form.totalHours), pic: Number(form.pic) || 0, night: Number(form.night) || 0, instrument: Number(form.instrument) || 0, dayLandings: Number(form.dayLandings) || 0, nightLandings: Number(form.nightLandings) || 0 } });
+      const res = await lensRun({ domain: 'aviation', action: 'logbook-add', input: { ...form, totalHours: Number(form.totalHours), pic: Number(form.pic) || 0, night: Number(form.night) || 0, instrument: Number(form.instrument) || 0, dayLandings: Number(form.dayLandings) || 0, nightLandings: Number(form.nightLandings) || 0 } });
+      const entry = (res.data as { result?: { entry?: AvLogEntry } })?.result?.entry;
+      if (entry) setLastEntry(entry);
       setForm({ ...form, from: '', to: '', totalHours: '', pic: '', night: '', instrument: '', remarks: '' });
       await refresh();
     } catch (e) { console.error('[Logbook] add', e); }
@@ -93,6 +98,10 @@ export function LogbookPanel() {
         <button onClick={add} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Log flight</button>
         <input value={form.remarks} onChange={e => setForm({ ...form, remarks: e.target.value })} placeholder="Remarks" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
       </div>
+
+      {lastEntry && (
+        <AviationKeepMenu entry={lastEntry} tail={aircraft.find(a => a.id === lastEntry.aircraftId)?.tail} />
+      )}
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (

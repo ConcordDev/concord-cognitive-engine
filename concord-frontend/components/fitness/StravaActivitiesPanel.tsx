@@ -9,9 +9,12 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, Plus, Heart, Trash2, Flame, Clock, Ruler, TrendingUp, Mountain,
   MessageSquare, ImagePlus, ChevronDown, ChevronUp, Send, X, Map as MapIcon,
+  ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { FitnessKeepMenu } from './FitnessKeepMenu';
+import type { FitnessActivityDetail } from './fitnessActivityReport';
 import { MapView, type MapMarker } from '@/components/viz/MapView';
 
 interface Activity {
@@ -60,6 +63,9 @@ export function StravaActivitiesPanel() {
   const [routeTrack, setRouteTrack] = useState<GpsTrackPoint[] | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [keepId, setKeepId] = useState<string | null>(null);
+  const [keepDetail, setKeepDetail] = useState<FitnessActivityDetail | null>(null);
+  const [keepLoading, setKeepLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -148,6 +154,17 @@ export function StravaActivitiesPanel() {
     setRouteLoading(false);
     if (r.data?.ok === false) { setRouteError(r.data?.error || 'Could not load route'); return; }
     setRouteTrack(r.data?.result?.track?.points || []);
+  };
+
+  const keepActivity = async (a: Activity) => {
+    if (keepId === a.id) { setKeepId(null); setKeepDetail(null); return; }
+    setKeepId(a.id);
+    setKeepDetail(null);
+    setKeepLoading(true);
+    const r = await lensRun('fitness', 'activity-detail', { id: a.id });
+    setKeepLoading(false);
+    if (r.data?.ok === false || !r.data?.result?.activity) { setKeepId(null); return; }
+    setKeepDetail(r.data.result.activity as FitnessActivityDetail);
   };
 
   if (loading) {
@@ -263,6 +280,18 @@ export function StravaActivitiesPanel() {
                     <MapIcon className="w-3 h-3" /> {routeOpenId === a.id ? 'Hide route' : 'View route'}
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => keepActivity(a)}
+                  className={cn(
+                    'flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border transition-colors',
+                    keepId === a.id
+                      ? 'border-orange-700/50 bg-orange-950/40 text-orange-300'
+                      : 'border-zinc-800 text-zinc-400 hover:text-orange-300',
+                  )}
+                >
+                  <ShieldCheck className="w-3 h-3" /> {keepId === a.id ? 'Hide keep' : 'Keep'}
+                </button>
               </div>
 
               {routeOpenId === a.id && (
@@ -288,6 +317,20 @@ export function StravaActivitiesPanel() {
                     />
                   ) : (
                     <p className="text-xs text-zinc-400 italic">No GPS track stored for this activity.</p>
+                  )}
+                </div>
+              )}
+
+              {keepId === a.id && (
+                <div className="mt-2 border-t border-zinc-800 pt-2">
+                  {keepLoading ? (
+                    <div className="flex items-center justify-center py-4 text-zinc-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  ) : keepDetail ? (
+                    <FitnessKeepMenu facts={{ activity: keepDetail }} />
+                  ) : (
+                    <p className="text-xs text-zinc-400 italic">No activity detail available.</p>
                   )}
                 </div>
               )}

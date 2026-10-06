@@ -18,7 +18,8 @@ export interface LayoutSlice {
 
 export const createLayoutSlice: StateCreator<LayoutSlice, [], [], LayoutSlice> = (set) => ({
   sidebarOpen: false,
-  sidebarCollapsed: false,
+  // Thin icon rail by default (lens north stars); users can still expand it.
+  sidebarCollapsed: true,
   commandPaletteOpen: false,
   theme: 'dark',
   fullPageMode: false,

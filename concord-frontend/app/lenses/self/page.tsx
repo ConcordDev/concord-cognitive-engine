@@ -7,10 +7,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SelfFeed } from '@/components/self/SelfFeed';
 import { LogMetricForm } from '@/components/self/LogMetricForm';
 import { OverviewDashboard } from '@/components/self/OverviewDashboard';
@@ -30,7 +31,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart, Moon, Smile, BookOpen, Activity, TrendingUp,
+  Plus, Moon, Smile, BookOpen, Activity, TrendingUp,
   Sun, Trophy, Award, Calendar, Link2, Target, ScrollText, Flame, Upload,
   type LucideIcon,
 } from 'lucide-react';
@@ -44,26 +45,28 @@ type TabKey =
   | 'fitness' | 'sleep' | 'mood' | 'journal'
   | 'rituals' | 'achievements' | 'milestones' | 'season';
 
-const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
-  { key: 'overview',     label: 'Overview',     icon: TrendingUp },
-  { key: 'trends',       label: 'Trends',       icon: Activity },
-  { key: 'correlations', label: 'Correlations', icon: Link2 },
-  { key: 'goals',        label: 'Goals',        icon: Target },
-  { key: 'digest',       label: 'Digest',       icon: ScrollText },
-  { key: 'streaks',      label: 'Streaks',      icon: Flame },
-  { key: 'import',       label: 'Import',       icon: Upload },
-  { key: 'fitness',      label: 'Fitness',      icon: Activity },
-  { key: 'sleep',        label: 'Sleep',        icon: Moon },
-  { key: 'mood',         label: 'Mood',         icon: Smile },
-  { key: 'journal',      label: 'Journal',      icon: BookOpen },
-  { key: 'rituals',      label: 'Rituals',      icon: Sun },
-  { key: 'achievements', label: 'Achievements', icon: Trophy },
-  { key: 'milestones',   label: 'Milestones',   icon: Award },
-  { key: 'season',       label: 'Season',       icon: Calendar },
+const TABS: { id: TabKey; label: string; icon: LucideIcon }[] = [
+  { id: 'overview', label: 'Overview',     icon: TrendingUp },
+  { id: 'trends', label: 'Trends',       icon: Activity },
+  { id: 'correlations', label: 'Correlations', icon: Link2 },
+  { id: 'goals', label: 'Goals',        icon: Target },
+  { id: 'digest', label: 'Digest',       icon: ScrollText },
+  { id: 'streaks', label: 'Streaks',      icon: Flame },
+  { id: 'import', label: 'Import',       icon: Upload },
+  { id: 'fitness', label: 'Fitness',      icon: Activity },
+  { id: 'sleep', label: 'Sleep',        icon: Moon },
+  { id: 'mood', label: 'Mood',         icon: Smile },
+  { id: 'journal', label: 'Journal',      icon: BookOpen },
+  { id: 'rituals', label: 'Rituals',      icon: Sun },
+  { id: 'achievements', label: 'Achievements', icon: Trophy },
+  { id: 'milestones', label: 'Milestones',   icon: Award },
+  { id: 'season', label: 'Season',       icon: Calendar },
 ];
 
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TabKey>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
   const bump = () => setRefreshKey((k) => k + 1);
@@ -84,37 +87,17 @@ export default function UnifiedSelfLensPage() {
     <LensShell lensId="self" asMain={false}>
       <FirstRunTour lensId="self" />
       <DepthBadge lensId="self" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="self" className="mx-6 mt-4" />
-      <div className="min-h-screen bg-black pb-12 text-rose-50">
-        <header className="sticky top-0 z-10 border-b border-rose-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Heart className="h-6 w-6 text-rose-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Self</h1>
-              <p className="text-xs text-rose-700">Quantified-self ledger · trends · correlation · goals · streaks</p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="border-b border-rose-900/30 px-4 md:px-8" aria-label="Self sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {TABS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActive(key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 ${
-                  active === key ? 'border-rose-400 text-rose-200' : 'border-transparent text-rose-700 hover:text-rose-400'
-                }`}
-                aria-pressed={active === key}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+      <NorthStarFrame
+        lensId="self"
+        crumb="Self"
+        title={`${active === 'overview' ? 'How you are doing' : (TABS.find((t) => t.id === active)?.label ?? 'Self')}${active === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="Quantified-self ledger: trends, correlations, goals and streaks"
+        tabs={TABS}
+        activeTab={active}
+        onTab={(id) => setActive(id as TabKey)}
+        tabsLabel="Self sections"
+        cta={{ label: 'Log a metric', icon: Plus, onClick: () => setActive('overview'), title: 'Log a reading on the overview' }}
+      >
           <AnimatePresence mode="wait">
             <motion.section
               key={active}
@@ -145,15 +128,12 @@ export default function UnifiedSelfLensPage() {
               {active === 'season' && <SeasonalContent />}
             </motion.section>
           </AnimatePresence>
-        </main>
 
-        {/* Native details — no second view-state machine */}
-        <details className="mx-4 mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 md:mx-8">
-          <summary className="cursor-pointer text-sm font-semibold text-white">Self-improvement discussion (external reference)</summary>
+        <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-4">
+          <h2 className="text-sm font-semibold text-white">Self-improvement discussion (external reference)</h2>
           <div className="mt-3"><SelfFeed /></div>
-        </details>
-      </div>
-      <CrossLensRecentsPanel lensId="self" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        </section>
+      </NorthStarFrame>
     </LensShell>
   );
 }

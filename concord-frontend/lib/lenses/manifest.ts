@@ -1154,19 +1154,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['timeline_object', 'event_node', 'span', 'annotation', 'replay_session'],
     macros: { list: 'lens.timeline.list', get: 'lens.timeline.get', create: 'lens.timeline.create', update: 'lens.timeline.update', delete: 'lens.timeline.delete', run: 'lens.timeline.run', export: 'lens.timeline.export' },
     exports: ['json', 'csv', 'svg', 'ics'],
-    actions: ['replay', 'diff_timelines', 'annotate', 'cluster_events', 'gap_analysis', 'causality_trace'],
+    actions: ['post-create', 'feed-list', 'comment-add', 'react', 'share-post', 'memories', 'temporalClustering', 'trendAnalysis'],
     category: 'productivity',
     dataTier: 'REAL_LIVE',
     emptyState: {
-      headline: "Replay any timeline.",
-      caption: "Timeline objects, event nodes, spans, annotations \u2014 diff, cluster, causality-trace.",
-      firstActionLabel: "Open a timeline",
+      headline: "Your timeline.",
+      caption: "Your posts, comments, reactions, albums and \u201con this day\u201d memories, plus a roadmap of your Board tasks and Goals \u2014 all saved to your account.",
+      firstActionLabel: "Write a post",
     },
     firstRunGuide: {
       steps: [
-        { caption: "replay scrubs through events at any speed." },
-        { caption: "diff_timelines surfaces what changed between two versions." },
-        { caption: "causality_trace walks the upstream of any event back through DTU lineage." },
+        { caption: "Write a post in Feed; pick Public, Friends or Only me before you post." },
+        { caption: "Roadmap lays out your real Board tasks and Goals on a week ruler." },
+        { caption: "Keep any post as a private DTU, then send that DTU to a Thread draft." },
       ],
     },
   },
@@ -1459,19 +1459,25 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Patient', 'Encounter', 'CareProtocol', 'Prescription', 'LabResult', 'Treatment', 'ReferralRecord'],
     macros: { list: 'lens.healthcare.list', get: 'lens.healthcare.get', create: 'lens.healthcare.create', update: 'lens.healthcare.update', delete: 'lens.healthcare.delete', run: 'lens.healthcare.run', export: 'lens.healthcare.export' },
     exports: ['json', 'csv', 'pdf', 'hl7', 'fhir'],
-    actions: ['checkInteractions', 'protocolMatch', 'generateSummary', 'intakeWorkflow', 'riskFlagging', 'carePlanGenerate', 'labImport', 'dischargePackage'],
+    // Only macros server/domains/healthcare.js actually registers. The old
+    // list advertised intakeWorkflow / riskFlagging / carePlanGenerate /
+    // labImport / dischargePackage, none of which exist.
+    actions: ['checkInteractions', 'protocolMatch', 'generateSummary'],
     category: 'healthcare',
-    dataTier: 'DEMO',
+    // Patients, allergies, meds, encounters are the user's own persisted
+    // records (server/domains/healthcare.js), not demo data. DEMO rendered a
+    // "Demo" chip and a "DEMO data" caption over real charts.
+    dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Healthcare workflow scaffold.",
-      caption: "Patient, encounter, prescription, lab \u2014 DEMO data; wire your own EHR via Integrations.",
-      firstActionLabel: "Open the EHR shell",
+      headline: "Your clinic's charts.",
+      caption: "Patients, allergies, medications, encounters and results you enter \u2014 saved to your account. Not connected to an outside EHR yet.",
+      firstActionLabel: "Register a patient",
     },
     firstRunGuide: {
       steps: [
-        { caption: "checkInteractions runs against the same engine the Pharmacy lens uses." },
-        { caption: "intakeWorkflow walks the patient through intake \u2192 encounter \u2192 care plan." },
-        { caption: "labImport ingests results; dischargePackage assembles the handoff." },
+        { caption: "Register a patient, then record allergies, meds and encounters on their chart." },
+        { caption: "checkInteractions screens a medication list for known drug interactions." },
+        { caption: "Keep a patient summary as a private DTU, then draft it in Thread. Nothing is published." },
       ],
     },
   },
@@ -1483,19 +1489,23 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Job', 'Estimate', 'MaterialsList', 'Permit', 'Equipment', 'Client', 'Inspection'],
     macros: { list: 'lens.trades.list', get: 'lens.trades.get', create: 'lens.trades.create', update: 'lens.trades.update', delete: 'lens.trades.delete', run: 'lens.trades.run', export: 'lens.trades.export' },
     exports: ['json', 'csv', 'pdf', 'xlsx'],
-    actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'codeComplianceCheck', 'changeOrderGenerate', 'progressPhotoLog', 'safetyChecklist'],
+    // Only actions the server registers (codeComplianceCheck,
+    // changeOrderGenerate, progressPhotoLog and safetyChecklist never existed).
+    actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'checkPermits', 'calculatePL', 'generateInvoice', 'generatePO'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    // Customers, jobs, quotes, invoices, timesheets and the project desk are
+    // the user's own records, persisted server-side, not simulated data.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Trades & construction.",
-      caption: "Jobs, estimates, materials, permits, inspections \u2014 calculate, schedule, comply.",
+      caption: "Customers, jobs, dispatch, quotes, invoices, timesheets and the project desk, saved to your account. Not connected yet: online card checkout, SMS/email sending and live GPS (payments and reminders are recorded, not sent).",
       firstActionLabel: "Create a job",
     },
     firstRunGuide: {
       steps: [
-        { caption: "calculateEstimate uses material cost + labor + permit fee tables." },
-        { caption: "scheduleInspection ties to the calendar + permit substrate." },
-        { caption: "safetyChecklist + changeOrderGenerate keep the paper trail clean." },
+        { caption: "Add a customer and dispatch a job from the Workbench." },
+        { caption: "Quote, invoice and record payments under Billing & CRM." },
+        { caption: "Keep a job as a DTU and draft it in Thread from its card." },
       ],
     },
   },
@@ -1581,7 +1591,11 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'qbo', 'xlsx'],
     actions: ['trialBalance', 'profitLoss', 'invoiceAging', 'budgetVariance', 'rentRoll', 'reconcile', 'categorize', 'taxEstimate', 'auditReport'],
     category: 'finance',
-    dataTier: 'SIM_GRADE_A',
+    // The books are the user's own persisted CoA + journal entries
+    // (server/domains/accounting.js), not a simulation — same tier as the
+    // other user-data lenses (Food, Retail). SIM_GRADE_A rendered a false
+    // "Simulated · Not real data" chip over real ledgers.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Books that close themselves.",
       caption: "Accounts, transactions, invoices, payroll, tax \u2014 reconcile, categorize, audit.",
@@ -1676,19 +1690,25 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['Case', 'Contract', 'ComplianceItem', 'Filing', 'IPAsset', 'BriefBundle'],
     macros: { list: 'lens.legal.list', get: 'lens.legal.get', create: 'lens.legal.create', update: 'lens.legal.update', delete: 'lens.legal.delete', run: 'lens.legal.run', export: 'lens.legal.export' },
     exports: ['json', 'csv', 'pdf', 'docx'],
-    actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore', 'clauseChecker', 'citationPackager', 'caseTimelineBuilder', 'briefExport'],
+    // Only macros server/domains/legal.js registers. clauseChecker /
+    // citationPackager / caseTimelineBuilder / briefExport were advertised
+    // but don't exist.
+    actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore'],
     category: 'services',
-    dataTier: 'DEMO',
+    // Matters, time entries, contacts and invoices are the user's own
+    // persisted records (server/domains/legal.js); case-law search hits the
+    // real CourtListener API. DEMO rendered a "Demo" chip over all of it.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: 'No matters opened.',
-      caption: 'Open a case / contract / compliance item. Note: full Westlaw / LexisNexis data is paywalled — this lens runs against authored content.',
+      caption: 'Open a matter, log time, bill it \u2014 saved to your account. Case-law search uses CourtListener; Westlaw / LexisNexis aren\u2019t connected (not supported yet).',
       firstActionLabel: 'Open a matter',
     },
     firstRunGuide: {
       steps: [
-        { caption: 'A document surface — the DocsShell opens by default. Bespoke legal workflow lives below.' },
-        { caption: 'deadlineCheck + conflictCheck + complianceScore run scheduled passes against your active matters.' },
-        { caption: 'Honest tier: this lens is DEMO until we wire a paid case-law feed. The structure works; the data is yours to author.' },
+        { caption: 'Practice: open a matter, log time entries, and see the real unbilled total on the matter.' },
+        { caption: 'Case law searches CourtListener opinions. Westlaw / LexisNexis are not connected yet.' },
+        { caption: 'Keep a matter report as a private DTU, then draft it in Thread. Nothing is filed or published.' },
       ],
     },
   },
@@ -1865,23 +1885,23 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === AVIATION ===
   {
     domain: 'aviation',
-    label: 'Aviation & Maritime',
+    label: 'Aviation',
     artifacts: ['Flight', 'Aircraft', 'Vessel', 'Slip', 'Charter', 'CrewMember', 'LogbookEntry'],
     macros: { list: 'lens.aviation.list', get: 'lens.aviation.get', create: 'lens.aviation.create', update: 'lens.aviation.update', delete: 'lens.aviation.delete', run: 'lens.aviation.run', export: 'lens.aviation.export' },
     exports: ['json', 'csv', 'pdf', 'kml'],
-    actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'slipUtilization', 'weightBalance', 'flightPlan', 'crewSchedule', 'regulatoryCompliance'],
+    actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'dutyTimeCheck', 'flightSummary', 'calculate-wb', 'plan-create'],
     category: 'operations',
-    dataTier: 'DEMO',
+    dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Aviation + maritime ops.",
-      caption: "Flights, aircraft, vessels, slips, charters, crew \u2014 currency, weight & balance, logbook.",
+      headline: "Your flying, on the record.",
+      caption: "Aircraft, logbook, flight plans, currency and weight & balance \u2014 saved to your account, with live METAR/TAF, NOTAMs and FAA plates. Sending plans to ATC and maritime (vessels, slips) aren't supported yet.",
       firstActionLabel: "Open the operations board",
     },
     firstRunGuide: {
       steps: [
-        { caption: "weightBalance enforces aircraft envelope." },
-        { caption: "currencyCheck flags pilots / crew approaching expiry." },
-        { caption: "regulatoryCompliance composes the standard audit pack." },
+        { caption: "Add your aircraft and log a flight in EFB \u2192 Logbook; totals and currency come from your own entries." },
+        { caption: "Weight & balance checks your load against the aircraft's envelope." },
+        { caption: "Keep a flight as a private DTU, then draft it in Thread." },
       ],
     },
   },
@@ -2844,7 +2864,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
       steps: [
         { caption: 'The wallet view at the top gives you balances and transfers without leaving the substrate.' },
         { caption: 'Live prices via CoinGecko (no key). Tokens you track are persisted server-side; the list survives reload.' },
-        { caption: 'Send / receive / swap actions remain stubs unless you wire an actual chain integration — the panel is honest about its DEMO status for those flows.' },
+        { caption: "Send records a transfer in your Concord ledger; Swap shows a quote only. Broadcasting to a chain and executing swaps aren't supported yet (no wallet keys or DEX router connected)." },
       ],
     },
   },
@@ -3087,17 +3107,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // is left empty rather than duplicating them with a worse surface.
     actions: [],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Engineering workspace.",
-      caption: "Structures, components, materials, simulations, specs \u2014 analyze, generate, export.",
-      firstActionLabel: "Start a project",
+      caption: "Your frame model, load cases, materials and FEA runs \u2014 saved to your account and solved by the built-in linear direct-stiffness solver. Results are engineering estimates, not a stamped analysis. CAD import and nonlinear / dynamic solvers aren't supported yet.",
+      firstActionLabel: "Build a model",
     },
     firstRunGuide: {
       steps: [
-        { caption: "simulation runs against the SIM_GRADE_A engine." },
-        { caption: "validate enforces material spec + safety factor." },
-        { caption: "Export drawings + specs ready for review." },
+        { caption: "Model starts empty: add nodes, a member, a fixed support, then a load in Loads." },
+        { caption: "Run FEA solves your model; Results shows displacement, utilization and pass/fail per member." },
+        { caption: "Keep a run as a private DTU, then draft it in Thread." },
       ],
     },
   },
@@ -3331,17 +3351,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    // Jobs, estimates, CRM, field service and saved load estimates are the
+    // user's own records, persisted server-side — not simulated data.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "HVAC management.",
-      caption: "Systems, zones, sensors, schedules, maintenance \u2014 analyze, generate, validate.",
-      firstActionLabel: "Add a system",
+      caption: "Jobs, estimates, CRM, invoices, field service, duct sizing and load estimates, saved to your account. Load estimates are a square-foot rule of thumb, not an ACCA Manual J calculation. No live sensor or building data feeds yet.",
+      firstActionLabel: "Add a job",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Zones + sensors stream against real building data." },
-        { caption: "Schedule optimization runs against occupancy + weather." },
-        { caption: "Export maintenance pack per equipment." },
+        { caption: "Track jobs, estimates, clients, invoices and inspections on the desk tabs." },
+        { caption: "Dispatch technicians and log field visits under Field Service." },
+        { caption: "Loads gives a rule-of-thumb load estimate you can keep as a DTU and draft in Thread." },
       ],
     },
   },

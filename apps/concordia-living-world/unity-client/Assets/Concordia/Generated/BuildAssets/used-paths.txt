@@ -1,0 +1,256 @@
+key	freepacks:weapon-sword	Assets/Concordia/FreePacks/Kenney/mini-dungeon/weapon-sword.glb
+path	Assets/Concordia/FreePacks/Kenney/mini-dungeon/weapon-sword.glb
+key	freepacks:horse	Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Horse.fbx
+path	Assets/Concordia/FreePacks/Fauna/Farm_Animals_Quaternius/Farm Animals by @Quaternius/FBX/Horse.fbx
+path	Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/aerial_mud_1/aerial_mud_1_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/cobblestone_square/cobblestone_square_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/HDRIs/the_sky_is_on_fire_2k.hdr
+path	Assets/Concordia/PolyHaven/HDRIs/kloofendal_48d_partly_cloudy_puresky_2k.hdr
+path	Assets/Concordia/PolyHaven/Models/island_tree_03/island_tree_03_1k.fbx
+key	freepacks:banner	Assets/Concordia/FreePacks/Kenney/mini-dungeon/banner.glb
+path	Assets/Concordia/FreePacks/Kenney/mini-dungeon/banner.glb
+path	Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/patterned_cobblestone_02/patterned_cobblestone_02_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/pebble_embedded_pavement/pebble_embedded_pavement_arm_2k.jpg
+key	freepacks:grass	Assets/Concordia/FreePacks/Kenney/platformer/grass.glb
+path	Assets/Concordia/FreePacks/Kenney/platformer/grass.glb
+key	freepacks:grass_leafs	Assets/Concordia/FreePacks/Kenney/nature/grass_leafs.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/grass_leafs.glb
+key	freepacks:plant_bushsmall	Assets/Concordia/FreePacks/Kenney/nature/plant_bushSmall.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/plant_bushSmall.glb
+key	freepacks:plant_flatshort	Assets/Concordia/FreePacks/Kenney/nature/plant_flatShort.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/plant_flatShort.glb
+key	freepacks:flower_reda	Assets/Concordia/FreePacks/Kenney/nature/flower_redA.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/flower_redA.glb
+path	Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/aerial_grass_rock/aerial_grass_rock_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/rock_ground/rock_ground_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/gravel/gravel_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/gravel/gravel_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/gravel/gravel_arm_2k.jpg
+key	freepacks:lantern_01_1k	Assets/Concordia/PolyHaven/Models/Lantern_01/Lantern_01_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/Lantern_01/Lantern_01_1k.fbx
+path	Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/blue_floor_tiles_01/blue_floor_tiles_01_arm_2k.jpg
+key	freepacks:building-skyscraper-a	Assets/Concordia/FreePacks/Kenney/city-commercial/building-skyscraper-a.glb
+path	Assets/Concordia/FreePacks/Kenney/city-commercial/building-skyscraper-a.glb
+key	freepacks:detail-overhang-wide	Assets/Concordia/FreePacks/Kenney/city-commercial/detail-overhang-wide.glb
+path	Assets/Concordia/FreePacks/Kenney/city-commercial/detail-overhang-wide.glb
+key	freepacks:lamproundfloor	Assets/Concordia/FreePacks/Kenney/furniture/lampRoundFloor.glb
+path	Assets/Concordia/FreePacks/Kenney/furniture/lampRoundFloor.glb
+key	freepacks:building-type-a	Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-a.glb
+path	Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-a.glb
+key	freepacks:concordia_real_industrial_hangar	Assets/Concordia/Generated/RealWorld/Concordia_Real_Industrial_Hangar.prefab
+path	Assets/Concordia/Generated/RealWorld/Concordia_Real_Industrial_Hangar.prefab
+path	Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/brown_mud_dry/brown_mud_dry_arm_2k.jpg
+key	freepacks:column-large	Assets/Concordia/FreePacks/Kenney/graveyard/column-large.glb
+path	Assets/Concordia/FreePacks/Kenney/graveyard/column-large.glb
+key	freepacks:crypt-small	Assets/Concordia/FreePacks/Kenney/graveyard/crypt-small.glb
+path	Assets/Concordia/FreePacks/Kenney/graveyard/crypt-small.glb
+key	freepacks:altar-stone	Assets/Concordia/FreePacks/Kenney/graveyard/altar-stone.glb
+path	Assets/Concordia/FreePacks/Kenney/graveyard/altar-stone.glb
+key	freepacks:cliff_large_stone	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_stone.glb
+path	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_stone.glb
+key	freepacks:concordia_real_forge	Assets/Concordia/Generated/RealWorld/Concordia_Real_Forge.prefab
+path	Assets/Concordia/Generated/RealWorld/Concordia_Real_Forge.prefab
+path	Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_arm_2k.jpg
+key	freepacks:hedge-large	Assets/Concordia/FreePacks/Kenney/fantasy-town/hedge-large.glb
+path	Assets/Concordia/FreePacks/Kenney/fantasy-town/hedge-large.glb
+key	freepacks:tower-square-base	Assets/Concordia/FreePacks/Kenney/castle/tower-square-base.glb
+path	Assets/Concordia/FreePacks/Kenney/castle/tower-square-base.glb
+key	freepacks:concordia_real_oak	Assets/Concordia/Generated/RealWorld/Concordia_Real_Oak.prefab
+path	Assets/Concordia/Generated/RealWorld/Concordia_Real_Oak.prefab
+key	freepacks:concordia_real_foresttree	Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestTree.prefab
+path	Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestTree.prefab
+key	freepacks:jacaranda_tree_1k	Assets/Concordia/PolyHaven/Models/jacaranda_tree/jacaranda_tree_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/jacaranda_tree/jacaranda_tree_1k.fbx
+key	freepacks:concordia_real_forestgrass	Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestGrass.prefab
+path	Assets/Concordia/Generated/RealWorld/Concordia_Real_ForestGrass.prefab
+key	freepacks:fern_02_1k	Assets/Concordia/PolyHaven/Models/fern_02/fern_02_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/fern_02/fern_02_1k.fbx
+key	freepacks:platform	Assets/Concordia/FreePacks/Kenney/platformer/platform.glb
+path	Assets/Concordia/FreePacks/Kenney/platformer/platform.glb
+path	Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/forrest_ground_03/forrest_ground_03_arm_2k.jpg
+key	freepacks:bridge_wood	Assets/Concordia/FreePacks/Kenney/nature/bridge_wood.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/bridge_wood.glb
+key	freepacks:lowpoly - rock a	Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Prefabs/LowPoly - Rock A.prefab
+path	Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Prefabs/LowPoly - Rock A.prefab
+path	Assets/Concordia/Generated/Prefabs/P4/Grid/CX_Civic_Grid_Kiosk.prefab
+key	freepacks:cart	Assets/Concordia/FreePacks/Kenney/fantasy-town/cart.glb
+path	Assets/Concordia/FreePacks/Kenney/fantasy-town/cart.glb
+path	Assets/Concordia/Generated/Prefabs/P4/Ruins/CX_Civic_Ruins_GlyphMarker.prefab
+path	Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/asphalt_floor/asphalt_floor_arm_2k.jpg
+key	freepacks:dumpster	Assets/Concordia/FreePacks/Kenney/city-roads/dumpster.glb
+path	Assets/Concordia/FreePacks/Kenney/city-roads/dumpster.glb
+key	freepacks:barrel	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Barrel.obj
+path	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Barrel.obj
+key	freepacks:detail-awning	Assets/Concordia/FreePacks/Kenney/city-commercial/detail-awning.glb
+path	Assets/Concordia/FreePacks/Kenney/city-commercial/detail-awning.glb
+path	Assets/Concordia/Generated/Prefabs/P4/Sundering/CX_Civic_Sundering_Wardpost.prefab
+path	Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/concrete_floor/concrete_floor_arm_2k.jpg
+path	Assets/Concordia/Generated/Prefabs/P4/Tunya/CX_Civic_Tunya_Waystone.prefab
+path	Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/metal_plate_02/metal_plate_02_arm_2k.jpg
+key	freepacks:detail-crystal-large	Assets/Concordia/FreePacks/Kenney/td/detail-crystal-large.glb
+path	Assets/Concordia/FreePacks/Kenney/td/detail-crystal-large.glb
+key	freepacks:tower-hexagon-mid	Assets/Concordia/FreePacks/Kenney/castle/tower-hexagon-mid.glb
+path	Assets/Concordia/FreePacks/Kenney/castle/tower-hexagon-mid.glb
+key	freepacks:cliff_stone	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_stone.glb
+path	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_stone.glb
+key	freepacks:rocks-large	Assets/Concordia/FreePacks/Kenney/castle/rocks-large.glb
+path	Assets/Concordia/FreePacks/Kenney/castle/rocks-large.glb
+path	Assets/Concordia/Generated/Prefabs/P4/Frontier/CX_Civic_Frontier_Wagon.prefab
+key	freepacks:building-type-h	Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-h.glb
+path	Assets/Concordia/FreePacks/Kenney/city-suburban/building-type-h.glb
+key	freepacks:cliff_large_rock	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_rock.glb
+path	Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_rock.glb
+path	Assets/Concordia/Generated/Prefabs/P4/Crime/CX_Civic_Crime_StreetSign.prefab
+path	Assets/Concordia/Generated/Prefabs/P4/Dawn/CX_Civic_Dawn_SunDisc.prefab
+path	Assets/Concordia/Generated/Prefabs/P4/Crucible/CX_Civic_Crucible_DriftMarker.prefab
+path	Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_WreckWagon.prefab
+path	Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Crate.prefab
+path	Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_marrow.prefab
+path	Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_marrow.mat
+key	freepacks:cx_weapon_hatchet	Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Hatchet.prefab
+path	Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Hatchet.prefab
+path	Assets/Concordia/Generated/Prefabs/P2/Gear/CX_Gear_BanditScrap.prefab
+path	Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_hitch.prefab
+path	Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_hitch.mat
+path	Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_dusk.prefab
+path	Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_dusk.mat
+path	Assets/Concordia/Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_nettle.prefab
+path	Assets/Concordia/Generated/Materials/P0/Bandits/CX_Bandit_Sundering_nettle.mat
+path	Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab
+key	skin:m002_body_color	Assets/Concordia/Generated/Rig/MaleTextures/m002_body_color.tga
+path	Assets/Concordia/Generated/Rig/MaleTextures/m002_body_color.tga
+key	skin:m002_body_normal	Assets/Concordia/Generated/Rig/MaleTextures/m002_body_normal.tga
+path	Assets/Concordia/Generated/Rig/MaleTextures/m002_body_normal.tga
+key	skin:m002_head_color	Assets/Concordia/Generated/Rig/MaleTextures/m002_head_color.tga
+path	Assets/Concordia/Generated/Rig/MaleTextures/m002_head_color.tga
+key	skin:m002_head_normal	Assets/Concordia/Generated/Rig/MaleTextures/m002_head_normal.tga
+path	Assets/Concordia/Generated/Rig/MaleTextures/m002_head_normal.tga
+key	skin:m002_opacity_color	Assets/Concordia/Generated/Rig/MaleTextures/m002_opacity_color.tga
+path	Assets/Concordia/Generated/Rig/MaleTextures/m002_opacity_color.tga
+path	Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Basilisk.prefab
+key	freepacks:wolf	Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Wolf.fbx
+path	Assets/Concordia/FreePacks/Fauna/Animal_Pack_Vol2_Quaternius/Animal Pack Vol.2 by @Quaternius/FBX/Wolf.fbx
+path	Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Wolf.prefab
+key	freepacks:chest	Assets/Concordia/FreePacks/Kenney/platformer/chest.glb
+path	Assets/Concordia/FreePacks/Kenney/platformer/chest.glb
+key	freepacks:bird	Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/bird.fbx
+path	Assets/Concordia/FreePacks/Fauna/Animals_Pack_Quaternius/Animals Pack by Quaternius/FBX/bird.fbx
+key	freepacks:statue_column	Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
+key	freepacks:cauldron	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Cauldron.obj
+path	Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/OBJ/Cauldron.obj
+key	freepacks:large_iron_gate_1k	Assets/Concordia/PolyHaven/Models/large_iron_gate/large_iron_gate_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/large_iron_gate/large_iron_gate_1k.fbx
+key	freepacks:lantern	Assets/Concordia/FreePacks/Kenney/fantasy-town/lantern.glb
+path	Assets/Concordia/FreePacks/Kenney/fantasy-town/lantern.glb
+path	Assets/Concordia/Generated/Prefabs/P0/Hero/CX_Hero_Court_front.prefab
+path	Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab
+key	freepacks:cx_weapon_longsword	Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab
+path	Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab
+key	skin:f001_body_color	Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_color.tga
+path	Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_color.tga
+key	skin:f001_body_normal	Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_normal.tga
+path	Assets/Concordia/Generated/Rig/FemaleTextures/f001_body_normal.tga
+key	skin:f001_head_color	Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_color.tga
+path	Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_color.tga
+key	skin:f001_head_normal	Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_normal.tga
+path	Assets/Concordia/Generated/Rig/FemaleTextures/f001_head_normal.tga
+key	skin:f001_opacity_color	Assets/Concordia/Generated/Rig/FemaleTextures/f001_opacity_color.tga
+path	Assets/Concordia/Generated/Rig/FemaleTextures/f001_opacity_color.tga
+key	freepacks:statue_head	Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
+key	freepacks:crops_dirtrow	Assets/Concordia/FreePacks/Kenney/nature/crops_dirtRow.glb
+path	Assets/Concordia/FreePacks/Kenney/nature/crops_dirtRow.glb
+path	Assets/Concordia/PolyHaven/HDRIs/dikhololo_night_2k.hdr
+key	freepacks:road-straight	Assets/Concordia/FreePacks/Kenney/city-roads/road-straight.glb
+path	Assets/Concordia/FreePacks/Kenney/city-roads/road-straight.glb
+key	freepacks:car_stationwagon	Assets/Concordia/FreePacks/Kaykit/city/gltf/car_stationwagon.gltf
+path	Assets/Concordia/FreePacks/Kaykit/city/gltf/car_stationwagon.gltf
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_Lamplighter.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Lamplighter.mat
+key	freepacks:staff	Assets/Concordia/FreePacks/Kaykit/adventures/gltf/staff.gltf
+path	Assets/Concordia/FreePacks/Kaykit/adventures/gltf/staff.gltf
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_EliasVoss.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_EliasVoss.mat
+key	freepacks:dagger	Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons Pack - Sept 2018/OBJ/Dagger.obj
+path	Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons Pack - Sept 2018/OBJ/Dagger.obj
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_VesperKane.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_VesperKane.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_SeraphineVoss.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_SeraphineVoss.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_JaxRivera.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_JaxRivera.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_MamaIronRose.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MamaIronRose.mat
+key	freepacks:ornate_medieval_mace_1k	Assets/Concordia/PolyHaven/Models/ornate_medieval_mace/ornate_medieval_mace_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/ornate_medieval_mace/ornate_medieval_mace_1k.fbx
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_KaelZero.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_KaelZero.mat
+key	freepacks:wand	Assets/Concordia/FreePacks/Kaykit/adventures/gltf/wand.gltf
+path	Assets/Concordia/FreePacks/Kaykit/adventures/gltf/wand.gltf
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_NyxTorres.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_NyxTorres.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_ThorneBlackroot.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_ThorneBlackroot.mat
+key	freepacks:antique_estoc_1k	Assets/Concordia/PolyHaven/Models/antique_estoc/antique_estoc_1k.fbx
+path	Assets/Concordia/PolyHaven/Models/antique_estoc/antique_estoc_1k.fbx
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_LyraSilentchant.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_LyraSilentchant.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_WardenGale.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_WardenGale.mat
+key	freepacks:spear	Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons Pack - Sept 2018/OBJ/Spear.obj
+path	Assets/Concordia/FreePacks/Weapons/Quaternius_Medieval_Weapons/Medieval Weapons Pack - Sept 2018/OBJ/Spear.obj
+key	freepacks:shield-rectangle	Assets/Concordia/FreePacks/Kenney/mini-dungeon/shield-rectangle.glb
+path	Assets/Concordia/FreePacks/Kenney/mini-dungeon/shield-rectangle.glb
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_AsbirThelane.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_AsbirThelane.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_MarenAshveil.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MarenAshveil.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_Brackish.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Brackish.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Guests/CX_Guest_OldSeam.prefab
+path	Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_OldSeam.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Pillars/CX_Pillar_Concordia.prefab
+path	Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concordia.mat
+path	Assets/Concordia/Generated/Prefabs/P3/Pillars/CX_Pillar_Concord.prefab
+path	Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concord.mat
+path	Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/clay_roof_tiles/clay_roof_tiles_arm_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/brick_wall_003/brick_wall_003_arm_2k.jpg
+key	freepacks:crate	Assets/Concordia/FreePacks/Kenney/platformer/crate.glb
+path	Assets/Concordia/FreePacks/Kenney/platformer/crate.glb
+path	Assets/Concordia/Materials/Masters/Concordia_Master_WaterPuddle.mat
+key	freepacks:tile-crystal	Assets/Concordia/FreePacks/Kenney/td/tile-crystal.glb
+path	Assets/Concordia/FreePacks/Kenney/td/tile-crystal.glb
+path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_diffuse_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_nor_gl_2k.jpg
+path	Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_arm_2k.jpg

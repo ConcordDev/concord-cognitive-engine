@@ -10,9 +10,9 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { ShieldAlert, MapPinned } from 'lucide-react';
+import { ShieldAlert, MapPinned, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -28,6 +28,8 @@ import { AlertsPanel } from '@/components/crisis-ops/AlertsPanel';
 import { ResourcePanel } from '@/components/crisis-ops/ResourcePanel';
 import { IncidentReportPanel } from '@/components/crisis-ops/IncidentReportPanel';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface Crisis {
   id: string;
@@ -44,6 +46,8 @@ interface SkillSuggestion {
 const ACTIVE_WORLD_KEY = 'concordia:activeWorldId';
 
 export default function CrisisOpsPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('concordia-hub');
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
@@ -90,23 +94,23 @@ export default function CrisisOpsPage() {
 
   return (
     <LensShell lensId="crisis-ops" asMain={false}>
-      <FirstRunTour lensId="crisis-ops" />      <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
-        <header className="mb-5 flex items-center gap-3">
-          <ShieldAlert className="h-8 w-8 text-rose-300" />
-          <div>
-            <h1 className="text-3xl font-semibold text-rose-300">Crisis Ops</h1>
-            <p className="text-gray-400">
-              Operational crisis-response console — map, triage, playbooks, command and resources.
-            </p>
-          </div>
-          {reports.items.length > 0 && (
-            <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-900/20 px-3 py-1 text-xs text-amber-200">
+      <FirstRunTour lensId="crisis-ops" />
+      <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="crisis-ops"
+        theme="crisis-ops"
+        crumb="Crisis Ops"
+        title={crises.length > 0 ? `${crises.length} active, ${who || 'responder'}` : `All quiet${who ? `, ${who}` : ''}`}
+        subtitle="Operational crisis-response console: map, triage, playbooks, command and resources."
+        actions={
+          reports.items.length > 0 ? (
+            <span className="rounded-full border border-amber-500/40 bg-amber-900/20 px-3 py-1 text-xs text-amber-200">
               {reports.items.length} incident report{reports.items.length === 1 ? '' : 's'} on file
             </span>
-          )}
-        </header>
-
+          ) : undefined
+        }
+        cta={{ label: 'Refresh crises', icon: RefreshCw, onClick: () => void refresh(), title: 'Re-poll active crises (R)', disabled: loading }}
+      >
         <div className="grid gap-5 lg:grid-cols-3">
           {/* LEFT: active crises + alerts */}
           <div className="space-y-5 lg:col-span-1">
@@ -170,17 +174,17 @@ export default function CrisisOpsPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <AlertsPanel worldId={worldId} />
             </section>
           </div>
 
           {/* CENTER: map + triage */}
           <div className="space-y-5 lg:col-span-2">
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <CrisisMap />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <TriagePanel
                 worldId={worldId}
                 onSelect={(c) => setSelected({
@@ -225,19 +229,19 @@ export default function CrisisOpsPage() {
         {/* Resource inventory + incident log when no crisis is selected */}
         {!selected && (
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <ResourcePanel />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <IncidentReportPanel />
             </section>
           </div>
         )}
 
-        <section className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-5 rounded-2xl border border-white/10 bg-[#111] p-4">
           <FemaDisasters />
         </section>
-      </div>      <CrossLensRecentsPanel lensId="crisis-ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }

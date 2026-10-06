@@ -16,10 +16,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users2, LineChart, Swords, Keyboard, RefreshCw } from 'lucide-react';
+import { Users2, LineChart, Swords, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { AllianceWorkspace } from '@/components/alliance/AllianceWorkspace';
 import { AllianceAnalyticsPanel } from '@/components/alliance/AllianceAnalyticsPanel';
@@ -29,7 +32,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface AllianceSummary {
   alliances: { id: string; name: string; type: string; members: unknown[]; activeProposals: number }[];
@@ -50,6 +52,8 @@ const TABS: { id: TabId; label: string; icon: typeof Users2; hotkey: string; des
 export default function AllianceLensPage() {
   useLensNav('alliance');
   const [tab, setTab] = useState<TabId>('workspace');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   const summary = useMacroDispatchFeedback<AllianceSummary>();
   const [notifs, setNotifs] = useState<Notifications | null>(null);
@@ -60,8 +64,11 @@ export default function AllianceLensPage() {
     if (n.data?.ok !== false) setNotifs((n.data?.result as Notifications) || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadHeader(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => { if (!cancelled) void loadHeader(); });
+    return () => { cancelled = true; };
+  }, [loadHeader]);
 
   useLensCommand(
     [
@@ -78,45 +85,38 @@ export default function AllianceLensPage() {
   const data = summary.status === 'done' ? summary.result : null;
   const activeProposals = data?.alliances.reduce((acc, a) => acc + (a.activeProposals || 0), 0) ?? 0;
 
+  const tabs = TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hotkey, hint: t.desc }));
+  const titles: Record<TabId, string> = {
+    workspace: `Stand with your allies${who ? `, ${who}` : ''}`,
+    analytics: 'Weigh the alliance',
+    intel: 'Read the faction wars',
+  };
+  const unread = (notifs?.totalUnread || 0) + (notifs?.pendingInvites || 0);
+
   return (
     <LensShell lensId="alliance" asMain={false}>
       <FirstRunTour lensId="alliance" />
-      <div data-lens-theme="alliance" className="p-6 space-y-5">
-        {/* Command bar */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center text-lg">
-              🤝
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Alliance</h1>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Cross-group collaboration &amp; diplomatic analysis</span>
-                <DepthBadge lensId="alliance" size="sm" />
-              </div>
-            </div>
-            <StatusDot state={notifs && (notifs.totalUnread > 0 || notifs.pendingInvites > 0) ? 'warning' : 'idle'} size="xs" pulse={false}
-              label={notifs && (notifs.totalUnread > 0 || notifs.pendingInvites > 0) ? `${notifs.totalUnread} unread · ${notifs.pendingInvites} invites` : 'up to date'}
+      <NorthStarFrame
+        lensId="alliance"
+        crumb="Alliance"
+        title={titles[tab]}
+        subtitle={<span className="inline-flex items-center gap-2">Cross-group collaboration &amp; diplomatic analysis <DepthBadge lensId="alliance" size="sm" /></span>}
+        actions={(
+          <>
+            <StatusDot state={unread > 0 ? 'warning' : 'idle'} size="xs" pulse={false}
+              label={notifs && unread > 0 ? `${notifs.totalUnread} unread · ${notifs.pendingInvites} invites` : 'up to date'}
               showLabel className="hidden sm:flex" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1-3 switch tab · r refresh">
-              <Keyboard className="w-3.5 h-3.5" /> 1-3 · r
-            </span>
             <DensityToggle variant="dropdown" />
-            <button
-              type="button"
-              onClick={loadHeader}
-              disabled={summaryLoading}
-              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
-              aria-label="Refresh alliance summary"
-            >
-              <RefreshCw className={cn('w-4 h-4', summaryLoading && 'animate-spin')} />
-            </button>
             <DTUExportButton domain="alliance" data={data || {}} compact />
-          </div>
-        </header>
-
+          </>
+        )}
+        tabs={tabs}
+        activeTab={tab}
+        onTab={(id) => setTab(id as TabId)}
+        tabsLabel="Alliance views"
+        cta={{ label: summaryLoading ? 'Refreshing…' : 'Refresh summary', icon: RefreshCw, onClick: loadHeader, disabled: summaryLoading, title: 'Refresh alliance summary (R)' }}
+      >
+      <div className="space-y-5">
         {/* KPI strip — real alliance-list + notifications macros */}
         {summaryLoading && !data ? (
           <StatTileGrid columns={4}>
@@ -134,32 +134,6 @@ export default function AllianceLensPage() {
             <StatTile label="Unread + invites" value={(notifs?.totalUnread || 0) + (notifs?.pendingInvites || 0)} tone={(notifs?.totalUnread || 0) + (notifs?.pendingInvites || 0) > 0 ? 'negative' : 'neutral'} />
           </StatTileGrid>
         ) : null}
-
-        {/* Tab bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Alliance views">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                aria-current={active ? 'page' : undefined}
-                title={t.desc}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
-                  active
-                    ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/30'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'
-                )}
-              >
-                <span className="text-[10px] text-gray-600 tabular-nums">{t.hotkey}</span>
-                <t.icon className="w-3.5 h-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -179,6 +153,7 @@ export default function AllianceLensPage() {
           </motion.div>
         </AnimatePresence>
       </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

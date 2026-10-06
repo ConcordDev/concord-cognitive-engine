@@ -10,6 +10,7 @@
 import { createHash } from "node:crypto";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerEsignProvider, issueSigningLinks, deliverSigningLinks } from "../lib/esign-links.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
@@ -1320,10 +1321,10 @@ export default function registerLawActions(registerLensAction) {
     if (!c) return { ok: false, error: "contract not found" };
     const party = lwClean(params.party, 120);
     if (!party) return { ok: false, error: "party name required" };
-    if (c.signatures.some((sig) => sig.party.toLowerCase() === party.toLowerCase())) {
-      return { ok: false, error: "party has already signed" };
-    }
-    c.signatures.push({ party, signedAt: lwNow() });
+    // You sign once, for your own side. The counterparty signs from the link
+    // sent by contract-request-signature — never by you typing their name.
+    if (c.signatures.some((sig) => sig.side !== "counterparty")) return { ok: false, error: "you have already signed this contract" };
+    c.signatures.push({ party, side: "owner", signerUserId: lwActor(ctx), signedAt: lwNow() });
     if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
     c.updatedAt = lwNow();
     saveLaw();
@@ -1909,6 +1910,71 @@ export default function registerLawActions(registerLensAction) {
       .digest("hex");
   }
 
+  function certifiedSignature(c, { party, intent, side, signerUserId = null, via = "app", ip = "", userAgent = "" }) {
+    const signedAt = lwNow();
+    const docHash = contractDigest(c);
+    const signatureHash = createHash("sha256").update(`${docHash}|${party}|${signedAt}|${intent}`).digest("hex");
+    const certificate = {
+      certificateId: lwId("cert"),
+      party, intent, signedAt,
+      documentHash: docHash,
+      signatureHash,
+      signerUserId,
+      side, via,
+      ...(ip ? { ip } : {}),
+      ...(userAgent ? { userAgent } : {}),
+      algorithm: "sha256",
+    };
+    c.signatures.push({ party, side, signedAt, certificate });
+    if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
+    c.updatedAt = lwNow();
+    return certificate;
+  }
+
+  // Ask the counterparty to sign: a link emailed from your Gmail when
+  // connected, otherwise returned for you to share.
+  registerLensAction("law", "contract-request-signature", async (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lwActor(ctx);
+    const c = lwList(s, userId).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    if (c.signatures.some((sig) => sig.side === "counterparty")) return { ok: false, error: "the counterparty has already signed" };
+    const name = lwClean(params.name, 120) || c.counterparty;
+    const email = lwClean(params.email, 200);
+    c.signatureRequest = { name, email, requestedAt: lwNow() };
+    const links = issueSigningLinks("law", userId, c.id, [{ id: "counterparty", name, email }]);
+    const [d] = await deliverSigningLinks(ctx?.db, userId, links, { title: c.title, senderName: ctx?.actor?.displayName || "A Concord user" });
+    c.signatureRequest.delivery = { method: d.delivered, reason: d.reason || null };
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contractId: c.id, url: d.url, delivered: d.delivered, reason: d.reason || null } };
+  });
+
+  registerEsignProvider("law", {
+    view(entry) {
+      const s = getLawState();
+      const c = s && lwList(s, entry.ownerId).find((x) => x.id === entry.envelopeId);
+      if (!c) return { ok: false, error: "link_not_found" };
+      const signed = c.signatures.find((sig) => sig.side === "counterparty");
+      return { ok: true, result: {
+        document: { title: c.title, text: clauseTextBlock(c), hash: contractDigest(c) },
+        signer: { name: entry.name || c.counterparty, email: entry.email, role: "counterparty", status: signed ? "signed" : "pending", signedAt: signed?.signedAt || null },
+        envelopeStatus: c.status,
+        parties: c.signatures.map((sig) => ({ name: sig.party, role: sig.side || "owner", status: "signed" })),
+        disclosure: "Signatures recorded under E-SIGN Act (15 USC § 7001) and UETA § 7.",
+      } };
+    },
+    sign(entry, sig) {
+      const s = getLawState();
+      const c = s && lwList(s, entry.ownerId).find((x) => x.id === entry.envelopeId);
+      if (!c) return { ok: false, error: "link_not_found" };
+      if (c.signatures.some((x) => x.side === "counterparty")) return { ok: false, error: "already signed" };
+      certifiedSignature(c, { party: sig.typedName, intent: "I agree to be bound by this contract.", side: "counterparty", via: "link", ip: sig.ip, userAgent: sig.userAgent });
+      saveLaw();
+      return { ok: true, result: { signed: true, envelopeStatus: c.status, completed: c.status === "signed" || c.status === "active" } };
+    },
+  });
+
   registerLensAction("law", "contract-esign", (ctx, _a, params = {}) => {
   try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1917,26 +1983,8 @@ export default function registerLawActions(registerLensAction) {
     const party = lwClean(params.party, 120);
     if (!party) return { ok: false, error: "party name required" };
     const intent = lwClean(params.intent, 200) || "I agree to be bound by this contract.";
-    if (c.signatures.some((sig) => sig.party.toLowerCase() === party.toLowerCase())) {
-      return { ok: false, error: "party has already signed" };
-    }
-    const signedAt = lwNow();
-    const docHash = contractDigest(c);
-    const sigPayload = `${docHash}|${party}|${signedAt}|${intent}`;
-    const signatureHash = createHash("sha256").update(sigPayload).digest("hex");
-    const certificate = {
-      certificateId: lwId("cert"),
-      party,
-      intent,
-      signedAt,
-      documentHash: docHash,
-      signatureHash,
-      signerUserId: lwActor(ctx),
-      algorithm: "sha256",
-    };
-    c.signatures.push({ party, signedAt, certificate });
-    if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
-    c.updatedAt = lwNow();
+    if (c.signatures.some((sig) => sig.side !== "counterparty")) return { ok: false, error: "you have already signed this contract" };
+    const certificate = certifiedSignature(c, { party, intent, side: "owner", signerUserId: lwActor(ctx) });
     saveLaw();
     return { ok: true, result: { contractId: c.id, certificate, status: c.status, signatureCount: c.signatures.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

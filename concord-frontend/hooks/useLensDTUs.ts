@@ -37,6 +37,8 @@ export interface LensDTUOptions {
   tags?: string[];
   /** Max DTUs to return from context query. Default 100. */
   limit?: number;
+  /** When false, context.query keeps only primaryDomain matches. */
+  crossDomain?: boolean;
   /** Disable fetching (e.g. when a prerequisite is missing). */
   enabled?: boolean;
   /** Stale time in ms for query cache. Default 30000 (30s). */
@@ -104,6 +106,7 @@ export function useLensDTUs(options: LensDTUOptions) {
     domain,
     tags,
     limit = 100,
+    crossDomain,
     enabled = true,
     staleTime = 30_000,
   } = options;
@@ -112,12 +115,19 @@ export function useLensDTUs(options: LensDTUOptions) {
 
   // ---- Context DTUs query (regular + MEGA + HYPER) ----
   const contextBody = useMemo(
-    () => ({ query: lens, primaryDomain: lens, lens, tags, limit }),
-    [lens, tags, limit],
+    () => ({
+      query: lens,
+      primaryDomain: lens,
+      lens,
+      tags,
+      limit,
+      ...(crossDomain === undefined ? {} : { crossDomain }),
+    }),
+    [lens, tags, limit, crossDomain],
   );
 
   const contextQuery = useQuery<ContextQueryResponse>({
-    queryKey: ['lensDTUs', 'context', lens, { tags, limit }],
+    queryKey: ['lensDTUs', 'context', lens, { tags, limit, crossDomain }],
     queryFn: async () => {
       const { data } = await api.post('/api/macros/run', {
         domain: 'context',

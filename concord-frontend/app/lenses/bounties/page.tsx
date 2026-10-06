@@ -16,10 +16,11 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy, Target, Wrench } from 'lucide-react';
+import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy, Target, Wrench, ShieldAlert, Plus } from 'lucide-react';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { GhsaAdvisories, type BountyDraftFromAdvisory } from '@/components/bounties/GhsaAdvisories';
 import { CreateBountyForm, type BountyPrefill } from '@/components/bounties/CreateBountyForm';
 import { BountyCard } from '@/components/bounties/BountyCard';
@@ -54,15 +55,36 @@ const EMPTY_FILTERS: FilterState = {
   query: '', category: '', difficulty: '', status: '', tag: '', sortBy: 'recent',
 };
 
-export default function BountiesPage() {
-  useLensCommand([
-    { id: 'bounties-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'bounties' });
+type BountyTab = 'board' | 'autofix' | 'advisories';
 
+const TABS: { id: BountyTab; label: string; keys: string; title: string; hint: string; icon: typeof Target }[] = [
+  { id: 'board', label: 'Bounty board', keys: 'g b', title: 'Put a price on the work', hint: 'Post, claim, review and pay out bounties', icon: Target },
+  { id: 'autofix', label: 'Autofix staking', keys: 'g a', title: 'Back the patch you trust', hint: 'Stake CC on competing autofix patches', icon: Wrench },
+  { id: 'advisories', label: 'Advisories', keys: 'g v', title: 'Turn advisories into bounties', hint: 'GitHub security advisories you can convert to bounties', icon: ShieldAlert },
+];
+
+export default function BountiesPage() {
   const { user } = useAuth();
   const currentUserId = user?.id || 'anon';
+  const who = titleCaseDisplayName(user?.username);
 
-  const [tab, setTab] = useState<'board' | 'autofix'>('board');
+  const [tab, setTab] = useState<BountyTab>('board');
+  const postBounty = useCallback(() => {
+    setTab('board');
+    requestAnimationFrame(() => document.getElementById('bounty-create')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, []);
+
+  useLensCommand([
+    ...TABS.map((t) => ({
+      id: `bounties-${t.id}`,
+      keys: t.keys,
+      description: `${t.label} — ${t.hint}`,
+      category: 'navigation' as const,
+      action: () => setTab(t.id),
+    })),
+    { id: 'bounties-post', keys: 'n', description: 'Post a bounty', category: 'actions' as const, action: postBounty },
+  ], { lensId: 'bounties' });
+
   const [bountyPrefill, setBountyPrefill] = useState<BountyPrefill | null>(null);
 
   const convertAdvisoryToBounty = useCallback((draft: BountyDraftFromAdvisory) => {
@@ -97,7 +119,7 @@ export default function BountiesPage() {
     setBoardLoading(false);
   }, [filters]);
 
-  useEffect(() => { void loadBoard(); }, [loadBoard]);
+  useEffect(() => { void Promise.resolve().then(loadBoard); }, [loadBoard]);
 
   const onBountyChanged = useCallback((updated: PlatformBounty) => {
     setBounties((prev) => {
@@ -137,7 +159,7 @@ export default function BountiesPage() {
     }
   }, []);
 
-  useEffect(() => { if (tab === 'autofix') void loadAutofix(); }, [tab, loadAutofix]);
+  useEffect(() => { if (tab === 'autofix') void Promise.resolve().then(loadAutofix); }, [tab, loadAutofix]);
 
   const stakeAutofix = async (autofixId: number, patchChoice: number) => {
     setAutofixStatus('Staking…');
@@ -157,61 +179,43 @@ export default function BountiesPage() {
     return { openPool, paidOut };
   }, [bounties]);
 
+  const current = TABS.find((t) => t.id === tab)!;
+
   return (
-    <LensShell lensId="bounties">
+    <LensShell lensId="bounties" asMain={false}>
       <FirstRunTour lensId="bounties" />
       <DepthBadge lensId="bounties" size="sm" className="ml-2" />
-      <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto min-h-screen">
-        <header className="mb-5 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-amber-500/15 ring-1 ring-amber-500/40 p-2 shrink-0">
-              <Trophy className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Bounties</h1>
-              <p className="mt-1 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                Post a bounty, claimants submit work, you review and pay out — with milestones,
-                categories, a leaderboard, and dispute arbitration.{' '}
-                <strong className="text-amber-300">Currency: CC.</strong>
-              </p>
-            </div>
-          </div>
-        </header>
-
-        {/* Tab switch */}
-        <div className="mb-5 flex rounded-lg bg-zinc-900 p-1 w-fit">
-          <button
-            onClick={() => setTab('board')}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md ${tab === 'board' ? 'bg-amber-600 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-zinc-200'}`}
-          >
-            <Target className="w-3.5 h-3.5" /> Bounty board
-          </button>
-          <button
-            onClick={() => setTab('autofix')}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md ${tab === 'autofix' ? 'bg-amber-600 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-zinc-200'}`}
-          >
-            <Wrench className="w-3.5 h-3.5" /> Autofix staking
-          </button>
-        </div>
-
+      <NorthStarFrame
+        lensId="bounties"
+        crumb="Bounties"
+        title={`${current.title}${tab === 'board' && who ? `, ${who}` : ''}`}
+        subtitle="Post a bounty, claimants submit work, you review and pay out, with milestones, categories, a leaderboard and dispute arbitration. Currency: CC."
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as BountyTab)}
+        tabsLabel="Bounty views"
+        cta={{ label: 'Post a bounty', icon: Plus, onClick: postBounty, title: 'Jump to the bounty form' }}
+      >
         {tab === 'board' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             {/* Main column */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="xl:col-span-2 space-y-4">
+              <div id="bounty-create" className="scroll-mt-6">
               <CreateBountyForm
                 onCreated={onBountyCreated}
                 prefill={bountyPrefill}
                 onConsumePrefill={() => setBountyPrefill(null)}
               />
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+                <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
                   <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Open pool</div>
                   <div className="text-lg font-bold text-amber-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.openPool} CC
                   </div>
                 </div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+                <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
                   <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out</div>
                   <div className="text-lg font-bold text-emerald-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.paidOut} CC
@@ -275,7 +279,7 @@ export default function BountiesPage() {
         )}
 
         {tab === 'autofix' && (
-          <div className="max-w-3xl">
+          <div className="max-w-4xl">
             <p className="mb-4 text-xs sm:text-sm text-zinc-400 leading-relaxed">
               Reflex detectors found problems; the system generated competing patches; stake CC on
               which patch you think wins. Treasury pays winning stakers proportionally after CI
@@ -373,13 +377,14 @@ export default function BountiesPage() {
                 ))}
               </ul>
             )}
-
-            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <GhsaAdvisories onConvertToBounty={convertAdvisoryToBounty} />
-            </section>
           </div>
         )}
-      </div>      <CrossLensRecentsPanel lensId="bounties" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {tab === 'advisories' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <GhsaAdvisories onConvertToBounty={convertAdvisoryToBounty} />
+          </section>
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

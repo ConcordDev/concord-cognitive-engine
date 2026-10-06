@@ -23,10 +23,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { useUIStore } from '@/store/ui';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { KeyRound, Gauge, ShieldCheck, Users, Boxes, Plus } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
 import { McpServersPanel } from '@/components/byo-keys/McpServersPanel';
@@ -82,10 +85,27 @@ async function macro(domain: string, name: string, input: Record<string, unknown
   return j?.result || j;
 }
 
+type ByoView = 'keys' | 'usage' | 'reliability' | 'org' | 'catalog';
+
+const VIEWS: { id: ByoView; label: string; keys: string; title: string; hint: string; icon: typeof KeyRound }[] = [
+  { id: 'keys', label: 'Keys', keys: '1', title: 'Bring your own brains', hint: 'Brain mode and per-slot provider keys', icon: KeyRound },
+  { id: 'usage', label: 'Usage', keys: '2', title: 'What your keys are costing', hint: 'Spend, budgets and rate limits', icon: Gauge },
+  { id: 'reliability', label: 'Reliability', keys: '3', title: 'Keep the brains answering', hint: 'Key health checks and fallback chain', icon: ShieldCheck },
+  { id: 'org', label: 'Org & MCP', keys: '4', title: 'Share keys and tools with a team', hint: 'Organisation keys and MCP servers', icon: Users },
+  { id: 'catalog', label: 'Catalog', keys: '5', title: 'Every model you could route to', hint: 'Live OpenRouter model catalog', icon: Boxes },
+];
+
 export default function ByoKeysLens() {
-  useLensCommand([
-    { id: 'byo-keys-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'byo-keys' });
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<ByoView>('keys');
+  useLensCommand(VIEWS.map((v) => ({
+    id: `byo-keys-${v.id}`,
+    keys: v.keys,
+    description: `${v.label} — ${v.hint}`,
+    category: 'navigation' as const,
+    action: () => setView(v.id),
+  })), { lensId: 'byo-keys' });
 
   const [overrides, setOverrides] = useState<OverrideRow[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -105,7 +125,7 @@ export default function ByoKeysLens() {
     if (prov?.ok) setProviders(prov.providers || []);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   const overridesBySlot = new Map(overrides.map(o => [o.slot, o]));
 
@@ -127,7 +147,7 @@ export default function ByoKeysLens() {
 
   const save = async (slot: string) => {
     if (form.provider !== 'concord_default' && form.provider !== 'ollama' && (!form.apiKey || form.apiKey.length < 8)) {
-      alert('API key must be at least 8 characters. Paste from your provider\'s dashboard.');
+      useUIStore.getState().addToast({ type: 'warning', message: 'API key must be at least 8 characters. Paste it from your provider\'s dashboard.' });
       return;
     }
     setBusy(true);
@@ -141,7 +161,7 @@ export default function ByoKeysLens() {
       cancelEdit();
       refresh();
     } else {
-      alert(`Save failed: ${r?.reason || 'unknown'}`);
+      useUIStore.getState().addToast({ type: 'error', message: `Save failed: ${r?.reason || 'unknown'}` });
     }
   };
 
@@ -166,15 +186,32 @@ export default function ByoKeysLens() {
 
   const selectedProvider = providers.find(p => p.id === form.provider);
 
+  const current = VIEWS.find((v) => v.id === view)!;
+
   return (
-        <LensShell lensId="byo-keys">
+    <LensShell lensId="byo-keys" asMain={false}>
       <FirstRunTour lensId="byo-keys" />
       <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="byo-keys" className="mx-6 mt-4" />
-  <div className="min-h-screen bg-zinc-950 text-zinc-100 px-6 py-8">
-        <div className="mx-auto max-w-4xl">
-          <header className="mb-8">
-            <h1 className="text-2xl font-semibold mb-2">Brain overrides — Bring Your Own API key</h1>
+      <NorthStarFrame
+        lensId="byo-keys"
+        crumb="BYO keys"
+        title={`${current.title}${view === 'keys' && who ? `, ${who}` : ''}`}
+        subtitle="Route each of Concord's five brains through your own OpenAI, Anthropic, xAI or Google key."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as ByoView)}
+        tabsLabel="BYO keys views"
+        cta={{
+          label: 'Add a key',
+          icon: Plus,
+          onClick: () => { setView('keys'); startEdit('conscious'); },
+          title: 'Add a key to the conscious brain slot',
+        }}
+      >
+        <div className="space-y-5">
+        {view === 'keys' && (
+        <div className="max-w-4xl">
+          <header className="mb-6">
             <p className="text-sm text-zinc-400 leading-relaxed">
               Plug your own OpenAI / Anthropic / xAI / Google API key into each of Concord&apos;s 5
               brain slots. The default is the free Ollama instance hosted by concord-os.org — but
@@ -201,14 +238,13 @@ export default function ByoKeysLens() {
 
           <ul
             className={`space-y-3 transition-opacity ${brainMode === 'private' ? 'opacity-40 pointer-events-none select-none' : ''}`}
-            aria-disabled={brainMode === 'private'}
             data-testid="byo-keys-slot-list"
           >
             {SLOTS.map(({ id: slot, label }) => {
               const existing = overridesBySlot.get(slot);
               const isEditing = editing === slot;
               return (
-                <li key={slot} className="rounded-xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-6">
+                <li key={slot} className="rounded-2xl border border-white/10 bg-[#111] p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-zinc-100">{label}</div>
@@ -263,7 +299,7 @@ export default function ByoKeysLens() {
                       )}
                       <button
                         onClick={() => isEditing ? cancelEdit() : startEdit(slot)}
-                        className="px-2.5 py-1 rounded-md text-xs bg-amber-600/80 hover:bg-amber-600 text-amber-50"
+                        className="px-2.5 py-1 rounded-md text-xs bg-teal-400 hover:bg-teal-300 text-black"
                       >
                         {isEditing ? 'cancel' : existing ? 'edit' : 'add key'}
                       </button>
@@ -291,7 +327,7 @@ export default function ByoKeysLens() {
                         <select
                           value={form.provider}
                           onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
-                          className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
+                          className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none"
                         >
                           <option value="concord_default">Concord default (free Ollama)</option>
                           {providers.map(p => (
@@ -310,7 +346,7 @@ export default function ByoKeysLens() {
                               value={form.modelId}
                               onChange={e => setForm(f => ({ ...f, modelId: e.target.value }))}
                               placeholder={selectedProvider?.defaultModels[slot] || ''}
-                              className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
+                              className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none"
                             />
                           </div>
                           <div>
@@ -324,7 +360,7 @@ export default function ByoKeysLens() {
                               value={form.apiKey}
                               onChange={e => setForm(f => ({ ...f, apiKey: e.target.value }))}
                               placeholder={existing ? '(paste to replace existing key)' : 'paste your API key…'}
-                              className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none font-mono"
+                              className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none font-mono"
                               autoComplete="off"
                             />
                             <p className="mt-1 text-[10px] text-zinc-400">
@@ -338,7 +374,7 @@ export default function ByoKeysLens() {
                         <button
                           onClick={() => save(slot)}
                           disabled={busy}
-                          className="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-sm font-medium disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-md bg-teal-400 hover:bg-teal-300 text-black text-sm font-medium disabled:opacity-50"
                         >
                           save
                         </button>
@@ -367,22 +403,36 @@ export default function ByoKeysLens() {
             </p>
           </footer>
         </div>
-        <div className="mx-auto max-w-4xl mt-6 space-y-6">
-          <UsageSpendPanel />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <BudgetPanel />
-            <RateLimitPanel />
-          </div>
-          <KeyHealthPanel />
-          <FallbackChainPanel />
-          <OrgKeysPanel />
-          <McpServersPanel />
-        </div>
+        )}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <OpenRouterCatalog />
-        </section>
-      </div>
+        {view === 'usage' && (
+          <div className="space-y-5">
+            <UsageSpendPanel />
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <BudgetPanel />
+              <RateLimitPanel />
+            </div>
+          </div>
+        )}
+        {view === 'reliability' && (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <KeyHealthPanel />
+            <FallbackChainPanel />
+          </div>
+        )}
+        {view === 'org' && (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <OrgKeysPanel />
+            <McpServersPanel />
+          </div>
+        )}
+        {view === 'catalog' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <OpenRouterCatalog />
+          </section>
+        )}
+        </div>
+      </NorthStarFrame>
 
       {modelPicker && (
         <ModelPickerModal
@@ -392,7 +442,7 @@ export default function ByoKeysLens() {
           onClose={() => setModelPicker(null)}
           onSaved={refresh}
         />
-      )}          <CrossLensRecentsPanel lensId="byo-keys" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      )}
     </LensShell>
   );
 }

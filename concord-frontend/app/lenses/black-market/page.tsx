@@ -16,11 +16,14 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { RefreshCw, ShoppingBag, Store, Repeat } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { api } from '@/lib/api/client';
 import axios from 'axios';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { SaelStall } from '@/components/black-market/SaelStall';
@@ -62,11 +65,22 @@ const fmtTime = (epochSec: number) => {
   return d.toLocaleDateString();
 };
 
+type BlackMarketView = 'market' | 'stall' | 'exchange';
+
+const VIEWS: { id: BlackMarketView; label: string; keys: string; title: string; hint: string; icon: typeof Store }[] = [
+  { id: 'market', label: 'Market', keys: 'm', title: 'Intercepted, and for sale', hint: 'Intercepted Concord Link messages', icon: ShoppingBag },
+  { id: 'stall', label: "Sael's stall", keys: 'l', title: "Sael's stall", hint: 'Browse the fence stall', icon: Store },
+  { id: 'exchange', label: 'Exchange', keys: 'x', title: 'The underground exchange', hint: 'Underground exchange', icon: Repeat },
+];
+
 export default function BlackMarketPage() {
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('black-market', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('black-market');
   void viewLog; void recordView;
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<BlackMarketView>('market');
   const [listings, setListings] = useState<Listing[]>([]);
   const [reputation, setReputation] = useState<FenceReputation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +119,7 @@ export default function BlackMarketPage() {
     }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { void Promise.resolve().then(reload); }, [reload]);
 
   // Encryption-tier filter + sort.  A market with 30+ listings benefits
   // from sorting by price (cheapest deal first) or expiring (don't miss
@@ -122,6 +136,7 @@ export default function BlackMarketPage() {
 
   useLensCommand(
     [
+      ...VIEWS.map((v) => ({ id: `view-${v.id}`, keys: v.keys, description: `${v.label} — ${v.hint}`, category: 'navigation' as const, action: () => setView(v.id) })),
       { id: 'refresh',     keys: 'r', description: 'Refresh listings', category: 'actions',    action: () => reload() },
       { id: 'filter-all',  keys: '0', description: 'All tiers',        category: 'view',       action: () => setEncFilter('all') },
       { id: 'filter-none', keys: '1', description: 'None tier',        category: 'view',       action: () => setEncFilter('none') },
@@ -175,22 +190,34 @@ export default function BlackMarketPage() {
     : level === 'basic' ? 'border-cyan-500/40 bg-cyan-950/20 text-cyan-200'
     : 'border-slate-700 bg-slate-900/40 text-slate-300';
 
+  const current = VIEWS.find((v) => v.id === view)!;
+
   return (
     <LensShell lensId="black-market" asMain={false}>
-      <FirstRunTour lensId="black-market" />      <DepthBadge lensId="black-market" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="black-market" className="mx-6 mt-4" />
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <header className="mb-6 border-b border-rose-500/30 pb-4">
-          <h1 className="text-2xl font-semibold text-rose-200">The Black Market</h1>
-          <p className="mt-1 text-xs text-slate-400">
-            Sael&apos;s stall. Intercepted Concord Link messages. Sender and receiver
-            redacted; payload revealed on purchase. Sparks only.
-          </p>
-        </header>
-
+      <FirstRunTour lensId="black-market" />
+      <DepthBadge lensId="black-market" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="black-market"
+        crumb="Black Market"
+        title={`${current.title}${view === 'market' && who ? `, ${who}` : ''}`}
+        subtitle="Sael's stall. Intercepted Concord Link messages, sender and receiver redacted, payload revealed on purchase. Sparks only."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.id === 'market' && listings.length ? `${v.label} ${listings.length}` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as BlackMarketView)}
+        tabsLabel="Black market views"
+        cta={{ label: 'Refresh market', icon: RefreshCw, onClick: () => { setView('market'); void reload(); }, title: 'Re-scan the market (R)', disabled: loading }}
+      >
+      <div className="space-y-5">
+        {view === 'stall' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4"><SaelStall /></section>
+        )}
+        {view === 'exchange' && (
+          <section className="rounded-2xl border border-rose-500/20 bg-[#111] p-4"><UndergroundExchange /></section>
+        )}
+        {view === 'market' && (
+        <>
         {reputation.length > 0 && (
-          <section className="mb-6 rounded border border-slate-800 bg-slate-900/50 p-3">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">Your standing</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
               {reputation.map((r) => (
@@ -342,17 +369,11 @@ export default function BlackMarketPage() {
           </div>
         </section>
 
-        <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-[10px] text-slate-400">
-          All prices in sparks. No real-money codepaths.
-        </footer>
+        <p className="pt-2 text-center text-[10px] text-slate-400">All prices in sparks. No real-money codepaths.</p>
+        </>
+        )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SaelStall />
-      </section>
-      <section className="mx-auto mt-6 max-w-4xl rounded-xl border border-rose-500/20 bg-zinc-950/40 p-4">
-        <UndergroundExchange />
-      </section>
-    </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

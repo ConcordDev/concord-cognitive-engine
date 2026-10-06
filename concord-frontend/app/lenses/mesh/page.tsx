@@ -24,7 +24,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MeshRepos } from '@/components/mesh/MeshRepos';
@@ -37,7 +37,8 @@ import { MeshChannels } from '@/components/mesh/MeshChannels';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   Radio, Loader2, Network, Send, MessageSquare, SignalHigh, Hash, PackagePlus,
   type LucideIcon,
@@ -58,6 +59,8 @@ interface MeshOverview {
 
 export default function MeshLensPage() {
   useLensNav('mesh');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   useLensCommand(
@@ -91,171 +94,115 @@ export default function MeshLensPage() {
     !!ov && (ov.nodes ?? 0) === 0 && (ov.messages ?? 0) === 0 &&
     (ov.channels ?? 0) === 0 && (ov.queueDepth ?? 0) === 0;
 
-  const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
-    { key: 'overview',  label: 'Overview',  icon: Network },
-    { key: 'transmit',  label: 'Send DTU',  icon: PackagePlus },
-    { key: 'topology',  label: 'Topology',  icon: Radio,         count: overview.data?.nodes },
-    { key: 'messages',  label: 'Messages',  icon: MessageSquare, count: overview.data?.unread || undefined },
-    { key: 'signal',    label: 'Signal',    icon: SignalHigh },
-    { key: 'queue',     label: 'Queue',     icon: Send,          count: overview.data?.queueDepth || undefined },
-    { key: 'channels',  label: 'Channels',  icon: Hash,          count: overview.data?.channels },
+  const tabs: { key: TabKey; label: string; icon: LucideIcon; keys: string; title: string; hint: string; count?: number }[] = [
+    { key: 'overview', label: 'Overview', icon: Network, keys: 'o', title: 'Your mesh at a glance', hint: 'Nodes, messages, channels and queue depth' },
+    { key: 'transmit', label: 'Send DTU', icon: PackagePlus, keys: 't', title: 'Send a DTU over the mesh', hint: 'Transmit a real DTU through the routing substrate' },
+    { key: 'topology', label: 'Topology', icon: Radio, keys: 'g', title: 'Who is on the mesh', hint: 'Node graph: add, remove and ping', count: overview.data?.nodes },
+    { key: 'messages', label: 'Messages', icon: MessageSquare, keys: 'm', title: 'Direct and group messages', hint: 'Delivery and read state', count: overview.data?.unread || undefined },
+    { key: 'signal', label: 'Signal', icon: SignalHigh, keys: 's', title: 'How strong the links are', hint: 'RSSI, hops, latency and range estimate' },
+    { key: 'queue', label: 'Queue', icon: Send, keys: 'q', title: 'What is waiting to forward', hint: 'Store-and-forward frames', count: overview.data?.queueDepth || undefined },
+    { key: 'channels', label: 'Channels', icon: Hash, keys: 'c', title: 'Encrypted group channels', hint: 'Broadcast and PSK-encrypted channels', count: overview.data?.channels },
   ];
+  const current = tabs.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="mesh" asMain={false}>
-      <FirstRunTour lensId="mesh" />      <DepthBadge lensId="mesh" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-black pb-12 text-teal-50">
-        <header className="sticky top-0 z-10 border-b border-teal-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Network className="h-6 w-6 text-teal-400" aria-hidden />
-            <div>
-              <h1 className="font-mono text-lg font-semibold tracking-wide">Mesh</h1>
-              <p className="text-xs text-teal-700">7-transport DTU routing · off-grid comms · survives infrastructure collapse</p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="border-b border-teal-900/30 px-4 md:px-8" aria-label="Mesh sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {tabs.map(({ key, label, icon: Icon, count }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 ${
-                  activeTab === key ? 'border-teal-400 text-teal-200' : 'border-transparent text-teal-700 hover:text-teal-400'
-                }`}
-                aria-pressed={activeTab === key}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-                {count != null && <span className="rounded bg-teal-900/40 px-1.5 py-0.5 text-[10px] text-teal-300">{count}</span>}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
-              <motion.section key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-4 text-base font-semibold text-teal-200">Mesh roll-up</h2>
-                {overview.isLoading ? (
-                  <div
-                    data-testid="mesh-overview-loading"
-                    role="status"
-                    aria-busy="true"
-                    aria-live="polite"
-                    className="flex items-center gap-2 text-sm text-teal-500"
+      <FirstRunTour lensId="mesh" />
+      <DepthBadge lensId="mesh" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="mesh"
+        crumb="Mesh"
+        title={`${current.title}${activeTab === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="7-transport DTU routing, off-grid comms, built to survive infrastructure collapse."
+        tabs={tabs.map((t) => ({
+          id: t.key,
+          label: t.count != null ? `${t.label} (${t.count})` : t.label,
+          icon: t.icon,
+          keys: t.keys,
+          hint: t.hint,
+        }))}
+        activeTab={activeTab}
+        onTab={(id) => setActiveTab(id as TabKey)}
+        tabsLabel="Mesh sections"
+        cta={{ label: 'Send a DTU', icon: PackagePlus, onClick: () => setActiveTab('transmit'), title: 'Transmit a DTU over the mesh' }}
+      >
+        <div className="space-y-5">
+          {activeTab === 'overview' && (
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h2 className="mb-4 text-base font-semibold text-white">Mesh roll-up</h2>
+              {overview.isLoading ? (
+                <div
+                  data-testid="mesh-overview-loading"
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                  className="flex items-center gap-2 text-sm text-teal-500"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading the mesh roll-up…
+                </div>
+              ) : overview.isError ? (
+                <div
+                  data-testid="mesh-overview-error"
+                  role="alert"
+                  className="rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-300"
+                >
+                  <p className="mb-2 font-medium">Couldn&apos;t load the mesh roll-up.</p>
+                  <p className="mb-3 text-xs text-red-400/80">{(overview.error as Error)?.message}</p>
+                  <button
+                    type="button"
+                    onClick={() => overview.refetch()}
+                    className="rounded border border-red-800 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading the mesh roll-up…
-                  </div>
-                ) : overview.isError ? (
-                  <div
-                    data-testid="mesh-overview-error"
-                    role="alert"
-                    className="rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-300"
-                  >
-                    <p className="mb-2 font-medium">Couldn&apos;t load the mesh roll-up.</p>
-                    <p className="mb-3 text-xs text-red-400/80">{(overview.error as Error)?.message}</p>
-                    <button
-                      type="button"
-                      onClick={() => overview.refetch()}
-                      className="rounded border border-red-800 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-400"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : overviewEmpty ? (
-                  <div
-                    data-testid="mesh-overview-empty"
-                    className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-6 text-center text-sm text-teal-500"
-                  >
-                    <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
-                    <p className="font-medium text-teal-300">No mesh yet.</p>
-                    <p className="mt-1 text-xs text-teal-600">
-                      Add your first peer node in <span className="text-teal-400">Topology</span>, then send a DTU in{' '}
-                      <span className="text-teal-400">Send DTU</span> to start building the mesh.
-                    </p>
-                  </div>
-                ) : (
-                  <div data-testid="mesh-overview-grid" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <Stat label="Nodes" value={ov?.nodes ?? 0} hint={`${ov?.onlineNodes ?? 0} online`} />
-                    <Stat label="Messages" value={ov?.messages ?? 0} hint={`${ov?.unread ?? 0} unread`} />
-                    <Stat label="Channels" value={ov?.channels ?? 0} hint={`${ov?.encryptedChannels ?? 0} encrypted`} />
-                    <Stat label="Queue depth" value={ov?.queueDepth ?? 0} hint="store-and-forward" />
-                    <Stat label="Transports" value={ov?.transports ?? 0} hint="routing layers" />
-                  </div>
-                )}
-                <p className="mt-4 text-xs text-teal-700">
-                  Use the tabs above — transmit a real DTU in Send DTU, build your node graph in Topology, chat in
-                  Messages, inspect link quality in Signal, manage stuck frames in Queue, and set up encrypted group
-                  channels in Channels.
-                </p>
-              </motion.section>
-            )}
+                    Retry
+                  </button>
+                </div>
+              ) : overviewEmpty ? (
+                <div
+                  data-testid="mesh-overview-empty"
+                  className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-6 text-center text-sm text-teal-500"
+                >
+                  <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
+                  <p className="font-medium text-teal-300">No mesh yet.</p>
+                  <p className="mt-1 text-xs text-teal-600">
+                    Add your first peer node in <span className="text-teal-400">Topology</span>, then send a DTU in{' '}
+                    <span className="text-teal-400">Send DTU</span> to start building the mesh.
+                  </p>
+                </div>
+              ) : (
+                <div data-testid="mesh-overview-grid" className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                  <Stat label="Nodes" value={ov?.nodes ?? 0} hint={`${ov?.onlineNodes ?? 0} online`} />
+                  <Stat label="Messages" value={ov?.messages ?? 0} hint={`${ov?.unread ?? 0} unread`} />
+                  <Stat label="Channels" value={ov?.channels ?? 0} hint={`${ov?.encryptedChannels ?? 0} encrypted`} />
+                  <Stat label="Queue depth" value={ov?.queueDepth ?? 0} hint="store-and-forward" />
+                  <Stat label="Transports" value={ov?.transports ?? 0} hint="routing layers" />
+                </div>
+              )}
+            </section>
+          )}
+          {activeTab === 'transmit' && <MeshSendDtu />}
+          {activeTab === 'topology' && <MeshTopology />}
+          {activeTab === 'messages' && <MeshMessaging />}
+          {activeTab === 'signal' && <MeshSignal />}
+          {activeTab === 'queue' && <MeshQueue />}
+          {activeTab === 'channels' && <MeshChannels />}
 
-            {activeTab === 'transmit' && (
-              <motion.section key="transmit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Send a DTU over the mesh</h2>
-                <MeshSendDtu />
-              </motion.section>
-            )}
-
-            {activeTab === 'topology' && (
-              <motion.section key="topology" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Mesh topology</h2>
-                <MeshTopology />
-              </motion.section>
-            )}
-
-            {activeTab === 'messages' && (
-              <motion.section key="messages" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Direct &amp; group messaging</h2>
-                <MeshMessaging />
-              </motion.section>
-            )}
-
-            {activeTab === 'signal' && (
-              <motion.section key="signal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Signal &amp; coverage</h2>
-                <MeshSignal />
-              </motion.section>
-            )}
-
-            {activeTab === 'queue' && (
-              <motion.section key="queue" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Store-and-forward queue</h2>
-                <MeshQueue />
-              </motion.section>
-            )}
-
-            {activeTab === 'channels' && (
-              <motion.section key="channels" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                <h2 className="mb-3 text-base font-semibold text-teal-200">Group channels &amp; encryption</h2>
-                <MeshChannels />
-              </motion.section>
-            )}
-          </AnimatePresence>
-        </main>
-
-        <section className="mx-auto mt-6 max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 px-4 md:px-8">
-          <MeshRepos />
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="mesh" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <MeshRepos />
+          </section>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }
 
 function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.97 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.18 }}
+    <div
       className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-3 text-teal-200"
     >
       <div className="mb-1 text-[11px] uppercase tracking-wider text-teal-700">{label}</div>
       <div className="font-mono text-xl font-semibold">{value}</div>
       {hint && <div className="mt-0.5 text-[10px] text-teal-600">{hint}</div>}
-    </motion.div>
+    </div>
   );
 }

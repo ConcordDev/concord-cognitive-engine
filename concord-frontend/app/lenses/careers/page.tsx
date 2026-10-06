@@ -1,6 +1,9 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Careers lens — the client door into the living-career system (jobs = sports =
@@ -72,6 +75,8 @@ const NEGOTIABLE = new Set(['offered', 'countered']);
 type LoadState = 'loading' | 'error' | 'disabled' | 'ready';
 
 export default function CareersLens() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [state, setState] = useState<LoadState>('loading');
@@ -106,7 +111,7 @@ export default function CareersLens() {
       addToast({ type: 'error', message: 'Could not load careers — the career service is unreachable.' });
     }
   }, [addToast]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
   // careers.ladder — the selected track's full 10-tier wage/rank progression,
   // so a player can see what they're committing to before they play a shift.
@@ -121,7 +126,7 @@ export default function CareersLens() {
       setLadderLoading(false);
     }
   }, []);
-  useEffect(() => { if (state === 'ready' && selected) void loadLadder(selected); }, [state, selected, loadLadder]);
+  useEffect(() => { if (state === 'ready' && selected) void Promise.resolve().then(() => loadLadder(selected)); }, [state, selected, loadLadder]);
 
   const work = useCallback(async () => {
     setNote(null);
@@ -181,16 +186,19 @@ export default function CareersLens() {
 
   return (
     <LensShell lensId="careers">
-    <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 text-gray-100">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-amber-200">
-          <Briefcase className="w-5 h-5" aria-hidden="true" /> Careers
-        </h1>
-        <button onClick={() => void refresh()} className="self-start sm:self-auto text-gray-400 hover:text-white transition-colors" aria-label="Refresh careers" title="Refresh">
+    <NorthStarFrame
+      lensId="careers"
+      crumb="Careers"
+      title={`Pick a trade${who ? `, ${who}` : ''}`}
+      subtitle="Jobs and sports run on one engine: play a shift, climb a ten-tier ladder, and negotiate contracts with real employers."
+      actions={
+        <button onClick={() => void refresh()} className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-white" aria-label="Refresh careers" title="Refresh">
           <RefreshCw className="w-4 h-4" aria-hidden="true" />
         </button>
-      </header>
-
+      }
+      cta={state === 'ready' && tracks.length > 0 ? { label: working ? 'Working…' : 'Clock in', icon: Hammer, onClick: () => void work(), disabled: working, title: 'Work a shift on the selected track' } : undefined}
+    >
+    <div className="w-full">
       {state === 'disabled' ? (
         <p role="status" className="text-gray-400 text-sm">
           The living-career system is disabled on this server (<code>CONCORD_LIVING_CAREER=0</code>). It is enabled by default — unset that variable to turn it back on.
@@ -218,9 +226,9 @@ export default function CareersLens() {
           </button>
         </div>
       ) : (
-        <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 animate-in fade-in duration-200 motion-reduce:animate-none">
           {/* Work a shift */}
-          <section className="mb-6 rounded-lg border border-white/10 bg-black/40 p-4" aria-label="Work a shift">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="Work a shift">
             <h2 className="text-sm font-semibold text-amber-100 mb-2 flex items-center gap-1"><Hammer className="w-4 h-4" aria-hidden="true" /> Work a shift</h2>
             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 text-sm">
               <label className="sr-only" htmlFor="career-track">Profession track</label>
@@ -243,7 +251,7 @@ export default function CareersLens() {
           {/* Tier ladder — careers.ladder for the selected track. Tiers the
               player's real reputation currently gates them out of (reported
               up by <ReputationGate>) render locked. */}
-          <section className="mb-6 rounded-lg border border-white/10 bg-black/40 p-4" aria-label="Tier ladder">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="Tier ladder">
             <h2 className="text-sm font-semibold text-amber-100 mb-2 flex items-center gap-1">
               <ListOrdered className="w-4 h-4" aria-hidden="true" /> {selected} ladder
             </h2>
@@ -282,7 +290,7 @@ export default function CareersLens() {
           <EmployerBrowser trackId={selected} onContractProposed={() => void refreshContracts()} />
 
           {/* Taxonomy */}
-          <section className="mb-6" aria-label="Professions">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="Professions">
             <h2 className="text-sm font-semibold text-amber-100 mb-2">Professions</h2>
             {Object.entries(byCategory).map(([cat, ts]) => (
               <div key={cat} className="mb-2">
@@ -295,7 +303,7 @@ export default function CareersLens() {
           </section>
 
           {/* Contracts */}
-          <section aria-label="My contracts">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="My contracts">
             <h2 className="text-sm font-semibold text-amber-100 mb-2">My contracts ({contracts.length})</h2>
             {contracts.length === 0 ? (
               <p className="text-gray-500 text-xs">No active contracts. Negotiate one to lock in a wage.</p>
@@ -351,6 +359,7 @@ export default function CareersLens() {
 
       {note && <p role="status" aria-live="polite" className="mt-4 text-xs text-gray-400">{note}</p>}
     </div>
+    </NorthStarFrame>
     </LensShell>
   );
 }

@@ -11,7 +11,7 @@
 import { useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EstateProvider, useEstate } from '@/components/inheritance/EstateContext';
@@ -29,7 +29,9 @@ import { TABS, type Tab } from '@/components/inheritance/inheritance-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Users } from 'lucide-react';
 
 type View = Tab | 'discussion';
 
@@ -54,6 +56,8 @@ const PANELS: Record<View, ComponentType> = {
 function EstateShellInner({ active, setActive }: { active: View; setActive: (v: View) => void }) {
   const reduceMotion = useReducedMotion();
   const { status, loadAll, loading, loadError } = useEstate();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -78,35 +82,18 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
   const Panel = PANELS[active];
 
   return (
-    <div id="inheritance-main" className="mx-auto max-w-5xl p-4 space-y-4 text-white">
-      <header className="space-y-1">
-        <h1 className="text-xl font-bold text-amber-300">Inheritance</h1>
-        <p className="text-sm text-zinc-400">
-          Estate planner + heir-slot market — Trust &amp; Will density.
-        </p>
-        {status && <p className="text-xs text-amber-200/80 font-mono">{status}</p>}
-      </header>
-
-      <nav className="flex flex-wrap gap-1 border-b border-zinc-800" aria-label="Estate views">
-        {VIEW_TABS.map((t) => {
-          const on = active === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActive(t.id)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium',
-                on ? 'border-b-2 border-amber-500 text-amber-300' : 'text-zinc-400 hover:text-zinc-300',
-              )}
-              aria-current={on ? 'page' : undefined}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
-
+    <NorthStarFrame
+      lensId="inheritance"
+      crumb="Inheritance"
+      title={`Plan what you leave behind${active === 'overview' && who ? `, ${who}` : ''}`}
+      subtitle="Estate planner and heir-slot market: wills, beneficiaries, assets, executors, probate and intestacy."
+      actions={status ? <p className="font-mono text-xs text-amber-200/80">{status}</p> : undefined}
+      tabs={VIEW_TABS}
+      activeTab={active}
+      onTab={(id) => setActive(id as View)}
+      tabsLabel="Estate views"
+      cta={{ label: 'Add a beneficiary', icon: Users, onClick: () => setActive('beneficiaries'), title: 'Open beneficiaries (2)' }}
+    >
       {loading ? (
         <div role="status" aria-live="polite" className="flex items-center gap-2 py-10 text-zinc-400">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" aria-hidden="true" />
@@ -135,7 +122,7 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
           </motion.div>
         </AnimatePresence>
       )}
-    </div>
+    </NorthStarFrame>
   );
 }
 
@@ -156,13 +143,7 @@ export default function InheritancePage() {
     <LensShell lensId="inheritance" asMain={false}>
       <FirstRunTour lensId="inheritance" />
       <DepthBadge lensId="inheritance" size="sm" className="ml-2" />
-      <div data-lens-theme="inheritance">
-        <a href="#inheritance-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500">
-          Skip to estate desk
-        </a>
-        <EstateShell />
-        <CrossLensRecentsPanel lensId="inheritance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      <EstateShell />
     </LensShell>
   );
 }

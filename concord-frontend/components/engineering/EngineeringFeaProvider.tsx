@@ -12,15 +12,16 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { lensRun } from '@/lib/api/client';
 import {
-  DEFAULT_FEA_MODEL,
+  EMPTY_FEA_MODEL,
+  feaModelGap,
   MATERIALS,
   type EngView,
   type FEAModel,
@@ -76,7 +77,11 @@ interface EngineeringFeaStore {
   feaMembers: { id: string; nodeI: string; nodeJ: string; utilization: number; stress: number }[];
   feaDisplacements: { nodeId: string; dx: number; dy: number; dz: number }[];
   summary: { maxDisplacement: number; maxUtilization: number; allPass: boolean } | null;
+  /** Server-side persistence of the working model (per user). */
+  modelSaveState: ModelSaveState;
 }
+
+export type ModelSaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error';
 
 const Ctx = createContext<EngineeringFeaStore | null>(null);
 
@@ -88,7 +93,7 @@ export function useEngineeringFea(): EngineeringFeaStore {
 
 export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<EngView>('model');
-  const [model, setModel] = useState<FEAModel>(DEFAULT_FEA_MODEL);
+  const [model, setModel] = useState<FEAModel>(EMPTY_FEA_MODEL);
   const [feaResult, setFeaResult] = useState<Record<string, unknown> | null>(null);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState('');
@@ -107,9 +112,61 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     meshElements: number;
     avgElementLength: number;
   } | null>(null);
+  const [modelSaveState, setModelSaveState] = useState<ModelSaveState>('loading');
+  // The working model lives on the server per user, so a reload or a server
+  // restart doesn't lose it. `modelLoaded` gates saving until the stored model
+  // has been read back, so the empty initial state never overwrites it.
+  const modelLoaded = useRef(false);
+  const skipNextSave = useRef(false);
 
-  const runAction = useRunArtifact('engineering');
-  const createArtifact = useCreateArtifact('engineering');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ model: FEAModel | null; updatedAt: string | null }>(
+          'engineering',
+          'model-get',
+          {},
+        );
+        if (cancelled) return;
+        const stored = r.data?.ok ? r.data.result?.model : null;
+        if (stored && Array.isArray(stored.nodes)) {
+          skipNextSave.current = true;
+          setModel({
+            nodes: stored.nodes || [],
+            members: stored.members || [],
+            loads: stored.loads || [],
+            supports: stored.supports || [],
+          });
+          setModelSaveState('saved');
+        } else {
+          setModelSaveState(r.data?.ok ? 'idle' : 'error');
+        }
+      } catch {
+        if (!cancelled) setModelSaveState('error');
+      } finally {
+        if (!cancelled) modelLoaded.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!modelLoaded.current) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+    setModelSaveState('saving');
+    const t = setTimeout(() => {
+      lensRun('engineering', 'model-save', { model })
+        .then((r) => setModelSaveState(r.data?.ok ? 'saved' : 'error'))
+        .catch(() => setModelSaveState('error'));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [model]);
 
   const loadMaterials = useCallback(async () => {
     setMatLoading(true);
@@ -185,42 +242,35 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
   }, [model, meshDivisions]);
 
   const runFEA = useCallback(() => {
+    const gap = feaModelGap(model);
+    if (gap) {
+      // Nothing to solve yet: say what is missing instead of solving a sample.
+      setFeaResult(null);
+      setStatus(`Error: nothing to solve yet. In Model, ${gap}.`);
+      setActive('model');
+      return;
+    }
     setRunning(true);
     setStatus('Solving…');
     setFeaResult(null);
-    const payload = { type: 'fea-model', title: 'FEA Model', data: { model } };
-    createArtifact.mutate(payload, {
-      onSuccess: (res) => {
-        const id = res?.artifact?.id ?? 'temp';
-        runAction.mutate(
-          { id, action: 'runFEA', params: { model } },
-          {
-            onSuccess: (data: unknown) => {
-              const d = data as { ok?: boolean; result?: unknown };
-              if (d?.result) {
-                setFeaResult(d.result as Record<string, unknown>);
-                setRunning(false);
-                setStatus('Analysis complete');
-                setHistoryKey((k) => k + 1);
-                setActive('results');
-              } else {
-                setRunning(false);
-                setStatus('Analysis returned no result');
-              }
-            },
-            onError: (e) => {
-              setRunning(false);
-              setStatus(`Error: ${e.message}`);
-            },
-          },
-        );
-      },
-      onError: (e) => {
-        setRunning(false);
-        setStatus(`Error: ${e.message}`);
-      },
-    });
-  }, [model, createArtifact, runAction]);
+    // Solve through the domain action directly. The old path created a
+    // throwaway "fea-model" artifact and ran the action against its id; with
+    // no id in the create response it ran against a placeholder id, got
+    // "not found", and the UI never showed a solve.
+    lensRun<Record<string, unknown>>('engineering', 'runFEA', { model, name: 'FEA run' })
+      .then((r) => {
+        if (r.data?.ok && r.data.result) {
+          setFeaResult(r.data.result as Record<string, unknown>);
+          setStatus('Analysis complete');
+          setHistoryKey((k) => k + 1);
+          setActive('results');
+        } else {
+          setStatus(`Error: ${r.data?.error || 'the solver returned no result'}`);
+        }
+      })
+      .catch((e: unknown) => setStatus(`Error: ${e instanceof Error ? e.message : String(e)}`))
+      .finally(() => setRunning(false));
+  }, [model]);
 
   const addNode = () => {
     const id = `N${model.nodes.length + 1}`;
@@ -375,6 +425,7 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     feaMembers,
     feaDisplacements,
     summary,
+    modelSaveState,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

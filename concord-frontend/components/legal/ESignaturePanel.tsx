@@ -9,14 +9,16 @@ import { cn } from '@/lib/utils';
 interface Recipient {
   id: string; name: string; email: string; role: string;
   status: 'pending' | 'signed'; signedAt: string | null;
+  isSender?: boolean; signedVia?: 'sender' | 'link'; typedName?: string | null;
+  delivery?: { method: 'email' | 'link_only'; reason: string | null; at: string } | null;
 }
 interface Envelope {
   id: string; number: string;
   documentId: string; documentName: string;
   matterId: string;
   recipients: Recipient[];
-  status: 'sent' | 'completed';
-  sentAt: string; completedAt: string | null;
+  status: 'draft' | 'sent' | 'completed' | 'voided';
+  sentAt: string | null; completedAt: string | null;
 }
 
 function signedCount(env: Envelope): number {
@@ -25,7 +27,8 @@ function signedCount(env: Envelope): number {
 
 export function ESignaturePanel() {
   const [list, setList] = useState<Envelope[]>([]);
-  const [filter, setFilter] = useState<'all' | 'sent' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'draft' | 'sent' | 'completed'>('all');
+  const [links, setLinks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   // recipientId → in-flight, so a slow network doesn't let a second click
   // race the first, and the button shows real progress instead of freezing.
@@ -36,7 +39,7 @@ export function ESignaturePanel() {
   const prevStatus = useRef<Record<string, Envelope['status']>>({});
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { refresh(); }, [filter]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [filter]);
 
   async function refresh() {
     setLoading(true);
@@ -77,11 +80,12 @@ export function ESignaturePanel() {
     );
 
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'legal',
         action: 'esign-envelope-sign',
-        input: { envelopeId, recipientId, ip: window.location.host, userAgent: navigator.userAgent },
+        input: { envelopeId, recipientId },
       });
+      if (res.data?.ok === false) throw new Error(res.data.error || 'sign refused');
       const wasIncomplete = prevStatus.current[envelopeId] !== 'completed';
       const envNow = list.find((e) => e.id === envelopeId);
       const nowComplete = envNow ? signedCount(envNow) + 1 >= envNow.recipients.length : false;
@@ -104,6 +108,27 @@ export function ESignaturePanel() {
     }
   }
 
+  async function sendLinks(envelopeId: string, recipientId?: string) {
+    const r = await lensRun<{ links: { recipientId: string; url: string; delivered: string; reason: string | null }[] }>(
+      'legal', 'esign-envelope-send', { envelopeId, ...(recipientId ? { recipientId } : {}) },
+    );
+    if (r.data?.ok === false || !r.data?.result) { showToast('error', r.data?.error || 'Could not send.'); return; }
+    const res = r.data.result;
+    setLinks((prev) => ({ ...prev, ...Object.fromEntries(res.links.map((l) => [l.recipientId, l.url])) }));
+    const emailed = res.links.filter((l) => l.delivered === 'email').length;
+    showToast('success', emailed === res.links.length
+      ? `Signing link${emailed === 1 ? '' : 's'} emailed.`
+      : `${emailed} emailed, ${res.links.length - emailed} to share yourself — copy the link below.`);
+    await refresh();
+  }
+
+  async function voidEnvelope(envelopeId: string) {
+    const r = await lensRun('legal', 'esign-envelope-void', { envelopeId });
+    if (r.data?.ok === false) { showToast('error', r.data.error || 'Could not withdraw.'); return; }
+    showToast('success', 'Envelope withdrawn; its signing links no longer work.');
+    await refresh();
+  }
+
   return (
     <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
@@ -112,6 +137,7 @@ export function ESignaturePanel() {
         <span className="text-[10px] text-gray-400">{list.length}</span>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All</option>
+          <option value="draft">Not sent</option>
           <option value="sent">Awaiting signatures</option>
           <option value="completed">Completed</option>
         </select>
@@ -161,7 +187,15 @@ export function ESignaturePanel() {
                     <span className="text-[10px] font-mono tabular-nums text-gray-400 shrink-0">{signed}/{total}</span>
                   </div>
 
-                  <div className="text-[10px] text-gray-400 mb-1.5">Sent {env.sentAt.slice(0, 10)} · {env.recipients.length} recipient(s){env.completedAt && ` · completed ${env.completedAt.slice(0, 10)}`}</div>
+                  <div className="text-[10px] text-gray-400 mb-1.5 flex flex-wrap items-center gap-2">
+                    <span>{env.sentAt ? `Sent ${env.sentAt.slice(0, 10)}` : 'Not sent yet'} · {env.recipients.length} recipient(s){env.completedAt && ` · completed ${env.completedAt.slice(0, 10)}`}</span>
+                    {env.status === 'draft' && (
+                      <button onClick={() => void sendLinks(env.id)} className="px-2 py-0.5 rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Send for signature</button>
+                    )}
+                    {(env.status === 'draft' || env.status === 'sent') && (
+                      <button onClick={() => void voidEnvelope(env.id)} className="text-rose-300 hover:text-rose-200">Withdraw</button>
+                    )}
+                  </div>
                   <ul className="space-y-1 pl-4">
                     {env.recipients.map(r => {
                       const isSigning = !!signing[r.id];
@@ -174,16 +208,28 @@ export function ESignaturePanel() {
                           {r.status === 'signed' ? (
                             <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-300">
                               {isSigning && <Loader2 className="w-2.5 h-2.5 animate-spin" aria-label="Saving" />}
-                              signed {isSigning ? 'just now — saving…' : r.signedAt?.slice(0, 10)}
+                              signed {isSigning ? 'just now — saving…' : r.signedAt?.slice(0, 10)}{!isSigning && r.signedVia === 'link' ? ' via link' : ''}
                             </span>
-                          ) : (
+                          ) : r.isSender ? (
                             <button
                               onClick={() => recipientSign(env.id, r.id)}
-                              disabled={isSigning}
+                              disabled={isSigning || env.status === 'voided'}
                               className="ml-auto px-2 py-0.5 text-[10px] rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-60 disabled:cursor-wait"
                             >
-                              Simulate sign
+                              Sign as you
                             </button>
+                          ) : (
+                            <span className="ml-auto flex flex-col items-end gap-0.5 text-[10px]">
+                              {r.delivery
+                                ? <span className="text-gray-400">{r.delivery.method === 'email' ? 'link emailed' : `not emailed (${(r.delivery.reason || '').replace(/_/g, ' ')})`}</span>
+                                : <span className="text-gray-500">link not sent</span>}
+                              {env.status === 'sent' && (
+                                <button onClick={() => void sendLinks(env.id, r.id)} className="text-amber-300 hover:text-amber-200">{r.delivery ? 'Resend link' : 'Send link'}</button>
+                              )}
+                              {links[r.id] && (
+                                <button type="button" onClick={() => void navigator.clipboard?.writeText(links[r.id])} className="max-w-[14rem] truncate font-mono text-cyan-300 hover:underline" title="Copy signing link">{links[r.id]}</button>
+                              )}
+                            </span>
                           )}
                         </li>
                       );

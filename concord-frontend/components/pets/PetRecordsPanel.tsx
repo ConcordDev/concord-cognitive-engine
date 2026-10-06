@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { PetsKeepMenu } from './PetsKeepMenu';
+import type { PetHealthRecord, PetsHealthFacts } from './petsHealthReport';
 
 interface VaccineEvent { petId: string; petName: string; vaccine: string; dueDate: string; status: string; vet: string | null }
 interface AccessGrant { id: string; petId: string; petName: string; userId: string; displayName: string | null; role: string }
@@ -71,6 +73,8 @@ export function PetRecordsPanel({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [guidance, setGuidance] = useState<CareGuidance | null>(null);
   const [lostCard, setLostCard] = useState<LostCard | null>(null);
+  const [keptRecord, setKeptRecord] = useState<PetHealthRecord | null>(null);
+  const [keptText, setKeptText] = useState<string>('');
 
   const [grantForm, setGrantForm] = useState({ userId: '', displayName: '', role: 'caregiver' });
   const [photoForm, setPhotoForm] = useState({ url: '', caption: '', takenOn: '', milestone: '' });
@@ -102,7 +106,7 @@ export function PetRecordsPanel({
   }, [petId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
-  useEffect(() => { setGuidance(null); }, [petId]);
+  useEffect(() => { setGuidance(null); setKeptRecord(null); setKeptText(''); }, [petId]);
 
   const flash = (msg: string) => { setNotice(msg); setError(null); window.setTimeout(() => setNotice(null), 4000); };
 
@@ -119,9 +123,11 @@ export function PetRecordsPanel({
     const r = await lensRun('pets', 'health-record-export', { petId });
     setBusy(null);
     if (r.data?.ok === false || !r.data?.result) { setError(r.data?.error || 'Export failed.'); return; }
-    const res = r.data.result as { record: unknown; text: string; filename: string };
+    const res = r.data.result as { record: PetHealthRecord; text: string; filename: string };
     downloadFile(res.filename, JSON.stringify(res.record, null, 2), 'application/json');
     downloadFile(res.filename.replace(/\.json$/, '.txt'), res.text, 'text/plain');
+    setKeptRecord(res.record);
+    setKeptText(res.text);
     flash('Portable health record exported (JSON + text).');
   };
 
@@ -274,6 +280,15 @@ export function PetRecordsPanel({
           {busy === 'record' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
           Export record (JSON + text)
         </button>
+        {keptRecord && (() => {
+          const facts: PetsHealthFacts = {
+            petName,
+            species,
+            record: keptRecord,
+            text: keptText,
+          };
+          return <PetsKeepMenu facts={facts} />;
+        })()}
       </section>
 
       {/* 3 — Multi-caregiver shared access */}

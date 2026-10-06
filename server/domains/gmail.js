@@ -13,6 +13,19 @@ import {
   modifyGmailMessage,
   trashGmailMessage,
   listGmailLabels,
+  untrashGmailMessage,
+  getGmailProfile,
+  readGmailThreads,
+  readGmailThread,
+  modifyGmailThread,
+  trashGmailThread,
+  untrashGmailThread,
+  getGmailAttachment,
+  createGmailLabel,
+  listGmailDrafts,
+  saveGmailDraft,
+  sendGmailDraft,
+  deleteGmailDraft,
 } from "../lib/connector-client.js";
 
 // Real gate is token presence (connectorFetch returns no_token/connector_not_configured
@@ -131,6 +144,86 @@ export default function registerGmailActions(registerLensAction) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
   });
+
+  // A thin wrapper: guard, run, map an honest connector failure, shape result.
+  const run = (name, fn, shape) => registerLensAction("gmail", name, async (ctx, _a, params = {}) => {
+    const bad = guard(ctx); if (bad) return bad;
+    try {
+      const pre = fn.validate ? fn.validate(params) : null;
+      if (pre) return { ok: false, error: pre };
+      const res = await fn(ctx.db, uid(ctx), params);
+      if (!res.ok) return fail(res, `${name}_failed`);
+      return { ok: true, result: shape(res, params) };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+  const need = (key) => (p) => (p[key] ? null : `${key} required`);
+  const THREAD_SEMANTIC = {
+    read: { removeLabelIds: ["UNREAD"] },
+    unread: { addLabelIds: ["UNREAD"] },
+    star: { addLabelIds: ["STARRED"] },
+    unstar: { removeLabelIds: ["STARRED"] },
+    archive: { removeLabelIds: ["INBOX"] },
+    inbox: { addLabelIds: ["INBOX"] },
+    spam: { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] },
+    "not-spam": { removeLabelIds: ["SPAM"], addLabelIds: ["INBOX"] },
+    important: { addLabelIds: ["IMPORTANT"] },
+    "not-important": { removeLabelIds: ["IMPORTANT"] },
+  };
+
+  // Conversations (Gmail's default view). params: { q?, label?|labelIds?, maxResults?, pageToken? }
+  const threadsFn = (db, u, p) => readGmailThreads(db, u, {
+    q: p.q, maxResults: p.maxResults, pageToken: p.pageToken,
+    labelIds: p.labelIds ?? (p.label === "ALL" ? [] : p.label ? [p.label] : ["INBOX"]),
+    includeSpamTrash: p.label === "SPAM" || p.label === "TRASH",
+  });
+  run("threads", threadsFn, (r) => ({ threads: r.threads, nextPageToken: r.nextPageToken, resultSizeEstimate: r.resultSizeEstimate }));
+
+  const threadFn = (db, u, p) => readGmailThread(db, u, p.threadId || p.id);
+  threadFn.validate = (p) => (p.threadId || p.id ? null : "threadId required");
+  run("thread", threadFn, (r) => ({ thread: r.thread }));
+
+  // params: { threadId, action } (semantic) or { threadId, addLabelIds?, removeLabelIds? }
+  const threadModifyFn = (db, u, p) => modifyGmailThread(db, u, p.threadId, p.action ? THREAD_SEMANTIC[p.action] : { addLabelIds: p.addLabelIds, removeLabelIds: p.removeLabelIds });
+  threadModifyFn.validate = (p) => (!p.threadId ? "threadId required" : p.action && !THREAD_SEMANTIC[p.action] ? `unknown action: ${p.action}` : null);
+  run("thread-modify", threadModifyFn, (r, p) => ({ threadId: p.threadId, action: p.action || null }));
+
+  const threadTrashFn = (db, u, p) => trashGmailThread(db, u, p.threadId);
+  threadTrashFn.validate = need("threadId");
+  run("thread-trash", threadTrashFn, (r, p) => ({ threadId: p.threadId, trashed: true }));
+
+  const threadUntrashFn = (db, u, p) => untrashGmailThread(db, u, p.threadId);
+  threadUntrashFn.validate = need("threadId");
+  run("thread-untrash", threadUntrashFn, (r, p) => ({ threadId: p.threadId, trashed: false }));
+
+  const untrashFn = (db, u, p) => untrashGmailMessage(db, u, p.messageId || p.id);
+  untrashFn.validate = (p) => (p.messageId || p.id ? null : "messageId required");
+  run("untrash", untrashFn, (r, p) => ({ messageId: p.messageId || p.id, trashed: false }));
+
+  run("profile", (db, u) => getGmailProfile(db, u), (r) => ({ profile: r.profile }));
+
+  // Attachment bytes (base64). params: { messageId, attachmentId }
+  const attachmentFn = (db, u, p) => getGmailAttachment(db, u, p.messageId, p.attachmentId);
+  attachmentFn.validate = (p) => (!p.messageId || !p.attachmentId ? "messageId and attachmentId required" : null);
+  run("attachment", attachmentFn, (r) => ({ data: r.attachment.data, size: r.attachment.size }));
+
+  const labelCreateFn = (db, u, p) => createGmailLabel(db, u, p.name);
+  labelCreateFn.validate = (p) => (String(p.name || "").trim() ? null : "name required");
+  run("label-create", labelCreateFn, (r) => ({ label: r.label }));
+
+  run("drafts", (db, u, p) => listGmailDrafts(db, u, { maxResults: p.maxResults }), (r) => ({ drafts: r.drafts }));
+
+  // Create (no draftId) or replace (draftId) a draft. params: { draftId?, to, cc?, bcc?, subject?, body?, threadId?, inReplyTo?, references? }
+  run("draft-save", (db, u, p) => saveGmailDraft(db, u, p.mail || p), (r) => ({ draft: r.draft }));
+
+  const draftSendFn = (db, u, p) => sendGmailDraft(db, u, p.draftId);
+  draftSendFn.validate = need("draftId");
+  run("draft-send", draftSendFn, (r) => ({ sent: true, providerMessageId: r.data?.id || null, threadId: r.data?.threadId || null }));
+
+  const draftDeleteFn = (db, u, p) => deleteGmailDraft(db, u, p.draftId);
+  draftDeleteFn.validate = need("draftId");
+  run("draft-delete", draftDeleteFn, (r, p) => ({ deleted: p.draftId }));
 
   // Surfaces the connector-OAuth authorize URL the frontend redirects to. A full
   // client needs read + modify + send, so we request gmail.modify (read+label

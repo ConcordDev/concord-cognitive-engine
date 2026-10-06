@@ -33,6 +33,7 @@ import {
 import { lensRun, api } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { WalletReceiptMenu } from '@/components/wallet/WalletReceiptMenu';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ interface MoneyRequest {
   status: 'pending' | 'paid' | 'declined' | 'canceled';
   createdAt: string;
   paidAt: string | null;
+  transfer?: { batchId?: string | null } | null;
 }
 interface Schedule {
   id: string;
@@ -59,7 +61,10 @@ interface Schedule {
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   note: string;
   nextRunAt: string;
-  status: 'active' | 'paused' | 'canceled';
+  runsCompleted?: number;
+  lastError?: string | null;
+  lastTransfer?: { batchId?: string | null } | null;
+  status: 'active' | 'paused' | 'canceled' | 'completed';
 }
 interface FeedComment { userId: string; text: string; at: string }
 interface FeedEntry {
@@ -75,7 +80,14 @@ interface FeedEntry {
   comments: FeedComment[];
   createdAt: string;
 }
-interface SplitShare { userId: string; amount: number; paid: boolean; paidAt: string | null }
+interface SplitShare {
+  userId: string;
+  amount: number;
+  paid: boolean;
+  paidAt: string | null;
+  settlement?: 'covered' | 'ledger' | null;
+  transfer?: { batchId?: string | null } | null;
+}
 interface SplitRecord {
   id: string;
   creatorId: string;
@@ -132,6 +144,17 @@ const btnCls =
 
 function EmptyState({ message }: { message: string }) {
   return <p className="text-sm text-gray-400 py-6 text-center">{message}</p>;
+}
+
+function walletErr(code: string | null | undefined): string {
+  if (!code) return 'Concord Coin did not move. Nothing was marked paid.';
+  if (code === 'insufficient_balance') return 'Not enough Concord Coin. Nothing was marked paid.';
+  if (code === 'ledger_unavailable') return 'The ledger is unavailable. Nothing was marked paid.';
+  if (code === 'cannot_transfer_to_self') return 'You cannot pay yourself.';
+  if (code === 'only payer may pay or decline') return 'Only the payer can pay this request.';
+  if (code === 'only that member can pay their share') return 'Only that person can pay their own share.';
+  if (code === 'schedule is not active') return 'This schedule is not active, so nothing was sent.';
+  return code;
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -199,6 +222,14 @@ function RequestsTab() {
   const [emoji, setEmoji] = useState('');
   const [isInvoice, setIsInvoice] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([{ description: '', amount: 0 }]);
+  const [me, setMe] = useState<string | null>(null);
+
+  useEffect(() => {
+    void lensRun<{ actor?: { userId?: string } }>('auth', 'whoami').then((r) => {
+      const id = r.data?.result?.actor?.userId;
+      if (id) setMe(id);
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -249,8 +280,10 @@ function RequestsTab() {
   }, [payerId, amount, note, emoji, isInvoice, lineItems, refresh]);
 
   const update = useCallback(async (id: string, status: MoneyRequest['status']) => {
+    setErr('');
     const r = await lensRun('wallet', 'requestUpdate', { id, status });
     if (r.data?.ok) void refresh();
+    else setErr(walletErr(r.data?.error));
   }, [refresh]);
 
   return (
@@ -393,14 +426,37 @@ function RequestsTab() {
                   ))}
                 </ul>
               )}
+              {req.status === 'paid' && req.transfer?.batchId && (
+                <WalletReceiptMenu
+                  receipt={{
+                    kind: 'request',
+                    sourceId: req.id,
+                    amount: req.amount,
+                    batchId: req.transfer.batchId,
+                    counterparty: req.requesterId,
+                    note: req.note,
+                  }}
+                />
+              )}
+              {req.status === 'paid' && !req.transfer?.batchId && (
+                <p className="mt-1 text-[11px] text-amber-400" role="status">
+                  Marked paid without a ledger batch. Concord Coin movement was not confirmed.
+                </p>
+              )}
               {req.status === 'pending' && (
                 <div className="mt-2 flex items-center gap-2">
                   <code className="text-[10px] text-gray-400 truncate flex-1">{req.payLink}</code>
-                  <button onClick={() => update(req.id, 'paid')} className="text-[11px] text-green-400 hover:underline flex items-center gap-0.5">
-                    <Check className="w-3 h-3" /> Mark paid
-                  </button>
-                  <button onClick={() => update(req.id, 'declined')} className="text-[11px] text-red-400 hover:underline">Decline</button>
-                  <button onClick={() => update(req.id, 'canceled')} className="text-[11px] text-gray-400 hover:underline">Cancel</button>
+                  {(me == null || me === req.payerId) && (
+                    <button onClick={() => update(req.id, 'paid')} className="text-[11px] text-green-400 hover:underline flex items-center gap-0.5">
+                      <Check className="w-3 h-3" /> Pay
+                    </button>
+                  )}
+                  {(me == null || me === req.payerId) && (
+                    <button onClick={() => update(req.id, 'declined')} className="text-[11px] text-red-400 hover:underline">Decline</button>
+                  )}
+                  {(me == null || me === req.requesterId) && (
+                    <button onClick={() => update(req.id, 'canceled')} className="text-[11px] text-gray-400 hover:underline">Cancel</button>
+                  )}
                 </div>
               )}
             </div>
@@ -472,6 +528,15 @@ function SchedulesTab() {
     if (r.data?.ok) void refresh();
   }, [refresh]);
 
+  const sendNow = useCallback(async (id: string) => {
+    setErr('');
+    setBusy(true);
+    const r = await lensRun('wallet', 'scheduleSendNow', { id });
+    setBusy(false);
+    if (r.data?.ok) void refresh();
+    else setErr(walletErr(r.data?.error));
+  }, [refresh]);
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-lattice-border bg-lattice-deep p-3 space-y-2">
@@ -494,6 +559,9 @@ function SchedulesTab() {
           <input className={inputCls} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         {err && <p className="text-xs text-red-400">{err}</p>}
+        <p className="text-[11px] text-gray-400">
+          Scheduling does not send Concord Coin. Send now, or wait until the next run, and the ledger has to accept it.
+        </p>
         <button onClick={create} disabled={busy} className={btnCls}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />}
           Schedule transfer
@@ -511,7 +579,7 @@ function SchedulesTab() {
       ) : (
         <div className="space-y-2">
           {schedules.map((s) => (
-            <div key={s.id} className="rounded-lg border border-lattice-border bg-lattice-deep p-3 flex items-center justify-between">
+            <div key={s.id} className="rounded-lg border border-lattice-border bg-lattice-deep p-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-white truncate">
                   {s.amount.toLocaleString()} CC → <span className="font-mono">{s.recipientId}</span>
@@ -519,11 +587,32 @@ function SchedulesTab() {
                 <p className="text-[11px] text-gray-400">
                   {s.frequency} · next {new Date(s.nextRunAt).toLocaleDateString()}
                   {s.note ? ` · ${s.note}` : ''}
+                  {s.runsCompleted ? ` · sent ${s.runsCompleted}` : ' · not sent yet'}
                 </p>
+                {s.lastTransfer?.batchId && (
+                  <WalletReceiptMenu
+                    receipt={{
+                      kind: 'schedule',
+                      sourceId: s.id,
+                      amount: s.amount,
+                      batchId: s.lastTransfer.batchId,
+                      counterparty: s.recipientId,
+                      note: s.note,
+                    }}
+                  />
+                )}
+                {s.lastError && (
+                  <p className="text-[11px] text-red-400">{walletErr(s.lastError)}</p>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <StatusPill status={s.status} />
-                {s.status !== 'canceled' && (
+                {s.status === 'active' && (
+                  <button onClick={() => sendNow(s.id)} disabled={busy} className="text-[11px] text-green-400 hover:underline disabled:opacity-40">
+                    Send now
+                  </button>
+                )}
+                {s.status !== 'canceled' && s.status !== 'completed' && (
                   <button
                     onClick={() => setStatus(s.id, s.status === 'active' ? 'paused' : 'active')}
                     className="text-[11px] text-neon-cyan hover:underline"
@@ -757,8 +846,10 @@ function SplitsTab() {
   }, [title, total, participants, note, refresh]);
 
   const settle = useCallback(async (id: string, memberId: string) => {
+    setErr('');
     const r = await lensRun('wallet', 'splitSettle', { id, memberId });
     if (r.data?.ok) void refresh();
+    else setErr(walletErr(r.data?.error));
   }, [refresh]);
 
   return (
@@ -804,17 +895,36 @@ function SplitsTab() {
                       <span className="font-mono text-gray-300">{s.userId}</span>
                       <span className="flex items-center gap-2">
                         <span className="font-mono text-white">{s.amount.toLocaleString()} CC</span>
-                        {s.paid ? (
-                          <span className="text-green-400 flex items-center gap-0.5"><Check className="w-3 h-3" /> paid</span>
+                        {s.paid && s.settlement !== 'ledger' ? (
+                          <span className="text-gray-400">your share</span>
+                        ) : s.paid && s.transfer?.batchId ? (
+                          <span className="text-green-400 flex items-center gap-0.5">
+                            <Check className="w-3 h-3" /> paid
+                          </span>
+                        ) : s.paid ? (
+                          <span className="text-amber-400">marked paid, ledger not confirmed</span>
                         ) : (
                           <button onClick={() => settle(sp.id, s.userId)} className="text-neon-cyan hover:underline">
-                            Settle
+                            Pay share
                           </button>
                         )}
                       </span>
                     </li>
                   ))}
                 </ul>
+                {sp.shares.filter((s) => s.settlement === 'ledger' && s.transfer?.batchId).map((s) => (
+                  <WalletReceiptMenu
+                    key={`${sp.id}-${s.userId}`}
+                    receipt={{
+                      kind: 'split',
+                      sourceId: sp.id,
+                      amount: s.amount,
+                      batchId: s.transfer!.batchId!,
+                      counterparty: sp.creatorId,
+                      note: sp.title,
+                    }}
+                  />
+                ))}
               </div>
             );
           })}

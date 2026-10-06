@@ -45,7 +45,6 @@ export function RxPriceCompare() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <DollarSign className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Rx price compare</span>
-        <span className="ml-auto text-[10px] text-gray-400">GoodRx-style</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-2 text-xs">
         <input value={drug} onChange={e => setDrug(e.target.value)} placeholder="Drug name + strength" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />

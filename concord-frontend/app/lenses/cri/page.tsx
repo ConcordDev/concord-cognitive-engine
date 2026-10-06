@@ -18,7 +18,8 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -30,11 +31,11 @@ import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
 
 type CriView = 'scores' | 'distribution' | 'loop' | 'crisis';
 
-const VIEWS: { id: CriView; label: string; keys: string; hint: string; icon: typeof BarChart3 }[] = [
-  { id: 'scores', label: 'Scores', keys: '1', hint: 'CRETI scorecard', icon: BarChart3 },
-  { id: 'distribution', label: 'Distribution', keys: '2', hint: 'Quality histogram', icon: Activity },
-  { id: 'loop', label: 'Quality loop', keys: '3', hint: 'Trend · rules · remediate', icon: RefreshCw },
-  { id: 'crisis', label: 'Crisis', keys: '4', hint: 'Severity · timeline · impact', icon: Siren },
+const VIEWS: { id: CriView; label: string; keys: string; title: string; hint: string; icon: typeof BarChart3 }[] = [
+  { id: 'scores', label: 'Scores', keys: '1', title: 'The index', hint: 'CRETI scorecard', icon: BarChart3 },
+  { id: 'distribution', label: 'Distribution', keys: '2', title: 'How quality is spread', hint: 'Quality histogram', icon: Activity },
+  { id: 'loop', label: 'Quality loop', keys: '3', title: 'Whether quality is improving', hint: 'Trend · rules · remediate', icon: RefreshCw },
+  { id: 'crisis', label: 'Crisis', keys: '4', title: 'What the crisis costs', hint: 'Severity · timeline · impact', icon: Siren },
 ];
 
 function CrisisPanel() {
@@ -57,16 +58,22 @@ export default function CRILensPage() {
   useLensIdentity('cri');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('cri');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<CriView>('scores');
+  const current = VIEWS.find((v) => v.id === active)!;
 
   useLensCommand(
-    VIEWS.map((v) => ({
-      id: `view-${v.id}`,
-      keys: v.keys,
-      description: `${v.label} — ${v.hint}`,
-      category: 'navigation' as const,
-      action: () => setActive(v.id),
-    })),
+    [
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'assess-crisis', keys: 'c', description: 'Assess a crisis', category: 'actions' as const, action: () => setActive('crisis') },
+    ],
     { lensId: 'cri' },
   );
 
@@ -87,38 +94,30 @@ export default function CRILensPage() {
     <LensShell lensId="cri" asMain={false}>
       <FirstRunTour lensId="cri" />
       <DepthBadge lensId="cri" size="sm" className="ml-2" />
-      <div data-lens-theme="cri" className={ds.pageContainer}>
+      <div data-lens-theme="cri" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#cri-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
           Skip to cri content
         </a>
 
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
-              <BarChart3 className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>CRI — CRETI Scores</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="cri" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                Coherence, Relevance, Evidence, Timeliness, Integration — one quality desk.
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] text-zinc-500">CRI</p>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+              {current.title}{active === 'scores' && who ? `, ${who}` : ''}
+            </h1>
           </div>
-        </header>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="cri" data={realtimeData || {}} compact />
+          </div>
+        </div>
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="CRI views"
-        >
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="CRI views">
           {VIEWS.map((v) => {
             const Icon = v.icon;
             const on = active === v.id;
@@ -127,25 +126,22 @@ export default function CRILensPage() {
                 key={v.id}
                 type="button"
                 onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
                 aria-current={on ? 'page' : undefined}
+                title={`${v.hint} (${v.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
               </button>
             );
           })}
         </nav>
 
-        <main id="cri-main" className="min-w-0 pt-4">
+        <main id="cri-main" className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
               <Panel />
@@ -153,7 +149,17 @@ export default function CRILensPage() {
           </AnimatePresence>
         </main>
 
-        <CrossLensRecentsPanel lensId="cri" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel lensId="cri" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button
+          type="button"
+          onClick={() => setActive('crisis')}
+          title="Assess a crisis (C)"
+          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        >
+          <Siren className="h-4 w-4" />
+          Assess a crisis
+        </button>
       </div>
     </LensShell>
   );

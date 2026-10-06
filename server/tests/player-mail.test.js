@@ -77,16 +77,19 @@ function memDb() {
     }
     // The real lib stamps an escrow marker into the `data` JSON column at send.
     if (n.startsWith("UPDATE dtus SET data = json_set")) {
-      const [dtuId] = args;
+      const [dtuId, owner] = args;
       const d = t.dtus.get(dtuId);
-      if (d) { d.mail_escrow = 1; return { changes: 1 }; }
+      if (d && d.creator_id === owner) { d.mail_escrow = 1; return { changes: 1 }; }
       return { changes: 0 };
     }
-    // …and transfers ownership via `creator_id` (+ clears the marker) at claim.
+    // …and transfers ownership via `creator_id` (+ clears the marker) at claim,
+    // only when the row is still the sender's and still escrowed.
     if (n.startsWith("UPDATE dtus SET creator_id")) {
-      const [newOwner, dtuId] = args;
+      const [newOwner, dtuId, expectedOwner] = args;
       const d = t.dtus.get(dtuId);
-      if (d) { d.creator_id = newOwner; delete d.mail_escrow; return { changes: 1 }; }
+      if (d && d.mail_escrow === 1 && d.creator_id === expectedOwner) {
+        d.creator_id = newOwner; delete d.mail_escrow; return { changes: 1 };
+      }
       return { changes: 0 };
     }
     return { changes: 0 };
@@ -112,10 +115,10 @@ function memDb() {
     return [];
   }
   function _renameForInbox(m) {
-    return { id: m.id, fromUser: m.from_user_id, worldId: m.world_id, subject: m.subject, body: m.body, status: m.status, sentAt: m.sent_at, readAt: m.read_at, claimedAt: m.claimed_at, expiresAt: m.expires_at, attachment_dtu_ids: m.attachment_dtu_ids, attachmentCc: m.attachment_cc, codCc: m.cod_cc };
+    return { id: m.id, fromUser: m.from_user_id, toUser: m.to_user_id, worldId: m.world_id, subject: m.subject, body: m.body, status: m.status, sentAt: m.sent_at, readAt: m.read_at, claimedAt: m.claimed_at, expiresAt: m.expires_at, attachment_dtu_ids: m.attachment_dtu_ids, attachmentCc: m.attachment_cc, codCc: m.cod_cc };
   }
   function _renameForSent(m) {
-    return { id: m.id, toUser: m.to_user_id, worldId: m.world_id, subject: m.subject, body: m.body, status: m.status, sentAt: m.sent_at, readAt: m.read_at, claimedAt: m.claimed_at, expiresAt: m.expires_at, attachment_dtu_ids: m.attachment_dtu_ids, attachmentCc: m.attachment_cc, codCc: m.cod_cc };
+    return { id: m.id, fromUser: m.from_user_id, toUser: m.to_user_id, worldId: m.world_id, subject: m.subject, body: m.body, status: m.status, sentAt: m.sent_at, readAt: m.read_at, claimedAt: m.claimed_at, expiresAt: m.expires_at, attachment_dtu_ids: m.attachment_dtu_ids, attachmentCc: m.attachment_cc, codCc: m.cod_cc };
   }
   function _get(sql, args) {
     const n = _trim(sql);
@@ -130,6 +133,14 @@ function memDb() {
     if (n.startsWith("SELECT to_user_id, status FROM player_mail")) {
       const m = t.mail.get(args[0]);
       return m ? { to_user_id: m.to_user_id, status: m.status } : null;
+    }
+    if (n.startsWith("SELECT id FROM dtus WHERE id = ? AND creator_id = ?")) {
+      const d = t.dtus.get(args[0]);
+      return d && d.creator_id === args[1] ? { id: d.id } : null;
+    }
+    if (n.startsWith("SELECT creator_id")) {
+      const d = t.dtus.get(args[0]);
+      return d ? { creator_id: d.creator_id, escrow: d.mail_escrow ?? null } : null;
     }
     return null;
   }
@@ -219,8 +230,32 @@ describe("Phase U1 — player mail", () => {
     const r = claimAttachments(db, id, "u2");
     assert.equal(r.ok, true);
     assert.deepEqual(r.attachments.dtuIds, ["dtu1"]);
+    assert.deepEqual(r.attachments.transferred, ["dtu1"]);
+    assert.deepEqual(r.attachments.skipped, []);
     assert.equal(db._t.dtus.get("dtu1").creator_id, "u2");  // ownership moved
     assert.equal(db._t.dtus.get("dtu1").mail_escrow, undefined);  // marker cleared
+  });
+
+  it("sendMail refuses a DTU the sender does not own and writes nothing", () => {
+    db._seedDtu("theirs", "u9");
+    const r = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Gift", attachmentDtuIds: ["theirs"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "dtu_not_owned");
+    assert.deepEqual(r.dtuIds, ["theirs"]);
+    assert.equal(db._t.mail.size, 0);
+    assert.equal(db._t.dtus.get("theirs").creator_id, "u9");
+    assert.equal(db._t.dtus.get("theirs").mail_escrow, undefined);
+  });
+
+  it("claim does not take a DTU the sender never escrowed", () => {
+    db._seedDtu("theirs", "u9");
+    const { id } = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Hi" });
+    db._t.mail.get(id).attachment_dtu_ids = JSON.stringify(["theirs"]);
+    const r = claimAttachments(db, id, "u2");
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.attachments.transferred, []);
+    assert.deepEqual(r.attachments.skipped, ["theirs"]);
+    assert.equal(db._t.dtus.get("theirs").creator_id, "u9");
   });
 
   it("claim is idempotent — re-claim returns alreadyClaimed", () => {

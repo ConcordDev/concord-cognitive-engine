@@ -13,8 +13,7 @@ export function RefundsPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ orderId: '', amount: '', reason: 'customer_request', restock: true });
-
-  useEffect(() => { refresh(); }, []);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -29,6 +28,8 @@ export function RefundsPanel() {
     finally { setLoading(false); }
   }
 
+  useEffect(() => { void Promise.resolve().then(refresh); }, []);
+
   async function create() {
     if (!form.orderId || !form.amount) return;
     try {
@@ -36,7 +37,8 @@ export function RefundsPanel() {
         domain: 'retail', action: 'refunds-create',
         input: { orderId: form.orderId, amount: Number(form.amount), reason: form.reason, restock: form.restock },
       });
-      if (res.data?.ok === false) { alert(res.data?.error); return; }
+      if (res.data?.ok === false) { setError(res.data?.error || 'Refund failed.'); return; }
+      setError(null);
       setForm({ orderId: '', amount: '', reason: 'customer_request', restock: true });
       await refresh();
     } catch (e) { console.error('[Refunds] create failed', e); }
@@ -68,6 +70,7 @@ export function RefundsPanel() {
           <input type="checkbox" checked={form.restock} onChange={e => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
           Restock inventory
         </label>
+        {error && <p role="alert" className="col-span-5 text-[11px] text-rose-400">{error}</p>}
       </div>
 
       <div className="max-h-80 overflow-y-auto">

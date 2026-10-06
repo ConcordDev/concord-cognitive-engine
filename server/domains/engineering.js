@@ -234,6 +234,8 @@ function engState() {
   if (!(s.assemblies instanceof Map)) s.assemblies = new Map(); // userId -> Array<asm>
   if (!(s.loadCases instanceof Map)) s.loadCases = new Map(); // userId -> Array<lc>
   if (!(s.jobs instanceof Map)) s.jobs = new Map(); // userId -> Array<job>
+  if (!(s.models instanceof Map)) s.models = new Map(); // userId -> working FEA model
+  if (!(s.workspaces instanceof Map)) s.workspaces = new Map(); // userId -> { [panelKey]: { state, updatedAt } }
   return s;
 }
 function persist() {
@@ -645,6 +647,120 @@ export default function registerEngineeringActions(registerLensAction) {
           boundingBox: { x: round(bbox[0]), y: round(bbox[1]), z: round(bbox[2]) },
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── model-get / model-save — the user's in-progress FEA frame model ─────
+  // The Model / Loads tabs used to keep nodes, members, supports and loads
+  // only in React state, so a refresh threw the user's model away. The lens
+  // now saves it here (per user, persisted with the rest of engineeringLens)
+  // and reloads it on open.
+  const MODEL_LIMITS = { nodes: 500, members: 1000, loads: 1000, supports: 500 };
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  function cleanModel(raw) {
+    const m = raw && typeof raw === 'object' ? raw : {};
+    const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
+    const DOF = ['x', 'y', 'z', 'rx', 'ry', 'rz'];
+    return {
+      nodes: arr(m.nodes, MODEL_LIMITS.nodes).map((n) => ({
+        id: egClean(n?.id, 40), x: num(n?.x), y: num(n?.y), z: num(n?.z),
+      })),
+      members: arr(m.members, MODEL_LIMITS.members).map((x) => ({
+        id: egClean(x?.id, 40), nodeI: egClean(x?.nodeI, 40), nodeJ: egClean(x?.nodeJ, 40),
+        area: num(x?.area), momentI: num(x?.momentI), elasticModulus: num(x?.elasticModulus),
+        allowableStress: num(x?.allowableStress), material: egClean(x?.material, 60),
+      })),
+      loads: arr(m.loads, MODEL_LIMITS.loads).map((l) => {
+        const out = { nodeId: egClean(l?.nodeId, 40) };
+        for (const k of ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']) if (l?.[k] != null && l[k] !== '') out[k] = num(l[k]);
+        return out;
+      }),
+      supports: arr(m.supports, MODEL_LIMITS.supports).map((sp) => ({
+        nodeId: egClean(sp?.nodeId, 40),
+        type: sp?.type === 'pinned' || sp?.type === 'roller' ? sp.type : 'fixed',
+        fixedDOF: Array.isArray(sp?.fixedDOF) ? sp.fixedDOF.filter((d) => DOF.includes(d)) : DOF,
+      })),
+    };
+  }
+
+  registerLensAction('engineering', 'model-get', (ctx) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: true, result: { model: null } };
+      const saved = s.models.get(egActor(ctx)) || null;
+      return { ok: true, result: { model: saved ? saved.model : null, updatedAt: saved?.updatedAt || null } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'model-save', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const raw = params?.model ?? artifact?.data?.model;
+      if (!raw || typeof raw !== 'object') return { ok: false, error: 'model required' };
+      const model = cleanModel(raw);
+      const updatedAt = new Date().toISOString();
+      s.models.set(egActor(ctx), { model, updatedAt });
+      persist();
+      return {
+        ok: true,
+        result: {
+          updatedAt,
+          counts: { nodes: model.nodes.length, members: model.members.length, loads: model.loads.length, supports: model.supports.length },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── workspace-get / workspace-save — Calcs / Multi-physics / Actions ────
+  // Those tabs kept their inputs and last results in React state only, so a
+  // reload lost the user's work. Each panel now saves one JSON blob per user
+  // under a fixed key. Results stored here are the solver's own output from
+  // when the user ran it; the panels show the time they were computed.
+  const WORKSPACE_KEYS = new Set([
+    'calcs.structural', 'calcs.thermal', 'calcs.electrical', 'calcs.hydraulic',
+    'physics', 'bench',
+  ]);
+  const WORKSPACE_MAX_BYTES = 64 * 1024;
+
+  registerLensAction('engineering', 'workspace-get', (ctx, artifact, params) => {
+    try {
+      const key = String(params?.key ?? '');
+      if (!WORKSPACE_KEYS.has(key)) return { ok: false, error: `unknown workspace key: ${key || '(none)'}` };
+      const s = engState();
+      if (!s) return { ok: true, result: { state: null, updatedAt: null } };
+      const mine = s.workspaces.get(egActor(ctx)) || {};
+      const entry = mine[key] || null;
+      return { ok: true, result: { state: entry ? entry.state : null, updatedAt: entry?.updatedAt || null } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'workspace-save', (ctx, artifact, params) => {
+    try {
+      const key = String(params?.key ?? '');
+      if (!WORKSPACE_KEYS.has(key)) return { ok: false, error: `unknown workspace key: ${key || '(none)'}` };
+      const raw = params?.state;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'state object required' };
+      let json;
+      try { json = JSON.stringify(raw); } catch { return { ok: false, error: 'state is not serializable' }; }
+      if (json.length > WORKSPACE_MAX_BYTES) return { ok: false, error: `state too large (${json.length} bytes, max ${WORKSPACE_MAX_BYTES})` };
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const userId = egActor(ctx);
+      const mine = s.workspaces.get(userId) || {};
+      const updatedAt = new Date().toISOString();
+      mine[key] = { state: JSON.parse(json), updatedAt };
+      s.workspaces.set(userId, mine);
+      persist();
+      return { ok: true, result: { key, updatedAt, bytes: json.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

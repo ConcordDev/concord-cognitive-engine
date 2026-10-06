@@ -7,7 +7,6 @@ import {
   Sparkles, Clock, TrendingUp, Package, Ruler, Wrench,
 } from 'lucide-react';
 import {
-  SEED_SNAP_TEMPLATES,
   SNAP_BUILD_CATEGORIES,
   type SnapBuildTemplate,
   type SnapBuildCategory,
@@ -386,7 +385,9 @@ export default function SnapBuildCatalog({
 
   /* ── Derived data ─────────────────────────────────────────── */
 
-  const templates = SEED_SNAP_TEMPLATES;
+  // No seeded catalog: no persisted snap-build template store exists yet,
+  // so there is nothing real to list (see snap-build-templates.ts).
+  const templates = useMemo<SnapBuildTemplate[]>(() => [], []);
 
   const featuredTemplates = useMemo(
     () => templates.filter(t => t.featured),
@@ -619,8 +620,17 @@ export default function SnapBuildCatalog({
         {filtered.length === 0 && (
           <div className="col-span-2 py-8 text-center">
             <Package className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-            <p className="text-[10px] text-gray-400">No templates found in this category</p>
-            <p className="text-[9px] text-gray-700 mt-0.5">Try adjusting your filters or search</p>
+            {totalCount === 0 ? (
+              <div data-testid="snap-build-not-supported" role="note">
+                <p className="text-[10px] text-gray-300">No snap-build templates yet.</p>
+                <p className="text-[9px] text-amber-300 mt-0.5">Publishing and sharing snap-build templates is not supported yet.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] text-gray-400">No templates found in this category</p>
+                <p className="text-[9px] text-gray-700 mt-0.5">Try adjusting your filters or search</p>
+              </>
+            )}
           </div>
         )}
         {filtered.map(template => (

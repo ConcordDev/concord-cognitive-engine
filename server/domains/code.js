@@ -1189,8 +1189,12 @@ Rules:
   function getWorkspaceState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.codeWorkspace) {
-      STATE.codeWorkspace = {
+    // STATE.codeLens (snapshotted via LENS_STATE_KEYS). The field was
+    // originally `STATE.codeWorkspace`, but that key was never in the
+    // snapshot, so a restart wiped every project while the editor still
+    // showed it. Migrate any old `codeWorkspace` into `codeLens` on read.
+    if (!STATE.codeLens) {
+      STATE.codeLens = STATE.codeWorkspace || {
         projects: new Map(),   // userId -> Array<Project>
         files: new Map(),      // userId -> Map<projectId, Map<path, FileBlob>>
         agentTasks: new Map(), // userId -> Array<AgentTask>
@@ -1198,9 +1202,10 @@ Rules:
         chatThreads: new Map(),// userId -> Array<ChatThread>
         seq: new Map(),        // userId -> { proj, task, thread }
       };
+      delete STATE.codeWorkspace;
     }
     // Append-only backfill for buckets added after first deploy.
-    const ws = STATE.codeWorkspace;
+    const ws = STATE.codeLens;
     for (const k of ["runConfigs", "bookmarks"]) {
       if (!(ws[k] instanceof Map)) ws[k] = new Map(); // userId -> Map<projectId, Array>
     }
@@ -1231,6 +1236,13 @@ Rules:
       for (const b of git.branches) git.branchHeads[b] = git.head;
     }
     if (!Array.isArray(git.stashes)) git.stashes = [];
+    // Repair staged/modified if a snapshot round-trip left them as arrays
+    // or plain objects instead of Sets. The lens-state-persistence helper
+    // deserializes `{__type:"Set"}` back to Set, but older snapshots or
+    // code paths that wrote arrays directly would leave `git.modified.add`
+    // undefined — which crashed the SourceControl panel on every restart.
+    if (!(git.staged instanceof Set)) git.staged = new Set(Array.isArray(git.staged) ? git.staged : []);
+    if (!(git.modified instanceof Set)) git.modified = new Set(Array.isArray(git.modified) ? git.modified : []);
     return git;
   }
   // Full file-content snapshot of a project, used as a commit tree.

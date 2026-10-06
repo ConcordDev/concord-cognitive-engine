@@ -186,8 +186,8 @@ function IcalImport() {
 }
 
 function IcalExport() {
-  const [title, setTitle] = useState('My Concord export');
-  const [eventsJson, setEventsJson] = useState('[{"summary":"Demo event","start":"2026-06-01T15:00:00Z","end":"2026-06-01T16:00:00Z"}]');
+  const [title, setTitle] = useState('');
+  const [eventsJson, setEventsJson] = useState('');
   const [ics, setIcs] = useState<string | null>(null);
 
   const exp = useMutation({

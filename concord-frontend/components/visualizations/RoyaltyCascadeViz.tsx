@@ -21,22 +21,6 @@ export interface RoyaltyCascadeVizProps {
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Demo data
-// ---------------------------------------------------------------------------
-
-const DEMO_CITATIONS: Citation[] = [
-  { from: 'dtu-origin-001', to: 'dtu-derive-A', amount: 120, timestamp: new Date(Date.now() - 86400000 * 5).toISOString() },
-  { from: 'dtu-origin-001', to: 'dtu-derive-B', amount: 85, timestamp: new Date(Date.now() - 86400000 * 4).toISOString() },
-  { from: 'dtu-derive-A', to: 'dtu-child-A1', amount: 45, timestamp: new Date(Date.now() - 86400000 * 3).toISOString() },
-  { from: 'dtu-derive-A', to: 'dtu-child-A2', amount: 30, timestamp: new Date(Date.now() - 86400000 * 2.5).toISOString() },
-  { from: 'dtu-derive-B', to: 'dtu-child-B1', amount: 60, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
-  { from: 'dtu-child-A1', to: 'dtu-grand-X', amount: 20, timestamp: new Date(Date.now() - 86400000 * 1.5).toISOString() },
-  { from: 'dtu-child-B1', to: 'dtu-grand-X', amount: 35, timestamp: new Date(Date.now() - 86400000 * 1).toISOString() },
-  { from: 'dtu-grand-X', to: 'dtu-hyper-Z', amount: 15, timestamp: new Date(Date.now() - 86400000 * 0.5).toISOString() },
-  { from: 'dtu-origin-002', to: 'dtu-derive-B', amount: 40, timestamp: new Date(Date.now() - 86400000 * 3.5).toISOString() },
-  { from: 'dtu-child-A2', to: 'dtu-grand-Y', amount: 18, timestamp: new Date(Date.now() - 86400000 * 1.2).toISOString() },
-];
 
 interface LayoutNode {
   id: string;
@@ -170,7 +154,7 @@ function layoutGraph(citations: Citation[]): { nodes: LayoutNode[]; edges: Layou
 // ---------------------------------------------------------------------------
 
 export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDtuId, className }: RoyaltyCascadeVizProps) {
-  const citations = citationsProp && citationsProp.length > 0 ? citationsProp : DEMO_CITATIONS;
+  const citations = citationsProp ?? [];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);

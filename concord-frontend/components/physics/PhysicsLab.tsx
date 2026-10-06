@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { PhysicsKeepMenu } from './PhysicsKeepMenu';
 import {
   Plus, Trash2, Save, Play, FolderOpen, Share2, Download,
   Ruler, Loader2, GraduationCap, SlidersHorizontal, Move, Box as BoxIcon,
@@ -1083,6 +1084,18 @@ export function PhysicsLab() {
               </button>
             </div>
           </div>
+
+          {/* Keep this scene as a DTU */}
+          <PhysicsKeepMenu facts={{
+            scene: scene.id ? {
+              id: scene.id,
+              name: scene.name,
+              bodies: scene.bodies.map((b) => ({ id: b.id, mass: b.mass, kind: b.type })),
+              constraints: scene.constraints.map((c) => ({ id: c.id, kind: c.type })),
+              fluids: scene.fluids.map((f) => ({ id: f.id, density: f.density })),
+            } : null,
+            summary: scene.id ? savedScenes.find((s) => s.id === scene.id) ?? null : null,
+          }} />
 
           {/* Curriculum */}
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">

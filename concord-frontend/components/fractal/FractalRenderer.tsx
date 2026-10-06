@@ -503,6 +503,17 @@ export function FractalRenderer() {
     await loadRenders();
   };
 
+  const exportRef = useRef(exportImage);
+  useEffect(() => { exportRef.current = exportImage; });
+  useEffect(() => {
+    const onExport = () => { void exportRef.current(); };
+    window.addEventListener('concord:fractal-export', onExport);
+    return () => window.removeEventListener('concord:fractal-export', onExport);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('concord:fractal-export-state', { detail: { busy: busy === 'export' } }));
+  }, [busy]);
+
   // --- deep-zoom path animation (wires fractal.zoomPath) --------------------
   const animateZoom = async () => {
     setBusy('zoom');

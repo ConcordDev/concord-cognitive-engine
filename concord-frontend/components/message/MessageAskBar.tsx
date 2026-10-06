@@ -6,8 +6,6 @@ import { lensRun } from '@/lib/api/client';
 
 interface Hit { id: string; channelName: string; channelId: string; senderName: string; body: string; ts: string }
 
-const SAMPLES = ['deploy plan', 'launch date', 'design review', 'this week'];
-
 export function MessageAskBar({ onOpenChannel }: { onOpenChannel: (channelId: string) => void }) {
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[] | null>(null);
@@ -39,13 +37,6 @@ export function MessageAskBar({ onOpenChannel }: { onOpenChannel: (channelId: st
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {SAMPLES.map(s => (
-            <button key={s} type="button" onClick={() => { setQ(s); search(s); }} className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 whitespace-nowrap">
-              {s}
-            </button>
-          ))}
         </div>
       </form>
       {hits && (

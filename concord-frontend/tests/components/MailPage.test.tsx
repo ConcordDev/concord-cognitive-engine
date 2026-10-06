@@ -42,7 +42,7 @@ vi.mock('@/lib/realtime/socket', () => {
   };
 });
 
-import MailLensPage from '@/app/lenses/mail/page';
+import { ConcordMailbox } from '@/components/mail/client/MailClient';
 import * as socketMock from '@/lib/realtime/socket';
 
 const emitSocket = (event: string, data?: unknown) =>
@@ -87,7 +87,7 @@ describe('Mail lens page — four UX states', () => {
     // carrying its own sr-only role=status span — not a single "Loading
     // mail" message — so assert on the (plural) busy indicators instead.
     fetchMock.mockImplementation(() => new Promise(() => {}));
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
     const statuses = await screen.findAllByRole('status');
     expect(statuses.length).toBeGreaterThan(0);
     for (const status of statuses) {
@@ -100,7 +100,7 @@ describe('Mail lens page — four UX states', () => {
       if (url.includes('/inbox') || url.includes('/sent')) return jsonResponse({ ok: true, mail: [] });
       return jsonResponse({ ok: true });
     });
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
     await waitFor(() => {
       expect(screen.getByText(/no mail yet/i)).toBeInTheDocument();
     });
@@ -121,7 +121,7 @@ describe('Mail lens page — four UX states', () => {
       }
       return jsonResponse({ ok: true, mail: [] });
     });
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/mail service down/i);
@@ -142,7 +142,7 @@ describe('Mail lens page — four UX states', () => {
       if (url.includes('/sent')) return jsonResponse({ ok: true, mail: [] });
       return jsonResponse({ ok: true });
     });
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
 
     await waitFor(() => {
       expect(screen.getByText('Welcome to Concord')).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe('Mail lens page — four UX states', () => {
       if (url.includes('/inbox') || url.includes('/sent')) return jsonResponse({ ok: true, mail: [] });
       return jsonResponse({ ok: true });
     });
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
     await waitFor(() => expect(screen.getByText(/no mail yet/i)).toBeInTheDocument());
 
     const callsAfterMount = fetchMock.mock.calls.length;
@@ -183,7 +183,7 @@ describe('Mail lens page — four UX states', () => {
       },
     });
 
-    render(<MailLensPage />);
+    render(<ConcordMailbox />);
     await waitFor(() => expect(screen.getByRole('tab', { name: /compose/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('tab', { name: /compose/i }));
 

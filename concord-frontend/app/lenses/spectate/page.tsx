@@ -17,9 +17,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Eye, Users, Sparkles, AlertTriangle, Loader2, TrendingUp, History } from 'lucide-react';
+import { Eye, Users, Sparkles, AlertTriangle, Loader2, TrendingUp, History, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 const AUTHORED_WORLDS: Record<string, { name: string; desc: string }> = {
   'concordia-hub':         { name: 'Concordia Hub',     desc: 'The walled city of the four-faction Compact.' },
@@ -60,12 +64,21 @@ interface Position {
 }
 
 type LoadState = 'loading' | 'error' | 'ready';
+type SpectateView = 'worlds' | 'positions';
+
+const VIEWS: { id: SpectateView; label: string; keys: string; title: string; hint: string; icon: typeof Eye }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', title: 'What is happening right now', hint: 'Live spectacles and open prediction markets', icon: Eye },
+  { id: 'positions', label: 'My positions', keys: '2', title: 'Your SPARKS on the line', hint: 'Open and resolved prediction wagers', icon: History },
+];
 
 export default function SpectateIndexPage() {
   const [spectacles, setSpectacles] = useState<Spectacle[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<SpectateView>('worlds');
 
   const refresh = useCallback(async (isInitial: boolean) => {
     if (isInitial) setState('loading');
@@ -110,7 +123,7 @@ export default function SpectateIndexPage() {
 
   useEffect(() => {
     let cancelled = false;
-    refresh(true);
+    void Promise.resolve().then(() => { if (!cancelled) return refresh(true); });
     const id = setInterval(() => { if (!cancelled) refresh(false); }, 10_000);
     return () => { cancelled = true; clearInterval(id); };
   }, [refresh]);
@@ -132,7 +145,7 @@ export default function SpectateIndexPage() {
 
   useEffect(() => {
     let cancelled = false;
-    refreshPositions();
+    void Promise.resolve().then(() => { if (!cancelled) return refreshPositions(); });
     const id = setInterval(() => { if (!cancelled) refreshPositions(); }, 15_000);
     return () => { cancelled = true; clearInterval(id); };
   }, [refreshPositions]);
@@ -146,66 +159,86 @@ export default function SpectateIndexPage() {
 
   const liveCount = ordered.filter((s) => s.live).length;
 
-  return (
-    <LensShell lensId="spectate" asMain={false}>      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
-        <header className="border-b border-fuchsia-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-            <div className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 p-2">
-              <Eye className="h-5 w-5 text-fuchsia-400" aria-hidden="true" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Spectate any world</h1>
-              <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-                Live faction wars, PvP tournaments, election nights — read-only. No interaction, just watch.
-              </p>
-            </div>
-            {state === 'ready' && (
-              <span
-                className="rounded-full bg-fuchsia-500/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300"
-                aria-label={`${liveCount} live spectacles`}
-              >
-                {liveCount} live
-              </span>
-            )}
-          </div>
-        </header>
+  useLensCommand(
+    VIEWS.map((v) => ({
+      id: `spectate-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
+    { lensId: 'spectate' },
+  );
 
+  const current = VIEWS.find((v) => v.id === view)!;
+
+  return (
+    <LensShell lensId="spectate" asMain={false}>
+      <NorthStarFrame
+        lensId="spectate"
+        crumb="Spectate"
+        title={`${current.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
+        subtitle="Live faction wars, PvP tournaments and election nights, read-only. Watch any world and follow its prediction markets."
+        actions={
+          state === 'ready' ? (
+            <span
+              className="rounded-full bg-fuchsia-500/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300"
+              aria-label={`${liveCount} live spectacles`}
+            >
+              {liveCount} live
+            </span>
+          ) : undefined
+        }
+        tabs={VIEWS.map((v) => ({
+          id: v.id,
+          label: v.id === 'positions' && positions.length > 0 ? `${v.label} (${positions.length})` : v.label,
+          icon: v.icon,
+          keys: v.keys,
+          hint: v.hint,
+        }))}
+        activeTab={view}
+        onTab={(id) => setView(id as SpectateView)}
+        tabsLabel="Spectate views"
+        cta={{ label: 'Refresh spectacles', icon: RefreshCw, onClick: () => { void refresh(false); void refreshPositions(); }, title: 'Re-poll live spectacles and your positions' }}
+      >
         <section
-          className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5"
           aria-live="polite"
           aria-busy={state === 'loading'}
         >
-          {/* ── My positions (spectate.my_positions) ───────────────────
-              Only rendered when the caller has real wager history — an
-              anonymous visitor or a signed-in user with no bets sees no
-              placeholder at all, per the honest-empty-state rule. */}
-          {positions.length > 0 && (
-            <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-              <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-amber-300">
-                <History className="h-3.5 w-3.5" aria-hidden="true" /> My positions
-              </h2>
-              <ul className="space-y-1.5">
-                {positions.slice(0, 6).map((p) => {
-                  const won = p.status === 'resolved' && p.resolved_outcome === p.side;
-                  const lost = p.status === 'resolved' && p.resolved_outcome !== null && p.resolved_outcome !== p.side;
-                  return (
-                    <li key={p.id} className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="min-w-0 flex-1 truncate text-amber-100">{p.question}</span>
-                      <span className={`shrink-0 rounded-full px-1.5 py-0.5 font-medium ${p.side === 'yes' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                        {p.side.toUpperCase()} · {p.stake_sparks.toLocaleString()}
-                      </span>
-                      <span className={`shrink-0 text-[10px] ${won ? 'text-emerald-300/80' : lost ? 'text-rose-300/70' : 'text-amber-300/60'}`}>
-                        {p.status === 'open' ? 'open' : won ? `+${(p.payout_sparks ?? 0).toLocaleString()}` : lost ? 'lost' : 'resolved'}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+          {view === 'positions' && (
+            positions.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-6 text-center text-sm text-zinc-400">
+                <p className="font-semibold text-zinc-200">No positions yet.</p>
+                <p className="mt-1">Open a world with a live prediction market and back YES or NO with SPARKS; your wagers appear here once placed (sign in required).</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                  <History className="h-4 w-4 text-amber-300" aria-hidden="true" /> Wager history
+                </h2>
+                <ul className="space-y-2">
+                  {positions.map((p) => {
+                    const won = p.status === 'resolved' && p.resolved_outcome === p.side;
+                    const lost = p.status === 'resolved' && p.resolved_outcome !== null && p.resolved_outcome !== p.side;
+                    return (
+                      <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-[12px]">
+                        <span className="min-w-0 flex-1 truncate text-zinc-200">{p.question}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${p.side === 'yes' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                          {p.side.toUpperCase()} · {p.stake_sparks.toLocaleString()}
+                        </span>
+                        <span className={`shrink-0 text-[11px] ${won ? 'text-emerald-300/80' : lost ? 'text-rose-300/70' : 'text-amber-300/70'}`}>
+                          {p.status === 'open' ? 'open' : won ? `+${(p.payout_sparks ?? 0).toLocaleString()}` : lost ? 'lost' : 'resolved'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )
           )}
 
           {/* ── Loading ─────────────────────────────────────────────── */}
-          {state === 'loading' && (
+          {view === 'worlds' && state === 'loading' && (
             <div
               role="status"
               className="flex flex-col items-center justify-center gap-3 py-24 text-fuchsia-300/70"
@@ -216,7 +249,7 @@ export default function SpectateIndexPage() {
           )}
 
           {/* ── Error ───────────────────────────────────────────────── */}
-          {state === 'error' && (
+          {view === 'worlds' && state === 'error' && (
             <div
               role="alert"
               className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-12 text-center"
@@ -235,7 +268,7 @@ export default function SpectateIndexPage() {
           )}
 
           {/* ── Empty ───────────────────────────────────────────────── */}
-          {state === 'ready' && ordered.length === 0 && (
+          {view === 'worlds' && state === 'ready' && ordered.length === 0 && (
             <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 px-6 py-12 text-center">
               <Sparkles className="h-7 w-7 text-fuchsia-400/70" aria-hidden="true" />
               <p className="text-sm font-medium text-fuchsia-100">No spectacles yet</p>
@@ -246,7 +279,7 @@ export default function SpectateIndexPage() {
           )}
 
           {/* ── Populated ───────────────────────────────────────────── */}
-          {state === 'ready' && ordered.length > 0 && (
+          {view === 'worlds' && state === 'ready' && ordered.length > 0 && (
             <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
               {ordered.map((s) => {
                 const meta = AUTHORED_WORLDS[s.worldId];
@@ -256,7 +289,7 @@ export default function SpectateIndexPage() {
                   <li key={s.worldId}>
                     <Link
                       href={`/lenses/spectate/${s.worldId}`}
-                      className="group flex h-full flex-col rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-4 transition hover:bg-fuchsia-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"
+                      className="group flex h-full flex-col rounded-2xl border border-white/10 bg-[#111] p-4 transition hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"
                       aria-label={`Watch ${name} — ${s.watching} watching, ${s.openMarketCount} open markets`}
                     >
                       <div className="mb-2 flex items-start justify-between gap-2">
@@ -286,7 +319,7 @@ export default function SpectateIndexPage() {
             </ul>
           )}
         </section>
-      </main>
+      </NorthStarFrame>
     </LensShell>
   );
 }

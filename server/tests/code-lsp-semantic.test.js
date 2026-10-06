@@ -22,6 +22,7 @@ import tsLang from "../lib/ts-language-service.js";
 const ACTIONS = new Map();
 before(() => {
   globalThis._concordSTATE = globalThis._concordSTATE || {};
+  delete globalThis._concordSTATE.codeLens;
   delete globalThis._concordSTATE.codeWorkspace;
   registerCodeActions((domain, name, fn) => ACTIONS.set(`${domain}.${name}`, fn));
 });

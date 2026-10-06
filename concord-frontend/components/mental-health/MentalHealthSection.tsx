@@ -88,7 +88,7 @@ export function MentalHealthSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-sky-600/15 to-transparent">
         <Sparkles className="w-5 h-5 text-sky-400" />
         <h2 className="text-sm font-bold text-zinc-100">Mindfulness</h2>
-        <span className="text-[11px] text-zinc-400">Calm + Headspace shape · not medical advice</span>
+        <span className="text-[11px] text-zinc-400">Not medical advice</span>
       </header>
 
       {loading ? (

@@ -1,45 +1,47 @@
 # UX Polish Audit
 
-Generated: 2026-07-09T11:45:28.422Z
+Generated: 2026-09-30T05:55:55.200Z
 
 Mode: **default**
 
-Lenses scanned: 260
+Lenses scanned: 267
 
 
 ## Tier distribution
 
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
-| raw | 0 | 0.0% | 0.2 |
-| functional | 0 | 0.0% | 0.6 |
-| polished | 260 | 100.0% | 1 |
+| raw | 1 | 0.4% | 0.2 |
+| functional | 3 | 1.1% | 0.6 |
+| polished | 263 | 98.5% | 1 |
 
-**Weighted UX polish score: 1** (1.0 = all polished)
+**Weighted UX polish score: 0.993** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 260 | 100.0% |
-| emptyState | 259 | 99.6% |
-| errorUI | 260 | 100.0% |
-| aria | 258 | 99.2% |
-| keyboardHandlers | 172 | 66.2% |
-| nativeButtons | 260 | 100.0% |
-| responsive | 258 | 99.2% |
-| animation | 260 | 100.0% |
-| toasts | 63 | 24.2% |
-| altOnImages | 260 | 100.0% |
+| loading | 266 | 99.6% |
+| emptyState | 266 | 99.6% |
+| errorUI | 265 | 99.3% |
+| aria | 264 | 98.9% |
+| keyboardHandlers | 171 | 64.0% |
+| nativeButtons | 267 | 100.0% |
+| responsive | 264 | 98.9% |
+| animation | 267 | 100.0% |
+| toasts | 54 | 20.2% |
+| altOnImages | 267 | 100.0% |
 
 ## Anti-patterns
 
-- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **0** (total instances: 0)
+- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **3** (total instances: 4)
 - Lenses with inline hex colours (bypassing design tokens): **0** (total instances: 0)
 
 ## Raw-tier lenses (need work)
 
-_None — every lens has at least 3 of 5 structural pillars._
+| Lens | Pillars | Missing | Files |
+|---|---:|---|---:|
+| `strategic-adds` | 1/5 | loading, empty, error, responsive | 1 |
 
 ## Functional-tier lenses (one pillar away from polished)
 
@@ -47,6 +49,9 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 
 | Lens | Pillars | Missing | Anti-patterns |
 |---|---:|---|---:|
+| `aviation` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
+| `chat` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
+| `world` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
 
 ## What this audit does NOT measure
 

@@ -14,7 +14,7 @@ export type Privacy = 'public' | 'private' | 'invite-only';
 // hasn't been assigned a project role. It is not a fabricated skill/role
 // claim, just an accurate "connected, role unspecified" label.
 export type ParticipantRole = 'host' | 'developer' | 'designer' | 'reviewer' | 'creator' | 'writer' | 'participant';
-export type MainTab = 'active' | 'mine' | 'invitations' | 'history';
+export type MainTab = 'active' | 'mine' | 'invitations' | 'history' | 'workspace' | 'facilitator';
 export type FilterPill = 'all' | ProjectType;
 
 export interface Participant {

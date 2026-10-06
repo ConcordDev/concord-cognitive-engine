@@ -36,6 +36,7 @@ vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/components/expedition-journal/BaseCampAlmanac', () => ({ BaseCampAlmanac: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -169,12 +170,12 @@ describe('expedition-journal lens — four UX states + a11y', () => {
       return reply({});
     });
     const { container, getByRole } = render(<ExpeditionJournalPage />);
-    await waitFor(() => expect(getByRole('tablist', { name: /Expedition journal views/i })).toBeInTheDocument());
+    await waitFor(() => expect(getByRole('tablist', { name: /Canon worlds/i })).toBeInTheDocument());
     const tabs = container.querySelectorAll('[role="tab"]');
-    expect(tabs.length).toBeGreaterThanOrEqual(4); // 2 view tabs + ≥2 world tabs
-    // exactly one selected view tab
-    const selectedViews = Array.from(container.querySelectorAll('[role="tablist"][aria-label="Expedition journal views"] [role="tab"][aria-selected="true"]'));
-    expect(selectedViews.length).toBe(1);
+    expect(tabs.length).toBeGreaterThanOrEqual(2); // ≥2 world tabs
+    // exactly one current view button in the frame nav
+    const currentViews = Array.from(container.querySelectorAll('nav[aria-label="Expedition journal views"] [aria-current="page"]'));
+    expect(currentViews.length).toBe(1);
   });
 
   it('SUMMARY tab toggles to the cross-world rollup', async () => {
@@ -187,7 +188,7 @@ describe('expedition-journal lens — four UX states + a11y', () => {
     });
     const { getByRole } = render(<ExpeditionJournalPage />);
     await waitFor(() => expect(getByRole('tab', { name: /Cyber/i })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(getByRole('tab', { name: /Cross-world summary/i })); });
+    await act(async () => { fireEvent.click(getByRole('button', { name: /Cross-world summary/i })); });
     // ExpeditionSummary mounts with real summary data — it requests the summary macro
     expect(lensRun.mock.calls.some((c) => c[1] === 'summary')).toBe(true);
   });

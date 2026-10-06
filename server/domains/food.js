@@ -1727,6 +1727,29 @@ export default function registerFoodActions(registerLensAction) {
   });
 
   /**
+   * recipe-delete — remove one of the caller's own recipes. Scoped to the
+   * caller's library (another user's id is simply "not found"). The recipe's
+   * photos and ratings go with it; cook history is kept as history and
+   * recipe-cook-history already labels it "(removed recipe)".
+   */
+  registerLensAction("food", "recipe-delete", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || params.recipeId || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const list = s.recipes.get(userId) || [];
+    const i = list.findIndex((r) => r.id === id);
+    if (i < 0) return { ok: false, error: "recipe not found" };
+    const [removed] = list.splice(i, 1);
+    const photos = s.recipePhotos.get(userId);
+    if (photos) s.recipePhotos.set(userId, photos.filter((p) => p.recipeId !== id));
+    const ratings = s.recipeRatings.get(userId);
+    if (ratings) s.recipeRatings.set(userId, ratings.filter((r) => r.recipeId !== id));
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: id, title: removed.title } };
+  });
+
+  /**
    * recipe-rate — 1–5 star rating (one per user per recipe, upsert).
    */
   registerLensAction("food", "recipe-rate", (ctx, _a, params = {}) => {

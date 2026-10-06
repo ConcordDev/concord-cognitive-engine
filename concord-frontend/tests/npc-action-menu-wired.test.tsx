@@ -11,6 +11,13 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+const lensRunMock = vi.fn((_d: string, action: string) => Promise.resolve({
+  data: action === 'mentor_recipes'
+    ? { ok: true, result: { ok: true, recipes: [{ recipeDtuId: 'r2', title: 'Steel sword', depth: 6 }, { recipeDtuId: 'r1', title: 'Iron sword', depth: 2 }] }, error: null }
+    : { ok: true, result: { ok: true }, error: null },
+}));
+vi.mock('@/lib/api/client', () => ({ lensRun: (...a: [string, string]) => lensRunMock(...a) }));
+
 import { NPCActionMenu } from '@/components/world/NPCActionMenu';
 import { dispatchNpcContextMenuEvent } from '@/components/world-lens/ConcordiaScene';
 
@@ -96,16 +103,14 @@ describe('Phase DA1 — NPC contextual action menu', () => {
       vi.stubGlobal('fetch', fetchMock);
       render(<NPCActionMenu />);
 
-      // Mentor.
+      // Mentor: mentorship is per recipe — ask what the NPC can teach, pick one,
+      // then request it through knowledge_trade.mentorship_request.
       openMenu();
       fireEvent.click(await screen.findByText('Request mentorship'));
-      await waitFor(() => {
-        const call = fetchMock.mock.calls.find(([url]) => url === '/api/mentorship/request');
-        expect(call).toBeTruthy();
-        const [, opts] = call as [string, RequestInit];
-        expect(opts.method).toBe('POST');
-        expect(JSON.parse(opts.body as string)).toEqual({ mentorNpcId: 'npc-1' });
-      });
+      await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('knowledge_trade', 'mentor_recipes', { mentorNpcId: 'npc-1' }));
+      fireEvent.click(await screen.findByText('Steel sword'));
+      await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('knowledge_trade', 'mentorship_request', { mentorNpcId: 'npc-1', recipeDtuId: 'r2' }));
+      expect(fetchMock.mock.calls.some(([url]) => url === '/api/mentorship/request')).toBe(false);
 
       // Brawl (always visible, no enrich wait needed).
       openMenu();

@@ -93,12 +93,16 @@ module.exports = {
          * instead of mutating shared inherited state — `font-serif` keeps
          * resolving to Georgia everywhere, byte-for-byte unchanged.
          */
+        // Multi-word names are QUOTED: an unquoted `Source Serif 4` is an invalid
+        // family name (bare number token); because the declaration also holds
+        // var(), the browser only rejects it at computed-value time and falls
+        // back to the inherited body font — font-vault silently rendered DM Sans.
         vault: [
           'var(--font-vault-serif)',
-          'Source Serif 4',
-          'Source Serif Pro',
+          '"Source Serif 4"',
+          '"Source Serif Pro"',
           'Georgia',
-          'Times New Roman',
+          '"Times New Roman"',
           'serif',
         ],
       },

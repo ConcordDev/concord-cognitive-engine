@@ -2049,6 +2049,7 @@ import { createCslToolGate } from "./lib/csl-router.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
+import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
@@ -2406,9 +2407,12 @@ async function tryLoadDotenv() {
       for (const [key, fileValue] of Object.entries(result.parsed)) {
         const preexisting = preDotenvSnapshot[key];
         if (preexisting !== undefined && preexisting !== fileValue) {
+          // Never echo secret values into logs — name the key, redact the value.
+          const secret = /(SECRET|TOKEN|PASSWORD|PASS|KEY|PRIVATE|CREDENTIAL|DSN|_URL$)/i.test(key);
+          const show = (v) => (secret ? `<redacted ${String(v).length} chars>` : v);
           console.warn(
-            `[ENV_CONFLICT] ${key}: the .env file says "${fileValue}" but a pre-existing ` +
-            `process.env value ("${preexisting}", likely injected by pm2's ecosystem.config.cjs) ` +
+            `[ENV_CONFLICT] ${key}: the .env file says "${show(fileValue)}" but a pre-existing ` +
+            `process.env value ("${show(preexisting)}", likely injected by pm2's ecosystem.config.cjs) ` +
             `silently won — the .env value was ignored. If this wasn't intentional, fix the ` +
             `losing side rather than assume the .env file's value is what's actually running.`
           );
@@ -2652,6 +2656,8 @@ try {
   for (const [k, v] of EXTENDED_DOMAIN_RULES) {
     if (!DOMAIN_RULES.has(k)) DOMAIN_RULES.set(k, v);
   }
+  // Accept the artifact types the lenses actually create (lib/lens-artifact-types.js).
+  reconcileArtifactTypes(DOMAIN_RULES);
 } catch (_e) { console.warn("[DomainLogic] Failed to merge extended rules:", _e?.message); }
 
 // ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
@@ -7551,7 +7557,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/", "/api/esign/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -8126,6 +8132,15 @@ function authMiddleware(req, res, next) {
   if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
+  // E-signature signing links (server/lib/esign-links.js) — a recipient
+  // with no Concord account opens /sign/:token. The token IS the access
+  // control: crypto.randomBytes(24), scoped server-side to exactly one
+  // signer slot of one envelope. The routes call the esign-links module
+  // directly (view / sign only), never /api/lens/run, so the token can't be
+  // widened to any other action or envelope.
+  if (req.method === "GET" && /^\/api\/esign\/[^/]+$/.test(req.path)) return next();
+  if (req.method === "POST" && /^\/api\/esign\/[^/]+\/sign$/.test(req.path)) return next();
+
   // Animation public share viewer (Wave 4 gap closure,
   // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
   // anonymous visitor with a share link opens `/share/animation/:token`.
@@ -8354,7 +8369,7 @@ function requireRole(...roles) {
 // submissions were 401ing on every metric per page load, silently wasting
 // the same 30-req/min anonymous IP bucket real anonymous traffic (including
 // registration) also depends on.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -12944,6 +12959,13 @@ if (db) {
       structuredLog("info", "lens_artifact_store_boot_migration", artifactStore.migrateMemoryToSQLite());
       structuredLog("info", "lens_artifact_store_boot_hydrate", artifactStore.rehydrateFromSQLite());
       STATE.lensArtifacts = artifactStore;
+      // The domain index was built from the snapshot, which omits
+      // lensArtifacts once this store is active, so it is empty here. Without
+      // this rebuild every lens list (GET /api/lens/:domain) came back empty
+      // until the staggered index_reconciliation ran ~14 s after boot, and a
+      // page loaded in that window showed "No items yet" for real records.
+      _rebuildLensDomainIndex();
+      structuredLog("info", "lens_domain_index_rebuilt", { domains: STATE.lensDomainIndex.size, artifacts: STATE.lensArtifacts.size });
     } else {
       structuredLog("warn", "lens_artifact_store_unavailable", {
         reason: "lens_artifact_store table missing — artifacts stay snapshot-only",
@@ -14147,7 +14169,7 @@ async function runMacro(domain, name, input, ctx) {
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
-    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors"]),
+    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
     events: new Set(["list", "recent", "log", "paginated"]),
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
     // "create"/"update"/"delete" removed (public-read-write-verb-detector,
@@ -27036,25 +27058,20 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
     try { logger.debug?.('server', 'oracle short-circuit error', { error: _oracleErr?.message }); } catch { /* intentional */ }
   }
 
-  // Identity answers are declarative: Concord refers to itself.
-  // ONLY explicit identity intent (who/what are you / what is Concord).
+  // Identity short-circuit REMOVED 2026-10-01: do NOT return SYSTEM_IDENTITY
+  // as the sole chat answer (was llmUsed:false / identity:true). Keep intent
+  // classification for lexicon/telemetry; inject a short canonical note as
+  // LLM system context only — never as the final reply. Other non-LLM exits
+  // (auth, shed, math/time/weather, etc.) stay unchanged.
   // Do NOT short-circuit on _mentionsSelf — tokenish() + includes() is a
-  // substring match on tokens like "global","dtu","concord","marketplace",
-  // which previously returned the encyclopedia template with llmUsed=false
-  // on ordinary factual claims. Identity still lives in composeSystemPrompt.
+  // substring match on tokens like "global","dtu","concord","marketplace".
+  let _identityContextNote = "";
   if (intentInfo.intent === INTENT.IDENTITY) {
-    const base = SYSTEM_IDENTITY.short;
-    const more = SYSTEM_IDENTITY.long;
-    const ask = "What part do you want—DTUs, lattice retrieval, macros/wrappers, Temporal OS, or the UI/panels?";
-    const reply = `${base}
-
-${more}
-
-${ask}`;
-    sess.messages.push({ role: "assistant", content: reply, ts: nowISO(), meta: { llmUsed: false, mode, identity: true } });
-    _persistDeterministicTurn(reply, { llmUsed: false, mode, source: "identity" });
-    saveStateDebounced();
-    return { ok:true, reply, sessionId, mode, llmUsed:false, meta: { panel: "chat", sessionId, mode, llmUsed:false, identity:true } };
+    _identityContextNote = [
+      "Canonical Concord identity (authoritative facts — answer in your own voice using these facts; do not dump this block verbatim as the whole reply):",
+      SYSTEM_IDENTITY.short,
+      SYSTEM_IDENTITY.long,
+    ].join(" ");
   }
 // Linguistic Engine v1: track canonical intents even with LLM off
 if (!ctx.state.organs.has("linguistic_engine_v1")) {
@@ -27067,9 +27084,9 @@ lex[key].count++;
 lex[key].lastSeen = nowISO();
 if (lex[key].samples.length < 5 && prompt) lex[key].samples.push(prompt);
 
-// Hard IDENTITY intercept removed 2026-09-05 (honesty): duplicate of the
-// narrowed INTENT.IDENTITY handler above; second copy still forced encyclopedia
-// with llmUsed=false. Greeting shortcircuit stays disabled below.
+// Hard IDENTITY intercept removed 2026-09-05; sole remaining early-return
+// IDENTITY handler removed 2026-10-01 (llmUsed:true path). Greeting shortcircuit
+// stays disabled below.
 
 // Greeting shortcircuit disabled — let the brain handle greetings naturally
 // if (intentInfo.intent === INTENT.GREETING) {
@@ -27624,6 +27641,7 @@ let localReply = formatCrispResponse({
       userId: _composeUserId,
       db: _composeDb,
       dispatchTarget: _dispatchTarget,
+      extra: (_identityContextNote || null),
     });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is
@@ -28210,7 +28228,7 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix;
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "");
     // Build messages with conversation history for continuity
     const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
     messages = [];
@@ -32974,7 +32992,7 @@ register("settings", "status", (ctx, _input) => {
 
   register("graph", "stats", (ctx, _input = {}) => {
     try {
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
       return {
         ok: true,
         stats: {
@@ -32990,9 +33008,10 @@ register("settings", "status", (ctx, _input) => {
 
   register("graph", "edges", (ctx, input = {}) => {
     try {
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
       const limit = Math.min(Number(input.limit || 200), 1000);
-      const edges = Array.from(GRAPH_INDEX?.edges?.values?.() || []).slice(0, limit);
+      const viewer = _graphViewer(ctx);
+      const edges = Array.from(GRAPH_INDEX?.edges?.values?.() || []).filter(e => _graphVisibleEdge(e, viewer)).slice(0, limit);
       return { ok: true, edges, count: edges.length, total: GRAPH_INDEX?.edges?.size || 0 };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -33003,9 +33022,12 @@ register("settings", "status", (ctx, _input) => {
     try {
       const id = input.id || input.nodeId || input.centerNode;
       if (!id) return { ok: false, error: "id_required", reason: "id_required" };
-      if (typeof rebuildGraphIndex === "function" && GRAPH_INDEX?.dirty) rebuildGraphIndex();
+      _ensureGraphIndex();
+      const viewer = _graphViewer(ctx);
+      if (!_graphCanSeeId(id, viewer)) return { ok: false, error: "not_found", reason: "not_found" };
       const neighbors = [];
       for (const e of (GRAPH_INDEX?.edges?.values?.() || [])) {
+        if (!_graphVisibleEdge(e, viewer)) continue;
         if (e.source === id) neighbors.push({ id: e.target, edge: e, direction: "out" });
         else if (e.target === id) neighbors.push({ id: e.source, edge: e, direction: "in" });
       }
@@ -45318,7 +45340,43 @@ structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, 
 // ============================================================================
 // WAVE 2: GRAPH-BASED RELATIONAL QUERIES (Surpassing Logseq)
 // ============================================================================
-const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true };
+const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true, builtVersion: -1, builtAt: 0 };
+
+// Only a few write paths set GRAPH_INDEX.dirty, so DTUs created after boot
+// never reached the graph. Also rebuild when the DTU store's version moved —
+// throttled, since feeds write continuously and a rebuild walks every DTU.
+const _GRAPH_REBUILD_MIN_MS = 5000;
+function _ensureGraphIndex() {
+  const ver = _dtuStoreVersion();
+  const moved = ver >= 0 && ver !== GRAPH_INDEX.builtVersion && Date.now() - GRAPH_INDEX.builtAt >= _GRAPH_REBUILD_MIN_MS;
+  if (GRAPH_INDEX.dirty || moved) {
+    rebuildGraphIndex();
+    GRAPH_INDEX.builtVersion = ver;
+    GRAPH_INDEX.builtAt = Date.now();
+  }
+}
+
+// Graph reads must respect DTU privacy: GRAPH_INDEX holds every DTU, and the
+// graph domain is public-read. A private / user-scoped / followers-only DTU is
+// shown only to its owner (same rule as userVisibleDTUs); internal ones never.
+// Seed and feed DTUs stay visible — the graph is the shared lattice.
+function _graphViewer(ctx) {
+  const id = ctx?.actor?.userId;
+  return id && id !== "anon" ? id : null;
+}
+function _graphCanSeeId(id, viewerId) {
+  if (typeof id === "string" && id.startsWith("tag:")) return true;
+  const d = STATE.dtus.get(id);
+  if (!d) return true; // dangling lineage ids carry no content
+  if (d.visibility === "internal") return false;
+  const isPrivate = d.privacy === "private" || d.privacy === "followers-only" || d.scope === "user" || d.visibility === "private";
+  if (!isPrivate) return true;
+  const owner = d.author || d.ownerId || d.userId || d.createdBy;
+  return !!viewerId && owner === viewerId;
+}
+function _graphVisibleEdge(e, viewerId) {
+  return _graphCanSeeId(e.source, viewerId) && _graphCanSeeId(e.target, viewerId);
+}
 
 function rebuildGraphIndex() {
   GRAPH_INDEX.nodes.clear();
@@ -45350,8 +45408,8 @@ function rebuildGraphIndex() {
   GRAPH_INDEX.dirty = false;
 }
 
-register("graph", "query", (ctx, input) => {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+function _graphQueryRaw(ctx, input) {
+  _ensureGraphIndex();
   const { dsl } = input;
   const results = [];
   const dslLower = (dsl || "").toLowerCase();
@@ -45412,12 +45470,20 @@ register("graph", "query", (ctx, input) => {
   }
 
   return { ok: true, results, query: dsl, hint: "Use: 'DTUs linked to tag:X with lineage depth > 2' or 'descendants of dtu_xxx'" };
+}
+
+register("graph", "query", (ctx, input) => {
+  const r = _graphQueryRaw(ctx, input);
+  const viewer = _graphViewer(ctx);
+  if (r && Array.isArray(r.results)) r.results = r.results.filter(x => _graphCanSeeId(x?.id, viewer));
+  return r;
 });
 
 register("graph", "visualData", (ctx, input) => {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+  _ensureGraphIndex();
   const { tier, limit, includeEdges } = input;
-  let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => !n.type || n.type !== "tag");
+  const viewer = _graphViewer(ctx);
+  let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer));
   if (tier) nodes = nodes.filter(n => n.tier === tier);
   nodes = nodes.slice(0, Number(limit) || 200);
   const nodeIds = new Set(nodes.map(n => n.id));
@@ -45427,26 +45493,45 @@ register("graph", "visualData", (ctx, input) => {
 
 register("graph", "forceGraph", (ctx, input) => {
   try {
-  if (GRAPH_INDEX.dirty) rebuildGraphIndex();
+  _ensureGraphIndex();
   const { centerNode, depth, maxNodes } = input;
+  const viewer = _graphViewer(ctx);
   let nodes = [], links = [];
   if (centerNode) {
-    const visited = new Set(), queue = [{ id: centerNode, d: 0 }], maxDepth = Number(depth) || 2;
+    // Walk lineage edges from the index in both directions: a child that
+    // names its parent is reachable even when the parent's own children list
+    // was never updated (dtu.create sets only the child's lineage.parents).
+    const adj = new Map();
+    for (const e of GRAPH_INDEX.edges.values()) {
+      if (e.type !== "parent" && e.type !== "child") continue;
+      if (!adj.has(e.source)) adj.set(e.source, []);
+      if (!adj.has(e.target)) adj.set(e.target, []);
+      adj.get(e.source).push(e);
+      adj.get(e.target).push(e);
+    }
+    const visited = new Set(), seenLinks = new Set(), queue = [{ id: centerNode, d: 0 }], maxDepth = Number(depth) || 2;
     while (queue.length > 0 && nodes.length < (Number(maxNodes) || 100)) {
       const { id, d } = queue.shift();
       if (visited.has(id) || d > maxDepth) continue;
       visited.add(id);
       const dtu = STATE.dtus.get(id);
-      if (!dtu) continue;
+      if (!dtu || !_graphCanSeeId(id, viewer)) continue;
       nodes.push({ id, label: dtu.title, tier: dtu.tier, tags: dtu.tags, depth: d });
-      for (const parentId of (dtu.lineage?.parents || [])) { links.push({ source: parentId, target: id, type: "parent" }); if (!visited.has(parentId)) queue.push({ id: parentId, d: d + 1 }); }
-      for (const childId of (dtu.lineage?.children || [])) { links.push({ source: id, target: childId, type: "child" }); if (!visited.has(childId)) queue.push({ id: childId, d: d + 1 }); }
+      for (const e of adj.get(id) || []) {
+        const key = `${e.source}->${e.target}`;
+        if (!seenLinks.has(key)) { seenLinks.add(key); links.push({ source: e.source, target: e.target, type: e.type }); }
+        const other = e.source === id ? e.target : e.source;
+        if (!visited.has(other)) queue.push({ id: other, d: d + 1 });
+      }
     }
+    const kept = new Set(nodes.map(n => n.id));
+    links = links.filter(l => kept.has(l.source) && kept.has(l.target));
   } else {
-    nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => !n.type || n.type !== "tag").slice(0, Number(maxNodes) || 100);
+    nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => (!n.type || n.type !== "tag") && _graphCanSeeId(n.id, viewer)).slice(0, Number(maxNodes) || 100);
     const nodeIds = new Set(nodes.map(n => n.id));
     links = Array.from(GRAPH_INDEX.edges.values()).filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
+  links = links.filter(l => _graphVisibleEdge(l, viewer));
   return { ok: true, nodes, links };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -45459,6 +45544,37 @@ app.get("/api/graph/visual", async (req, res) => {
     res.status(500).json({ ok: false, error: String(e?.message || e), nodes: [], links: [], edges: [] });
   }
 });
+// Title search over the same (visibility-filtered) nodes the graph renders,
+// so "find a node" finds what the field can show — dtus/paginated hides
+// seed/system-owned lattice DTUs that the graph includes.
+register("graph", "search", (ctx, input = {}) => {
+  try {
+    _ensureGraphIndex();
+    const q = String(input.q || "").trim().toLowerCase();
+    const limit = Math.min(Math.max(Number(input.limit) || 8, 1), 50);
+    if (q.length < 2) return { ok: true, results: [], total: 0 };
+    const viewer = _graphViewer(ctx);
+    const hits = [];
+    for (const n of GRAPH_INDEX.nodes.values()) {
+      if (n.type === "tag") continue;
+      const title = String(n.title || "").toLowerCase();
+      const at = title.indexOf(q);
+      if (at < 0 || !_graphCanSeeId(n.id, viewer)) continue;
+      hits.push({ id: n.id, title: n.title, tier: n.tier, rank: at === 0 ? 0 : 1 });
+    }
+    hits.sort((a, b) => a.rank - b.rank || String(a.title).length - String(b.title).length);
+    return { ok: true, results: hits.slice(0, limit).map(({ rank: _r, ...h }) => h), total: hits.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+app.get("/api/graph/search", async (req, res) => {
+  try {
+    res.json(await runMacro("graph", "search", { q: req.query.q, limit: req.query.limit }, makeCtx(req)));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e), results: [] });
+  }
+});
+
 app.get("/api/graph/force", async (req, res) => {
   try {
     res.json(await runMacro("graph", "forceGraph", { centerNode: req.query.centerNode, depth: req.query.depth, maxNodes: req.query.maxNodes }, makeCtx(req)));
@@ -49997,6 +50113,27 @@ registerUniversalLensActions();
     ["engineering", "thermal", "thermalAnalysis"],
     ["engineering", "electrical", "electricalCheck"],
     ["engineering", "hydraulic", "hydraulicAnalysis"],
+
+    // AR manifest names → real ConKay HUD macros (must register BEFORE
+    // FRONTEND_MANIFEST_SUPPLEMENTS brain stubs, or render_scene/export_3d
+    // stay vacuous ok:true with no drawList / no GLB for ArtifactViewer).
+    ["ar", "render_scene", "render"],
+    ["ar", "export_3d", "render"],
+    ["ar", "capture", "captureUpload"],
+    ["ar", "place_anchor", "spatialMapping"],
+
+    // Art toolbox / sub-lens names → GPU art.generate (FLUX via CONCORD_GEN_URL)
+    ["art", "sculpture", "generate"],
+    ["art", "sculpture.generate", "generate"],
+    ["art", "painting", "generate"],
+    ["art", "digital", "generate"],
+    ["art", "photography", "generate"],
+    ["art", "text-to-image", "generate"],
+    ["art", "ai-generate", "generate"],
+
+    // Forge cockpit: generate returns code; sandbox returns html ArtifactViewer needs
+    ["forge", "generate-app", "sandbox"],
+    ["forge", "preview", "sandbox"],
   ];
 
   let aliasCount = 0;
@@ -54660,6 +54797,10 @@ register("collab", "unlock", (ctx, input) => {
 });
 
 // Whiteboard with Excalidraw integration
+// Whiteboards are owner-scoped: list/get/update only see the caller's boards.
+// Boards created before ownerId was recorded have none and stay reachable.
+const _wbVisible = (dtu, ctx) => !dtu.ownerId || dtu.ownerId === ctx?.actor?.userId;
+
 register("whiteboard", "create", (ctx, input) => {
   const { title, linkedDtus } = input;
   const whiteboard = { id: uid("wb"), title: title || "Untitled Whiteboard", elements: [], linkedDtus: linkedDtus || [], collaborators: [], createdAt: nowISO(), updatedAt: nowISO() };
@@ -54672,6 +54813,8 @@ register("whiteboard", "create", (ctx, input) => {
     machine: { kind: "whiteboard", data: whiteboard },
     lineage: { parents: whiteboard.linkedDtus, children: [] },
     source: "whiteboard",
+    ownerId: ctx?.actor?.userId || undefined,
+    visibility: "private",
     createdAt: whiteboard.createdAt
   };
   STATE.dtus.set(wbDtu.id, wbDtu);
@@ -54682,7 +54825,7 @@ register("whiteboard", "create", (ctx, input) => {
 register("whiteboard", "update", (ctx, input) => {
   const { whiteboardId, elements, linkedDtus } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
   const wb = dtu.machine.data;
   if (elements) wb.elements = elements;
   if (linkedDtus) { wb.linkedDtus = linkedDtus; dtu.lineage.parents = linkedDtus; }
@@ -54697,12 +54840,15 @@ register("whiteboard", "update", (ctx, input) => {
 register("whiteboard", "get", (ctx, input) => {
   const { whiteboardId } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
   return { ok: true, whiteboard: dtu.machine.data, linkedDtus: dtu.lineage?.parents || [] };
 });
 
-register("whiteboard", "list", (_ctx, _input) => {
-  const whiteboards = dtusArray().filter(d => d.machine?.kind === "whiteboard").map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt }));
+register("whiteboard", "list", (ctx, _input) => {
+  const whiteboards = dtusArray()
+    .filter(d => d.machine?.kind === "whiteboard" && _wbVisible(d, ctx))
+    .map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt, updatedAt: d.updatedAt || d.createdAt }))
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   return { ok: true, whiteboards, count: whiteboards.length };
 });
 
@@ -57238,6 +57384,39 @@ app.post("/api/welding/portal/:token/pay", async (req, res) => {
       reason: "payment_capture_not_wired",
       message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── E-signature signing links (tools / legal / law) ─────────────────────
+// Public, token-scoped view + sign for a recipient with no Concord account.
+// Same security shape as the welding portal above: the token is the only
+// caller-supplied identifier and resolves server-side to one signer slot;
+// identity evidence (typed name, consent, IP, user agent) is captured here
+// from the request, never trusted from the envelope owner.
+app.get("/api/esign/:token", async (req, res) => {
+  try {
+    const { viewSigningLink } = await import("./lib/esign-links.js");
+    const r = await viewSigningLink(req.params.token);
+    if (!r?.ok) return res.status(404).json({ ok: false, error: "link_not_found" });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/esign/:token/sign", perEndpointRateLimit("write.esign"), async (req, res) => {
+  try {
+    const { signViaLink } = await import("./lib/esign-links.js");
+    const r = await signViaLink(req.params.token, {
+      typedName: req.body?.typedName,
+      consent: req.body?.consent === true,
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+    if (!r?.ok) return res.status(r?.error === "link_not_found" ? 404 : 400).json(r);
+    res.json(r);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -65050,29 +65229,39 @@ app.get("/api/social/dm/conversations", requireAuth(), (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+function respondSocialDm(res, result) {
+  if (result && result.ok === false && Number.isInteger(result.status)) {
+    return res.status(result.status).json({ ok: false, error: result.error || "Not found" });
+  }
+  return res.json(result);
+}
+
 app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
-  try { res.json(socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0), userId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/social/dm/read", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Param-path variant: frontend calls POST /api/social/dm/:conversationId/read
 app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
   try {
-    const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
+    const userId = req.user?.id || req.actor?.userId || null;
+    respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

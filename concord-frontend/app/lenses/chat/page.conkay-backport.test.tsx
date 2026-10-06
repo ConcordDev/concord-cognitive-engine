@@ -11,8 +11,8 @@
 //   - a read macro calls `lensRun` immediately, no confirm card;
 //   - Cancel resolves the gate WITHOUT ever calling lensRun, and the
 //     cancellation is reported honestly in the transcript;
-//   - the cockpit's panel lanes (the SAME <ConKayCockpit> the overlay uses)
-//     are mounted once ConKay mode has messages.
+//   - the confirm card renders in the clean chat transcript; the cockpit
+//     panel lanes live behind the Kay overlay's Studio toggle instead.
 //
 // Heavy chrome unrelated to this unit (sidebar panels, DTU widgets, realtime
 // hooks, voice, the world-tree backdrop) is stubbed so the test exercises the
@@ -176,7 +176,7 @@ async function openChatInConKayMode() {
   // palette use in production.
   window.history.pushState({}, '', '/lenses/chat?mode=conkay');
   renderWithQueryClient(<ChatLensPage />);
-  await waitFor(() => expect(screen.getByPlaceholderText(/Message ConKay mode/i)).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByPlaceholderText(/^Message (ConKay mode|Kay)/i)).toBeInTheDocument());
 }
 
 /** Calls made to a specific domain.macro pair — the cockpit's OWN panels
@@ -189,7 +189,7 @@ function callsFor(domain: string, macro: string) {
 }
 
 function typeAndSend(text: string) {
-  const input = screen.getByPlaceholderText(/Message ConKay mode/i);
+  const input = screen.getByPlaceholderText(/^Message (ConKay mode|Kay)/i);
   fireEvent.change(input, { target: { value: text } });
   fireEvent.click(screen.getByLabelText('Send message'));
 }
@@ -214,9 +214,11 @@ describe('Chat lens — ConKay mode cockpit backport (Unit A5)', () => {
     // already made their own legitimate read-only lensRun calls by now.
     expect(callsFor('creatures', 'create')).toHaveLength(0);
 
-    // The cockpit's panel lanes are mounted alongside the pending confirm —
-    // the SAME <ConKayCockpit> grid the global overlay uses.
-    expect(screen.getByTestId('ck-cockpit-grid')).toBeInTheDocument();
+    // Clean chat: the confirm card renders in the plain conversation
+    // transcript. The cockpit panel lanes moved to the Kay overlay's Studio
+    // toggle (ConKayOverlay), so they are deliberately NOT mounted here.
+    expect(screen.getByTestId('conkay-clean-transcript')).toBeInTheDocument();
+    expect(screen.queryByTestId('ck-cockpit-grid')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Confirm and run creatures.create'));
 

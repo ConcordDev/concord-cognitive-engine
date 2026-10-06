@@ -79,6 +79,8 @@ vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
 vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: (p: Record<string, unknown>) => React.createElement('textarea', p) }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ada' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
@@ -139,6 +141,11 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import EducationLensPage from '@/app/lenses/education/page';
 
+/** The teacher LMS sits behind the Learning / Teaching switch (Learning is default). */
+function openTeaching(getByRole: (role: string, opts: { name: RegExp }) => HTMLElement) {
+  fireEvent.click(getByRole('button', { name: /^teaching/i }));
+}
+
 const STUDENT = {
   id: 'art_1',
   title: 'Ada Lovelace',
@@ -170,9 +177,18 @@ describe('education lens — four UX states', () => {
     await waitFor(() => expect(getByText(/Loading/i)).toBeInTheDocument());
   });
 
+  it('defaults to the learner workbench; Teaching opens the LMS', async () => {
+    const { getByRole, queryByTestId } = render(<EducationLensPage />);
+    expect(getByRole('button', { name: /^progress/i })).toHaveAttribute('aria-current', 'page');
+    expect(queryByTestId('education-subtab-nav')).not.toBeInTheDocument();
+    openTeaching(getByRole);
+    expect(queryByTestId('education-subtab-nav')).toBeInTheDocument();
+  });
+
   it('EMPTY: an empty feed shows the honest "No students found" CTA', async () => {
     lensDataState.items = [];
-    const { getByText } = render(<EducationLensPage />);
+    const { getByText, getByRole } = render(<EducationLensPage />);
+    openTeaching(getByRole);
     await waitFor(() => expect(getByText(/No students found/i)).toBeInTheDocument());
   });
 
@@ -193,7 +209,8 @@ describe('education lens — four UX states', () => {
 
   it('POPULATED: a real student artifact renders with its title + subject', async () => {
     lensDataState.items = [STUDENT];
-    const { getByText } = render(<EducationLensPage />);
+    const { getByText, getByRole } = render(<EducationLensPage />);
+    openTeaching(getByRole);
     await waitFor(() => expect(getByText('Ada Lovelace')).toBeInTheDocument());
     expect(getByText(/Mathematics/i)).toBeInTheDocument();
   });
@@ -207,11 +224,15 @@ describe('education lens — mode categories (27 flat tabs grouped into 4 sectio
 
   // The Genome/Path/etc. tabs mount real react-query hooks (GenomePanel etc.)
   // that need a live QueryClient — a real app dependency, not something to mock.
-  const renderPage = () => render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <EducationLensPage />
-    </QueryClientProvider>
-  );
+  const renderPage = () => {
+    const r = render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <EducationLensPage />
+      </QueryClientProvider>
+    );
+    openTeaching(r.getByRole);
+    return r;
+  };
 
   it('defaults to the Classroom category — its tabs show, other categories’ tabs do not', () => {
     const { container, getByText } = renderPage();

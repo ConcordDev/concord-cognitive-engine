@@ -121,9 +121,8 @@ beforeEach(() => {
 });
 
 describe('engineering lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the engineering domain + materialLibrary is fetched', async () => {
+  it('WIRING: materialLibrary is fetched on the engineering domain (Run FEA calls engineering.runFEA directly)', async () => {
     render(<EngineeringLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('engineering');
     await waitFor(() => expect(lensRunCalls.some((c) => c.domain === 'engineering' && c.action === 'materialLibrary')).toBe(true));
   });
 

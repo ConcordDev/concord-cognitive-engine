@@ -113,7 +113,6 @@ export function ProductionSuite() {
       <div className="flex items-center gap-2">
         <Clapperboard className="w-5 h-5 text-violet-400" />
         <h2 className="text-base font-semibold text-zinc-100">Production Suite</h2>
-        <span className="text-xs text-zinc-400">StudioBinder + Frame.io parity</span>
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b border-zinc-800 pb-2">

@@ -83,15 +83,16 @@ beforeEach(() => {
 });
 
 describe('artistry lens — tab wiring', () => {
-  it('mounts the real Feed (CommunityNetwork) panel by default', () => {
+  it('opens on the real Projects (ProjectStudio) panel by default', () => {
     render(<ArtistryLens />);
-    expect(screen.getByTestId('panel-feed')).toBeInTheDocument();
-    expect(screen.queryByTestId('panel-projects')).not.toBeInTheDocument();
+    expect(screen.getByTestId('panel-projects')).toBeInTheDocument();
+    expect(screen.queryByTestId('panel-feed')).not.toBeInTheDocument();
   });
 
   it('switching to each tab mounts its own real macro-backed panel', () => {
     render(<ArtistryLens />);
     const cases: Array<[RegExp, string]> = [
+      [/Feed/, 'panel-feed'],
       [/Projects/, 'panel-projects'],
       [/Profile/, 'panel-profile'],
       [/Collections/, 'panel-collections'],

@@ -22,7 +22,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Ghost, Swords, Trophy, Radar } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -85,7 +88,18 @@ const STAGE_TONE: Record<string, string> = {
   extinguished: 'text-emerald-300 border-emerald-500/40 bg-emerald-900/15',
 };
 
+type GhostView = 'residues' | 'hunts' | 'hunters';
+
+const VIEWS: { id: GhostView; label: string; keys: string; title: string; hint: string; icon: typeof Ghost }[] = [
+  { id: 'residues', label: 'Residues', keys: '1', title: 'What the world left behind', hint: 'Spectral residues, filters and the spectral plane', icon: Ghost },
+  { id: 'hunts', label: 'Hunts', keys: '2', title: 'Your hunts', hint: 'Active hunts, saved dossiers and confront history', icon: Swords },
+  { id: 'hunters', label: 'Hunters', keys: '3', title: 'Who is hunting', hint: 'Hunter leaderboard and live hauntings', icon: Trophy },
+];
+
 export default function GhostTrackerPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<GhostView>('residues');
   const [residues, setResidues] = useState<Residue[]>([]);
   const [driftTypes, setDriftTypes] = useState<string[]>([]);
   const [severities, setSeverities] = useState<string[]>([]);
@@ -104,231 +118,261 @@ export default function GhostTrackerPage() {
   const [dossiersLoading, setDossiersLoading] = useState(true);
   const [dossiersError, setDossiersError] = useState(false);
 
-  const refreshDossiers = useCallback(async () => {
-    setDossiersLoading(true);
-    setDossiersError(false);
-    const r = await lensRun<DossiersResult>('ghost-hunt', 'dossiers', { limit: 20 });
-    const result = r.data.result;
-    if (result?.ok) {
-      setDossiers(result.dossiers ?? []);
-    } else {
-      setDossiers([]);
-      setDossiersError(true);
-    }
-    setDossiersLoading(false);
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    lensRun<DossiersResult>('ghost-hunt', 'dossiers', { limit: 20 })
+      .then((r) => {
+        if (cancelled) return;
+        const result = r.data.result;
+        if (result?.ok) {
+          setDossiers(result.dossiers ?? []);
+          setDossiersError(false);
+        } else {
+          setDossiers([]);
+          setDossiersError(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDossiers([]);
+        setDossiersError(true);
+      })
+      .finally(() => { if (!cancelled) setDossiersLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
-  useEffect(() => { refreshDossiers(); }, [refreshDossiers, refreshKey]);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
     const worldId = (typeof window !== 'undefined' && localStorage.getItem(ACTIVE_WORLD_KEY)) || 'concordia-hub';
-    const r = await lensRun<ResiduesResult>('ghost-hunt', 'residues', {
+    lensRun<ResiduesResult>('ghost-hunt', 'residues', {
       worldId,
       severity: severityFilter || null,
       driftType: typeFilter || null,
       sort,
       limit: 60,
-    });
-    setResidues(r.data.result?.residues ?? []);
-    setDriftTypes(r.data.result?.driftTypes ?? []);
-    setSeverities(r.data.result?.severities ?? []);
-    setLoading(false);
-  }, [severityFilter, typeFilter, sort]);
+    })
+      .then((r) => {
+        if (cancelled) return;
+        setResidues(r.data.result?.residues ?? []);
+        setDriftTypes(r.data.result?.driftTypes ?? []);
+        setSeverities(r.data.result?.severities ?? []);
+      })
+      .catch(() => { if (!cancelled) setResidues([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [severityFilter, typeFilter, sort, refreshKey]);
 
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const bumpDependents = useCallback(() => {
+  const refresh = useCallback(() => {
+    setLoading(true);
     setRefreshKey((k) => k + 1);
-    refresh();
-  }, [refresh]);
+  }, []);
+
+  const bumpDependents = refresh;
 
   useLensCommand([
+    ...VIEWS.map((v) => ({ id: `goto-${v.id}`, keys: v.keys, description: `${v.label} — ${v.hint}`, category: 'navigation' as const, action: () => setView(v.id) })),
     { id: 'refresh', keys: 'r', description: 'Refresh', category: 'navigation', action: () => refresh() },
   ], { lensId: 'ghost-tracker' });
 
   const active = residues.filter((r) => !r.confronted);
   const extinguished = residues.filter((r) => r.confronted);
 
+  const current = VIEWS.find((v) => v.id === view)!;
+
   return (
     <LensShell lensId="ghost-tracker" asMain={false}>
-      <FirstRunTour lensId="ghost-tracker" />      <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
-      <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
-        <header className="mb-5">
-          <h1 className="text-3xl font-semibold text-violet-300">Ghost Tracker</h1>
-          <p className="mt-1 text-gray-400">
-            Spectral residues left by drift events. Track, investigate, then confront one to extinguish it.
-          </p>
-        </header>
-
+      <FirstRunTour lensId="ghost-tracker" />
+      <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="ghost-tracker"
+        crumb="Ghost Tracker"
+        title={`${current.title}${view === 'residues' && who ? `, ${who}` : ''}`}
+        subtitle="Spectral residues left by drift events. Track, investigate, then confront one to extinguish it."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as GhostView)}
+        tabsLabel="Ghost tracker views"
+        cta={{ label: 'Scan for residues', icon: Radar, onClick: () => refresh(), title: 'Rescan the world for spectral residues (R)' }}
+      >
+        {view === 'residues' && (
+          <>
         {/* filter + sort bar */}
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
-          >
-            <option value="">All drift types</option>
-            {driftTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select
-            value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
-          >
-            <option value="">All severities</option>
-            {severities.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
-          >
-            {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-          {(typeFilter || severityFilter) && (
-            <button
-              type="button"
-              onClick={() => { setTypeFilter(''); setSeverityFilter(''); }}
-              className="rounded border border-zinc-700 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100"
-            >
-              Clear filters
-            </button>
-          )}
-          <span className="ml-auto text-xs text-gray-400">
-            {active.length} active · {extinguished.length} extinguished
-          </span>
-        </div>
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
+              >
+                <option value="">All drift types</option>
+                {driftTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <select
+                value={severityFilter}
+                onChange={(e) => setSeverityFilter(e.target.value)}
+                className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
+              >
+                <option value="">All severities</option>
+                {severities.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
+              >
+                {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+              {(typeFilter || severityFilter) && (
+                <button
+                  type="button"
+                  onClick={() => { setTypeFilter(''); setSeverityFilter(''); }}
+                  className="rounded border border-zinc-700 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100"
+                >
+                  Clear filters
+                </button>
+              )}
+              <span className="ml-auto text-xs text-gray-400">
+                {active.length} active · {extinguished.length} extinguished
+              </span>
+            </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* residue list */}
-          <div className="lg:col-span-2">
-            {loading && <p className="text-gray-400">Loading residues…</p>}
-            {!loading && residues.length === 0 && (
-              <div className="rounded border border-white/10 bg-white/5 p-6 text-center text-gray-400">
-                No spectral residues match. The world reads true.
-              </div>
-            )}
-            {!loading && residues.length > 0 && (
-              <ul className="space-y-3">
-                {residues.map((r) => (
-                  <li
-                    key={r.id}
-                    className={`rounded border p-4 ${
-                      r.id === selected
-                        ? 'border-violet-400/60 bg-violet-900/20'
-                        : 'border-violet-700/30 bg-violet-900/10'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-sm uppercase tracking-wide text-violet-400">{r.drift_type}</h2>
-                          <span className={`rounded border px-1.5 py-0.5 text-[10px] ${STAGE_TONE[r.stage] || ''}`}>
-                            {r.stage}
-                          </span>
+            <div className="lg:col-span-2">
+              {loading && <p className="text-gray-400">Loading residues…</p>}
+              {!loading && residues.length === 0 && (
+                <div className="rounded border border-white/10 bg-white/5 p-6 text-center text-gray-400">
+                  No spectral residues match. The world reads true.
+                </div>
+              )}
+              {!loading && residues.length > 0 && (
+                <ul className="space-y-3">
+                  {residues.map((r) => (
+                    <li
+                      key={r.id}
+                      className={`rounded border p-4 ${
+                        r.id === selected
+                          ? 'border-violet-400/60 bg-violet-900/20'
+                          : 'border-violet-700/30 bg-violet-900/10'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-sm uppercase tracking-wide text-violet-400">{r.drift_type}</h2>
+                            <span className={`rounded border px-1.5 py-0.5 text-[10px] ${STAGE_TONE[r.stage] || ''}`}>
+                              {r.stage}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-400">
+                            severity {r.severity} · cell x{r.coords.x} z{r.coords.z} ·{' '}
+                            {new Date(r.detected_at * 1000).toLocaleString()}
+                          </p>
+                          <p className="mt-2 break-all font-mono text-xs text-gray-400">{r.signature}</p>
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-400">
-                          severity {r.severity} · cell x{r.coords.x} z{r.coords.z} ·{' '}
-                          {new Date(r.detected_at * 1000).toLocaleString()}
-                        </p>
-                        <p className="mt-2 break-all font-mono text-xs text-gray-400">{r.signature}</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelected(r.id)}
+                          className="ml-3 shrink-0 rounded border border-violet-500/40 bg-violet-600/30 px-3 py-2 text-sm text-violet-100 hover:bg-violet-600/50"
+                        >
+                          {r.confronted ? 'Review' : 'Investigate'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelected(r.id)}
-                        className="ml-3 shrink-0 rounded border border-violet-500/40 bg-violet-600/30 px-3 py-2 text-sm text-violet-100 hover:bg-violet-600/50"
-                      >
-                        {r.confronted ? 'Review' : 'Investigate'}
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-          {/* map + hunts + leaderboard rail */}
-          <div className="space-y-6">
-            <ResidueMap residues={residues} selectedId={selected} onSelect={setSelected} />
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <div className="space-y-6">
+                <ResidueMap residues={residues} selectedId={selected} onSelect={setSelected} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {view === 'hunts' && (
+          <div className="space-y-5">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <h3 className="mb-2 text-xs uppercase tracking-wide text-violet-400">My active hunts</h3>
               <ActiveHunts refreshKey={refreshKey} onOpen={setSelected} />
             </section>
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <HunterLeaderboard refreshKey={refreshKey} />
-            </section>
-          </div>
-        </div>
-
         <section
-          className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
-          aria-label="Saved Spectral Dossiers"
-        >
-          <h3 className="mb-2 text-xs uppercase tracking-wide text-violet-400">Saved dossiers</h3>
-          {dossiersLoading && (
-            <p role="status" className="text-xs text-gray-400">Loading dossiers…</p>
-          )}
-          {!dossiersLoading && dossiersError && (
-            <p role="alert" className="text-xs text-rose-300">
-              Dossier index unreachable.
-            </p>
-          )}
-          {!dossiersLoading && !dossiersError && dossiers.length === 0 && (
-            <p className="text-xs text-gray-400">
-              No dossiers yet. Investigate a residue, then save its case file.
-            </p>
-          )}
-          {!dossiersLoading && !dossiersError && dossiers.length > 0 && (
-            <ul className="space-y-1.5">
-              {dossiers.map((d) => {
-                const stillTracked = d.residueId ? residues.some((r) => r.id === d.residueId) : false;
-                const Item = stillTracked ? 'button' : 'div';
-                return (
-                  <li key={d.id}>
-                    <Item
-                      type={stillTracked ? 'button' : undefined}
-                      onClick={stillTracked ? () => setSelected(d.residueId) : undefined}
-                      className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded border border-violet-700/30 bg-violet-900/10 px-3 py-2 text-left text-xs text-gray-200 ${
-                        stillTracked ? 'cursor-pointer hover:border-violet-500/50 hover:bg-violet-900/20' : ''
-                      }`}
-                    >
-                      <span className="font-medium text-violet-200">{d.title}</span>
-                      {d.drift_type && (
-                        <span className="text-gray-400">
-                          {d.drift_type}{d.severity ? ` · ${d.severity}` : ''}
-                        </span>
-                      )}
-                      {d.outcome && (
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] ${
-                            d.outcome === 'win'
-                              ? 'bg-emerald-600/25 text-emerald-200'
-                              : 'bg-rose-600/25 text-rose-200'
+              className="rounded-2xl border border-white/10 bg-[#111] p-4"
+              aria-label="Saved Spectral Dossiers"
+            >
+              <h3 className="mb-2 text-xs uppercase tracking-wide text-violet-400">Saved dossiers</h3>
+              {dossiersLoading && (
+                <p role="status" className="text-xs text-gray-400">Loading dossiers…</p>
+              )}
+              {!dossiersLoading && dossiersError && (
+                <p role="alert" className="text-xs text-rose-300">
+                  Dossier index unreachable.
+                </p>
+              )}
+              {!dossiersLoading && !dossiersError && dossiers.length === 0 && (
+                <p className="text-xs text-gray-400">
+                  No dossiers yet. Investigate a residue, then save its case file.
+                </p>
+              )}
+              {!dossiersLoading && !dossiersError && dossiers.length > 0 && (
+                <ul className="space-y-1.5">
+                  {dossiers.map((d) => {
+                    const stillTracked = d.residueId ? residues.some((r) => r.id === d.residueId) : false;
+                    const Item = stillTracked ? 'button' : 'div';
+                    return (
+                      <li key={d.id}>
+                        <Item
+                          type={stillTracked ? 'button' : undefined}
+                          onClick={stillTracked ? () => setSelected(d.residueId) : undefined}
+                          className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded border border-violet-700/30 bg-violet-900/10 px-3 py-2 text-left text-xs text-gray-200 ${
+                            stillTracked ? 'cursor-pointer hover:border-violet-500/50 hover:bg-violet-900/20' : ''
                           }`}
                         >
-                          {d.outcome === 'win' ? 'extinguished' : 'resisted'}
-                        </span>
-                      )}
-                      <span className="ml-auto text-[10px] text-gray-500">
-                        {new Date(d.createdAt.includes('T') ? d.createdAt : `${d.createdAt.replace(' ', 'T')}Z`).toLocaleDateString()}
-                      </span>
-                    </Item>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                          <span className="font-medium text-violet-200">{d.title}</span>
+                          {d.drift_type && (
+                            <span className="text-gray-400">
+                              {d.drift_type}{d.severity ? ` · ${d.severity}` : ''}
+                            </span>
+                          )}
+                          {d.outcome && (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] ${
+                                d.outcome === 'win'
+                                  ? 'bg-emerald-600/25 text-emerald-200'
+                                  : 'bg-rose-600/25 text-rose-200'
+                              }`}
+                            >
+                              {d.outcome === 'win' ? 'extinguished' : 'resisted'}
+                            </span>
+                          )}
+                          <span className="ml-auto text-[10px] text-gray-500">
+                            {new Date(d.createdAt.includes('T') ? d.createdAt : `${d.createdAt.replace(' ', 'T')}Z`).toLocaleDateString()}
+                          </span>
+                        </Item>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <ConfrontHistory refreshKey={refreshKey} />
-        </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <ConfrontHistory refreshKey={refreshKey} />
+            </section>
+          </div>
+        )}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <HauntingsFeed />
-        </section>
-      </div>
+        {view === 'hunters' && (
+          <div className="space-y-5">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <HunterLeaderboard refreshKey={refreshKey} />
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <HauntingsFeed />
+            </section>
+          </div>
+        )}
+      </NorthStarFrame>
 
       {selected && (
         <ResidueDetail
@@ -336,7 +380,7 @@ export default function GhostTrackerPage() {
           onClose={() => setSelected(null)}
           onChanged={bumpDependents}
         />
-      )}      <CrossLensRecentsPanel lensId="ghost-tracker" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      )}
     </LensShell>
   );
 }

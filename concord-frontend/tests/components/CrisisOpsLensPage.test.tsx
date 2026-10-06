@@ -16,6 +16,7 @@ vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => undefined }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 
 // Heavy child panels each fetch independently — stub to lightweight markers so
 // the page's own states are what we assert.
@@ -132,7 +133,7 @@ describe('CrisisOpsLensPage — four UX states + a11y', () => {
     lensRunMock.mockResolvedValue({ data: { ok: true, crises: [], suggestions: [] } });
     await renderPage();
     await waitFor(() => {
-      const h1 = screen.getByRole('heading', { level: 1, name: /crisis ops/i });
+      const h1 = screen.getByRole('heading', { level: 1, name: /all quiet/i });
       expect(h1).toBeInTheDocument();
     });
   });

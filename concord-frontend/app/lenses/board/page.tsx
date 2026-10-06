@@ -15,31 +15,30 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { TasksPanel } from '@/components/board/TasksPanel';
 import { BoardWorkspace } from '@/components/board/BoardWorkspace';
 import { BggHotList } from '@/components/board/BggHotList';
 import type { BoardView } from '@/components/board/board-shared';
 
-const VIEWS: { id: BoardView; label: string; keys: string; hint: string; icon: LucideIcon }[] = [
-  { id: 'board', label: 'Board', keys: 'b', hint: 'Kanban columns', icon: LayoutGrid },
-  { id: 'timeline', label: 'Timeline', keys: 't', hint: 'Due-date timeline', icon: BarChart3 },
-  { id: 'table', label: 'Table', keys: 'g', hint: 'Flat task table', icon: Table },
-  { id: 'workspace', label: 'Workspace', keys: 'w', hint: 'Trello-parity boards', icon: Kanban },
-  { id: 'bgg', label: 'BGG', keys: 'h', hint: 'BoardGameGeek hot list', icon: Rocket },
+const VIEWS: { id: BoardView; label: string; keys: string; title: string; hint: string; icon: LucideIcon }[] = [
+  { id: 'board', title: 'What’s next', label: 'Board', keys: 'b', hint: 'Kanban columns', icon: LayoutGrid },
+  { id: 'timeline', title: 'What is due when', label: 'Timeline', keys: 't', hint: 'Due-date timeline', icon: BarChart3 },
+  { id: 'table', title: 'Every task, side by side', label: 'Table', keys: 'g', hint: 'Flat task table', icon: Table },
+  { id: 'workspace', title: 'Your boards', label: 'Workspace', keys: 'w', hint: 'Trello-parity boards', icon: Kanban },
+  { id: 'bgg', title: 'What is hot in board games', label: 'BGG', keys: 'h', hint: 'BoardGameGeek hot list', icon: Rocket },
 ];
 
 export default function BoardLensPage() {
   useLensNav('board');
-  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('board');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<BoardView>('board');
 
   useLensCommand(
@@ -65,60 +64,42 @@ export default function BoardLensPage() {
     [reduceMotion],
   );
 
+  const current = VIEWS.find((v) => v.id === active)!;
   const isTaskView = active === 'board' || active === 'timeline' || active === 'table';
 
   return (
     <LensShell lensId="board" asMain={false}>
-      <FirstRunTour lensId="board" />
       <DepthBadge lensId="board" size="sm" className="ml-2" />
-      <div data-lens-theme="board" className="flex flex-col min-h-screen">
-        <header className="flex-shrink-0 px-6 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3 min-w-0">
-              <Kanban className="w-6 h-6 text-purple-400 shrink-0" />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-bold text-white">Project Board</h1>
-                  <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                  <DTUExportButton domain="board" data={realtimeData || {}} compact />
-                </div>
-                <p className="text-xs text-gray-400">
-                  Kanban desk — board, timeline, table, workspace, BGG.
-                </p>
-              </div>
-            </div>
-
-            <nav
-              className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10 overflow-x-auto"
-              aria-label="Board views"
-            >
-              {VIEWS.map((v) => {
-                const Icon = v.icon;
-                const on = active === v.id;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setActive(v.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
-                      on
-                        ? 'bg-purple-500/20 text-purple-300 shadow-sm'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5',
-                    )}
-                    aria-current={on ? 'page' : undefined}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {v.label}
-                    <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono ml-0.5">
-                      {v.keys}
-                    </kbd>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </header>
+      <div data-lens-theme="board" className="flex min-h-screen flex-col">
+        <div className="flex-shrink-0 px-8 pt-6">
+          <p className="text-[14px] text-zinc-500">Board</p>
+          <h1 className="font-vault mb-5 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+            {current.title}{active === 'board' && who ? `, ${who}` : ''}
+          </h1>
+          <nav className="mb-2 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Board views">
+            {VIEWS.map((v) => {
+              const Icon = v.icon;
+              const on = active === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setActive(v.id)}
+                  aria-current={on ? 'page' : undefined}
+                  title={`${v.hint} (${v.keys})`}
+                  className={cn(
+                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {v.label}
+                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps} className="flex-1 flex flex-col min-h-0">

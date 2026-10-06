@@ -37,8 +37,12 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Trophy, AlertTriangle, RefreshCw, Search } from 'lucide-react';
+import { Trophy, AlertTriangle, RefreshCw, Search, Medal, BarChart3 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { subscribe } from '@/lib/realtime/socket';
@@ -57,12 +61,15 @@ import type {
 
 type LoadState = 'loading' | 'error' | 'ready';
 type SortMode = 'default' | 'recent' | 'alpha' | 'rarity';
+type AchView = 'gallery' | 'progress';
 
 const RARITY_ORDER: Record<string, number> = { legendary: 0, gold: 1, silver: 2, bronze: 3 };
 const HIGHLIGHT_MS = 3600;
 
 function AchievementsLensInner() {
   const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<AchView>('gallery');
   const params = useSearchParams();
   // useSearchParams() can legitimately return null (Next.js docs — outside a
   // router context, e.g. during certain test/static-render paths); guard the
@@ -83,9 +90,7 @@ function AchievementsLensInner() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandled = useRef(false);
 
-  const refresh = useCallback(async () => {
-    setState('loading');
-    setError(null);
+  const load = useCallback(async () => {
     try {
       // The catalog is the load-bearing fetch — if it fails, the gallery has
       // nothing real to show, so that's the error state. The earned fetch is
@@ -120,7 +125,13 @@ function AchievementsLensInner() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  const refresh = useCallback(async () => {
+    setState('loading');
+    setError(null);
+    await load();
+  }, [load]);
+
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   useEffect(() => {
     const off = subscribe<AchievementUnlockedEvent>('achievement:unlocked', (data) => {
@@ -194,6 +205,19 @@ function AchievementsLensInner() {
     return { earned: earned.length, total, visibleTotal, sparks, pct };
   }, [catalog, earned, visibleAll]);
 
+  const rarityRows = useMemo(() => {
+    const byRarity = new Map<string, { earned: number; total: number }>();
+    for (const a of visibleAll) {
+      const row = byRarity.get(a.rarity) || { earned: 0, total: 0 };
+      row.total += 1;
+      if (earnedIds.has(a.id)) row.earned += 1;
+      byRarity.set(a.rarity, row);
+    }
+    return Array.from(byRarity.entries())
+      .map(([rarity, r]) => ({ rarity, ...r }))
+      .sort((a, b) => (RARITY_ORDER[a.rarity] ?? 9) - (RARITY_ORDER[b.rarity] ?? 9));
+  }, [visibleAll, earnedIds]);
+
   const categoryProgressRows = useMemo<CategoryProgressRow[]>(() => {
     const byCat = new Map<string, { earned: number; total: number }>();
     for (const a of visibleAll) {
@@ -215,7 +239,7 @@ function AchievementsLensInner() {
     if (!deepLinkId || state !== 'ready' || deepLinkHandled.current) return;
     deepLinkHandled.current = true;
     if (!visibleAll.some((a) => a.id === deepLinkId)) return;
-    setHighlightedIds((prev) => new Set(prev).add(deepLinkId));
+    void Promise.resolve().then(() => setHighlightedIds((prev) => new Set(prev).add(deepLinkId)));
     requestAnimationFrame(() => {
       document.getElementById(`achievement-${deepLinkId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
@@ -233,8 +257,10 @@ function AchievementsLensInner() {
         keys: '/',
         description: 'Focus achievement search',
         category: 'view',
-        action: () => searchInputRef.current?.focus(),
+        action: () => { setView('gallery'); searchInputRef.current?.focus(); },
       },
+      { id: 'achievements-gallery', keys: 'g', description: 'Gallery', category: 'navigation' as const, action: () => setView('gallery') },
+      { id: 'achievements-progress', keys: 'p', description: 'Progress by category and rarity', category: 'navigation' as const, action: () => { setView('progress'); } },
       {
         id: 'achievements-refresh',
         keys: 'r',
@@ -246,50 +272,89 @@ function AchievementsLensInner() {
     { lensId: 'achievements' },
   );
 
+  const subtitle =
+    state === 'ready'
+      ? `${counts.earned} / ${counts.visibleTotal} earned · ${counts.total} total in catalog`
+      : state === 'loading'
+        ? 'Loading catalog…'
+        : 'Catalog unavailable';
+
   return (
     <LensShell lensId="achievements" asMain={false}>
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
-        <header className="border-b border-fuchsia-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto max-w-screen-2xl">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 p-2">
-                <Trophy className="h-5 w-5 text-fuchsia-400" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-base font-semibold tracking-tight sm:text-lg">Achievements</h1>
-                <p className="mt-0.5 truncate text-xs text-slate-400">
-                  {state === 'ready'
-                    ? `${counts.earned} / ${counts.visibleTotal} earned · ${counts.total} total in catalog`
-                    : state === 'loading'
-                      ? 'Loading catalog…'
-                      : 'Catalog unavailable'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void refresh()}
-                disabled={state === 'loading'}
-                aria-label="Refresh achievements"
-                className="rounded-md border border-slate-700 bg-slate-800/50 p-1.5 text-slate-300 hover:bg-slate-700/50 disabled:opacity-40"
-                title="Refresh (r)"
-              >
-                <RefreshCw className={`h-4 w-4 ${state === 'loading' ? 'animate-spin' : ''}`} aria-hidden="true" />
-              </button>
+      <FirstRunTour lensId="achievements" />
+      <DepthBadge lensId="achievements" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="achievements"
+        crumb="Achievements"
+        title={view === 'gallery' ? `What you have earned${who ? `, ${who}` : ''}` : 'How far you have come'}
+        subtitle={subtitle}
+        tabs={[
+          { id: 'gallery', label: 'Gallery', icon: Trophy, keys: 'g', hint: 'Every achievement, titles and community activity' },
+          { id: 'progress', label: 'Progress', icon: BarChart3, keys: 'p', hint: 'Completion by category and rarity' },
+        ]}
+        activeTab={view}
+        onTab={(id) => setView(id as AchView)}
+        tabsLabel="Achievement views"
+        cta={{
+          label: 'Sync unlocks',
+          icon: RefreshCw,
+          onClick: () => void refresh(),
+          disabled: state === 'loading',
+          title: 'Re-read the catalog and your unlocks (r)',
+        }}
+      >
+        {state === 'ready' && (
+          <div className="mb-5">
+            <StatTileGrid columns={4}>
+              <StatTile label="Earned" value={counts.earned} size="sm" caption={`of ${counts.visibleTotal} visible`} />
+              <StatTile label="Completion" value={counts.pct} unit="%" size="sm" />
+              <StatTile label="Sparks earned" value={counts.sparks} size="sm" caption="from achievement rewards" />
+              <StatTile label="In catalog" value={counts.total} size="sm" caption="authored total" />
+            </StatTileGrid>
+          </div>
+        )}
+
+        {deepLinkMissing && (
+          <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Linked achievement not found — it may be locked, hidden until earned, or no longer exists.
+          </div>
+        )}
+
+        {view === 'progress' && state === 'ready' && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h2 className="mb-3 text-sm font-semibold text-white">By category</h2>
+              <CategoryProgress rows={categoryProgressRows} />
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                <Medal className="h-4 w-4 text-zinc-400" aria-hidden="true" /> By rarity
+              </h2>
+              <ul className="space-y-2">
+                {rarityRows.map((r) => (
+                  <li key={r.rarity} className="flex items-center gap-3 text-xs text-zinc-300">
+                    <span className="w-20 capitalize">{r.rarity}</span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-teal-400" style={{ width: `${r.total ? Math.round((r.earned / r.total) * 100) : 0}%` }} />
+                    </div>
+                    <span className="w-12 text-right tabular-nums text-zinc-400">{r.earned}/{r.total}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <div className="lg:col-span-2">
+              <TitlesPanel refreshSignal={titlesRefreshSignal} />
             </div>
+          </div>
+        )}
+        {view === 'progress' && state !== 'ready' && (
+          <p className="text-sm text-zinc-400">Progress appears once the catalog has loaded.</p>
+        )}
 
-            {state === 'ready' && (
-              <div className="mt-3">
-                <StatTileGrid columns={4}>
-                  <StatTile label="Earned" value={counts.earned} size="sm" caption={`of ${counts.visibleTotal} visible`} />
-                  <StatTile label="Completion" value={counts.pct} unit="%" size="sm" />
-                  <StatTile label="Sparks earned" value={counts.sparks} size="sm" caption="from achievement rewards" />
-                  <StatTile label="In catalog" value={counts.total} size="sm" caption="authored total" />
-                </StatTileGrid>
-                <CategoryProgress rows={categoryProgressRows} className="mt-2" />
-              </div>
-            )}
-
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {view === 'gallery' && (
+          <>
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <nav className="flex flex-wrap gap-1" aria-label="Filter by category">
                 {categories.map((c) => (
                   <button
@@ -297,7 +362,7 @@ function AchievementsLensInner() {
                     type="button"
                     onClick={() => setCategory(c)}
                     aria-pressed={category === c}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize ${category === c ? 'border-fuchsia-400 bg-fuchsia-500/20 text-fuchsia-100' : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-700/40'}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${category === c ? 'border-teal-400/60 bg-teal-400/15 text-teal-100' : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-zinc-200'}`}
                   >
                     {c}
                   </button>
@@ -313,7 +378,7 @@ function AchievementsLensInner() {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search achievements… (/)"
                     aria-label="Search achievements"
-                    className="w-40 rounded-md border border-slate-700 bg-slate-900/60 py-1 pl-6 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none sm:w-56"
+                    className="w-40 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none sm:w-56"
                   />
                 </div>
                 <label className="sr-only" htmlFor="achievements-sort">Sort achievements</label>
@@ -321,7 +386,7 @@ function AchievementsLensInner() {
                   id="achievements-sort"
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortMode)}
-                  className="rounded-md border border-slate-700 bg-slate-900/60 py-1 pl-2 pr-1.5 text-[11px] text-slate-200 focus:border-fuchsia-400 focus:outline-none"
+                  className="rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-3 pr-2 text-xs text-slate-200 focus:border-teal-400 focus:outline-none"
                 >
                   <option value="default">Earned first</option>
                   <option value="recent">Recently earned</option>
@@ -330,81 +395,72 @@ function AchievementsLensInner() {
                 </select>
               </div>
             </div>
-          </div>
-        </header>
 
-        <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
-          {deepLinkMissing && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Linked achievement not found — it may be locked, hidden until earned, or no longer exists.
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+              <div className="xl:col-span-3">
+                {state === 'loading' && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    aria-busy="true"
+                    className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                  >
+                    <span className="sr-only">Loading achievements…</span>
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="h-[92px] animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" aria-hidden="true" />
+                    ))}
+                  </div>
+                )}
+
+                {state === 'error' && (
+                  <ErrorState message={error || 'The achievement catalog is unavailable right now.'} onRetry={() => void refresh()} />
+                )}
+
+                {state === 'ready' && filtered.length > 0 && (
+                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                    {filtered.map((a) => (
+                      <AchievementCard
+                        key={a.id}
+                        achievement={a}
+                        earned={earnedIds.has(a.id)}
+                        earnedAt={earnedAtById.get(a.id)}
+                        highlighted={highlightedIds.has(a.id)}
+                        anchorId
+                      />
+                    ))}
+                  </ul>
+                )}
+
+                {state === 'ready' && filtered.length === 0 && (
+                  <EmptyState
+                    icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
+                    title={
+                      search
+                        ? 'No matches'
+                        : counts.earned === 0 && category === 'all'
+                          ? 'No achievements unlocked yet'
+                          : 'Nothing in this view'
+                    }
+                    description={
+                      search
+                        ? `No achievement title or description matches "${search}".`
+                        : counts.earned === 0 && category === 'all'
+                          ? 'Play the world — combat, trade, exploration and social milestones unlock achievements automatically.'
+                          : 'Try another category or sort, or keep playing to unlock these.'
+                    }
+                    action={search || category !== 'all' ? { label: 'Clear filters', onClick: () => { setSearch(''); setCategory('all'); } } : undefined}
+                  />
+                )}
+              </div>
+
+              <div className="space-y-3 xl:col-span-1">
+                <TitlesPanel refreshSignal={titlesRefreshSignal} />
+                <RecentActivityFeed catalogById={catalogById} currentUserId={user?.id ?? null} />
+              </div>
             </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-            <div className="xl:col-span-3">
-              {state === 'loading' && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  aria-busy="true"
-                  className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
-                >
-                  <span className="sr-only">Loading achievements…</span>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-[92px] animate-pulse rounded-lg border border-slate-800 bg-slate-800/30" aria-hidden="true" />
-                  ))}
-                </div>
-              )}
-
-              {state === 'error' && (
-                <ErrorState message={error || 'The achievement catalog is unavailable right now.'} onRetry={() => void refresh()} />
-              )}
-
-              {state === 'ready' && filtered.length > 0 && (
-                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
-                  {filtered.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      achievement={a}
-                      earned={earnedIds.has(a.id)}
-                      earnedAt={earnedAtById.get(a.id)}
-                      highlighted={highlightedIds.has(a.id)}
-                      anchorId
-                    />
-                  ))}
-                </ul>
-              )}
-
-              {state === 'ready' && filtered.length === 0 && (
-                <EmptyState
-                  icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
-                  title={
-                    search
-                      ? 'No matches'
-                      : counts.earned === 0 && category === 'all'
-                        ? 'No achievements unlocked yet'
-                        : 'Nothing in this view'
-                  }
-                  description={
-                    search
-                      ? `No achievement title or description matches "${search}".`
-                      : counts.earned === 0 && category === 'all'
-                        ? 'Play the world — combat, trade, exploration and social milestones unlock achievements automatically.'
-                        : 'Try another category or sort, or keep playing to unlock these.'
-                  }
-                  action={search || category !== 'all' ? { label: 'Clear filters', onClick: () => { setSearch(''); setCategory('all'); } } : undefined}
-                />
-              )}
-            </div>
-
-            <div className="space-y-3 xl:col-span-1">
-              <TitlesPanel refreshSignal={titlesRefreshSignal} />
-              <RecentActivityFeed catalogById={catalogById} currentUserId={user?.id ?? null} />
-            </div>
-          </div>
-        </section>
-      </main>
+          </>
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

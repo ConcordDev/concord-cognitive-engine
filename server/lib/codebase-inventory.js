@@ -336,16 +336,21 @@ export function buildWiringMap() {
   const lenses = scanLensPages();
   const serverLibs = scanServerLibraries();
 
+  // Read each lens page exactly once; the component pass below used to re-read
+  // every page per unreferenced component (~20s of sync I/O on the event loop).
+  const pageContent = new Map();
+  for (const lens of lenses) {
+    try {
+      pageContent.set(lens.name, fs.readFileSync(path.join(LENSES_DIR, lens.name, "page.tsx"), "utf-8"));
+    } catch {
+      // page unreadable: treated as no content
+    }
+  }
+
   // Build lens map
   const lensMap = {};
   for (const lens of lenses) {
-    const pagePath = path.join(LENSES_DIR, lens.name, "page.tsx");
-    let content = "";
-    try {
-      content = fs.readFileSync(pagePath, "utf-8");
-    } catch {
-      // skip
-    }
+    const content = pageContent.get(lens.name) ?? "";
 
     // Component imports (from @/components/...)
     const componentImports = lens.imports
@@ -387,13 +392,8 @@ export function buildWiringMap() {
     // Also check if any lens page.tsx content references this component's exports
     if (usedByLenses.length === 0) {
       for (const lens of lenses) {
-        const pagePath = path.join(LENSES_DIR, lens.name, "page.tsx");
-        let content = "";
-        try {
-          content = fs.readFileSync(pagePath, "utf-8");
-        } catch {
-          continue;
-        }
+        const content = pageContent.get(lens.name);
+        if (content === undefined) continue;
         const isReferenced = comp.exports.some(
           (exp) => content.includes(exp) && exp.length > 2
         );

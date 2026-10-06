@@ -8,6 +8,8 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { AdvancedAccountingPanel } from './AdvancedAccountingPanel';
+import { AccountingKeepMenu } from './AccountingKeepMenu';
+import type { AccountingJournalEntry, AccountingJournalLine } from './accountingEntryReport';
 
 export interface Account {
   id: string;
@@ -344,6 +346,7 @@ function JournalEntryTab() {
   ]);
   const [status, setStatus] = useState<{ kind: 'idle' | 'success' | 'error'; msg?: string }>({ kind: 'idle' });
   const [saving, setSaving] = useState(false);
+  const [postedEntry, setPostedEntry] = useState<AccountingJournalEntry | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -386,9 +389,10 @@ function JournalEntryTab() {
           })),
         },
       });
-      const data = res.data as { ok?: boolean; error?: string; result?: { entry?: { number: string } } };
+      const data = res.data as { ok?: boolean; error?: string; result?: { entry?: AccountingJournalEntry } };
       if (data.ok) {
         setStatus({ kind: 'success', msg: `Posted ${data.result?.entry?.number}` });
+        setPostedEntry(data.result?.entry || null);
         setLines([
           { accountId: '', debit: 0, credit: 0, memo: '' },
           { accountId: '', debit: 0, credit: 0, memo: '' },
@@ -537,6 +541,10 @@ function JournalEntryTab() {
         >
           {status.msg}
         </div>
+      )}
+
+      {postedEntry && status.kind === 'success' && (
+        <AccountingKeepMenu facts={{ entry: postedEntry, accounts: Object.fromEntries(accounts.map((a) => [a.id, { code: a.code, name: a.name }])) }} />
       )}
     </div>
   );

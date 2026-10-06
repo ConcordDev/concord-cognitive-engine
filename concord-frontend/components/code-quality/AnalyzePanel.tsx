@@ -5,28 +5,6 @@ import { lensRun } from '@/lib/api/client';
 import type { CQScan } from './types';
 import { CQ_SEVERITIES, CQ_SEVERITY_STYLE } from './types';
 
-const SAMPLE = `function processOrder(order, user, db, cfg, logger, retries) {
-  var total = 0;
-  if (order != null) {
-    for (let i = 0; i < order.items.length; i++) {
-      if (order.items[i].price > 0) {
-        if (order.items[i].qty > 0) {
-          if (order.items[i].taxable) {
-            total += order.items[i].price * order.items[i].qty * 1.0825;
-          } else {
-            total += order.items[i].price * order.items[i].qty;
-          }
-        }
-      }
-    }
-  }
-  console.log('order total', total);
-  try {
-    db.save(order);
-  } catch (e) {}
-  return total;
-}`;
-
 function gradeColor(grade: string): string {
   if (grade === 'A') return 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10';
   if (grade === 'B') return 'text-lime-400 border-lime-400/40 bg-lime-400/10';
@@ -81,12 +59,6 @@ export function AnalyzePanel({
           className="bg-black/40 border border-gray-700 rounded px-2 py-1 text-sm w-48 font-mono"
         />
         <button
-          onClick={() => setSource(SAMPLE)}
-          className="px-3 py-1 rounded border border-gray-700 text-xs text-gray-300 hover:border-gray-500"
-        >
-          Load example
-        </button>
-        <button
           onClick={analyze}
           disabled={busy}
           className="px-4 py-1.5 rounded bg-neon-blue/20 border border-neon-blue/40 text-neon-blue hover:bg-neon-blue/30 transition disabled:opacity-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -131,7 +103,7 @@ export function AnalyzePanel({
 
       {!scan && !busy && (
         <p className="text-sm text-gray-400" data-testid="cq-analyze-empty">
-          No scan yet — paste source code above (or Load example) and Analyze to
+          No scan yet — paste source code above and Analyze to
           see a maintainability grade, per-line findings, complexity and
           duplication metrics.
         </p>

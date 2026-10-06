@@ -13,7 +13,9 @@ import {
   Activity, BarChart3, Timer, Heart, Eye, Gauge, Pause, Play,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -23,8 +25,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { TickStreamProvider, useTickStream } from '@/components/tick/TickStreamContext';
 import { HeartbeatPulse, type TickViewTab } from '@/components/tick/tick-model';
 import { TickQuickStats } from '@/components/tick/TickQuickStats';
@@ -61,6 +61,8 @@ function TickLensInner() {
   const { isLive, setIsLive, lastTickTime } = useTickStream();
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<TickViewTab>('stream');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -86,35 +88,43 @@ function TickLensInner() {
     [reduceMotion],
   );
 
+  const titles: Record<TickViewTab, string> = {
+    stream: `Feel the pulse${who ? `, ${who}` : ''}`,
+    stats: 'Read the signal',
+    timeline: 'Replay what happened',
+    health: 'Check the vital signs',
+    monitor: 'Watch every module',
+    rate: 'Measure the rhythm',
+  };
+
   return (
     <LensShell lensId="tick" asMain={false}>
       <FirstRunTour lensId="tick" />
       <DepthBadge lensId="tick" size="sm" className="ml-2" />
-      <div data-lens-theme="tick" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-4 min-w-0">
+      <NorthStarFrame
+        lensId="tick"
+        crumb="Tick"
+        title={titles[active]}
+        subtitle="Real-time kernel tick stream and system health monitoring"
+        actions={(
+          <>
             <HeartbeatPulse isLive={isLive} lastTickTime={lastTickTime} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Tick Lens</h1>
-                <LiveIndicator isLive={rtIsLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="tick" data={realtimeData || {}} compact />
-              </div>
-              <p className={ds.textMuted}>
-                Real-time kernel tick stream and system health monitoring
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsLive(!isLive)}
-            className={cn('btn-neon', isLive && 'green')}
-          >
-            {isLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span className="ml-2">{isLive ? 'Live' : 'Paused'}</span>
-          </button>
-        </header>
-
+            <LiveIndicator isLive={rtIsLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="tick" data={realtimeData || {}} compact />
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as TickViewTab)}
+        tabsLabel="Tick views"
+        cta={{
+          label: isLive ? 'Pause stream' : 'Resume stream',
+          icon: isLive ? Pause : Play,
+          onClick: () => setIsLive(!isLive),
+          title: isLive ? 'Pause the live tick stream' : 'Resume the live tick stream',
+        }}
+      >
+        <div className="space-y-4">
         {realtimeData && (
           <RealtimeDataPanel
             domain="tick"
@@ -128,40 +138,10 @@ function TickLensInner() {
 
         <TickQuickStats />
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Tick views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
         <AnimatePresence mode="wait">
-          <motion.div key={active} {...motionProps} className="pt-4">
+          <motion.div key={active} {...motionProps}>
             {active === 'monitor' || active === 'rate' ? (
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <Panel />
               </section>
             ) : (
@@ -172,9 +152,8 @@ function TickLensInner() {
 
         <TickActionsPanel />
 
-        <a href="#tick-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to tick content</a>
-        <CrossLensRecentsPanel lensId="tick" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -100,6 +100,14 @@ vi.mock('@/components/lens/LensPageShell', () => ({
   },
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: null }) }));
+vi.mock('@/hooks/useRealtimeLens', () => ({
+  useRealtimeLens: () => ({ latestData: null, isLive: false, lastUpdated: null, insights: [] }),
+}));
+vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
+vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
+vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
@@ -155,9 +163,11 @@ beforeEach(() => {
 });
 
 describe('hvac lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the hvac domain', () => {
+  it('WIRING: the desk reads hvac records and builds no dead action runner', () => {
+    // The desk's "Activate" button (a generic analyze whose result was
+    // discarded) is gone, so no hvac action runner is constructed for it.
     render(<HVACLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('hvac');
+    expect(useRunArtifactSpy).not.toHaveBeenCalledWith('hvac');
   });
 
   it('LOADING: an in-flight feed shows a role=status indicator', async () => {

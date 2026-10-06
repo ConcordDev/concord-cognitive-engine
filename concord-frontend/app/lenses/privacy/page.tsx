@@ -11,14 +11,14 @@ import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Shield, Scale, Database, MessageCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { ConsentPanel } from '@/components/privacy/ConsentPanel';
 import { DpoStudioPanel } from '@/components/privacy/DpoStudioPanel';
 import { DataControlsPanel } from '@/components/privacy/DataControlsPanel';
@@ -44,6 +44,8 @@ export default function PrivacySharingPage() {
   useLensNav('privacy');
   useLensIdentity('privacy');
   const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PrivacyView>('consent');
 
   useLensCommand(
@@ -74,61 +76,24 @@ export default function PrivacySharingPage() {
     <LensShell lensId="privacy" asMain={false}>
       <FirstRunTour lensId="privacy" />
       <DepthBadge lensId="privacy" size="sm" className="ml-2" />
-      <div data-lens-theme="privacy" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30">
-              <Shield className="w-6 h-6 text-indigo-500" />
-            </div>
-            <div className="min-w-0">
-              <h1 className={ds.heading1}>Privacy & Sharing</h1>
-              <p className={ds.textMuted}>
-                Consent, DPO studio, and data controls — one privacy desk.
-              </p>
-            </div>
-          </div>
-        </header>
+      <NorthStarFrame
+        lensId="privacy"
+        crumb="Privacy"
+        title={`What you share${who ? `, ${who}` : ''}`}
+        subtitle="Consent, DPO studio and data controls in one privacy desk"
+        tabs={VIEWS}
+        activeTab={active}
+        onTab={(id) => setActive(id as PrivacyView)}
+        tabsLabel="Privacy views"
+        cta={{ label: 'Request my data', icon: Database, onClick: () => setActive('controls'), title: 'Open data controls: DSAR, export, retention' }}
+      >
+      <AnimatePresence mode="wait">
+        <motion.div key={active} {...motionProps}>
+          <Panel />
+        </motion.div>
+      </AnimatePresence>
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Privacy views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <main className="min-w-0 pt-4">
-          <AnimatePresence mode="wait">
-            <motion.div key={active} {...motionProps}>
-              <Panel />
-            </motion.div>
-          </AnimatePresence>
-        </main>
-
-        <CrossLensRecentsPanel lensId="privacy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

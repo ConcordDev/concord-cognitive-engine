@@ -29,6 +29,7 @@ export function NotificationsPanel() {
   const [items, setItems] = useState<Notification[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [draft, setDraft] = useState<{ channel: 'sms' | 'email'; kind: typeof KINDS[number]; recipient: string; message: string; jobId: string }>({
     channel: 'sms', kind: 'reminder', recipient: '', message: '', jobId: '',
   });
@@ -42,7 +43,8 @@ export function NotificationsPanel() {
       ]);
       if (n.data?.ok && n.data.result) setItems(n.data.result.notifications);
       if (j.data?.ok && j.data.result) setJobs(j.data.result.jobs);
-    } catch (e) { console.error('[Notifications] refresh failed', e); }
+      if (n.data?.ok === false) setError(`Couldn't load reminders. ${n.data?.error || ''}`.trim());
+    } catch (e) { setError(`Couldn't load reminders. ${e instanceof Error ? e.message : ''}`.trim()); }
     finally { setLoading(false); }
   }, []);
 
@@ -56,10 +58,13 @@ export function NotificationsPanel() {
         message: draft.message, jobId: draft.jobId || null,
       });
       if (r.data?.ok) {
+        setError('');
         setDraft(d => ({ ...d, recipient: '', message: '', jobId: '' }));
         await refresh();
+      } else {
+        setError(`Not logged. ${r.data?.error || ''}`.trim());
       }
-    } catch (e) { console.error('[Notifications] send failed', e); }
+    } catch (e) { setError(`Not logged. ${e instanceof Error ? e.message : ''}`.trim()); }
   }
 
   return (
@@ -67,8 +72,12 @@ export function NotificationsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Bell className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Customer reminders</span>
-        <span className="ml-auto text-[10px] text-gray-400">{items.length} sent</span>
+        <span className="ml-auto text-[10px] text-gray-400">{items.length} logged</span>
       </header>
+      <p className="px-4 py-1.5 border-b border-white/10 text-[11px] text-gray-400">
+        No SMS or email provider is connected yet, so reminders are logged here and not sent. Send them yourself for now.
+      </p>
+      {error && <p role="alert" className="px-4 py-1.5 text-[11px] text-red-300">{error}</p>}
 
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-2 gap-2">
@@ -86,7 +95,7 @@ export function NotificationsPanel() {
         </select>
         <textarea value={draft.message} onChange={e => setDraft(d => ({ ...d, message: e.target.value }))} placeholder="Message to the customer" rows={2} className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 resize-none" />
         <button onClick={send} disabled={!draft.recipient.trim() || !draft.message.trim()} className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-amber-500/40 bg-amber-500/15 text-xs text-amber-100 disabled:opacity-40">
-          <Send className="w-3 h-3" /> Queue {draft.channel.toUpperCase()}
+          <Send className="w-3 h-3" /> Log {draft.channel.toUpperCase()} reminder
         </button>
       </div>
 
@@ -94,7 +103,7 @@ export function NotificationsPanel() {
         {loading ? (
           <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : items.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No reminders sent yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No reminders logged yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {items.map(n => (
@@ -106,7 +115,7 @@ export function NotificationsPanel() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-white truncate">{n.recipient}</span>
                     <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{KIND_LABEL[n.kind]}</span>
-                    <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded ml-auto', n.status === 'queued' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{n.status}</span>
+                    <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded ml-auto', n.status === 'sent' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>{n.status === 'sent' ? 'sent' : 'not sent'}</span>
                   </div>
                   <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>
                 </div>

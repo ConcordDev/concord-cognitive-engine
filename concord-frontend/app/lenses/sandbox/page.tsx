@@ -31,10 +31,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { LoadoutPicker, type ActiveLoadout } from '@/components/sandbox/LoadoutPicker';
 import { DummyPresetPanel, type AppliedDummyConfig } from '@/components/sandbox/DummyPresetPanel';
@@ -42,9 +41,11 @@ import { TelemetryOverlay } from '@/components/sandbox/TelemetryOverlay';
 import { ReplayPanel, type ReplayController, type ReplayFrame } from '@/components/sandbox/ReplayPanel';
 import { SandboxArena3D } from '@/components/sandbox/SandboxArena3D';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, ChevronDown, ChevronRight } from 'lucide-react';
+import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, GitBranch } from 'lucide-react';
 import { connectSocket, getSocket, subscribe } from '@/lib/realtime/socket';
 
 const BodyLanguageOverlay = dynamic(
@@ -94,8 +95,18 @@ function makeDummy(idx: number, hp: number): Dummy {
   return { id: `dummy_${idx}`, name: `Training Dummy ${idx + 1}`, hp, maxHp: hp };
 }
 
+type SandboxView = 'arena' | 'repos';
+
+const VIEWS: { id: SandboxView; label: string; keys: string; hint: string; icon: typeof Swords }[] = [
+  { id: 'arena', label: 'Arena', keys: '1', hint: 'Live combat arena with loadouts, presets, telemetry and replay', icon: Swords },
+  { id: 'repos', label: 'Playground repos', keys: '2', hint: 'GitHub sandbox and playground repositories', icon: GitBranch },
+];
+
 function CombatSandboxInner() {
   const params = useSearchParams();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<SandboxView>('arena');
   const initial = Math.max(1, Math.min(MAX_DUMMIES, Number(params?.get('dummies')) || DEFAULT_DUMMIES));
 
   const [dummyHp, setDummyHp] = useState(DUMMY_HP);
@@ -129,7 +140,9 @@ function CombatSandboxInner() {
   // once on mount (empty dep array) and would otherwise close over a stale
   // dummy-id list.
   const dummiesRef = useRef(dummies);
-  dummiesRef.current = dummies;
+  useEffect(() => {
+    dummiesRef.current = dummies;
+  }, [dummies]);
 
   // sandbox.enterArena registers the caller into a private per-user
   // `sandbox_<uid>` city + spawns/refreshes real training-dummy NPCs there —
@@ -161,7 +174,7 @@ function CombatSandboxInner() {
 
   // Enter the arena once on mount.
   useEffect(() => {
-    void syncArena(initial, DUMMY_HP, { reset: true });
+    void Promise.resolve().then(() => syncArena(initial, DUMMY_HP, { reset: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -286,6 +299,13 @@ function CombatSandboxInner() {
       { id: 'reset', keys: 'r', description: 'Reset dummy HP', category: 'actions', action: resetDummies },
       { id: 'add', keys: 'shift+=', description: 'Add a dummy', category: 'actions', action: addDummy },
       { id: 'remove', keys: '-', description: 'Remove a dummy', category: 'actions', action: removeDummy },
+      ...VIEWS.map((v) => ({
+        id: `sandbox-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setView(v.id),
+      })),
       { id: 'speed', keys: 's', description: 'Cycle slow-motion', category: 'actions', action: cycleSpeed },
       { id: 'pause', keys: 'p', description: 'Pause / resume scene', category: 'actions', action: togglePause },
     ],
@@ -296,7 +316,32 @@ function CombatSandboxInner() {
   const totalMax = useMemo(() => dummies.reduce((s, d) => s + d.maxHp, 0), [dummies]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
+    <NorthStarFrame
+      lensId="sandbox"
+      crumb="Sandbox"
+      title={view === 'arena' ? `Feel the hit, ${who || 'tester'}` : 'Playground repos'}
+      subtitle="A private arena of real training dummies resolving through the live combat pipeline — tune loadouts, slow time, record and replay."
+      tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+      activeTab={view}
+      onTab={(id) => setView(id as SandboxView)}
+      tabsLabel="Sandbox views"
+      cta={{ label: 'Reset dummies', icon: RotateCcw, onClick: resetDummies, title: 'Fully heal every dummy and clear the hit log (R)' }}
+    >
+      {view === 'repos' && (
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+          <SandboxRepos />
+        </section>
+      )}
+      <div className={view === 'arena' ? 'grid gap-4 lg:grid-cols-[19rem_1fr]' : 'hidden'}>
+        <div className="space-y-3 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto lg:pr-1">
+        <LoadoutPicker onApply={setLoadout} />
+        <DummyPresetPanel onApply={applyDummyConfig} />
+        {/* @modal-escape-ok: TelemetryOverlay is a HUD on the control rail, not a trapping modal dialog. */}
+        <TelemetryOverlay weaponId={loadout.weaponId} />
+        <ReplayPanel controllerRef={replayController} onPlayFrame={onPlayFrame} />
+      
+        </div>
+        <div className="relative h-[calc(100vh-14rem)] min-h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100">
       {/* 3D rendered arena. */}
       <SandboxArena3D
         dummies={dummies}
@@ -306,7 +351,7 @@ function CombatSandboxInner() {
       />
 
       {/* Header strip */}
-      <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between border-b border-slate-700/40 bg-black/50 px-4 py-2 backdrop-blur-sm">
+      <div className="absolute left-0 right-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/50 px-4 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-2 text-xs">
           <Swords className="h-4 w-4 text-amber-300" />
           <span className="font-semibold uppercase tracking-wide text-amber-200">Combat Sandbox</span>
@@ -369,15 +414,6 @@ function CombatSandboxInner() {
         </div>
       </div>
 
-      {/* Feel-tuning control rail — left side. */}
-      <div className="absolute bottom-3 left-3 top-14 z-10 w-72 space-y-3 overflow-y-auto pr-1">
-        <LoadoutPicker onApply={setLoadout} />
-        <DummyPresetPanel onApply={applyDummyConfig} />
-        {/* @modal-escape-ok: TelemetryOverlay is a HUD on the control rail, not a trapping modal dialog. */}
-        <TelemetryOverlay weaponId={loadout.weaponId} />
-        <ReplayPanel controllerRef={replayController} onPlayFrame={onPlayFrame} />
-      </div>
-
       {/* Hit log strip — bottom right */}
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 max-h-48 w-72 overflow-hidden rounded bg-black/55 p-2 text-[10px] backdrop-blur-sm">
         <div className="mb-1 font-semibold text-amber-200">Hit Log</div>
@@ -403,41 +439,26 @@ function CombatSandboxInner() {
         </ul>
       </div>
 
-      {/* Combat presentation overlays — same set the live world uses. */}
+        </div>
+      </div>
+
       <ImpactFeedback />
       <GameJuice>
         <ComboEvolvedBridge />
       </GameJuice>
       <BodyLanguageOverlay />
-    </div>
+    </NorthStarFrame>
   );
 }
 
 export default function CombatSandboxPage() {
-  const [showSandboxRepos, setShowSandboxRepos] = useState(false);
   return (
     <LensShell lensId="sandbox" asMain={false}>
-      <FirstRunTour lensId="sandbox" />      <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="sandbox" className="mx-6 mt-4" />
-      <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
+      <FirstRunTour lensId="sandbox" />
+      <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
+      <Suspense fallback={<div className="h-64 w-full rounded-2xl bg-slate-900" />}>
         <CombatSandboxInner />
       </Suspense>
-      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowSandboxRepos(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Sandbox / playground repos (GitHub)</span>
-          {showSandboxRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showSandboxRepos && (
-          <div className="mt-3">
-            <SandboxRepos />
-          </div>
-        )}
-      </section>
-          <CrossLensRecentsPanel lensId="sandbox" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

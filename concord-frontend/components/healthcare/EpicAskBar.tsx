@@ -6,13 +6,6 @@ import { lensRun } from '@/lib/api/client';
 
 interface Finding { label: string; display: string }
 
-const SAMPLES = [
-  'Show me critical labs',
-  'Any allergies to penicillin?',
-  'Recent diabetes notes',
-  'High blood pressure?',
-];
-
 export function EpicAskBar({ patientId }: { patientId?: string | null }) {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,13 +39,6 @@ export function EpicAskBar({ patientId }: { patientId?: string | null }) {
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {SAMPLES.map(s => (
-            <button key={s} type="button" onClick={() => { setQ(s); ask(s); }} disabled={!patientId} className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 whitespace-nowrap disabled:opacity-40">
-              {s}
-            </button>
-          ))}
         </div>
       </form>
       {findings && findings.length > 0 && (

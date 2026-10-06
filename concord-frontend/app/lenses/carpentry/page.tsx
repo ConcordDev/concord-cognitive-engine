@@ -1,72 +1,91 @@
 'use client';
 
 /**
- * Carpentry lens — a real trade-management + shop-calculator surface, not a
- * generic artifact CRUD store. Every panel below calls a genuine
- * `carpentry.*` macro (server/domains/carpentry.js):
+ * Carpentry lens: a real trade-management + shop-calculator surface. Every
+ * view calls genuine `carpentry.*` macros (server/domains/carpentry.js):
  *
- *   JobOps            — cut-list optimizer, material takeoff → estimate,
- *                        crew roster + dispatch calendar, per-job time
- *                        tracking, before/during/after photo log,
- *                        estimate → invoice + e-signature + client portal.
- *   CarpentryShop      — board-foot calculator, joint-strength guide, wood
- *                        selection guide, finish recommender.
- *   WoodSpeciesReference — live Wikipedia REST lookups for named species.
+ *   JobOps              cut-list optimizer, material takeoff to estimate,
+ *                       crew roster + dispatch calendar, time tracking, photo
+ *                       log, estimate to invoice with e-signature + portal.
+ *   CarpentryShop       board-foot calculator, joint-strength guide, wood
+ *                       selection guide, finish recommender.
+ *   WoodSpeciesReference live Wikipedia REST lookups for named species.
  *
- * A prior revision of this page wrapped the real engine in a generic
- * artifact-CRUD shell (MODE_TABS: Job/Estimate/CodeRef/Material/Client/
- * Invoice/Inspection/Certification persisted through the domain-agnostic
- * /api/lens/carpentry artifact store) plus an auto-generated manifest button
- * bar and a generic three-verb "analyze" action wired to nothing
- * carpentry-specific. None of that touched the real macros above — it was
- * disconnected generic scaffold sitting in front of already-real depth (the
- * 2026-07-09 rebuild
- * pass removed it; see docs/lens-specs/carpentry-capability-map.md).
+ * See docs/lens-specs/carpentry-capability-map.md.
  */
 
+import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { Hammer } from 'lucide-react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Briefcase, Hammer, Ruler, TreePine } from 'lucide-react';
 import { WoodSpeciesReference } from '@/components/carpentry/WoodSpeciesReference';
 import { CarpentryShop } from '@/components/carpentry/CarpentryShop';
 import { JobOps } from '@/components/carpentry/JobOps';
 
+type CarpView = 'jobs' | 'shop' | 'wood';
+
+const VIEWS: { id: CarpView; label: string; keys: string; title: string; hint: string; icon: typeof Hammer }[] = [
+  { id: 'jobs', label: 'Jobs', keys: '1', title: 'What is on the bench', hint: 'Cut lists, takeoffs, crew, time, photos, estimates and invoices', icon: Briefcase },
+  { id: 'shop', label: 'Shop calculators', keys: '2', title: 'Measure twice', hint: 'Board feet, joint strength, wood selection and finish', icon: Ruler },
+  { id: 'wood', label: 'Wood species', keys: '3', title: 'Know your lumber', hint: 'Live species reference lookups', icon: TreePine },
+];
+
+const card = 'rounded-2xl border border-white/10 bg-[#111] p-4';
+
 export default function CarpentryLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<CarpView>('jobs');
+  useLensCommand(
+    VIEWS.map((v) => ({
+      id: `carpentry-${v.id}`,
+      keys: v.keys,
+      description: `${v.label}: ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setView(v.id),
+    })),
+    { lensId: 'carpentry' },
+  );
+  const current = VIEWS.find((v) => v.id === view)!;
+
   return (
-    <LensShell lensId="carpentry">
+    <LensShell lensId="carpentry" asMain={false}>
       <FirstRunTour lensId="carpentry" />
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6">
-        <header className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Hammer className="w-6 h-6 text-amber-400" aria-hidden="true" />
-            <div>
-              <h1 className="text-xl font-semibold text-white">Carpentry</h1>
-              <p className="text-sm text-zinc-400 mt-0.5 max-w-2xl">
-                Cut lists, material takeoffs, crew dispatch, job time tracking,
-                photo logs, and estimate-to-invoice with a shareable client
-                portal — plus a shop-calculator suite for board feet, joint
-                strength, wood selection, and finish. Every number below comes
-                from the real carpentry engine, not a generic form store.
-              </p>
-            </div>
-          </div>
-          <DepthBadge lensId="carpentry" size="sm" />
-        </header>
-
-        <section id="carpentry-skip" aria-label="Trade job management">
-          <JobOps />
-        </section>
-
-        <section aria-label="Shop calculator suite" className="rounded-xl border border-amber-700/20 bg-zinc-950/40 p-4">
-          <CarpentryShop />
-        </section>
-
-        <section aria-label="Wood species reference" className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <WoodSpeciesReference />
-        </section>
-      </div>      <CrossLensRecentsPanel lensId="carpentry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <DepthBadge lensId="carpentry" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="carpentry"
+        crumb="Carpentry"
+        title={`${current.title}${view === 'jobs' && who ? `, ${who}` : ''}`}
+        subtitle="Cut lists, material takeoffs, crew dispatch, time tracking, photo logs and estimate-to-invoice with a client portal, plus the shop calculators."
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        activeTab={view}
+        onTab={(id) => setView(id as CarpView)}
+        tabsLabel="Carpentry views"
+        cta={{ label: 'Open shop calculators', icon: Hammer, onClick: () => setView('shop'), title: 'Board feet, joints, wood and finish' }}
+      >
+        <div id="carpentry-skip" className="space-y-5">
+          {view === 'jobs' && (
+            <section aria-label="Trade job management">
+              <JobOps />
+            </section>
+          )}
+          {view === 'shop' && (
+            <section aria-label="Shop calculator suite" className={card}>
+              <CarpentryShop />
+            </section>
+          )}
+          {view === 'wood' && (
+            <section aria-label="Wood species reference" className={card}>
+              <WoodSpeciesReference />
+            </section>
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

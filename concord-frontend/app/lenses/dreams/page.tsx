@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * /lenses/dreams — Browse, read, interpret, tag, search + publish your dreams.
+ * /lenses/dreams — north-star look (serif title, pill tabs, teal CTA that opens the latest dream). Browse, read, interpret, tag, search + publish your dreams.
  *
  * Each dream is a deterministic prose record of one night's substrate state.
  * The list comes from `dreams.recent`; the reader/interpret/tag/publish flow
@@ -31,6 +31,10 @@ import { DreamPredictions } from '@/components/dreams/DreamPredictions';
 import { DreamReader } from '@/components/dreams/DreamReader';
 import { DreamLibrary } from '@/components/dreams/DreamLibrary';
 import { lensRun } from '@/lib/api/client';
+import { Library, Moon, BookOpen } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { cn } from '@/lib/utils';
 
 interface DreamDtu { id: string; title?: string; data?: unknown }
 interface Dream {
@@ -47,108 +51,122 @@ interface Dream {
 
 type Tab = 'recent' | 'library';
 
-export default function DreamsPage() {
-  useLensCommand([
-    { id: 'dreams-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'dreams' });
+const CTA = 'fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-50';
 
+const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof Moon }[] = [
+  { id: 'recent', label: 'Recent', keys: '1', hint: 'Your latest dreams', icon: Moon },
+  { id: 'library', label: 'Search & Timeline', keys: '2', hint: 'Search, tags and timeline', icon: Library },
+];
+
+export default function DreamsPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('recent');
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDreamId, setOpenDreamId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const refresh = useCallback(async () => {
-    const r = await lensRun<{ ok: boolean; dreams?: Dream[] }>('dreams', 'recent', { limit: 30 });
-    if (r.data.ok) setDreams(r.data.result?.dreams || []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { void refresh(); }, [refresh, reloadKey]);
+  useEffect(() => {
+    let cancelled = false;
+    void lensRun<{ ok: boolean; dreams?: Dream[] }>('dreams', 'recent', { limit: 30 }).then((r) => {
+      if (cancelled) return;
+      if (r.data.ok) setDreams(r.data.result?.dreams || []);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   const onChanged = () => setReloadKey((k) => k + 1);
 
-  if (loading) return <div className="p-8 sm:p-10 text-zinc-400">Loading your dreams…</div>;
+  const latestId = dreams[0]?.id ?? null;
+  const readLatest = useCallback(() => {
+    if (latestId) setOpenDreamId(latestId);
+    else setTab('library');
+  }, [latestId]);
+
+  useLensCommand([
+    ...TABS.map((t) => ({
+      id: `tab-${t.id}`,
+      keys: t.keys,
+      description: `${t.label} — ${t.hint}`,
+      category: 'navigation' as const,
+      action: () => setTab(t.id),
+    })),
+    { id: 'read-latest', keys: 'n', description: 'Read the latest dream', category: 'actions' as const, action: readLatest },
+  ], { lensId: 'dreams' });
 
   return (
-    <LensShell lensId="dreams">
+    <LensShell lensId="dreams" asMain={false}>
       <FirstRunTour lensId="dreams" />
       <DepthBadge lensId="dreams" size="sm" className="ml-2" />
-      <div className="p-6 max-w-3xl mx-auto">
-        <header
-          className="mb-6 rounded-xl border border-zinc-800/60 p-4 -mx-1"
-          style={{
-            backgroundImage:
-              'radial-gradient(1px 1px at 15% 30%, rgba(196,181,253,0.7) 0, transparent 60%),' +
-              'radial-gradient(1px 1px at 40% 70%, rgba(196,181,253,0.5) 0, transparent 60%),' +
-              'radial-gradient(1.5px 1.5px at 70% 20%, rgba(196,181,253,0.6) 0, transparent 60%),' +
-              'radial-gradient(1px 1px at 85% 55%, rgba(196,181,253,0.5) 0, transparent 60%),' +
-              'radial-gradient(1px 1px at 55% 85%, rgba(196,181,253,0.4) 0, transparent 60%),' +
-              'linear-gradient(180deg, rgba(88,28,135,0.12), transparent)',
-          }}
-        >
-          <h1 className="text-2xl font-bold text-zinc-100">Dreams</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Each is a deterministic prose record of one night&apos;s substrate state. Read it, interpret it, tag it, and publish to sell on the marketplace — royalty cascade pays you on every purchase. <strong>Currency: CC.</strong>
-          </p>
-        </header>
+      <div data-lens-theme="dreams" className="relative min-h-full px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Dreams</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          {tab === 'recent' ? `Last night's note${who ? `, ${who}` : ''}` : 'The dream library'}
+        </h1>
 
-        <div className="mb-4 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setTab('recent')}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === 'recent' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Recent
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('library')}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === 'library' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Search &amp; Timeline
-          </button>
-        </div>
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Dream views">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={on ? 'page' : undefined}
+                title={`${t.hint} (${t.keys})`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-        {tab === 'recent' && (
+        <p className="mb-5 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
+          Each is a deterministic prose record of one night&apos;s substrate state. Read it, interpret it, tag it, and publish to sell on the marketplace — royalty cascade pays you on every purchase. <strong className="font-medium text-zinc-400">Currency: CC.</strong>
+        </p>
+
+        {loading && <div role="status" className="rounded-2xl border border-white/10 bg-[#111] p-8 text-zinc-400">Loading your dreams…</div>}
+
+        {!loading && tab === 'recent' && (
           dreams.length === 0 ? (
-            <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
+            <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-white/10 bg-[#111] p-8 italic text-zinc-400">
               Sleep generates dreams. Come back tomorrow.
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {dreams.map((d) => {
                 const title = d.dtu?.title || `Dream from ${new Date(d.composed_at * 1000).toLocaleDateString()}`;
                 return (
-                  <li key={d.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold text-zinc-100 truncate">{title}</h3>
-                        <p className="mt-0.5 text-[10px] text-zinc-400 font-mono">
-                          {d.fragment_count ?? 0} fragments · {d.composer} · {new Date(d.composed_at * 1000).toLocaleString()}
-                        </p>
-                        {d.tags && d.tags.length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {d.tags.map((t) => (
-                              <span key={t} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-400">{t}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setOpenDreamId(d.id)}
-                          className="bg-purple-700 hover:bg-purple-600 text-white text-xs px-3 py-1.5 rounded font-medium"
-                        >
-                          Read
-                        </button>
-                      </div>
+                  <li key={d.id} className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#111] p-4">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-bold text-zinc-100">{title}</h3>
+                      <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
+                        {d.fragment_count ?? 0} fragments · {d.composer} · {new Date(d.composed_at * 1000).toLocaleString()}
+                      </p>
+                      {d.tags && d.tags.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {d.tags.map((t) => (
+                            <span key={t} className="rounded bg-white/5 px-1 font-mono text-[9px] text-zinc-400">{t}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDreamId(d.id)}
+                      className="mt-3 inline-flex items-center gap-1.5 self-start rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/10"
+                    >
+                      <BookOpen className="h-3 w-3" /> Read
+                    </button>
                   </li>
                 );
               })}
@@ -156,13 +174,20 @@ export default function DreamsPage() {
           )
         )}
 
-        {tab === 'library' && (
+        {!loading && tab === 'library' && (
           <DreamLibrary onOpen={setOpenDreamId} reloadKey={reloadKey} />
         )}
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <DreamPredictions />
         </section>
+
+        <CrossLensRecentsPanel lensId="dreams" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <button type="button" onClick={readLatest} title="Read the latest dream (N)" className={CTA}>
+          <Moon className="h-4 w-4" />
+          {latestId ? 'Read the latest dream' : 'Search the library'}
+        </button>
       </div>
 
       {openDreamId && (
@@ -172,8 +197,6 @@ export default function DreamsPage() {
           onChanged={onChanged}
         />
       )}
-
-      <a href="#dreams-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to dreams content</a>      <CrossLensRecentsPanel lensId="dreams" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -1,9 +1,11 @@
+// Dates are LOCAL noon: computePeriodRange works in the user's local calendar,
+// so a UTC-midnight instant is the previous day west of UTC (failed on US machines).
 import { describe, it, expect } from 'vitest';
 import { computePeriodRange, deltaPct } from '@/components/accounting/period-range';
 
 describe('computePeriodRange', () => {
   it('mtd: current month start through today, prior = same-length prior month', () => {
-    const r = computePeriodRange('mtd', new Date('2026-07-23T00:00:00Z'));
+    const r = computePeriodRange('mtd', new Date('2026-07-23T12:00:00'));
     expect(r.start).toBe('2026-07-01');
     expect(r.end).toBe('2026-07-23');
     expect(r.priorStart).toBe('2026-06-01');
@@ -12,7 +14,7 @@ describe('computePeriodRange', () => {
   });
 
   it('ytd: this year vs the same calendar day last year', () => {
-    const r = computePeriodRange('ytd', new Date('2026-07-23T00:00:00Z'));
+    const r = computePeriodRange('ytd', new Date('2026-07-23T12:00:00'));
     expect(r.start).toBe('2026-01-01');
     expect(r.end).toBe('2026-07-23');
     expect(r.priorStart).toBe('2025-01-01');
@@ -20,7 +22,7 @@ describe('computePeriodRange', () => {
   });
 
   it('last_month: the full previous calendar month vs the one before it', () => {
-    const r = computePeriodRange('last_month', new Date('2026-07-23T00:00:00Z'));
+    const r = computePeriodRange('last_month', new Date('2026-07-23T12:00:00'));
     expect(r.start).toBe('2026-06-01');
     expect(r.end).toBe('2026-06-30');
     expect(r.priorStart).toBe('2026-05-01');
@@ -28,7 +30,7 @@ describe('computePeriodRange', () => {
   });
 
   it('qtd: this quarter through today vs the same-length prior quarter', () => {
-    const r = computePeriodRange('qtd', new Date('2026-08-05T00:00:00Z'));
+    const r = computePeriodRange('qtd', new Date('2026-08-05T12:00:00'));
     expect(r.start).toBe('2026-07-01');
     expect(r.priorStart).toBe('2026-04-01');
   });

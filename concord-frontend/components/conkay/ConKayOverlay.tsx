@@ -199,6 +199,9 @@ export function ConKayOverlay() {
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
   const [muted, setMuted] = useState(false);
+  // Claude-clean default: transcript + composer only. CAD cockpit / 3D backdrop /
+  // Unity toolbar stay behind an explicit Studio expand control.
+  const [studioOpen, setStudioOpen] = useState(false);
   // Work-animation state: a live status line + a step spine that resolves as
   // ConKay works (the JARVIS "you can see it building" surface).
   const [steps, setSteps] = useState<WorkStep[]>([]);
@@ -1324,6 +1327,34 @@ export function ConKayOverlay() {
         const artifact = detectArtifact(domain, macro, inputObj, data?.result);
         if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
       }
+      // LIVE art: art.generate / chat.image-generate return GPU (or fallback) image
+      // payloads. detectArtifact has no image kind — mirror into chat markdown so
+      // Concord OS users see the pixel art, not only a JSON dump.
+      let artMarkdown = '';
+      if (ok && data?.result) {
+        const r: any = data.result;
+        const img =
+          (typeof r.image_b64 === 'string' && r.image_b64) ||
+          (typeof r.imageB64 === 'string' && r.imageB64) ||
+          (typeof r.image?.url === 'string' && String(r.image.url).startsWith('data:image/')
+            ? String(r.image.url).replace(/^data:image\/[^;]+;base64,/, '')
+            : null) ||
+          (typeof r.url === 'string' && String(r.url).startsWith('data:image/')
+            ? String(r.url).replace(/^data:image\/[^;]+;base64,/, '')
+            : null);
+        const httpUrl =
+          typeof r.url === 'string' && /^https?:\/\//.test(r.url)
+            ? r.url
+            : typeof r.image?.url === 'string' && /^https?:\/\//.test(r.image.url)
+              ? r.image.url
+              : null;
+        const promptLabel = String(r.prompt || inputObj.prompt || macro || 'generated image');
+        if (img) {
+          artMarkdown = `\n\n![${promptLabel}](data:image/png;base64,${img})`;
+        } else if (httpUrl) {
+          artMarkdown = `\n\n![${promptLabel}](${httpUrl})`;
+        }
+      }
       if (ok) {
         // LIVE stub: tell Unity iframe something happened (no-op if iframe absent).
         // No automatic spawn_primitive — mesh happy-paths use apply_mesh/load_glb/set_transform.
@@ -1340,7 +1371,7 @@ export function ConKayOverlay() {
       const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;
       append({
         id: `a-${Date.now()}`, role: 'assistant',
-        content: `${spoken}\n\n\`\`\`json\n${body}\n\`\`\``,
+        content: `${spoken}${artMarkdown}\n\n\`\`\`json\n${body}\n\`\`\``,
         toolCalls: [{ tool: `${domain}.${macro}`, params: inputObj, result: data?.result ?? null, ok }],
         brain: 'kay',
       });
@@ -1641,32 +1672,20 @@ export function ConKayOverlay() {
   // works, and the command palette still has "Summon Kay" — this just makes the
   // front door visible for people who don't know the shortcut). Suppressed on
   // the chat lens, which hosts its own ConKay mode.
-  if (!open) {
-    if (onChatLens) return null;
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Summon ConKay (⌘/Ctrl+J)"
-        title="Summon Kay — ask in one sentence (⌘/Ctrl+J)"
-        className="group fixed bottom-6 right-6 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
-      >
-        <Sparkles className="h-5 w-5" />
-        <span className="pointer-events-none absolute right-14 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-xs text-cyan-100 opacity-0 transition group-hover:opacity-100">
-          Ask Kay
-        </span>
-      </button>
-    );
-  }
+  // Closed: no floating summon button. Kay is summoned from the lens header
+  // toolbar (LensToolbar), ⌘/Ctrl+J, or the command palette.
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">
-      {/* world-tree presence */}
-      <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} ttsAmplitudeRef={voice.ttsAmplitudeRef} className="pointer-events-none absolute inset-0 -z-10" />
-      <div className="absolute inset-0 -z-10 bg-black/55 backdrop-blur-sm" aria-hidden onClick={() => setOpen(false)} />
+      {/* world-tree presence — Studio only (Claude-clean chat hides the 3D cockpit) */}
+      {studioOpen && (
+        <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} ttsAmplitudeRef={voice.ttsAmplitudeRef} className="pointer-events-none absolute inset-0 -z-10" />
+      )}
+      <div className={`absolute inset-0 -z-10 ${studioOpen ? 'bg-black/55' : 'bg-black/90'} backdrop-blur-sm`} aria-hidden onClick={() => setOpen(false)} />
 
-      {/* Phase 3 — exploded view of a real artifact (over the backdrop, interactive) */}
-      {inspecting && (
+      {/* Phase 3 — exploded view of a real artifact (Studio only) */}
+      {studioOpen && inspecting && (
         <ConKayArtifactExploded className="absolute inset-0 z-0" />
       )}
 
@@ -1687,7 +1706,7 @@ export function ConKayOverlay() {
         </span>
         <ConKayTelemetryChip />
         <div className="ml-auto flex items-center gap-1.5">
-          {unityPresent && (
+          {studioOpen && unityPresent && (
             <>
               <div className="flex items-center gap-1 mr-1">
                 <input
@@ -1929,10 +1948,23 @@ export function ConKayOverlay() {
               </button>
             </>
           )}
-          <button onClick={() => setInspecting((x) => !x)} title={inspecting ? 'Close inspector' : 'Inspect an AR artifact (exploded view)'} aria-label="Inspect artifact"
-            className={`rounded-lg p-2 hover:bg-cyan-400/10 ${inspecting ? 'text-cyan-100 bg-cyan-400/15' : 'text-cyan-200'}`}>
-            <Box className="h-4 w-4" />
+          <button
+            type="button"
+            onClick={() => setStudioOpen((x) => !x)}
+            title={studioOpen ? 'Hide Studio (CAD panels / 3D cockpit)' : 'Open Studio (CAD panels / 3D cockpit)'}
+            aria-label={studioOpen ? 'Hide Studio' : 'Open Studio'}
+            aria-pressed={studioOpen}
+            data-testid="ck-studio-toggle"
+            className={`rounded-lg px-2 py-1 text-[10px] font-medium border hover:bg-cyan-400/10 ${studioOpen ? 'border-cyan-400/50 bg-cyan-400/15 text-cyan-100' : 'border-cyan-400/25 text-cyan-200'}`}
+          >
+            Studio
           </button>
+          {studioOpen && (
+            <button onClick={() => setInspecting((x) => !x)} title={inspecting ? 'Close inspector' : 'Inspect an AR artifact (exploded view)'} aria-label="Inspect artifact"
+              className={`rounded-lg p-2 hover:bg-cyan-400/10 ${inspecting ? 'text-cyan-100 bg-cyan-400/15' : 'text-cyan-200'}`}>
+              <Box className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={() => setMuted((x) => !x)} title={muted ? 'Unmute' : 'Mute'} aria-label={muted ? 'Unmute' : 'Mute'}
             className="rounded-lg p-2 text-cyan-200 hover:bg-cyan-400/10">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -1948,7 +1980,7 @@ export function ConKayOverlay() {
           The physics parser needs real structural params ("make a house" fails);
           these show the shape of a prompt it can actually run. Click = populate
           the field + fire the NLP→partMesh/FEA→apply_mesh path. */}
-      {unityPresent && (
+      {studioOpen && unityPresent && (
         <div className="flex flex-wrap items-center gap-1.5 px-5 pb-2 text-[10px] text-cyan-300/50">
           <span className="text-cyan-300/40">Try:</span>
           {[
@@ -1969,11 +2001,14 @@ export function ConKayOverlay() {
         </div>
       )}
 
-      {/* transcript, now hosted inside the F1 cockpit grid — left/right panel
-          lanes (e.g. conkay.telemetry) flank the SAME transcript content,
-          unchanged. The lanes hide below `lg` so mobile keeps full width. */}
-      <ConKayCockpit>
-        <div className="mx-auto max-w-2xl space-y-3 py-2">
+      {/* Claude-clean default: transcript only (empty panel lanes). Explicit
+          Studio expand restores the F1 cockpit grid with registry panel defaults
+          (DTU provenance, forward sim, feature tree, macros, artifacts, …). */}
+      <ConKayCockpit
+        leftPanelIds={studioOpen ? undefined : []}
+        rightPanelIds={studioOpen ? undefined : []}
+      >
+        <div className="mx-auto max-w-2xl space-y-3 py-2" data-testid={studioOpen ? 'ck-studio-transcript' : 'ck-clean-transcript'}>
           {messages.length === 0 && (
             <div className="mt-10 text-center text-sm text-cyan-100/70">
               {lens && !onChatLens

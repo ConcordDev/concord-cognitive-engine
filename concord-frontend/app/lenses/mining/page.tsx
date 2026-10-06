@@ -1,10 +1,16 @@
 'use client';
 
+/**
+ * Mining lens: north-star chrome over site registry, geology, mine planning,
+ * fleet, GIS, MSHA lookup, environmental compliance and quick calculators.
+ * Every tab is a purpose-built workbench over the real `mining` macros.
+ */
+
 import { useState } from 'react';
-import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
 import { MineSiteManager } from '@/components/mining/MineSiteManager';
@@ -14,105 +20,76 @@ import { FleetManager } from '@/components/mining/FleetManager';
 import { GisPitMap } from '@/components/mining/GisPitMap';
 import { EnvironmentalCompliance } from '@/components/mining/EnvironmentalCompliance';
 import { PipingProvider } from '@/components/panel-polish';
-import { LensPageShell } from '@/components/lens/LensPageShell';
-import { cn } from '@/lib/utils';
-import {
-  Hammer as Pickaxe,
-  Mountain,
-  Gem,
-  HardHat,
-  Truck,
-  Map,
-  Calculator,
-  ShieldCheck,
-} from 'lucide-react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { Hammer as Pickaxe, Mountain, Gem, HardHat, Truck, Map, Calculator, ShieldCheck } from 'lucide-react';
 
 type ModeTab = 'Sites' | 'Geology' | 'Plan' | 'Fleet' | 'Map' | 'MSHA' | 'Environmental' | 'Calcs';
 
-const MODE_TABS: { key: ModeTab; label: string; icon: typeof Pickaxe }[] = [
-  { key: 'Sites', label: 'Sites & Safety', icon: Mountain },
-  { key: 'Geology', label: 'Geology', icon: Gem },
-  { key: 'Plan', label: 'Mine Plan', icon: Pickaxe },
-  { key: 'Fleet', label: 'Fleet & Schedule', icon: Truck },
-  { key: 'Map', label: 'GIS Map', icon: Map },
-  { key: 'MSHA', label: 'MSHA Compliance', icon: HardHat },
-  { key: 'Environmental', label: 'Environmental', icon: ShieldCheck },
-  { key: 'Calcs', label: 'Quick Calcs', icon: Calculator },
+const MODE_TABS: { key: ModeTab; label: string; keys: string; title: string; hint: string; icon: typeof Pickaxe }[] = [
+  { key: 'Sites', label: 'Sites & Safety', keys: 's', title: 'Your mine sites', hint: 'Site registry, production, incident log, ops dashboard', icon: Mountain },
+  { key: 'Geology', label: 'Geology', keys: 'g', title: 'What is in the ground', hint: 'Drill-hole database, 3D block model, grade-tonnage curve', icon: Gem },
+  { key: 'Plan', label: 'Mine Plan', keys: 'p', title: 'Plan the pit', hint: 'Open-pit shell design and JORC / NI 43-101 reserve reporting', icon: Pickaxe },
+  { key: 'Fleet', label: 'Fleet & Schedule', keys: 'f', title: 'Keep the fleet moving', hint: 'Equipment management and production scheduling', icon: Truck },
+  { key: 'Map', label: 'GIS Map', keys: 'm', title: 'See it on the map', hint: 'Geo-referenced sites and drill collars', icon: Map },
+  { key: 'MSHA', label: 'MSHA Compliance', keys: 'h', title: 'Check the federal record', hint: 'Real federal mine and violations lookup', icon: HardHat },
+  { key: 'Environmental', label: 'Environmental', keys: 'e', title: 'Permits and reclamation', hint: 'Permit / inspection compliance and reclamation status', icon: ShieldCheck },
+  { key: 'Calcs', label: 'Quick Calcs', keys: 'c', title: 'Run the numbers', hint: 'Ore grade, blast design, safety metrics, resource estimate', icon: Calculator },
 ];
 
 export default function MiningLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Sites');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
-      { id: 'tab-sites', keys: 's', description: 'Sites & Safety', category: 'navigation', action: () => setActiveMode('Sites') },
-      { id: 'tab-geology', keys: 'g', description: 'Geology', category: 'navigation', action: () => setActiveMode('Geology') },
-      { id: 'tab-map', keys: 'm', description: 'GIS Map', category: 'navigation', action: () => setActiveMode('Map') },
+      ...MODE_TABS.map((t) => ({
+        id: `tab-${t.key}`,
+        keys: t.keys,
+        description: `${t.label} — ${t.hint}`,
+        category: 'navigation' as const,
+        action: () => setActiveMode(t.key),
+      })),
+      { id: 'mining-new-site', keys: 'n', description: 'Add a mine site', category: 'actions' as const, action: () => setActiveMode('Sites') },
     ],
-    { lensId: 'mining' }
+    { lensId: 'mining' },
   );
+
+  const current = MODE_TABS.find((t) => t.key === activeMode)!;
 
   return (
     <LensShell lensId="mining" asMain={false}>
       <FirstRunTour lensId="mining" />
       <DepthBadge lensId="mining" size="sm" className="ml-2" />
-      <LensPageShell
-        domain="mining"
-        title="Mining Operations"
-        description="Mine sites, geology, pit planning, fleet & MSHA compliance"
-        headerIcon={<Pickaxe className="w-6 h-6" />}
+      <NorthStarFrame
+        lensId="mining"
+        crumb="Mining Operations"
+        title={`${current.title}${activeMode === 'Sites' && who ? `, ${who}` : ''}`}
+        subtitle="Mine sites, geology, pit planning, fleet and MSHA compliance."
+        tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, keys: t.keys, hint: t.hint, icon: t.icon }))}
+        activeTab={activeMode}
+        onTab={(id) => setActiveMode(id as ModeTab)}
+        cta={{ label: 'Add a site', icon: Mountain, onClick: () => setActiveMode('Sites'), title: 'Add a mine site (N)' }}
       >
-        <div className="space-y-4">
-          <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-            {MODE_TABS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveMode(key)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500',
-                  activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
-                )}
-              >
-                <Icon className="w-4 h-4" /> {label}
-              </button>
-            ))}
+        {activeMode === 'Sites' && <MineSiteManager />}
+        {activeMode === 'Geology' && <GeologyWorkbench />}
+        {activeMode === 'Plan' && <MinePlanWorkbench />}
+        {activeMode === 'Fleet' && <FleetManager />}
+        {activeMode === 'Map' && <GisPitMap />}
+        {activeMode === 'MSHA' && (
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <MshaLookup />
           </div>
-
-          {/* Sites & Safety — site registry, production, incident log, ops dashboard */}
-          {activeMode === 'Sites' && <MineSiteManager />}
-
-          {/* Geology — drill-hole database, 3D block model & grade-tonnage curve */}
-          {activeMode === 'Geology' && <GeologyWorkbench />}
-
-          {/* Mine Plan — open-pit shell design & JORC/NI 43-101 reserve reporting */}
-          {activeMode === 'Plan' && <MinePlanWorkbench />}
-
-          {/* Fleet — equipment management & production scheduling */}
-          {activeMode === 'Fleet' && <FleetManager />}
-
-          {/* GIS Map — geo-referenced sites + drill collars on a slippy map */}
-          {activeMode === 'Map' && <GisPitMap />}
-
-          {/* MSHA — real federal mine + violations lookup */}
-          {activeMode === 'MSHA' && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <MshaLookup />
-            </div>
-          )}
-
-          {/* Environmental — permit/inspection compliance + reclamation status */}
-          {activeMode === 'Environmental' && <EnvironmentalCompliance />}
-
-          {/* Quick Calcs — ore grade, blast design, safety metrics, resource estimate */}
-          {activeMode === 'Calcs' && (
-            <PipingProvider>
-              <MiningActionPanel />
-            </PipingProvider>
-          )}
-        </div>
-      </LensPageShell>
+        )}
+        {activeMode === 'Environmental' && <EnvironmentalCompliance />}
+        {activeMode === 'Calcs' && (
+          <PipingProvider>
+            <MiningActionPanel />
+          </PipingProvider>
+        )}
+      </NorthStarFrame>
     </LensShell>
   );
 }

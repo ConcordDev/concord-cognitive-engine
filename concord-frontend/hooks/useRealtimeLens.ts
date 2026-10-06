@@ -96,7 +96,9 @@ interface UseRealtimeLensResult {
 // see its own header comment).
 const DOMAIN_EVENTS: Record<string, string[]> = {
   finance: ['finance:ticker'],
-  trades: ['finance:ticker'],
+  // Construction trades, not stock trading: producer prices / industrial
+  // production (BLS PPI + Fed G.17) are the honest market signal for materials.
+  trades: ['manufacturing:update'],
   crypto: ['crypto:ticker'],
   market: ['finance:ticker'],
   news: ['news:update'],

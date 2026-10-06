@@ -6,17 +6,20 @@
  *  - photo + step-photo capture and gallery (food.recipe-photo-*)
  *  - 1-5 star rating (food.recipe-rate)
  *  - cook-it-again logging + history (food.recipe-cooked / recipe-cook-history)
+ *  - delete with a confirm step (food.recipe-delete; photos + ratings go too)
  * Recipes carry a meal slot so MealPlanAuto can use them. No sample data —
  * everything is user-entered or computed from real macro responses.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ChefHat, Plus, Star, Camera, Trash2, Flame, History, X, ChevronRight,
+  ChefHat, Plus, Star, Camera, Trash2, Flame, History, X, ChevronRight, ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { FoodKeepMenu } from './FoodKeepMenu';
+import type { FoodRecipeDetail } from './foodRecipeReport';
 
 type Slot = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
 const SLOTS: Slot[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -65,14 +68,25 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 function Stars({ value, onSet }: { value: number; onSet?: (n: number) => void }) {
+  // Read-only stars sit inside the recipe row's toggle <button>; nesting a
+  // <button> there is invalid HTML (hydration error), so render plain icons.
+  if (!onSet) {
+    return (
+      <span className="inline-flex" role="img" aria-label={`${Math.round(value)} of 5 stars`}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star key={n} className={cn('w-3.5 h-3.5', n <= Math.round(value) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600')} />
+        ))}
+      </span>
+    );
+  }
   return (
     <span className="inline-flex">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
-          onClick={onSet ? () => onSet(n) : undefined}
-          disabled={!onSet}
-          className={cn(onSet && 'hover:scale-110 transition-transform')}
+          type="button"
+          onClick={() => onSet(n)}
+          className="hover:scale-110 transition-transform"
           aria-label={`${n} star`}
         >
           <Star className={cn('w-3.5 h-3.5', n <= Math.round(value) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600')} />
@@ -105,6 +119,13 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
   // step-photo form
   const [photoStep, setPhotoStep] = useState('');
   const [photoCaption, setPhotoCaption] = useState('');
+
+  // keep menu state
+  const [keepId, setKeepId] = useState<string | null>(null);
+
+  // delete confirm state (two-step: Delete → Confirm delete)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -216,6 +237,27 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
     }
   }
 
+  async function deleteRecipe(recipeId: string) {
+    setError(null);
+    setDeleting(true);
+    try {
+      const r = await lensRun('food', 'recipe-delete', { id: recipeId });
+      if (r.data?.ok) {
+        setConfirmDeleteId(null);
+        if (expanded === recipeId) setExpanded(null);
+        if (keepId === recipeId) setKeepId(null);
+        await load();
+        onChange?.();
+      } else {
+        setError(r.data?.error || 'Delete failed');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
@@ -286,7 +328,57 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                       >
                         <Flame className="w-3 h-3" /> Cooked it again
                       </button>
+                      <button
+                        type="button"
+                        data-testid="food-recipe-keep-toggle"
+                        aria-expanded={keepId === r.id}
+                        onClick={() => setKeepId(keepId === r.id ? null : r.id)}
+                        className={cn(
+                          'px-2 py-1 rounded border flex items-center gap-1',
+                          keepId === r.id
+                            ? 'border-amber-700/50 bg-amber-950/40 text-amber-300'
+                            : 'border-zinc-700 text-zinc-400 hover:text-amber-300',
+                        )}
+                      >
+                        <ShieldCheck className="w-3 h-3" /> {keepId === r.id ? 'Hide keep' : 'Keep'}
+                      </button>
+                      {confirmDeleteId === r.id ? (
+                        <span className="flex items-center gap-1" role="group" aria-label="Confirm recipe delete">
+                          <span className="text-red-300">Delete &ldquo;{r.title}&rdquo;?</span>
+                          <button
+                            type="button"
+                            data-testid="food-recipe-delete-confirm"
+                            disabled={deleting}
+                            onClick={() => deleteRecipe(r.id)}
+                            className="px-2 py-1 rounded bg-red-600/80 text-white hover:bg-red-500 disabled:opacity-50"
+                          >
+                            {deleting ? 'Deleting…' : 'Confirm delete'}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="food-recipe-delete-cancel"
+                            disabled={deleting}
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 rounded border border-zinc-700 text-zinc-300 hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid="food-recipe-delete"
+                          onClick={() => setConfirmDeleteId(r.id)}
+                          className="px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-red-300 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      )}
                     </div>
+
+                    {keepId === r.id && (
+                      <FoodKeepMenu facts={{ recipe: r as FoodRecipeDetail }} />
+                    )}
 
                     {/* Cook history */}
                     {cooks.length > 0 && (

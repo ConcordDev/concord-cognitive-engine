@@ -8,19 +8,20 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Activity, LineChart, Bell, ScrollText, Heart, Gauge, LayoutDashboard,
   TrendingUp, AlertTriangle, Map as MapIcon, GitBranch, BarChart3, Puzzle,
   Layers, Shield, Play, Pause, RefreshCw, type LucideIcon,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLiveStatus } from '@/components/system/useLiveStatus';
 import { useSystemCartograph } from '@/components/system/cartographShared';
 import {
@@ -52,7 +53,8 @@ type SysView =
 export default function SystemLensPage() {
   useLensNav('system');
   useLensIdentity('system');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SysView>('overview');
   const { live, setLive, status: liveStatus } = useLiveStatus();
   const { heartbeats, coveragePct, data, handleRefresh, isFetching } = useSystemCartograph();
@@ -120,79 +122,53 @@ export default function SystemLensPage() {
     }
   })();
 
+  const TITLES: Record<SysView, string> = {
+    overview: `Read the system${who ? `, ${who}` : ''}`,
+    metrics: 'Watch the metrics',
+    alerts: 'Triage the alerts',
+    logs: 'Read the logs',
+    hbhealth: 'Check the heartbeats',
+    traces: 'Follow the traces',
+    dashboard: 'Build your dashboard',
+    trend: 'See the trend',
+    heartbeats: 'Inventory the heartbeats',
+    gaps: 'Find the gaps',
+    coverage: 'Measure the coverage',
+    drift: 'Catch the drift',
+    analytics: 'Analyze usage',
+    plugins: 'Manage the plugins',
+    substrate: 'Inspect the substrate',
+    health: 'Check system health',
+  };
+
   return (
     <LensShell lensId="system" asMain={false}>
       <FirstRunTour lensId="system" />
       <DepthBadge lensId="system" size="sm" className="ml-2" />
-      <div data-lens-theme="system" className="min-h-screen bg-black pb-12 text-cyan-50">
-        <header className="sticky top-0 z-10 border-b border-cyan-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Activity className="h-6 w-6 text-cyan-400" aria-hidden />
-              <div>
-                <h1 className="text-lg font-semibold text-cyan-100">System</h1>
-                <p className="text-xs text-cyan-700 font-mono">Grafana density · cartograph + live telemetry</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setLive((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded border border-cyan-800/60 bg-cyan-950/40 px-2.5 py-1 text-xs text-cyan-300 hover:bg-cyan-900/40"
-                title="Toggle live polling"
-              >
-                {live ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {live ? 'Live' : 'Paused'}
-              </button>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isFetching}
-                className="inline-flex items-center gap-1.5 rounded border border-cyan-800/60 bg-cyan-950/40 px-2.5 py-1 text-xs text-cyan-300 hover:bg-cyan-900/40 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <nav className="border-b border-cyan-900/30 px-4 md:px-8" aria-label="System Lens sections">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
-            {tabs.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActive(key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
-                  active === key
-                    ? 'border-cyan-400 text-cyan-200'
-                    : 'border-transparent text-cyan-700 hover:text-cyan-400'
-                }`}
-                aria-pressed={active === key}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2 }}
-            >
-              {pane}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-
-        <CrossLensRecentsPanel lensId="system" sinceDays={7} limit={6} hideWhenEmpty className="mt-3 px-4" />
-      </div>
+      <NorthStarFrame
+        lensId="system"
+        crumb="System"
+        title={TITLES[active]}
+        subtitle="Cartograph + live telemetry"
+        actions={(
+          <button
+            type="button"
+            onClick={() => setLive((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-300 transition-colors hover:text-white"
+            title="Toggle live polling (shift+L)"
+          >
+            {live ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {live ? 'Live' : 'Paused'}
+          </button>
+        )}
+        tabs={tabs.map((t) => ({ id: t.key, label: t.label, icon: t.icon }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as SysView)}
+        tabsLabel="System Lens sections"
+        cta={{ label: isFetching ? 'Refreshing…' : 'Refresh', icon: RefreshCw, onClick: handleRefresh, disabled: isFetching, title: 'Re-read the cartograph' }}
+      >
+        {pane}
+      </NorthStarFrame>
     </LensShell>
   );
 }

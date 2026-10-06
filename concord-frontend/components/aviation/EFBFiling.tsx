@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * EFBFiling — flight plan filing to ATC (simulated DUATS-style filing).
+ * EFBFiling — a filing RECORD for a user-saved flight plan.
  *
- * ForeFlight feature-parity backlog item 4. Files a real user-saved plan
- * through the plan-file macro, tracks filed → activated → closed status
+ * Sending a plan to ATC (FAA / Leidos Flight Service) is not supported yet:
+ * there is no keyless civilian filing API. This panel saves a filing record
+ * of the user's own plan through the plan-file macro (validation issues + a
+ * local reference, never an ATC confirmation), tracks filed → activated → closed status
  * transitions via plan-filing-update, lists filings via plan-filings-list.
  * Every filing references the user's own plan — no fabricated flights.
  */
@@ -83,7 +85,7 @@ export default function EFBFiling() {
       return;
     }
     if (!departureTime.trim() || !pilotName.trim()) {
-      setError('Departure time and pilot name are required for an ATC filing.');
+      setError('Departure time and pilot name are required for a filing record.');
       return;
     }
     setFiling(true);
@@ -123,12 +125,12 @@ export default function EFBFiling() {
         <div className="flex items-center gap-2 mb-3">
           <Send className="w-4 h-4 text-sky-400" />
           <span className="text-xs font-semibold text-gray-200 uppercase tracking-wider">
-            File a flight plan
+            Flight plan filing record
           </span>
         </div>
         {plans.length === 0 ? (
           <p className="text-xs text-gray-400">
-            No saved plans yet. Compose a flight plan first, then file it here.
+            No saved plans yet. Compose a flight plan first, then record its filing here.
           </p>
         ) : (
           <div className="space-y-2">
@@ -184,27 +186,32 @@ export default function EFBFiling() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-sky-500/40 bg-sky-500/15 text-xs text-sky-100 disabled:opacity-40"
             >
               {filing ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileCheck className="w-3 h-3" />}
-              File with ATC
+              Save filing record
             </button>
           </div>
         )}
         {error && <p className="text-xs text-rose-300 mt-2">{error}</p>}
-        <p className="text-[10px] text-gray-400 mt-2">
-          Simulated DUATS-style filing — assigns a confirmation and tracks status.
+        <p
+          data-testid="efb-filing-not-supported"
+          className="text-[10px] text-amber-300/90 mt-2"
+        >
+          Sending to ATC isn&apos;t supported yet. This saves a record of your own plan and
+          tracks its status here only; nothing is sent to FAA / Flight Service. File for real
+          at 1800wxbrief.com or 1-800-WX-BRIEF.
         </p>
       </div>
 
       {/* Filings list */}
       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
         <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">
-          Filed flight plans
+          Filing records (not sent to ATC)
         </p>
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : filings.length === 0 ? (
-          <p className="text-center text-xs text-gray-400 py-4">No filings yet.</p>
+          <p className="text-center text-xs text-gray-400 py-4">No filing records yet.</p>
         ) : (
           <div className="space-y-2">
             {filings.map((f) => (
@@ -216,7 +223,7 @@ export default function EFBFiling() {
                       <span className="text-cyan-300 ml-2">{f.flightRules}</span>
                     </p>
                     <p className="text-[10px] text-gray-400 font-mono">
-                      {f.confirmation} · dep {f.departureTime} · {f.soulsOnBoard} SOB · {f.pilotName}
+                      ref {f.confirmation} · dep {f.departureTime} · {f.soulsOnBoard} SOB · {f.pilotName}
                     </p>
                   </div>
                   <span

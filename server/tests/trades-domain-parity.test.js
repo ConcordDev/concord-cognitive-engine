@@ -158,7 +158,7 @@ describe("trades.route-optimize (nearest-neighbour)", () => {
     assert.equal(r.result.ordered[0].id, "close");
     assert.equal(r.result.ordered[1].id, "mid");
     assert.equal(r.result.ordered[2].id, "far");
-    assert.ok(r.result.totalDistanceUnits > 0);
+    assert.ok(r.result.totalMiles > 0);
   });
   it("rejects empty stops", () => {
     assert.equal(call("route-optimize", ctxA, { start: { lat: 0, lng: 0 }, stops: [] }).ok, false);
@@ -440,7 +440,7 @@ describe("trades.notifications-* (SMS/email reminders)", () => {
       channel: "sms", kind: "on_the_way", recipient: "555-0100", message: "Tech is 10 min away",
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.notification.status, "queued");
+    assert.equal(r.result.notification.status, "not_sent"); // no SMS/email provider: logged, not sent
     assert.equal(call("notifications-list", ctxA, {}).result.count, 1);
   });
   it("rejects bad channel and empty message", () => {

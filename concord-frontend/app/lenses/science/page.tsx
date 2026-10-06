@@ -7,8 +7,7 @@
  * workbench are panels under components/science/. FAB accordion removed.
  */
 
-import { useMemo, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useState } from 'react';
 import {
   FlaskConical,
   TestTubes,
@@ -19,9 +18,10 @@ import {
   GraduationCap,
   BarChart3,
   Sigma,
+  Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -32,8 +32,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DashboardPanel } from '@/components/science/DashboardPanel';
 import { ArtifactsPanel } from '@/components/science/ArtifactsPanel';
 import { LabPanel } from '@/components/science/LabPanel';
@@ -53,17 +53,17 @@ type ScienceView =
   | 'arxiv'
   | 'workbench';
 
-const VIEWS: { id: ScienceView; label: string; keys: string; icon: typeof FlaskConical }[] = [
-  { id: 'dashboard', label: 'Dashboard', keys: 'd', icon: BarChart3 },
-  { id: 'notebook', label: 'Notebook', keys: '1', icon: BookOpen },
-  { id: 'samples', label: 'Samples', keys: '2', icon: TestTubes },
-  { id: 'equipment', label: 'Equipment', keys: '3', icon: Wrench },
-  { id: 'analysis', label: 'Analysis', keys: '4', icon: LineChart },
-  { id: 'protocols', label: 'Protocols', keys: '5', icon: ClipboardList },
-  { id: 'publications', label: 'Publications', keys: '6', icon: GraduationCap },
-  { id: 'lab', label: 'Lab', keys: 'l', icon: FlaskConical },
-  { id: 'arxiv', label: 'arXiv', keys: 'x', icon: BookOpen },
-  { id: 'workbench', label: 'Workbench', keys: 'w', icon: Sigma },
+const VIEWS: { id: ScienceView; label: string; keys: string; title: string; icon: typeof FlaskConical }[] = [
+  { id: 'dashboard', label: 'Dashboard', keys: 'd', title: 'Your lab at a glance', icon: BarChart3 },
+  { id: 'notebook', label: 'Notebook', keys: '1', title: 'What you are testing', icon: BookOpen },
+  { id: 'samples', label: 'Samples', keys: '2', title: 'What is on the bench', icon: TestTubes },
+  { id: 'equipment', label: 'Equipment', keys: '3', title: 'What you run it on', icon: Wrench },
+  { id: 'analysis', label: 'Analysis', keys: '4', title: 'What the data says', icon: LineChart },
+  { id: 'protocols', label: 'Protocols', keys: '5', title: 'How it is done', icon: ClipboardList },
+  { id: 'publications', label: 'Publications', keys: '6', title: 'What you have published', icon: GraduationCap },
+  { id: 'lab', label: 'Lab', keys: 'l', title: 'Run something in the lab', icon: FlaskConical },
+  { id: 'arxiv', label: 'arXiv', keys: 'x', title: 'What the field is reading', icon: BookOpen },
+  { id: 'workbench', label: 'Workbench', keys: 'w', title: 'Work the numbers', icon: Sigma },
 ];
 
 const ARTIFACT_FOR: Partial<Record<ScienceView, ArtifactType>> = {
@@ -88,7 +88,8 @@ export default function ScienceLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('science');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ScienceView>('dashboard');
 
   useLensCommand(
@@ -102,117 +103,66 @@ export default function ScienceLensPage() {
     { lensId: 'science' },
   );
 
-  const motionProps = useMemo(
-    () =>
-      reduceMotion
-        ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
-        : {
-            initial: { opacity: 0, y: 8 },
-            animate: { opacity: 1, y: 0 },
-            exit: { opacity: 0, y: -6 },
-            transition: { duration: 0.16 },
-          },
-    [reduceMotion],
-  );
-
   const artifactType = ARTIFACT_FOR[active];
+
+  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="science" asMain={false}>
       <FirstRunTour lensId="science" />
       <DepthBadge lensId="science" size="sm" className="ml-2" />
-      <div data-lens-theme="science" className={ds.pageContainer}>
-        <a href="#science-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
-          Skip to science content
-        </a>
-
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <FlaskConical className="w-7 h-7 text-neon-purple shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Science Lab</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="science" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>
-                Lab notebook, samples, equipment, analysis, protocols &amp; publications
-              </p>
-            </div>
+      <NorthStarFrame
+        lensId="science"
+        crumb="Science"
+        title={`${current.title}${active === 'dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Lab notebook, samples, equipment, analysis, protocols and publications."
+        actions={
+          <>
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="science" data={realtimeData || {}} compact />
+          </>
+        }
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as ScienceView)}
+        tabsLabel="Science views"
+        cta={{ label: 'New experiment', icon: Plus, onClick: () => setActive('notebook'), title: 'Open the lab notebook' }}
+      >
+        <div className="space-y-5">
+          <div id="science-skip">
+            {active === 'dashboard' && <DashboardPanel />}
+            {artifactType && <ArtifactRoute type={artifactType} />}
+            {active === 'lab' && <LabPanel />}
+            {active === 'arxiv' && <ArxivPanel />}
+            {active === 'workbench' && <WorkbenchPanel />}
           </div>
-        </header>
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
-          aria-label="Science views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-neon-purple text-neon-purple'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-                  {v.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div id="science-skip">
-          <AnimatePresence mode="wait">
-            <motion.div key={active} {...motionProps} className="pt-4">
-              {active === 'dashboard' && <DashboardPanel />}
-              {artifactType && <ArtifactRoute type={artifactType} />}
-              {active === 'lab' && <LabPanel />}
-              {active === 'arxiv' && <ArxivPanel />}
-              {active === 'workbench' && <WorkbenchPanel />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <div className="px-4 mb-2 mt-4">
           <LensFeedPanel lensId="science" />
-        </div>
 
-        <LiveFeed
-          articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
-          domain="research"
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          limit={8}
-        />
-        {realtimeData && (
-          <RealtimeDataPanel
-            domain="science"
-            data={realtimeData}
+          <LiveFeed
+            articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+            domain="research"
             isLive={isLive}
             lastUpdated={lastUpdated}
-            insights={realtimeInsights}
-            compact
+            limit={8}
           />
-        )}
-
-        <CrossLensRecentsPanel lensId="science" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+          {realtimeData && (
+            <RealtimeDataPanel
+              domain="science"
+              data={realtimeData}
+              isLive={isLive}
+              lastUpdated={lastUpdated}
+              insights={realtimeInsights}
+              compact
+            />
+          )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -5,7 +5,7 @@
  * calendar event. Layers 7 paid-app-tier actions on top of the existing
  * event modal, each wiring a real Concord backend:
  *
- *   1. Save to substrate   → dtu.create (private + tagged)
+ *   1. Save this event     → CalendarKeepMenu (private DTU, read back, then Timeline)
  *   2. Publish publicly    → POST /api/dtus/:id/publish (federation picks up)
  *   3. Send invites        → /api/social/dm per collaborator
  *   4. Schedule reminder   → calendar.events-update (appends a reminder-minutes
@@ -35,13 +35,13 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Globe, Send, Sparkles, Bell, CalendarCheck, FileDown,
+  Globe, Send, Bell, CalendarCheck, FileDown,
   Loader2, Check, X, Link as LinkIcon, Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { CalendarKeepMenu } from '@/components/calendar/CalendarKeepMenu';
 
 interface EventLite {
   id: string;
@@ -91,44 +91,8 @@ export function EventActionRail({ event }: { event: EventLite }) {
     return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
   }
 
-  async function mintToSubstrate() {
-    setBusy('mint'); setFeedback(null);
-    try {
-      const r = await lensRun({
-        domain: 'dtu',
-        name: 'create',
-        input: withContentLicense({
-          title: `[Calendar] ${event.title}`,
-          tags: ['calendar', event.eventType, 'event'],
-          source: 'calendar:mint',
-          meta: {
-            visibility: 'private',
-            consent: { allowCitations: false },
-            event: {
-              start: event.startDate.toISOString(),
-              end: event.endDate.toISOString(),
-              location: event.location,
-              description: event.description,
-              collaborators: event.collaborators,
-              calendarArtifactId: event.id,
-            },
-          },
-        }, 'knowledge', ['private']),
-      });
-      const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (id) {
-        setDtuRef({ id, published: false });
-        ok(`Saved as DTU ${id.slice(0, 8)}…`);
-      } else {
-        err('No DTU id returned.');
-      }
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
   async function togglePublish() {
-    if (!dtuRef) { err('Save to substrate first.'); return; }
+    if (!dtuRef) { err('Save this event as a DTU first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
       const path = `/api/dtus/${encodeURIComponent(dtuRef.id)}/publish`;
@@ -286,7 +250,6 @@ export function EventActionRail({ event }: { event: EventLite }) {
   }
 
   const actions = useMemo(() => [
-    { id: 'mint',     label: 'Save to substrate', desc: 'Mint a private DTU you can cite from elsewhere', icon: Sparkles, accent: ACCENT.mint, handler: mintToSubstrate, disabled: !!dtuRef, doneLabel: dtuRef ? 'Saved' : null },
     { id: 'publish',  label: dtuRef?.published ? 'Unpublish' : 'Publish publicly', desc: dtuRef?.published ? 'Federation peers will stop syncing this' : 'Make the DTU visible to federation peers', icon: Globe, accent: dtuRef?.published ? '#15803d' : ACCENT.publish, handler: togglePublish, disabled: !dtuRef, doneLabel: null },
     { id: 'invite',   label: 'Send invites',     desc: collabCount === 0 ? 'Add collaborators first' : `Direct-message ${collabCount} collaborator${collabCount === 1 ? '' : 's'}`, icon: Send, accent: ACCENT.invite, handler: sendInvites, disabled: collabCount === 0, doneLabel: null },
     { id: 'remind',   label: 'Schedule reminder', desc: '1 hour before, on the heartbeat tick', icon: Bell, accent: ACCENT.remind, handler: scheduleReminder, disabled: false, doneLabel: null },
@@ -312,6 +275,17 @@ export function EventActionRail({ event }: { event: EventLite }) {
           </div>
         )}
       </div>
+
+      <CalendarKeepMenu
+        event={{
+          id: event.id,
+          title: event.title,
+          start: event.startDate.toISOString(),
+          end: event.endDate.toISOString(),
+          location: event.location || '',
+        }}
+        onSaved={(id) => setDtuRef({ id, published: false })}
+      />
 
       <div className="space-y-1.5">
         {actions.map(a => {

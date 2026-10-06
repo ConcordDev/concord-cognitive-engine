@@ -14,6 +14,8 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ada' } }) }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 
 import ConcordLinkFrontierPage from './page';
 
@@ -149,7 +151,7 @@ describe('Concord Link Frontier lens page', () => {
     render(<ConcordLinkFrontierPage />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
 
-    screen.getByLabelText('Refresh the cross-world feed').click();
+    screen.getByRole('button', { name: /sync the feed/i }).click();
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
   });

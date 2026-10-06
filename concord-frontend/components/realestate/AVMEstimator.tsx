@@ -38,7 +38,6 @@ export function AVMEstimator() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calculator className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Home value estimator (AVM)</span>
-        <span className="ml-auto text-[10px] text-gray-400">Zestimate-shape</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">

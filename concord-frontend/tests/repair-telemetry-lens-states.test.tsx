@@ -39,6 +39,8 @@ vi.mock('@/components/common/EmptyState', () => ({
 // via useLensCommand, which needs a live KeyboardProvider context this
 // headless test doesn't mount — same mock pattern as mesh-lens-states.test.tsx.
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
 
 // Import AFTER mocks are registered.
 import RepairTelemetryPage from '@/app/lenses/repair-telemetry/page';

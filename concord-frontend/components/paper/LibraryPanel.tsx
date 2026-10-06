@@ -17,7 +17,7 @@ export function LibraryPanel() {
       <div>
         <h2 className={ds.heading2}>Library</h2>
         <p className={ds.textMuted}>
-          Zotero-shaped collections — save, tag, rate, annotate. Search and summarize from live arXiv.
+          Collections — save, tag, rate, annotate. Search and summarize from live arXiv.
         </p>
       </div>
       <LensFeedButton domain="paper" />

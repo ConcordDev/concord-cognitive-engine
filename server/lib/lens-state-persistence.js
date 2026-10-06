@@ -16,13 +16,92 @@
 // lens domain file ships its own STATE.<x>Lens store.
 export const LENS_STATE_KEYS = Object.freeze([
   "accountingLens", "agricultureLens", "aviationLens", "bioLens",
-  "chatLens", "cryptoLens", "ecoLens", "educationLens",
+  "calendarLens", "chatLens", "cryptoLens", "ecoLens", "educationLens",
   "eventTimelineLens",
   "financeLens", "fitnessLens", "foodLens", "govLens",
   "healthLens", "insLens", "legalLens", "logLens",
-  "marketsLens", "messageLens", "privacyLens", "realestateLens", "researchLens",
-  "retailLens", "scienceLens", "studioLens", "tradesLens",
+  "marketsLens", "marketplaceLens", "messageLens", "privacyLens", "projectsLens", "realestateLens", "researchLens",
+  "retailLens", "scienceLens", "studioLens", "threadLens", "tradesLens",
   "whiteboardLens", "worldLens",
+  // 32 -> 33: "codeLens" so a virtual project, its files, and its git log
+  // survive a restart. The Code domain stores workspaces here; without this
+  // key a hard restart wiped every project while the editor still showed it.
+  "codeLens",
+  // 33 -> 34: "graphLens" so a user's saved mind maps, nodes, edges,
+  // filters, group rules, and layouts survive a restart. The Graph domain
+  // stores per-user maps here; without this key a hard restart wiped every
+  // map while the UI still showed it.
+  "graphLens",
+  // 34 -> 35: "hypothesisLens" so a user's imported datasets, saved
+  // analyses, and pre-registered hypotheses survive a restart. The
+  // Hypothesis domain stores per-user data here; without this key a hard
+  // restart wiped every pre-registration while the registry still showed it.
+  "hypothesisLens",
+  // 35 -> 36: "srsLens" so a user's decks, cards, review log, and media
+  // survive a restart. The SRS domain stores per-user Anki-shape data here;
+  // without this key a hard restart wiped every deck while the study UI
+  // still showed it.
+  "srsLens",
+  // 36 -> 37: "travelLens" so a user's trips, itineraries, bookings,
+  // budgets, checklists, price watches, docs, and loyalty accounts survive
+  // a restart. The Travel domain stores per-user data here; without this
+  // key a hard restart wiped every trip while the TripWorkspace still
+  // showed it.
+  "travelLens",
+  // 37 -> 38: "engineeringLens" so a user's saved parts, load cases,
+  // and FEA sim-job history survive a restart. The Engineering domain
+  // stores per-user data here; without this key a hard restart wiped
+  // every part and FEA run while the ResultsPanel still showed it.
+  "engineeringLens",
+  // 38 -> 39: "physicsLens" so a user's saved PhET scenes and share codes
+  // survive a restart. The Physics domain stores per-user data here;
+  // without this key a hard restart wiped every scene while the PhysicsLab
+  // still showed it.
+  "physicsLens",
+  // 39 -> 40: "hvacLens" so a user's technicians, appointments, bookings,
+  // equipment assets, payments, agreements, and field visits survive a
+  // restart. The HVAC domain stores per-user data here; without this key a
+  // hard restart wiped every dispatch board and equipment record while the
+  // FieldService panels still showed them.
+  "hvacLens",
+  // 40 -> 41: "petsLens" so a user's pets, vaccines, medications, vet
+  // visits, weights, care activities, symptoms, reminders, documents,
+  // expenses, caregivers, bookings, pet access grants, photos,
+  // appointments, and lost-pet profiles survive a restart. The Pets
+  // domain stores per-user data here; without this key a hard restart
+  // wiped every pet health record while the PetCareSection still showed
+  // it.
+  "petsLens",
+  // 41 -> 42: "boardLens" so a user's Trello-shape boards, columns, cards,
+  // checklists, comments, attachments, labels, automation rules,
+  // collaborators, and custom fields survive a restart. The Board domain
+  // stores per-user boards here; without this key a hard restart wiped
+  // every board while the BoardWorkspace still showed it.
+  "boardLens",
+  // 42 -> 43: "analyticsLens" so a user's tracked events, saved funnels,
+  // dashboards, alerts, and behavioral cohorts survive a restart. The
+  // Analytics domain stores per-user event/funnel/dashboard/alert/cohort
+  // Maps here; without this key a hard restart wiped every tracked event
+  // while the EventAnalytics panel still showed the dashboard counts.
+  "analyticsLens",
+  // 43 -> 44: "creatorLens" so a user's platforms, content pipeline,
+  // audience snapshots, revenue entries, goals, demographics, membership
+  // tiers, subscriptions, payouts, publish queue, and comments survive a
+  // restart. The Creator domain stores per-user data here; without this
+  // key a hard restart wiped every content item while the pipeline still
+  // showed it.
+  "creatorLens",
+  // 44 -> 45: "astronomyLens" so a user's observing targets, observation
+  // log, observing sessions, equipment, wishlist, and astronomical events
+  // survive a restart. The Astronomy domain stores per-user Maps here;
+  // without this key a hard restart wiped every target and observation
+  // while the AstroTargetsPanel still showed them.
+  "astronomyLens",
+  // 45 -> 46: "atlasLens" so a user's saved places, lists, trips,
+  // recent searches, and sequence counters survive a restart. The Atlas
+  // domain stores per-user Maps here; without this key a hard restart
+  // wiped every saved place while the PlacesPanel still showed it.
+  "atlasLens",
 ]);
 
 function serializeValue(v) {

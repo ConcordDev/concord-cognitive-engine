@@ -31,7 +31,9 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import dynamic from 'next/dynamic';
@@ -134,6 +136,36 @@ export type CryptoTab =
   | 'addressbook'
   | 'tools';
 
+const CRYPTO_TAB_TITLES: Record<CryptoTab, string> = {
+  portfolio: 'The wallet',
+  holdings: 'What you hold',
+  transactions: 'Where it moved',
+  wallets: 'Your wallets',
+  chart: 'How it is trading',
+  swap: 'Trade one for another',
+  alerts: 'Tell me when it moves',
+  approvals: 'Who can spend what',
+  route: 'The cheapest way across',
+  ticker: 'The market right now',
+  addressbook: 'People you pay',
+  tools: 'The workbench',
+};
+
+const CRYPTO_TABS: { key: CryptoTab; label: string; keys: string; icon: typeof Wallet }[] = [
+  { key: 'portfolio', label: 'Portfolio', keys: 'p', icon: TrendingUp },
+  { key: 'holdings', label: 'Holdings', keys: '⇧H', icon: Layers },
+  { key: 'chart', label: 'Chart', keys: 'c', icon: BarChart3 },
+  { key: 'swap', label: 'Swap', keys: 's', icon: ArrowRightLeft },
+  { key: 'transactions', label: 'Activity', keys: 't', icon: ArrowRightLeft },
+  { key: 'wallets', label: 'Wallets', keys: 'w', icon: Wallet },
+  { key: 'alerts', label: 'Alerts', keys: 'a', icon: ShieldCheck },
+  { key: 'approvals', label: 'Approvals', keys: '⇧A', icon: Lock },
+  { key: 'route', label: 'Route', keys: '⇧R', icon: RefreshCw },
+  { key: 'ticker', label: 'Ticker', keys: 'm', icon: BarChart3 },
+  { key: 'addressbook', label: 'Contacts', keys: 'b', icon: Wallet },
+  { key: 'tools', label: 'Tools', keys: '⇧T', icon: Settings },
+];
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function CryptoWalletWorkspace() {
@@ -142,6 +174,8 @@ export function CryptoWalletWorkspace() {
   useTilePush({ lensId: 'crypto' });
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('crypto');
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<CryptoTab>('portfolio');
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
@@ -244,6 +278,7 @@ export function CryptoWalletWorkspace() {
       { id: 'goto-ticker', keys: 'm', description: 'Market ticker', category: 'navigation', action: () => setActiveTab('ticker') },
       { id: 'goto-addressbook', keys: 'b', description: 'Address book', category: 'navigation', action: () => setActiveTab('addressbook') },
       { id: 'goto-tools', keys: 'shift+t', description: 'Workbench', category: 'navigation', action: () => setActiveTab('tools') },
+      { id: 'receive', keys: 'r', description: 'Receive — show a wallet address and QR', category: 'actions', action: () => openReceive() },
       { id: 'toggle-balances', keys: 'h', description: 'Hide / show balances', category: 'view', action: () => setShowBalances((v) => !v) },
     ],
     { lensId: 'crypto' }
@@ -398,6 +433,19 @@ export function CryptoWalletWorkspace() {
   }));
 
   const selectedChainData = chains.find(c => c.id === selectedChain) || chains[0] || null;
+
+  // Receive: show the default (or first) wallet's real address + QR; with no
+  // wallet yet, route to the Wallets tab where one is added.
+  const openReceive = () => {
+    const w = wallets.find(x => x.isDefault && x.address) || wallets.find(x => x.address);
+    if (w) {
+      setReceiveAddress(w.address);
+      setShowReceive(true);
+    } else {
+      setActiveTab('wallets');
+      useUIStore.getState().addToast({ type: 'info', message: 'Add a wallet first, then Receive shows its address.' });
+    }
+  };
 
   const totalPortfolioValue = chains.reduce((sum, c) => sum + c.balance * c.price, 0);
 
@@ -618,7 +666,18 @@ export function CryptoWalletWorkspace() {
       <div className="px-4 mt-3">
         <ExchangeSection />
       </div>
-    <div data-lens-theme="crypto" className="p-6 space-y-6">
+    <div data-lens-theme="crypto" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[14px] text-zinc-500">Crypto</p>
+          <h1 className="font-vault mb-1 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+            {CRYPTO_TAB_TITLES[activeTab]}{activeTab === 'portfolio' && who ? `, ${who}` : ''}
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 pt-2">
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+        </div>
+      </div>
       {/* Portfolio hero — the Coinbase/WalletShell "big balance up top"
           tell. Replaces the generic icon+title lens header: this is the
           one number a wallet app leads with, computed from the same real
@@ -637,7 +696,6 @@ export function CryptoWalletWorkspace() {
         isLoading={isLoading}
         isLive={isLive}
         lastUpdated={lastUpdated}
-        extraActions={<DTUExportButton domain="crypto" data={{}} compact />}
       />
 
 
@@ -727,35 +785,29 @@ export function CryptoWalletWorkspace() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-lattice-border overflow-x-auto">
-            {([
-              { key: 'portfolio' as CryptoTab, label: 'Portfolio', icon: <TrendingUp className="w-4 h-4" /> },
-              { key: 'holdings' as CryptoTab, label: 'Holdings', icon: <Layers className="w-4 h-4" /> },
-              { key: 'chart' as CryptoTab, label: 'Chart', icon: <BarChart3 className="w-4 h-4" /> },
-              { key: 'swap' as CryptoTab, label: 'Swap', icon: <ArrowRightLeft className="w-4 h-4" /> },
-              { key: 'transactions' as CryptoTab, label: 'Activity', icon: <ArrowRightLeft className="w-4 h-4" /> },
-              { key: 'wallets' as CryptoTab, label: 'Wallets', icon: <Wallet className="w-4 h-4" /> },
-              { key: 'alerts' as CryptoTab, label: 'Alerts', icon: <ShieldCheck className="w-4 h-4" /> },
-              { key: 'approvals' as CryptoTab, label: 'Approvals', icon: <Lock className="w-4 h-4" /> },
-              { key: 'route' as CryptoTab, label: 'Route', icon: <RefreshCw className="w-4 h-4" /> },
-              { key: 'ticker' as CryptoTab, label: 'Ticker', icon: <BarChart3 className="w-4 h-4" /> },
-              { key: 'addressbook' as CryptoTab, label: 'Contacts', icon: <Wallet className="w-4 h-4" /> },
-              { key: 'tools' as CryptoTab, label: 'Tools', icon: <Settings className="w-4 h-4" /> },
-            ]).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
-                  activeTab === tab.key
-                    ? 'border-neon-green text-neon-green'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                )}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </div>
+          <nav className="mb-2 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Crypto views">
+            {CRYPTO_TABS.map(tab => {
+              const Icon = tab.icon;
+              const on = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  aria-current={on ? 'page' : undefined}
+                  title={`${tab.label} (${tab.keys})`}
+                  className={cn(
+                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{tab.keys}</kbd>
+                </button>
+              );
+            })}
+          </nav>
 
           {/* Tab Content */}
           {activeTab === 'portfolio' && (
@@ -1189,38 +1241,18 @@ export function CryptoWalletWorkspace() {
                     tokens={swappableTokens}
                     defaultFromSymbol={chains[0]?.symbol || 'CC'}
                     defaultToSymbol={chains[1]?.symbol || 'USDC'}
-                    onSwap={async ({ fromId, toId, amountIn, quote }) => {
-                      try {
-                        await createTransaction({
-                          title: `Swap ${amountIn} ${fromId} → ${quote.amountOut.toFixed(6)} ${toId}`,
-                          data: {
-                            type: 'transfer', amount: amountIn,
-                            symbol: fromId.toUpperCase(),
-                            description: `Swap to ${toId.toUpperCase()} at rate ${quote.rate}`,
-                            timestamp: new Date().toISOString(),
-                          } as unknown as Partial<TransactionData>,
-                          meta: { tags: ['swap', fromId, toId], status: 'completed' },
-                        });
-                        refetch2();
-                        useUIStore.getState().addToast({ type: 'success', message: `Swap simulated: got ${quote.amountOut.toFixed(6)} ${toId.toUpperCase()}` });
-                      } catch (e) {
-                        console.error('[Crypto] swap save failed', e);
-                      }
-                    }}
                   />
                 );
               })()}
               <div className="flex-1 lens-card">
-                <h3 className="text-sm font-bold mb-3 text-gray-200">Best execution</h3>
+                <h3 className="text-sm font-bold mb-3 text-gray-200">About this quote</h3>
                 <ul className="text-xs text-gray-400 space-y-1.5">
-                  <li>• Slippage protection — minimum-received guard</li>
-                  <li>• 0.3% LP fee model (Uniswap v3 standard)</li>
-                  <li>• Price impact warning above 5%</li>
-                  <li>• Hard block above 15% — execution risk too high</li>
-                  <li>• Gas estimate built in</li>
+                  <li>• Spot rate from live CoinGecko prices</li>
+                  <li>• 0.3% LP fee model and your slippage floor (minimum received)</li>
+                  <li>• Price impact and gas need pool depth and a gas oracle, so they show as &quot;not estimated&quot;</li>
                 </ul>
-                <p className="mt-4 text-[10px] text-gray-400">
-                  Concord swaps simulate the AMM math against live CoinGecko prices. No external router is contacted; this view is informational + ledger-only.
+                <p className="mt-4 text-[10px] text-amber-300/90">
+                  Executing swaps isn&apos;t supported yet. No wallet or DEX router is connected; nothing is traded or written to your ledger.
                 </p>
               </div>
             </div>
@@ -1320,6 +1352,10 @@ export function CryptoWalletWorkspace() {
                 <h2 className="text-lg font-bold">Send {selectedChainData.symbol}</h2>
                 <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
+              <p data-testid="send-ledger-only" className="text-[11px] text-amber-300/90">
+                This records the transfer in your Concord ledger and lowers the tracked balance.
+                Broadcasting to a blockchain isn&apos;t supported yet: no wallet keys are connected.
+              </p>
               <p className="text-sm text-gray-400">
                 Available: <span className="font-mono tabular-nums">{showBalances ? `${selectedChainData.balance} ${selectedChainData.symbol}` : '••••'}</span>
               </p>
@@ -1355,7 +1391,7 @@ export function CryptoWalletWorkspace() {
                   className="px-4 py-2 rounded-lg text-sm bg-neon-blue text-white hover:bg-neon-blue/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {transacting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Send
+                  Record send
                 </button>
               </div>
             </motion.div>
@@ -1669,6 +1705,15 @@ export function CryptoWalletWorkspace() {
       </div>
       <section className="mt-6"><LensFeedButton domain="crypto" /></section>
       <CrossLensRecentsPanel lensId="crypto" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <button
+        type="button"
+        onClick={openReceive}
+        title="Receive (R)"
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+      >
+        <ArrowDownLeft className="h-4 w-4" />
+        Receive
+      </button>
     </div>
     </LensShell>
   );

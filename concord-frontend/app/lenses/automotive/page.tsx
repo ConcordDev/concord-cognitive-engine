@@ -25,7 +25,9 @@
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GarageSection } from '@/components/automotive/GarageSection';
@@ -36,7 +38,16 @@ import { VehicleHistory } from '@/components/automotive/VehicleHistory';
 import { AutomotiveActionPanel } from '@/components/automotive/AutomotiveActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { lensRun } from '@/lib/api/client';
-import { Car, Gauge, DollarSign, AlertTriangle, Shield, ChevronDown, ChevronRight } from 'lucide-react';
+import { Car, Gauge, DollarSign, AlertTriangle, Shield, Wrench, ScanSearch, History, Plus } from 'lucide-react';
+
+type AutoView = 'garage' | 'service' | 'vin' | 'history';
+
+const VIEWS: { id: AutoView; label: string; keys: string; title: string; icon: typeof Car }[] = [
+  { id: 'garage', label: 'Garage', keys: '1', title: 'Your garage', icon: Car },
+  { id: 'service', label: 'Service & tools', keys: '2', title: 'Keep it running', icon: Wrench },
+  { id: 'vin', label: 'VIN & recalls', keys: '3', title: 'Decode any VIN', icon: ScanSearch },
+  { id: 'history', label: 'History', keys: '4', title: 'Every mile on record', icon: History },
+];
 
 interface DashboardSummary {
   vehicleCount: number;
@@ -70,7 +81,10 @@ const RENEWAL_STATUS_COLOUR: Record<UpcomingRenewal['status'], string> = {
 export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
-  const [showActionPanel, setShowActionPanel] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [view, setView] = useState<AutoView>('garage');
+  const current = VIEWS.find((v) => v.id === view)!;
 
   useEffect(() => {
     let cancelled = false;
@@ -98,40 +112,46 @@ export default function AutomotiveLensPage() {
   return (
     <LensShell lensId="automotive" asMain={false}>
       <FirstRunTour lensId="automotive" />      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
-      <div data-lens-theme="automotive" className="p-4 space-y-4">
-        <header className="flex items-center gap-3">
-          <Car className="w-6 h-6 text-neon-cyan" />
-          <div>
-            <h1 className="text-xl font-bold text-white">Automotive</h1>
-            <p className="text-sm text-gray-400">Garage, fuel &amp; service logs, maintenance reminders, cost of ownership, and vehicle history.</p>
-          </div>
-        </header>
-
+      <div data-lens-theme="automotive">
+      <NorthStarFrame
+        lensId="automotive"
+        crumb="Automotive"
+        title={`${current.title}${view === 'garage' && who ? `, ${who}` : ''}`}
+        subtitle="Garage, fuel & service logs, maintenance reminders, cost of ownership, and vehicle history."
+        actions={<LensFeedButton domain="automotive" />}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
+        activeTab={view}
+        onTab={(id) => setView(id as AutoView)}
+        tabsLabel="Automotive views"
+        cta={{ label: 'Add a vehicle', icon: Plus, onClick: () => setView('garage'), title: 'Open your garage to add a vehicle' }}
+      >
+        <div className="space-y-5">
+        {view === 'garage' && (<>
         {/* Real cross-vehicle rollup — automotive.automotive-dashboard-summary */}
         {summary && summary.vehicleCount > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
+            <div className="p-3 rounded-2xl border border-white/10 bg-[#111] flex items-center gap-3">
               <Car className="w-5 h-5 text-neon-cyan" />
               <div>
                 <p className="text-lg font-bold text-white">{summary.vehicleCount}</p>
                 <p className="text-xs text-gray-400">Vehicles</p>
               </div>
             </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
+            <div className="p-3 rounded-2xl border border-white/10 bg-[#111] flex items-center gap-3">
               <DollarSign className="w-5 h-5 text-green-400" />
               <div>
                 <p className="text-lg font-bold text-white">${summary.spend12moUsd.toLocaleString()}</p>
                 <p className="text-xs text-gray-400">Spend (12mo)</p>
               </div>
             </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
+            <div className="p-3 rounded-2xl border border-white/10 bg-[#111] flex items-center gap-3">
               <Gauge className="w-5 h-5 text-sky-400" />
               <div>
                 <p className="text-lg font-bold text-white">{summary.fuelEntryCount + summary.serviceEntryCount}</p>
                 <p className="text-xs text-gray-400">Logged entries</p>
               </div>
             </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
+            <div className="p-3 rounded-2xl border border-white/10 bg-[#111] flex items-center gap-3">
               <AlertTriangle className={`w-5 h-5 ${summary.overdueServices > 0 ? 'text-red-400' : summary.dueSoonServices > 0 ? 'text-yellow-400' : 'text-gray-500'}`} />
               <div>
                 <p className="text-lg font-bold text-white">{summary.overdueServices} / {summary.dueSoonServices}</p>
@@ -143,7 +163,7 @@ export default function AutomotiveLensPage() {
 
         {/* Dashboard "upcoming renewals" widget — automotive.renewals-upcoming */}
         {upcomingRenewals && upcomingRenewals.length > 0 && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-4 h-4 text-neon-cyan" />
               <h2 className="text-sm font-semibold text-white">Upcoming renewals</h2>
@@ -181,43 +201,34 @@ export default function AutomotiveLensPage() {
         )}
 
         <GarageSection />
-        <AdvancedToolsPanel />
+        </>)}
 
-        {/* Bespoke NHTSA VIN decoder + recall lookup with Save-as-DTU */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <VinDecoder />
-        </section>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>More actions</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
+        {view === 'service' && (
+          <>
+            <AdvancedToolsPanel />
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <FuelRepairPanel />
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h2 className="mb-3 text-sm font-semibold text-white">More actions</h2>
               <PipingProvider>
                 <AutomotiveActionPanel />
               </PipingProvider>
-            </div>
-          )}
-        </section>
+            </section>
+          </>
+        )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <FuelRepairPanel />
-        </section>
+        {view === 'vin' && (
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+            <VinDecoder />
+          </section>
+        )}
 
-        <section><LensFeedButton domain="automotive" /></section>
-
-        <section>
-          <VehicleHistory />
-        </section>
+        {view === 'history' && <VehicleHistory />}
+        </div>
+      </NorthStarFrame>
       </div>
-
-      <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>      <CrossLensRecentsPanel lensId="automotive" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>
     </LensShell>
   );
 }

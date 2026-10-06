@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeBoxSection } from '@/components/cooking/RecipeBoxSection';
@@ -12,13 +14,12 @@ import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import {
-  ChefHat, Timer, BookOpen, CalendarCheck, ShoppingBasket, Package, FolderHeart,
+  Timer, BookOpen, CalendarCheck, ShoppingBasket, Package, FolderHeart,
   Flame, Apple, UtensilsCrossed,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,7 +51,7 @@ function KitchenDashboardStrip({ summary }: { summary: DashboardSummary | null }
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       {tiles.map((t) => (
-        <div key={t.label} className={ds.panel}>
+        <div key={t.label} className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <t.icon className={cn('w-5 h-5 mb-2', t.color)} />
           <p className={ds.textMuted}>{t.label}</p>
           <p className="text-xl font-bold text-white">{t.value}</p>
@@ -71,8 +72,6 @@ function CookingTimer() {
   const total = minutes * 60 + seconds;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [remaining, setRemaining] = useState(total);
-
-  useEffect(() => { setRemaining(minutes * 60 + seconds); }, [minutes, seconds]);
 
   useEffect(() => {
     if (running) {
@@ -100,7 +99,7 @@ function CookingTimer() {
   const dash = (pct / 100) * circumference;
 
   return (
-    <div className="panel p-4 space-y-3">
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
       <h3 className="font-semibold flex items-center gap-2"><Timer className="w-4 h-4 text-orange-400" />Kitchen Timer</h3>
       <div className="flex items-center gap-4">
         {/* SVG ring */}
@@ -120,10 +119,10 @@ function CookingTimer() {
         <div className="space-y-2 flex-1">
           {!running && !finished && (
             <div className="flex items-center gap-2">
-              <input type="number" min={0} max={99} value={minutes} onChange={e => setMinutes(Math.max(0, Number(e.target.value)))}
+              <input type="number" min={0} max={99} value={minutes} onChange={e => { const m = Math.max(0, Number(e.target.value)); setMinutes(m); setRemaining(m * 60 + seconds); }}
                 className="w-16 input-lattice text-center text-sm" placeholder="min" />
               <span className="text-gray-400">:</span>
-              <input type="number" min={0} max={59} value={seconds} onChange={e => setSeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
+              <input type="number" min={0} max={59} value={seconds} onChange={e => { const sec = Math.max(0, Math.min(59, Number(e.target.value))); setSeconds(sec); setRemaining(minutes * 60 + sec); }}
                 className="w-16 input-lattice text-center text-sm" placeholder="sec" />
             </div>
           )}
@@ -142,6 +141,14 @@ function CookingTimer() {
 }
 
 type CookingView = 'recipes' | 'kitchen' | 'nutrition' | 'timer' | 'bench';
+
+const COOKING_TITLES: Record<CookingView, string> = {
+  recipes: 'What is cooking',
+  kitchen: 'Cook it step by step',
+  nutrition: 'What is in it',
+  timer: 'Keep an eye on the clock',
+  bench: 'The kitchen bench',
+};
 
 const COOKING_TABS: { id: CookingView; label: string; icon: typeof BookOpen; keys: string }[] = [
   { id: 'recipes', label: 'Recipes', icon: BookOpen, keys: 'r' },
@@ -188,84 +195,64 @@ export default function CookingLensPage() {
     return () => { cancelled = true; };
   }, [refreshTick]);
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+
   return (
     <LensShell lensId="cooking" asMain={false}>
-      <FirstRunTour lensId="cooking" />      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
-      <div data-lens-theme="cooking" className="p-6 space-y-6">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <ChefHat className="w-6 h-6 text-orange-400" />
-            <div>
-              <h1 className="text-xl font-bold">Cooking Lens</h1>
-              <p className="text-sm text-gray-400">Recipes, meal prep &amp; kitchen management</p>
-            </div>
+      <FirstRunTour lensId="cooking" />
+      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="cooking"
+        theme="cooking"
+        crumb="Cooking"
+        title={`${COOKING_TITLES[activeView]}${activeView === 'recipes' && who ? `, ${who}` : ''}`}
+        subtitle="Recipes, meal prep and kitchen management."
+        actions={
+          <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="cooking" data={realtimeData || {}} compact />
-          </div>
-        </header>
+          </>
+        }
+        tabs={COOKING_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
+        activeTab={activeView}
+        onTab={(id) => setActiveView(id as CookingView)}
+        tabsLabel="Cooking views"
+        cta={{ label: 'Start cooking', icon: Flame, onClick: () => setActiveView('kitchen'), title: 'Open the step-by-step cook mode' }}
+      >
+        <div className="space-y-5">
+          {dashboardError && !summary && (
+            <div role="alert">
+              <ErrorState error={dashboardError} onRetry={() => setRefreshTick(t => t + 1)} />
+            </div>
+          )}
+          <KitchenDashboardStrip summary={summary} />
 
-        {dashboardError && !summary && (
-          <div role="alert">
-            <ErrorState error={dashboardError} onRetry={() => setRefreshTick(t => t + 1)} />
-          </div>
-        )}
-        <KitchenDashboardStrip summary={summary} />
-
-        <nav className="flex items-center gap-1 border-b border-orange-900/40 pb-px overflow-x-auto" aria-label="Cooking views">
-          {COOKING_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveView(t.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t border-b-2 transition-colors',
-                activeView === t.id
-                  ? 'border-orange-400 text-orange-300 bg-orange-500/10'
-                  : 'border-transparent text-gray-400 hover:text-orange-200 hover:bg-orange-950/30',
-              )}
-            >
-              <t.icon className="w-4 h-4" />
-              {t.label}
-              <kbd className="text-[9px] opacity-50 ml-0.5">{t.keys}</kbd>
-            </button>
-          ))}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeView}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="space-y-4"
-          >
+          <div className="space-y-4">
             {activeView === 'recipes' && <RecipeBoxSection />}
             {activeView === 'kitchen' && <RecipeKitchen />}
             {activeView === 'nutrition' && (
               <>
                 <UsdaFoodSearch domain="cooking" />
-                <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   <NutritionExplorer />
                 </section>
               </>
             )}
             {activeView === 'timer' && <CookingTimer />}
             {activeView === 'bench' && (
-              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <PipingProvider>
                   <CookingActionPanel />
                 </PipingProvider>
               </section>
             )}
-          </motion.div>
-        </AnimatePresence>
+          </div>
 
-        <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      </div>
-      <section className="mt-4 px-4"><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
-      <div className="px-4">        <CrossLensRecentsPanel lensId="cooking" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+          <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+          <section><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

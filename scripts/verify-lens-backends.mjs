@@ -117,35 +117,74 @@ const API_PATH_RE = /["'`](\/api\/[a-zA-Z0-9/_.\-]*)/g;
 // `api.get('/path')`, `api.post('/path', ...)`, `apiClient.get(...)` etc.
 const API_CLIENT_RE = /\b(?:api|apiClient)\.(?:get|post|put|delete|patch)\(\s*["'`](\/api\/[a-zA-Z0-9/_.\-]*)/g;
 
+// `lensRun(DOMAIN, name)` where DOMAIN is a same-file string constant
+// (`const DOMAIN = 'inheritance'`). An identifier with no such constant is
+// not counted — it could be anything.
+const MACRO_IDENT_RE = /\b(?:runDomain|lensRun)(?:<[^>(]*>)?\(\s*([A-Za-z_$][\w$]*)\s*,/g;
+
 function scanFile(src) {
   const calledDomains = new Set();
   const apiPaths = new Set();
   for (const m of src.matchAll(MACRO_CALL_RE)) calledDomains.add(m[1]);
+  for (const m of src.matchAll(MACRO_IDENT_RE)) {
+    const c = src.match(new RegExp(String.raw`\bconst\s+${m[1].replace(/\$/g, '\\$')}\s*(?::\s*string\s*)?=\s*["'\`]([a-zA-Z0-9_.\-]+)["'\`]`));
+    if (c) calledDomains.add(c[1]);
+  }
   for (const m of src.matchAll(API_PATH_RE)) apiPaths.add(m[1].replace(/\/+$/, ''));
   for (const m of src.matchAll(API_CLIENT_RE)) apiPaths.add(m[1].replace(/\/+$/, ''));
   return { calledDomains, apiPaths, usesGeneric: GENERIC_HOOK_RE.test(src) };
 }
 
+// Follow the lens's own component tree transitively: lens pages now
+// commonly delegate page -> App/Workspace -> panels, so a one-level scan
+// reported lenses whose panels plainly call the backend (code, healthcare,
+// sim, mail, ...) as NO-BACKEND-CALL. Edges followed: static and dynamic
+// (`import('...')`, next/dynamic) imports of `@/components/<name>/...`
+// (never the shared `@/components/lens/` scaffolding) and relative imports
+// from files already inside the tree. Depth-capped with a visited set.
+const MAX_DEPTH = 5;
+const IMPORT_RE = /(?:from\s+|import\(\s*)["'`]((?:@\/|\.{1,2}\/)[a-zA-Z0-9/_.\-]+)["'`]/g;
+function resolveRelative(spec, fromFile) {
+  const abs = path.resolve(path.dirname(fromFile), spec);
+  for (const c of [`${abs}.tsx`, `${abs}.ts`, path.join(abs, 'index.tsx'), path.join(abs, 'index.ts')]) if (fs.existsSync(c)) return [c];
+  return [];
+}
+function childFiles(src, fromFile) {
+  const out = [];
+  for (const m of src.matchAll(IMPORT_RE)) {
+    const spec = m[1];
+    if (spec.startsWith('@/')) {
+      if (!/^@\/components\//.test(spec)) continue;
+      if (/^@\/components\/lens\//.test(spec)) continue;
+      out.push(...resolveImport(spec));
+    } else {
+      // Relative edges stay inside the component / lens-page tree; a relative
+      // path into lib/ (e.g. the shared API client) is infrastructure.
+      out.push(...resolveRelative(spec, fromFile).filter((f) =>
+        (f.startsWith(path.join(FRONTEND, 'components') + path.sep) || f.startsWith(path.join(FRONTEND, 'app', 'lenses') + path.sep))
+        && !f.includes(`${path.sep}components${path.sep}lens${path.sep}`)));
+    }
+  }
+  return out;
+}
+
 function scanPageWithChildren(pageSrc, pagePath) {
   const acc = scanFile(pageSrc);
-  // Pull @/components/<lens>/* style imports and merge their backend calls
-  // (one level deep — children's children handle themselves at their own
-  // mount sites; deeper recursion produces noise without finding more).
-  for (const m of pageSrc.matchAll(/from\s+["'`](@\/[a-zA-Z0-9/_.\-]+)["'`]/g)) {
-    // Only recurse into lens-specific component dirs (`@/components/<name>/`).
-    // Skip:
-    //  - `@/components/lens/` shared shell scaffolding (RecentMineCard, etc.)
-    //  - `@/lib/api/client` — a known-good API surface; recursing pulls in
-    //    every helper's path string and produces false positives
-    //  - hooks, utils, providers — orthogonal infra
-    if (!/^@\/components\//.test(m[1])) continue;
-    if (/^@\/components\/lens\//.test(m[1])) continue;
-    for (const child of resolveImport(m[1])) {
-      const cs = scanFile(readIfExists(child));
+  const visited = new Set([pagePath]);
+  let frontier = childFiles(pageSrc, pagePath).map((f) => [f, 1]);
+  while (frontier.length) {
+    const next = [];
+    for (const [file, depth] of frontier) {
+      if (visited.has(file)) continue;
+      visited.add(file);
+      const src = readIfExists(file);
+      const cs = scanFile(src);
       for (const d of cs.calledDomains) acc.calledDomains.add(d);
       for (const p of cs.apiPaths) acc.apiPaths.add(p);
       acc.usesGeneric ||= cs.usesGeneric;
+      if (depth < MAX_DEPTH) for (const c of childFiles(src, file)) next.push([c, depth + 1]);
     }
+    frontier = next;
   }
   // Detect direct named-helper usage from @/lib/api/client (`api.foo()`,
   // `apiHelpers.bar()`, `morningBrief()` etc.) without recursing into the

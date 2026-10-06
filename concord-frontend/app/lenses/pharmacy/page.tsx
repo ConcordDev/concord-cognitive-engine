@@ -6,6 +6,9 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PharmacyOverview } from '@/components/pharmacy/PharmacyOverview';
 import { PharmacyRxSection } from '@/components/pharmacy/PharmacyRxSection';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
@@ -14,7 +17,7 @@ import { RxFormularyToolsPanel } from '@/components/pharmacy/RxFormularyToolsPan
 import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PipingProvider } from '@/components/panel-polish';
-import { Pill, AlertTriangle, ShieldCheck, LayoutGrid, HeartPulse, Bell } from 'lucide-react';
+import { Pill, AlertTriangle, ShieldCheck, LayoutGrid, HeartPulse, Bell, Plus } from 'lucide-react';
 
 type Destination = 'overview' | 'meds' | 'reference' | 'bench';
 
@@ -28,6 +31,8 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof Pill; key: st
 export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [destination, setDestination] = useState<Destination>('overview');
   const [referenceTab, setReferenceTab] = useState<'lookup' | 'browse' | 'tools'>('lookup');
 
@@ -42,22 +47,20 @@ export default function PharmacyLensPage() {
   return (
     <LensShell lensId="pharmacy" asMain={false}>
       <FirstRunTour lensId="pharmacy" />
+      <DepthBadge lensId="pharmacy" size="sm" className="ml-2" />
 
-      <div data-lens-theme="pharmacy" className="p-6 space-y-5">
-        {/* Header */}
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Pill className="w-8 h-8 text-amber-400" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white">Pharmacy</h1>
-                <DepthBadge lensId="pharmacy" size="sm" />
-              </div>
-              <p className="text-sm text-gray-400">Medications, dose adherence, refills, pricing and FDA drug safety reference</p>
-            </div>
-          </div>
-        </header>
-
+      <NorthStarFrame
+        lensId="pharmacy"
+        crumb="Pharmacy"
+        title={`Your medications${who ? `, ${who}` : ''}`}
+        subtitle="Dose adherence, refills, pricing and FDA drug safety reference"
+        tabs={DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, keys: d.key }))}
+        activeTab={destination}
+        onTab={(id) => setDestination(id as Destination)}
+        tabsLabel="Pharmacy destinations"
+        cta={{ label: 'Add a medication', icon: Plus, onClick: () => setDestination('meds'), title: 'Open My Meds' }}
+      >
+        <div className="space-y-5">
         {/* Safety disclaimer — always visible, not tab-scoped */}
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
@@ -71,27 +74,6 @@ export default function PharmacyLensPage() {
             </span>
           </div>
         </div>
-
-        {/* Destination nav */}
-        <nav className="flex gap-1 border-b border-white/10 pb-0.5 overflow-x-auto" aria-label="Pharmacy destinations">
-          {DESTINATIONS.map((d) => {
-            const Icon = d.icon;
-            const active = destination === d.id;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDestination(d.id)}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  active ? 'bg-amber-500/20 text-amber-300 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" /> {d.label}
-              </button>
-            );
-          })}
-        </nav>
 
         {destination === 'overview' && <PharmacyOverview onNavigate={setDestination} />}
 
@@ -138,7 +120,8 @@ export default function PharmacyLensPage() {
             </div>
           </PipingProvider>
         )}
-      </div>
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

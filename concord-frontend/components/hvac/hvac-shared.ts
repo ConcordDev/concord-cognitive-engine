@@ -67,7 +67,7 @@ export interface TradeArtifact {
   issuedBy?: string;
 }
 
-export type HvacView = ModeTab | 'dashboard' | 'field' | 'feed' | 'manualj';
+export type HvacView = ModeTab | 'dashboard' | 'field' | 'feed' | 'manualj' | 'ducts';
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   scheduled: { label: 'Scheduled', color: 'blue-400' },

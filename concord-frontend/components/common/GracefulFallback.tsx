@@ -26,7 +26,11 @@ export function GracefulFallback({ feature, brainRequired, children }: FallbackP
 
   const brain = brainStatus[brainRequired];
 
-  if (!brain || !brain.online) {
+  // Unknown / never-fetched status (null) — do not block the feature. Only
+  // show the yellow strip when we positively know the required brain is offline.
+  if (!brain) return <>{children}</>;
+
+  if (!brain.online) {
     return (
       <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
         <p className="text-amber-400 text-sm font-medium">

@@ -1,5 +1,6 @@
 'use client';
 
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 type Theme = 'dark' | 'light' | 'system';
@@ -49,18 +50,17 @@ export function ThemeToggle() {
     setTheme(next);
   };
 
-  const icon = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥️';
+  const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
   const label = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
 
   return (
     <button
       onClick={cycle}
-      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+      className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors"
       title={`Theme: ${label}. Click to cycle.`}
       aria-label={`Switch theme. Currently ${label}`}
     >
-      <span className="text-sm leading-none">{icon}</span>
-      <span className="hidden lg:inline">{label}</span>
+      <Icon className="h-4 w-4" />
     </button>
   );
 }

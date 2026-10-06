@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
@@ -16,6 +16,8 @@ import SleepRecovery from '@/components/fitness/SleepRecovery';
 import ActivityRings from '@/components/fitness/ActivityRings';
 import WorkoutPlanner from '@/components/fitness/WorkoutPlanner';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -25,16 +27,15 @@ import {
   Dumbbell, Users, ListChecks, CalendarDays, Shield, Medal, Sparkles,
   Plus, Search, X, Trash2, Target, Timer, Zap, User, Calendar,
   TrendingUp, Award, Activity,
-  ChevronRight, ChevronDown, DollarSign, Calculator,
+  ChevronRight, DollarSign, Calculator,
   MapPin, Phone, Mail,
   Brain, Layers, ArrowUpRight, ArrowDownRight, Minus,
-  ClipboardList, UserPlus, Eye, FileText, AlertTriangle,
+  ClipboardList, UserPlus, Eye, FileText,
   Flame,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { WorkoutFinishPanel } from '@/components/fitness/WorkoutFinishPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -164,6 +165,24 @@ interface FitnessArtifact {
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
+
+const TAB_TITLES: Record<ModeTab | 'Training', string> = {
+  Training: 'Your training',
+  Clients: 'Your clients',
+  Programs: 'Programs that progress',
+  Workouts: 'Workouts worth repeating',
+  Classes: 'Classes on the calendar',
+  Teams: 'Your teams',
+  Recruiting: 'Who is next',
+  Log: 'Log the work',
+  HRZones: 'Train in the right zone',
+  Recovery: 'Recover on purpose',
+  Activity: 'Close your rings',
+  AIPlan: 'A plan built for you',
+  Finish: 'Finish strong',
+  Routes: 'Where you ran',
+  Feed: 'What athletes are sharing',
+};
 
 const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType: ArtifactType }[] = [
   { id: 'Clients', icon: Users, defaultType: 'Client' },
@@ -327,7 +346,10 @@ export default function FitnessApp() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fitness');
 
   /* ---------- core state ---------- */
+  const [surface, setSurface] = useState<'training' | 'coaching'>('training');
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
 
@@ -336,12 +358,12 @@ export default function FitnessApp() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
-      { id: 'tab-clients', keys: 'c', description: 'Clients', category: 'navigation', action: () => setActiveTab('Clients') },
-      { id: 'tab-programs', keys: 'p', description: 'Programs', category: 'navigation', action: () => setActiveTab('Programs') },
-      { id: 'tab-workouts', keys: 'w', description: 'Workouts', category: 'navigation', action: () => setActiveTab('Workouts') },
-      { id: 'tab-classes', keys: 'l', description: 'Classes', category: 'navigation', action: () => setActiveTab('Classes') },
-      { id: 'tab-teams', keys: 't', description: 'Teams', category: 'navigation', action: () => setActiveTab('Teams') },
-      { id: 'tab-recruiting', keys: 'r', description: 'Recruiting', category: 'navigation', action: () => setActiveTab('Recruiting') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      { id: 'tab-clients', keys: 'c', description: 'Clients', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Clients'); } },
+      { id: 'tab-programs', keys: 'p', description: 'Programs', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Programs'); } },
+      { id: 'tab-workouts', keys: 'w', description: 'Workouts', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Workouts'); } },
+      { id: 'tab-classes', keys: 'l', description: 'Classes', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Classes'); } },
+      { id: 'tab-teams', keys: 't', description: 'Teams', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Teams'); } },
+      { id: 'tab-recruiting', keys: 'r', description: 'Recruiting', category: 'navigation', action: () => { setSurface('coaching'); setActiveTab('Recruiting'); } },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
     ],
     { lensId: 'fitness' }
@@ -728,70 +750,44 @@ export default function FitnessApp() {
     <LensShell lensId="fitness" asMain={false}>
       <FirstRunTour lensId="fitness" />
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <FitnessStravaSection />
-      </div>
-    <div className={ds.pageContainer}>
-      {/* Fitness Disclaimer */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-        <p className="text-sm text-amber-200">
-          Not medical advice. Consult a physician before starting any exercise program. This tool is for fitness tracking and programming, not clinical guidance.
-        </p>
-      </div>
-      {/* ========== Header ========== */}
-      <header className={ds.sectionHeader}>
-        <div className="flex items-center gap-3">
-          <Dumbbell className="w-7 h-7 text-red-400" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className={ds.heading1}>Fitness & Wellness</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className={ds.textMuted}>Client management, programming, scheduling, and recruiting</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setActiveTab('Activity')}
-            className={cn(ds.btnSecondary, activeTab === 'Activity' && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
+    <NorthStarFrame
+      lensId="fitness"
+      crumb="Fitness"
+      title={`${TAB_TITLES[surface === 'training' ? 'Training' : activeTab]}${surface === 'training' && who ? `, ${who}` : ''}`}
+      subtitle="A personal training log and a coach's client app in one place: workouts, heart-rate zones, recovery, rings, AI plans, routes, and the full coaching book."
+      actions={(
+        <>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+          {runAction.isPending && <span className="text-xs text-red-400 animate-pulse">Running...</span>}
+          <button onClick={() => { setSurface('coaching'); setActiveTab('Activity'); }}
+            className={cn(ds.btnSecondary, surface === 'coaching' && activeTab === 'Activity' && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
             <Flame className="w-4 h-4" /> Daily Tracker
           </button>
           <button onClick={() => setShowBodyComp(true)} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> Body Comp Tools
           </button>
-          <button onClick={openNewEditor} className={ds.btnPrimary}>
-            <Plus className="w-4 h-4" /> New Record
-          </button>
-          {runAction.isPending && <span className="text-xs text-red-500 animate-pulse">Running...</span>}
-        </div>
-      </header>
+        </>
+      )}
+      tabs={[
+        { id: 'Training', label: 'Training', icon: Dumbbell, hint: 'Strava-style personal training log' },
+        ...MODE_TABS.map((t) => ({ id: t.id, label: t.id === 'HRZones' ? 'HR zones' : t.id === 'AIPlan' ? 'AI plan' : t.id, icon: t.icon })),
+      ]}
+      activeTab={surface === 'training' ? 'Training' : activeTab}
+      onTab={(id) => {
+        if (id === 'Training') { setSurface('training'); return; }
+        setSurface('coaching');
+        setActiveTab(id as ModeTab);
+        setFilterStatus('all');
+        setSelectedClient(null);
+      }}
+      tabsLabel="Fitness views"
+      cta={{ label: 'New record', icon: Plus, onClick: () => { setSurface('coaching'); openNewEditor(); }, title: 'Create a client, program, workout, class, team or athlete record' }}
+    >
+    <div className="space-y-4">
+      {surface === 'training' && <FitnessStravaSection />}
 
-
-      {/* AI Actions */}
-      {/* Health & Fitness Wire — CDC Physical Activity + MMWR live feed */}
-      <LiveFeed
-        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-        domain="fitness"
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        limit={10}
-      />
-      <RealtimeDataPanel domain="fitness" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="fitness" data={{}} compact />
-      {/* ========== Mode Tabs ========== */}
-      <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setFilterStatus('all'); setSelectedClient(null); }}
-            className={cn(ds.btnGhost, 'whitespace-nowrap', activeTab === tab.id && 'bg-red-400/20 text-red-400')}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.id}
-          </button>
-        ))}
-      </nav>
-
+      {surface === 'coaching' && (
+      <>
       {/* ========== Enhanced Dashboard ========== */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard icon={Users} label="Active Clients" value={stats.activeClients} sub={`${stats.retentionRate}% retention`} color="red-400" />
@@ -1358,6 +1354,23 @@ export default function FitnessApp() {
           </div>
         </div>
       )}
+
+      </>
+      )}
+
+      {/* AI Actions */}
+      {/* Health & Fitness Wire — CDC Physical Activity + MMWR live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="fitness"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
+      <RealtimeDataPanel domain="fitness" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      <p className="border-t border-white/5 pt-3 text-center text-[11px] text-zinc-500">
+        Not medical advice. Consult a physician before starting any exercise program. This tool is for fitness tracking and programming, not clinical guidance.
+      </p>
 
       {/* ========== Body Composition Calculator Modal ========== */}
       {showBodyComp && (
@@ -2091,8 +2104,8 @@ export default function FitnessApp() {
         </>
       )}
     </div>
-          <section className="mt-4"><LensFeedButton domain="fitness" label="Live exercise feed" /></section>
-          <CrossLensRecentsPanel lensId="fitness" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <section className="mt-4"><LensFeedButton domain="fitness" label="Live exercise feed" /></section>
+    </NorthStarFrame>
     </LensShell>
   );
 }

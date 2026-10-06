@@ -12,7 +12,7 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Activity, GitBranch, GitCompare, Plus, Trash2, Play, Loader2, Sparkles,
+  Activity, GitBranch, GitCompare, Plus, Trash2, Play, Loader2,
   ArrowRight, CheckCircle, AlertTriangle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -61,31 +61,9 @@ export function AnalysisPanel() {
 interface Sample { latencyMs: number; statusCode: number }
 interface Endpoint { name: string; url: string; samples: Sample[] }
 
-// @env-config-ok: these two URLs are illustrative sample data for the "Load example"
-// preset button below (EXAMPLE_ENDPOINTS) — never fetched, just fed to the client-side
-// apiHealthCheck macro as latency-sample metadata. `api.internal` is a non-resolvable
-// placeholder host (same class as `example.com`), not a real deployment endpoint.
-const EXAMPLE_ENDPOINTS: Endpoint[] = [
-  {
-    name: 'auth-service', url: 'https://api.internal/auth',
-    samples: [
-      { latencyMs: 42, statusCode: 200 }, { latencyMs: 51, statusCode: 200 },
-      { latencyMs: 380, statusCode: 200 }, { latencyMs: 47, statusCode: 500 },
-      { latencyMs: 39, statusCode: 200 },
-    ],
-  },
-  {
-    name: 'billing-gateway', url: 'https://api.internal/billing',
-    samples: [
-      { latencyMs: 120, statusCode: 200 }, { latencyMs: 890, statusCode: 503 },
-      { latencyMs: 140, statusCode: 200 }, { latencyMs: 910, statusCode: 503 },
-    ],
-  },
-];
-
 function HealthTool() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([
-    { name: 'my-api', url: '', samples: [{ latencyMs: 50, statusCode: 200 }] },
+    { name: '', url: '', samples: [{ latencyMs: 0, statusCode: 200 }] },
   ]);
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -109,8 +87,7 @@ function HealthTool() {
     <div className="space-y-3">
       <ToolHeader
         count={endpoints.length} noun="endpoint"
-        onAdd={() => setEndpoints((es) => [...es, { name: `endpoint-${es.length + 1}`, url: '', samples: [{ latencyMs: 50, statusCode: 200 }] }])}
-        onExample={() => { setEndpoints(EXAMPLE_ENDPOINTS.map((e) => ({ ...e, samples: [...e.samples] }))); setResult(null); }}
+        onAdd={() => setEndpoints((es) => [...es, { name: '', url: '', samples: [{ latencyMs: 0, statusCode: 200 }] }])}
       />
       <div className="space-y-2">
         {endpoints.map((ep, i) => (
@@ -197,16 +174,9 @@ function HealthTool() {
 
 interface Flow { source: string; target: string; throughputMbps: number; latencyMs: number; protocol: string }
 
-const EXAMPLE_FLOWS: Flow[] = [
-  { source: 'ingest', target: 'queue', throughputMbps: 500, latencyMs: 4, protocol: 'grpc' },
-  { source: 'queue', target: 'processor', throughputMbps: 120, latencyMs: 20, protocol: 'amqp' },
-  { source: 'processor', target: 'warehouse', throughputMbps: 400, latencyMs: 60, protocol: 'http' },
-  { source: 'queue', target: 'cache', throughputMbps: 800, latencyMs: 2, protocol: 'redis' },
-];
-
 function FlowTool() {
   const [flows, setFlows] = useState<Flow[]>([
-    { source: 'source', target: 'sink', throughputMbps: 100, latencyMs: 10, protocol: 'http' },
+    { source: '', target: '', throughputMbps: 0, latencyMs: 0, protocol: 'http' },
   ]);
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -226,8 +196,7 @@ function FlowTool() {
     <div className="space-y-3">
       <ToolHeader
         count={flows.length} noun="flow"
-        onAdd={() => setFlows((fs) => [...fs, { source: '', target: '', throughputMbps: 100, latencyMs: 10, protocol: 'http' }])}
-        onExample={() => { setFlows(EXAMPLE_FLOWS.map((f) => ({ ...f }))); setResult(null); }}
+        onAdd={() => setFlows((fs) => [...fs, { source: '', target: '', throughputMbps: 0, latencyMs: 0, protocol: 'http' }])}
       />
       <div className="space-y-2">
         {flows.map((f, i) => (
@@ -306,24 +275,9 @@ function FlowTool() {
 interface ApiChange { type: 'added' | 'removed' | 'modified'; field: string; breaking: boolean }
 interface ApiEntry { name: string; currentVersion: string; targetVersion: string; changes: ApiChange[] }
 
-const EXAMPLE_APIS: ApiEntry[] = [
-  {
-    name: 'payments-api', currentVersion: '2.4.1', targetVersion: '3.0.0',
-    changes: [
-      { type: 'removed', field: 'legacyToken', breaking: true },
-      { type: 'modified', field: 'amount', breaking: true },
-      { type: 'added', field: 'idempotencyKey', breaking: false },
-    ],
-  },
-  {
-    name: 'notifications-api', currentVersion: '1.2.0', targetVersion: '1.3.0',
-    changes: [{ type: 'added', field: 'channel', breaking: false }],
-  },
-];
-
 function CompatTool() {
   const [apis, setApis] = useState<ApiEntry[]>([
-    { name: 'my-api', currentVersion: '1.0.0', targetVersion: '2.0.0', changes: [] },
+    { name: '', currentVersion: '', targetVersion: '', changes: [] },
   ]);
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -345,8 +299,7 @@ function CompatTool() {
     <div className="space-y-3">
       <ToolHeader
         count={apis.length} noun="API"
-        onAdd={() => setApis((a) => [...a, { name: `api-${a.length + 1}`, currentVersion: '1.0.0', targetVersion: '1.1.0', changes: [] }])}
-        onExample={() => { setApis(EXAMPLE_APIS.map((a) => ({ ...a, changes: a.changes.map((c) => ({ ...c })) }))); setResult(null); }}
+        onAdd={() => setApis((a) => [...a, { name: '', currentVersion: '', targetVersion: '', changes: [] }])}
       />
       <div className="space-y-2">
         {apis.map((api, i) => (
@@ -421,18 +374,13 @@ function CompatTool() {
 
 // ───────────────────────────── shared bits ─────────────────────────────
 
-function ToolHeader({ count, noun, onAdd, onExample }: { count: number; noun: string; onAdd: () => void; onExample: () => void }) {
+function ToolHeader({ count, noun, onAdd }: { count: number; noun: string; onAdd: () => void }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-gray-500">{count} {noun}{count !== 1 ? 's' : ''}</span>
-      <div className="flex items-center gap-2">
-        <button onClick={onExample} className="text-[11px] text-gray-400 hover:text-neon-cyan flex items-center gap-1">
-          <Sparkles className="w-3 h-3" /> Load example
-        </button>
-        <button onClick={onAdd} className="btn-secondary text-xs flex items-center gap-1 px-2 py-1">
-          <Plus className="w-3 h-3" /> Add {noun}
-        </button>
-      </div>
+      <button onClick={onAdd} className="btn-secondary text-xs flex items-center gap-1 px-2 py-1">
+        <Plus className="w-3 h-3" /> Add {noun}
+      </button>
     </div>
   );
 }

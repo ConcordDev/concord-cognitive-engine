@@ -17,33 +17,28 @@ import {
   MousePointer,
   Pencil,
   Trash2,
-  Download,
   Undo2,
   Redo2,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
-  Palette,
   X,
-  Save,
-  Grid3X3,
   Move,
   Image as ImageIcon,
   StickyNote,
   Bookmark,
+  MoreHorizontal,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import WhiteboardWorkbench from '@/components/whiteboard/WhiteboardWorkbench';
 import { WhiteboardInspector } from './WhiteboardInspector';
 import { WhiteboardMoodboardPanel } from './WhiteboardMoodboardPanel';
 import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
+import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
 import {
   type BoardMode,
   type SketchTool as Tool,
@@ -58,6 +53,11 @@ import {
   fmtDur,
 } from './whiteboard-model';
 
+const LAST_BOARD_KEY = 'concord:whiteboard:last';
+
+/** Boards are stored as "Whiteboard: <name>" DTUs; show just the name. */
+const boardName = (t: unknown) => String(t ?? 'Board').replace(/^Whiteboard:\s*/, '') || 'Board';
+
 /* ================================================================== */
 export function WhiteboardStudio({
   workbenchOpen,
@@ -68,7 +68,6 @@ export function WhiteboardStudio({
   onWorkbenchOpen: () => void;
   onWorkbenchClose: () => void;
 }) {
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('whiteboard');
   const queryClient = useQueryClient();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +78,10 @@ export function WhiteboardStudio({
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [showInspector, setShowInspector] = useState(false);
+  const [moreTools, setMoreTools] = useState(false);
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   /* canvas state */
   const [tool, setTool] = useState<Tool>('select');
@@ -87,6 +90,9 @@ export function WhiteboardStudio({
   const [viewingDtuId, setViewingDtuId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentElement, setCurrentElement] = useState<Element | null>(null);
+  // Latest in-progress element. Mouse events can arrive faster than renders, so
+  // reading currentElement from the render closure dropped freehand points.
+  const drawingRef = useRef<Element | null>(null);
   const [undoStack, setUndoStack] = useState<Element[][]>([]);
   const [redoStack, setRedoStack] = useState<Element[][]>([]);
   const [zoom, setZoom] = useState(1);
@@ -97,7 +103,7 @@ export function WhiteboardStudio({
   const [strokeColor, setStrokeColor] = useState('#00d4ff');
   const [fillColor, setFillColor] = useState('transparent');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [textInput, setTextInput] = useState('');
@@ -132,6 +138,21 @@ export function WhiteboardStudio({
   const boardListItems: Record<string, unknown>[] = (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
     : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }));
+
+  // North star: the canvas is the page, so open the most recent board instead
+  // of an empty "select a board" screen (render-time adjust, once).
+  const [autoPicked, setAutoPicked] = useState(false);
+  if (!autoPicked && !selectedWbId && !isLoading && boardListItems.length > 0) {
+    setAutoPicked(true);
+    let last: string | null = null;
+    try { last = window.localStorage.getItem(LAST_BOARD_KEY); } catch { /* storage unavailable */ }
+    const remembered = last && boardListItems.find((b) => b.id === last);
+    setSelectedWbId(String(remembered ? remembered.id : boardListItems[0].id));
+  }
+  useEffect(() => {
+    if (!selectedWbId) return;
+    try { window.localStorage.setItem(LAST_BOARD_KEY, selectedWbId); } catch { /* storage unavailable */ }
+  }, [selectedWbId]);
 
   const { data: dtus, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
     queryKey: ['dtus-whiteboard'],
@@ -191,17 +212,18 @@ export function WhiteboardStudio({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, selectedWbId]);
 
-  /* resize */
+  /* resize — the canvas container mounts only once a board is open, so observe
+     it whenever it (re)mounts instead of measuring once at first render. */
+  const canvasVisible = !!selectedWbId && boardMode === 'canvas';
   useEffect(() => {
-    const update = () => {
-      if (containerRef.current) {
-        setDimensions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
-      }
-    };
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setDimensions({ width: el.clientWidth, height: el.clientHeight });
     update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [canvasVisible]);
 
   /* ---------- undo / redo ---------- */
   const pushUndo = useCallback(() => {
@@ -279,6 +301,7 @@ export function WhiteboardStudio({
       fill: fillColor,
       strokeWidth,
     };
+    drawingRef.current = newEl;
     setCurrentElement(newEl);
   };
 
@@ -287,7 +310,8 @@ export function WhiteboardStudio({
       setOffset({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
     }
-    if (!isDrawing || !currentElement) return;
+    const cur = drawingRef.current ?? currentElement;
+    if (!isDrawing || !cur) return;
     const { x, y } = getCanvasCoords(e);
 
     if (tool === 'select' && selectedElement) {
@@ -299,24 +323,26 @@ export function WhiteboardStudio({
       return;
     }
 
-    if (currentElement.type === 'freehand' && currentElement.points) {
-      setCurrentElement({ ...currentElement, points: [...currentElement.points, { x, y }] });
-    } else {
-      setCurrentElement({ ...currentElement, width: x - currentElement.x, height: y - currentElement.y });
-    }
+    const next = cur.type === 'freehand' && cur.points
+      ? { ...cur, points: [...cur.points, { x, y }] }
+      : { ...cur, width: x - cur.x, height: y - cur.y };
+    drawingRef.current = next;
+    setCurrentElement(next);
   };
 
   const handleMouseUp = () => {
     setIsPanning(false);
     if (!isDrawing) return;
     setIsDrawing(false);
+    const done = drawingRef.current ?? currentElement;
+    drawingRef.current = null;
     if (tool === 'select') { pushUndo(); return; }
-    if (currentElement && (
-      (currentElement.width && Math.abs(currentElement.width) > 5) ||
-      (currentElement.height && Math.abs(currentElement.height) > 5) ||
-      (currentElement.points && currentElement.points.length > 2)
+    if (done && (
+      (done.width && Math.abs(done.width) > 5) ||
+      (done.height && Math.abs(done.height) > 5) ||
+      (done.points && done.points.length > 2)
     )) {
-      const n = { ...currentElement };
+      const n = { ...done };
       if (n.width && n.width < 0) { n.x += n.width; n.width = Math.abs(n.width); }
       if (n.height && n.height < 0) { n.y += n.height; n.height = Math.abs(n.height); }
       setElements(prev => [...prev, n]);
@@ -527,8 +553,7 @@ export function WhiteboardStudio({
     canvas.height = dimensions.height * 2;
     ctx.scale(2, 2);
 
-    ctx.fillStyle = '#0f0f1a';
-    ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
     if (showGrid) {
       ctx.strokeStyle = 'rgba(100, 100, 150, 0.1)';
@@ -764,6 +789,7 @@ export function WhiteboardStudio({
   }, [deleteSelected, undo, redo, duplicateSelected]);
 
   /* ---------- tools array ---------- */
+  const PRIMARY_TOOLS: Tool[] = ['select', 'draw', 'rectangle', 'ellipse', 'line', 'arrow', 'text', 'notecard'];
   const tools: { id: Tool; icon: ComponentType<{ className?: string; size?: number | string }>; label: string; key: string }[] = [
     { id: 'select', icon: MousePointer, label: 'Select', key: 'V' },
     { id: 'draw', icon: Pencil, label: 'Draw', key: 'P' },
@@ -809,152 +835,110 @@ export function WhiteboardStudio({
   }
 
   return (
-    <div className="h-[calc(100vh-5rem)] min-h-[640px] flex bg-lattice-bg overflow-hidden" data-lens-theme="whiteboard">
-      <aside className="w-56 border-r border-lattice-border bg-lattice-surface p-3 flex flex-col min-h-0">
-        <div className="flex items-center gap-2 mb-2">
-          <PenTool className="w-5 h-5 text-cyan-300" />
-          <h1 className="text-sm font-bold leading-tight">Board</h1>
+    <div className="relative flex h-[calc(100vh-3rem)] min-h-[600px] overflow-hidden bg-[radial-gradient(ellipse_at_80%_10%,rgba(91,33,182,0.10),transparent_55%),radial-gradient(ellipse_at_15%_90%,rgba(20,184,166,0.07),transparent_50%)]" data-lens-theme="whiteboard">
+      {/* Greeting + board switcher, over the canvas (north star 14) */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between px-8 pt-4">
+        <div className="pointer-events-auto">
+          <p className="text-[13px] text-zinc-500">Whiteboard</p>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">{who ? `Sketch it, ${who}` : 'Sketch it'}</h1>
         </div>
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          <DTUExportButton domain="whiteboard" data={realtimeData || {}} compact />
-          {realtimeAlerts.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-              {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-
-        <div className="relative mb-3">
-          <button type="button" onClick={() => setShowModeMenu(v => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-lattice-bg border border-lattice-border text-sm">
-            <span>{MODE_LABELS[boardMode]}</span>
-            <span className="text-gray-400 text-xs">{showModeMenu ? '▴' : '▾'}</span>
+        <div className="pointer-events-auto relative flex items-center gap-4 pt-1 text-[13px]">
+          {saveMutation.isPending && <span className="text-zinc-600">Saving…</span>}
+          <button type="button" onClick={() => setShowModeMenu((v) => !v)} className="text-zinc-500 transition-colors hover:text-zinc-200" aria-haspopup="menu" aria-expanded={showModeMenu}>
+            {selectedWbId ? boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title) : 'Boards'}
+            {boardMode !== 'canvas' && ` · ${MODE_LABELS[boardMode]}`} ▾
           </button>
           <AnimatePresence>
             {showModeMenu && (
-              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                className="absolute left-0 right-0 top-full mt-1 bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden z-30 shadow-xl">
+              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} role="menu"
+                className="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+                <p className="px-2.5 pb-1 pt-2 text-[11px] uppercase tracking-wider text-zinc-600">Boards</p>
+                {boardListItems.length === 0 && <p className="px-2.5 py-1.5 text-[13px] text-zinc-500">No boards yet.</p>}
+                {boardListItems.map((wb: Record<string, unknown>) => (
+                  <button key={wb.id as string} type="button" role="menuitem" onClick={() => { setSelectedWbId(wb.id as string); setShowModeMenu(false); }}
+                    className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-white/[0.06] ${selectedWbId === wb.id ? 'text-zinc-50' : 'text-zinc-300'}`}>
+                    <span className="flex-1 truncate">{boardName(wb.title)}</span>
+                    <span className="text-[11px] tabular-nums text-zinc-600">{(wb.elementCount as number) || 0}</span>
+                  </button>
+                ))}
+                <div className="my-1 border-t border-white/[0.06]" />
+                <p className="px-2.5 pb-1 pt-1 text-[11px] uppercase tracking-wider text-zinc-600">View</p>
                 {(Object.keys(MODE_LABELS) as BoardMode[]).map(m => (
-                  <button key={m} type="button" onClick={() => { setBoardMode(m); setShowModeMenu(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-lattice-elevated ${boardMode === m ? 'text-neon-cyan' : 'text-gray-300'}`}>
+                  <button key={m} type="button" role="menuitem" onClick={() => { setBoardMode(m); setShowModeMenu(false); }}
+                    className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-white/[0.06] ${boardMode === m ? 'text-zinc-50' : 'text-zinc-300'}`}>
                     {MODE_LABELS[m]}
                   </button>
                 ))}
+                <div className="my-1 border-t border-white/[0.06]" />
+                <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); onWorkbenchOpen(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Templates &amp; voting</button>
+                <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); setShowInspector((v) => !v); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showInspector ? 'Hide' : 'Show'} analyze &amp; collab</button>
+                <button type="button" role="menuitem" onClick={() => setShowGrid((g) => !g)} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">{showGrid ? 'Hide' : 'Show'} grid</button>
+                {selectedWbId && (
+                  <>
+                    <div className="my-1 border-t border-white/[0.06]" />
+                    <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); exportCanvas(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Export PNG</button>
+                    <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportSVG(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Export SVG</button>
+                    <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportClipboardJSON(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Copy JSON</button>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
+      </div>
 
-        <button type="button" onClick={() => setShowCreate(true)} className="w-full py-2 bg-cyan-400 text-black font-medium rounded-lg hover:bg-cyan-300 mb-3 flex items-center justify-center gap-2 text-sm">
-          <Plus className="w-4 h-4" />New Board
-        </button>
-
-        <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
-          <p className="text-xs text-gray-400 mb-2">Whiteboards (<span className="tabular-nums">{whiteboards?.count || 0}</span>)</p>
-          {boardListItems.length === 0 ? (
-            <p className="text-xs text-gray-400 italic py-4 text-center">No whiteboards yet — create one to get started.</p>
-          ) : (
-            boardListItems.map((wb: Record<string, unknown>) => (
-              <button key={wb.id as string} type="button" onClick={() => setSelectedWbId(wb.id as string)}
-                className={`w-full text-left p-2.5 rounded-lg border transition-colors ${selectedWbId === wb.id ? 'border-cyan-400 bg-lattice-elevated' : 'border-lattice-border hover:border-cyan-400/50'}`}>
-                <p className="font-medium truncate text-sm">{wb.title as string}</p>
-                <p className="text-xs text-gray-400 mt-1"><span className="tabular-nums">{(wb.elementCount as number) || 0}</span> elements</p>
-              </button>
-            ))
-          )}
-        </div>
-        {realtimeData && (
-          <div className="mt-2 border-t border-lattice-border pt-2">
-            <RealtimeDataPanel
-              domain="whiteboard"
-              data={realtimeData}
-              isLive={isLive}
-              lastUpdated={lastUpdated}
-              insights={realtimeInsights}
-              compact
-            />
-          </div>
-        )}
-      </aside>
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {selectedWbId ? (
           <>
             {boardMode === 'canvas' && (
-              <div className="border-b border-lattice-border bg-lattice-surface/50 backdrop-blur p-2 flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1 bg-lattice-bg rounded-lg p-1">
-                  {tools.map(t => (
-                    <button key={t.id} type="button" onClick={() => setTool(t.id)} title={`${t.label}${t.key ? ` (${t.key})` : ''}`}
-                      className={`p-2 rounded-md transition-colors ${tool === t.id ? 'bg-cyan-400/20 text-cyan-300' : 'text-gray-400 hover:text-white'}`}>
-                      <t.icon className="w-5 h-5" />
-                    </button>
-                  ))}
-                </div>
-                <div className="w-px h-8 bg-lattice-border mx-1" />
-                <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} className="p-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated relative" aria-label="Palette">
-                  <Palette className="w-5 h-5" style={{ color: strokeColor }} />
-                </button>
-                <div className="flex items-center gap-1 bg-lattice-bg rounded-lg p-1">
-                  {STROKE_WIDTHS.map(w => (
-                    <button
-                      key={w}
-                      type="button"
-                      onClick={() => setStrokeWidth(w)}
-                      aria-label={`Stroke width ${w}`}
-                      aria-pressed={strokeWidth === w}
-                      className={`w-8 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-lattice-elevated' : 'hover:bg-lattice-elevated'}`}
-                    >
-                      <div className="rounded-full bg-current" style={{ width: w * 2, height: w * 2 }} />
-                    </button>
-                  ))}
-                </div>
-                <div className="w-px h-8 bg-lattice-border mx-1" />
-                <button type="button" onClick={undo} disabled={undoStack.length === 0} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-amber-500" title="Undo (Ctrl+Z)"><Undo2 className="w-5 h-5" /></button>
-                <button type="button" onClick={redo} disabled={redoStack.length === 0} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30" title="Redo (Ctrl+Y)"><Redo2 className="w-5 h-5" /></button>
-                <button type="button" onClick={deleteSelected} disabled={!selectedElement} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30 text-red-400" title="Delete"><Trash2 className="w-5 h-5" /></button>
-                <div className="w-px h-8 bg-lattice-border mx-1" />
-                <button type="button" onClick={() => setShowGrid(!showGrid)} className={`p-2 rounded-lg ${showGrid ? 'bg-lattice-elevated text-neon-cyan' : 'hover:bg-lattice-elevated text-gray-400'}`} aria-label="Grid3 x3"><Grid3X3 className="w-5 h-5" /></button>
-                <button type="button" onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
-                <span className="text-sm text-gray-400 w-12 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
-                <button type="button" onClick={() => setZoom(z => clamp(z / 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
-                <button type="button" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Rotate ccw"><RotateCcw className="w-5 h-5" /></button>
-                <div className="flex-1" />
-                <button type="button" onClick={() => saveMutation.mutate({ elements })} disabled={saveMutation.isPending}
-                  className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
-                  <Save className="w-4 h-4" />{saveMutation.isPending ? 'Saving...' : 'Save'}
-                </button>
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => { window.dispatchEvent(new CustomEvent('whiteboard:toggle-export-menu')); }}
-                    className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm"
-                  >
-                    <Download className="w-4 h-4" />Export
-                  </button>
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 overflow-hidden">
-                    <button type="button" onClick={exportCanvas} className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated flex items-center justify-between" title="Raster — best for sharing">
-                      <span>PNG image</span>
-                      <code className="text-[9px] text-gray-400">.png</code>
-                    </button>
-                    <button type="button" onClick={exportSVG} disabled={elements.length === 0} className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated flex items-center justify-between disabled:opacity-40" title="Vector — opens in Figma / Illustrator / Inkscape">
-                      <span>SVG vector</span>
-                      <code className="text-[9px] text-gray-400">.svg</code>
-                    </button>
-                    <button type="button" onClick={exportClipboardJSON} disabled={elements.length === 0} className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated border-t border-lattice-border disabled:opacity-40" title="Copy a JSON snapshot to clipboard">
-                      Copy JSON to clipboard
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {boardMode === 'canvas' && (
               <div ref={containerRef} className="flex-1 relative overflow-hidden">
-                <canvas ref={canvasRef} className="w-full h-full cursor-crosshair"
+                <canvas ref={canvasRef} className={`h-full w-full ${tool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}
                   style={{ width: dimensions.width, height: dimensions.height }}
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp} onWheel={handleWheel} onDoubleClick={handleDoubleClick} />
+
+                {/* Floating tool rail */}
+                <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/[0.08] bg-[#121212]/90 p-1.5 backdrop-blur">
+                  {tools.filter((t) => PRIMARY_TOOLS.includes(t.id)).map(t => (
+                    <button key={t.id} type="button" onClick={() => setTool(t.id)} title={`${t.label}${t.key ? ` (${t.key})` : ''}`} aria-label={t.label} aria-pressed={tool === t.id}
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${tool === t.id ? 'bg-teal-400/15 text-teal-300' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100'}`}>
+                      <t.icon className="h-4 w-4" />
+                    </button>
+                  ))}
+                  <div className="relative">
+                    <button type="button" onClick={() => setMoreTools((v) => !v)} title="More tools" aria-label="More tools" aria-expanded={moreTools}
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${!PRIMARY_TOOLS.includes(tool) ? 'bg-teal-400/15 text-teal-300' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100'}`}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {moreTools && (
+                      <div className="absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+                        {tools.filter((t) => !PRIMARY_TOOLS.includes(t.id)).map(t => (
+                          <button key={t.id} type="button" onClick={() => { setTool(t.id); setMoreTools(false); }}
+                            className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-white/[0.06] ${tool === t.id ? 'text-teal-300' : 'text-zinc-300'}`}>
+                            <t.icon className="h-4 w-4" />{t.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="my-1 h-px w-6 bg-white/[0.08]" />
+                  <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} title="Color" aria-label="Color"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/[0.06]">
+                    <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: strokeColor }} />
+                  </button>
+                  <button type="button" onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo" className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30"><Undo2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo" className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30"><Redo2 className="h-4 w-4" /></button>
+                  {selectedElement && (
+                    <button type="button" onClick={deleteSelected} title="Delete selected" aria-label="Delete selected" className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-300 hover:bg-white/[0.06]"><Trash2 className="h-4 w-4" /></button>
+                  )}
+                </div>
+
+                {/* Zoom */}
+                <div className="absolute bottom-6 left-6 z-10 flex items-center gap-1 rounded-full border border-white/[0.08] bg-[#121212]/90 px-1.5 py-1 text-[12px] text-zinc-400 backdrop-blur">
+                  <button type="button" onClick={() => setZoom(z => clamp(z / 1.2, 0.25, 4))} className="rounded-full p-1 hover:bg-white/[0.06] hover:text-zinc-100" aria-label="Zoom out"><ZoomOut className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="w-11 text-center tabular-nums hover:text-zinc-100" title="Reset view">{Math.round(zoom * 100)}%</button>
+                  <button type="button" onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="rounded-full p-1 hover:bg-white/[0.06] hover:text-zinc-100" aria-label="Zoom in"><ZoomIn className="h-3.5 w-3.5" /></button>
+                </div>
 
                 {elements.filter(el => el.type === 'audio').map(el => (
                   <button key={`play_${el.id}`} type="button"
@@ -969,7 +953,16 @@ export function WhiteboardStudio({
                 <AnimatePresence>
                   {showColorPicker && (
                     <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-16 left-48 bg-lattice-surface border border-lattice-border rounded-lg p-4 shadow-xl z-10">
+                      className="absolute left-20 top-1/2 z-20 -translate-y-1/2 rounded-xl border border-white/10 bg-[#141414] p-4 shadow-2xl">
+                      <p className="mb-2 text-xs text-zinc-500">Width</p>
+                      <div className="mb-4 flex items-center gap-1">
+                        {STROKE_WIDTHS.map(w => (
+                          <button key={w} type="button" onClick={() => setStrokeWidth(w)} aria-label={`Stroke width ${w}`} aria-pressed={strokeWidth === w}
+                            className={`flex h-8 w-8 items-center justify-center rounded ${strokeWidth === w ? 'bg-white/10' : 'hover:bg-white/[0.06]'}`}>
+                            <div className="rounded-full bg-zinc-200" style={{ width: w * 2, height: w * 2 }} />
+                          </button>
+                        ))}
+                      </div>
                       <p className="text-xs text-gray-400 mb-2">Stroke</p>
                       <div className="grid grid-cols-4 gap-2 mb-4">
                         {COLORS.map(c => (
@@ -1145,23 +1138,33 @@ export function WhiteboardStudio({
             {boardMode === 'moodboard' && <WhiteboardMoodboardPanel />}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <PenTool className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg mb-2">Infinite canvas</p>
-              <p className="text-sm">Select or create a board to start sketching</p>
-            </div>
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-[14px] text-zinc-500">Start a board and sketch. Boards save as you draw.</p>
           </div>
         )}
       </div>
 
-      <WhiteboardInspector boardId={boardArtifacts[0]?.id ?? selectedWbId ?? undefined} />
+      {showInspector && <WhiteboardInspector boardId={boardArtifacts[0]?.id ?? selectedWbId ?? undefined} />}
+
+      {selectedWbId && boardMode === 'canvas' && (
+        <div className="pointer-events-auto absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
+          <WhiteboardKeepMenu
+            board={{
+              id: selectedWbId,
+              title: boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title),
+              elements,
+              createdAt: String(selectedWb?.whiteboard?.createdAt ?? ''),
+              updatedAt: String(selectedWb?.whiteboard?.updatedAt ?? ''),
+            }}
+          />
+        </div>
+      )}
 
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-lattice-bg border border-lattice-border rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-lg font-bold mb-4">Create Whiteboard</h2>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141414] p-6">
+              <h2 className="mb-4 font-vault text-[1.6rem] text-zinc-100">New board</h2>
               <WhiteboardCreateForm onClose={() => setShowCreate(false)} onCreate={(data) => createMutation.mutate(data)} creating={createMutation.isPending} />
             </motion.div>
           </motion.div>
@@ -1178,11 +1181,11 @@ export function WhiteboardStudio({
 
       <button
         type="button"
-        onClick={onWorkbenchOpen}
-        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-sky-50 shadow-2xl text-sm font-medium"
-        title="Whiteboard Workbench — boards, 6 templates (SWOT/retro/journey/mindmap/crazy8s/brainstorm), voting"
+        onClick={() => setShowCreate(true)}
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
       >
-        Whiteboard Workbench
+        <Plus className="h-4 w-4" />
+        New board
       </button>
       <WhiteboardWorkbench open={workbenchOpen} onClose={onWorkbenchClose} />
     </div>

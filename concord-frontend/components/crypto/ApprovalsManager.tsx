@@ -87,7 +87,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
       {(riskyCount > 0 || unlimitedCount > 0) && (
         <div className="px-3 py-1.5 bg-yellow-500/10 border-b border-yellow-500/30 text-[11px] text-yellow-300 flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5" />
-          {unlimitedCount} unlimited, {riskyCount} high-risk — revoke unused.
+          {unlimitedCount} unlimited, {riskyCount} high-risk. Revoke unused approvals with your wallet; removing one here only updates this list.
         </div>
       )}
       <div className="px-2 py-1.5 border-b border-white/5 flex items-center gap-1">
@@ -141,11 +141,13 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
                     )}
                     <button
                       onClick={() => revoke(a.id)}
+                      title="Removes this approval from your Concord list only. The on-chain approval stays active until you revoke it with your wallet."
+                      aria-label={`Remove ${a.tokenSymbol} approval from list (does not revoke on-chain)`}
                       disabled={revoking === a.id}
                       className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 disabled:opacity-50"
                     >
                       {revoking === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                      Revoke
+                      Remove from list
                     </button>
                   </div>
                 </div>

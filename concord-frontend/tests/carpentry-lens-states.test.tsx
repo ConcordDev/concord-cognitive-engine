@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,6 +23,8 @@ vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'sam' } }) }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => React.createElement('span', { 'data-testid': 'depth-badge' }) }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => React.createElement('div', { 'data-testid': 'cross-lens-recents' }) }));
@@ -42,9 +44,12 @@ describe('carpentry lens — real-engine composition (no generic scaffold)', () 
   });
 
   it('mounts the three real macro-backed panels: JobOps, CarpentryShop, WoodSpeciesReference', () => {
-    const { getByTestId } = render(<CarpentryLensPage />);
+    const { getByTestId, getByRole, queryByTestId } = render(<CarpentryLensPage />);
     expect(getByTestId('job-ops')).toBeInTheDocument();
+    fireEvent.click(getByRole('button', { name: /Shop calculators/ }));
     expect(getByTestId('carpentry-shop')).toBeInTheDocument();
+    expect(queryByTestId('job-ops')).toBeNull();
+    fireEvent.click(getByRole('button', { name: /Wood species/ }));
     expect(getByTestId('wood-species-reference')).toBeInTheDocument();
   });
 

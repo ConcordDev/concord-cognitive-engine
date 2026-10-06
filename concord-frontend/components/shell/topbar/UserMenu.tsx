@@ -12,9 +12,11 @@ const AvatarSwitcher = dynamic(() => import('@/components/concordia/AvatarSwitch
 interface UserMenuProps {
   powerMode?: boolean;
   onTogglePowerMode?: () => void;
+  /** Menu anchor: below the avatar (Topbar) or beside it (sidebar rail). */
+  placement?: 'below' | 'side';
 }
 
-export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
+export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: UserMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showAvatarSwitcher, setShowAvatarSwitcher] = useState(false);
@@ -64,7 +66,7 @@ export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
+          className={`absolute w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden ${placement === 'side' ? 'left-full bottom-0 ml-3' : 'right-0 top-full mt-2'}`}
           role="menu"
         >
           <button

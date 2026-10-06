@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingDashboardSection } from '@/components/marketing/MarketingDashboardSection';
@@ -19,10 +21,9 @@ import { MarketingCalendarPanel } from '@/components/marketing/MarketingCalendar
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
-  Megaphone, Mail, Share2, Globe, Workflow, LayoutTemplate,
+  Mail, Share2, Globe, Workflow, LayoutTemplate,
   SlidersHorizontal, Contact, CalendarDays, Sparkles,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -64,7 +65,14 @@ export default function MarketingLensPage() {
   useLensNav('marketing');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('marketing');
 
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [studioTab, setStudioTab] = useState<StudioTab>('email');
+
+  const composeEmail = useCallback(() => {
+    setStudioTab('email');
+    requestAnimationFrame(() => document.getElementById('marketing-studio')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, []);
 
   useLensCommand(
     STUDIO_TABS.map((t) => ({
@@ -105,29 +113,26 @@ export default function MarketingLensPage() {
       <FirstRunTour lensId="marketing" />
       <DepthBadge lensId="marketing" size="sm" className="ml-2" />
 
-      <div data-lens-theme="marketing" className="space-y-6 p-6">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
-              <Megaphone className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Marketing</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={ds.textMuted}>Campaigns, leads, content, automation, and analytics</p>
-            </div>
-          </div>
-          <DTUExportButton domain="marketing" data={{}} compact />
-        </header>
-
+      <NorthStarFrame
+        lensId="marketing"
+        crumb="Marketing"
+        title={`Grow your audience${who ? `, ${who}` : ''}`}
+        subtitle="Campaigns, leads, content, automation and analytics."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <DTUExportButton domain="marketing" data={{}} compact />
+          </>
+        }
+        cta={{ label: 'Compose an email', icon: Mail, onClick: composeEmail, title: 'Open the email studio' }}
+      >
+      <div data-lens-theme="marketing" className="space-y-6">
         <RealtimeDataPanel domain="marketing" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
         <MarketingDashboardSection />
 
         {/* Execution Studio — the HubSpot-parity action surfaces */}
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+        <section id="marketing-studio" className="scroll-mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#111]">
           <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-pink-600/15 to-transparent">
             <Sparkles className="w-5 h-5 text-pink-400" />
             <h2 className="text-sm font-bold text-zinc-100">Execution Studio</h2>
@@ -161,7 +166,8 @@ export default function MarketingLensPage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <MarketingFeed />
         </section>
-      </div>      <CrossLensRecentsPanel lensId="marketing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

@@ -1,10 +1,9 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
@@ -14,6 +13,8 @@ import { SnapshotManager } from '@/components/settings/SnapshotManager';
 import { AccountSecurityPanel } from '@/components/settings/AccountSecurityPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useCallback, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { SlidersHorizontal, Keyboard, Camera, ShieldCheck, Monitor } from 'lucide-react';
 
 type Tab = 'preferences' | 'keybindings' | 'snapshots' | 'account' | 'system';
@@ -27,6 +28,8 @@ const TABS: { id: Tab; label: string; icon: typeof SlidersHorizontal }[] = [
 ];
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('preferences');
   // Bumping this key forces the PreferencesPanel to re-fetch server truth
   // after a snapshot is restored.
@@ -54,73 +57,64 @@ export default function SettingsPage() {
 
   return (
     <LensShell lensId="settings" asMain={false}>
-      <FirstRunTour lensId="settings" />      <DepthBadge lensId="settings" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="settings" className="mx-6 mt-4" />
-      <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-4">Settings</h1>
+      <FirstRunTour lensId="settings" />
+      <DepthBadge lensId="settings" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="settings"
+        crumb="Settings"
+        title={`Make it yours${who ? `, ${who}` : ''}`}
+        subtitle="Preferences, keybindings, snapshots, security and graphics. Everything syncs to your account."
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+        activeTab={tab}
+        onTab={(id) => setTab(id as Tab)}
+        tabsLabel="Settings sections"
+        cta={{ label: 'Snapshots', icon: Camera, onClick: () => setTab('snapshots'), title: 'Open snapshots (⌘S)' }}
+      >
+        <div className="max-w-3xl">
+          {tab === 'preferences' && (
+            <section aria-label="Preferences">
+              <p className="text-[11px] text-gray-400 mb-4">
+                Preferences are persisted on the server and sync across every device you sign in on.
+              </p>
+              <PreferencesPanel key={prefVersion} />
+            </section>
+          )}
 
-        <nav className="flex flex-wrap gap-1 border-b border-white/10 mb-6" role="tablist" aria-label="Settings sections">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`px-3 py-2 text-xs font-medium inline-flex items-center gap-1.5 border-b-2 -mb-px focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-t ${
-                tab === id
-                  ? 'border-cyan-500 text-cyan-300'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </nav>
+          {tab === 'keybindings' && (
+            <section aria-label="Keybindings">
+              <p className="text-[11px] text-gray-400 mb-4">
+                Click a binding, then press the key chord you want. Press Escape to cancel.
+              </p>
+              <KeybindingPanel />
+            </section>
+          )}
 
-        {tab === 'preferences' && (
-          <section aria-label="Preferences">
-            <p className="text-[11px] text-gray-400 mb-4">
-              Preferences are persisted on the server and sync across every device you sign in on.
-            </p>
-            <PreferencesPanel key={prefVersion} />
-          </section>
-        )}
+          {tab === 'snapshots' && (
+            <section aria-label="Snapshots">
+              <p className="text-[11px] text-gray-400 mb-4">
+                Capture the current preference set so you can roll back to a known-good config.
+              </p>
+              <SnapshotManager onApplied={onSnapshotApplied} />
+            </section>
+          )}
 
-        {tab === 'keybindings' && (
-          <section aria-label="Keybindings">
-            <p className="text-[11px] text-gray-400 mb-4">
-              Click a binding, then press the key chord you want. Press Escape to cancel.
-            </p>
-            <KeybindingPanel />
-          </section>
-        )}
+          {tab === 'account' && (
+            <section aria-label="Account and security">
+              <AccountSecurityPanel />
+            </section>
+          )}
 
-        {tab === 'snapshots' && (
-          <section aria-label="Snapshots">
-            <p className="text-[11px] text-gray-400 mb-4">
-              Capture the current preference set so you can roll back to a known-good config.
-            </p>
-            <SnapshotManager onApplied={onSnapshotApplied} />
-          </section>
-        )}
-
-        {tab === 'account' && (
-          <section aria-label="Account and security">
-            <AccountSecurityPanel />
-          </section>
-        )}
-
-        {tab === 'system' && (
-          <section aria-label="System and graphics" className="space-y-4">
-            <QualityPresetSelector />
-            <MouseSensitivitySlider />
-            <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <SettingsHealth />
-            </div>
-          </section>
-        )}
-      </main>      <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {tab === 'system' && (
+            <section aria-label="System and graphics" className="space-y-4">
+              <QualityPresetSelector />
+              <MouseSensitivitySlider />
+              <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <SettingsHealth />
+        </div>
+      </section>
+    )}
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

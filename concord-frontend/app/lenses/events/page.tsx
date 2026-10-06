@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
@@ -22,9 +21,11 @@ import {
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Sparkles, CalendarHeart, Globe2, PartyPopper } from 'lucide-react';
+import { Sparkles, CalendarHeart, Globe2 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -33,26 +34,21 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 /** Luma / Partiful: one invite feed, one host console, no accordion pile. */
 export type EventsView = ModeTab | 'host' | 'plan' | 'earth';
 
-const VIEWS: { id: EventsView; label: string }[] = [
-  { id: 'dashboard', label: 'Discover' },
-  { id: 'events', label: 'Events' },
-  { id: 'host', label: 'Host' },
-  { id: 'venues', label: 'Venues' },
-  { id: 'vendors', label: 'Vendors' },
-  { id: 'guests', label: 'Guests' },
-  { id: 'runofshow', label: 'Run of show' },
-  { id: 'budget', label: 'Budget' },
-  { id: 'tickets', label: 'Tickets' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'earth', label: 'Earth' },
+const VIEWS: { id: EventsView; label: string; keys?: string; title: string }[] = [
+  { id: 'dashboard', label: 'Discover', keys: 'd', title: 'Find the next gathering' },
+  { id: 'events', label: 'Events', keys: 'e', title: 'Track every event' },
+  { id: 'host', label: 'Host', keys: 'h', title: 'Host the night' },
+  { id: 'venues', label: 'Venues', keys: 'n', title: 'Scout the venues' },
+  { id: 'vendors', label: 'Vendors', keys: 'v', title: 'Line up the vendors' },
+  { id: 'guests', label: 'Guests', keys: 'g', title: 'Manage the guest list' },
+  { id: 'runofshow', label: 'Run of show', keys: 'r', title: 'Call the run of show' },
+  { id: 'budget', label: 'Budget', keys: 'b', title: 'Keep the budget honest' },
+  { id: 'tickets', label: 'Tickets', keys: 't', title: 'Sell the tickets' },
+  { id: 'plan', label: 'Plan', keys: 'p', title: 'Plan it out' },
+  { id: 'earth', label: 'Earth', title: 'Watch the Earth' },
 ];
 
 const WORKBENCH_VIEWS = new Set<EventsView>(MODE_TABS.map((t) => t.id));
-
-function prefersReducedMotion() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export default function EventsLensPage() {
   useLensNav('events');
@@ -60,7 +56,8 @@ export default function EventsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('events');
   const [activeView, setActive] = useState<EventsView>('dashboard');
-  const reduced = prefersReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -78,66 +75,35 @@ export default function EventsLensPage() {
     { lensId: 'events' },
   );
 
+  const current = VIEWS.find((v) => v.id === activeView)!;
+
   return (
     <LensShell lensId="events" asMain={false}>
       <FirstRunTour lensId="events" />
       <DepthBadge lensId="events" size="sm" className="ml-2" />
-      <div data-lens-theme="events" className={ds.pageContainer} style={{ ['--lens-accent' as string]: 'var(--lens-accent, #AD1457)' }}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <PartyPopper className="w-7 h-7 shrink-0" style={{ color: 'var(--lens-accent, #AD1457)' }} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Events</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-              </div>
-              <p className={ds.textMuted}>
-                Invite, host, check in — Luma-dense, nothing invented.
-                <kbd className="ml-2 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">E</kbd> events
-                <kbd className="ml-1 px-1 py-0.5 rounded bg-black/30 font-mono text-[10px]">H</kbd> host
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <NorthStarFrame
+        lensId="events"
+        crumb="Events"
+        title={`${current.title}${activeView === 'dashboard' && who ? `, ${who}` : ''}`}
+        subtitle="Invite, host, check in — Luma-dense, nothing invented."
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="events" data={realtimeData || {}} compact />
             {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
-            <button type="button" onClick={() => setActive('host')} className={ds.btnPrimary}>
-              <Sparkles className="w-4 h-4" /> Host an event
-            </button>
-          </div>
-        </header>
-
-        <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap" aria-label="Events views">
-          {VIEWS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActive(tab.id)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-                activeView === tab.id
-                  ? 'bg-[color:var(--lens-accent,#AD1457)]/20 text-pink-200 border border-pink-500/30'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-elevated border border-transparent',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeView}
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduced ? undefined : { opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-          >
-            {WORKBENCH_VIEWS.has(activeView) && (
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys }))}
+        activeTab={activeView}
+        onTab={(id) => setActive(id as EventsView)}
+        tabsLabel="Events views"
+        cta={{ label: 'Host an event', icon: Sparkles, onClick: () => setActive('host') }}
+      >
+        {WORKBENCH_VIEWS.has(activeView) && (
               <EventsWorkbench
                 mode={activeView as ModeTab}
                 onOpenHost={() => setActive('host')}
@@ -145,14 +111,14 @@ export default function EventsLensPage() {
               />
             )}
             {activeView === 'host' && (
-              <section className={cn(ds.panel, 'p-4')}>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <h2 className={ds.heading2}>Host console</h2>
                 <p className={cn(ds.textMuted, 'mb-3')}>Ticketing, floor, check-in, blasts — the real events engine.</p>
                 <EventOps />
               </section>
             )}
             {activeView === 'plan' && (
-              <section className={cn(ds.panel, 'p-4')}>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
                   <CalendarHeart className="w-4 h-4 text-neon-cyan" /> Planning workbench
                 </h2>
@@ -160,7 +126,7 @@ export default function EventsLensPage() {
               </section>
             )}
             {activeView === 'earth' && (
-              <section className={cn(ds.panel, 'p-4')}>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
                   <Globe2 className="w-4 h-4 text-emerald-400" /> NASA Earth events
                 </h2>
@@ -168,8 +134,6 @@ export default function EventsLensPage() {
                 <NasaEarthEvents />
               </section>
             )}
-          </motion.div>
-        </AnimatePresence>
 
         {realtimeData && (
           <RealtimeDataPanel
@@ -181,7 +145,6 @@ export default function EventsLensPage() {
             compact
           />
         )}
-        <CrossLensRecentsPanel lensId="events" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
         <MobileTabBar
           tabs={[
             { id: 'dashboard', label: 'Discover', icon: MTabDash },
@@ -194,7 +157,7 @@ export default function EventsLensPage() {
           active={activeView}
           onSelect={(id) => setActive(id as EventsView)}
         />
-      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

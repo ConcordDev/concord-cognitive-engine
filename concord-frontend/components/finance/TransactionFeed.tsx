@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Receipt, Plus, Trash2, Loader2, Tag, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { BooksPostMenu, type PostedEntry } from '@/components/finance/BooksPostMenu';
+import { indexPostedEntries, type CoaAccount } from '@/components/finance/financeLedgerEntry';
 
 interface Transaction {
   id: string;
@@ -38,6 +40,40 @@ export function TransactionFeed() {
   const [form, setForm] = useState({ description: '', amount: '', date: '', category: '' });
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [filter, setFilter] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState<{ category: string; confidence: number; source: string } | null>(null);
+  const [coa, setCoa] = useState<CoaAccount[]>([]);
+  const [postedByTxn, setPostedByTxn] = useState<Record<string, PostedEntry>>({});
+
+  async function suggestCategory() {
+    if (!form.description.trim()) return;
+    setSuggesting(true);
+    try {
+      const r = await lensRun<{ category: string; confidence: number; source: string }>('finance', 'categorize-transaction', {
+        description: form.description, amount: Number(form.amount) || 0,
+      });
+      const res = r.data.result;
+      if (r.data.ok && res?.category) {
+        setSuggestion(res);
+        setForm((f) => ({ ...f, category: CATEGORIES.includes(res.category) ? res.category : f.category }));
+      }
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  const loadBooks = useCallback(async () => {
+    try {
+      const [coaRes, ledgerRes] = await Promise.all([
+        lensRun('accounting', 'coa-list', {}),
+        lensRun('accounting', 'ledger-list', { limit: 200 }),
+      ]);
+      if (!coaRes.data?.ok) return;
+      const accounts = ((coaRes.data.result as { accounts?: CoaAccount[] } | null)?.accounts) || [];
+      setCoa(accounts);
+      setPostedByTxn(indexPostedEntries((ledgerRes.data as { result?: { rows?: unknown[] } } | undefined)?.result?.rows));
+    } catch (e) { console.error('[TxFeed] books index failed', e); }
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,7 +88,8 @@ export function TransactionFeed() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+  useEffect(() => { void Promise.resolve().then(loadBooks); }, [loadBooks]);
 
   async function ingest() {
     const amount = Number(form.amount);
@@ -141,6 +178,12 @@ export function TransactionFeed() {
             <option value="">Auto-categorise</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
+          <div className="col-span-6 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+            <button type="button" onClick={() => void suggestCategory()} disabled={suggesting || !form.description.trim()} className="rounded border border-cyan-500/30 px-2 py-1 text-cyan-300 transition-colors hover:bg-cyan-500/10 disabled:opacity-40">
+              {suggesting ? 'Suggesting…' : 'Suggest category'}
+            </button>
+            {suggestion && <span>Suggested <span className="text-white">{suggestion.category}</span> · {Math.round(suggestion.confidence * 100)}% · {suggestion.source === 'rules' ? 'merchant rules' : 'utility brain'}</span>}
+          </div>
           <button
             onClick={ingest}
             className="col-span-6 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"
@@ -172,55 +215,63 @@ export function TransactionFeed() {
         ) : (
           <ul className="divide-y divide-white/5">
             {visible.map((t) => (
-              <li key={t.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3 text-xs">
-                <span className="text-[10px] text-gray-400 font-mono w-20 shrink-0">{t.date}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{t.description}</div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {editing?.id === t.id ? (
-                      <span className="inline-flex items-center gap-1">
-                        <select
-                          value={editing.value}
-                          onChange={(e) => setEditing({ id: t.id, value: e.target.value })}
-                          className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-cyan-500/40 rounded text-white"
+              <li key={t.id} className="px-3 py-2 hover:bg-white/[0.03] group text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-gray-400 font-mono w-20 shrink-0">{t.date}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white truncate">{t.description}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {editing?.id === t.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <select
+                            value={editing.value}
+                            onChange={(e) => setEditing({ id: t.id, value: e.target.value })}
+                            className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-cyan-500/40 rounded text-white"
+                          >
+                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <button onClick={() => recategorise(t.id, editing.value)} className="text-emerald-300" aria-label="Save category">
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => setEditing(null)} className="text-gray-400" aria-label="Cancel">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setEditing({ id: t.id, value: t.category })}
+                          className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-white"
                         >
-                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <button onClick={() => recategorise(t.id, editing.value)} className="text-emerald-300" aria-label="Save category">
-                          <Check className="w-3 h-3" />
+                          <Tag className="w-2.5 h-2.5" /> {t.category}
                         </button>
-                        <button onClick={() => setEditing(null)} className="text-gray-400" aria-label="Cancel">
-                          <X className="w-3 h-3" />
-                        </button>
+                      )}
+                      <span className={cn('text-[9px] uppercase px-1 py-0.5 rounded', SOURCE_COLOR[t.categorySource])}>
+                        {SOURCE_LABEL[t.categorySource]}
                       </span>
-                    ) : (
-                      <button
-                        onClick={() => setEditing({ id: t.id, value: t.category })}
-                        className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-white"
-                      >
-                        <Tag className="w-2.5 h-2.5" /> {t.category}
-                      </button>
-                    )}
-                    <span className={cn('text-[9px] uppercase px-1 py-0.5 rounded', SOURCE_COLOR[t.categorySource])}>
-                      {SOURCE_LABEL[t.categorySource]}
-                    </span>
+                    </div>
                   </div>
+                  <span
+                    className={cn(
+                      'font-mono text-sm tabular-nums shrink-0',
+                      t.amount >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                    )}
+                  >
+                    {t.amount >= 0 ? '+' : '-'}${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    onClick={() => remove(t.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
+                    aria-label="Delete transaction"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
-                <span
-                  className={cn(
-                    'font-mono text-sm tabular-nums shrink-0',
-                    t.amount >= 0 ? 'text-emerald-300' : 'text-rose-300',
-                  )}
-                >
-                  {t.amount >= 0 ? '+' : '-'}${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <button
-                  onClick={() => remove(t.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
-                  aria-label="Delete transaction"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <BooksPostMenu
+                  row={t}
+                  accounts={coa}
+                  posted={postedByTxn[t.id]}
+                  onPosted={() => { void loadBooks(); }}
+                />
               </li>
             ))}
           </ul>

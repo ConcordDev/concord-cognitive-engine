@@ -4,13 +4,12 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers, isForbidden } from '@/lib/api/client';
 import { useMemo, useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Activity,
   Box,
@@ -19,7 +18,6 @@ import {
   Gauge,
   HardDrive,
   Key,
-  Settings,
 } from 'lucide-react';
 import { ErrorState, AdminRequiredState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -33,19 +31,19 @@ import { AccessPanel } from '@/components/admin/AccessPanel';
 import { PlatformPanel } from '@/components/admin/PlatformPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { OpsConsole } from '@/components/admin/OpsConsole';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type AdminView = 'overview' | 'ops' | 'infra' | 'access' | 'treasury' | 'platform' | 'audit';
 
 const TABS = [
-  { id: 'overview', label: 'Overview', keys: '1', icon: Activity },
-  { id: 'ops', label: 'Observability', keys: 'g', icon: Gauge },
-  { id: 'infra', label: 'Infra', keys: 'i', icon: HardDrive },
-  { id: 'access', label: 'Access', keys: 'k', icon: Key },
-  { id: 'treasury', label: 'Treasury', keys: 't', icon: DollarSign },
-  { id: 'platform', label: 'Platform', keys: 'p', icon: Box },
-  { id: 'audit', label: 'Audit', keys: 'l', icon: FileText },
+  { id: 'overview', label: 'Overview', keys: '1', icon: Activity, title: 'How the platform is running', hint: 'Live platform overview' },
+  { id: 'ops', label: 'Observability', keys: 'g', icon: Gauge, title: 'What the system is doing', hint: 'Heartbeats, workers, brains and telemetry' },
+  { id: 'infra', label: 'Infra', keys: 'i', icon: HardDrive, title: 'What it is running on', hint: 'Infrastructure and capacity' },
+  { id: 'access', label: 'Access', keys: 'k', icon: Key, title: 'Who can do what', hint: 'Users, orgs, roles and keys' },
+  { id: 'treasury', label: 'Treasury', keys: 't', icon: DollarSign, title: 'Where the coin sits', hint: 'Treasury, ledger and reconciliation' },
+  { id: 'platform', label: 'Platform', keys: 'p', icon: Box, title: 'Every macro and domain', hint: 'Macro registry and quality' },
+  { id: 'audit', label: 'Audit', keys: 'l', icon: FileText, title: 'What happened, and when', hint: 'Audit log and health scoring' },
 ] as const;
 
 const PANELS: Record<AdminView, ComponentType> = {
@@ -61,7 +59,8 @@ const PANELS: Record<AdminView, ComponentType> = {
 export default function AdminLensPage() {
   useLensNav('admin');
   useLensIdentity('admin');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const {
     latestData: realtimeData,
     alerts: realtimeAlerts,
@@ -69,9 +68,7 @@ export default function AdminLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('admin');
-  const [active, setActive] = useState<
-    'overview' | 'ops' | 'infra' | 'access' | 'treasury' | 'platform' | 'audit'
-  >('overview');
+  const [active, setActive] = useState<AdminView>('overview');
   const ActivePanel = PANELS[active];
 
   const commands = useMemo(
@@ -162,77 +159,53 @@ export default function AdminLensPage() {
     );
   }
 
+  const current = TABS.find((t) => t.id === active)!;
+  const alertCount = realtimeAlerts.length;
+
   return (
     <LensShell lensId="admin" asMain={false}>
       <FirstRunTour lensId="admin" />
       <DepthBadge lensId="admin" size="sm" className="ml-2" />
-      <div data-lens-theme="admin" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg border border-lattice-border">
-              <Settings className="w-5 h-5 text-[color:var(--lens-accent,#546E7A)]" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className={ds.heading1}>Ops</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-                <DTUExportButton domain="admin" data={realtimeData || {}} compact />
-                {realtimeAlerts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-mono">
-                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <p className={ds.textMuted}>Linear / Vercel-style operator console · live macros, no fabricated stats</p>
-            </div>
-          </div>
-        </header>
-
-        <RealtimeDataPanel
-          domain="admin"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-
-        <nav className={ds.tabBar} aria-label="Admin views">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const on = active === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActive(t.id)}
-                className={on ? ds.tabActive() : ds.tabInactive}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {t.label}
-                <kbd className="ml-1 px-1 py-0.5 rounded bg-black/30 border border-white/10 font-mono text-[10px] text-gray-500">
-                  {t.keys}
-                </kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-            transition={{ duration: 0.18 }}
-            className={cn('pt-4')}
-          >
-            <ActivePanel />
-          </motion.div>
-        </AnimatePresence>
-
-        <CrossLensRecentsPanel lensId="admin" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      <NorthStarFrame
+        lensId="admin"
+        theme="admin"
+        crumb="Ops"
+        title={`${current.title}${active === 'overview' && who ? `, ${who}` : ''}`}
+        subtitle="Operator console. Live macros, no fabricated stats."
+        actions={
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="admin" data={realtimeData || {}} compact />
+            {alertCount > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2.5 py-1 font-mono text-xs text-yellow-400">
+                {alertCount} alert{alertCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        }
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as AdminView)}
+        tabsLabel="Admin views"
+        cta={{
+          label: 'Open audit log',
+          icon: FileText,
+          onClick: () => setActive('audit'),
+          title: 'Review the audit log',
+        }}
+      >
+        <div className="space-y-5">
+          <RealtimeDataPanel
+            domain="admin"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+          <ActivePanel />
+        </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

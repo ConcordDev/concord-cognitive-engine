@@ -1,18 +1,18 @@
 'use client';
 
-/* ------------------------------------------------------------------ */
-/*  Law-enforcement lens — RMS/CAD parity (Axon Records / Mark43).     */
-/*  All 29 `law-enforcement.*` macros are real                         */
-/*  (server/domains/lawenforcement.js). Every value rendered here      */
-/*  comes from a real macro call — no seed/mock data. See               */
-/*  docs/lens-specs/law-enforcement-capability-map.md.                 */
-/* ------------------------------------------------------------------ */
+/**
+ * Law enforcement lens: north-star chrome over RMS/CAD parity (Axon Records /
+ * Mark43). All 29 `law-enforcement.*` macros are real
+ * (server/domains/lawenforcement.js); every value rendered comes from a real
+ * macro call. See docs/lens-specs/law-enforcement-capability-map.md.
+ */
 
 import { useState } from 'react';
+import { LayoutDashboard, Radio, Sparkles, Newspaper, FolderOpen, FolderPlus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
@@ -20,81 +20,54 @@ import { LawEnforcementOverviewPanel } from '@/components/law-enforcement/LawEnf
 import { CaseManagementPanel } from '@/components/law-enforcement/CaseManagementPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { Shield, LayoutDashboard, Radio, Sparkles, Newspaper, FolderOpen } from 'lucide-react';
-
-/* ------------------------------------------------------------------ */
-/*  Tabs — every tab below is backed by real, macro-calling components */
-/*  (no generic artifact-store CRUD). Overview aggregates cadCallQueue/ */
-/*  cadUnitBoard/rosterBoard/evidenceList/warrantList/reportList/       */
-/*  bookingList; Cases is the persisted Case entity (migration 362 —   */
-/*  caseCreate/caseGet/caseList/caseUpdate/caseLinked) with a real      */
-/*  status lifecycle + linkage to reports/evidence/bookings/warrants   */
-/*  by case number; Console is the full RMS/CAD console (dispatch,     */
-/*  evidence chain-of-custody, roster, crime map, warrants, reports,   */
-/*  booking); Analysis is the ad-hoc case-strength / patrol-allocation /*/
-/*  crime-stats calculators + incident report + mint/DM/publish/agent; */
-/*  Field Notes is the real-world LE-subreddit pulse.                  */
-/* ------------------------------------------------------------------ */
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type ModeTab = 'Overview' | 'Cases' | 'Console' | 'Analysis' | 'Field Notes';
 
-const MODE_TABS: { id: ModeTab; icon: typeof Shield; label: string }[] = [
-  { id: 'Overview', icon: LayoutDashboard, label: 'Overview' },
-  { id: 'Cases', icon: FolderOpen, label: 'Cases' },
-  { id: 'Console', icon: Radio, label: 'RMS / CAD Console' },
-  { id: 'Analysis', icon: Sparkles, label: 'Quick Analysis' },
-  { id: 'Field Notes', icon: Newspaper, label: 'Field Notes' },
+const MODE_TABS: { id: ModeTab; icon: typeof LayoutDashboard; label: string; title: string; hint: string }[] = [
+  { id: 'Overview', icon: LayoutDashboard, label: 'Overview', title: 'The shift at a glance', hint: 'Calls, units, roster, evidence, warrants, reports, bookings' },
+  { id: 'Cases', icon: FolderOpen, label: 'Cases', title: 'Open cases', hint: 'Case lifecycle with linked reports, evidence, bookings and warrants' },
+  { id: 'Console', icon: Radio, label: 'RMS / CAD Console', title: 'Dispatch and records', hint: 'Dispatch, chain-of-custody, roster, crime map, warrants, reports, booking' },
+  { id: 'Analysis', icon: Sparkles, label: 'Quick Analysis', title: 'Run the numbers', hint: 'Case strength, patrol allocation, crime stats, incident report' },
+  { id: 'Field Notes', icon: Newspaper, label: 'Field Notes', title: 'What the street is saying', hint: 'Live law-enforcement community pulse' },
 ];
 
 export default function LawEnforcementLensPage() {
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<ModeTab>('Overview');
 
   useLensCommand(
-    MODE_TABS.map((tab, i) => ({
-      id: `tab-${tab.id}`,
-      keys: String(i + 1),
-      description: `Switch to ${tab.label}`,
-      category: 'navigation' as const,
-      action: () => setMode(tab.id),
-    })),
+    [
+      ...MODE_TABS.map((tab, i) => ({
+        id: `tab-${tab.id}`,
+        keys: String(i + 1),
+        description: `Switch to ${tab.label}`,
+        category: 'navigation' as const,
+        action: () => setMode(tab.id),
+      })),
+      { id: 'le-open-case', keys: 'n', description: 'Open a case', category: 'actions' as const, action: () => setMode('Cases') },
+    ],
     { lensId: 'law-enforcement' },
   );
 
+  const current = MODE_TABS.find((t) => t.id === mode)!;
+
   return (
     <LensShell lensId="law-enforcement" asMain={false}>
-      <FirstRunTour lensId="law-enforcement" />      <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
-      <div data-lens-theme="law-enforcement" className={ds.pageContainer}>
-        <header className={ds.sectionHeader}>
-          <div className="flex items-center gap-3">
-            <Shield className="w-7 h-7 text-blue-400" />
-            <div>
-              <h1 className={ds.heading1}>Law Enforcement</h1>
-              <p className={ds.textMuted}>Dispatch, evidence chain-of-custody, roster, crime mapping, warrants &amp; reports</p>
-            </div>
-          </div>
-        </header>
-
-        <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-          {MODE_TABS.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setMode(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-                  mode === tab.id ? 'bg-blue-500/20 text-blue-300' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-
+      <FirstRunTour lensId="law-enforcement" />
+      <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="law-enforcement"
+        crumb="Law Enforcement"
+        title={`${current.title}${mode === 'Overview' && who ? `, ${who}` : ''}`}
+        subtitle="Dispatch, evidence chain-of-custody, roster, crime mapping, warrants and reports."
+        tabs={MODE_TABS.map((t, i) => ({ id: t.id, label: t.label, keys: String(i + 1), hint: t.hint, icon: t.icon }))}
+        activeTab={mode}
+        onTab={(id) => setMode(id as ModeTab)}
+        cta={{ label: 'Open a case', icon: FolderPlus, onClick: () => setMode('Cases'), title: 'Open a case (N)' }}
+      >
         {mode === 'Overview' && <LawEnforcementOverviewPanel />}
         {mode === 'Cases' && <CaseManagementPanel />}
         {mode === 'Console' && <RmsCadConsole />}
@@ -104,13 +77,11 @@ export default function LawEnforcementLensPage() {
           </PipingProvider>
         )}
         {mode === 'Field Notes' && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <PoliceFeed />
           </section>
         )}
-      </div>
-
-      <a href="#law-enforcement-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to law-enforcement content</a>      <CrossLensRecentsPanel lensId="law-enforcement" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </NorthStarFrame>
     </LensShell>
   );
 }

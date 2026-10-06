@@ -495,10 +495,10 @@ export default function registerTimelineActions(registerLensAction) {
   // *confirmed* friends only — friendship is resolved through the real
   // friend-graph in lib/friendships.js (`areFriends`, backed by migration
   // 214's `friendships` table), never through a client-supplied assertion.
-  // (`feed-list`'s `params.friendIds` is exactly such an assertion — fine
-  // for filtering what shows up in a *listing*, since a lie there only
-  // hides posts from yourself, but it must never be trusted to *grant*
-  // access to a specific post by id.) Every macro that reads or writes a
+  // (`feed-list` also accepts a client `friendIds` list; it may only
+  // NARROW the listing — a friends-tier post is shown only when the
+  // friend graph confirms the friendship, never because the client
+  // claimed it.) Every macro that reads or writes a
   // specific post BY ID (react / comment-add / comment-list /
   // reactions-breakdown) must honor both tiers — feed-list's privacy
   // filter alone is not enough, since it only gates *listing*, not direct
@@ -549,6 +549,10 @@ export default function registerTimelineActions(registerLensAction) {
     }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "private";
+    // A lens may attach a DTU it already created. The id is stored only when
+    // it looks like an id, so a post never pretends to cite a missing record.
+    const rawCite = tlClean(params.citedDtuId, 80);
+    const citedDtuId = /^[A-Za-z0-9_.:-]{1,80}$/.test(rawCite) ? rawCite : null;
     const post = {
       id: tlId("pst"),
       authorId: tlAid(ctx),
@@ -558,6 +562,7 @@ export default function registerTimelineActions(registerLensAction) {
         .slice(0, 12)
         .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) })),
       privacy,
+      citedDtuId,
       taggedUserIds: Array.isArray(params.taggedUserIds)
         ? params.taggedUserIds.map((u) => tlClean(u, 64)).filter(Boolean).slice(0, 20)
         : [],
@@ -582,9 +587,17 @@ export default function registerTimelineActions(registerLensAction) {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const viewerId = tlAid(ctx);
-    const friendIds = new Set(
-      (Array.isArray(params.friendIds) ? params.friendIds : []).map((f) => tlClean(f, 64)),
-    );
+    // Optional client filter: when sent, friends-tier posts are limited to
+    // these owners. It can only narrow — access itself is decided below by
+    // the server-side friend graph (fails closed without a db handle).
+    const claimed = Array.isArray(params.friendIds)
+      ? new Set(params.friendIds.map((f) => tlClean(f, 64)))
+      : null;
+    const friendCache = new Map();
+    const isFriend = (ownerId) => {
+      if (!friendCache.has(ownerId)) friendCache.set(ownerId, ctx?.db ? areFriends(ctx.db, ownerId, viewerId) : false);
+      return friendCache.get(ownerId);
+    };
     const onlyAuthor = params.authorId ? tlClean(params.authorId, 64) : null;
     let all = [];
     for (const [ownerId, posts] of s.posts.entries()) {
@@ -593,7 +606,7 @@ export default function registerTimelineActions(registerLensAction) {
         const visible =
           ownerId === viewerId ||
           p.privacy === "public" ||
-          (p.privacy === "friends" && friendIds.has(ownerId));
+          (p.privacy === "friends" && (!claimed || claimed.has(ownerId)) && isFriend(ownerId));
         if (!visible) continue;
         const reactions = s.reactions.get(p.id) || [];
         const counts = REACTION_KINDS.reduce((acc, k) => {

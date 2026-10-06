@@ -3,7 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useCallback, useRef, useMemo } from 'react';
@@ -40,16 +42,18 @@ const FORKS_FALLBACK: {
 type ForkView = 'lineage' | 'lab' | 'insights' | 'network' | 'watchlist';
 type ForkStatusFilter = 'all' | 'active' | 'merged' | 'abandoned';
 
-const FORK_TABS: { id: ForkView; label: string; icon: typeof GitFork; keys: string }[] = [
-  { id: 'lineage', label: 'Lineage', icon: GitFork, keys: 'g' },
-  { id: 'lab', label: 'Lab', icon: FlaskConical, keys: 'a' },
-  { id: 'insights', label: 'Insights', icon: Eye, keys: 'i' },
-  { id: 'network', label: 'Network', icon: Network, keys: 'n' },
-  { id: 'watchlist', label: 'Watchlist', icon: Layers, keys: 'w' },
+const FORK_TABS: { id: ForkView; label: string; icon: typeof GitFork; keys: string; title: string; hint: string }[] = [
+  { id: 'lineage', label: 'Lineage', icon: GitFork, keys: 'g', title: 'Where every branch came from', hint: 'Fork tree, merge status and details' },
+  { id: 'lab', label: 'Lab', icon: FlaskConical, keys: 'a', title: 'Pull a fork apart', hint: 'Fork analysis lab' },
+  { id: 'insights', label: 'Insights', icon: Eye, keys: 'i', title: 'What the forks are telling you', hint: 'Fork insights' },
+  { id: 'network', label: 'Network', icon: Network, keys: 'n', title: 'Who forked from whom', hint: 'Fork network explorer' },
+  { id: 'watchlist', label: 'Watchlist', icon: Layers, keys: 'w', title: 'Repos you are watching', hint: 'Repository watchlist' },
 ];
 
 export default function ForkLensPage() {
   useLensNav('fork');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('fork');
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ForkView>('lineage');
@@ -82,7 +86,7 @@ export default function ForkLensPage() {
     seed: FORKS_FALLBACK,
   });
 
-  const forks = forkItems.map((item) => ({
+  const forks = useMemo(() => forkItems.map((item) => ({
     id: item.title || item.id,
     _artifactId: item.id,
     parentId: item.data.parentId,
@@ -94,7 +98,7 @@ export default function ForkLensPage() {
     children: item.data.children,
     createdAt: item.createdAt,
     lastActivity: item.data.lastActivity,
-  }));
+  })), [forkItems]);
 
   const statusColors = {
     active: 'text-neon-green bg-neon-green/20',
@@ -166,7 +170,7 @@ export default function ForkLensPage() {
   // any matched fork visible so the tree structure stays coherent —
   // otherwise filtering can hide a parent and orphan its children
   // visually.  In list view we just show the matched leaves.
-  const visibleForkIds = useMemo(() => {
+  const visibleForkIds = (() => {
     const q = forkSearch.trim().toLowerCase();
     if (!q && forkStatusFilter === 'all') return null; // no filter
     const direct = new Set<string>();
@@ -188,7 +192,7 @@ export default function ForkLensPage() {
       }
     }
     return out;
-  }, [forks, forkSearch, forkStatusFilter, layout]);
+  })();
 
   const rootForks = forks.filter((f) =>
     f.parentId === null && (!visibleForkIds || visibleForkIds.has(f.id))
@@ -213,32 +217,43 @@ export default function ForkLensPage() {
       </div>
     );
   }
+  const currentTab = FORK_TABS.find((t) => t.id === activeView)!;
+
   return (
     <LensShell lensId="fork" asMain={false}>
-      <FirstRunTour lensId="fork" />      <DepthBadge lensId="fork" size="sm" className="ml-2" />
-    <div data-lens-theme="fork" className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🌿</span>
-          <div>
-            <h1 className="text-xl font-bold">Fork Lens</h1>
-            <p className="text-sm text-gray-400">
-              Visualize entity forks and workspace lineages
-            </p>
+      <FirstRunTour lensId="fork" />
+      <DepthBadge lensId="fork" size="sm" className="ml-2" />
+      <NorthStarFrame
+        lensId="fork"
+        crumb="Fork"
+        title={`${currentTab.title}${activeView === 'lineage' && who ? `, ${who}` : ''}`}
+        subtitle="Visualize entity forks and workspace lineages."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="fork" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="fork" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        }
+        tabs={FORK_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
+        activeTab={activeView}
+        onTab={(id) => setActiveView(id as ForkView)}
+        tabsLabel="Fork views"
+        cta={{
+          label: selectedForkData ? 'Fork selected' : 'Select a fork to branch',
+          icon: GitFork,
+          onClick: () => { void handleFork(); },
+          title: selectedForkData ? 'Create a child fork of the selected fork' : 'Pick a fork in Lineage first',
+          disabled: !selectedForkData,
+        }}
+      >
+      <div data-lens-theme="fork" className="space-y-5">
+      {activeView === 'lineage' && (
+        <div className="flex flex-wrap items-center gap-2">
           <input
             ref={forkSearchInputRef}
             type="text"
@@ -246,58 +261,36 @@ export default function ForkLensPage() {
             onChange={(e) => setForkSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') { setForkSearch(''); forkSearchInputRef.current?.blur(); } }}
             placeholder="Search forks…  / focuses"
-            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-sm w-44"
+            className="w-56 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm"
           />
           <select
             value={forkStatusFilter}
             onChange={(e) => setForkStatusFilter(e.target.value as typeof forkStatusFilter)}
-            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-sm"
+            aria-label="Filter by status"
+            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm"
           >
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="merged">Merged</option>
             <option value="abandoned">Abandoned</option>
           </select>
-          {activeView === 'lineage' && (
-            <>
-              <button
-                onClick={() => setLayout('tree')}
-                className={`px-3 py-1 rounded ${layout === 'tree' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'}`}
-              >
-                Tree
-              </button>
-              <button
-                onClick={() => setLayout('list')}
-                className={`px-3 py-1 rounded ${layout === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'}`}
-              >
-                List
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
-      <nav className="flex items-center gap-1 border-b border-violet-900/40 pb-px overflow-x-auto" aria-label="Fork views">
-        {FORK_TABS.map((t) => (
           <button
-            key={t.id}
-            type="button"
-            onClick={() => setActiveView(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t border-b-2 transition-colors ${
-              activeView === t.id
-                ? 'border-neon-purple text-neon-purple bg-neon-purple/10'
-                : 'border-transparent text-gray-400 hover:text-violet-200 hover:bg-violet-950/30'
-            }`}
+            onClick={() => setLayout('tree')}
+            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'tree' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/[0.03] text-gray-400'}`}
           >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-            <kbd className="text-[9px] opacity-50 ml-0.5">{t.keys}</kbd>
+            Tree
           </button>
-        ))}
-      </nav>
+          <button
+            onClick={() => setLayout('list')}
+            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/[0.03] text-gray-400'}`}
+          >
+            List
+          </button>
+        </div>
+      )}
 
       {activeView === 'lab' && (
-        <div className="panel p-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <ForkAnalysisLab />
         </div>
       )}
@@ -325,21 +318,21 @@ export default function ForkLensPage() {
         ))}
       </div>
 
-      {/* Fork Divergence & Sync Status */}
+      {/* Fork Lineage depth & merge status */}
       {forks.length > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="panel p-4"
+          className="rounded-2xl border border-white/10 bg-[#111] p-4"
         >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4 text-neon-cyan" />
-            Divergence & Sync Status
+            Lineage depth & merge status
           </h3>
           <div className="space-y-2">
             {forks.filter(f => f.parentId !== null).slice(0, 5).map((fork) => {
-              const divergence = Math.min(100, fork.depth * 25 + fork.children * 10);
+              const divergence = Math.min(100, fork.depth * 25 + fork.children * 10); // lineage weight from depth and child count, not a content diff
               const synced = fork.status === 'merged';
               return (
                 <div key={fork.id} className="flex items-center gap-3">
@@ -356,7 +349,7 @@ export default function ForkLensPage() {
                   <span className="text-xs font-mono w-10 text-right text-gray-300">{divergence}%</span>
                   <span className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 ${synced ? 'bg-neon-green/20 text-neon-green' : 'bg-amber-400/20 text-amber-400'}`}>
                     <RefreshCw className="w-2.5 h-2.5" />
-                    {synced ? 'Synced' : 'Diverged'}
+                    {synced ? 'Merged' : 'Unmerged'}
                   </span>
                 </div>
               );
@@ -371,7 +364,7 @@ export default function ForkLensPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Fork Tree / List */}
-        <div className="lg:col-span-2 panel p-4">
+        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#111] p-4">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <GitFork className="w-4 h-4 text-neon-purple" />
             Fork {layout === 'tree' ? 'Tree' : 'List'}
@@ -426,7 +419,7 @@ export default function ForkLensPage() {
         </div>
 
         {/* Fork Details */}
-        <div className="panel p-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Layers className="w-4 h-4 text-neon-cyan" />
             Fork Details
@@ -482,17 +475,17 @@ export default function ForkLensPage() {
       </>)}
 
       {activeView === 'insights' && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <ForkInsights />
         </section>
       )}
       {activeView === 'network' && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <ForkNetworkExplorer />
         </section>
       )}
       {activeView === 'watchlist' && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
           <RepoWatchlist />
         </section>
       )}
@@ -509,7 +502,8 @@ export default function ForkLensPage() {
       )}
 
       <ConnectiveTissueBar lensId="fork" />
-    </div>          <CrossLensRecentsPanel lensId="fork" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>
+      </NorthStarFrame>
     </LensShell>
   );
 }

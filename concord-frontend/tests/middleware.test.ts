@@ -169,7 +169,10 @@ describe('Auth Middleware', () => {
       // Nonces can't cover the `style` HTML attribute (only <style> elements)
       // and this codebase uses React's style={{}} prop pervasively — see the
       // middleware.ts header comment for the full reasoning.
-      expect(csp).toContain(`style-src 'self' 'unsafe-inline'`);
+      expect(csp).toContain(`style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`);
+      // Monaco's stylesheet + codicon font load from jsdelivr; nothing broader.
+      expect(csp).toContain(`font-src 'self' data: https://cdn.jsdelivr.net`);
+      expect(csp).not.toMatch(/style-src[^;]*https:(?!\/\/cdn\.jsdelivr\.net)/);
       expect(csp).toContain('frame-ancestors');
     });
 

@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ELNWorkbench } from '@/components/lab/ELNWorkbench';
 import { LabOrgPanel } from '@/components/lab/LabOrgPanel';
@@ -19,6 +18,8 @@ import { motion } from 'framer-motion';
 import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Microscope, Activity, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -26,6 +27,8 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 export default function LabLensPage() {
   useLensNav('lab');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('lab');
 
   const [code, setCode] = useState('');
@@ -109,44 +112,42 @@ export default function LabLensPage() {
   }
   return (
     <LensShell lensId="lab" asMain={false}>
-      <FirstRunTour lensId="lab" />      <DepthBadge lensId="lab" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="lab" className="mx-6 mt-4" />
-    <div className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🧪</span>
-          <div>
-            <h1 className="text-xl font-bold">Lab Lens</h1>
-            <p className="text-sm text-gray-400">
-              Experiment sandbox for Growth OS organs
-            </p>
-          </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="lab" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      <FirstRunTour lensId="lab" />
+      <DepthBadge lensId="lab" size="sm" className="ml-2" />
+    <div data-lens-theme="lab" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[14px] text-zinc-500">Lab</p>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+            What is on the bench{who ? `, ${who}` : ''}
+          </h1>
+          <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
+            Run experiments against the growth organs, keep the notebook and inventory, and explore what could be.
+          </p>
         </div>
-      </header>
+        <div className="flex shrink-0 flex-wrap items-center gap-3 pt-2">
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          <DTUExportButton domain="lab" data={realtimeData || {}} compact />
+          {realtimeAlerts.length > 0 && (
+            <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
+              {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </div>
 
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="panel p-3 flex items-center gap-3">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="rounded-2xl border border-white/10 bg-[#111] p-3 flex items-center gap-3">
           <FlaskConical className="w-5 h-5 text-neon-purple" />
           <div><p className="text-lg font-bold">{experiments.length}</p><p className="text-xs text-gray-400">Experiments</p></div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-3 flex items-center gap-3">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border border-white/10 bg-[#111] p-3 flex items-center gap-3">
           <Microscope className="w-5 h-5 text-neon-cyan" />
           <div><p className="text-lg font-bold">{organs.length}</p><p className="text-xs text-gray-400">Equipment Count</p></div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-3 flex items-center gap-3">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-white/10 bg-[#111] p-3 flex items-center gap-3">
           <Activity className="w-5 h-5 text-neon-green" />
           <div><p className="text-lg font-bold">{organs.filter((o: Record<string, unknown>) => o.active).length}</p><p className="text-xs text-gray-400">Active Today</p></div>
         </motion.div>
@@ -154,7 +155,7 @@ export default function LabLensPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Experiment Editor */}
-        <div className="lg:col-span-2 panel p-4 space-y-4">
+        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#111] p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <FlaskConical className="w-4 h-4 text-neon-purple" />
@@ -201,7 +202,7 @@ export default function LabLensPage() {
         </div>
 
         {/* Organ Status */}
-        <div className="panel p-4 space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111] p-4 space-y-4">
           <h2 className="font-semibold flex items-center gap-2">
             <Zap className="w-4 h-4 text-neon-green" />
             Growth Organs
@@ -262,7 +263,7 @@ export default function LabLensPage() {
       />
 
       {/* Experiment History */}
-      <div className="panel p-4">
+      <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <History className="w-4 h-4 text-neon-blue" />
           Recent Experiments
@@ -304,7 +305,7 @@ export default function LabLensPage() {
           )}
         </div>
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
         <button
           type="button"
           onClick={() => setShowArxivFeed(v => !v)}
@@ -319,7 +320,22 @@ export default function LabLensPage() {
           </div>
         )}
       </section>
-    </div>          <CrossLensRecentsPanel lensId="lab" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="lab" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+
+      <button
+        type="button"
+        onClick={() => {
+          if (code.trim()) { if (!runExperiment.isPending) runExperiment.mutate({ code, organ: selectedOrgan }); }
+          else codeAreaRef.current?.focus();
+        }}
+        disabled={runExperiment.isPending}
+        title="Run experiment (⌘⏎)"
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+      >
+        {runExperiment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+        {runExperiment.isPending ? 'Running…' : code.trim() ? 'Run experiment' : 'New experiment'}
+      </button>
+    </div>
     </LensShell>
   );
 }
@@ -371,7 +387,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
   }> | undefined;
 
   return (
-    <div data-lens-theme="lab" className="panel p-4 space-y-4">
+    <div data-lens-theme="lab" className="rounded-2xl border border-white/10 bg-[#111] p-4 space-y-4">
       <h2 className="font-semibold flex items-center gap-2">
         <Search className="w-4 h-4 text-neon-cyan" />
         Adjacent Reality Explorer
@@ -438,7 +454,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
       )}
 
       {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
+      <div className="rounded-2xl border border-white/10 bg-[#111] p-4 space-y-3">
         <h2 className="font-semibold flex items-center gap-2"><FlaskConical className="w-4 h-4 text-neon-green" />Lab Analysis</h2>
         <div className="flex flex-wrap gap-2">
           {['calibrationCurve','qcAnalysis','sampleTracker','experimentDesign'].map((action) => (

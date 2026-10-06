@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { subscribe } from '@/lib/realtime/socket';
 import { showToast } from '@/components/common/Toasts';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
+import { CryptoKeepMenu } from './CryptoKeepMenu';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,7 @@ export function PortfolioWorkbench() {
   const [addCost, setAddCost] = useState('');
   const [addChain, setAddChain] = useState('ethereum');
   const [busy, setBusy] = useState(false);
+  const [lastLot, setLastLot] = useState<Record<string, unknown> | null>(null);
 
   // On-chain sync
   const [syncAddress, setSyncAddress] = useState('');
@@ -266,6 +268,8 @@ export function PortfolioWorkbench() {
         qty, costBasisUsd: cost, chain: addChain,
       });
       if (r.data?.ok) {
+        const lot = r.data?.result?.lot as Record<string, unknown> | undefined;
+        if (lot) setLastLot(lot);
         setShowAdd(false);
         setAddSymbol(''); setAddTicker(''); setAddQty(''); setAddCost('');
         await loadHoldings();
@@ -539,6 +543,9 @@ export function PortfolioWorkbench() {
               {busy ? 'Saving...' : 'Save lot'}
             </button>
           </div>
+        )}
+        {lastLot && (
+          <CryptoKeepMenu lot={lastLot as import('./cryptoReport').CryptoLot} />
         )}
 
         {filteredHoldings.length === 0 ? (

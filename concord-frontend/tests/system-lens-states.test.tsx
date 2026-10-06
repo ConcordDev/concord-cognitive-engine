@@ -6,8 +6,8 @@
  * empty / populated states against the real system.cartograph macro surface
  * (driven by a mocked apiHelpers.lens.runDomain standing in for
  * POST /api/lens/run → the inline system.cartograph macro reading
- * audit/cartograph/SYSTEMS.json), plus a11y (the tab buttons carry aria-pressed
- * accessible state).
+ * audit/cartograph/SYSTEMS.json), plus a11y (the tab buttons carry aria-current
+ * accessible current-page state).
  *
  * No fabricated data: every state is driven by the exact SystemsReport shape
  * the cartograph macro returns. Heavy realtime panels (Metrics/Alerts/Logs/…)
@@ -136,10 +136,10 @@ describe('system lens — four UX states', () => {
     expect(grid.textContent).toMatch(/9623/);  // macroCount
     expect(grid.textContent).toMatch(/90%/);   // coveragePct = 90/100
 
-    // a11y: the tab buttons carry aria-pressed reflecting the active tab.
+    // a11y: the tab buttons carry aria-current reflecting the active tab.
     const overviewTab = view!.getByRole('button', { name: /Overview/ });
-    expect(overviewTab).toHaveAttribute('aria-pressed', 'true');
+    expect(overviewTab).toHaveAttribute('aria-current', 'page');
     const metricsTab = view!.getByRole('button', { name: /Metrics/ });
-    expect(metricsTab).toHaveAttribute('aria-pressed', 'false');
+    expect(metricsTab).not.toHaveAttribute('aria-current');
   });
 });

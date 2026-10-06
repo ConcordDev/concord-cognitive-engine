@@ -86,7 +86,7 @@ describe('GracefulFallback', () => {
     expect(screen.getByTestId('child')).toBeInTheDocument();
   });
 
-  it('shows fallback message when utility brain is null', () => {
+  it('renders children when required brain status is still unknown (null)', () => {
     mockBrainHealth.mockReturnValue({
       brainStatus: {
         conscious: { online: true },
@@ -98,9 +98,11 @@ describe('GracefulFallback', () => {
 
     render(
       <GracefulFallback feature="Lens AI" brainRequired="utility">
-        <div>Content</div>
+        <div data-testid="lens-content">Content</div>
       </GracefulFallback>
     );
-    expect(screen.getByText(/Lens AI temporarily unavailable/i)).toBeInTheDocument();
+    // Unknown status must NOT paint the yellow strip — only a positively-offline brain does.
+    expect(screen.getByTestId('lens-content')).toBeInTheDocument();
+    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
 });

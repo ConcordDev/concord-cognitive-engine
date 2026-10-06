@@ -19,7 +19,8 @@
  * main chat lens.
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLensTool } from '@/lib/lens-dock';
 import dynamic from 'next/dynamic';
 
 const LensAgentPanel = dynamic(() => import('./LensAgentPanel'), { ssr: false });
@@ -29,10 +30,14 @@ interface LensAgentFabProps {
   lensPrompt?: string;
   label?: string;
   position?: 'bottom-right' | 'bottom-left';
+  /** Render the old floating pill. Off by default: inside a lens the header
+   *  toolbar's Agent button opens this panel via the lens dock. */
+  floating?: boolean;
 }
 
-export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bottom-right' }: LensAgentFabProps) {
+export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bottom-right', floating = false }: LensAgentFabProps) {
   const [open, setOpen] = useState(false);
+  useLensTool('agent', useCallback(() => setOpen((o) => !o), []));
 
   const posClass = position === 'bottom-left'
     ? 'fixed bottom-6 left-6'
@@ -40,7 +45,7 @@ export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bo
 
   return (
     <>
-      <button
+      {floating && <button
         onClick={() => setOpen(true)}
         className={`${posClass} z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium`}
         title={`Agent Mode for ${lensId} — 200+ tools, web, compute, citations`}
@@ -50,7 +55,7 @@ export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bo
           <path d="M12 8V4H8M4 8h4v4M16 4v4h4M20 16h-4v4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         {label || `Agent · ${lensId}`}
-      </button>
+      </button>}
       <LensAgentPanel
         lensId={lensId}
         lensPrompt={lensPrompt}

@@ -6,15 +6,13 @@
  */
 
 import { useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ShellPreview } from '@/components/lens/ShellPreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
@@ -31,16 +29,28 @@ import { VisibilityPanel } from '@/components/logistics/VisibilityPanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
-  Truck, Package, Warehouse, Route, ShieldCheck, Navigation, Map, LayoutGrid, TowerControl,
+  Truck, Package, Warehouse, Route, ShieldCheck, Navigation, Map, LayoutGrid, TowerControl, Plus,
   Truck as MTabTruck, Package as MTabShip, Warehouse as MTabWh, MapPin as MTabRoute, ShieldCheck as MTabCompliance,
 } from 'lucide-react';
 
 type LogView =
   | 'fleet' | 'shipments' | 'tracker' | 'warehouse' | 'routes' | 'compliance' | 'map'
   | 'workbench' | 'visibility';
+
+const TITLES: Record<LogView, string> = {
+  fleet: 'Run the fleet',
+  shipments: 'Move the freight',
+  tracker: 'Track every load',
+  warehouse: 'Count the stock',
+  routes: 'Plan the routes',
+  compliance: 'Stay compliant',
+  map: 'See the fleet',
+  workbench: 'Work the TMS desk',
+  visibility: 'See the whole chain',
+};
 
 const VIEWS: { id: LogView; label: string; keys: string; icon: typeof Truck }[] = [
   { id: 'fleet', label: 'Fleet', keys: 'f', icon: Truck },
@@ -56,10 +66,11 @@ const VIEWS: { id: LogView; label: string; keys: string; icon: typeof Truck }[] 
 
 export default function LogisticsLensPage() {
   useLensNav('logistics');
-  const reduceMotion = useReducedMotion();
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<LogView>('fleet');
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
-  const { data: summary, isLoading, isError, error, refetch } = useDashboardSummary();
+  const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -76,23 +87,14 @@ export default function LogisticsLensPage() {
     <LensShell lensId="logistics" asMain={false}>
       <FirstRunTour lensId="logistics" />
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
-      <div data-lens-theme="logistics" className={cn(ds.pageContainer, 'pb-20 lg:pb-6')}>
-        <ShellPreview lensId="logistics" defaultOpen={true} />
-
-        <header className={cn(ds.sectionHeader, 'gap-3 flex-wrap')}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-md bg-[var(--lens-accent)]/20 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5 text-neon-cyan" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={ds.heading1}>Transportation &amp; Logistics</h1>
-                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              </div>
-              <p className={ds.textMuted}>Fleet, shipments, warehouse, routes, and compliance</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <NorthStarFrame
+        lensId="logistics"
+        crumb="Logistics"
+        title={`${TITLES[active]}${active === 'fleet' && who ? `, ${who}` : ''}`}
+        subtitle="Fleet, shipments, warehouse, routes, and compliance"
+        actions={(
+          <>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             {isError && (
               <button type="button" onClick={() => void refetch()} className="text-xs text-rose-300 underline">
                 Retry KPIs
@@ -105,9 +107,14 @@ export default function LogisticsLensPage() {
               tags={['logistics', 'tms', 'export']}
               compact
             />
-          </div>
-        </header>
-
+          </>
+        )}
+        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
+        activeTab={active}
+        onTab={(id) => setActive(id as LogView)}
+        tabsLabel="Logistics views"
+        cta={{ label: 'New shipment', icon: Plus, onClick: () => setActive('shipments'), title: 'Open the shipments desk' }}
+      >
         <LiveFeed
           articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
           domain="logistics"
@@ -119,64 +126,26 @@ export default function LogisticsLensPage() {
 
         {!isLoading && <DashboardKpisPanel summary={summary} />}
 
-        <nav
-          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto mt-4"
-          aria-label="Logistics views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                  on
-                    ? 'border-[var(--lens-accent)] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-            transition={{ duration: reduceMotion ? 0 : 0.16 }}
-            className="pt-4"
-          >
-            {active === 'fleet' && <FleetVehiclesPanel />}
-            {active === 'shipments' && <ShipmentsPanel />}
-            {active === 'tracker' && <ShipmentTracker />}
-            {active === 'warehouse' && <WarehouseInventory />}
-            {active === 'routes' && <RouteOptimizer />}
-            {active === 'compliance' && <ComplianceReportsPanel />}
-            {active === 'map' && <FleetMapPanel />}
-            {active === 'workbench' && <TmsWorkbenchPanel />}
-            {active === 'visibility' && <VisibilityPanel />}
-          </motion.div>
-        </AnimatePresence>
+        <div className="pt-4">
+          {active === 'fleet' && <FleetVehiclesPanel />}
+          {active === 'shipments' && <ShipmentsPanel />}
+          {active === 'tracker' && <ShipmentTracker />}
+          {active === 'warehouse' && <WarehouseInventory />}
+          {active === 'routes' && <RouteOptimizer />}
+          {active === 'compliance' && <ComplianceReportsPanel />}
+          {active === 'map' && <FleetMapPanel />}
+          {active === 'workbench' && <TmsWorkbenchPanel />}
+          {active === 'visibility' && <VisibilityPanel />}
+        </div>
 
         <div className="mt-6">
           <ActivityFeedPanel />
         </div>
 
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
           <LogisticsChatter />
         </section>
-
-        <CrossLensRecentsPanel lensId="logistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-      </div>
+      </NorthStarFrame>
 
       <MobileTabBar
         tabs={[
