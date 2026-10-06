@@ -995,6 +995,7 @@ export default function registerEngineeringActions(registerLensAction) {
       const summary = summarizeBeamStudy(study, fea, mat);
       const name = egClean(data.name || 'I-beam study', 80);
       const updatedAt = new Date().toISOString();
+      const utilizationByMember = fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) }));
       const s = engState();
       let jobId = null;
       if (s) {
@@ -1005,7 +1006,8 @@ export default function registerEngineeringActions(registerLensAction) {
         if (jobs.length > 50) jobs.length = 50;
         s.beamStudies.set(userId, {
           name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
-          jobId, summary, section: study.section, updatedAt,
+          jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
+          utilizationByMember, dtuId: null, updatedAt,
         });
         persist();
       }
@@ -1017,7 +1019,7 @@ export default function registerEngineeringActions(registerLensAction) {
           material: { id: matId, label: mat.label, E: mat.E, yield: mat.yield },
           section: study.section,
           ...summary,
-          utilizationByMember: fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) })),
+          utilizationByMember,
         },
       };
     } catch (e) {
@@ -1032,6 +1034,28 @@ export default function registerEngineeringActions(registerLensAction) {
       if (!saved) return { ok: true, result: { study: null } };
       const mat = MATERIAL_LIBRARY[saved.material];
       return { ok: true, result: { study: { ...saved, materialInfo: mat ? { id: saved.material, label: mat.label, E: mat.E, yield: mat.yield } : null } } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // Record that the current study was kept as a DTU. The caller has already
+  // created the DTU and read it back; the id is only attached to the study
+  // whose sim job produced it, so a stale page cannot cite a newer run.
+  registerLensAction('engineering', 'beamStudy-keep', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const userId = egActor(ctx);
+      const saved = s.beamStudies.get(userId);
+      if (!saved) return { ok: false, error: 'no study to keep — run one first' };
+      const jobId = egClean(params?.jobId, 80);
+      if (!jobId || jobId !== saved.jobId) return { ok: false, error: 'that run is no longer the current study' };
+      const dtuId = egClean(params?.dtuId, 80);
+      if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(dtuId)) return { ok: false, error: 'dtuId required' };
+      saved.dtuId = dtuId;
+      persist();
+      return { ok: true, result: { jobId, dtuId } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

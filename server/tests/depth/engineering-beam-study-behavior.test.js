@@ -42,6 +42,22 @@ describe("engineering — beamStudy", () => {
     assert.equal(theirs.result.study, null);
   });
 
+  it("reopens with the solver's per-member utilization and keeps a DTU only for the current run", async () => {
+    const run = await lensRun("engineering", "beamStudy", {
+      params: { dims: DIMS, material: "steel-a992", support: "simply-supported", loadN: 200000, name: "Kept beam" },
+    }, ctx);
+    const got = await lensRun("engineering", "beamStudy-get", { params: {} }, ctx);
+    assert.equal(got.result.study.utilizationByMember.length, run.result.utilizationByMember.length);
+    assert.equal(got.result.study.loadNode, run.result.loadNode);
+    assert.equal(got.result.study.dtuId, null);
+    const stale = await lensRun("engineering", "beamStudy-keep", { params: { jobId: "sim_old", dtuId: "dtu_x" } }, ctx);
+    assert.equal(stale.ok === false || stale.result?.ok === false, true);
+    const kept = await lensRun("engineering", "beamStudy-keep", { params: { jobId: run.result.jobId, dtuId: "dtu_kept_1" } }, ctx);
+    assert.equal(kept.ok, true);
+    const after = await lensRun("engineering", "beamStudy-get", { params: {} }, ctx);
+    assert.equal(after.result.study.dtuId, "dtu_kept_1");
+  });
+
   it("an overloaded cantilever fails the check instead of reporting a pass", async () => {
     const r = await lensRun("engineering", "beamStudy", {
       params: { dims: DIMS, material: "steel-a36", support: "cantilever", loadN: 300000 },
