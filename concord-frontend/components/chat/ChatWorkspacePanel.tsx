@@ -735,8 +735,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // (chatted on laptop, opened on phone). Server-side messages always
   // override empty local state; non-empty local state wins to avoid
   // clobbering unsynced drafts from a recent send.
+  // Set when a send mints a brand-new session: its thread already lives in
+  // local state, so the load effect below must NOT re-read it from storage —
+  // that snapshot holds only the user turn and, if the reply landed before
+  // the effect flushed, would silently drop the assistant's first answer.
+  const locallyCreatedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedConversation) return;
+    if (locallyCreatedSessionRef.current === selectedConversation) {
+      locallyCreatedSessionRef.current = null;
+      return;
+    }
     const saved = loadMessagesForSession<Message>(selectedConversation);
     if (saved.length > 0) {
       setLocalMessages(saved);
@@ -1152,6 +1161,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           saveConversations(next);
           return next;
         });
+        locallyCreatedSessionRef.current = newId;
         setSelectedConversation(newId);
         // Save the user message for this new session right away
         saveMessagesForSession(newId, [userMsg] as ChatMessageLike[]);
