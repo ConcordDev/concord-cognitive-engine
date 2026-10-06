@@ -7,6 +7,7 @@
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
 import { runFEA } from '../lib/simulation/fea-solver.js';
+import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
 // boltedConnection (AISC allowable-shear) + transformerSizing (ANSI kVA
 // ladder) are real, exported functions in engineering-compute.js that no
 // registered macro called — genuinely unreachable at the macro layer (see
@@ -236,6 +237,7 @@ function engState() {
   if (!(s.jobs instanceof Map)) s.jobs = new Map(); // userId -> Array<job>
   if (!(s.models instanceof Map)) s.models = new Map(); // userId -> working FEA model
   if (!(s.workspaces instanceof Map)) s.workspaces = new Map(); // userId -> { [panelKey]: { state, updatedAt } }
+  if (!(s.beamStudies instanceof Map)) s.beamStudies = new Map(); // userId -> current ConKay beam study
   return s;
 }
 function persist() {
@@ -967,6 +969,69 @@ export default function registerEngineeringActions(registerLensAction) {
           summary: fea.summary,
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── beamStudy — the ConKay workspace's parametric I-beam study ─────────
+  // dims (mm) + material + support + one point load → real section
+  // properties, a real beam-frame solve through the same runFEA solver, and
+  // the textbook result for the same case (lib/conkay/beam-study.js). The run
+  // is recorded in the sim-job history like runFEA, and kept as the user's
+  // current study so the workspace reopens on it.
+  registerLensAction('engineering', 'beamStudy', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const matId = egClean(data.material || 'steel-a992', 40);
+      const mat = MATERIAL_LIBRARY[matId];
+      if (!mat) return { ok: false, error: `unknown material: ${matId}` };
+      const study = buildBeamStudy({ dims: data.dims, material: mat, support: data.support, loadN: data.loadN, segments: data.segments });
+      if (!study.ok) return { ok: false, error: study.error };
+      const t0 = Date.now();
+      const fea = runFEA({ ...study.model, onStage: ctx?.emitMacroStage });
+      const elapsedMs = Date.now() - t0;
+      if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
+      const summary = summarizeBeamStudy(study, fea, mat);
+      const name = egClean(data.name || 'I-beam study', 80);
+      const updatedAt = new Date().toISOString();
+      const s = engState();
+      let jobId = null;
+      if (s) {
+        const userId = egActor(ctx);
+        const jobs = egList(s.jobs, userId);
+        jobId = egId('sim');
+        jobs.unshift({ id: jobId, name, type: 'fea-beam-study', status: 'completed', elapsedMs, summary: fea.summary, createdAt: updatedAt });
+        if (jobs.length > 50) jobs.length = 50;
+        s.beamStudies.set(userId, {
+          name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
+          jobId, summary, section: study.section, updatedAt,
+        });
+        persist();
+      }
+      return {
+        ok: true,
+        result: {
+          jobId, elapsedMs, name, updatedAt,
+          dims: study.dims, support: study.support, loadN: study.loadN, loadNode: study.loadNode,
+          material: { id: matId, label: mat.label, E: mat.E, yield: mat.yield },
+          section: study.section,
+          ...summary,
+          utilizationByMember: fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) })),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'beamStudy-get', (ctx) => {
+    try {
+      const s = engState();
+      const saved = s ? s.beamStudies.get(egActor(ctx)) || null : null;
+      if (!saved) return { ok: true, result: { study: null } };
+      const mat = MATERIAL_LIBRARY[saved.material];
+      return { ok: true, result: { study: { ...saved, materialInfo: mat ? { id: saved.material, label: mat.label, E: mat.E, yield: mat.yield } : null } } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
