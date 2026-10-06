@@ -1,0 +1,27 @@
+[engineering-restart-proof] login ok as wbproof_muv96clt
+[engineering-restart-proof] opened http://localhost:5399/lenses/engineering
+[engineering-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-restart-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-restart-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-restart-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-restart-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-restart-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-restart-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-restart-proof] engineering.listSimJobs still contains "sim_muvniegu_ccmz2z"? true
+[engineering-restart-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-restart-proof] dtu.get dtu_2ebd32c9048215275bbc ok? true source: engineering-lens:fea-report visibility: private
+[engineering-restart-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_2ebd32c9048215275bbc","title":"FEA Run","tags":["engineering","fea","fea-report","fea-run","quarantine:injection
+[engineering-restart-proof] thread.draft-detail th_muvnifcb_69eobd ok? true cites: dtu_2ebd32c9048215275bbc status: draft
+[engineering-restart-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-restart-proof] opened http://localhost:5399/lenses/thread
+[engineering-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[engineering-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[engineering-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":37,"scheduled":0,"published":0,"total":37,"totalPosts":112}}
+[engineering-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[engineering-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":37,"scheduled":0,"published":0,"total":37,"totalPosts":112}}
+[engineering-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[engineering-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-restart-proof] Thread Composer lists a draft citing dtu_2ebd32c9048215275bbc
+[engineering-restart-proof] RESTART OK

@@ -1,0 +1,21 @@
+[trades-restart-proof] login ok as wbproof_muv96clt
+[trades-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"trades","sinceDays":7,"surfaces":[]}}
+[trades-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"trades","sinceDays":7,"surfaces":[]}}
+[trades-restart-proof] opened http://localhost:5399/lenses/trades
+[trades-restart-proof] trades.job-list still contains "job_muvocuzg_dvjdsi"? true
+[trades-restart-proof] LENS 200 trades.job-list {"ok":true,"result":{"jobs":[{"id":"job_muvocuzg_dvjdsi","number":"JOB-00001","customerId":"cust_muvocuc7_o92bnr","customerName":"Proof Customer 155930","descri
+[trades-restart-proof] dtu.get dtu_e306318034c63e3e1917 ok? true source: trades-lens:job-report visibility: private
+[trades-restart-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_e306318034c63e3e1917","title":"JOB-00001 · Proof Customer 155930","tags":["trades","job","work-order","quarantin
+[trades-restart-proof] thread.draft-detail th_muvodvy0_2h1q0w ok? true cites: dtu_e306318034c63e3e1917 status: draft
+[trades-restart-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvodvy0_2h1q0w","title":"Trades job — JOB-00001","content":"JOB-00001 · Proof Customer 155930: high unassigned, est 4h.\
+[trades-restart-proof] opened http://localhost:5399/lenses/thread
+[trades-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[trades-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[trades-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[trades-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":39,"scheduled":0,"published":0,"total":39,"totalPosts":118}}
+[trades-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":39,"scheduled":0,"published":0,"total":39,"totalPosts":118}}
+[trades-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[trades-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvodvy0_2h1q0w","title":"Trades job — JOB-00001","platform":"x","status":"draft","postCount":3,"scheduledAt":null,"upd
+[trades-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvodvy0_2h1q0w","title":"Trades job — JOB-00001","platform":"x","status":"draft","postCount":3,"scheduledAt":null,"upd
+[trades-restart-proof] Thread Composer lists a draft citing dtu_e306318034c63e3e1917
+[trades-restart-proof] RESTART OK

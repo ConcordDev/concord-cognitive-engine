@@ -1,0 +1,177 @@
+[engineering-tabs-proof] disk free 10.79 GB
+[engineering-tabs-proof] login ok as wbproof_muv96clt
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] opened http://localhost:5399/lenses/engineering
+[engineering-tabs-proof] saved working model: 2 nodes, 1 members
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.structural","updatedAt":"2026-10-05T20:13:12.969Z","bytes":2}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.thermal","updatedAt":"2026-10-05T20:13:12.979Z","bytes":2}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.electrical","updatedAt":"2026-10-05T20:13:12.986Z","bytes":2}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.hydraulic","updatedAt":"2026-10-05T20:13:12.993Z","bytes":2}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"physics","updatedAt":"2026-10-05T20:13:13.000Z","bytes":2}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"bench","updatedAt":"2026-10-05T20:13:13.006Z","bytes":2}}
+[engineering-tabs-proof] cleared the saved workspace for a fresh start
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.969Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.979Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.986Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.993Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.969Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.979Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.986Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:12.993Z"}}
+[engineering-tabs-proof] Calcs note: Fields start with typical example values — replace them with yours. Every result is comput
+[engineering-tabs-proof] LENS 200 engineering.structuralCheck {"ok":true,"result":{"ok":true,"results":{"buckling":{"value":1142.8864818622571,"unit":"kips","formula":"Pcr = π²EI/(kL)²","inputs":{"loadKips":60,"lengthFt":1
+[engineering-tabs-proof] Run Structural Check: Axial load (kips) = 60 → 1,142.886 kips
+[engineering-tabs-proof] LENS 200 engineering.connectionCheck {"ok":true,"result":{"value":127.23450247038662,"unit":"kips","formula":"R = Fv·Ab·n·planes","inputs":{"boltDiameter":0.75,"boltGrade":"a325","numBolts":6,"load
+[engineering-tabs-proof] Check Connection: Number of bolts = 6 → 127.235 kips
+[engineering-tabs-proof] LENS 200 engineering.thermalAnalysis {"ok":true,"result":{"ok":true,"results":{"heatLoad":{"value":1821.5384615384614,"unit":"BTU/h","formula":"Q = A·ΔT/R + solar","inputs":{"areaSqft":640,"rValue"
+[engineering-tabs-proof] Run Thermal Analysis: Envelope area (ft²) = 640 → 1,821.538 BTU/h
+[engineering-tabs-proof] LENS 200 engineering.electricalCheck {"ok":true,"result":{"ok":true,"results":{"voltageDrop":{"value":6.9479999999999995,"unit":"V","formula":"Vd = 2·I·R·L","inputs":{"current":24,"length":75,"awg"
+[engineering-tabs-proof] Run Electrical Check: Current (A) = 24 → 6.948 V
+[engineering-tabs-proof] LENS 200 engineering.transformerSizing {"ok":true,"result":{"value":225,"unit":"kVA","formula":"kVA = loadKva · growth","inputs":{"loadKva":150,"voltage":480,"phase":3,"powerFactor":0.9,"growthFactor
+[engineering-tabs-proof] Size Transformer: Load (kVA) = 150 → 225 kVA
+[engineering-tabs-proof] LENS 200 engineering.hydraulicAnalysis {"ok":true,"result":{"ok":true,"results":{"pipeSize":{"value":2.3044409007423323,"unit":"in","formula":"D = √(4·Q/(π·v))","inputs":{"flowGpm":65,"velocity":5},"
+[engineering-tabs-proof] Run Hydraulic Analysis: Flow rate (GPM, shared) = 65 → 2.304 in
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.structural","updatedAt":"2026-10-05T20:13:15.745Z","bytes":1553}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.thermal","updatedAt":"2026-10-05T20:13:15.806Z","bytes":960}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.electrical","updatedAt":"2026-10-05T20:13:15.954Z","bytes":1343}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"calcs.hydraulic","updatedAt":"2026-10-05T20:13:16.057Z","bytes":945}}
+[engineering-tabs-proof] thermal heat load (640 ft² × 37 °F / R-13 = 1,821.5 BTU/h expected): true
+[engineering-tabs-proof] screenshot: engineering-calcs.png
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:13.000Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:13.000Z"}}
+[engineering-tabs-proof] circuit at start: No elements yet. Add a source and resistors with the buttons below, then solve.
+[engineering-tabs-proof] LENS 200 engineering.thermalStressCheck {"ok":true,"result":{"ok":true,"deltaT":35,"material":"steel-a36","mechanicalOnlyUtilization":0.00802995195314369,"combinedUtilization":0.5579647308970088,"maxU
+[engineering-tabs-proof] LENS 200 engineering.aeroLoadCheck {"ok":true,"result":{"ok":true,"velocity":30,"airDensity":1.225,"dynamicPressurePa":551.25,"flowDirection":{"x":1,"y":0,"z":0},"mechanicalOnlyUtilization":0.008
+[engineering-tabs-proof] LENS 200 engineering.multiPhysicsCheck {"ok":true,"result":{"ok":true,"requestedLegs":["thermal","aero"],"legs":{"thermal":{"ok":true,"deltaT":35,"material":"steel-a36","mechanicalOnlyUtilization":0.
+[engineering-tabs-proof] thermal/wind/combined: Computed Oct 5, 4:13 PM on your model (2 nodes, 1 members) · saved | Computed Oct 5, 4:13 PM on your model (2 nodes, 1 members) · saved
+[engineering-tabs-proof] LENS 200 engineering.circuitSolve {"ok":true,"result":{"ok":true,"nodeVoltages":{"GND":0,"N1":9,"N2":6},"branchCurrents":{"V1":0.01,"R1":0.01,"R2":0.01},"powerByElement":{"V1":0.09,"R1":0.030000
+[engineering-tabs-proof] circuit 9 V, 300 Ω + 600 Ω → N2 = N2: 6.000 V
+[engineering-tabs-proof] LENS 200 engineering.nonNewtonianFlow {"ok":true,"result":{"flowRate":0.0032612179237348333,"meanVelocity":1.6609246497993166,"reynolds":{"value":882.7746215395142,"regime":"laminar"},"honestBoundar
+[engineering-tabs-proof] Export 3D scene downloaded: concord-fea-scene.json
+[engineering-tabs-proof] LENS 200 engineering.feaScene {"ok":true,"result":{"format":"concord-fea-scene/v1","nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"physics","updatedAt":"2026-10-05T20:13:17.493Z","bytes":8429}}
+[engineering-tabs-proof] screenshot: engineering-physics.png
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:13.006Z"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{},"updatedAt":"2026-10-05T20:13:13.006Z"}}
+[engineering-tabs-proof] parts at start: No parts yet — add each dimension in the stack with +.
+[engineering-tabs-proof] LENS 200 engineering.toleranceAnalysis {"ok":true,"result":{"parts":[{"part":"Pin OD","nominal":6.00851,"tolerance":0.01,"min":5.9985,"max":6.0185,"toleranceClass":"standard"},{"part":"Bore ID","nomi
+[engineering-tabs-proof] LENS 200 engineering.stressAnalysis {"ok":true,"result":{"appliedForce":"5000 N","crossSection":"50 mm²","appliedStress":"100 MPa","yieldStrength":"250 MPa","safetyFactor":2.5,"status":"acceptable
+[engineering-tabs-proof] LENS 200 engineering.unitConvert {"ok":true,"result":{"input":"25.4 mm","output":"1 in","conversion":"mm → in"}}
+[engineering-tabs-proof] LENS 200 dtu.undefined {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_b8e1df08beaa3dae0116","title":"Engineering design · SF 2.5 acceptable · stack 12.0285 ±0.018","tags":["engineeri
+[engineering-tabs-proof] Mint: Design DTU dtu_b8e1…
+[engineering-tabs-proof] LENS 200 chat_agent.undefined {"ok":true,"result":{"ok":false,"reason":"missing_message"}}
+[engineering-tabs-proof] LENS 200 engineering.workspace-save {"ok":true,"result":{"key":"bench","updatedAt":"2026-10-05T20:13:18.858Z","bytes":975}}
+[engineering-tabs-proof] Review outcome shown on screen: The review agent returned no text.
+[engineering-tabs-proof] screenshot: engineering-actions.png
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] before reload: {"calcs":{"inputs":{"Axial load (kips)":"60","Number of bolts":"6","Envelope area (ft²)":"640","Current (A)":"24","Load (kVA)":"150","Flow rate (GPM, shared)":"65","Design ΔT":"37"},"stamps":{"calc-structural-at":true,"calc-connection-at":true,"calc-thermal-at":true,"calc-electrical-at":true,"calc-transformer-at":true,"calc-hydraulic-at":true},"values":{"calc-structural":"1,142.886 kips","calc-thermal":"1,821.538 BTU/h","calc-electrical":"6.948 V","calc-hydraulic":"2.304 in"}},"physics":{"stamps":{"thermal":true,"aero":true,"bundle":true,"circuit":true,"flow":true},"values":["9","300","600"],"n2":"N2: 6.000 V","deltaT":"35"},"bench":{"parts":["Pin OD","Bore ID"],"stack":true,"stress":true,"unit":true,"minted":true}}
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] after full reload: {"calcs":{"inputs":{"Axial load (kips)":"60","Number of bolts":"6","Envelope area (ft²)":"640","Current (A)":"24","Load (kVA)":"150","Flow rate (GPM, shared)":"65","Design ΔT":"37"},"stamps":{"calc-structural-at":true,"calc-connection-at":true,"calc-thermal-at":true,"calc-electrical-at":true,"calc-transformer-at":true,"calc-hydraulic-at":true},"values":{"calc-structural":"1,142.886 kips","calc-thermal":"1,821.538 BTU/h","calc-electrical":"6.948 V","calc-hydraulic":"2.304 in"}},"physics":{"stamps":{"thermal":true,"aero":true,"bundle":true,"circuit":true,"flow":true},"values":["9","300","600"],"n2":"N2: 6.000 V","deltaT":"35"},"bench":{"parts":["Pin OD","Bore ID"],"stack":true,"stress":true,"unit":true,"minted":true}}
+[engineering-tabs-proof] after full reload matches what was entered and computed before
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] screenshot: engineering-tabs-reload.png
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] kill -9 restart of the proof API: kill -9 19143 | up after 6s pid 32830
+[engineering-tabs-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-tabs-proof] console error: Server error: Internal Server Error
+[engineering-tabs-proof] browser session survived the restart (fixed proof JWT_SECRET): true (GET /api/auth/me → 200)
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-tabs-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-tabs-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"deltaTemp":37,"rValue":13,"areaSqft":640,"solarGain":0,"cfm":400,"velocity":1200,"roomSqft":200,"occupants":2,"equipment":
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"loadKips":60,"lengthFt":12,"modulusE":29000000,"momentI":82.8,"kFactor":1,"windMph":110,"wallHeightFt":10,"wallThicknessIn
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"current":24,"vdLength":75,"awg":"12","material":"copper","voltage":120,"phase":"1","loadAmps":16,"continuous":true,"wireCo
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"inp":{"flowGpm":65,"velocity":5,"totalDynamicHead":80,"efficiency":0.7,"specificGravity":1,"pipeDiameter":2,"plLength":100,"rough
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"tolParts":[{"name":"Pin OD","nominal":6.00851,"tolerance":0.01},{"name":"Bore ID","nominal":6.02,"tolerance":0.008}],"forceN":"50
+[engineering-tabs-proof] after kill -9 restart: {"calcs":{"inputs":{"Axial load (kips)":"60","Number of bolts":"6","Envelope area (ft²)":"640","Current (A)":"24","Load (kVA)":"150","Flow rate (GPM, shared)":"65","Design ΔT":"37"},"stamps":{"calc-structural-at":true,"calc-connection-at":true,"calc-thermal-at":true,"calc-electrical-at":true,"calc-transformer-at":true,"calc-hydraulic-at":true},"values":{"calc-structural":"1,142.886 kips","calc-thermal":"1,821.538 BTU/h","calc-electrical":"6.948 V","calc-hydraulic":"2.304 in"}},"physics":{"stamps":{"thermal":true,"aero":true,"bundle":true,"circuit":true,"flow":true},"values":["9","300","600"],"n2":"N2: 6.000 V","deltaT":"35"},"bench":{"parts":["Pin OD","Bore ID"],"stack":true,"stress":true,"unit":true,"minted":true}}
+[engineering-tabs-proof] after kill -9 restart matches what was entered and computed before
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] LENS 200 engineering.workspace-get {"ok":true,"result":{"state":{"deltaT":35,"material":"steel-a36","velocity":30,"dirDeg":0,"cd":1.2,"area":0.05,"els":[{"id":"V1","type":"voltage_source","nodeA"
+[engineering-tabs-proof] screenshot: engineering-tabs-restart.png
+[engineering-tabs-proof] RESULT {"sceneFile":"concord-fea-scene.json","pinNominal":"6.00851","mint":"Design DTU dtu_b8e1…","review":"The review agent returned no text.","sessionSurvived":true}
+[engineering-tabs-proof] PASS

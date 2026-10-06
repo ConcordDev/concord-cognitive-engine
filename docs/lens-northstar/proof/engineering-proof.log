@@ -1,0 +1,191 @@
+[engineering-proof] disk free 8.89 GB
+[engineering-proof] login ok as wbproof_muv96clt
+[engineering-proof] opened http://localhost:5399/lenses/engineering
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] header chip: Real — "Simulated" chips: 0 — SIM_GRADE copy: false
+[engineering-proof] LENS 200 engineering.model-save {"ok":true,"result":{"updatedAt":"2026-10-05T19:36:31.814Z","counts":{"nodes":0,"members":0,"loads":0,"supports":0}}}
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[],"members":[],"loads":[],"supports":[]},"updatedAt":"2026-10-05T19:36:31.814Z"}}
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[],"members":[],"loads":[],"supports":[]},"updatedAt":"2026-10-05T19:36:31.814Z"}}
+[engineering-proof] model starts with 0 nodes
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] Run FEA on the empty model: Error: nothing to solve yet. In Model, add at least two nodes.
+[engineering-proof] built: N1(0,0,0) fixed — M1 — N2(10,0,0) in, load Fy −1000 lb on N2
+[engineering-proof] LENS 200 engineering.model-save {"ok":true,"result":{"updatedAt":"2026-10-05T19:36:36.243Z","counts":{"nodes":2,"members":1,"loads":1,"supports":1}}}
+[engineering-proof] engineering.model-get after the edits: {"nodes":2,"members":1,"supports":1,"loads":1,"updatedAt":"2026-10-05T19:36:36.243Z"}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] after full reload the model is {"rows":2,"n2x":"10","fixed":true,"members":1,"loadNode":"N2","saveState":"Saved to your account"}
+[engineering-proof] screenshot: engineering-model-reload.png
+[engineering-proof] kill -9 restart of the proof API: kill -9 97059 | up after 6s pid 5068
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[engineering-proof] console error: Server error: Internal Server Error
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] session did not survive the restart; logging in again
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[engineering-proof] login ok as wbproof_muv96clt
+[engineering-proof] opened http://localhost:5399/lenses/engineering
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] after kill -9 restart the model is {"rows":2,"n2x":"10","fixed":true,"members":1,"loadNode":"N2","saveState":"Saved to your account"}
+[engineering-proof] screenshot: engineering-model-restart.png
+[engineering-proof] LENS 200 engineering.runFEA {"ok":true,"result":{"jobId":"sim_muvniegu_ccmz2z","elapsedMs":2,"displacements":[{"nodeId":"N1","dx":0,"dy":0,"dz":0,"rx":0,"ry":0,"rz":0,"magnitude":0},{"node
+[engineering-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] solved: job sim_muvniegu_ccmz2z max disp 0.00013881947914931423 max util 0.008029950917172722 all pass true
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] results stress column: Stress (psi)
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[engineering-proof] LENS 200 dtu.create {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_2ebd32c9048215275bbc","title":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, all pass. · sim_muv
+[engineering-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_2ebd32c9048215275bbc","title":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, all pass. · sim_muv
+[engineering-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-proof] save status: Saved as private DTU dtu_2ebd32c9048215275bbc. Nothing was published.
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[engineering-proof] LENS 200 thread.thread-draft {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] draft status: Drafted in Thread as th_muvnifcb_69eobd, citing dtu_2ebd32c9048215275bbc. Not posted.
+[engineering-proof] screenshot: engineering.png
+[engineering-proof] dtu.get dtu_2ebd32c9048215275bbc ok? true source: engineering-lens:fea-report visibility: private
+[engineering-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_2ebd32c9048215275bbc","title":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, all pass. · sim_muv
+[engineering-proof] thread.draft-detail th_muvnifcb_69eobd ok? true cites: dtu_2ebd32c9048215275bbc status: draft
+[engineering-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"engineering","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 engineering.model-get {"ok":true,"result":{"model":{"nodes":[{"id":"N1","x":0,"y":0,"z":0},{"id":"N2","x":10,"y":0,"z":0}],"members":[{"id":"M1","nodeI":"N1","nodeJ":"N2","area":8.25
+[engineering-proof] LENS 200 engineering.materialLibrary {"ok":true,"result":{"materials":[{"id":"steel-a36","label":"ASTM A36 Structural Steel","category":"metal","E":200000,"yield":250,"ultimate":400,"density":7850,
+[engineering-proof] LENS 200 engineering.listLoadCases {"ok":true,"result":{"loadCases":[],"count":0}}
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] after full reload Simulation History still lists the run (max disp 0.0001")
+[engineering-proof] LENS 200 engineering.listSimJobs {"ok":true,"result":{"jobs":[{"id":"sim_muvniegu_ccmz2z","name":"FEA run","type":"fea-frame","status":"completed","elapsedMs":2,"summary":{"maxDisplacement":0.0
+[engineering-proof] opened http://localhost:5399/lenses/thread
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[engineering-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[engineering-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":37,"scheduled":0,"published":0,"total":37,"totalPosts":112}}
+[engineering-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[engineering-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":37,"scheduled":0,"published":0,"total":37,"totalPosts":112}}
+[engineering-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[engineering-proof] Thread Composer lists a draft citing dtu_2ebd32c9048215275bbc
+[engineering-proof] thread screenshot: /Users/dutch/.zuko/lens-northstar/proof/engineering-thread.png
+[engineering-proof] RESULT {"badge":"Real","simulatedChips":0,"startingNodes":0,"coordHeader":"X (in)","storedModel":{"nodes":2,"members":1,"supports":1,"loads":1,"updatedAt":"2026-10-05T19:36:36.243Z"},"modelAfterReload":{"rows":2,"n2x":"10","fixed":true,"members":1,"loadNode":"N2","saveState":"Saved to your account"},"modelAfterRestart":{"rows":2,"n2x":"10","fixed":true,"members":1,"loadNode":"N2","saveState":"Saved to your account"},"jobId":"sim_muvniegu_ccmz2z","maxDisplacement":0.00013881947914931423,"maxUtilization":0.008029950917172722,"allPass":true,"stressHeader":"Stress (psi)","dtuId":"dtu_2ebd32c9048215275bbc","draftId":"th_muvnifcb_69eobd","source":"engineering-lens:fea-report","visibility":"private","draftTitle":"FEA run FEA report","survivedReload":true,"threadHandoff":true}

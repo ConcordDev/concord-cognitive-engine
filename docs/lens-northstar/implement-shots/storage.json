@@ -1,0 +1,65 @@
+{
+  "cookies": [
+    {
+      "name": "concord_auth",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0ZWE4MTI0ZC1hNTc3LTQ5YjMtYjZhNC02Nzk3MDc5MTE3NzYiLCJqdGkiOiI5ODFiM2UwMGRiYThhMGE1NzQ0NjdhMmNkZWQ0YTgyYiIsImlhdCI6MTc5MDk3NzMxMywiZXhwIjoxNzkxNTgyMTEzfQ.llaLwmM3hrYweXpNWAkABdompGwXbP-V9_grGHZXIYc",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1791582113.186718,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "concord_refresh",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0ZWE4MTI0ZC1hNTc3LTQ5YjMtYjZhNC02Nzk3MDc5MTE3NzYiLCJqdGkiOiI5ODAyNmIwZGY0MTBmZWFkNDUxYjUzODA4MTZiNDlmNyIsImZhbWlseSI6ImY5Y2IyYmYyYTQ3NjQ0MDQiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc5MDk3NzMxMywiZXhwIjoxNzkzNTY5MzEzfQ.YZBnInZqCTu8acfraXRBniy62QO3CCl5CbrroBXFCQs",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1793569313.186848,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "csrf_token",
+      "value": "482c6d5aaa2bec9d5a915133ef4f1eb1",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1791582215.810359,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:3000",
+      "localStorage": [
+        {
+          "name": "concord-lens-state",
+          "value": "{\"state\":{\"lensStates\":{\"code\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977318690,\"customState\":{}},\"debug\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977322217,\"customState\":{}},\"database\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977325699,\"customState\":{}},\"repos\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977329182,\"customState\":{}},\"studio\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977333371,\"customState\":{}},\"music\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977337206,\"customState\":{}},\"art\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977341059,\"customState\":{}},\"world\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977396274,\"customState\":{}},\"schema\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977402091,\"customState\":{}},\"entity\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977406484,\"customState\":{}},\"temporal\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977410296,\"customState\":{}},\"eco\":{\"scrollPosition\":0,\"activeTab\":\"overview\",\"filters\":{},\"selectedItems\":[],\"expandedSections\":[],\"formData\":{},\"viewMode\":\"grid\",\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\",\"searchQuery\":\"\",\"lastVisited\":1790977415553,\"customState\":{}}}},\"version\":0}"
+        },
+        {
+          "name": "concord-ui-store",
+          "value": "{\"state\":{\"sidebarCollapsed\":false,\"theme\":\"dark\",\"activeLens\":\"meta\",\"accessibility\":{\"colorblindMode\":\"none\",\"textScale\":1,\"screenReader\":false,\"keyboardNavigation\":false,\"reducedMotion\":false,\"subtitles\":true,\"subtitleFontSize\":16,\"oneHandedMode\":\"off\",\"gameSpeed\":1,\"highContrast\":false}},\"version\":0}"
+        },
+        {
+          "name": "concord_locale",
+          "value": "en"
+        },
+        {
+          "name": "concord_login_ts",
+          "value": "1790977313198"
+        },
+        {
+          "name": "concord_entered",
+          "value": "true"
+        },
+        {
+          "name": "concord_studio_view",
+          "value": "session"
+        }
+      ]
+    }
+  ]
+}
