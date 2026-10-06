@@ -228,6 +228,13 @@ export interface BeamStudyResult {
   warnings: string[];
   utilizationByMember: Array<{ id: string; utilization: number; band?: string }>;
   dtuId?: string | null;
+  analysisReceipt?: {
+    solver: string;
+    inputHash: string;
+    units: string;
+    assumptions: string[];
+    outOfScope: string[];
+  };
 }
 
 /**
@@ -257,6 +264,7 @@ export function studyFromSaved(saved: Record<string, unknown> | null | undefined
     ...sum,
     utilizationByMember: s.utilizationByMember,
     dtuId: s.dtuId ?? null,
+    analysisReceipt: s.analysisReceipt ?? s.summary?.analysisReceipt ?? undefined,
   };
 }
 

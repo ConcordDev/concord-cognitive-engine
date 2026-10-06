@@ -3,7 +3,7 @@
 // to say "FEA agrees with the hand calculation".
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildBeamStudy, summarizeBeamStudy, cleanBeamDims } from "../lib/conkay/beam-study.js";
+import { buildBeamStudy, summarizeBeamStudy, cleanBeamDims, buildAnalysisReceipt, hashBeamStudyInputs, FEA_SOLVER_ID } from "../lib/conkay/beam-study.js";
 import { runFEA } from "../lib/simulation/fea-solver.js";
 
 const DIMS = { length: 1200, height: 300, flangeWidth: 150, flangeThickness: 15, webThickness: 9 };
@@ -48,4 +48,37 @@ test("impossible geometry and missing inputs are refused", () => {
   assert.equal(cleanBeamDims({ ...DIMS, length: -5 }).ok, false);
   assert.equal(buildBeamStudy({ dims: DIMS, material: A992, loadN: 0 }).ok, false);
   assert.equal(buildBeamStudy({ dims: DIMS, material: null, loadN: 10 }).ok, false);
+});
+
+
+test("analysisReceipt is present with solver, units, assumptions, outOfScope", () => {
+  const s = buildBeamStudy({ dims: DIMS, material: A992, support: "simply-supported", loadN: 200000 });
+  const r = s.analysisReceipt;
+  assert.ok(r);
+  assert.equal(r.solver, FEA_SOLVER_ID);
+  assert.match(r.solver, /^fea-solver@/);
+  assert.equal(r.units, "SI");
+  assert.ok(Array.isArray(r.assumptions) && r.assumptions.length >= 3);
+  assert.ok(r.assumptions.some((a) => /Euler/.test(a)));
+  assert.ok(r.assumptions.includes("linear-static"));
+  assert.ok(r.assumptions.includes("small deflection"));
+  assert.ok(Array.isArray(r.outOfScope) && r.outOfScope.includes("shell"));
+  assert.ok(r.outOfScope.includes("buckling_eigen"));
+  assert.ok(r.outOfScope.includes("modal"));
+  assert.ok(r.outOfScope.includes("contact"));
+  assert.ok(r.outOfScope.includes("plasticity"));
+  assert.equal(typeof r.inputHash, "string");
+  assert.equal(r.inputHash.length, 64); // sha256 hex
+  assert.equal(r.inputHash, hashBeamStudyInputs({ dims: DIMS, material: A992, support: "simply-supported", loadN: 200000, segments: s.segments }));
+});
+
+test("analysisReceipt.inputHash changes when span or load changes", () => {
+  const base = buildBeamStudy({ dims: DIMS, material: A992, loadN: 200000 });
+  const longer = buildBeamStudy({ dims: { ...DIMS, length: 2400 }, material: A992, loadN: 200000 });
+  const heavier = buildBeamStudy({ dims: DIMS, material: A992, loadN: 250000 });
+  assert.notEqual(base.analysisReceipt.inputHash, longer.analysisReceipt.inputHash);
+  assert.notEqual(base.analysisReceipt.inputHash, heavier.analysisReceipt.inputHash);
+  // Same inputs → same hash (stable)
+  const again = buildAnalysisReceipt({ dims: DIMS, material: A992, support: "simply-supported", loadN: 200000, segments: base.segments });
+  assert.equal(again.inputHash, base.analysisReceipt.inputHash);
 });
