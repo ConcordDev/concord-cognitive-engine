@@ -148,6 +148,8 @@ jobs:
           # available; allocate 6GB to leave headroom for the OS + npm.
           # Local dev boxes typically have more RAM and don't hit this.
           NODE_OPTIONS: --max-old-space-size=6144
+          # Test-only build: skip copying the LFS Unity player (see scripts/sync-unity-web-to-standalone.mjs).
+          CONCORD_SKIP_UNITY_WEB: '1'
         run: npm run build
 
       - name: Frontend import-smoke net (every module imports without throwing)
