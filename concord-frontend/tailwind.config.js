@@ -15,6 +15,13 @@ module.exports = {
           surface: '#12121a',
           elevated: '#1a1a24',
           border: '#2a2a3a',
+          // Aliases components already use (bg-lattice-bg, border-lattice-edge,
+          // text-lattice-text, bg-lattice-base). Undefined, they rendered as
+          // the browser default — white inputs and invisible typed text.
+          bg: '#0d0d14',
+          base: '#0a0a0f',
+          edge: '#2a2a3a',
+          text: '#e4e4e7',
         },
         neon: {
           blue: '#00d4ff',

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { disconnectSocket } from '@/lib/realtime/socket';
-import { User, LogOut, Settings, Shield, Zap, Users } from 'lucide-react';
+import { User, LogOut, Settings, Shield, Zap, Users, Moon, Sun, Monitor } from 'lucide-react';
+import { useThemeMode } from '@/components/common/ThemeToggle';
 
 const AvatarSwitcher = dynamic(() => import('@/components/concordia/AvatarSwitcher'), { ssr: false });
 
@@ -19,6 +20,8 @@ interface UserMenuProps {
 export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: UserMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { theme, setTheme } = useThemeMode();
+  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
   const [showAvatarSwitcher, setShowAvatarSwitcher] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -112,6 +115,16 @@ export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: 
               </span>
             </button>
           )}
+          {/* Phones drop the top-bar theme toggle for room; it lives here. */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')}
+            className="sm:hidden w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-lattice-elevated transition-colors"
+            role="menuitem"
+          >
+            <ThemeIcon className="w-4 h-4" />
+            Theme
+            <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-lattice-elevated text-gray-400 capitalize">{theme}</span>
+          </button>
           <div className="border-t border-lattice-border" />
           <button
             onClick={() => setShowAvatarSwitcher((v) => !v)}
