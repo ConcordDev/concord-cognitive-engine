@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "anitya": {
+      "type": "http",
+      "url": "https://ais.anitya.space/mcp"
+    }
+  }
+}

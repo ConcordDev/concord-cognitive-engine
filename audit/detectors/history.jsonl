@@ -1,1 +1,3 @@
 {"generatedAt":"2026-05-08T21:00:51.878Z","totals":{"critical":0,"high":24,"medium":562,"low":248,"info":459,"total":1293},"detectorCount":8,"durationMs":27235,"gitSha":null,"deltaVsBaseline":{"added":0,"removed":0}}
+{"generatedAt":"2026-10-03T13:33:52.066Z","totals":{"critical":0,"high":27,"medium":106,"low":211,"info":364,"total":708},"detectorCount":52,"durationMs":263103,"gitSha":null,"deltaVsBaseline":{"added":173,"removed":252}}
+{"generatedAt":"2026-10-04T02:57:55.071Z","totals":{"critical":0,"high":27,"medium":110,"low":325,"info":364,"total":826},"detectorCount":52,"durationMs":278819,"gitSha":null,"deltaVsBaseline":{"added":173,"removed":252}}

@@ -52,9 +52,11 @@ MonoBehaviour:
   - Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
   - Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
   - Assets/Concordia/FreePacks/Kenney/platformer/chest.glb
+  - Assets/Concordia/FreePacks/Kenney/platformer/crate.glb
   - Assets/Concordia/FreePacks/Kenney/platformer/grass.glb
   - Assets/Concordia/FreePacks/Kenney/platformer/platform.glb
   - Assets/Concordia/FreePacks/Kenney/td/detail-crystal-large.glb
+  - Assets/Concordia/FreePacks/Kenney/td/tile-crystal.glb
   - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_rock.glb
   - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_large_stone.glb
   - Assets/Concordia/FreePacks/Kenney/web-seed/cliff_stone.glb
@@ -246,6 +248,7 @@ MonoBehaviour:
   - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_color.tga
   - Assets/Concordia/Generated/Rig/MaleTextures/m002_head_normal.tga
   - Assets/Concordia/Generated/Rig/MaleTextures/m002_opacity_color.tga
+  - Assets/Concordia/Materials/Masters/Concordia_Master_WaterPuddle.mat
   - Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx
   - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Female_Adult_04.fbx
   - Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Textures/f004_head_color.tga
@@ -318,6 +321,9 @@ MonoBehaviour:
   - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_arm_2k.jpg
   - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_diffuse_2k.jpg
   - Assets/Concordia/PolyHaven/Textures/stone_tiles/stone_tiles_nor_gl_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_arm_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_diffuse_2k.jpg
+  - Assets/Concordia/PolyHaven/Textures/wood_cabinet_worn_long/wood_cabinet_worn_long_nor_gl_2k.jpg
   objects:
   - {fileID: 1927372005322154, guid: 39de80c7e7a1a2942820576875608e5d, type: 3}
   - {fileID: 9100000, guid: 00780c15feb9347c0b12adb486f44aa8, type: 2}
@@ -357,9 +363,11 @@ MonoBehaviour:
   - {fileID: 210628387231844212, guid: f6c4ce6376da44cd7aec176c62ac500d, type: 3}
   - {fileID: 129548133899243081, guid: 72fc9c0ab1f8f4980ab33a4bf37e8d70, type: 3}
   - {fileID: -6399387781660903837, guid: e92d119dd4f7c4b2b95cc7bdb4034c77, type: 3}
+  - {fileID: -8141139907493406054, guid: 48cc70fdfd37e4851b453ca382a954a7, type: 3}
   - {fileID: 981149235833453620, guid: ca95b44d372eb4451927c6f1f654ddf7, type: 3}
   - {fileID: 2381477341941465193, guid: f21412049731a4396a2bac80fe1e7e50, type: 3}
   - {fileID: 1629188451866202578, guid: 4710770bc082a4ceeba54cd6ce6b6617, type: 3}
+  - {fileID: 4518530492764226124, guid: ce4f7b83ebcfd4717bf170e3f4e9b97a, type: 3}
   - {fileID: 5050727109317231218, guid: 2901107f1a2a14978825ddd436eb4630, type: 3}
   - {fileID: 7924588320403673470, guid: 497c7163d65404cd7bb7e45790a34527, type: 3}
   - {fileID: -3532845048511120021, guid: 06e25b3c848d74e44865099e1c029878, type: 3}
@@ -549,6 +557,7 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 03a64d931f247488395c67b17e1c977b, type: 3}
   - {fileID: 2800000, guid: bd5d5610838f0488fae91fb674dbd1b9, type: 3}
   - {fileID: 2800000, guid: 19f8fd0527a9d47079595f9d5b0a460e, type: 3}
+  - {fileID: 2100000, guid: 3f2f315769d6b4d9b95f0e0bf0fa28cd, type: 2}
   - {fileID: 919132149155446097, guid: 8aa1e7d265a9a4f2984cc85a5268239f, type: 3}
   - {fileID: 919132149155446097, guid: 9b41f9ab0644946cd80de6847f700a5c, type: 3}
   - {fileID: 2800000, guid: c9b17b7bcdb9c4cc1a343f8c1a0749d2, type: 3}
@@ -621,6 +630,9 @@ MonoBehaviour:
   - {fileID: 2800000, guid: fbeac33db384145559c4f1b6162a68a9, type: 3}
   - {fileID: 2800000, guid: 77638f724285641e9b82bb3dd2ee3434, type: 3}
   - {fileID: 2800000, guid: 455fbf3361a6d499da103d38ba38e15a, type: 3}
+  - {fileID: 2800000, guid: 57c49039e55f847388a20728ad5ef8ba, type: 3}
+  - {fileID: 2800000, guid: d3446d853df8b42ea8b53689716729d9, type: 3}
+  - {fileID: 2800000, guid: bba08f6aea5574d76b8b7f02a7e21122, type: 3}
   keys:
   - freepacks:altar-stone
   - freepacks:antique_estoc_1k
@@ -644,6 +656,7 @@ MonoBehaviour:
   - freepacks:concordia_real_forge
   - freepacks:concordia_real_industrial_hangar
   - freepacks:concordia_real_oak
+  - freepacks:crate
   - freepacks:crops_dirtrow
   - freepacks:crypt-small
   - freepacks:cx_weapon_hatchet
@@ -676,6 +689,7 @@ MonoBehaviour:
   - freepacks:staff
   - freepacks:statue_column
   - freepacks:statue_head
+  - freepacks:tile-crystal
   - freepacks:tower-hexagon-mid
   - freepacks:tower-square-base
   - freepacks:wand
@@ -723,6 +737,7 @@ MonoBehaviour:
   - Assets/Concordia/Generated/RealWorld/Concordia_Real_Forge.prefab
   - Assets/Concordia/Generated/RealWorld/Concordia_Real_Industrial_Hangar.prefab
   - Assets/Concordia/Generated/RealWorld/Concordia_Real_Oak.prefab
+  - Assets/Concordia/FreePacks/Kenney/platformer/crate.glb
   - Assets/Concordia/FreePacks/Kenney/nature/crops_dirtRow.glb
   - Assets/Concordia/FreePacks/Kenney/graveyard/crypt-small.glb
   - Assets/Concordia/Generated/Prefabs/P0/Weapons/CX_Weapon_Hatchet.prefab
@@ -757,6 +772,7 @@ MonoBehaviour:
   - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/staff.gltf
   - Assets/Concordia/FreePacks/Kenney/nature/statue_column.glb
   - Assets/Concordia/FreePacks/Kenney/nature/statue_head.glb
+  - Assets/Concordia/FreePacks/Kenney/td/tile-crystal.glb
   - Assets/Concordia/FreePacks/Kenney/castle/tower-hexagon-mid.glb
   - Assets/Concordia/FreePacks/Kenney/castle/tower-square-base.glb
   - Assets/Concordia/FreePacks/Kaykit/adventures/gltf/wand.gltf
