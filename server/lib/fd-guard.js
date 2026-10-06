@@ -10,7 +10,8 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import logger from './logger.js';
+import { log } from '../logger.js';
+const logger = (level, event, meta) => log(level, 'fd-guard', event, meta);
 
 const TARGET_FDS = Number(process.env.CONCORD_FD_LIMIT) || 65535;
 const WARN_BELOW = 16384;
