@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Bookmark, Hash, PenLine } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -130,12 +131,12 @@ export function PostKeepMenu({ post, viewerId }: { post: KeepPost; viewerId: str
         <p className="px-4 py-2 text-xs text-gray-300 border-t border-gray-700" role="status">{note}</p>
       )}
       {threadDraftId && (
-        <a
+        <Link
           href="/lenses/thread"
           className="block px-4 py-2 text-xs text-gray-200 underline border-t border-gray-700"
         >
           Open Thread draft {threadDraftId}
-        </a>
+        </Link>
       )}
     </div>
   );

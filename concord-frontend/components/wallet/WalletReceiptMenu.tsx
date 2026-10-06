@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -103,9 +104,9 @@ export function WalletReceiptMenu({ receipt }: { receipt: LedgerReceipt }) {
           </button>
         )}
         {financeId && (
-          <a href="/lenses/finance" className="text-[11px] text-gray-300 hover:underline">
+          <Link href="/lenses/finance" className="text-[11px] text-gray-300 hover:underline">
             Open Finance receipt {financeId}
-          </a>
+          </Link>
         )}
       </div>
       {note && <p className="text-[11px] text-gray-300" role="status">{note}</p>}
