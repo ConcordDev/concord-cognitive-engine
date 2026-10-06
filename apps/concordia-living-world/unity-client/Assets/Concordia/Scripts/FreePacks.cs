@@ -345,7 +345,20 @@ namespace Concordia
 
         public static T Load<T>(string path) where T : Object => BuildAssets.Load<T>(path);
 
+        /// Every pack spawn goes through here. Spawns that hold the frame over
+        /// 50 ms are logged with their stem ([SpawnCost]) — the heaviest
+        /// first-time loads are what stall the Hub's staged build on WebGL.
         public static GameObject Spawn(string stem, Transform parent, Vector3 pos, float yawDeg = 0, float maxDim = 0, bool required = false, bool byHeight = true)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var go = SpawnCore(stem, parent, pos, yawDeg, maxDim, required, byHeight);
+            sw.Stop();
+            if (sw.ElapsedMilliseconds > 50)
+                Debug.Log($"[SpawnCost] {stem} held the frame {sw.ElapsedMilliseconds} ms");
+            return go;
+        }
+
+        static GameObject SpawnCore(string stem, Transform parent, Vector3 pos, float yawDeg, float maxDim, bool required, bool byHeight)
         {
             var prefab = Mesh(stem);
             GameObject go;
@@ -902,6 +915,26 @@ namespace Concordia
             return ApplySkin(dst,
                 BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_color"),
                 BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_normal"));
+        }
+
+        /// Bind the Rocketbox maps for a material NAME (e.g. "m002_body") onto dst —
+        /// editor: global exact-name search; builds: the BuildAssets registry.
+        /// For bodies whose slots no longer carry the Rocketbox material names.
+        public static bool SkinByName(Material dst, string matName)
+        {
+            if (dst == null || string.IsNullOrEmpty(matName)) return false;
+#if UNITY_EDITOR
+            Texture2D Load(string wanted)
+            {
+                var p = FindSkinPath(wanted);
+                return p != null ? RecordSkin(wanted, AssetDatabase.LoadAssetAtPath<Texture2D>(p)) : null;
+            }
+            return ApplySkin(dst, Load(matName + "_color"), Load(matName + "_normal"));
+#else
+            return ApplySkin(dst,
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_color"),
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_normal"));
+#endif
         }
 
         static bool ApplySkin(Material dst, Texture2D color, Texture2D nrm)
