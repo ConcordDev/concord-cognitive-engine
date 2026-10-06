@@ -110,7 +110,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
                 className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
                   active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
                 <Icon className="h-3.5 w-3.5" /> {t.label}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 md:inline-block">{t.hint}</kbd>
+                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 md:inline-block">{t.hint}</kbd>
               </button>
             );
           })}

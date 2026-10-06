@@ -150,7 +150,7 @@ describe('/lenses/quests — completed tab (quests.completed macro)', () => {
     expect(await screen.findByText('Clear the Wolves')).toBeInTheDocument();
     expect(screen.queryByText('Herbalist Errand')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'completed' }));
+    fireEvent.click(screen.getByRole('button', { name: /^completed \(\d+\)$/i }));
     expect(await screen.findByText('Herbalist Errand')).toBeInTheDocument();
     expect(screen.queryByText('Clear the Wolves')).not.toBeInTheDocument();
   });
@@ -158,7 +158,7 @@ describe('/lenses/quests — completed tab (quests.completed macro)', () => {
   it('a completed-but-unclaimed quest shows a Claim button that calls quests.claimRewards', async () => {
     mockMineAndCompleted([], [COMPLETED_QUEST]);
     render(<QuestsLensPage />);
-    fireEvent.click(await screen.findByRole('tab', { name: 'completed' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^completed \(\d+\)$/i }));
 
     const claimBtn = await screen.findByLabelText('Claim rewards for Herbalist Errand');
     lensRun.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, rewards: [{ type: 'gold', amount: 50 }] }, error: null } });
@@ -174,7 +174,7 @@ describe('/lenses/quests — completed tab (quests.completed macro)', () => {
   it('a rewarded quest shows a Claimed badge, not a Claim button', async () => {
     mockMineAndCompleted([], [{ ...COMPLETED_QUEST, status: 'rewarded' }]);
     render(<QuestsLensPage />);
-    fireEvent.click(await screen.findByRole('tab', { name: 'completed' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^completed \(\d+\)$/i }));
 
     expect(await screen.findByText('Claimed')).toBeInTheDocument();
     expect(screen.queryByLabelText('Claim rewards for Herbalist Errand')).not.toBeInTheDocument();

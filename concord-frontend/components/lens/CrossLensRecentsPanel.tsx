@@ -98,7 +98,7 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
           onClick={() => void fetchData()}
           disabled={loading}
           className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
-          aria-label="Refresh"
+          aria-label="Refresh items from other lenses"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>

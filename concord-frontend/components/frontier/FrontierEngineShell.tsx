@@ -161,7 +161,7 @@ export function FrontierEngineTabs({
               />
             )}
             {key && (
-              <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{key}</kbd>
+              <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{key}</kbd>
             )}
           </button>
         );

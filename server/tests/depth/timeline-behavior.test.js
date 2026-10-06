@@ -14,6 +14,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { sendFriendRequest, acceptFriendRequest } from "../../lib/friendships.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Temporal-analysis CALCS — exact computed values (CPM, Gantt, clustering, trend)
@@ -341,6 +342,10 @@ describe("timeline — feed privacy visibility", () => {
     const fp = await lensRun("timeline", "post-create", { params: { content: "friends only", privacy: "friends" } }, author);
     const fpId = fp.result.post.id;
     const authorId = author.actor.userId;
+    // feed-list checks the server-side friend graph; a client-sent friendIds
+    // list only narrows it. Make the friendship real first.
+    const req = sendFriendRequest(friend.db, authorId, friend.actor.userId);
+    assert.equal(acceptFriendRequest(friend.db, req.id, friend.actor.userId).ok, true);
     const seen = await lensRun("timeline", "feed-list", { params: { friendIds: [authorId] } }, friend);
     assert.ok(seen.result.posts.some((p) => p.id === fpId), "friend should see a friends-scoped post");
     const unseen = await lensRun("timeline", "feed-list", {}, stranger);

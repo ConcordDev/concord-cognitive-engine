@@ -32,6 +32,10 @@ const refetch = vi.fn();
 const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
 const useRunArtifactSpy = vi.fn();
 
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useRealtimeLens', () => ({
+  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
+}));
 vi.mock('@/lib/hooks/use-lens-data', () => ({
   useLensData: () => ({
     items: lensDataState.items,

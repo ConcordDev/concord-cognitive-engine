@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';

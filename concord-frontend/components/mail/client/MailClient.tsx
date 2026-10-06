@@ -415,7 +415,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
           <input ref={searchRef} aria-label="Search mail" value={searchDraft} onChange={(e) => setSearchDraft(e.target.value)}
             placeholder="Search mail — from:ana has:attachment after:2026/01/01" className="min-w-0 flex-1 bg-transparent text-[14px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none" />
           {query && <button type="button" aria-label="Clear search" onClick={() => { setSearchDraft(''); setQuery(''); }} className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>}
-          <kbd className="hidden rounded border border-white/10 px-1.5 text-[10px] text-zinc-500 sm:inline">/</kbd>
+          <kbd aria-hidden="true" className="hidden rounded border border-white/10 px-1.5 text-[10px] text-zinc-500 sm:inline">/</kbd>
         </form>
       )}
       <div className="grid min-h-[34rem] gap-3 md:grid-cols-[13rem_minmax(0,1fr)]" style={{ height: 'calc(100vh - 17rem)' }}>

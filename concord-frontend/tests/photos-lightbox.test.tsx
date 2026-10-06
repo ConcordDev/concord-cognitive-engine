@@ -14,6 +14,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act, fireEvent, waitFor, within } from '@testing-library/react';
 
 const addToastMock = vi.fn();
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/store/ui', () => ({
   useUIStore: (selector: (s: { addToast: typeof addToastMock }) => unknown) =>
     selector({ addToast: addToastMock }),
