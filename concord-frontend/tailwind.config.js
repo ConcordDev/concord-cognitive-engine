@@ -115,10 +115,15 @@ module.exports = {
       },
       animation: {
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+        'conkay-indeterminate': 'conkay-indeterminate 1.2s ease-in-out infinite',
         'resonance-wave': 'resonance-wave 3s ease-in-out infinite',
         'sovereignty-lock': 'sovereignty-lock 0.3s ease-out',
       },
       keyframes: {
+        'conkay-indeterminate': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
         'glow-pulse': {
           '0%, 100%': { boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)' },
           '50%': { boxShadow: '0 0 40px rgba(0, 212, 255, 0.6)' },

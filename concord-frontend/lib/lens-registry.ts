@@ -2266,6 +2266,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['power', 'solar', 'wind', 'electricity', 'grid'],
   },
   {
+    id: 'conkay',
+    name: 'ConKay workspace',
+    icon: Bot,
+    description: 'ConKay engineering workspace: parametric models, FEA, voice',
+    category: 'core',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/conkay',
+    order: 2,
+    keywords: ['conkay', 'kay', 'assistant', 'cad', 'fea', 'beam', 'structural', 'voice', 'workspace'],
+  },
+  {
     id: 'engineering',
     name: 'Engineering',
     icon: Cog,

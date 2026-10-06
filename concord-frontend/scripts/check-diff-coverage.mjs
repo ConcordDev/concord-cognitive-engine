@@ -42,6 +42,10 @@ const SKIP = [
   // AR scene authoring studio — mounts an @react-three/fiber <Canvas> as its
   // 3D preview viewport (same rationale as the two exclusions above).
   /(^|\/)ar\/SceneStudio\.tsx$/,
+  // ConKay workspace's 3-D beam view — an @react-three/fiber <Canvas> (same
+  // rationale). Its colour ramp and view options live in lib/conkay/beam-view.ts
+  // and are unit tested there.
+  /(^|\/)conkay\/workspace\/BeamViewport\.tsx$/,
   // The world lens's top-level surface (owner-approved 2026-09-30): it hosts
   // the three.js DistrictViewport and composes the world-lens/ components
   // excluded above, plus the live world socket loop. Its render path is that

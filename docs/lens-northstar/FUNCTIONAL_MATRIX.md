@@ -4,6 +4,29 @@ One row per lens this pass has actually exercised. Status is never COMPLETE from
 
 The signed-in clicks below used the production controls in a Vite harness, proxied to this repo's API. They were not clicks on the Next `/lenses/...` route. Those routes mount the same controls. Chat through Mail used port 3013 and API 5062. Calendar used port 3014 and API 5074. Marketplace used port 3015 and API 5076.
 
+## ConKay — workspace (2026-10-06, browser on the Next route)
+
+Concept `477-conkay-northstar-concept.png`; built `478-conkay-current.png` (desktop) and `479-conkay-current-phone.png` (images to be added over LFS from a machine with LFS push access — the cloud session that built this could not upload LFS objects). Clicked on `/lenses/conkay` in Next dev (port 3000) against `server.js` (port 5050), signed in, desktop 1280×800 and phone 390×844. No LLM was available.
+
+Architecture: ConKay is its own lens. Chat's ConKay mode, `/mode conkay`, `?mode=conkay`, the ⌘J overlay's Workspace button, the command palette, DTU detail "Open in ConKay" and the Engineering FEA receipt all open this workspace (`?ask=` / `?dtu=`). The in-chat copy of ConKay was removed.
+
+| Area | What was checked | Result |
+|---|---|---|
+| Study solve | "Reduce web thickness to 8.0 mm and re-run the FEA. Keep flanges at 15.0 mm." | `engineering.beamStudy` solved: 86.1 MPa, 0.344 mm, 24.9% of A992 yield; hand check (PL/4·c/I, PL³/48EI) agrees. Restated t_f not reported as a change. |
+| Overload | "cantilever with 150 kN in A36" | 258.2 MPa, 103.3% — "Exceeds yield … does not carry the load". Viewport shows red at the fixed end. |
+| Honesty | Before a solve, after an edit | Cards say "Not solved yet" / "Inputs changed" and hide every number; stress colours turn off. No confidence %, no badge without a solve. |
+| Parameter sweep | Sweep chip | `engineering.beamSweep` solved t_w 5–11 mm in 48 ms, names the lightest passing section, states shear/buckling are not checked; "Use t_w = …" applies and re-solves. |
+| Keep as DTU | Card and chat | `dtu.create` → `dtu.get` read-back → `engineering.beamStudy-keep`; card shows the DTU id. Read-back failure is reported as not kept. |
+| Save model | "save model" | `engineering.savePart` (i-beam, metres); listed under Models with mass, "Open" loads it. |
+| Rail | Projects, Models, Simulations, Data Vault, Library, Workspaces | Each reads its store; empty stores say so. New workspace (agent project) opens with its own study and conversation. |
+| Handoffs | `?dtu=` kept study, `?ask=`, Chat menu draft, ⌘J Workspace | Kept study reloads its exact inputs (results hidden until re-solved); `?ask=` edits and solves; draft carried. |
+| Persistence | Reload | Study (`beamStudy-get`) and conversation (`engineering.workspaceLog-*`) reopen; Clear empties the stored log. |
+| Agent | Free-form question | Routed to `/api/chat-agent/stream` with the study as context; offline it says the language model is unreachable and that edits/FEA still work. |
+| Security | `agent_projects.*` | Fixed: every macro took `input.userId` before the session user — any user could list or create projects as another. |
+| Phone | Tabs Model / ConKay / Browse | Parameters start collapsed; no horizontal scroll. |
+
+Not proven here: a streamed LLM reply and live speech recognition (no model or microphone in this environment).
+
 ## Chat — concept pass 2 (2026-10-06, browser on the Next route)
 
 Clicked on `/lenses/chat` in Next dev (port 3000) against `server.js` (port 5050), signed in, desktop 1280×800 and phone 390×844. No LLM was available, so replies were the offline stored-knowledge path.

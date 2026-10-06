@@ -44,6 +44,7 @@ if (!Element.prototype.scrollIntoView) {
 const nav = vi.hoisted(() => ({ pathname: '/lenses/creatures' }));
 vi.mock('next/navigation', () => ({
   usePathname: () => nav.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
 /** Open the overlay the way the lens toolbar / widget / palette do. */

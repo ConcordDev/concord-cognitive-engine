@@ -58,6 +58,60 @@ describe("engineering — beamStudy", () => {
     assert.equal(after.result.study.dtuId, "dtu_kept_1");
   });
 
+  it("each ConKay workspace keeps its own study", async () => {
+    await lensRun("engineering", "beamStudy", {
+      params: { dims: { ...DIMS, length: 3000 }, support: "cantilever", loadN: 5000, name: "Arm", workspaceId: "ws_arm" },
+    }, ctx);
+    const arm = await lensRun("engineering", "beamStudy-get", { params: { workspaceId: "ws_arm" } }, ctx);
+    assert.equal(arm.result.study.name, "Arm");
+    assert.equal(arm.result.study.workspaceId, "ws_arm");
+    const frame = await lensRun("engineering", "beamStudy-get", { params: { workspaceId: "ws_frame" } }, ctx);
+    assert.equal(frame.result.study, null);
+    const theirs = await lensRun("engineering", "beamStudy-get", { params: { workspaceId: "ws_arm" } }, other);
+    assert.equal(theirs.result.study, null);
+    const def = await lensRun("engineering", "beamStudy-get", { params: {} }, ctx);
+    assert.notEqual(def.result.study.name, "Arm");
+  });
+
+  it("beamSweep solves each web thickness and names the lightest passing one", async () => {
+    const before = await lensRun("engineering", "beamStudy-get", { params: {} }, ctx);
+    const r = await lensRun("engineering", "beamSweep", {
+      params: { dims: DIMS, material: "steel-a36", support: "cantilever", loadN: 150000, param: "webThickness", values: [6, 8, 10, 12] },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rows.length, 4);
+    // Thicker web → larger I → lower stress, strictly.
+    const stresses = r.result.rows.map((row) => row.maxStressMPa);
+    for (let i = 1; i < stresses.length; i++) assert.ok(stresses[i] < stresses[i - 1]);
+    assert.ok(r.result.rows.every((row) => row.handCheckAgrees));
+    const passing = r.result.rows.filter((row) => row.pass).map((row) => row.value);
+    assert.equal(r.result.lightestPassing, passing.length ? Math.min(...passing) : null);
+    const after = await lensRun("engineering", "beamStudy-get", { params: {} }, ctx);
+    assert.equal(after.result.study.jobId, before.result.study.jobId);
+    const bad = await lensRun("engineering", "beamSweep", { params: { dims: DIMS, param: "colour", values: [1, 2] } }, ctx);
+    assert.equal(bad.ok === false || bad.result?.ok === false, true);
+  });
+
+  it("the workspace conversation is append-only, deduplicated, per user and per workspace", async () => {
+    const msgs = [
+      { id: "m1", role: "user", text: "t_w = 8", at: "2026-10-06T10:00:00.000Z" },
+      { id: "m2", role: "assistant", text: "FEA complete.", chips: [{ kind: "review", label: "Review stress" }] },
+      { id: "m3", role: "system", text: "ignored role" },
+    ];
+    const a = await lensRun("engineering", "workspaceLog-append", { params: { workspaceId: "ws_log", messages: msgs } }, ctx);
+    assert.equal(a.result.count, 2);
+    await lensRun("engineering", "workspaceLog-append", { params: { workspaceId: "ws_log", messages: [msgs[0]] } }, ctx);
+    const got = await lensRun("engineering", "workspaceLog-get", { params: { workspaceId: "ws_log" } }, ctx);
+    assert.deepEqual(got.result.messages.map((m) => m.id), ["m1", "m2"]);
+    assert.equal(got.result.messages[1].chips[0].label, "Review stress");
+    const elsewhere = await lensRun("engineering", "workspaceLog-get", { params: { workspaceId: "ws_other" } }, ctx);
+    assert.deepEqual(elsewhere.result.messages, []);
+    const theirs = await lensRun("engineering", "workspaceLog-get", { params: { workspaceId: "ws_log" } }, other);
+    assert.deepEqual(theirs.result.messages, []);
+    const cleared = await lensRun("engineering", "workspaceLog-clear", { params: { workspaceId: "ws_log" } }, ctx);
+    assert.equal(cleared.result.cleared, 2);
+  });
+
   it("an overloaded cantilever fails the check instead of reporting a pass", async () => {
     const r = await lensRun("engineering", "beamStudy", {
       params: { dims: DIMS, material: "steel-a36", support: "cantilever", loadN: 300000 },

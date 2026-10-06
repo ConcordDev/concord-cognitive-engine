@@ -189,7 +189,9 @@ describe('getLensesMissingMacro', () => {
   // 'frontier' is ten independent compute engines with no single list/get/run
   // convention — same posture as ops-telemetry/concord-link-frontier, per its
   // own manifest.ts comment (macros: {} by design, not an oversight).
-  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry', 'frontier', 'concord-link-frontier', 'plugins'];
+  // 'conkay' is the ConKay workspace: it drives engineering.beamStudy/
+  // beamSweep and the agent stream directly, with no lens.conkay.* CRUD.
+  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry', 'frontier', 'concord-link-frontier', 'plugins', 'conkay'];
 
   it('returns only REST-dashboard lenses for the list macro (others all have list)', () => {
     const missing = getLensesMissingMacro('list');

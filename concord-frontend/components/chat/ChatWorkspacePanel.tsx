@@ -3,7 +3,7 @@
 /**
  * ChatWorkspacePanel — conversation canvas for the chat lens.
  *
- * Owns thread state, composer, ConKay mode, and ONE `overlay` union for
+ * Owns thread state, composer, and ONE `overlay` union for
  * secondary panels (projects / prompts / tools / search / studio / …).
  * Page.tsx is the thin shell that owns the ONE view-state machine (`active`).
  */
@@ -66,26 +66,10 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
-import { ConKayBackdrop } from '@/components/conkay/ConKayBackdrop';
-import { ConKayHud } from '@/components/conkay/ConKayHud';
+// ConKay is its own lens (/lenses/conkay); choosing it here routes there.
+import { useRouter } from 'next/navigation';
+import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import { SessionContextBadge } from '@/components/conkay/SessionContextBadge';
-import { ConKayMessage } from '@/components/conkay/ConKayViz';
-import { useConKayVoice } from '@/components/conkay/useConKayVoice';
-import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
-import { matchConKaySkill, type ConKaySkill } from '@/components/conkay/conkay-skills';
-// Unit A5-backport — the SAME cockpit machinery the global ConKayOverlay uses
-// (docs/NEXT_ARC_PLAN.md Track A), reused (not forked) so `/mode conkay`
-// inside the chat lens reaches feature parity with the summonable overlay:
-// the pre-execution confirm gate, the artifact→3D pipeline, and the F1
-// cockpit's panel lanes (macro library / provenance / forward-sim / artifact
-// viewer / orchestration trace / telemetry / connector status).
-import { ConKayActionConfirm } from '@/components/conkay/ConKayActionConfirm';
-import { ConKayCockpit } from '@/components/conkay/ConKayCockpit';
-import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
-import { detectArtifact } from '@/lib/conkay/artifact-kinds';
-import { useConkayHudStore, feaResultFromRun } from '@/components/conkay/conkayHudStore';
-import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import { formatBytes } from '@/lib/utils';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -270,34 +254,6 @@ interface SlashCommand {
 // ──────────────────────────────────────────────
 
 
-function newConKayRunId(): string {
-  return `ck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/** Parse the explicit "run <domain>.<macro> [{json}]" command chat's ConKay
- *  mode supports — the same client-initiated syntax ConKayOverlay accepts
- *  (minus the bare-macro/current-lens shorthand, which has no meaning inside
- *  the chat lens itself: there is no "lens being operated," so the domain is
- *  always required explicitly). Returns null when the text doesn't match. */
-function parseConKayRunCommand(
-  text: string
-): { domain: string; macro: string; input: Record<string, unknown> } | null {
-  const m = text.trim().match(/^run\s+([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\s*(\{[\s\S]*\})?$/i);
-  if (!m) return null;
-  let input: Record<string, unknown> = {};
-  if (m[3]) {
-    try {
-      const parsed = JSON.parse(m[3]);
-      if (parsed && typeof parsed === 'object') input = parsed as Record<string, unknown>;
-    } catch {
-      // leave input empty — an honest "couldn't parse" is surfaced by the
-      // resulting macro call failing validation server-side, not silently
-      // guessed at here.
-    }
-  }
-  return { domain: m[1], macro: m[2], input };
-}
-
 // ──────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────
@@ -329,31 +285,16 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     loadSessionId()
   );
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
-  const isConKay = aiMode.id === 'conkay';
-  const [conkayMuted, setConkayMuted] = useState(false);
-  // Ambient "acting" flare + a "skill is running" flag (drives the processing state).
-  const [conkayActing, setConkayActing] = useState(false);
-  const [conkaySkillRunning, setConkaySkillRunning] = useState(false);
-  const conkayBottomRef = useRef<HTMLDivElement>(null);
-  // Unit A5-backport — the correlation id of the macro run currently in
-  // flight (mirrors ConKayOverlay's `liveRunRef`), and the pre-execution
-  // confirm gate for a CLIENT-INITIATED mutating macro call typed as
-  // "run domain.macro {json}". `pendingConfirmResolveRef` is the in-flight
-  // promise's resolver — never a fabricated auto-approve; only
-  // `resolveConkayPendingConfirm` (wired to the real Confirm/Cancel buttons
-  // on <ConKayActionConfirm>) settles it.
-  const conkayLiveRunRef = useRef<string | null>(null);
-  const [conkayPendingConfirm, setConkayPendingConfirm] = useState<{
-    domain: string;
-    macro: string;
-    input: Record<string, unknown>;
-  } | null>(null);
-  const conkayPendingConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
-  // True while a "run domain.macro" call (including its confirm wait) is
-  // in flight — feeds the same `conkayState` processing signal skills use,
-  // so the HUD/backdrop honestly reflect a run-command the same way they
-  // reflect a skill run (no separate, lesser "processing" state for this path).
-  const [conkayMacroRunning, setConkayMacroRunning] = useState(false);
+  const router = useRouter();
+  // ConKay is its own lens: choosing it here opens /lenses/conkay (carrying
+  // the draft, if any) instead of running a second ConKay inside Chat.
+  const selectAiMode = useCallback((mode: AIMode, carryDraft = true) => {
+    if (mode.id === 'conkay') {
+      router.push(conkayWorkspaceHref({ ask: carryDraft ? input : undefined }));
+      return;
+    }
+    setAiMode(mode);
+  }, [input, router]);
   const [modeSelectOpen, setModeSelectOpen] = useState(false);
   // ONE overlay primitive — kills the showX modal soup (playbook §2).
   type ChatOverlay =
@@ -555,16 +496,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   // Consume ?mode=<id> from the URL on mount — this is how ConKay becomes a
   // "hidden staple" summonable from anywhere (command palette "Summon Kay",
-  // deep links). /lenses/chat?mode=conkay drops you straight into ConKay mode.
+  // deep links). /lenses/chat?mode=conkay now opens ConKay's own workspace.
   useEffect(() => {
     try {
       const m = new URLSearchParams(window.location.search).get('mode');
+      if (m === 'conkay') { router.replace(conkayWorkspaceHref()); return; }
       if (m) {
         const found = AI_MODES.find((x) => x.id === m);
         if (found) setAiMode(found);
       }
     } catch { /* SSR / no window */ }
-  }, []);
+  }, [router]);
 
   // New state — Wired orphan components
 
@@ -586,6 +528,20 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // Parity vs Claude Projects + ChatGPT Projects + Perplexity Spaces +
   // ChatGPT scheduled-tasks. State management mirrors systemsPanelOpen.
   const [activeProject, setActiveProject] = useState<ChatProject | null>(null);
+  // /lenses/chat?project=<id> (e.g. from ConKay's Projects list) opens Chat
+  // with that project active — looked up in the user's own projects, so an
+  // unknown or foreign id changes nothing.
+  useEffect(() => {
+    let id: string | null = null;
+    try { id = new URLSearchParams(window.location.search).get('project'); } catch { /* SSR */ }
+    if (!id) return;
+    let live = true;
+    void lensRun<{ projects: ChatProject[] }>('chat', 'projects-list', {}).then((r) => {
+      const found = r.data?.result?.projects?.find((p) => p.id === id);
+      if (live && found) setActiveProject(found);
+    });
+    return () => { live = false; };
+  }, []);
 
   // ChatGPT-parity studio — voice / custom GPTs / canvas / memory /
   // code interpreter / share links / image generation. One slide-over,
@@ -966,6 +922,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 m.id.toLowerCase() === arg.toLowerCase() ||
                 m.name.toLowerCase() === arg.toLowerCase()
             );
+            if (mode?.id === 'conkay') {
+              selectAiMode(mode, false);
+              break;
+            }
             if (mode) {
               setAiMode(mode);
               const sysMsg: Message = {
@@ -1205,11 +1165,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           signal: abortController.signal,
           body: JSON.stringify({
             message: messageContent,
-            // ConKay presents as its own mode but rides the citation-oriented
-            // "research" backend path + its persona prompt (archives + research).
-            mode: isConKay ? 'research' : aiMode.id,
+            mode: aiMode.id,
             sessionId: activeSessionId,
-            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
+            ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
         });
@@ -1296,11 +1254,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           '/api/chat',
           {
             message: messageContent,
-            // ConKay presents as its own mode but rides the citation-oriented
-            // "research" backend path + its persona prompt (archives + research).
-            mode: isConKay ? 'research' : aiMode.id,
+            mode: aiMode.id,
             sessionId: activeSessionId,
-            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
+            ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           },
           { signal: fbController.signal }
@@ -1339,7 +1295,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
-        // Which brain/source produced this (ConKay surfaces it when present).
+        // Which brain/source produced this.
         model: (typeof data.brain === 'string' && data.brain)
           || (typeof data.source === 'string' && data.source)
           || (typeof data.model === 'string' && data.model)
@@ -1680,262 +1636,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     });
   }, []);
 
-  // ── ConKay honest event spine (Unit A5-backport) ──────────────────────────
-  // The SAME rule as ConKayOverlay's identical effect: every animated beat is
-  // a pure function of a REAL backend event. While chat is in ConKay mode we
-  // subscribe to the macro lifecycle the server emits to our user:<id> room
-  // and feed it into the SAME `conkayHudStore` the overlay's cockpit panels
-  // already read from (telemetry / orchestration-trace / macro-library all
-  // become live the moment this fires) — so a macro run from the chat
-  // surface lights the exact same cockpit as a macro run from the overlay.
-  // No setInterval, no eased fake percentage — motion (or its absence) is
-  // always caused by a real started/completed/stage event.
-  useEffect(() => {
-    if (!isConKay) return;
-    connectSocket();
-    const offStart = subscribe<{ runId?: string; domain?: string; action?: string }>(
-      'macro:started',
-      (d) => {
-        if (!d?.runId || d.runId !== conkayLiveRunRef.current) return;
-        useConkayHudStore.getState().macroStarted({ runId: d.runId, domain: d.domain, action: d.action });
-      }
-    );
-    const offStage = subscribe<{ runId?: string; stage?: string; detail?: string }>(
-      'macro:stage',
-      (d) => {
-        if (!d?.runId || d.runId !== conkayLiveRunRef.current || !d.stage) return;
-        useConkayHudStore.getState().macroStage({ runId: d.runId, stage: d.stage, detail: d.detail });
-      }
-    );
-    const offDone = subscribe<{ runId?: string; domain?: string; action?: string; ok?: boolean; ms?: number }>(
-      'macro:completed',
-      (d) => {
-        if (!d?.runId || d.runId !== conkayLiveRunRef.current) return;
-        useConkayHudStore.getState().macroCompleted({ runId: d.runId, domain: d.domain, action: d.action, ok: d.ok, ms: d.ms });
-      }
-    );
-    const offLost = onConnectionLost(() => useConkayHudStore.getState().markConnectionLost());
-    const offReconnected = onReconnected(() => useConkayHudStore.getState().markReconnected());
-    // Leaving ConKay mode (or unmounting) resets the shared HUD store so the
-    // cockpit's panels don't keep showing this session's rings/telemetry
-    // after the surface that produced them is gone.
-    return () => {
-      offStart(); offStage(); offDone(); offLost(); offReconnected();
-      useConkayHudStore.getState().reset();
-    };
-  }, [isConKay]);
-
-  // Unit A5-backport — the pre-execution confirmation gate for the CLIENT-
-  // INITIATED macro path (the explicit "run domain.macro {json}" command
-  // below), reusing `isMutatingMacro` + <ConKayActionConfirm> exactly as
-  // ConKayOverlay.tsx does. Resolves immediately (true) for a macro
-  // `isMutatingMacro` doesn't flag as a write; for a mutating macro it holds
-  // execution until the user explicitly confirms or cancels via the rendered
-  // card — never an auto-approve.
-  const conkayConfirmIfMutating = useCallback(
-    (domain: string, macro: string, inputObj: Record<string, unknown>): Promise<boolean> => {
-      if (!isMutatingMacro(domain, macro)) return Promise.resolve(true);
-      return new Promise<boolean>((resolve) => {
-        conkayPendingConfirmResolveRef.current = resolve;
-        setConkayPendingConfirm({ domain, macro, input: inputObj });
-      });
-    },
-    []
-  );
-  const resolveConkayPendingConfirm = useCallback((confirmed: boolean) => {
-    const resolve = conkayPendingConfirmResolveRef.current;
-    conkayPendingConfirmResolveRef.current = null;
-    setConkayPendingConfirm(null);
-    resolve?.(confirmed);
-  }, []);
-
-  // Unit A5-backport — executes a REAL macro via /api/lens/run, gated by the
-  // confirm above. Mirrors ConKayOverlay.tsx#executeMacro: opts into the
-  // honest lifecycle (runId → macro:started/completed), captures a real
-  // artifact via the SAME `detectArtifact` registry the overlay uses (so the
-  // cockpit's Artifact Viewer panel lights up identically whether the macro
-  // was run from the overlay or from chat), and appends a truthful result
-  // message — never a fabricated success on failure.
-  const executeConKayMacro = useCallback(
-    async (domain: string, macro: string, inputObj: Record<string, unknown>) => {
-      setConkayMacroRunning(true);
-      const allowed = await conkayConfirmIfMutating(domain, macro, inputObj);
-      if (!allowed) {
-        setLocalMessages((prev) => [...prev, {
-          id: `asst-${Date.now()}-cancelled`, role: 'assistant',
-          content: `Cancelled — I didn't run ${domain}.${macro}.`,
-          timestamp: new Date().toISOString(), model: 'kay',
-        }]);
-        setConkayMacroRunning(false);
-        return false;
-      }
-      try {
-        const rid = newConKayRunId();
-        conkayLiveRunRef.current = rid;
-        const { data } = await lensRun(domain, macro, inputObj, rid);
-        const ok = !!data?.ok;
-        // Forward-Sim substrate parity: a real engineering.runFEA solve
-        // populates the SAME store field the overlay's Forward-Sim panel reads.
-        if (ok && domain === 'engineering' && macro === 'runFEA') {
-          const fea = feaResultFromRun(inputObj, data?.result);
-          if (fea) useConkayHudStore.getState().setLastFea(fea);
-        }
-        // Artifact→3D substrate parity: run the real return through the pure
-        // detectArtifact registry; a genuine match feeds the cockpit's
-        // Artifact Viewer panel. detectArtifact returns null unless the
-        // result really matches a kind's real shape — no fabrication.
-        if (ok) {
-          const artifact = detectArtifact(domain, macro, inputObj, data?.result);
-          if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
-        }
-        const resultStr = data?.result != null
-          ? JSON.stringify(data.result, null, 2)
-          : (ok ? '(done)' : (data?.error || 'no result'));
-        const spoken = ok
-          ? `Done — ran ${macro} on the ${domain} lens.`
-          : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
-        const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;
-        setLocalMessages((prev) => [...prev, {
-          id: `asst-${Date.now()}`, role: 'assistant',
-          content: `${spoken}\n\n\`\`\`json\n${body}\n\`\`\``,
-          timestamp: new Date().toISOString(), model: 'kay',
-          toolCalls: [{ tool: `${domain}.${macro}`, params: inputObj, result: data?.result ?? null, ok }],
-        }]);
-        return ok;
-      } catch {
-        setLocalMessages((prev) => [...prev, {
-          id: `asst-${Date.now()}`, role: 'assistant',
-          content: `I couldn't run ${domain}.${macro} just now.`,
-          timestamp: new Date().toISOString(),
-        }]);
-        return false;
-      } finally {
-        setConkayMacroRunning(false);
-      }
-    },
-    [conkayConfirmIfMutating]
-  );
-
-  // ── ConKay vision: an image attachment in ConKay mode is a "look at this" —
-  // POST the raw image to /api/vision/analyze (the vision brain). Honest offline
-  // fallback when no vision model is connected. Reuses JARVIS-style perception.
-  const conkayVisionMutation = useMutation({
-    mutationFn: async ({ file, prompt }: { file: File; prompt: string }) => {
-      const apiUrl = getApiBase();
-      const res = await fetch(`${apiUrl}/api/vision/analyze?prompt=${encodeURIComponent(prompt)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type || 'image/png' },
-        credentials: 'include',
-        body: file,
-      });
-      return res.json().catch(() => ({ ok: false, error: 'unreadable response' }));
-    },
-    onSuccess: (data: { ok?: boolean; description?: string; model?: string; error?: string }) => {
-      const ok = !!data?.ok;
-      const content = ok
-        ? (data.description?.trim() || 'I looked, but the vision brain returned nothing.')
-        : `I can't see that right now — the vision brain isn't reachable in this environment${data?.error ? ` (${data.error})` : ''}.`;
-      setLocalMessages((prev) => [...prev, {
-        id: `asst-${Date.now()}`, role: 'assistant', content,
-        timestamp: new Date().toISOString(), model: ok ? (data.model || 'vision') : undefined,
-      }]);
-    },
-    onError: () => {
-      setLocalMessages((prev) => [...prev, {
-        id: `asst-${Date.now()}`, role: 'assistant',
-        content: "I couldn't reach the vision brain just now. Try again, or check that a vision model is connected.",
-        timestamp: new Date().toISOString(),
-      }]);
-    },
-  });
-
-  // ── ConKay skills: Kay actually *does* things against real Concord data ──────
-  // (brief me / search my archive / my activity / world pulse / open a lens /
-  // enter the world). Runs instantly, even when the LLM brains are offline; the
-  // reply renders as spoken prose + a live viz + archive citations, and may
-  // navigate or flare the ambient "acting" state. Unmatched input falls through
-  // to the normal four-brain chat pipeline.
-  const runConKaySkill = useCallback(async (
-    text: string,
-    match: { skill: ConKaySkill; args: Record<string, string> },
-  ) => {
-    setLocalMessages((prev) => [...prev, {
-      id: `user-${Date.now()}`, role: 'user' as const, content: text, timestamp: new Date().toISOString(),
-    }]);
-    setInput('');
-    setConkaySkillRunning(true);
-    setConkayActing(true);
-    try {
-      const apiBase = getApiBase();
-      const result = await match.skill.run(match.args, {
-        apiBase,
-        fetchJson: async (path: string) => {
-          try {
-            const r = await fetch(`${apiBase}${path}`, { credentials: 'include' });
-            return await r.json();
-          } catch { return null; }
-        },
-        // Thread the active chat sessionId so skills that target a
-        // specific session (e.g. `compress`) can act against the right
-        // STATE.sessions row. Falls back to a localStorage pin when
-        // the lens hasn't yet propagated the active sessionId prop.
-        // Resolve the active chat sessionId so skills that target a
-        // specific session (e.g. `compress`) act against the right
-        // STATE.sessions row. The chat lens keeps active sessionId in
-        // localStorage as 'concord:activeSessionId'; reading from
-        // there is honest (no guessing) and survives the closure
-        // boundary inside this useCallback.
-        sessionId:
-          typeof window !== 'undefined'
-            ? window.localStorage?.getItem('concord:activeSessionId') || null
-            : null,
-      });
-      // Live viz rides the existing conkay-viz fence ConKayMessage already parses.
-      const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
-      setLocalMessages((prev) => [...prev, {
-        id: `asst-${Date.now()}`, role: 'assistant' as const,
-        content: `${result.spoken}${fence}`,
-        timestamp: new Date().toISOString(),
-        model: 'kay',
-        dtuRefs: result.dtuRefs,
-        sources: result.sources,
-        toolCalls: result.toolCalls,
-      }]);
-      if (result.navigate) {
-        const dest = result.navigate;
-        setTimeout(() => { window.location.href = dest; }, 900);
-      }
-    } catch {
-      setLocalMessages((prev) => [...prev, {
-        id: `asst-${Date.now()}`, role: 'assistant',
-        content: 'I hit a snag running that — mind trying again?',
-        timestamp: new Date().toISOString(),
-      }]);
-    } finally {
-      setConkaySkillRunning(false);
-      setTimeout(() => setConkayActing(false), 2500);
-    }
-  }, [setLocalMessages, setInput]);
-
   const handleSend = useCallback(() => {
-    // ConKay vision: an attached image is "look at this" — runs even with no text.
-    if (isConKay && !conkayVisionMutation.isPending) {
-      const img = attachments.find((a) => a.type.startsWith('image/'));
-      if (img) {
-        const prompt = input.trim() || 'Describe this image in detail.';
-        setLocalMessages((prev) => [...prev, {
-          id: `user-${Date.now()}`, role: 'user',
-          content: input.trim() || 'What do you see?',
-          timestamp: new Date().toISOString(),
-          attachments: [{ name: img.name, size: img.size, type: img.type }],
-        }]);
-        setInput('');
-        setAttachments([]);
-        conkayVisionMutation.mutate({ file: img.file, prompt });
-        return;
-      }
-    }
-
     if (!input.trim() || sendMutation.isPending) return;
 
     // Check for slash commands
@@ -1944,92 +1645,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return;
     }
 
-    // ConKay: a matching imperative ("brief me", "open music") runs a skill
-    // directly; everything else falls through to the chat pipeline.
-    if (isConKay) {
-      const m = matchConKaySkill(input.trim());
-      if (m) { runConKaySkill(input.trim(), m); return; }
-      // Unit A5-backport — the explicit "run domain.macro {json}" command,
-      // the SAME client-initiated syntax ConKayOverlay accepts. Echoes the
-      // command as a user turn (so the confirm card that may follow isn't
-      // rendered into an empty thread), then routes through the confirm-
-      // gated executor above.
-      const runCmd = parseConKayRunCommand(input.trim());
-      if (runCmd) {
-        setLocalMessages((prev) => [...prev, {
-          id: `user-${Date.now()}`, role: 'user', content: input.trim(),
-          timestamp: new Date().toISOString(),
-        }]);
-        setInput('');
-        executeConKayMacro(runCmd.domain, runCmd.macro, runCmd.input);
-        return;
-      }
-    }
-
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation, runConKaySkill, executeConKayMacro]);
-
-  // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
-  const conkayVoice = useConKayVoice({
-    enabled: isConKay,
-    muted: conkayMuted,
-    onFinalTranscript: (t) => {
-      const text = t.trim();
-      if (!text || sendMutation.isPending) return;
-      if (text.startsWith('/')) { executeSlashCommand(text); return; }
-      const m = matchConKaySkill(text);
-      if (m) { runConKaySkill(text, m); return; }
-      const runCmd = parseConKayRunCommand(text);
-      if (runCmd) {
-        setLocalMessages((prev) => [...prev, {
-          id: `user-${Date.now()}`, role: 'user', content: text,
-          timestamp: new Date().toISOString(),
-        }]);
-        executeConKayMacro(runCmd.domain, runCmd.macro, runCmd.input);
-        return;
-      }
-      sendMutation.mutate(text);
-    },
-  });
-  // React to each new assistant reply: speak it, and flare "acting" when the
-  // reply actually touched a system (real toolCalls — ambient action feedback).
-  const conkaySpokeRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isConKay) return;
-    const last = [...localMessages].reverse().find((m) => m.role === 'assistant');
-    if (!last || last.id === conkaySpokeRef.current) return;
-    conkaySpokeRef.current = last.id;
-    // Strip any conkay-viz fence so Kay never reads raw JSON aloud.
-    if (!conkayMuted) conkayVoice.speak((last.content || '').replace(/```conkay-viz[\s\S]*?```/gi, '').trim());
-    if (Array.isArray(last.toolCalls) && last.toolCalls.length > 0) {
-      setConkayActing(true);
-      const tmr = setTimeout(() => setConkayActing(false), 3500);
-      return () => clearTimeout(tmr);
-    }
-  }, [isConKay, conkayMuted, localMessages, conkayVoice]);
-
-  // ConKay greets on entering the mode — a spoken presence, no fabricated data.
-  const conkayGreetedRef = useRef(false);
-  useEffect(() => {
-    if (!isConKay) { conkayGreetedRef.current = false; return; }
-    if (conkayGreetedRef.current) return;
-    conkayGreetedRef.current = true;
-    if (!conkayMuted) conkayVoice.speak("Kay here. I'm listening — ask me anything, or say brief me.");
-  }, [isConKay, conkayMuted, conkayVoice]);
-
-  // ConKay's plain (non-virtualized) list needs explicit follow-output.
-  useEffect(() => {
-    if (!isConKay) return;
-    conkayBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [isConKay, localMessages.length]);
-
-  // ConKay state machine — driven by real signals (not a screensaver).
-  const conkayState: ConKayState =
-    (sendMutation.isPending || conkayVisionMutation.isPending || conkaySkillRunning || conkayMacroRunning) ? 'processing'
-      : conkayActing ? 'acting'
-        : conkayVoice.speaking ? 'presenting'
-          : conkayVoice.listening ? 'listening'
-            : 'idle';
+  }, [input, sendMutation, executeSlashCommand]);
 
   // Lens-scoped keyboard commands. Send via mod+enter is the power-user
   // shortcut (Enter still sends from inside the textarea); slash focuses
@@ -2450,20 +2067,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       </button>
                     </div>
                   </div>
-                ) : isConKay && message.role === 'assistant' ? (
-                  <ConKayMessage
-                    fields={{
-                      content: message.content,
-                      computed: message.computed,
-                      dtuRefs: message.dtuRefs,
-                      refs: message.refs,
-                      sources: message.sources,
-                      toolCalls: message.toolCalls,
-                      webAugmented: message.webAugmented,
-                      brain: message.model,
-                    }}
-                    renderProse={(t) => <MessageRenderer content={t} />}
-                  />
                 ) : (
                   <MessageRenderer content={message.content} />
                 )}
@@ -2771,7 +2374,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       cancelEditMessage,
       deleteMessage,
       handleBranchFromMessage,
-      isConKay,
       messages,
       selectedConversation,
       isAuthenticated,
@@ -2860,11 +2462,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   const isEmptyThread = messages.length === 0;
   const cleanEmpty = true; // keep Claude chrome after first message
   const greeting = getTimeOfDayGreeting(user?.username);
-  const chatWithLabel = isConKay
-    ? 'Kay'
-    : selectedPersona.id !== 'default'
-      ? selectedPersona.name
-      : 'Concord';
+  const chatWithLabel = selectedPersona.id !== 'default'
+    ? selectedPersona.name
+    : 'Concord';
 
   // ──────────────────────────────────────────────
   // Render
@@ -3087,43 +2687,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         </aside>
 
         {/* Main Chat Area */}
-        <main className={cn('flex-1 flex flex-col relative min-h-0', isConKay && 'isolate', cleanEmpty && 'bg-black')} aria-label="Chat messages">
-          {/* ConKay holographic world-tree — full-column, behind translucent chrome.
-              Mounted at the lens column level (not the small messages panel) so it
-              genuinely fills the screen. */}
-          {/* Claude-clean chat chrome: no CAD 3D backdrop / full HUD cockpit clutter.
-              Keep a small Listening chip only. Full design-studio cockpit stays on
-              ConKayOverlay (summon), not stacked inside the Chat lens conversation. */}
-          {isConKay && !cleanEmpty && (
-            <>
-              <ConKayBackdrop
-                state={conkayState}
-                listening={conkayVoice.listening}
-                muted={conkayMuted}
-                ttsAmplitudeRef={conkayVoice.ttsAmplitudeRef}
-                className="pointer-events-none absolute inset-0 -z-10"
-              />
-              <ConKayHud
-                state={conkayState}
-                muted={conkayMuted}
-                onToggleMute={() => setConkayMuted((m) => !m)}
-                listening={conkayVoice.listening}
-                speaking={conkayVoice.speaking}
-                voiceSupported={conkayVoice.supported}
-                className="pointer-events-auto absolute right-3 top-3 z-20"
-              />
-            </>
-          )}
-          {isConKay && cleanEmpty && (conkayVoice.listening || conkayState === 'listening' || conkayState === 'processing' || conkayState === 'acting') && (
-            <div
-              className="pointer-events-none absolute right-3 top-12 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-white/70 backdrop-blur-sm"
-              data-testid="conkay-clean-listening-chip"
-              aria-live="polite"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
-              {conkayState === 'processing' || conkayState === 'acting' ? 'Working…' : 'Listening'}
-            </div>
-          )}
+        <main className={cn('flex-1 flex flex-col relative min-h-0', cleanEmpty && 'bg-black')} aria-label="Chat messages">
           {/* Light conversations / new-chat header — drawer trigger, not a second chat column */}
           {cleanEmpty && (
             <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-2 py-2 bg-transparent">
@@ -3185,7 +2749,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           <header className={cn(
             'px-4 lg:px-6 py-4 border-b border-lattice-border flex flex-wrap items-center justify-between gap-y-2',
             cleanEmpty && 'hidden',
-            isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface',
+            'bg-lattice-surface',
           )}>
             {/* Toolbar row wraps instead of clipping when the secondary pills
                 (Context/Tools/Systems/Projects/Prompts/Schedule/Studio) overflow. */}
@@ -3246,7 +2810,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         <button
                           key={mode.id}
                           onClick={() => {
-                            setAiMode(mode);
+                            selectAiMode(mode);
                             setModeSelectOpen(false);
                           }}
                           className={cn(
@@ -3550,35 +3114,35 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
           {/* Chat Mode Selector Rail — ONE nav primitive (`active`). Hidden on the empty canvas. */}
           {!cleanEmpty && (
-          <div className={cn(isConKay && 'relative z-10')}>
+          <div>
             <ModeSelector activeMode={active} onModeChange={onActiveChange} />
           </div>
           )}
 
           {/* Mode surfaces — assist/explore/connect were unreachable before */}
           {!cleanEmpty && active === 'assist' && (
-            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
+            <div className="px-4 py-2 border-b border-lattice-border/30">
               <AssistPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
           {!cleanEmpty && active === 'explore' && (
-            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
+            <div className="px-4 py-2 border-b border-lattice-border/30">
               <ExplorePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
           {!cleanEmpty && active === 'connect' && (
-            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
+            <div className="px-4 py-2 border-b border-lattice-border/30">
               <ConnectPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
           {!cleanEmpty && active === 'welcome' && messages.length === 0 && (
-            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
+            <div className="px-4 py-2 border-b border-lattice-border/30">
               <WelcomePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
             </div>
           )}
           {/* ChatModePanel was a nested chat strip on active threads — hide under Claude-clean. */}
           {!cleanEmpty && active === 'chat' && messages.length > 0 && (
-            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
+            <div className="px-4 py-2 border-b border-lattice-border/30">
               <ChatModePanel
                 currentLens="chat"
                 onSendMessage={(msg) => {
@@ -3592,7 +3156,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           <div
             className={cn(
               'flex-1 overflow-hidden flex flex-col',
-              isConKay && 'relative z-10',
               // Floating composer overlays the bottom — leave room for last bubbles.
               !isEmptyThread && 'pb-28 sm:pb-32',
               // The conversations / new-chat header floats over the top edge.
@@ -3643,72 +3206,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
                   </div>
                 )}
-                {isConKay ? (
-                  // ConKay renders a plain, non-virtualized list: conversations
-                  // are short and the immersive holographic layout doesn't give
-                  // Virtuoso a stable scroll height (which silently unmounts the
-                  // newest rows). A simple scroll container keeps every reply —
-                  // including skill viz/citations — reliably mounted.
-                  //
-                  // Claude-clean chat chrome: do NOT mount ConKayCockpit panel
-                  // lanes (provenance / forward-sim / feature tree / connectors /
-                  // macro library / artifact viewer) inside the Chat lens — that
-                  // stacked the CAD design studio on top of the conversation.
-                  // Full cockpit remains on ConKayOverlay (summon). Under
-                  // !cleanEmpty, keep the shared <ConKayCockpit> backport.
-                  cleanEmpty ? (
-                    <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto px-5" data-testid="conkay-clean-transcript">
-                      {threadItems.map((item, i) => (
-                        <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
-                          {renderThreadItem(i, item)}
-                        </div>
-                      ))}
-                      {conkayPendingConfirm && (
-                        <ConKayActionConfirm
-                          domain={conkayPendingConfirm.domain}
-                          macro={conkayPendingConfirm.macro}
-                          input={conkayPendingConfirm.input}
-                          onConfirm={() => resolveConkayPendingConfirm(true)}
-                          onCancel={() => resolveConkayPendingConfirm(false)}
-                        />
-                      )}
-                      <div ref={conkayBottomRef} aria-hidden="true" />
-                    </div>
-                  ) : (
-                  <ConKayCockpit className="relative z-10">
-                    <>
-                      {threadItems.map((item, i) => (
-                        <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
-                          {renderThreadItem(i, item)}
-                        </div>
-                      ))}
-                      {/* Unit A5-backport — pre-execution confirm for a mutating
-                          client-initiated macro call, set ONLY by
-                          conkayConfirmIfMutating with the REAL proposed
-                          {domain, macro, input}; resolveConkayPendingConfirm is
-                          the ONLY way execution proceeds or is skipped. */}
-                      {conkayPendingConfirm && (
-                        <ConKayActionConfirm
-                          domain={conkayPendingConfirm.domain}
-                          macro={conkayPendingConfirm.macro}
-                          input={conkayPendingConfirm.input}
-                          onConfirm={() => resolveConkayPendingConfirm(true)}
-                          onCancel={() => resolveConkayPendingConfirm(false)}
-                        />
-                      )}
-                      <div ref={conkayBottomRef} aria-hidden="true" />
-                    </>
-                  </ConKayCockpit>
-                  )
-                ) : (
-                  <Virtuoso
-                    data={threadItems}
-                    followOutput="smooth"
-                    initialTopMostItemIndex={threadItems.length - 1}
-                    className="flex-1"
-                    itemContent={renderThreadItem}
-                  />
-                )}
+                <Virtuoso
+                  data={threadItems}
+                  followOutput="smooth"
+                  initialTopMostItemIndex={threadItems.length - 1}
+                  className="flex-1"
+                  itemContent={renderThreadItem}
+                />
               </>
             )}
 
@@ -3765,7 +3269,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           <div className={cn(
             cleanEmpty
               ? 'absolute bottom-0 inset-x-0 z-20 px-3 pb-4 sm:px-6 sm:pb-8 pointer-events-none'
-              : cn('p-4 border-t', isConKay ? 'relative z-10 border-cyan-400/15 bg-lattice-surface/40 backdrop-blur-md' : 'border-lattice-border bg-lattice-surface'),
+              : 'p-4 border-t border-lattice-border bg-lattice-surface',
           )}>
             <div className={cn(
               'max-w-3xl mx-auto pointer-events-auto',
@@ -3976,7 +3480,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                                 <button
                                   key={mode.id}
                                   type="button"
-                                  onClick={() => { setAiMode(mode); setModeSelectOpen(false); }}
+                                  onClick={() => { selectAiMode(mode); setModeSelectOpen(false); }}
                                   className={cn(
                                     'w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5',
                                     aiMode.id === mode.id ? 'text-white' : 'text-white/70',
@@ -3995,19 +3499,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       <button
                         type="button"
                         onClick={() => {
-                          if (!isConKay) {
-                            const kay = AI_MODES.find((m) => m.id === 'conkay');
-                            if (kay) setAiMode(kay);
-                            return;
-                          }
-                          setConkayMuted((m) => !m);
+                          const kay = AI_MODES.find((m) => m.id === 'conkay');
+                          if (kay) selectAiMode(kay);
                         }}
-                        className={cn(
-                          'p-2 transition-colors',
-                          isConKay && !conkayMuted ? 'text-white' : 'text-white/50 hover:text-white',
-                        )}
-                        title={isConKay ? (conkayMuted ? 'Unmute Kay' : 'Mute Kay') : 'Voice with Kay'}
-                        aria-label={isConKay ? (conkayMuted ? 'Unmute voice' : 'Mute voice') : 'Start voice'}
+                        className="p-2 text-white/50 hover:text-white transition-colors"
+                        title="Open ConKay"
+                        aria-label="Open ConKay"
                       >
                         <Mic className="w-5 h-5" />
                       </button>
@@ -4276,7 +3773,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             systemPrompt: a.instructions,
           });
           const mode = AI_MODES.find((m) => m.id === a.model);
-          if (mode) setAiMode(mode);
+          if (mode && mode.id !== 'conkay') setAiMode(mode);
           setStudioOpen(false);
           const sysMsg: Message = {
             id: `sys-${Date.now()}`,
