@@ -76,10 +76,10 @@ describe("Gmail client egress (mocked)", () => {
   it("lists conversations as summary rows (participants, count, unread)", async () => {
     const fetchImpl = async (url) => {
       if (url.includes("/threads?")) return resp({ threads: [{ id: "t1" }], resultSizeEstimate: 1 });
-      if (url.includes("/threads/t1")) return resp({ id: "t1", messages: [
+      if (url.includes("/threads/t1")) {return resp({ id: "t1", messages: [
         { id: "m1", threadId: "t1", labelIds: ["INBOX"], snippet: "first", payload: { headers: [{ name: "From", value: "Ana <ana@x.com>" }, { name: "Subject", value: "Plan" }] } },
         { id: "m2", threadId: "t1", labelIds: ["INBOX", "UNREAD"], snippet: "latest reply", payload: { headers: [{ name: "From", value: "Ben <ben@x.com>" }, { name: "Subject", value: "Re: Plan" }] } },
-      ] });
+      ] });}
       return resp({}, 404);
     };
     const r = await readGmailThreads(db, "u1", { labelIds: ["INBOX"] }, { fetchImpl });

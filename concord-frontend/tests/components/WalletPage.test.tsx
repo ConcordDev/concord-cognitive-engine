@@ -184,9 +184,9 @@ describe('WalletPage', () => {
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /cash out/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^cash out$/i })).toBeDefined();
     });
-    fireEvent.click(screen.getByRole('tab', { name: /cash out/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^cash out$/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('withdraw-flow')).toBeDefined();
@@ -200,9 +200,9 @@ describe('WalletPage', () => {
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /activity/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^activity$/i })).toBeDefined();
     });
-    fireEvent.click(screen.getByRole('tab', { name: /activity/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^activity$/i }));
 
     await waitFor(() => {
       // Both transaction descriptions should be visible
@@ -230,9 +230,9 @@ describe('WalletPage', () => {
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /activity/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^activity$/i })).toBeDefined();
     });
-    fireEvent.click(screen.getByRole('tab', { name: /activity/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^activity$/i }));
 
     await waitFor(() => {
       expect(screen.getByText('All')).toBeDefined();

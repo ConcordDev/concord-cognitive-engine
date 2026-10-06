@@ -110,7 +110,7 @@ describe('classroom lens — four UX states', () => {
     global.fetch = vi.fn(() => jsonResponse(envelope(COHORTS_EMPTY)));
     const { getByText, queryByRole } = render(<ClassroomPage />);
     await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
-    expect(getByText(/No cohorts you're enrolled in/i)).toBeInTheDocument();
+    expect(getByText(/No cohorts you are enrolled in/i)).toBeInTheDocument();
     // empty is distinct from loading: the role=status spinner is gone.
     expect(queryByRole('status')).toBeNull();
   });

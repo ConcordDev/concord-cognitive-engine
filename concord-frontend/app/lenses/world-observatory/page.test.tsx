@@ -92,6 +92,11 @@ function routeLensRun(overviewRes: unknown, detailFn: (input: Record<string, unk
   });
 }
 
+// Worlds, Factions, Realms, Districts and Liveness are separate views; a
+// drilled-in world's sections each live under their own pill.
+const openView = (label: string) =>
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`) }));
+
 describe('World Observatory lens page', () => {
   beforeEach(() => {
     lensRun.mockReset();
@@ -138,6 +143,7 @@ describe('World Observatory lens page', () => {
     await waitFor(() =>
       expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }),
     );
+    openView('Factions');
 
     // Faction relation renders the real pair + kind + score. "faction_alpha"
     // legitimately appears more than once (state card + relation pill + the
@@ -153,19 +159,22 @@ describe('World Observatory lens page', () => {
     expect(screen.getByText('momentum 0.42')).toBeInTheDocument();
 
     // Realm card — real legitimacy/treasury/tax/citizens, not rounded-fabricated
-    expect(screen.getByText('Test Realm')).toBeInTheDocument();
+    openView('Realms');
+    expect(await screen.findByText('Test Realm')).toBeInTheDocument();
     expect(screen.getByText('72')).toBeInTheDocument(); // legitimacy
     expect(screen.getByText('5,000')).toBeInTheDocument(); // treasury
     expect(screen.getByText('15%')).toBeInTheDocument(); // tax rate
     expect(screen.getByText(/2 citizens · loyalty avg 60 \(range 40–80\)/)).toBeInTheDocument();
 
     // District row
-    expect(screen.getByText('Test District')).toBeInTheDocument();
+    openView('Districts');
+    expect(await screen.findByText('Test District')).toBeInTheDocument();
     expect(screen.getByText('10,000')).toBeInTheDocument();
     expect(screen.getByText('warm_day')).toBeInTheDocument();
 
     // Liveness finding surfaced with real overdue detail
-    expect(screen.getByText(/stuck_scheduler/)).toBeInTheDocument();
+    openView('Liveness');
+    expect(await screen.findByText(/stuck_scheduler/)).toBeInTheDocument();
     expect(screen.getByText(/overdue/)).toBeInTheDocument();
   });
 
@@ -193,10 +202,14 @@ describe('World Observatory lens page', () => {
       expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'empty_world' }),
     );
 
+    openView('Factions');
     expect(await screen.findByText('No factions have a living presence in this world.')).toBeInTheDocument();
-    expect(screen.getByText('No realms have formed in this world yet.')).toBeInTheDocument();
-    expect(screen.getByText('No districts platted in this world yet.')).toBeInTheDocument();
-    expect(screen.getByText('No stuck faction schedulers detected.')).toBeInTheDocument();
+    openView('Realms');
+    expect(await screen.findByText('No realms have formed in this world yet.')).toBeInTheDocument();
+    openView('Districts');
+    expect(await screen.findByText('No districts platted in this world yet.')).toBeInTheDocument();
+    openView('Liveness');
+    expect(await screen.findByText('No stuck faction schedulers detected.')).toBeInTheDocument();
 
     // Never a fabricated realm/district row
     expect(screen.queryByText('Test Realm')).not.toBeInTheDocument();
@@ -236,6 +249,8 @@ describe('World Observatory lens page', () => {
     render(<WorldObservatoryPage />);
     await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }));
+    openView('Realms');
 
     await waitFor(() => expect(screen.getByText('Ghost Realm')).toBeInTheDocument());
     // Honest: the backend's degenerate avg:50 fallback for zero citizens is
@@ -253,12 +268,14 @@ describe('World Observatory lens page', () => {
     render(<WorldObservatoryPage />);
     await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }));
+    openView('Realms');
     await waitFor(() => expect(screen.getByText('Test Realm')).toBeInTheDocument());
 
     const overviewCalls = lensRun.mock.calls.filter((c) => c[1] === 'overview').length;
     const detailCalls = lensRun.mock.calls.filter((c) => c[1] === 'world_detail').length;
 
-    fireEvent.click(screen.getByLabelText('Refresh the observatory'));
+    fireEvent.click(screen.getByRole('button', { name: /^Refresh observatory$/ }));
 
     await waitFor(() =>
       expect(lensRun.mock.calls.filter((c) => c[1] === 'overview').length).toBe(overviewCalls + 1),

@@ -54,7 +54,7 @@ describe('TripWorkspace — trip edit/delete', () => {
     await screen.findByText(/2 travelers · 10 days/);
     fireEvent.click(screen.getByRole('button', { name: /edit trip/i }));
     fireEvent.change(screen.getByLabelText('Trip name'), { target: { value: 'Lisbon & Porto' } });
-    fireEvent.click(screen.getByRole('button', { name: /save trip/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save trip$/i }));
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('travel', 'trip-update', expect.objectContaining({ id: 'trip1', name: 'Lisbon & Porto', travelers: 2 })));
     await screen.findByRole('heading', { name: 'Lisbon & Porto' });
   });

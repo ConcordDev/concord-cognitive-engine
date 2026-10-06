@@ -56,21 +56,20 @@ export function sendMail(db, input) {
   // else is refused before escrow, so the mail row never claims a transfer
   // that claim cannot honestly perform.
   if (attachmentDtuIds.length) {
-    const owned = [];
-    const missing = [];
-    for (const dtuId of attachmentDtuIds) {
-      let row = null;
-      try {
-        row = db.prepare(`SELECT id FROM dtus WHERE id = ? AND creator_id = ?`).get(dtuId, fromUserId);
-      } catch {
-        return { ok: false, error: "dtu_lookup_failed" };
-      }
-      if (row) owned.push(dtuId);
-      else missing.push(dtuId);
+    let ownedIds;
+    try {
+      // One lookup for every attachment; the id list binds as a single JSON
+      // parameter, so nothing is interpolated into the SQL.
+      ownedIds = new Set(
+        db.prepare(`SELECT id FROM dtus WHERE creator_id = ? AND id IN (SELECT value FROM json_each(?))`)
+          .all(fromUserId, JSON.stringify(attachmentDtuIds))
+          .map((r) => r.id),
+      );
+    } catch {
+      return { ok: false, error: "dtu_lookup_failed" };
     }
+    const missing = attachmentDtuIds.filter((dtuId) => !ownedIds.has(dtuId));
     if (missing.length) return { ok: false, error: "dtu_not_owned", dtuIds: missing };
-    attachmentDtuIds.length = 0;
-    attachmentDtuIds.push(...owned);
   }
 
   const id = `mail_${crypto.randomBytes(8).toString("hex")}`;

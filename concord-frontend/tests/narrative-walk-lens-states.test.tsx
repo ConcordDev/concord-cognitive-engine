@@ -23,6 +23,8 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
 // ── headless shell + action bar: render-only stubs ──────────────────────────
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),

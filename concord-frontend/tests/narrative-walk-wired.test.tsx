@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import NarrativeWalkLensPage from '@/app/lenses/narrative-walk/page';
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.resolve(__dirname, '..', 'app', 'lenses', 'narrative-walk', 'page.tsx');

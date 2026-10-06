@@ -12,6 +12,10 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useRealtimeLens', () => ({
+  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
+}));
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({ data, itemContent }: { data?: unknown[]; itemContent: (i: number, d: unknown) => React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'virtuoso' }, (data || []).map((d, i) => React.createElement('div', { key: i }, itemContent(i, d)))),
@@ -88,7 +92,7 @@ describe('message lens page — Reply/Forward real wiring', () => {
 
     fireEvent.click(forwardBtn);
 
-    expect(await screen.findByText('New message')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'New message' })).toBeInTheDocument();
     const body = screen.getByPlaceholderText('Body…') as HTMLTextAreaElement;
     expect(body.value).toContain('Forwarded message');
     expect(body.value).toContain('Mira');

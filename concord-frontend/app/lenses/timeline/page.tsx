@@ -208,7 +208,7 @@ export default function TimelineLensPage() {
                   {t.id === 'notifications' && (unread ?? 0) > 0 && (
                     <span className="rounded-full bg-teal-400 px-1.5 text-[11px] font-medium text-black">{unread}</span>
                   )}
-                  <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+                  <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
                 </button>
               );
             })}

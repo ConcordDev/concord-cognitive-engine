@@ -17,6 +17,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { FrontierEngineDef } from '@/lib/frontier-engines';
 
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useRealtimeLens', () => ({
+  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
+}));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
