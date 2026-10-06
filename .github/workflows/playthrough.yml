@@ -109,6 +109,9 @@ jobs:
       # then let playwright manage the server.
       - name: Build frontend (production)
         working-directory: ./concord-frontend
+        env:
+          # Test-only build: skip copying the LFS Unity player (see scripts/sync-unity-web-to-standalone.mjs).
+          CONCORD_SKIP_UNITY_WEB: '1'
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5050
