@@ -1459,4 +1459,236 @@ export default function registerCommandCenterActions(registerLensAction) {
       return { ok: true, result: { onCall, resolvedAt: new Date(atMs).toISOString() } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
+
+  // The card's one alert. The cockpit Maps above are not on the shared
+  // lens-state key list, so this queue is the sqlite row. List returns
+  // id, title, and status. The line and the acknowledgement note come
+  // back only from alert-detail.
+  function alertDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function alertsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='command_center_alerts'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function alertActor(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "";
+  }
+  function alertClean(value, max) {
+    return String(value ?? "").trim().slice(0, max);
+  }
+  function alertId() {
+    return `al_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function alertBucket(userId) {
+    const st = ccState();
+    if (!(st.alerts instanceof Map)) st.alerts = new Map();
+    if (!st.alerts.has(userId)) st.alerts.set(userId, []);
+    return st.alerts.get(userId);
+  }
+  function alertFromRow(row) {
+    const status = row.status === "acknowledged" ? "acknowledged" : (row.status === "open" ? "open" : "");
+    if (!status) return null;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    if (!title) return null;
+    return {
+      id: row.id,
+      title,
+      line: typeof row.line === "string" ? row.line : "",
+      status,
+      ackNote: typeof row.ack_note === "string" ? row.ack_note : null,
+      createdAt: row.created_at || row.createdAt || "",
+      updatedAt: row.updated_at || row.updatedAt || "",
+    };
+  }
+  function readAlertRows(ctx) {
+    const db = alertDb(ctx);
+    if (!alertsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, line, status, ack_note, created_at, updated_at FROM command_center_alerts WHERE user_id = ? ORDER BY created_at ASC",
+    ).all(alertActor(ctx));
+  }
+  function writeAlertRow(ctx, alert) {
+    const db = alertDb(ctx);
+    if (!alertsReady(db)) {
+      const err = new Error("alert_not_saved");
+      err.code = "alert_not_saved";
+      throw err;
+    }
+    db.prepare(`
+      INSERT INTO command_center_alerts
+        (id, user_id, title, line, status, ack_note, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        line = excluded.line,
+        status = excluded.status,
+        ack_note = excluded.ack_note,
+        updated_at = excluded.updated_at
+    `).run(
+      alert.id,
+      alertActor(ctx),
+      alert.title,
+      alert.line,
+      alert.status,
+      alert.ackNote,
+      alert.createdAt,
+      alert.updatedAt,
+    );
+  }
+  function hydrateAlerts(ctx, userId) {
+    const bucket = alertBucket(userId);
+    const seen = new Set(bucket.map((item) => item.id));
+    for (const row of readAlertRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      const alert = alertFromRow(row);
+      if (!alert) continue;
+      bucket.push(alert);
+      seen.add(alert.id);
+    }
+    return bucket;
+  }
+  function findAlert(ctx, userId, id) {
+    const live = alertBucket(userId).find((item) => item.id === id);
+    if (live) return live;
+    return hydrateAlerts(ctx, userId).find((item) => item.id === id) || null;
+  }
+
+  registerLensAction("command-center", "alert-file", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const title = alertClean(params.title, 160);
+      if (!title) return { ok: false, error: "alert title required" };
+      const line = alertClean(params.line, 8000);
+      if (!line) return { ok: false, error: "alert line required" };
+      const now = nowIso();
+      const alert = {
+        id: alertId(),
+        title,
+        line,
+        status: "open",
+        ackNote: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const bucket = alertBucket(userId);
+      bucket.push(alert);
+      try {
+        writeAlertRow(ctx, alert);
+      } catch (err) {
+        const idx = bucket.findIndex((item) => item.id === alert.id);
+        if (idx >= 0) bucket.splice(idx, 1);
+        return { ok: false, error: "alert_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { alertId: alert.id, alert: { id: alert.id, title: alert.title, status: alert.status } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("command-center", "alert-list", (ctx, _artifact, _params) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const alerts = hydrateAlerts(ctx, userId)
+        .filter((item) => item.title)
+        .map((item) => ({ id: item.id, title: item.title, status: item.status }));
+      return { ok: true, result: { alerts, count: alerts.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("command-center", "alert-detail", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = alertClean(params.id || params.alertId, 80);
+      if (!id) return { ok: false, error: "missing_alert_id" };
+      const alert = findAlert(ctx, userId, id);
+      if (!alert) return { ok: false, error: "alert_not_found" };
+      return {
+        ok: true,
+        result: {
+          alert: {
+            id: alert.id,
+            title: alert.title,
+            line: alert.line,
+            status: alert.status,
+            ackNote: alert.ackNote,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("command-center", "alert-front", (ctx, _artifact, _params) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const open = hydrateAlerts(ctx, userId)
+        .filter((item) => item.status === "open" && item.title)
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+      const alert = open[0] || null;
+      return {
+        ok: true,
+        result: {
+          alert: alert ? { id: alert.id, title: alert.title, status: alert.status } : null,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("command-center", "alert-edit", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = alertClean(params.id || params.alertId, 80);
+      if (!id) return { ok: false, error: "missing_alert_id" };
+      const line = alertClean(params.line, 8000);
+      if (!line) return { ok: false, error: "alert line required" };
+      const alert = findAlert(ctx, userId, id);
+      if (!alert) return { ok: false, error: "alert_not_found" };
+      const previous = alert.line;
+      const previousAt = alert.updatedAt;
+      alert.line = line;
+      alert.updatedAt = nowIso();
+      try {
+        writeAlertRow(ctx, alert);
+      } catch (err) {
+        alert.line = previous;
+        alert.updatedAt = previousAt;
+        return { ok: false, error: "alert_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { alertId: alert.id, alert: { id: alert.id, title: alert.title, status: alert.status } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("command-center", "alert-acknowledge", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = alertActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = alertClean(params.id || params.alertId, 80);
+      if (!id) return { ok: false, error: "missing_alert_id" };
+      const note = alertClean(params.note, 8000);
+      if (!note) return { ok: false, error: "acknowledgement note required" };
+      const alert = findAlert(ctx, userId, id);
+      if (!alert) return { ok: false, error: "alert_not_found" };
+      if (alert.status === "acknowledged") return { ok: false, error: "already_acknowledged" };
+      const previous = { status: alert.status, ackNote: alert.ackNote, updatedAt: alert.updatedAt };
+      alert.status = "acknowledged";
+      alert.ackNote = note;
+      alert.updatedAt = nowIso();
+      try {
+        writeAlertRow(ctx, alert);
+      } catch (err) {
+        alert.status = previous.status;
+        alert.ackNote = previous.ackNote;
+        alert.updatedAt = previous.updatedAt;
+        return { ok: false, error: "alert_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { alertId: alert.id, alert: { id: alert.id, title: alert.title, status: alert.status } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 }
