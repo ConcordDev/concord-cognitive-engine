@@ -205,6 +205,7 @@ describe("defense — asset readiness rollup (shared ctx)", () => {
     const roll = await lensRun("defense", "asset-rollup", {}, ctx);
     assert.equal(roll.ok, true);
     assert.equal(roll.result.total, 3);
+    assert.deepEqual(roll.result.assets.map((asset) => asset.designation), ["Truck-1", "Truck-2", "Radar-1"]);
     assert.equal(roll.result.inService, 2); // 3 − 1 decommissioned
     // fleet readiness = mean over non-decommissioned: round((90+30)/2) = 60
     assert.equal(roll.result.fleetReadiness, 60);

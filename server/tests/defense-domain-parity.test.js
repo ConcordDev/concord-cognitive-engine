@@ -199,6 +199,7 @@ describe("defense asset readiness (asset-*)", () => {
     const r = call("asset-rollup", ctxA, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.total, 2);
+    assert.deepEqual(r.result.assets.map((asset) => asset.designation), ["A1", "A2"]);
     assert.equal(r.result.fleetReadiness, 65);
     assert.equal(r.result.lowReadiness.length, 1);
     assert.equal(r.result.lowReadiness[0].designation, "A2");

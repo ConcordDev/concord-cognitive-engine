@@ -115,6 +115,10 @@ export const LENS_STATE_KEYS = Object.freeze([
   // inspection checklists, one-lines, and material prices survive a restart.
   // The Electrical domain stores per-user arrays inside Maps here.
   "electricalLens",
+  // 49 -> 50: "defenseLens" so the common operating picture, mission
+  // tasks, assets, threats, personnel, supply requests, and comms log
+  // survive a restart. The Defense domain stores nested per-user Maps here.
+  "defenseLens",
 ]);
 
 function serializeValue(v) {

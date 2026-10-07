@@ -2,12 +2,12 @@
 
 /**
  * DefenseActionPanel — security ops bench.
- * threatAssessment / readinessScore / incidentResponse /
- * usaspending-dod-contracts (USAspending.gov) + mint/DM/publish/agent.
+ * Structured threatAssessment / readinessScore / incidentResponse plus
+ * private DTU, direct-message, and optional agent handoffs.
  */
 
 import { useState } from 'react';
-import { Shield, Activity, AlertOctagon, FileText, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Shield, Activity, AlertOctagon, Sparkles, Send, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -24,25 +24,20 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'threat' | 'ready' | 'inc' | 'spend' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'threat' | 'ready' | 'inc' | 'mint' | 'dm' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface Threat { threat: string; category: string; likelihood: number; impact: number; riskScore: number; severity: string; mitigation: string }
 interface ThreatResult { threats: Threat[]; critical: number; total: number; overallThreatLevel: string; topThreat?: string }
 interface ReadyResult { personnelReadiness: number; equipmentReadiness: number; trainingCompletion: number; supplyLevel: number; overallReadiness: number; status: string; gaps: string[] }
 interface IncResult { incidentType?: string; severity?: string; responseTime?: string; escalationLevel?: string; immediateActions?: string[] }
-// Field names align EXACTLY with what defense.usaspending-dod-contracts returns
-// (server/domains/defense.js: placeOfPerformanceState / naicsCode / pscCode /
-// startDate / endDate, and top-level count / totalAmount / totalPages). The
-// prior placeOfPerformance / naics / psc / periodStart / periodEnd / totalResults
-// / pageInfo names were never returned by the handler — the rendered row read
-// undefined (fixed 2026-06-28, matching the live ContractSearch.tsx contract).
-interface DodAward { awardId?: string; recipient?: string; amount?: number; agency?: string; subAgency?: string; description?: string; placeOfPerformanceState?: string; naicsCode?: string; pscCode?: string; startDate?: string; endDate?: string }
-interface SpendResult { keyword?: string; awardType?: string; results?: DodAward[]; count?: number; totalAmount?: number; totalPages?: number; source?: string }
-
 // No seeded data — every input starts empty.
 export function DefenseActionPanel() {
-  const [threatsText, setThreatsText] = useState('');
+  const [threatName, setThreatName] = useState('');
+  const [threatCategory, setThreatCategory] = useState('');
+  const [threatLikelihood, setThreatLikelihood] = useState('');
+  const [threatImpact, setThreatImpact] = useState('');
+  const [threatMitigation, setThreatMitigation] = useState('');
   const [personnelReady, setPersonnelReady] = useState('');
   const [personnelTotal, setPersonnelTotal] = useState('');
   const [equipReady, setEquipReady] = useState('');
@@ -51,7 +46,8 @@ export function DefenseActionPanel() {
   const [supplies, setSupplies] = useState('');
   const [incidentType, setIncidentType] = useState('');
   const [incidentSev, setIncidentSev] = useState<'low' | 'medium' | 'high' | 'critical'>('high');
-  const [contractKeyword, setContractKeyword] = useState('');
+  const [incidentLocation, setIncidentLocation] = useState('');
+  const [incidentReporter, setIncidentReporter] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -59,9 +55,7 @@ export function DefenseActionPanel() {
   const [threatResult, setThreatResult] = useState<ThreatResult | null>(null);
   const [readyResult, setReadyResult] = useState<ReadyResult | null>(null);
   const [incResult, setIncResult] = useState<IncResult | null>(null);
-  const [spendResult, setSpendResult] = useState<SpendResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
-  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
@@ -69,14 +63,32 @@ export function DefenseActionPanel() {
 
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
-  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actThreat() {
-    if (!threatsText.trim()) { err('Paste threats JSON first.'); return; }
-    try { const parsed = JSON.parse(threatsText); setBusy('threat'); setFeedback(null);
-      const r = await callMacro<ThreatResult>('threatAssessment', { artifact: { data: parsed } });
+    const likelihood = Number(threatLikelihood);
+    const impact = Number(threatImpact);
+    if (!threatName.trim() || !Number.isFinite(likelihood) || !Number.isFinite(impact)) {
+      err('Threat name, likelihood, and impact are required.');
+      return;
+    }
+    try {
+      setBusy('threat');
+      setFeedback(null);
+      const r = await callMacro<ThreatResult>('threatAssessment', {
+        artifact: {
+          data: {
+            threats: [{
+              name: threatName.trim(),
+              category: threatCategory.trim() || 'general',
+              likelihood: Math.max(0, Math.min(100, likelihood)) / 100,
+              impact: Math.max(0, Math.min(100, impact)) / 100,
+              mitigation: threatMitigation.trim() || undefined,
+            }],
+          },
+        },
+      });
       if (r.ok && r.result) { setThreatResult(r.result); pipe.publish('defense.threat', r.result, { label: `Threats ${r.result.critical} crit` }); ok(`${r.result.critical} critical · top: ${r.result.topThreat}.`); } else err(r.error ?? 'threat failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid threats JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actReady() {
     const pr = parseInt(personnelReady, 10), pt = parseInt(personnelTotal, 10), er = parseInt(equipReady, 10), et = parseInt(equipTotal, 10), tr = parseInt(training, 10), su = parseInt(supplies, 10);
@@ -91,22 +103,23 @@ export function DefenseActionPanel() {
     if (!incidentType.trim()) { err('Incident type required.'); return; }
     setBusy('inc'); setFeedback(null);
     try {
-      const r = await callMacro<IncResult>('incidentResponse', { artifact: { data: { type: incidentType.trim(), severity: incidentSev, location: 'Sector 7G', reporter: 'sentry-04' } } });
+      const r = await callMacro<IncResult>('incidentResponse', {
+        artifact: {
+          data: {
+            type: incidentType.trim(),
+            severity: incidentSev,
+            location: incidentLocation.trim() || undefined,
+            reporter: incidentReporter.trim() || undefined,
+          },
+        },
+      });
       if (r.ok && r.result) { setIncResult(r.result); pipe.publish('defense.inc', r.result, { label: `Inc ${r.result.escalationLevel}` }); ok(`Protocol: ${r.result.escalationLevel}.`); } else err(r.error ?? 'incident failed');
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
-  }
-  async function actSpend() {
-    if (!contractKeyword.trim()) { err('Keyword required.'); return; }
-    setBusy('spend'); setFeedback(null);
-    try {
-      const r = await callMacro<SpendResult>('usaspending-dod-contracts', { keyword: contractKeyword.trim(), awardType: 'contracts', limit: 10 });
-      if (r.ok && r.result) { setSpendResult(r.result); pipe.publish('defense.spend', r.result, { label: `DoD ${r.result.results?.length ?? 0} contracts` }); ok(`${r.result.results?.length ?? 0} DoD contracts.`); } else err(r.error ?? 'spend failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Sec ops — ${readyResult?.status ?? threatResult?.overallThreatLevel ?? 'briefing'}`, tags: ['defense', 'security', readyResult?.status].filter((t): t is string => !!t), source: 'defense:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, def: { threats: threatResult, ready: readyResult, inc: incResult, spend: spendResult } } }, 'knowledge', ['private']) });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Defense brief — ${readyResult?.status ?? threatResult?.overallThreatLevel ?? 'working analysis'}`, tags: ['defense', 'brief', readyResult?.status].filter((t): t is string => !!t), source: 'defense:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, def: { threats: threatResult, ready: readyResult, inc: incResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('defense.mintedDtuId', id, { label: `Sec DTU ${id.slice(0, 8)}…` }); ok(`Sec DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -114,11 +127,10 @@ export function DefenseActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🛡 Sec brief`, '',
+    const body = [`Defense brief`, '',
       threatResult ? `Threats: ${threatResult.critical} critical / ${threatResult.total} total · top: ${threatResult.topThreat} (${threatResult.overallThreatLevel})` : '',
       readyResult ? `Readiness: ${readyResult.overallReadiness}% · ${readyResult.status}${readyResult.gaps.length > 0 ? ` · gaps: ${readyResult.gaps.join(', ')}` : ''}` : '',
       incResult ? `Incident: ${incResult.incidentType} (${incResult.severity}) · response ${incResult.responseTime} · ${incResult.escalationLevel}` : '',
-      spendResult ? `DoD contracts (${contractKeyword}): ${spendResult.results?.length} found` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -130,41 +142,15 @@ export function DefenseActionPanel() {
       if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
-  async function actPublish() {
-    if (!spendResult) { err('Run DoD contracts search first.'); return; }
-    setBusy('publish'); setFeedback(null);
-    try {
-      const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `DoD contract briefing — ${contractKeyword}`, tags: ['defense', 'contracts', 'usaspending', 'public', contractKeyword], source: 'defense:contracts:publish', meta: { visibility: 'public', consent: { allowCitations: true }, contracts: spendResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-        if (!newId) throw new Error('No DTU id.');
-        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
-        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
-        return newId as string;
-      });
-      if (id) { setPublishedDtuId(id); pipe.publish('defense.publishedDtuId', id, { label: `Public DoD brief ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
-  }
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Defensive ops review. ${threatResult ? `Top threat: ${threatResult.topThreat} (${threatResult.overallThreatLevel}).` : ''} ${readyResult ? `Readiness ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.gaps.length > 0 ? `, gaps: ${readyResult.gaps.join(', ')}` : ''}.` : ''} ${incResult ? `Active incident: ${incResult.incidentType} (${incResult.severity}).` : ''} Identify the single most urgent action for command + one 30-day strategic priority. Plain text, 3 sentences max.`;
+      const task = `Defense planning review. ${threatResult ? `Top threat: ${threatResult.topThreat} (${threatResult.overallThreatLevel}).` : ''} ${readyResult ? `Readiness ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.gaps.length > 0 ? `, gaps: ${readyResult.gaps.join(', ')}` : ''}.` : ''} ${incResult ? `Active incident: ${incResult.incidentType} (${incResult.severity}).` : ''} Identify the single most urgent action and one 30-day planning priority. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
-
-  const actions = [
-    { id: 'threat' as ActionId, label: 'Threats', desc: 'threatAssessment', icon: AlertOctagon, accent: '#ef4444', handler: actThreat },
-    { id: 'ready' as ActionId, label: 'Readiness', desc: 'P × E × T × S', icon: Activity, accent: '#22c55e', handler: actReady },
-    { id: 'inc' as ActionId, label: 'Incident', desc: 'incidentResponse', icon: AlertTriangle, accent: '#f59e0b', handler: actInc },
-    { id: 'spend' as ActionId, label: 'DoD $', desc: 'USAspending.gov', icon: FileText, accent: '#3b82f6', handler: actSpend },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private sec DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send sec brief', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public contracts', icon: Globe, accent: '#15803d', handler: actPublish },
-    { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: command action', icon: Wand2, accent: '#eab308', handler: actAgent },
-  ];
 
   const SEV_COLOR: Record<string, string> = { low: 'text-emerald-300', medium: 'text-amber-300', high: 'text-orange-300', critical: 'text-red-300' };
   const STATUS_COLOR: Record<string, string> = { 'combat-ready': 'text-emerald-300', 'operationally-ready': 'text-blue-300', 'limited-readiness': 'text-amber-300', 'not-ready': 'text-red-300' };
@@ -173,17 +159,28 @@ export function DefenseActionPanel() {
     <div className="rounded-lg border border-slate-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-slate-500/10 pb-2">
         <Shield className="h-4 w-4 text-slate-300" />
-        <h3 className="text-sm font-semibold text-white">Defense ops</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">threats · readiness · incident · USAspending</span>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Planning analysis</h3>
+          <p className="text-[10px] text-zinc-500">Authored inputs only. Results are deterministic domain calculations, not live intelligence.</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Threats JSON</label>
-          <textarea value={threatsText} onChange={(e) => setThreatsText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1.5 rounded-lg border border-red-500/20 bg-red-500/[0.03] p-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-red-400"><AlertOctagon className="h-3 w-3" />Threat assessment</div>
+          <input value={threatName} onChange={(e) => setThreatName(e.target.value)} placeholder="Threat name" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+          <input value={threatCategory} onChange={(e) => setThreatCategory(e.target.value)} placeholder="Category" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+          <div className="grid grid-cols-2 gap-1">
+            <input inputMode="numeric" value={threatLikelihood} onChange={(e) => setThreatLikelihood(e.target.value)} placeholder="Likelihood %" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+            <input inputMode="numeric" value={threatImpact} onChange={(e) => setThreatImpact(e.target.value)} placeholder="Impact %" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+          </div>
+          <input value={threatMitigation} onChange={(e) => setThreatMitigation(e.target.value)} placeholder="Mitigation" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+          <button type="button" disabled={!!busy} onClick={actThreat} className="inline-flex items-center gap-1.5 rounded bg-red-500/15 px-2.5 py-1.5 text-[11px] font-medium text-red-200 disabled:opacity-40">
+            {busy === 'threat' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertOctagon className="h-3.5 w-3.5" />}Assess threat
+          </button>
         </div>
-        <div className="space-y-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Readiness inputs</div>
+        <div className="space-y-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-green-400"><Activity className="h-3 w-3" />Readiness inputs</div>
           <div className="grid grid-cols-2 gap-1">
             <input type="text" value={personnelReady} onChange={(e) => setPersonnelReady(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P ready" />
             <input type="text" value={personnelTotal} onChange={(e) => setPersonnelTotal(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P total" />
@@ -192,36 +189,37 @@ export function DefenseActionPanel() {
             <input type="text" value={training} onChange={(e) => setTraining(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Training %" />
             <input type="text" value={supplies} onChange={(e) => setSupplies(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Supply %" />
           </div>
+          <button type="button" disabled={!!busy} onClick={actReady} className="inline-flex items-center gap-1.5 rounded bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-medium text-emerald-200 disabled:opacity-40">
+            {busy === 'ready' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}Calculate readiness
+          </button>
         </div>
-        <div className="space-y-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Incident + contracts</div>
+        <div className="space-y-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400"><AlertTriangle className="h-3 w-3" />Incident protocol</div>
           <input type="text" value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Incident type" />
           <select value={incidentSev} onChange={(e) => setIncidentSev(e.target.value as typeof incidentSev)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white">
             <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
           </select>
-          <input type="text" value={contractKeyword} onChange={(e) => setContractKeyword(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Contract keyword" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
-          <div className="flex items-center gap-2 flex-wrap">
-            <RecallSlot ctl={dmRecall} />
-            <RecallSlot ctl={publishRecall} />
-          </div>
+          <input type="text" value={incidentLocation} onChange={(e) => setIncidentLocation(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Location (optional)" />
+          <input type="text" value={incidentReporter} onChange={(e) => setIncidentReporter(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Reporter (optional)" />
+          <button type="button" disabled={!!busy} onClick={actInc} className="inline-flex items-center gap-1.5 rounded bg-amber-500/15 px-2.5 py-1.5 text-[11px] font-medium text-amber-200 disabled:opacity-40">
+            {busy === 'inc' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}Build response protocol
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {actions.map(act => {
-          const Icon = act.icon; const isBusy = busy === act.id;
-          return (
-            <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
-              <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
-                {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-              </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Brief handoff</span>
+        <button type="button" disabled={!!busy} onClick={actMint} className="inline-flex items-center gap-1.5 rounded border border-violet-500/30 px-2.5 py-1.5 text-[11px] text-violet-200 disabled:opacity-40">
+          {busy === 'mint' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}{mintedDtuId ? 'Private DTU saved' : 'Save private DTU'}
+        </button>
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="min-w-44 rounded border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <button type="button" disabled={!!busy} onClick={actDm} className="inline-flex items-center gap-1.5 rounded border border-pink-500/30 px-2.5 py-1.5 text-[11px] text-pink-200 disabled:opacity-40">
+          {busy === 'dm' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Send brief
+        </button>
+        <button type="button" disabled={!!busy} onClick={actAgent} className="inline-flex items-center gap-1.5 rounded border border-yellow-500/30 px-2.5 py-1.5 text-[11px] text-yellow-200 disabled:opacity-40">
+          {busy === 'agent' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}Ask planning agent
+        </button>
+        <RecallSlot ctl={dmRecall} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -250,12 +248,6 @@ export function DefenseActionPanel() {
             <div className="text-[12px] font-semibold text-zinc-200">{incResult.incidentType}</div>
             <div className="text-[10px] text-zinc-400">response {incResult.responseTime} · escalate to {incResult.escalationLevel}</div>
             {(incResult.immediateActions ?? []).slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-amber-200 mt-0.5">→ {a}</div>)}
-          </div>
-        )}
-        {spendResult?.results && (
-          <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">DoD contracts · {contractKeyword}</div>
-            {spendResult.results.slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1 pb-1 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{a.recipient}</strong> · <span className="font-mono text-emerald-300">${a.amount?.toLocaleString()}</span><div className="text-zinc-400 line-clamp-1">{a.description}</div><div className="text-zinc-400">{a.subAgency || a.agency}{a.placeOfPerformanceState ? ` · ${a.placeOfPerformanceState}` : ''}</div></div>)}
           </div>
         )}
       </div>

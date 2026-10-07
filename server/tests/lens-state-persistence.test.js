@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 49);
+    assert.equal(LENS_STATE_KEYS.length, 50);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -93,6 +93,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("energyLens"));
     assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
     assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
+    assert.ok(LENS_STATE_KEYS.includes("defenseLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -752,6 +753,32 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.electricalLens.priceList instanceof Map);
     assert.equal(STATE.electricalLens.priceList.get("user_a")[0].price, 9.4);
     assert.equal(STATE.electricalLens.seq, 17);
+  });
+
+  it("roundtrips STATE.defenseLens (COP, missions, readiness, threats, personnel, logistics, and comms)", () => {
+    STATE.defenseLens = {
+      assets: new Map([["user_a", new Map([["asset_1", { id: "asset_1", designation: "Falcon 1", readiness: 92 }]])]]),
+      threats: new Map([["user_a", new Map([["threat_1", { id: "threat_1", name: "Storm front", severity: "high", history: [] }]])]]),
+      ops: new Map([["user_a", new Map([["cop_1", { id: "cop_1", label: "North sector", isCopMarker: true, lat: 38.9, lon: -77 }]])]]),
+      tasks: new Map([["user_a", new Map([["task_1", { id: "task_1", name: "Establish comms", dependsOn: [], status: "pending" }]])]]),
+      personnel: new Map([["user_a", new Map([["person_1", { id: "person_1", name: "Sgt Doe", availability: "available" }]])]]),
+      supply: new Map([["user_a", new Map([["supply_1", { id: "supply_1", item: "Medical kits", status: "approved", history: [] }]])]]),
+      comms: new Map([["user_a", new Map([["msg_1", { id: "msg_1", channel: "ops", body: "Sector clear", acknowledged: true }]])]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["assets", "threats", "ops", "tasks", "personnel", "supply", "comms"]) {
+      assert.ok(STATE.defenseLens[key] instanceof Map);
+      assert.ok(STATE.defenseLens[key].get("user_a") instanceof Map);
+    }
+    assert.equal(STATE.defenseLens.assets.get("user_a").get("asset_1").readiness, 92);
+    assert.equal(STATE.defenseLens.threats.get("user_a").get("threat_1").severity, "high");
+    assert.equal(STATE.defenseLens.ops.get("user_a").get("cop_1").label, "North sector");
+    assert.equal(STATE.defenseLens.tasks.get("user_a").get("task_1").name, "Establish comms");
+    assert.equal(STATE.defenseLens.personnel.get("user_a").get("person_1").availability, "available");
+    assert.equal(STATE.defenseLens.supply.get("user_a").get("supply_1").status, "approved");
+    assert.equal(STATE.defenseLens.comms.get("user_a").get("msg_1").acknowledged, true);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

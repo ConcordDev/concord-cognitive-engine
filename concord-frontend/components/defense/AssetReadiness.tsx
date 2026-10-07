@@ -22,6 +22,7 @@ interface DefAsset {
 }
 
 interface AssetRollupResult {
+  assets: DefAsset[];
   total: number;
   inService: number;
   byStatus: Record<string, number>;
@@ -83,22 +84,25 @@ export function AssetReadiness() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    // asset-rollup returns fleet aggregates + the lowReadiness at-risk subset.
-    // The full per-asset table is maintained as a session mirror updated on
-    // each upsert/delete (the rollup macro is aggregate-only by design).
-    const r = await lensRun<AssetRollupResult>('defense', 'asset-rollup', {});
-    if (r.data?.ok && r.data.result) {
-      setRollup(r.data.result);
-    } else {
-      setError(r.data?.error || 'Failed to load asset rollup');
+    try {
+      const r = await lensRun<AssetRollupResult>('defense', 'asset-rollup', {});
+      if (r.data?.ok && r.data.result) {
+        setAssets(r.data.result.assets || []);
+        setRollup(r.data.result);
+      } else {
+        setError(r.data?.error || 'Failed to load asset rollup');
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to load asset rollup');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const frame = requestAnimationFrame(() => { void refresh(); });
+    return () => cancelAnimationFrame(frame);
+  }, [refresh]);
 
   const save = useCallback(async () => {
     if (!form) return;

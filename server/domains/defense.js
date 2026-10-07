@@ -460,7 +460,7 @@ export default function registerDefenseActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          total, inService, byStatus, byType,
+          assets, total, inService, byStatus, byType,
           fleetReadiness, availabilityPct,
           meanReadiness: total ? Math.round(readinessSum / total) : 0,
           lowReadiness,
