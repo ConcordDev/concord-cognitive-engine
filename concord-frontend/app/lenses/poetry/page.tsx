@@ -1,170 +1,281 @@
 'use client';
 
 /**
- * Poetry lens: the north-star look (serif title, pill views, teal floating CTA)
- * over the notebook, writing desk, PoetryDB discovery, studio, forms guide and
- * peer workshop. The CTA opens a blank poem on the real compose desk.
+ * Poetry — one poem.
+ *
+ * poem-list is the page. + New poem calls poem-create, then shows the
+ * title only after poem-list contains that id and the same title, and
+ * shows the lines only after poem-detail returns that same body. A blank
+ * title is not sent. A blank body is not sent. Title and body are stored
+ * in poetry_poems, so a server restart still lists them. Form and status
+ * stay off this screen. The numbered comment is empty-page chrome. It
+ * is not a text field. The notebook views are other macros. They are
+ * not on this screen.
  */
 
-import { useCallback, useRef, useState } from 'react';
-import {
-  AlignLeft, BookOpen, Compass, Feather, Globe, Plus, Wand2,
-} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { FeedBanner } from '@/components/lens/FeedBanner';
-import { cn } from '@/lib/utils';
-import { CollectionPanel } from '@/components/poetry/CollectionPanel';
-import { ComposePanel, type ComposeIntent } from '@/components/poetry/ComposePanel';
-import { DiscoverPanel } from '@/components/poetry/DiscoverPanel';
-import { FormsPanel } from '@/components/poetry/FormsPanel';
-import { StudioPanel } from '@/components/poetry/StudioPanel';
-import { WorkshopPanel } from '@/components/poetry/WorkshopPanel';
-import type { PoemForm } from '@/components/poetry/poetry-craft';
+import { lensRun } from '@/lib/api/client';
 
-type PoetryView = 'collection' | 'compose' | 'discover' | 'studio' | 'forms' | 'workshop';
+interface Poem {
+  id: string;
+  title: string;
+  body: string;
+}
 
-const VIEWS: { id: PoetryView; label: string; keys: string; title: string; hint: string; icon: typeof Feather }[] = [
-  { id: 'collection', label: 'Collection', keys: 'c', title: 'The notebook', hint: 'Notebook list', icon: BookOpen },
-  { id: 'compose', label: 'Compose', keys: 'o', title: 'The poem', hint: 'Writing desk', icon: Feather },
-  { id: 'discover', label: 'Discover', keys: 'd', title: 'The poem of the day', hint: 'Poem-a-day · PoetryDB', icon: Compass },
-  { id: 'studio', label: 'Studio', keys: 's', title: 'The studio', hint: 'Forms · audio · chapbook', icon: Wand2 },
-  { id: 'forms', label: 'Forms', keys: 'f', title: 'The forms', hint: 'Poetic forms guide', icon: AlignLeft },
-  { id: 'workshop', label: 'Workshop', keys: 'w', title: 'The workshop', hint: 'Peer critique', icon: Globe },
-];
+type Phase = 'loading' | 'ready' | 'error';
+
+function poemsFrom(rows: unknown): { id: string; title: string }[] {
+  if (!Array.isArray(rows)) return [];
+  const out: { id: string; title: string }[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as { id?: string }).id;
+    const title = (row as { title?: string }).title;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    out.push({ id, title: title.trim() });
+  }
+  return out;
+}
+
+function isWarming(message: string): boolean {
+  return /service_overloaded|event_loop_lag|status code 503/i.test(message);
+}
+
+async function runPoetry<T>(name: string, input: Record<string, unknown>, fallback: string): Promise<T> {
+  let last = fallback;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await lensRun<T>('poetry', name, input);
+    if (response.data?.ok && response.data.result) return response.data.result;
+    last = response.data?.error || last;
+    if (!isWarming(last) || attempt === 7) throw new Error(last);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error(last);
+}
+
+// poem-list is a small read. A 503 here is the admission gate refusing
+// PROTECTED calls while boot lag is over 900ms, not a failed poem query.
+// Retry on that gate only. Any other error surfaces immediately.
+async function readPoems(): Promise<Poem[]> {
+  const listed = await runPoetry<{ poems?: unknown }>('poem-list', {}, 'Could not read the poem.');
+  const slim = poemsFrom(listed.poems);
+  const out: Poem[] = [];
+  for (const poem of slim) {
+    const detail = await runPoetry<{ poem?: { body?: unknown; title?: unknown } }>(
+      'poem-detail',
+      { id: poem.id },
+      'Could not read the poem.',
+    );
+    const body = detail.poem?.body;
+    if (typeof body !== 'string') throw new Error('Could not read the poem.');
+    out.push({ id: poem.id, title: poem.title, body });
+  }
+  return out;
+}
+
+function LineNumbers({ count }: { count: number }) {
+  const n = Math.max(4, count);
+  return (
+    <ol className="w-10 shrink-0 select-none border-r border-white/10 py-4 text-right font-mono text-[13px] text-zinc-600">
+      {Array.from({ length: n }, (_, index) => (
+        <li key={index + 1} className="h-7 px-2 leading-7">{index + 1}</li>
+      ))}
+    </ol>
+  );
+}
 
 export default function PoetryPage() {
   useLensNav('poetry');
-  useLensIdentity('poetry');
-  const { isLive, lastUpdated } = useRealtimeLens('poetry');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [active, setActive] = useState<PoetryView>('collection');
-  const [composeIntent, setComposeIntent] = useState<ComposeIntent>({ nonce: 0, poemId: null });
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [poems, setPoems] = useState<Poem[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const goCompose = useCallback((opts?: { poemId?: string | null; form?: PoemForm }) => {
-    setComposeIntent((prev) => ({
-      nonce: prev.nonce + 1,
-      poemId: opts?.poemId ?? null,
-      form: opts?.form,
-    }));
-    setActive('compose');
-  }, []);
+  const pull = useCallback(async () => readPoems(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setPoems(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the poem.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setPoems(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the poem.');
+    });
+  }, [pull]);
+
+  const openPoem = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      return;
+    }
+    const trimmed = title.trim();
+    const lines = body.trim();
+    if (!trimmed) {
+      setActionError('A title is required.');
+      return;
+    }
+    if (!lines) {
+      setActionError('A line is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await runPoetry<{ poem?: { id?: string } }>(
+        'poem-create',
+        { title: trimmed, body: lines },
+        'Could not open that poem.',
+      );
+      const id = created.poem?.id;
+      if (!id) throw new Error('Could not open that poem.');
+      const rows = await readPoems();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.title !== trimmed || row.body !== lines) {
+        throw new Error('Opened, but the poem did not read it back.');
+      }
+      setPoems(rows);
+      setTitle('');
+      setBody('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that poem.');
+    } finally {
+      setBusy(false);
+    }
+  }, [body, busy, composing, phase, title]);
 
   useLensCommand(
-    [
-      ...VIEWS.map((v) => ({
-        id: `view-${v.id}`,
-        keys: v.keys,
-        description: `${v.label} — ${v.hint}`,
-        category: 'navigation' as const,
-        action: () => setActive(v.id),
-      })),
-      {
-        id: 'focus-search',
-        keys: '/',
-        description: 'Focus search',
-        category: 'navigation' as const,
-        action: () => {
-          setActive('collection');
-          queueMicrotask(() => searchInputRef.current?.focus());
-        },
-      },
-      {
-        id: 'new-poem',
-        keys: 'n',
-        description: 'New poem',
-        category: 'actions' as const,
-        action: () => goCompose({ poemId: null }),
-      },
-    ],
+    [{ id: 'poetry-new', keys: 'n', description: '+ New poem', category: 'actions', action: () => { void openPoem(); } }],
     { lensId: 'poetry' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
+  const empty = phase === 'ready' && poems.length === 0 && !composing;
 
   return (
     <LensShell lensId="poetry" asMain={false}>
-      <FirstRunTour lensId="poetry" />
-      <DepthBadge lensId="poetry" size="sm" className="ml-2" />
-      <div data-lens-theme="poetry" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Poetry</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'collection' && who ? `, ${who}` : ''}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="poetry" data={{}} compact />
-          </div>
-        </div>
+      <div data-lens-theme="poetry" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Poetry</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The poem{who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Poetry views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                aria-current={on ? 'page' : undefined}
-                title={`${v.hint} (${v.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {v.label}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+        <section
+          aria-label="Poem"
+          className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950"
+        >
+          {phase === 'loading' && (
+            <p data-testid="po-loading" role="status" aria-busy="true" className="px-6 py-5 text-[14px] text-zinc-500">
+              Opening the poem.
+            </p>
+          )}
+          {phase === 'error' && (
+            <div data-testid="po-error" role="alert" className="px-6 py-5">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the poem.'}</p>
+              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
               </button>
-            );
-          })}
-        </nav>
-
-        <FeedBanner domain="poetry" />
-
-        <div className="mt-4">
-          {active === 'collection' && (
-            <CollectionPanel
-              searchInputRef={searchInputRef}
-              onOpenPoem={(id) => goCompose({ poemId: id })}
-              onNewPoem={() => goCompose({ poemId: null })}
-            />
+            </div>
           )}
-          {active === 'compose' && <ComposePanel intent={composeIntent} />}
-          {active === 'discover' && <DiscoverPanel />}
-          {active === 'studio' && <StudioPanel />}
-          {active === 'forms' && (
-            <FormsPanel onTryForm={(form) => goCompose({ poemId: null, form })} />
+          {empty && (
+            <div data-testid="po-empty" className="flex min-h-[20rem]">
+              <LineNumbers count={4} />
+              <div className="px-4 py-4 font-mono text-[14px]">
+                <p className="h-7 leading-7 text-zinc-500">{'// the page is empty.'}</p>
+                <p className="h-7" />
+                <p className="flex h-7 items-center">
+                  <span data-testid="po-caret" className="inline-block h-4 w-2 bg-teal-400" />
+                </p>
+              </div>
+            </div>
           )}
-          {active === 'workshop' && <WorkshopPanel />}
-        </div>
+          {phase === 'ready' && poems.length > 0 && (
+            <ul data-testid="po-poems">
+              {poems.map((poem) => {
+                const lines = poem.body.split('\n');
+                return (
+                  <li key={poem.id} className="border-b border-white/10 px-6 py-5 last:border-b-0">
+                    <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{poem.title}</h2>
+                    <div className="mt-3 flex">
+                      <LineNumbers count={lines.length} />
+                      <div className="px-4 py-4 font-mono text-[14px] text-zinc-300">
+                        {lines.map((line, index) => (
+                          <p key={`${poem.id}-${index}`} data-testid="po-line" className="h-7 leading-7">{line}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {phase === 'ready' && composing && (
+            <div className="space-y-4 px-6 py-5">
+              <label className="block text-[14px] text-zinc-400">
+                Title
+                <input
+                  data-testid="po-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                  autoFocus
+                />
+              </label>
+              <label className="block text-[14px] text-zinc-400">
+                Lines
+                <textarea
+                  data-testid="po-body"
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  rows={6}
+                  className="mt-1 w-full resize-none border-b border-white/15 bg-transparent pb-2 font-mono text-[14px] text-zinc-100 outline-none"
+                />
+              </label>
+            </div>
+          )}
+        </section>
 
-        <CrossLensRecentsPanel lensId="poetry" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+        {actionError ? (
+          <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
+        ) : null}
 
         <button
           type="button"
-          onClick={() => goCompose({ poemId: null })}
-          title="New poem (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void openPoem(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          New poem
+          + New poem
         </button>
       </div>
     </LensShell>
