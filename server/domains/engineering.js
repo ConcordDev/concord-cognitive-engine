@@ -14,7 +14,7 @@ import { runFEA } from '../lib/simulation/fea-solver.js';
 // unsurfaced" section, now closed). Named imports mirror how server.js's
 // structuralCheck/electricalCheck combinators already consume this module's
 // other named exports (eng.columnBuckling, eng.voltageDrop, …).
-import { boltedConnection, transformerSizing, sectionProperties } from '../lib/compute/engineering-compute.js';
+import { boltedConnection, transformerSizing, sectionProperties, columnBuckling } from '../lib/compute/engineering-compute.js';
 // checkThermalGate is the thermal-stress cross-check adapter (Wave E,
 // Cross-System Multi-Physics CAD): given the SAME nodes/members/loads/
 // supports model shape this file's own `runFEA` action already accepts
@@ -1547,6 +1547,145 @@ export default function registerEngineeringActions(registerLensAction) {
           bySupplier: Object.entries(bySupplier).map(([name, v]) => ({
             supplier: name, lineItems: v.lineItems, cost: r2(v.cost),
           })),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+
+  // ─── columnBucklingCheck — analytical Euler Pcr (NOT FEA eigenvalue) ───
+  // Closed-form Pcr = π²EI/(KL)². Default pinned-pinned K=1.
+  // Honesty label is ALWAYS `analytical_euler_not_fea_eigenvalue`.
+  // Axial utilization here is P/Pcr (buckling), which is NOT the same as
+  // FEA combined-stress utilization (σ/σ_allow) from runFEA — we surface
+  // both when a pure-axial FEA column model is provided, never blended.
+  registerLensAction('engineering', 'columnBucklingCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const K = Number.isFinite(Number(data.K ?? data.kFactor)) ? Number(data.K ?? data.kFactor) : 1;
+
+      // Prefer SI inputs when present; else imperial (existing columnBuckling).
+      const hasSi = [data.lengthM, data.E_Pa ?? data.E, data.I_m4 ?? data.I].every((v) => Number.isFinite(Number(v)));
+      let pcrN = null;
+      let pcrKips = null;
+      let formulaInputs = null;
+      let units = null;
+
+      if (hasSi) {
+        const L = Number(data.lengthM);
+        const E = Number(data.E_Pa ?? data.E);
+        const I = Number(data.I_m4 ?? data.I);
+        if (!(L > 0 && E > 0 && I > 0 && K > 0)) {
+          return { ok: false, error: 'positive lengthM, E (Pa), I (m^4), K required' };
+        }
+        pcrN = (Math.PI * Math.PI * E * I) / ((K * L) * (K * L));
+        pcrKips = pcrN / 4448.2216152605; // N → kip
+        formulaInputs = { lengthM: L, E_Pa: E, I_m4: I, K, system: 'SI' };
+        units = { Pcr: 'N', length: 'm', E: 'Pa', I: 'm^4' };
+      } else {
+        const r = columnBuckling({
+          loadKips: data.loadKips,
+          lengthFt: data.lengthFt,
+          modulusE: data.modulusE ?? data.E_psi ?? data.elasticModulus,
+          momentI: data.momentI ?? data.I_in4,
+          kFactor: K,
+        });
+        if (r.error) return { ok: false, error: r.error, inputs: r.inputs };
+        pcrKips = r.value;
+        pcrN = r.criticalLoadLb * 4.4482216152605; // lbf → N
+        formulaInputs = { ...r.inputs, system: 'imperial' };
+        units = { Pcr: 'kips', length: 'ft', E: 'psi', I: 'in^4' };
+      }
+
+      const loadN = Number.isFinite(Number(data.loadN)) ? Number(data.loadN) : null;
+      const loadKips = Number.isFinite(Number(data.loadKips))
+        ? Number(data.loadKips)
+        : (loadN != null ? loadN / 4448.2216152605 : null);
+
+      let axialUtilizationEuler = null;
+      let factorOfSafety = null;
+      if (loadKips != null && loadKips > 0 && pcrKips > 0) {
+        axialUtilizationEuler = loadKips / pcrKips;
+        factorOfSafety = pcrKips / loadKips;
+      } else if (loadN != null && loadN > 0 && pcrN > 0) {
+        axialUtilizationEuler = loadN / pcrN;
+        factorOfSafety = pcrN / loadN;
+      }
+
+      // Optional: pure-axial FEA column for honesty contrast (stress util ≠ Euler util).
+      let feaAxialUtilization = null;
+      let feaContrast = null;
+      const wantFea = data.compareFeaAxial === true || data.feaModel;
+      if (wantFea && hasSi && loadN != null && loadN > 0) {
+        const L = Number(data.lengthM);
+        const E = Number(data.E_Pa ?? data.E);
+        const I = Number(data.I_m4 ?? data.I);
+        const A = Number.isFinite(Number(data.A_m2 ?? data.area)) ? Number(data.A_m2 ?? data.area) : Math.sqrt(I) * 4; // crude if omitted
+        const yieldPa = Number.isFinite(Number(data.yieldPa ?? data.allowableStress))
+          ? Number(data.yieldPa ?? data.allowableStress)
+          : (E * 0.001); // screening default — labeled below
+        const model = data.feaModel || {
+          nodes: [
+            { id: 'N1', x: 0, y: 0, z: 0 },
+            { id: 'N2', x: 0, y: L, z: 0 },
+          ],
+          members: [{
+            id: 'COL', nodeI: 'N1', nodeJ: 'N2',
+            area: A, momentI: I, elasticModulus: E, allowableStress: yieldPa,
+          }],
+          // Pure compression along member axis (global -Y for vertical column)
+          loads: [{ nodeId: 'N2', Fy: -Math.abs(loadN) }],
+          supports: [
+            { nodeId: 'N1', type: 'pinned', fixedDOF: ['x', 'y', 'z'] },
+            { nodeId: 'N2', type: 'roller', fixedDOF: ['x', 'z'] },
+          ],
+        };
+        const fea = runFEA(model);
+        if (fea.ok && fea.utilization?.[0]) {
+          feaAxialUtilization = fea.utilization[0].utilization;
+          const axialStress = fea.stresses?.[0]?.axialStress;
+          feaContrast = {
+            ok: true,
+            feaAxialUtilization,
+            axialStress,
+            note: 'FEA utilization is combined-stress / allowable (linear-static) — NOT an eigenvalue buckling factor and NOT P/Pcr.',
+          };
+        } else {
+          feaContrast = { ok: false, reason: fea.error || 'fea_unavailable', note: 'Euler Pcr still valid; FEA contrast skipped.' };
+        }
+      }
+
+      const passBuckling = axialUtilizationEuler == null ? null : axialUtilizationEuler <= 1;
+
+      return {
+        ok: true,
+        result: {
+          formula: 'Pcr = π²EI/(KL)²',
+          K,
+          endConditions: K === 1 ? 'pinned-pinned' : (data.endConditions || `K=${K}`),
+          Pcr_N: pcrN,
+          Pcr_kips: pcrKips,
+          units,
+          inputs: formulaInputs,
+          loadN: loadN,
+          loadKips: loadKips,
+          axialUtilizationEuler,
+          factorOfSafety,
+          passBuckling,
+          feaAxialUtilization,
+          feaContrast,
+          honesty: {
+            label: 'analytical_euler_not_fea_eigenvalue',
+            note: 'Closed-form Euler critical load. Not an FEA eigenvalue buckling mode. Axial utilization is P/Pcr, distinct from FEA σ/σ_allow utilization.',
+            not: [
+              'fea_eigenvalue_buckling',
+              'AISC_E_factor_design',
+              'local_or_LTB_buckling',
+            ],
+          },
+          label: 'analytical_euler_not_fea_eigenvalue',
         },
       };
     } catch (e) {
