@@ -121,7 +121,19 @@ export function startEmbeddingWorker({
             resolve();
             return;
           }
-          child.once("exit", () => resolve());
+          child.ref();
+          child.channel?.ref?.();
+          const onExit = () => {
+            clearTimeout(exitTimer);
+            resolve();
+          };
+          const exitTimer = setTimeout(() => {
+            child.removeListener("exit", onExit);
+            child.unref();
+            child.channel?.unref?.();
+            resolve();
+          }, 1_000);
+          child.once("exit", onExit);
           killOnExit();
         });
       },

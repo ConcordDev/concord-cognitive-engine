@@ -1093,6 +1093,12 @@ export const MACRO_INPUT_HINTS = {
       "optional": true
     }
   ],
+  "knowledge_trade.mentor_recipes": [
+    {
+      "name": "mentorNpcId",
+      "optional": false
+    }
+  ],
   "knowledge_trade.mentorship_complete_session": [
     {
       "name": "mentorshipId",

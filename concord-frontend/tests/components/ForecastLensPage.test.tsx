@@ -54,7 +54,9 @@ function ok(forecast: unknown) {
 }
 
 describe('forecast lens — four UX states (now tab)', () => {
-  beforeEach(() => { lensRun.mockReset(); });
+  // Calls a test doesn't script (e.g. the keep menu's thread.draft-list)
+  // resolve to an empty success, like the real client — never undefined.
+  beforeEach(() => { lensRun.mockReset(); lensRun.mockResolvedValue({ data: { ok: true, result: {} } }); });
 
   it('shows a role=status loading state before data resolves', async () => {
     let resolve!: (v: unknown) => void;

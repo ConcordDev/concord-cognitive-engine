@@ -266,7 +266,7 @@ function makeNpcRecipe(db, opts = {}) {
   });
   db._tables.dtus.set(recipeId, {
     id: recipeId, kind: "fighting_style_recipe", title: meta.name, creator_id: npcId,
-    meta_json: JSON.stringify(meta), skill_level: opts.skillLevel || 50, total_experience: 0,
+    data: JSON.stringify(meta), meta_json: JSON.stringify(meta), skill_level: opts.skillLevel || 50, total_experience: 0,
   });
   return { recipeId, npcId };
 }

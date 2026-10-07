@@ -51,6 +51,8 @@ jobs:
           # compile of the full codebase + 175 lenses + Sentry webpack
           # passes. Match the ci.yml frontend build allocation.
           NODE_OPTIONS: --max-old-space-size=6144
+          # Test-only build: skip copying the LFS Unity player (see scripts/sync-unity-web-to-standalone.mjs).
+          CONCORD_SKIP_UNITY_WEB: '1'
         run: npm run build
 
       - name: Run migrations

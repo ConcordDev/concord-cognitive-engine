@@ -1,0 +1,21 @@
+[hvac-restart-proof] login ok as wbproof_muv96clt
+[hvac-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-restart-proof] opened http://localhost:5399/lenses/hvac
+[hvac-restart-proof] hvac.load-list still contains "load_muvo24o9_zffgs8"? true
+[hvac-restart-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-restart-proof] dtu.get dtu_413cf8a4801518c278da ok? true source: hvac-lens:load-report visibility: private
+[hvac-restart-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_413cf8a4801518c278da","title":"1,800 Sf Hot-humid","tags":["hvac","load-calc","load-estimate","hot-humid","quara
+[hvac-restart-proof] thread.draft-detail th_muvo2quz_3smux9 ok? true cites: dtu_413cf8a4801518c278da status: draft
+[hvac-restart-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","content":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 
+[hvac-restart-proof] opened http://localhost:5399/lenses/thread
+[hvac-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[hvac-restart-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[hvac-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":38,"scheduled":0,"published":0,"total":38,"totalPosts":115}}
+[hvac-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[hvac-restart-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":38,"scheduled":0,"published":0,"total":38,"totalPosts":115}}
+[hvac-restart-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[hvac-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","platform":"x","status":"draft","postCount":3,"scheduledAt":nul
+[hvac-restart-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","platform":"x","status":"draft","postCount":3,"scheduledAt":nul
+[hvac-restart-proof] Thread Composer lists a draft citing dtu_413cf8a4801518c278da
+[hvac-restart-proof] RESTART OK

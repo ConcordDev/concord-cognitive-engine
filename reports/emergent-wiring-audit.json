@@ -1,6 +1,12 @@
 {
   "wired": [
     {
+      "file": "aerial-traffic-cycle.js",
+      "handlers": [
+        "runAerialTrafficCycle"
+      ]
+    },
+    {
       "file": "affect-trace-cycle.js",
       "handlers": [
         "runAffectTraceCycle"
@@ -83,6 +89,12 @@
       ]
     },
     {
+      "file": "byo-budget-alert-cycle.js",
+      "handlers": [
+        "runByoBudgetAlertCycle"
+      ]
+    },
+    {
       "file": "capability-bridge.js",
       "handlers": [
         "runBeaconCheck",
@@ -123,6 +135,12 @@
       "file": "combat-recovery-cycle.js",
       "handlers": [
         "runCombatRecoveryCycle"
+      ]
+    },
+    {
+      "file": "consequence-apply-cycle.js",
+      "handlers": [
+        "runConsequenceApplyCycle"
       ]
     },
     {
@@ -183,6 +201,12 @@
       "file": "deep-health.js",
       "handlers": [
         "runDeepHealthCheck"
+      ]
+    },
+    {
+      "file": "district-governance-cycle.js",
+      "handlers": [
+        "runDistrictGovernanceCycle"
       ]
     },
     {
@@ -276,6 +300,12 @@
       ]
     },
     {
+      "file": "fedmesh-sync-cycle.js",
+      "handlers": [
+        "runFedmeshSyncCycle"
+      ]
+    },
+    {
       "file": "festival-trigger-cycle.js",
       "handlers": [
         "runFestivalTriggerCycle"
@@ -284,7 +314,8 @@
     {
       "file": "forgetting-engine.js",
       "handlers": [
-        "runForgettingCycle"
+        "runForgettingCycle",
+        "runReviewSchedulingPass"
       ]
     },
     {
@@ -307,9 +338,21 @@
       ]
     },
     {
+      "file": "gathering-broadcast-cycle.js",
+      "handlers": [
+        "runGatheringBroadcastCycle"
+      ]
+    },
+    {
       "file": "ghost-threads.js",
       "handlers": [
         "runGhostThread"
+      ]
+    },
+    {
+      "file": "goddess-broadcast-cycle.js",
+      "handlers": [
+        "runGoddessBroadcastCycle"
       ]
     },
     {
@@ -321,7 +364,8 @@
     {
       "file": "heartbeat-registry.js",
       "handlers": [
-        "tickAllRegistered"
+        "tickAllRegistered",
+        "runHeartbeatModuleNow"
       ]
     },
     {
@@ -349,6 +393,12 @@
       ]
     },
     {
+      "file": "ingest-drain-cycle.js",
+      "handlers": [
+        "runIngestDrainCycle"
+      ]
+    },
+    {
       "file": "initiative-cycle.js",
       "handlers": [
         "runInitiativeCycle"
@@ -358,6 +408,12 @@
       "file": "kingdom-decree-cycle.js",
       "handlers": [
         "runKingdomDecreeCycle"
+      ]
+    },
+    {
+      "file": "kingdom-legitimacy-cycle.js",
+      "handlers": [
+        "runKingdomLegitimacyCycle"
       ]
     },
     {
@@ -414,6 +470,12 @@
       ]
     },
     {
+      "file": "mission-runtime-cycle.js",
+      "handlers": [
+        "runMissionRuntimeCycle"
+      ]
+    },
+    {
       "file": "mount-behavior-cycle.js",
       "handlers": [
         "runMountBehaviorCycle"
@@ -447,6 +509,12 @@
       "file": "npc-ambition-cycle.js",
       "handlers": [
         "runNpcAmbitionCycle"
+      ]
+    },
+    {
+      "file": "npc-building-affinity-cycle.js",
+      "handlers": [
+        "runNpcBuildingAffinityCycle"
       ]
     },
     {
@@ -516,6 +584,12 @@
       ]
     },
     {
+      "file": "pce-improvement-cycle.js",
+      "handlers": [
+        "runPceImprovementHeartbeat"
+      ]
+    },
+    {
       "file": "personal-beat-scheduler.js",
       "handlers": [
         "runPersonalBeatScheduler"
@@ -540,6 +614,12 @@
       ]
     },
     {
+      "file": "privacy-retention-sweep.js",
+      "handlers": [
+        "runPrivacyRetentionSweep"
+      ]
+    },
+    {
       "file": "procedural-npc-spawner.js",
       "handlers": [
         "runProceduralNpcSpawner"
@@ -549,6 +629,12 @@
       "file": "procgen-settlement-cycle.js",
       "handlers": [
         "runProcgenSettlementCycle"
+      ]
+    },
+    {
+      "file": "project-continuation-cycle.js",
+      "handlers": [
+        "runProjectContinuationCycle"
       ]
     },
     {
@@ -583,6 +669,12 @@
       "file": "repair-cycle.js",
       "handlers": [
         "runRepairCycle"
+      ]
+    },
+    {
+      "file": "repo-graph-cycle.js",
+      "handlers": [
+        "runRepoGraphCycle"
       ]
     },
     {
@@ -633,6 +725,12 @@
       "file": "social-npc-bridge.js",
       "handlers": [
         "runSocialNpcBridge"
+      ]
+    },
+    {
+      "file": "sovereign-manifestation-cycle.js",
+      "handlers": [
+        "runSovereignManifestationCycle"
       ]
     },
     {
@@ -1012,6 +1110,10 @@
       "handlers": []
     },
     {
+      "file": "predict-research-cycle.js",
+      "handlers": []
+    },
+    {
       "file": "projects.js",
       "handlers": []
     },
@@ -1112,6 +1214,10 @@
       "handlers": []
     },
     {
+      "file": "usb-lease-cycle.js",
+      "handlers": []
+    },
+    {
       "file": "user-constitution.js",
       "handlers": []
     },
@@ -1125,5 +1231,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-06-26T23:17:31.920Z"
+  "scannedAt": "2026-09-30T05:57:09.454Z"
 }

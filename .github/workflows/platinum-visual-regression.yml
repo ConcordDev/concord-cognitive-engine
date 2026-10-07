@@ -151,6 +151,8 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
           NEXT_PUBLIC_API_URL: http://localhost:5050
+          # Test-only build: skip copying the LFS Unity player (see scripts/sync-unity-web-to-standalone.mjs).
+          CONCORD_SKIP_UNITY_WEB: '1'
         run: npm run build
 
       - name: Start frontend (background)

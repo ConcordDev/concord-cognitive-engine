@@ -1,0 +1,91 @@
+{
+  "user": "shot_1790977310885",
+  "apiReg": {
+    "status": 201,
+    "t": "[redacted]"
+  },
+  "loginRes": {
+    "status": 200,
+    "t": "[redacted]"
+  },
+  "results": [
+    {
+      "slug": "code",
+      "final": "http://127.0.0.1:3000/lenses/code",
+      "ok": true,
+      "bytes": 149910
+    },
+    {
+      "slug": "debug",
+      "final": "http://127.0.0.1:3000/lenses/debug",
+      "ok": true,
+      "bytes": 133615
+    },
+    {
+      "slug": "database",
+      "final": "http://127.0.0.1:3000/lenses/database",
+      "ok": true,
+      "bytes": 147981
+    },
+    {
+      "slug": "repos",
+      "final": "http://127.0.0.1:3000/lenses/repos",
+      "ok": true,
+      "bytes": 117970
+    },
+    {
+      "slug": "studio",
+      "final": "http://127.0.0.1:3000/lenses/studio",
+      "ok": true,
+      "bytes": 148710
+    },
+    {
+      "slug": "music",
+      "final": "http://127.0.0.1:3000/lenses/music",
+      "ok": true,
+      "bytes": 154920
+    },
+    {
+      "slug": "art",
+      "final": "http://127.0.0.1:3000/lenses/art",
+      "ok": true,
+      "bytes": 155491
+    },
+    {
+      "slug": "world",
+      "final": "http://127.0.0.1:3000/lenses/world",
+      "ok": true,
+      "bytes": 110632
+    },
+    {
+      "slug": "schema",
+      "final": "http://127.0.0.1:3000/lenses/schema",
+      "ok": true,
+      "bytes": 183424
+    },
+    {
+      "slug": "entity",
+      "final": "http://127.0.0.1:3000/lenses/entity",
+      "ok": true,
+      "bytes": 171963
+    },
+    {
+      "slug": "temporal",
+      "final": "http://127.0.0.1:3000/lenses/temporal",
+      "ok": true,
+      "bytes": 139483
+    },
+    {
+      "slug": "eco",
+      "final": "http://127.0.0.1:3000/lenses/eco",
+      "ok": true,
+      "bytes": 172665
+    },
+    {
+      "slug": "meta",
+      "final": "http://127.0.0.1:3000/lenses/meta",
+      "ok": true,
+      "bytes": 164142
+    }
+  ]
+}

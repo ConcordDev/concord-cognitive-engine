@@ -10,7 +10,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Send, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { Bot, Send, ShieldCheck } from 'lucide-react';
+import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import { lensRun } from '@/lib/api/client';
 import {
   dtuRecordId,
@@ -124,6 +126,16 @@ export function EngineeringKeepMenu({ facts, platform = 'x' }: Props) {
             <Send className="h-3 w-3" />
             {drafted ? 'Drafted' : busy === 'draft' ? 'Drafting…' : 'Draft in Thread'}
           </button>
+          {dtuId && (
+            <Link
+              href={conkayWorkspaceHref({ dtu: dtuId, title: sentence || undefined })}
+              title="Open this FEA report in the ConKay workspace"
+              className="inline-flex items-center gap-1 rounded-md border border-sky-500/30 px-2.5 py-1 text-[11px] font-medium text-sky-300 hover:bg-sky-500/10"
+            >
+              <Bot className="h-3 w-3" />
+              Open in ConKay
+            </Link>
+          )}
         </div>
       </div>
 

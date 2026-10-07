@@ -43,6 +43,11 @@ public static IEnumerator BindStaged(Transform chunk, WorldId world)
             Bind(chunk, world);
             yield return null;
             yield return null;
+            // Organic SoftEnter cascade: the authored TRELLIS hero hall, the MAP_MASTER
+            // SoftEnter landmark, and one flora mass per world. OrganicBind places them
+            // through HubKit and holds the Flower Law, the Sundering stride, and the
+            // authored snap. Nothing is placed when the registry has no mesh for the id.
+            yield return OrganicBind.StageStaged(chunk, world);
         }
 
         public static void ValidateHubCourt(Transform hubRoot)

@@ -14,6 +14,8 @@ import { render, act, fireEvent, waitFor } from '@testing-library/react';
 
 // Toast store — capture addToast calls to assert the toast bonus.
 const addToastMock = vi.fn();
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/store/ui', () => ({
   useUIStore: (selector: (s: { addToast: typeof addToastMock }) => unknown) =>
     selector({ addToast: addToastMock }),

@@ -38,7 +38,10 @@ describe("whiteboard ownership", () => {
   it("boards without a recorded owner stay reachable", async () => {
     const id = "wb_legacy_test";
     STATE.dtus.set(id, { id, title: "Whiteboard: Old", machine: { kind: "whiteboard", data: { id, title: "Old", elements: [] } }, lineage: { parents: [] }, createdAt: new Date().toISOString() });
-    assert.equal((await runMacro("whiteboard", "get", { whiteboardId: id }, bob)).ok, true);
+    const r = await runMacro("whiteboard", "get", { whiteboardId: id }, bob);
+    assert.equal(r.ok, true);
+    assert.equal(r.whiteboard.id, id);
+    assert.equal(r.whiteboard.title, "Old");
     STATE.dtus.delete(id);
   });
 

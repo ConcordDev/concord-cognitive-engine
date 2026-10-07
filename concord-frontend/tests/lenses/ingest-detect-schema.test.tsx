@@ -68,7 +68,13 @@ vi.mock('@/components/ingest/PipelinePanel', () => ({ PipelinePanel: () => null 
 vi.mock('framer-motion', () => ({
   useReducedMotion: () => false,
   MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
+  // One stable component per tag: a fresh function on every `motion.div`
+  // access changes the element type each render, and React remounts the
+  // workbench under it, dropping the pasted records.
+  motion: new Proxy({} as Record<string, unknown>, {
+    get: (cache, tag: string) =>
+      (cache[tag] ??= (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode)),
+  }),
   AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
     React.createElement(React.Fragment, null, children),
 }));

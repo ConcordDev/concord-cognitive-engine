@@ -321,6 +321,31 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'conkay',
+    label: 'ConKay',
+    artifacts: ['study', 'model', 'simulation', 'workspace'],
+    // REST/agent-backed workspace: it drives engineering.beamStudy /
+    // beamSweep / savePart and the ConKay agent directly, so there is no
+    // lens.conkay.* CRUD surface and no blind quick-action bar.
+    macros: {},
+    exports: [],
+    actions: [],
+    category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Nothing solved yet.',
+      caption: 'Set the beam, load, support and material, then run the FEA. Every number shown comes from the solver and is checked against the textbook formula.',
+      firstActionLabel: 'Run FEA',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Type or say an edit — “t_w = 8 mm and re-run”, “cantilever, 50 kN, A36” — and the study re-solves.' },
+        { caption: 'Ask anything else and ConKay answers with the study as context, using its tools when it needs to.' },
+        { caption: 'Save the model, keep a solve as a private DTU, and give each project its own workspace.' },
+      ],
+    },
+  },
+  {
     domain: 'code',
     label: 'Code',
     artifacts: ['file', 'snippet', 'project', 'workspace', 'diff', 'review'],

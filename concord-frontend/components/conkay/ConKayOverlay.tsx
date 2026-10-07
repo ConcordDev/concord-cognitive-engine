@@ -19,7 +19,8 @@ import { getApiBase } from '@/lib/api/base';
 // separately in AppShell; see the "CK2 attention bridge" effects below.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { CONKAY_WORKSPACE_PATH, conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import dynamic from 'next/dynamic';
 import { X, Send, Mic, MicOff, Sparkles, Volume2, VolumeX, Box, MapPin, Activity, Layers, Type, Package, Sword } from 'lucide-react';
 import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
@@ -193,6 +194,7 @@ function ConKayTelemetryChip() {
 
 export function ConKayOverlay() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [messages, setMessages] = useState<OverlayMsg[]>([]);
@@ -1947,6 +1949,18 @@ export function ConKayOverlay() {
                 clear
               </button>
             </>
+          )}
+          {pathname !== CONKAY_WORKSPACE_PATH && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); router.push(conkayWorkspaceHref({ ask: input })); }}
+              title="Open the ConKay workspace (models, FEA, projects) — carries what you have typed"
+              aria-label="Open ConKay workspace"
+              data-testid="ck-open-workspace"
+              className="rounded-lg px-2 py-1 text-[10px] font-medium border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/10"
+            >
+              Workspace
+            </button>
           )}
           <button
             type="button"

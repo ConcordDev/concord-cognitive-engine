@@ -127,7 +127,11 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
           </div>
         )}
 
-        <WalletBadge />
+        {/* Phones reach the wallet from the bottom nav; keep the bar from
+            pushing the account avatar off-screen. */}
+        <div className="hidden sm:block">
+          <WalletBadge />
+        </div>
 
         {powerMode && (
           <div className="hidden md:block">

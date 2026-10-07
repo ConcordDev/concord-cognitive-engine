@@ -39,6 +39,12 @@ const MAX_SESSIONS_PER_MENTORSHIP = 3;
  *
  * @returns { ok, mentorshipId?, price?, reason? }
  */
+// Recipe metadata (revision_num, …) lives in the dtus `data` column — the
+// one glyph-spells writes and npc-marketplace reads. There is no meta_json.
+function recipeMeta(row) {
+  try { return JSON.parse(row?.data || "{}") || {}; } catch { return {}; }
+}
+
 /**
  * Recipes an NPC can actually teach: the same eligibility requestMentorship
  * enforces (a recipe DTU the NPC created, at revision depth >= 1), so a
@@ -47,12 +53,10 @@ const MAX_SESSIONS_PER_MENTORSHIP = 3;
 export function listTeachableRecipes(db, mentorNpcId, opts = {}) {
   if (!db || !mentorNpcId) return [];
   try {
-    const rows = db.prepare(`SELECT id, title, meta_json FROM dtus WHERE creator_id = ? LIMIT 200`).all(mentorNpcId);
+    const rows = db.prepare(`SELECT id, title, data FROM dtus WHERE creator_id = ? LIMIT 200`).all(mentorNpcId);
     return rows
       .map((r) => {
-        let meta = {};
-        try { meta = JSON.parse(r.meta_json || "{}"); } catch { /* ignore */ }
-        return { recipeDtuId: r.id, title: r.title || "Untitled", depth: Number(meta.revision_num) || 0 };
+        return { recipeDtuId: r.id, title: r.title || "Untitled", depth: Number(recipeMeta(r).revision_num) || 0 };
       })
       .filter((r) => r.depth >= 1)
       .sort((a, b) => b.depth - a.depth)
@@ -70,8 +74,7 @@ export function requestMentorship(db, { mentorNpcId, studentUserId, recipeDtuId 
   if (!recipe) return { ok: false, reason: "recipe_not_found" };
   if (recipe.creator_id !== mentorNpcId) return { ok: false, reason: "recipe_not_owned_by_mentor" };
 
-  let meta = {};
-  try { meta = JSON.parse(recipe.meta_json || "{}"); } catch { /* ignore */ }
+  const meta = recipeMeta(recipe);
   const mentorDepth = Number(meta.revision_num) || 0;
   if (mentorDepth < 1) return { ok: false, reason: "mentor_depth_insufficient" };
 
@@ -123,8 +126,7 @@ export function completeMentorshipSession(db, { mentorshipId, studentRecipeId })
 
   const mentorRecipe = db.prepare(`SELECT * FROM dtus WHERE id = ?`).get(m.recipe_dtu_id);
   if (!mentorRecipe) return { ok: false, reason: "mentor_recipe_gone" };
-  let mentorMeta = {};
-  try { mentorMeta = JSON.parse(mentorRecipe.meta_json || "{}"); } catch { /* ignore */ }
+  const mentorMeta = recipeMeta(mentorRecipe);
   const mentorDepth = Number(mentorMeta.revision_num) || 0;
   const cap = Math.max(1, mentorDepth - 1);
 
@@ -160,8 +162,7 @@ export function completeMentorshipSession(db, { mentorshipId, studentRecipeId })
     }
   }
 
-  let studentMeta = {};
-  try { studentMeta = JSON.parse(studentRecipe.meta_json || "{}"); } catch { /* ignore */ }
+  const studentMeta = recipeMeta(studentRecipe);
   const studentDepth = Number(studentMeta.revision_num) || 0;
   if (studentDepth >= cap) {
     return { ok: false, reason: "student_at_cap", cap, studentDepth, mentorDepth };

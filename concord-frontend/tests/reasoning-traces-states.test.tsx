@@ -16,6 +16,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act, fireEvent, waitFor } from '@testing-library/react';
 import ReasoningTracesPage from '@/app/lenses/reasoning/traces/page';
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 function jsonOk(body: Record<string, unknown>) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });

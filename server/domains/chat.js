@@ -1214,10 +1214,10 @@ export default function registerChatActions(registerLensAction) {
     }
     const logs = [];
     const sandboxConsole = {
-      log: (...a) => logs.push(a.map(fmtVal).join(" ")),
-      error: (...a) => logs.push("[error] " + a.map(fmtVal).join(" ")),
-      warn: (...a) => logs.push("[warn] " + a.map(fmtVal).join(" ")),
-      info: (...a) => logs.push(a.map(fmtVal).join(" ")),
+      log: (...a) => { logs.push(a.map(fmtVal).join(" ")); },
+      error: (...a) => { logs.push("[error] " + a.map(fmtVal).join(" ")); },
+      warn: (...a) => { logs.push("[warn] " + a.map(fmtVal).join(" ")); },
+      info: (...a) => { logs.push(a.map(fmtVal).join(" ")); },
     };
     function fmtVal(v) {
       if (typeof v === "string") return v;

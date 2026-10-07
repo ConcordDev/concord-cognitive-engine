@@ -25,8 +25,25 @@ function fail(reason, extra = {}) {
   process.exit(1);
 }
 
-if (!fs.existsSync(path.join(src, 'Build', 'concordia.wasm.unityweb'))) {
+const srcWasm = path.join(src, 'Build', 'concordia.wasm.unityweb');
+if (!fs.existsSync(srcWasm)) {
   fail('unity_web_export_not_built', { src });
+}
+
+// *.unityweb are Git LFS objects. A checkout without `git lfs pull` holds
+// ~130-byte pointer files; copying those would ship a broken player. Deploy
+// builds pull the bytes first (deploy.yml). CI jobs that build only to test
+// (Lighthouse, visual regression, playthrough, lint-and-test) set
+// CONCORD_SKIP_UNITY_WEB=1 and skip the copy, saying so.
+const head = fs.readFileSync(srcWasm).subarray(0, 64).toString('utf8');
+if (head.startsWith('version https://git-lfs.github.com/spec/v1')) {
+  if (process.env.CONCORD_SKIP_UNITY_WEB === '1') {
+    process.stdout.write(JSON.stringify({ ok: true, skipped: 'unity_web_is_lfs_pointer' }) + '\n');
+    process.exit(0);
+  }
+  fail('unity_web_is_lfs_pointer', {
+    hint: 'git lfs pull --include="concord-frontend/public/unity-client/**"',
+  });
 }
 
 fs.mkdirSync(dest, { recursive: true });

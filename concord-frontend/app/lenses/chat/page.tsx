@@ -4,9 +4,9 @@
  * Chat — one messaging app (Claude.ai / ChatGPT reference).
  *
  * Single view-state machine (`active` ChatMode) drives the ModeSelector rail
- * inside ChatWorkspacePanel. Conversation canvas, composer, ConKay, and the
- * overlay union live in that panel. Welded pile extracted per
- * LENS_CONSOLIDATION_PLAYBOOK.
+ * inside ChatWorkspacePanel. Conversation canvas, composer and the overlay
+ * union live in that panel; choosing ConKay opens its own lens
+ * (/lenses/conkay). Welded pile extracted per LENS_CONSOLIDATION_PLAYBOOK.
  */
 
 import { useCallback, useState } from 'react';

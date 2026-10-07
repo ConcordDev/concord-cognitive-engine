@@ -1,5 +1,6 @@
 'use client';
 
+import { isFullHeightLens } from '@/lib/full-height-lenses';
 import { TOGGLE_SESSIONS_EVENT } from './RailAccount';
 import { PanelRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -343,7 +344,9 @@ export function AppShell({ children }: AppShellProps) {
         <Topbar
             trailing={
               <>
-                <ThemeToggle />
+                <div className="hidden sm:block">
+                  <ThemeToggle />
+                </div>
                 <button
                   onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
                   className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors"
@@ -370,7 +373,7 @@ export function AppShell({ children }: AppShellProps) {
           {/* Phase P — shared legal footer. Lives outside the world
               lens (whose pathname-based exclusion happens above) and
               shows Terms / Privacy / DMCA. */}
-          {pathname !== '/lenses/world' && <LegalFooter />}
+          {!isFullHeightLens(pathname) && <LegalFooter />}
         </main>
       </div>
 

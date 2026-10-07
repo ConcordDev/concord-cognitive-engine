@@ -102,7 +102,7 @@ describe('Plugin Gallery lens page', () => {
     // Search box wires to the real ?q= query param.
     const searchBox = screen.getByLabelText('Search plugin gallery');
     fireEvent.change(searchBox, { target: { value: 'example' } });
-    fireEvent.click(screen.getByRole('button', { name: /search/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => {
       const calls = fetchMock.mock.calls.map((c) => String(c[0]));

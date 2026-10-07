@@ -3483,6 +3483,7 @@ function releaseMutex() {
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
 import { startupFdGuard, startFdMonitor } from "./lib/fd-guard.js";
+import { distinctDtuSummaries } from "./lib/chat-offline-reply.js";
 import { getFactionRepBuffer, flushAllBuffers } from "./lib/batch-commit-buffer.js";
 
 // FD-limit guard: runs at module load. Detects under-provisioned
@@ -8370,7 +8371,7 @@ function requireRole(...roles) {
 // submissions were 401ing on every metric per page load, silently wasting
 // the same 30-req/min anonymous IP bucket real anonymous traffic (including
 // registration) also depends on.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/esign/ — reviewed, intentional (2026-10-06), same shape as the welding portal: POST /api/esign/:token/sign lets a recipient with no Concord account sign their own slot. The token (crypto.randomBytes(24), lib/esign-links.js) is the only caller-supplied identifier and resolves server-side to one signer slot; signing needs a typed name + explicit consent, records IP/user agent, is rate-limited (write.esign) and revocable; tests/e2e/esign-links-routes.test.js pins own-slot-only, unknown-token 404, sender-cannot-sign-recipient, consent/name-required-once, and that ordinary writes on the same server still need auth. NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -28551,14 +28552,11 @@ ${_operatorV6Block}` : "";
     const userQuestion = (Array.isArray(messages) && messages.length > 0)
       ? (messages[messages.length - 1]?.content || prompt || '')
       : (prompt || '');
-    // Build a helpful response from the DTU context
-    const topDtus = relevant.slice(0, 5);
-    if (topDtus.length > 0) {
+    // Build a helpful response from the DTU context, each distinct note once.
+    const topSummaries = distinctDtuSummaries(relevant, 5);
+    if (topSummaries.length > 0) {
       finalReply = `Based on what I know, here's what I can share about "${userQuestion.slice(0, 80)}":\n\n` +
-        topDtus.map(d => {
-          const summary = d.human?.summary || d.content || d.title;
-          return `\u2022 ${summary.slice(0, 300)}`;
-        }).join('\n\n') +
+        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n') +
         `\n\nI'm currently running without my full AI capabilities (LLM offline), so my responses are based on stored knowledge. Once my brain is back online, I can have much deeper conversations about this.`;
     } else {
       finalReply = `I'd love to help with "${userQuestion.slice(0, 80)}", but I'm currently running in limited mode (my AI brain is offline). I don't have stored knowledge on this topic yet. Once my brain comes back online, I'll be able to have a full conversation about this. In the meantime, try creating some DTUs about this topic so I can learn!`;

@@ -105,6 +105,8 @@ describe("chat — code interpreter (node:vm)", () => {
     const r = await lensRun("chat", "code-run", { params: { code: "console.log('hello'); console.log(2 + 3)" } }, ctx);
     assert.equal(r.ok, true);
     assert.deepEqual(r.result.run.logs, ["hello", "5"]);
+    // console.log returns undefined, as in real JS — not the log count.
+    assert.equal(r.result.run.returnValue, undefined);
   });
 
   it("code-run: a forbidden token (require) is rejected before execution", async () => {

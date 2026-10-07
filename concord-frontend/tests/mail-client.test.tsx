@@ -111,5 +111,27 @@ describe('MailClient', () => {
     fireEvent.change(screen.getByLabelText('Search mail'), { target: { value: 'from:ana has:attachment' } });
     fireEvent.submit(screen.getByLabelText('Search mail').closest('form')!);
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('gmail', 'threads', expect.objectContaining({ q: 'from:ana has:attachment', label: 'INBOX' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    await waitFor(() => expect(screen.getByLabelText('Search mail')).toHaveValue(''));
+  });
+
+  it('creates a real Gmail label and opens the drafts mailbox', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'drafts') return ok({ drafts: [] });
+      if (action === 'label-create') return ok({ label: { id: 'L2', name: 'Receipts', type: 'user' } });
+      if (action === 'threads') return ok({ threads: [THREAD], nextPageToken: null, resultSizeEstimate: 1 });
+      if (action === 'profile') return ok({ profile: { emailAddress: 'me@x.com' } });
+      if (action === 'labels') return ok({ labels: [{ id: 'L1', name: 'Work', type: 'user' }] });
+      return ok({});
+    });
+    render(<MailClient />);
+    await screen.findByText('Q3 plan');
+    fireEvent.click(screen.getByRole('button', { name: 'New label' }));
+    const input = screen.getByLabelText('New label name');
+    fireEvent.change(input, { target: { value: 'Receipts' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('gmail', 'label-create', { name: 'Receipts' }));
+    fireEvent.click(screen.getAllByRole('button', { name: /^Drafts$/ })[0]);
+    expect(await screen.findByText('No drafts.')).toBeTruthy();
   });
 });

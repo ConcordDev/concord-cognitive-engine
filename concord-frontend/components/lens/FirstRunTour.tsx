@@ -184,12 +184,12 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
         />
       )}
 
-      {/* Coachmark card — anchored to the bottom-LEFT corner (out of the content
-          center and clear of the bottom-right action dock) so it never covers
-          the lens's primary surface. */}
+      {/* Coachmark card — bottom-left, beside the desktop rail and above the
+          floating composers lenses dock at the bottom, so it never covers the
+          lens's primary surface. */}
       <div
         className={cn(
-          'absolute bottom-6 left-6 max-w-sm w-[88vw] sm:w-[22rem]',
+          'absolute bottom-44 lg:bottom-28 left-6 lg:left-20 max-w-sm w-[88vw] sm:w-[22rem]',
           'rounded-xl border border-amber-500/40 bg-zinc-950 shadow-2xl shadow-black/50',
           'pointer-events-auto',
         )}

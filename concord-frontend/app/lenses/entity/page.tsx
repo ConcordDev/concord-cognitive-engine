@@ -109,7 +109,7 @@ export default function EntityLensPage() {
               >
                 <Icon className="h-3.5 w-3.5" />
                 {v.label}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
+                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
               </button>
             );
           })}

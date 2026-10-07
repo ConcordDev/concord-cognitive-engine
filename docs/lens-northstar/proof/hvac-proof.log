@@ -1,0 +1,273 @@
+[hvac-proof] disk free 11.77 GB
+[hvac-proof] login ok as wbproof_muv96clt
+[hvac-proof] opened http://localhost:5399/lenses/hvac
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] header chip: Real — "Simulated" chips: 0 — SIM_GRADE copy: false
+[hvac-proof] job created and listed: Proof HVAC Job 155211
+[hvac-proof] desk: Activate buttons 0 — "Efficiency Avg" 0 — "Job records" stat true
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvnxiif_lgxdp0","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvnxiif_lgxdp0","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvnxiif_lgxdp0","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[hvac-proof] LENS 200 hvac.loadCalculation {"ok":true,"result":{"squareFootage":1800,"heatingBTU":47335,"coolingBTU":55688,"requiredBTU":55688,"tonnage":4.6,"tonnageRecommended":"4.6 ton","unitSize":"5 t
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] load saved: load_muvo24o9_zffgs8 — cool 55688 heat 47335 4.6 ton 5 ton system
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] after full reload: {"job":true,"savedText":"Saved to your account as load_muvo24o9_zffgs8","cooling":true,"sqft":"1800"}
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[hvac-proof] screenshot: hvac-reload.png
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[hvac-proof] kill -9 restart of the proof API: kill -9 54848 | up after 3s pid 57543
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[hvac-proof] console error: Server error: Internal Server Error
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[hvac-proof] console error: Server error: Internal Server Error
+[hvac-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[hvac-proof] console error: [Socket] Connection error: websocket error
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[hvac-proof] console error: Server error: Internal Server Error
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[hvac-proof] console error: Server error: Internal Server Error
+[hvac-proof] console error: WebSocket connection to 'ws://localhost:5399/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: net::ERR_INVALID_HTTP_RESPONSE
+[hvac-proof] console error: [Socket] Connection error: websocket error
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[hvac-proof] session did not survive the restart (new JWT secret per boot); logging in again
+[hvac-proof] login ok as wbproof_muv96clt
+[hvac-proof] opened http://localhost:5399/lenses/hvac
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"hvac","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 hvac.load-list {"ok":true,"result":{"loads":[{"id":"load_muvo24o9_zffgs8","inputs":{"squareFootage":1800,"stories":2,"insulation":"good","climate":"hot-humid"},"result":{"squa
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] after kill -9 restart: {"job":true,"savedText":"Saved to your account as load_muvo24o9_zffgs8","cooling":true,"sqft":"1800"}
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[hvac-proof] screenshot: hvac-restart.png
+[hvac-proof] LENS 200 dtu.create {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_413cf8a4801518c278da","title":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zf
+[hvac-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_413cf8a4801518c278da","title":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zf
+[hvac-proof] save status: Saved as private DTU dtu_413cf8a4801518c278da. Nothing was published.
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","platform":"x","status":"draft","postCount":2,"scheduledAt":null,"updated
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmp9w0_60nl5h","title":"Proof timeline post 191417: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmydhc_u16nfl","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnc59x_yqa9ou","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvnifcb_69eobd","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn2nuf_l8j9kb","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvn02sb_8ve6la","title":"FEA run FEA report","content":"FEA run: 1 members, 2 nodes, max util 0.008, max disp 0.0001, al
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmo957_uaytgq","title":"Proof timeline post 191321: logged a real run of the timeline lens.","content":"Source: Concord
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvma0x6_0g8923","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvma
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmc3d8_q155kp","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvmc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvmljkg_0bop4r","title":"Crypto holding — H-00002","content":"H-00002 · PROOF LOT 19: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvm12hx_4fif4f","title":"Proof Matter 185439","content":"Proof Matter 185439 (MAT-00001): 2.5 hrs logged, $875 unbilled,
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvltip8_t46h1h","title":"Healthcare patient — Patient184922, Proof","content":"Patient184922, Proof · MRN-000003: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlprnb_gn5fsh","title":"Healthcare patient — Patient184612, Proof","content":"Patient184612, Proof · MRN-000002: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlhmsk_21jn4y","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlhmhn_158v09 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlgnri_cvm2bv","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlgn4b_uyu30n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlbnew_owp5tr","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlbn2g_gxymnh for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvlaiks_7brymk","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvlai95_wr52uy for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl96m4_thmzp9","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl96aj_2iwlvo for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl8aok_v7ybb7","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl8a9a_tiz34n for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvknxzp_wg07wu","title":"Food recipe — Proof Carbonara 181636","content":"Proof Carbonara 181636 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvl6m1u_f4hpsu","title":"Concordia share — concordia-hub","content":"Concordia share link wlink_muvl6lmg_zzsz72 for conc
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkxn4i_1vaeyg","title":"Concordia share — concordia-hub","content":"Concordia share link for concordia-hub.\n\nLink ID:
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvklp07_sumvbg","title":"Food recipe — Proof Carbonara 181458","content":"Proof Carbonara 181458 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvj9kax_atmz2b","title":"Atlas place — Proof Tower 173801","content":"Proof Tower 173801 (attraction) @ 48.8584, 2.2945.
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvkexvu_p3fpy0","title":"Accounting entry — JE-00005","content":"JE-00005 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muviukxd_vovg8d","title":"Astronomy observation — Proof Galaxy 172613","content":"2026-10-05 Proof Galaxy 172613: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvir4e4_if7ygy","title":"Astronomy observation — Proof Galaxy 172324","content":"2026-10-05 Proof Galaxy 172324: 5★ obse
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvihc3j_ijyq2j","title":"Aviation logbook — KSEA-KPDX","content":"2026-10-05 KSEA→KPDX: 1.5h VFR.\n\nEntry ID: log_muvih
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvi78qp_0rh58u","title":"Agriculture field — Proof Field 170800","content":"Proof Field 170800: 40ac, corn, loam @ 40.00
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhv17p_r1j5nb","title":"Crypto holding — H-00001","content":"H-00001 · PROOF LOT 16: 0.5 @ $60000.00 = $30000.00.\n\nLo
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvhfhn7_lcghgp","title":"Retail product — Proof Widget 164538","content":"Proof Widget 164538 · PRF-164538: $29.99, 150 
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh7z1x_k1s1ls","title":"Accounting entry — JE-00003","content":"JE-00003 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh4who_9e8xbh","title":"Accounting entry — JE-00002","content":"JE-00002 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvh1m8y_pdxd8n","title":"Accounting entry — JE-00001","content":"JE-00001 · 2026-10-05: 2 lines, 500.00 balanced.\n\nEnt
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvguzqa_fo94s1","title":"Healthcare patient — Patient163011, Proof","content":"Patient163011, Proof · MRN-000001: DOB 19
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvg6jyl_u3myyt","title":"Food recipe — Proof Carbonara 161101","content":"Proof Carbonara 161101 · Dinner: 4 servings, 5
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvgkj8a_rbbu2u","title":"Retail product — Proof Widget 162227","content":"Proof Widget 162227 · PRF-162227: $29.99, 150 
+[hvac-proof] LENS 200 thread.thread-draft {"ok":true,"result":{"draft":{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","content":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 
+[hvac-proof] draft status: Drafted in Thread as th_muvo2quz_3smux9, citing dtu_413cf8a4801518c278da. Not posted.
+[hvac-proof] screenshot: hvac.png
+[hvac-proof] dtu.get dtu_413cf8a4801518c278da ok? true source: hvac-lens:load-report visibility: private
+[hvac-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_413cf8a4801518c278da","title":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zf
+[hvac-proof] thread.draft-detail th_muvo2quz_3smux9 ok? true cites: dtu_413cf8a4801518c278da status: draft
+[hvac-proof] LENS 200 thread.draft-detail {"ok":true,"result":{"draft":{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","content":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 
+[hvac-proof] DTU title: 1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zffgs8
+[hvac-proof] LENS 200 dtu.get {"ok":true,"result":{"ok":true,"dtu":{"id":"dtu_413cf8a4801518c278da","title":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zf
+[hvac-proof] opened http://localhost:5399/lenses/thread
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 dtu_surface.undefined {"ok":true,"result":{"ok":true,"lensId":"thread","sinceDays":7,"surfaces":[]}}
+[hvac-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":38,"scheduled":0,"published":0,"total":38,"totalPosts":115}}
+[hvac-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[hvac-proof] LENS 200 thread.thread-dashboard {"ok":true,"result":{"drafts":38,"scheduled":0,"published":0,"total":38,"totalPosts":115}}
+[hvac-proof] LENS 200 thread.best-time {"ok":true,"result":{"basis":"generic_guideline","note":"Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","platform":"x","status":"draft","postCount":3,"scheduledAt":nul
+[hvac-proof] LENS 200 thread.draft-list {"ok":true,"result":{"drafts":[{"id":"th_muvo2quz_3smux9","title":"HVAC load — 1800sf hot-humid","platform":"x","status":"draft","postCount":3,"scheduledAt":nul
+[hvac-proof] Thread Composer lists a draft citing dtu_413cf8a4801518c278da
+[hvac-proof] thread screenshot: /Users/dutch/.zuko/lens-northstar/proof/hvac-thread.png
+[hvac-proof] RESULT {"badge":"Real","simulatedChips":0,"job":"Proof HVAC Job 155211","activateButtons":0,"efficiencyStat":0,"recordStat":true,"manualJTabs":0,"loadId":"load_muvo24o9_zffgs8","coolingBTU":55688,"heatingBTU":47335,"tonnage":"4.6 ton","afterReload":{"job":true,"savedText":"Saved to your account as load_muvo24o9_zffgs8","cooling":true,"sqft":"1800"},"afterRestart":{"job":true,"savedText":"Saved to your account as load_muvo24o9_zffgs8","cooling":true,"sqft":"1800"},"dtuId":"dtu_413cf8a4801518c278da","draftId":"th_muvo2quz_3smux9","source":"hvac-lens:load-report","visibility":"private","draftTitle":"HVAC load — 1800sf hot-humid","dtuTitle":"1,800 sf hot-humid: 47,335 BTU heat, 55,688 BTU cool, 4.6 ton. · load_muvo24o9_zffgs8","threadHandoff":true}

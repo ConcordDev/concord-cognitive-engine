@@ -1,0 +1,879 @@
+{
+  "$schema_note": "ConKay beam V&V corpus \u2014 closed-form textbook oracles only (STACK_REALITY). Not commercial / NAFEMS / solid-FEA parity.",
+  "version": 1,
+  "solver": "server/lib/simulation/fea-solver.js#runFEA",
+  "units": "consistent input units (psi\u00b7in\u00b7lbf unless a case sets units: Pa\u00b7m\u00b7N)",
+  "maxRelativeError": 1e-06,
+  "honesty": "Asserts against Euler\u2013Bernoulli / statics closed-form, not invented commercial-solver parity.",
+  "cases": [
+    {
+      "id": "cantilever-column-axial",
+      "description": "Fixed-base vertical column under tip axial compression: tip dy = \u2212PL/AE",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b4 = PL/AE",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 0,
+            "y": 12,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fy": -10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dy",
+            "value": -0.0005015673981191223
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-column-lateral",
+      "description": "Fixed-base vertical column under tip lateral load: tip dx = PL\u00b3/3EI",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b4 = PL\u00b3/3EI",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 0,
+            "y": 12,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fx": 10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dx",
+            "value": 0.0023988005997001498
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-beam-axial",
+      "description": "Horizontal cantilever under tip axial tension: tip dx = PL/AE",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b4 = PL/AE",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 12,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fx": 10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dx",
+            "value": 0.0005015673981191223
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-beam-tip-load",
+      "description": "Horizontal cantilever under tip transverse load: tip dy = \u2212PL\u00b3/3EI",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b4 = PL\u00b3/3EI",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 12,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fy": -10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dy",
+            "value": -0.0023988005997001498
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-beam-tip-moment",
+      "description": "Horizontal cantilever under tip moment: tip rz = ML/EI",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b8 = ML/EI",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 12,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Mz": 1000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "rz",
+            "value": 4.9975012493753125e-06
+          }
+        ]
+      }
+    },
+    {
+      "id": "inclined-45-axial",
+      "description": "45\u00b0 cantilever under axial load along member: tip components = (PL/AE)/\u221a2",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03b4_axis = PL/AE; dx = dy = \u03b4_axis/\u221a2",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 8.485281374238571,
+            "y": 8.485281374238571,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "a",
+            "nodeJ": "b",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fx": 7071.067811865475,
+            "Fy": 7071.067811865475
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dx",
+            "value": 0.00035466170843212415
+          },
+          {
+            "nodeId": "b",
+            "field": "dy",
+            "value": 0.00035466170843212415
+          }
+        ]
+      }
+    },
+    {
+      "id": "portal-frame-symmetric-reactions",
+      "description": "Symmetric portal with equal gravity loads: Ry(N1)=Ry(N4)=10000; column tip dy = PL/AE",
+      "source": "server/tests/fea-frame-element.test.js",
+      "formula": "\u03a3Fy = 0 \u2192 equal reactions; column shortening PL/AE",
+      "model": {
+        "nodes": [
+          {
+            "id": "N1",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "N2",
+            "x": 0,
+            "y": 12,
+            "z": 0
+          },
+          {
+            "id": "N3",
+            "x": 20,
+            "y": 12,
+            "z": 0
+          },
+          {
+            "id": "N4",
+            "x": 20,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "M1",
+            "nodeI": "N1",
+            "nodeJ": "N2",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          },
+          {
+            "id": "M2",
+            "nodeI": "N2",
+            "nodeJ": "N3",
+            "area": 11.8,
+            "momentI": 171,
+            "elasticModulus": 29000000
+          },
+          {
+            "id": "M3",
+            "nodeI": "N4",
+            "nodeJ": "N3",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "N2",
+            "Fy": -10000
+          },
+          {
+            "nodeId": "N3",
+            "Fy": -10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "N1",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          },
+          {
+            "nodeId": "N4",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "reactions": [
+          {
+            "nodeId": "N1",
+            "dof": "y",
+            "value": 10000
+          },
+          {
+            "nodeId": "N4",
+            "dof": "y",
+            "value": 10000
+          }
+        ],
+        "displacements": [
+          {
+            "nodeId": "N2",
+            "field": "dy",
+            "value": -0.0005015673981191223
+          },
+          {
+            "nodeId": "N3",
+            "field": "dy",
+            "value": -0.0005015673981191223
+          }
+        ],
+        "memberForces": [
+          {
+            "memberId": "M3",
+            "field": "axialForce",
+            "value": -10000
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-reaction-shear-moment",
+      "description": "Cantilever tip Fy=+P \u2192 base Ry=\u2212P, base Mz=\u2212P\u00b7L (statics); tip dy=PL\u00b3/3EI",
+      "source": "server/tests/fea-reactions.test.js",
+      "formula": "\u03a3Fy=0 \u2192 Ry=\u2212P; \u03a3Mz=0 \u2192 Mz=\u2212P\u00b7L; \u03b4=PL\u00b3/3EI",
+      "model": {
+        "nodes": [
+          {
+            "id": "A",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "B",
+            "x": 120,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m1",
+            "nodeI": "A",
+            "nodeJ": "B",
+            "elasticModulus": 29000000,
+            "area": 10,
+            "momentI": 100
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "A",
+            "type": "fixed"
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "B",
+            "Fy": 1000
+          }
+        ]
+      },
+      "expect": {
+        "reactions": [
+          {
+            "nodeId": "A",
+            "dof": "y",
+            "value": -1000
+          },
+          {
+            "nodeId": "A",
+            "dof": "rz",
+            "value": -120000
+          }
+        ],
+        "displacements": [
+          {
+            "nodeId": "B",
+            "field": "dy",
+            "value": 0.1986206896551724
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-bending-stress-si",
+      "description": "SI cantilever: tip deflection PL\u00b3/3EI and root bending stress Mc/I with M=PL",
+      "source": "server/tests/engineering-fea-scene.test.js (analytic)",
+      "formula": "\u03b4=PL\u00b3/3EI; \u03c3=Mc/I with M=PL, c=h/2",
+      "units": "Pa\u00b7m\u00b7N",
+      "model": {
+        "nodes": [
+          {
+            "id": "A",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "B",
+            "x": 0.4,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m1",
+            "nodeI": "A",
+            "nodeJ": "B",
+            "area": 0.00048,
+            "momentI": 5.76e-09,
+            "elasticModulus": 200000000000,
+            "depthIn": 0.012,
+            "allowableStress": 150000000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "A",
+            "type": "fixed"
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "B",
+            "Fy": 150
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "B",
+            "field": "dy",
+            "value": 0.002777777777777778
+          }
+        ],
+        "stresses": [
+          {
+            "memberId": "m1",
+            "field": "bendingStress",
+            "value": 62500000
+          }
+        ]
+      }
+    },
+    {
+      "id": "simply-supported-midspan-point-load",
+      "description": "Pinned\u2013roller beam, midspan point load: \u03b4_mid=PL\u00b3/48EI, reactions=P/2",
+      "source": "textbook Euler\u2013Bernoulli (beam-study family on origin/lens/conkay-workspace)",
+      "formula": "\u03b4_mid = PL\u00b3/48EI; RA=RB=P/2",
+      "model": {
+        "nodes": [
+          {
+            "id": "A",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "M",
+            "x": 60,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "B",
+            "x": 120,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m1",
+            "nodeI": "A",
+            "nodeJ": "M",
+            "area": 10,
+            "momentI": 100,
+            "elasticModulus": 29000000
+          },
+          {
+            "id": "m2",
+            "nodeI": "M",
+            "nodeJ": "B",
+            "area": 10,
+            "momentI": 100,
+            "elasticModulus": 29000000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "A",
+            "type": "pinned",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry"
+            ]
+          },
+          {
+            "nodeId": "B",
+            "type": "roller",
+            "fixedDOF": [
+              "y",
+              "z",
+              "rx",
+              "ry"
+            ]
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "M",
+            "Fy": -2000
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "M",
+            "field": "dy",
+            "value": -0.02482758620689655
+          }
+        ],
+        "reactions": [
+          {
+            "nodeId": "A",
+            "dof": "y",
+            "value": 1000
+          },
+          {
+            "nodeId": "B",
+            "dof": "y",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    {
+      "id": "fixed-fixed-midspan-point-load",
+      "description": "Both ends fixed, midspan point load: \u03b4_mid=PL\u00b3/192EI; reactions=P/2",
+      "source": "textbook Euler\u2013Bernoulli",
+      "formula": "\u03b4_mid = PL\u00b3/192EI; RA=RB=P/2",
+      "model": {
+        "nodes": [
+          {
+            "id": "A",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "M",
+            "x": 60,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "B",
+            "x": 120,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m1",
+            "nodeI": "A",
+            "nodeJ": "M",
+            "area": 10,
+            "momentI": 100,
+            "elasticModulus": 29000000
+          },
+          {
+            "id": "m2",
+            "nodeI": "M",
+            "nodeJ": "B",
+            "area": 10,
+            "momentI": 100,
+            "elasticModulus": 29000000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "A",
+            "type": "fixed"
+          },
+          {
+            "nodeId": "B",
+            "type": "fixed"
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "M",
+            "Fy": -2000
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "M",
+            "field": "dy",
+            "value": -0.006206896551724138
+          }
+        ],
+        "reactions": [
+          {
+            "nodeId": "A",
+            "dof": "y",
+            "value": 1000
+          },
+          {
+            "nodeId": "B",
+            "dof": "y",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    {
+      "id": "cantilever-column-member-order-invariant",
+      "description": "Same lateral cantilever column with member ends listed b\u2192a; tip dx still PL\u00b3/3EI",
+      "source": "server/tests/fea-frame-element.test.js (orientation independence)",
+      "formula": "\u03b4 = PL\u00b3/3EI (independent of nodeI/nodeJ order)",
+      "model": {
+        "nodes": [
+          {
+            "id": "a",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "id": "b",
+            "x": 0,
+            "y": 12,
+            "z": 0
+          }
+        ],
+        "members": [
+          {
+            "id": "m",
+            "nodeI": "b",
+            "nodeJ": "a",
+            "area": 8.25,
+            "momentI": 82.8,
+            "elasticModulus": 29000000
+          }
+        ],
+        "loads": [
+          {
+            "nodeId": "b",
+            "Fx": 10000
+          }
+        ],
+        "supports": [
+          {
+            "nodeId": "a",
+            "type": "fixed",
+            "fixedDOF": [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "displacements": [
+          {
+            "nodeId": "b",
+            "field": "dx",
+            "value": 0.0023988005997001498
+          }
+        ]
+      }
+    }
+  ]
+}

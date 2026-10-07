@@ -25,6 +25,11 @@ namespace Concordia
         /// Stems with an import in flight, so a stem requested every frame is only imported once.
         static readonly HashSet<string> Loading = new HashSet<string>();
 
+        /// How long Prewarm joins an import that is already in flight before treating the
+        /// Loading flag as stranded. A registry glb imports in a handful of frames; a flag
+        /// that outlives this window is left over from a session that ended mid-import.
+        const float JoinImportSeconds = 30f;
+
         /// stem -> lowercased module name -> that module's transform inside the imported
         /// template. Poly Haven's modular kits are ONE glb holding many named pieces
         /// (modular_urban_apartments_facade_1k = 147, modular_factory_facade_1k = 192,
@@ -49,6 +54,33 @@ namespace Concordia
         static Task _inflight;
 
         public static bool Loaded => _loaded;
+
+        /// <summary>
+        /// Play Mode in this project enters with Reload Domain disabled, so these statics
+        /// survive a session while the GameObjects and meshes they point at do not. Without
+        /// this reset the next session inherits dead templates and dead GltfImport instances
+        /// ("The object of type 'UnityEngine.Mesh' has been destroyed but you are still trying
+        /// to access it"), and any stem whose import was still in flight when the previous
+        /// session ended stays in Loading for good - which makes Prewarm spin on that stale
+        /// flag and strands every caller that waits for it, OrganicBind's staging coroutine
+        /// included. SubsystemRegistration runs on every Play session, reload or not.
+        /// Index is cleared here and refilled by LoadAll; OrganicKit re-registers its own
+        /// external stems when its matching reset clears its indexed flag.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetSessionState()
+        {
+            Runtime.Clear();
+            Imports.Clear();
+            Loading.Clear();
+            Modules.Clear();
+            Aliases.Clear();
+            Index.Clear();
+            _cache = null;
+            _loaded = false;
+            _manifestLoaded = false;
+            _inflight = null;
+        }
 
         public static string Alias(string stem)
         {
@@ -75,7 +107,8 @@ namespace Concordia
         static void RequestImport(string key)
         {
             if (string.IsNullOrEmpty(key)) return;
-            if (Runtime.ContainsKey(key) || Loading.Contains(key)) return;
+            if (Loading.Contains(key)) return;
+            if (Runtime.TryGetValue(key, out var present) && present) return;
             if (!Index.TryGetValue(key, out var file) || string.IsNullOrEmpty(file)) return;
 
             Loading.Add(key);
@@ -110,16 +143,25 @@ namespace Concordia
         {
             var key = Alias(stem);
             if (string.IsNullOrEmpty(key)) return false;
-            if (Runtime.ContainsKey(key)) return true;
+            if (Runtime.TryGetValue(key, out var ready) && ready) return true;
             if (!Index.TryGetValue(key, out var file) || string.IsNullOrEmpty(file)) return false;
 
-            // Join an import already in flight rather than racing a second one in.
-            while (Loading.Contains(key)) await Task.Yield();
-            if (Runtime.ContainsKey(key)) return true;
+            // Join an import already in flight rather than racing a second one in. The join is
+            // bounded: a session that ended mid-import strands this flag, and an unbounded spin
+            // on a stranded flag never returns, so every caller that awaited this task parked.
+            var waited = 0f;
+            while (Loading.Contains(key) && waited < JoinImportSeconds)
+            {
+                waited += Time.unscaledDeltaTime;
+                await Task.Yield();
+            }
+            if (Runtime.TryGetValue(key, out var warmed) && warmed) return true;
+            // Nothing behind the flag. Reclaim it so this request can import for real.
+            Loading.Remove(key);
 
             Loading.Add(key);
             await ImportOne(key, file);
-            return Runtime.ContainsKey(key);
+            return Runtime.TryGetValue(key, out var done) && done;
         }
 
         /// <summary>Module names available inside a kit stem. Empty until Prewarm resolves.</summary>
@@ -205,6 +247,18 @@ namespace Concordia
         {
             if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to)) return;
             Aliases[from.ToLowerInvariant()] = to.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Index one stem whose file lives outside StreamingAssets/HubKit — the organic mesh
+        /// registry (Assets/Concordia/Models/Generated) is the case this exists for. The stem
+        /// then goes through the same lazy import, URP upgrade, and module indexing as every
+        /// kit stem, so there is still exactly one runtime mesh path in the project.
+        /// </summary>
+        public static void IndexExternal(string stem, string projectRelativePath)
+        {
+            if (string.IsNullOrEmpty(stem) || string.IsNullOrEmpty(projectRelativePath)) return;
+            Index[stem.ToLowerInvariant()] = projectRelativePath.Replace('\\', '/');
         }
 
         public static Task EnsureLoaded()
@@ -324,7 +378,11 @@ namespace Concordia
         static async Task InstantiateGlb(string stem, byte[] bytes, string sourceUrl)
         {
             var key = (stem ?? "").ToLowerInvariant();
-            if (key.Length == 0 || Runtime.ContainsKey(key)) return;
+            if (key.Length == 0) return;
+            // A template destroyed with the previous Play session leaves a live dictionary
+            // entry pointing at dead meshes, so only a template that is still alive is a
+            // reason to skip this import.
+            if (Runtime.TryGetValue(key, out var live) && live) return;
             // glTFast creates a DontDestroyOnLoad-backed stable-framerate agent when no
             // defer agent is supplied. That is correct in Play Mode, but Unity rejects the
             // helper GameObject in EditMode; use glTFast's non-yielding agent for editor tests
@@ -375,6 +433,20 @@ namespace Concordia
             return root + "/HubKit/" + file;
         }
 
+        /// <summary>
+        /// Absolute path for a stem indexed straight from the project rather than from
+        /// StreamingAssets/HubKit (see IndexExternal). Editor and desktop players read the
+        /// file where it is authored, so the organic meshes need no second copy on disk.
+        /// </summary>
+        public static string ProjectPath(string file)
+        {
+            if (string.IsNullOrEmpty(file)) return null;
+            var rel = file.Replace('\\', '/');
+            if (!rel.StartsWith("Assets/", StringComparison.Ordinal)) return null;
+            var root = Directory.GetParent(Application.dataPath);
+            return root == null ? null : Path.Combine(root.FullName, rel);
+        }
+
         static async Task<string> ReadText(string file)
         {
             var bytes = await ReadBytes(file);
@@ -397,7 +469,8 @@ namespace Concordia
             return data;
 #else
             var path = Url(file);
-            if (!File.Exists(path)) return null;
+            if (!File.Exists(path)) path = ProjectPath(file);
+            if (path == null || !File.Exists(path)) return null;
             return File.ReadAllBytes(path);
 #endif
         }

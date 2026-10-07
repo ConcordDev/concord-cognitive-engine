@@ -165,7 +165,7 @@ export default function WorldmodelLensPage() {
                 {countKey && (
                   <span className="rounded-full bg-white/10 px-1.5 text-[11px] text-zinc-300">{counts[countKey]}</span>
                 )}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{keys}</kbd>
+                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{keys}</kbd>
               </button>
             );
           })}
