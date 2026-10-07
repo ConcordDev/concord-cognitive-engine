@@ -1,169 +1,389 @@
 'use client';
 
 /**
- * Commonsense — one ConceptNet / personal-triple-store knowledge app.
+ * Commonsense — the obvious check.
  *
- * Single view union (facts | workbench | concepts | actions). Accordion
- * booleans for KB/ConceptNet/ActionPanel are gone. Each view is a panel.
- * Page is a thin shell.
+ * The frame matches the concept: one panel, empty thread, Ask.
+ * Ask stores a question. The finding and the exception are later
+ * steps inside that panel. check-list is id and question. The finding
+ * and the exception show only after check-detail returns them.
+ * ConceptNet and the fact desk stay unmounted.
  */
 
-import { useState, type ComponentType } from 'react';
-import { Database, Network, Brain, Wrench, Plus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { PipingProvider } from '@/components/panel-polish';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { cn } from '@/lib/utils';
-import { FactsPanel } from '@/components/commonsense/FactsPanel';
-import { KnowledgeBaseWorkbench } from '@/components/commonsense/KnowledgeBaseWorkbench';
-import { ConceptExplorer } from '@/components/commonsense/ConceptExplorer';
-import { CommonsenseActionPanel } from '@/components/commonsense/CommonsenseActionPanel';
+import { lensRun } from '@/lib/api/client';
 
-type CommonsenseView = 'facts' | 'workbench' | 'concepts' | 'actions';
-
-const VIEWS: { id: CommonsenseView; label: string; keys: string; title: string; hint: string; icon: typeof Database }[] = [
-  { id: 'facts', title: 'What you hold true', label: 'Facts', keys: '1', hint: 'Triple store · list/graph/stats', icon: Database },
-  { id: 'workbench', title: 'How the facts connect', label: 'Workbench', keys: '2', hint: 'Graph · inference · contradictions', icon: Wrench },
-  { id: 'concepts', title: 'What the world says', label: 'ConceptNet', keys: '3', hint: 'External concept explorer', icon: Network },
-  { id: 'actions', title: 'Does it make sense', label: 'Actions', keys: '4', hint: 'Plausibility · analogy · relatedness', icon: Brain },
-];
-
-function ActionsPane() {
-  return (
-    <PipingProvider>
-      <CommonsenseActionPanel />
-    </PipingProvider>
-  );
+interface CheckRow {
+  id: string;
+  question: string;
+  finding: string;
+  exception: string | null;
 }
 
-const PANELS: Record<CommonsenseView, ComponentType> = {
-  facts: FactsPanel,
-  workbench: KnowledgeBaseWorkbench,
-  concepts: ConceptExplorer,
-  actions: ActionsPane,
-};
+type Phase = 'loading' | 'ready' | 'error';
+type Mode = 'view' | 'ask' | 'finding' | 'exception';
+
+function isWarming(message: string): boolean {
+  return /service_overloaded|event_loop_lag|status code 503/i.test(message);
+}
+
+async function runCs<T>(name: string, input: Record<string, unknown>, fallback: string): Promise<T> {
+  let last = fallback;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await lensRun<T>('commonsense', name, input);
+    if (response.data?.ok && response.data.result) return response.data.result;
+    last = response.data?.error || last;
+    if (!isWarming(last) || attempt === 7) throw new Error(last);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error(last);
+}
+
+async function readThread(): Promise<CheckRow[]> {
+  const listed = await runCs<{ checks?: unknown }>('check-list', {}, 'Could not read the thread.');
+  const slim: { id: string; question: string }[] = [];
+  if (Array.isArray(listed.checks)) {
+    for (const row of listed.checks) {
+      if (!row || typeof row !== 'object') continue;
+      const id = (row as { id?: unknown }).id;
+      const question = (row as { question?: unknown }).question;
+      if (typeof id !== 'string' || !id) continue;
+      if (typeof question !== 'string' || !question.trim()) continue;
+      slim.push({ id, question: question.trim() });
+    }
+  }
+  const checks: CheckRow[] = [];
+  for (const row of slim) {
+    const detail = await runCs<{ check?: unknown }>('check-detail', { id: row.id }, 'Could not read the thread.');
+    const check = detail.check;
+    if (!check || typeof check !== 'object') continue;
+    const body = check as { id?: unknown; question?: unknown; finding?: unknown; exception?: unknown };
+    if (body.id !== row.id || typeof body.question !== 'string' || body.question.trim() !== row.question) continue;
+    const exception = typeof body.exception === 'string' && body.exception.trim() ? body.exception : null;
+    checks.push({
+      id: row.id,
+      question: row.question,
+      finding: typeof body.finding === 'string' ? body.finding : '',
+      exception,
+    });
+  }
+  return checks;
+}
 
 export default function CommonsenseLensPage() {
   useLensNav('commonsense');
-  useLensIdentity('commonsense');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('commonsense');
-  const [active, setActive] = useState<CommonsenseView>('facts');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [checks, setChecks] = useState<CheckRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>('view');
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [question, setQuestion] = useState('');
+  const [finding, setFinding] = useState('');
+  const [exception, setException] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const applyThread = useCallback((rows: CheckRow[], preferId?: string) => {
+    setChecks(rows);
+    setSelectedId((current) => {
+      const want = preferId || current;
+      if (want && rows.some((item) => item.id === want)) return want;
+      return rows[0]?.id || null;
+    });
+  }, []);
+
+  const pull = useCallback(async (preferId?: string) => {
+    const rows = await readThread();
+    applyThread(rows, preferId);
+    setMode('view');
+    setPhase('ready');
+  }, [applyThread]);
+
+  useEffect(() => {
+    let cancelled = false;
+    readThread().then((rows) => {
+      if (cancelled) return;
+      applyThread(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the thread.');
+    });
+    return () => { cancelled = true; };
+  }, [applyThread]);
+
+  const retry = useCallback(() => {
+    if (busy) return;
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    setQuestion('');
+    setFinding('');
+    setException('');
+    pull().catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the thread.');
+    });
+  }, [busy, pull]);
+
+  const ask = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (mode !== 'ask') {
+      setMode('ask');
+      setActionError('');
+      return;
+    }
+    const trimmed = question.trim();
+    if (!trimmed) {
+      setActionError('A question is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await runCs<{ checkId?: string }>('check-ask', { question: trimmed }, 'Could not ask that.');
+      const id = created.checkId;
+      if (!id) throw new Error('Could not ask that.');
+      const rows = await readThread();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.question !== trimmed || row.finding || row.exception) {
+        throw new Error('Asked, but the thread did not read it back.');
+      }
+      applyThread(rows, id);
+      setQuestion('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not ask that.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyThread, busy, mode, phase, question]);
+
+  const saveFinding = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    if (mode !== 'finding') {
+      const current = checks.find((item) => item.id === selectedId);
+      setFinding(current?.finding || '');
+      setMode('finding');
+      setActionError('');
+      return;
+    }
+    const next = finding.trim();
+    if (!next) {
+      setActionError('A finding is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runCs('check-finding', { id: selectedId, finding: next }, 'Could not save that finding.');
+      const rows = await readThread();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.finding !== next) throw new Error('Saved, but the thread did not read the finding back.');
+      applyThread(rows, selectedId);
+      setFinding('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that finding.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyThread, busy, checks, finding, mode, phase, selectedId]);
+
+  const saveException = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    const current = checks.find((item) => item.id === selectedId);
+    if (!current?.finding) return;
+    if (mode !== 'exception') {
+      setException(current.exception || '');
+      setMode('exception');
+      setActionError('');
+      return;
+    }
+    const note = exception.trim();
+    if (!note) {
+      setActionError('An exception is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runCs('check-exception', { id: selectedId, exception: note }, 'Could not save that exception.');
+      const rows = await readThread();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.exception !== note) throw new Error('Saved, but the thread did not read the exception back.');
+      applyThread(rows, selectedId);
+      setException('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that exception.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyThread, busy, checks, exception, mode, phase, selectedId]);
+
+  const openCheck = useCallback(async (id: string) => {
+    if (busy || phase !== 'ready') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      const detail = await runCs<{ check?: { id?: string; question?: string; finding?: unknown; exception?: unknown } }>(
+        'check-detail',
+        { id },
+        'Could not read the thread.',
+      );
+      const body = detail.check;
+      setChecks((rows) => rows.map((item) => {
+        if (item.id !== id || !body || body.id !== id || body.question !== item.question) return item;
+        return {
+          ...item,
+          finding: typeof body.finding === 'string' ? body.finding : '',
+          exception: typeof body.exception === 'string' && body.exception.trim() ? body.exception : null,
+        };
+      }));
+      setSelectedId(id);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not read the thread.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, phase]);
 
   useLensCommand(
-    [
-      ...VIEWS.map((v) => ({
-        id: `view-${v.id}`,
-        keys: v.keys,
-        description: `${v.label} — ${v.hint}`,
-        category: 'navigation' as const,
-        action: () => setActive(v.id),
-      })),
-      { id: 'add-fact', keys: 'n', description: 'Add a fact', category: 'actions' as const, action: () => setActive('facts') },
-    ],
+    [{ id: 'cs-ask', keys: 'a', description: 'Ask', category: 'actions', action: () => { void ask(); } }],
     { lensId: 'commonsense' },
   );
 
-  const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
+  const selected = checks.find((item) => item.id === selectedId) || null;
+  const empty = phase === 'ready' && mode === 'view' && checks.length === 0;
 
   return (
     <LensShell lensId="commonsense" asMain={false}>
-      <FirstRunTour lensId="commonsense" />
-      <DepthBadge lensId="commonsense" size="sm" className="ml-2" />
-      <div data-lens-theme="commonsense" className="relative min-h-full px-8 pb-28 pt-6">
-        <a href="#commonsense-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
-          Skip to commonsense content
-        </a>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Commonsense</p>
-            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'facts' && who ? `, ${who}` : ''}
-            </h1>
-            <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">
-              Your personal triple store and ConceptNet in one knowledge desk.
+      <div data-lens-theme="commonsense" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Commonsense</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The obvious check{who ? `, ${who}` : ''}
+        </h1>
+
+        <section aria-label="Thread" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
+          {phase === 'loading' && (
+            <p data-testid="cs-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+              Reading the thread.
             </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="commonsense" data={realtimeData || {}} compact />
-            {realtimeAlerts.length > 0 && (
-              <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
-                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <nav
-          className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
-          aria-label="Commonsense views"
-        >
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                title={`${v.hint} (${v.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-                aria-current={on ? 'page' : undefined}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {v.label}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">
-                  {v.keys}
-                </kbd>
+          )}
+          {phase === 'error' && (
+            <div data-testid="cs-error" role="alert">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the thread.'}</p>
+              <button type="button" onClick={retry} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
               </button>
-            );
-          })}
-        </nav>
+            </div>
+          )}
+          {empty && (
+            <p data-testid="cs-empty" className="flex min-h-[16rem] items-center justify-center text-center text-[15px] text-zinc-400">
+              The thread is empty.
+            </p>
+          )}
+          {phase === 'ready' && mode === 'view' && selected && (
+            <div className="mb-6">
+              <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{selected.question}</h2>
+              {selected.finding ? <p data-testid="cs-finding" className="mt-3 text-[15px] text-zinc-300">{selected.finding}</p> : null}
+              {selected.exception ? <p data-testid="cs-exception" className="mt-3 text-[15px] text-zinc-300">{selected.exception}</p> : null}
+            </div>
+          )}
+          {phase === 'ready' && mode === 'view' && checks.length > 0 && (
+            <ul data-testid="cs-thread" className="space-y-2 border-t border-white/10 pt-4">
+              {checks.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => { void openCheck(item.id); }}
+                    className="text-left text-[15px] text-zinc-200 underline-offset-4 hover:underline"
+                  >
+                    {item.question}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {phase === 'ready' && mode === 'ask' && (
+            <label className="block text-[14px] text-zinc-400">
+              Question
+              <input
+                data-testid="cs-question"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'finding' && (
+            <label className="block text-[14px] text-zinc-400">
+              Finding
+              <input
+                data-testid="cs-finding-input"
+                value={finding}
+                onChange={(event) => setFinding(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'exception' && (
+            <label className="block text-[14px] text-zinc-400">
+              Exception
+              <input
+                data-testid="cs-exception-input"
+                value={exception}
+                onChange={(event) => setException(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'view' && selected && (
+            <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveFinding(); }} className="text-[14px] text-zinc-100 underline">
+                {selected.finding ? 'Edit the finding' : 'State the obvious'}
+              </button>
+              {selected.finding ? (
+                <button type="button" onClick={() => { void saveException(); }} className="text-[14px] text-zinc-100 underline">
+                  {selected.exception ? 'Edit the exception' : 'Note an exception'}
+                </button>
+              ) : null}
+            </div>
+          )}
+          {phase === 'ready' && mode === 'finding' && (
+            <button type="button" onClick={() => { void saveFinding(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the finding
+            </button>
+          )}
+          {phase === 'ready' && mode === 'exception' && (
+            <button type="button" onClick={() => { void saveException(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the exception
+            </button>
+          )}
+        </section>
 
-        <main id="commonsense-main" className="min-w-0">
-          <section key={active}>
-            <Panel />
-          </section>
-        </main>
-
-        {realtimeData && (
-          <RealtimeDataPanel
-            domain="commonsense"
-            data={realtimeData}
-            isLive={isLive}
-            lastUpdated={lastUpdated}
-            insights={realtimeInsights}
-            compact
-          />
-        )}
-
-        <CrossLensRecentsPanel lensId="commonsense" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+        {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
 
         <button
           type="button"
-          onClick={() => setActive('facts')}
-          title="Add a fact (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void ask(); }}
+          disabled={phase === 'loading' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          Add a fact
+          {mode === 'ask' ? 'Ask this' : 'Ask'}
         </button>
       </div>
     </LensShell>
