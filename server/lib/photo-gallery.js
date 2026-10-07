@@ -74,7 +74,9 @@ export function sharePhoto(db, photoId, opts = {}) {
     if (p.dtu_id) return { ok: true, dtuId: p.dtu_id, alreadyShared: true };
 
     const dtuId = `dtu_photo_${crypto.randomBytes(6).toString("hex")}`;
-    try {
+    // The public flip and the dtu_id stamp are one write. If the dtus insert
+    // does not land, the photo stays private and dtu_id stays null.
+    const publish = db.transaction(() => {
       db.prepare(`
         INSERT INTO dtus (id, title, type, creator_id, created_at, body_json)
         VALUES (?, ?, 'photo', ?, unixepoch(), ?)
@@ -84,13 +86,15 @@ export function sharePhoto(db, photoId, opts = {}) {
         p.user_id,
         JSON.stringify({ source_photo_id: photoId, blob_path: p.blob_path }),
       );
+      db.prepare(`UPDATE user_photos SET dtu_id = ?, visibility = 'public' WHERE id = ?`)
+        .run(dtuId, photoId);
+    });
+    try {
+      publish();
     } catch (err) {
-      // dtus table missing on minimal builds — still flip visibility.
-      logger.debug?.("photo-gallery", "dtu_insert_skipped", { error: err?.message });
+      logger.debug?.("photo-gallery", "dtu_insert_failed", { error: err?.message });
+      return { ok: false, error: "dtu_insert_failed" };
     }
-
-    db.prepare(`UPDATE user_photos SET dtu_id = ?, visibility = 'public' WHERE id = ?`)
-      .run(dtuId, photoId);
     return { ok: true, dtuId };
   } catch (err) {
     return { ok: false, error: err?.message };
