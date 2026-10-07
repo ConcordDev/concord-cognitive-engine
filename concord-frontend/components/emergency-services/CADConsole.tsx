@@ -146,6 +146,7 @@ export function CADConsole() {
   const [timeline, setTimeline] = useState<TimelineEv[]>([]);
   const [nearest, setNearest] = useState<{ recommended: NearestUnit | null; ranked: NearestUnit[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   // incident form
@@ -184,6 +185,11 @@ export function CADConsole() {
     if (qRes) setQueue(qRes.queue || []);
     if (alertRes) setAlerts(alertRes.alerts || []);
     if (rollRes) setRollup(rollRes);
+    setLoadError(
+      [incRes, unitRes, mapRes, qRes, alertRes, rollRes].some((result) => result === null)
+        ? 'Some dispatch data could not be loaded. Retry before making an operational decision.'
+        : null,
+    );
     setBusy(false);
   }, []);
 
@@ -320,6 +326,14 @@ export function CADConsole() {
         )}>
           {msg.kind === 'ok' ? <Check className="mt-0.5 h-3.5 w-3.5" /> : <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />}
           <span>{msg.text}</span>
+        </div>
+      )}
+      {loadError && (
+        <div role="alert" className="flex items-center gap-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+          <span className="flex-1">{loadError}</span>
+          <button type="button" onClick={() => void refreshAll()} className="rounded border border-rose-400/30 px-2 py-1 font-medium">
+            Retry
+          </button>
         </div>
       )}
 

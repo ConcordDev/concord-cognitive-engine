@@ -107,6 +107,10 @@ export const LENS_STATE_KEYS = Object.freeze([
   // restart. The Energy domain stores per-user Maps here; without this key
   // the meter workspace appeared persistent until the server restarted.
   "energyLens",
+  // 47 -> 48: "emergencyServicesLens" so incidents, units, positions,
+  // timelines, mutual-aid consent/shares, and feed dedup survive a restart.
+  // The CAD domain stores nested per-user/per-agency Maps and Sets here.
+  "emergencyServicesLens",
 ]);
 
 function serializeValue(v) {

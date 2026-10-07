@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 47);
+    assert.equal(LENS_STATE_KEYS.length, 48);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -91,6 +91,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("astronomyLens"));
     assert.ok(LENS_STATE_KEYS.includes("atlasLens"));
     assert.ok(LENS_STATE_KEYS.includes("energyLens"));
+    assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -697,6 +698,31 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.energyLens.alerts instanceof Map);
     assert.equal(STATE.energyLens.livePower.get("user_a")[0].watts, 725);
     assert.equal(STATE.energyLens.touPlans.get("user_a").offPeakRate, 0.12);
+  });
+
+  it("roundtrips STATE.emergencyServicesLens (CAD board, timeline, mutual aid, and feed dedup)", () => {
+    STATE.emergencyServicesLens = {
+      incidents: new Map([["user_a", [{ id: "inc_1", summary: "Warehouse alarm", status: "open", priority: 2 }]]]),
+      units: new Map([["user_a", [{ id: "unit_1", name: "Engine 3", status: "available", lat: 35.1, lng: -80.8 }]]]),
+      eventLog: new Map([["user_a", [{ id: "ev_1", incidentId: "inc_1", kind: "created", detail: "fire", at: "2026-10-07T00:00:00Z" }]]]),
+      mutualAid: [{ id: "ma_1", incidentId: "inc_1", sourceOrgId: "org_a", targetOrgId: "org_b", status: "active", committedUnits: [] }],
+      mutualAidConsent: new Set(["org_b"]),
+      feedSeen: new Set(["quake_us7000test"]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.emergencyServicesLens.incidents instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.incidents.get("user_a")[0].summary, "Warehouse alarm");
+    assert.ok(STATE.emergencyServicesLens.units instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.units.get("user_a")[0].name, "Engine 3");
+    assert.ok(STATE.emergencyServicesLens.eventLog instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.eventLog.get("user_a")[0].kind, "created");
+    assert.equal(STATE.emergencyServicesLens.mutualAid[0].targetOrgId, "org_b");
+    assert.ok(STATE.emergencyServicesLens.mutualAidConsent instanceof Set);
+    assert.ok(STATE.emergencyServicesLens.mutualAidConsent.has("org_b"));
+    assert.ok(STATE.emergencyServicesLens.feedSeen instanceof Set);
+    assert.ok(STATE.emergencyServicesLens.feedSeen.has("quake_us7000test"));
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
