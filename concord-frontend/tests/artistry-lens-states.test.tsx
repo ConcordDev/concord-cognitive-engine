@@ -1,152 +1,160 @@
 /**
- * /lenses/artistry — UX-state + tab-wiring contract for the rebuilt
- * Artistry lens (Frontend Rebuild Program, Wave 2).
+ * /lenses/artistry — one study.
  *
- * Rewritten alongside the Wave-2 rebuild: the page no longer drives its
- * primary surface off `apiHelpers.artistry.assets/marketplace/studio` (a
- * real backend, but a misfiled DAW/music-distribution/marketplace system
- * shared with the `art`/`marketplace`/`collab`/`feed` lenses — presenting
- * it a second time under `artistry` mislabeled a cross-lens system as this
- * lens's own visual-art asset system; see the capability map). The real
- * page now (a) drives its header KPI strip off the real `artistry.profileGet`
- * macro via `useMacroDispatchFeedback`, honestly showing loading/error/
- * populated for THAT channel, and (b) mounts one real macro-backed panel
- * per tab (CommunityNetwork / ProjectStudio / PortfolioProfile / ... /
- * CreativeTools).
- *
- * Load-bearing wiring assertion: tab selection must mount the matching real
- * panel component — a regression that always rendered CommunityNetwork
- * regardless of the selected tab would silently strand the other real
- * backend surfaces behind dead navigation.
- *
- * No fabricated data — every state is driven by a mocked
- * `useMacroDispatchFeedback` standing in for the real backend in the exact
- * shape the hook returns. The error path's Retry is asserted to re-dispatch
- * (the mocked `dispatch` fires again), so a swallowed-fetch → silent-empty
- * regression cannot pass.
+ * + New study calls artistry.projectCreate and shows the title only after
+ * artistry.projectList contains that id and the same title.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-// ── header KPI channel: useMacroDispatchFeedback (artistry.profileGet) ─────
-type Status = 'idle' | 'dispatched' | 'running' | 'done' | 'error';
-const statsState: { status: Status; result: Record<string, unknown> | null; error: string | null } = {
-  status: 'idle', result: null, error: null,
-};
-const dispatchSpy = vi.fn(() => Promise.resolve(null));
-
-vi.mock('@/hooks/useMacroDispatchFeedback', () => ({
-  useMacroDispatchFeedback: () => ({
-    status: statsState.status,
-    runId: null,
-    domain: 'artistry',
-    action: 'profileGet',
-    result: statsState.result,
-    error: statsState.error,
-    ms: null,
-    stage: null,
-    dispatch: dispatchSpy,
-    reset: vi.fn(),
-  }),
+const { lensRun, authUser } = vi.hoisted(() => ({
+  lensRun: vi.fn(),
+  authUser: { current: null as { username: string } | null },
 }));
 
-// ── headless chrome + real macro-backed panels: render-only / inert stubs ──
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
+    React.createElement('div', null, children),
 }));
-vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
-vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/components/artistry/WikimediaArt', () => ({ WikimediaArt: () => null }));
-vi.mock('@/components/artistry/ProjectStudio', () => ({ ProjectStudio: () => React.createElement('div', { 'data-testid': 'panel-projects' }) }));
-vi.mock('@/components/artistry/PortfolioProfile', () => ({ PortfolioProfile: () => React.createElement('div', { 'data-testid': 'panel-profile' }) }));
-vi.mock('@/components/artistry/CommunityNetwork', () => ({ CommunityNetwork: () => React.createElement('div', { 'data-testid': 'panel-feed' }) }));
-vi.mock('@/components/artistry/Collections', () => ({ Collections: () => React.createElement('div', { 'data-testid': 'panel-collections' }) }));
-vi.mock('@/components/artistry/DisciplineSearch', () => ({ DisciplineSearch: () => React.createElement('div', { 'data-testid': 'panel-discover' }) }));
-vi.mock('@/components/artistry/JobBoard', () => ({ JobBoard: () => React.createElement('div', { 'data-testid': 'panel-jobs' }) }));
-vi.mock('@/components/artistry/CuratedGalleries', () => ({ CuratedGalleries: () => React.createElement('div', { 'data-testid': 'panel-galleries' }) }));
-vi.mock('@/components/artistry/CreativeTools', () => ({ CreativeTools: () => React.createElement('div', { 'data-testid': 'panel-tools' }) }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
+}));
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRun(...args),
+}));
 
 import ArtistryLens from '@/app/lenses/artistry/page';
 
+function listed(projects: { id: string; title: string }[]) {
+  return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
+}
+
 beforeEach(() => {
-  statsState.status = 'idle';
-  statsState.result = null;
-  statsState.error = null;
-  dispatchSpy.mockClear();
+  lensRun.mockReset();
+  authUser.current = null;
 });
 
-describe('artistry lens — tab wiring', () => {
-  it('opens on the real Projects (ProjectStudio) panel by default', () => {
-    render(<ArtistryLens />);
-    expect(screen.getByTestId('panel-projects')).toBeInTheDocument();
-    expect(screen.queryByTestId('panel-feed')).not.toBeInTheDocument();
+describe('artistry study', () => {
+  it('EMPTY: says the study is empty and offers + New study', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<ArtistryLens />);
+    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'The study' })).toBeInTheDocument();
+    expect(view.getByRole('button', { name: '+ New study' })).toBeEnabled();
+    expect(view.queryByText('Feed')).toBeNull();
+    expect(view.queryByText('Sketchpad')).toBeNull();
+    expect(view.queryByText('Untitled Project')).toBeNull();
   });
 
-  it('switching to each tab mounts its own real macro-backed panel', () => {
-    render(<ArtistryLens />);
-    const cases: Array<[RegExp, string]> = [
-      [/Feed/, 'panel-feed'],
-      [/Projects/, 'panel-projects'],
-      [/Profile/, 'panel-profile'],
-      [/Collections/, 'panel-collections'],
-      [/Discover/, 'panel-discover'],
-      [/Jobs/, 'panel-jobs'],
-      [/Galleries/, 'panel-galleries'],
-      [/Creative Tools/, 'panel-tools'],
-    ];
-    for (const [label, testId] of cases) {
-      fireEvent.click(screen.getByText(label));
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
-    }
+  it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
+    lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'state_unavailable' } });
+    const view = render(<ArtistryLens />);
+    expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
+    lensRun.mockResolvedValue(listed([]));
+    fireEvent.click(view.getByRole('button', { name: 'Retry' }));
+    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
   });
 
-  it('renders the honest Sketchpad disclosure — no fabricated "saved" claim', () => {
-    render(<ArtistryLens />);
-    fireEvent.click(screen.getByText(/Sketchpad/));
-    expect(screen.getByText(/nothing here is saved automatically/i)).toBeInTheDocument();
+  it('STUDY: a blank title does not call projectCreate', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<ArtistryLens />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
+    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('projectCreate');
   });
 
-  it('dispatches the real profileGet macro on mount (not a fabricated stat)', () => {
-    render(<ArtistryLens />);
-    expect(dispatchSpy).toHaveBeenCalledWith('artistry', 'profileGet', {});
-  });
-});
-
-describe('artistry lens — header KPI states', () => {
-  it('LOADING: shows skeleton placeholders while profileGet is in flight', () => {
-    statsState.status = 'dispatched';
-    const { container } = render(<ArtistryLens />);
-    expect(container.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
-  });
-
-  it('ERROR: shows the real error message + a working Retry that re-dispatches', async () => {
-    statsState.status = 'error';
-    statsState.error = 'artistry backend offline';
-    render(<ArtistryLens />);
-    expect(screen.getByText(/artistry backend offline/i)).toBeInTheDocument();
-
-    dispatchSpy.mockClear();
-    fireEvent.click(screen.getByText('Retry'));
-    await waitFor(() => expect(dispatchSpy).toHaveBeenCalledWith('artistry', 'profileGet', {}));
+  it('STUDY: shows the title only after projectList contains the id and title', async () => {
+    const projects: { id: string; title: string }[] = [];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'projectList') return listed(projects);
+      if (action === 'projectCreate') {
+        projects.unshift({ id: 'proj_1', title: input?.title || '' });
+        return { data: { ok: true, result: { project: { id: 'proj_1', title: input?.title } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<ArtistryLens />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
+    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: '  Door study  ' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    expect(await view.findByRole('heading', { name: 'Door study' })).toBeInTheDocument();
+    expect(view.queryByText('The study is empty.')).toBeNull();
+    expect(view.queryByText('Untitled Project')).toBeNull();
+    const save = lensRun.mock.calls.find((call) => call[1] === 'projectCreate');
+    expect(save?.[0]).toBe('artistry');
+    expect(save?.[2]).toEqual({ title: 'Door study' });
   });
 
-  it('POPULATED: renders real profileGet stats, scoped to the KPI list', () => {
-    statsState.status = 'done';
-    statsState.result = {
-      profile: { displayName: 'nova_paints' },
-      stats: { projectCount: 6, totalViews: 340, totalAppreciations: 52, followerCount: 12, followingCount: 4 },
-    };
-    render(<ArtistryLens />);
-    expect(screen.getByText(/nova_paints/)).toBeInTheDocument();
-    const kpis = within(screen.getByRole('list'));
-    expect(kpis.getByText('6')).toBeInTheDocument(); // Projects
-    expect(kpis.getByText('12')).toBeInTheDocument(); // Followers
+  it('STUDY: a list miss does not show the title', async () => {
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'projectList') return listed([]);
+      if (action === 'projectCreate') {
+        return { data: { ok: true, result: { project: { id: 'proj_missing', title: 'Lost study' } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<ArtistryLens />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
+    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Lost study' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
+    expect(view.queryByRole('heading', { name: 'Lost study' })).toBeNull();
+  });
+
+  it('GREETING: title-cases the signed-in name', async () => {
+    authUser.current = { username: 'ramaj' };
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<ArtistryLens />);
+    expect(await view.findByRole('heading', { name: 'The study, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByText('The study is empty.')).toBeInTheDocument();
+  });
+
+  it('LOAD: shows a title already on the list and skips a blank title', async () => {
+    lensRun.mockResolvedValue(listed([
+      { id: 'proj_a', title: 'First study' },
+      { id: 'proj_b', title: '   ' },
+    ]));
+    const view = render(<ArtistryLens />);
+    expect(await view.findByRole('heading', { name: 'First study' })).toBeInTheDocument();
+    expect(view.queryByText('The study is empty.')).toBeNull();
+  });
+
+  it('STUDY: a refused create does not show the title', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<ArtistryLens />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New study' }));
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'projectList') return listed([]);
+      if (action === 'projectCreate') return { data: { ok: false, result: null, error: 'study_not_saved' } };
+      throw new Error(action);
+    });
+    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Bad study' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/study_not_saved/);
+    expect(view.queryByRole('heading', { name: 'Bad study' })).toBeNull();
+    expect(view.getByTestId('artistry-title')).toBeInTheDocument();
+  });
+
+  it('STUDY: a second study stays beside the first', async () => {
+    const projects: { id: string; title: string }[] = [{ id: 'proj_1', title: 'First study' }];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'projectList') return listed(projects);
+      if (action === 'projectCreate') {
+        projects.unshift({ id: 'proj_2', title: input?.title || '' });
+        return { data: { ok: true, result: { project: { id: 'proj_2', title: input?.title } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<ArtistryLens />);
+    expect(await view.findByRole('heading', { name: 'First study' })).toBeInTheDocument();
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    fireEvent.change(view.getByTestId('artistry-title'), { target: { value: 'Second study' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New study' }));
+    expect(await view.findByRole('heading', { name: 'Second study' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'First study' })).toBeInTheDocument();
   });
 });
