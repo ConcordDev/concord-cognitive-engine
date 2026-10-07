@@ -28,21 +28,21 @@ import { findSimilarOutcomes } from "../lib/marathon-outcomes.js";
 export default function registerAgentProjectMacros(register) {
   register("agent_projects", "create", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     return createProject(db, userId, input.name, { goalTreeId: input.goalTreeId });
   }, { note: "create a named project, optionally pre-linked to a goal tree" });
 
   register("agent_projects", "list", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, projects: listProjects(db, userId, { limit: input.limit }) };
   }, { note: "list a user's projects with a cheap marathon-link count" });
 
   register("agent_projects", "get", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.projectId) return { ok: false, reason: "missing_project_id" };
     // ctx.state.dtus is the live write-through DTU store (see
@@ -55,7 +55,7 @@ export default function registerAgentProjectMacros(register) {
 
   register("agent_projects", "link_marathon", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.projectId) return { ok: false, reason: "missing_project_id" };
     if (!input.marathonSessionId) return { ok: false, reason: "missing_marathon_session_id" };
@@ -67,7 +67,7 @@ export default function registerAgentProjectMacros(register) {
 
   register("agent_projects", "touch_opened", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.projectId) return { ok: false, reason: "missing_project_id" };
     return touchProjectOpened(db, userId, input.projectId);
@@ -82,7 +82,7 @@ export default function registerAgentProjectMacros(register) {
   // default (privacy-preserving) — a caller can only see their own history.
   register("agent_projects", "similar_outcomes", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId; // never a client-sent id
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.goalText) return { ok: false, reason: "missing_goal_text" };
     return findSimilarOutcomes(db, input.goalText, input.limit, { userId });

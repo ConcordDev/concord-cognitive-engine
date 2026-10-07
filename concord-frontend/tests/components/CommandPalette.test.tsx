@@ -275,7 +275,7 @@ describe('CommandPalette', () => {
     // 7 modes, and `system:repair-cortex` (a whole separate, later-seen
     // category) sorts after the entire 'world' group, last overall.
     expect(options).toHaveLength(18);
-    expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
+    expect(options[0]).toHaveAttribute('id', 'palette-item-conkay:summon');
     expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
     expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
     expect(options[3]).toHaveAttribute('id', 'palette-item-mode:roguelite');
@@ -362,7 +362,7 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...defaultProps} />);
     const input = screen.getByRole('combobox');
     // Default selection is the ConKay staple at index 0.
-    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-conkay');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-conkay:summon');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-resonance');
   });

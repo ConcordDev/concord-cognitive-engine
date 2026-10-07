@@ -28,8 +28,10 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
 }
 
+const routerPush = vi.fn();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/lenses/creatures',
+  useRouter: () => ({ push: routerPush, replace: vi.fn() }),
 }));
 
 // next/dynamic is used for the WebGL world-tree backdrop + the AR exploded-
@@ -258,5 +260,17 @@ describe('ConKayOverlay — grounded research mode (reason.evaluate_answer)', ()
     // "Proven ✓" state.
     expect(await screen.findByText(/^Unverified$/)).toBeInTheDocument();
     expect(screen.queryByText(/Proven ✓/)).toBeNull();
+  });
+});
+
+describe('ConKayOverlay — Open workspace', () => {
+  afterEach(() => { cleanup(); routerPush.mockClear(); });
+
+  it('opens /lenses/conkay carrying what was typed, and closes the overlay', async () => {
+    await openConKay();
+    fireEvent.change(screen.getByLabelText('Message ConKay'), { target: { value: 'size a beam for 50 kN' } });
+    fireEvent.click(screen.getByLabelText('Open ConKay workspace'));
+    expect(routerPush).toHaveBeenCalledWith('/lenses/conkay?ask=size+a+beam+for+50+kN');
+    await waitFor(() => expect(screen.queryByLabelText('Message ConKay')).not.toBeInTheDocument());
   });
 });

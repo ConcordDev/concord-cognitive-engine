@@ -142,17 +142,19 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
 
   // All command-palette-eligible lenses. ConKay — Kay, Concord's
   // voice-native AI majordomo — is prepended as a "hidden staple" so it
-  // can be summoned from anywhere; selecting it drops into ConKay chat mode.
+  // can be summoned from anywhere; selecting it opens the ⌘J overlay here.
   const allLenses = useMemo(() => {
     const conkay: LensEntry = {
-      id: 'conkay',
+      // Distinct from the 'conkay' registry lens (the full workspace): this
+      // entry summons the ⌘J overlay on the current lens.
+      id: 'conkay:summon',
       name: 'ConKay — Summon Kay',
       icon: Sparkles,
       description: 'Voice-native AI majordomo · your archives + research + live visualizations',
       category: 'core',
       showInSidebar: false,
       showInCommandPalette: true,
-      path: '/lenses/chat?mode=conkay',
+      path: '/lenses/conkay',
       order: 0,
       keywords: ['conkay', 'kay', 'jarvis', 'friday', 'assistant', 'majordomo', 'voice', 'ai', 'brief'],
     };
@@ -532,7 +534,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       }
       // "Summon Kay" opens the cross-lens ConKay overlay ON the current lens
       // (operates the host lens' real macros) rather than navigating away.
-      if (lens.id === 'conkay' && typeof window !== 'undefined') {
+      if (lens.id === 'conkay:summon' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('conkay:summon'));
         return;
       }

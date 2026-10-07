@@ -349,6 +349,16 @@ describe("V1.2 Wave B — agent_projects macros (end-to-end through the registry
     assert.equal(r.reason, "not_owned");
   });
 
+  it("agent_projects ignores a client-sent userId — identity comes from the session only", async () => {
+    await registry.call("agent_projects", "create", ctx, { name: "Private to the owner" });
+    const malCtx = { db, actor: { userId: "mallory" } };
+    const spoofList = await registry.call("agent_projects", "list", malCtx, { userId: ctx.actor.userId });
+    assert.equal(spoofList.ok, true);
+    assert.equal(spoofList.projects.some((p) => p.name === "Private to the owner"), false);
+    const spoofCreate = await registry.call("agent_projects", "create", malCtx, { name: "Planted", userId: ctx.actor.userId });
+    assert.equal(spoofCreate.project.userId, "mallory");
+  });
+
   it("agent_projects.link_marathon requires projectId + marathonSessionId", async () => {
     const r1 = await registry.call("agent_projects", "link_marathon", ctx, {});
     assert.equal(r1.reason, "missing_project_id");

@@ -12,6 +12,8 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -42,6 +44,7 @@ import {
   Code,
   FileType,
   ArrowUpCircle,
+  Bot,
 } from 'lucide-react';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { TierBadge, TierBadgeDetail, TierPromotionTimeline } from './TierBadge';
@@ -372,6 +375,17 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                 dtu={toWorkspaceBusDTU(dtu)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-400/10 text-amber-300 border-transparent hover:bg-amber-400/20 hover:text-amber-300 hover:border-transparent transition-colors"
               />
+            )}
+            {dtu && (
+              <Link
+                href={conkayWorkspaceHref({ dtu: dtu.id || dtuId, title: dtu.title || dtu.summary || undefined })}
+                onClick={onClose}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-400/10 text-sky-300 hover:bg-sky-400/20 transition-colors"
+                title="Open this DTU in the ConKay workspace"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                Open in ConKay
+              </Link>
             )}
             <button
               onClick={handleShareUrl}

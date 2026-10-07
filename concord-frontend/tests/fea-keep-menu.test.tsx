@@ -34,6 +34,7 @@ describe('engineering FEA report handoff', () => {
   it('will not draft before the report is saved', () => {
     render(<EngineeringKeepMenu facts={facts} />);
     expect(draft()).toBeDisabled();
+    expect(screen.queryByRole('link', { name: /Open in ConKay/ })).toBeNull();
   });
 
   it('saves, reads back, then drafts citing that exact DTU', async () => {
@@ -50,6 +51,8 @@ describe('engineering FEA report handoff', () => {
     render(<EngineeringKeepMenu facts={facts} />);
     fireEvent.click(save());
     await waitFor(() => expect(screen.getByText(/Saved as private DTU dtu_fea1\./)).toBeTruthy());
+    // The kept report can be handed to ConKay's workspace, and only once it exists.
+    expect(screen.getByRole('link', { name: /Open in ConKay/ }).getAttribute('href')).toMatch(/^\/lenses\/conkay\?dtu=dtu_fea1&title=/);
 
     fireEvent.click(draft());
     await waitFor(() => expect(screen.getByText(/Drafted in Thread as th_1, citing dtu_fea1\. Not posted\./)).toBeTruthy());

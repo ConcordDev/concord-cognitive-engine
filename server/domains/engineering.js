@@ -7,6 +7,7 @@
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
 import { runFEA } from '../lib/simulation/fea-solver.js';
+import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
 // boltedConnection (AISC allowable-shear) + transformerSizing (ANSI kVA
 // ladder) are real, exported functions in engineering-compute.js that no
 // registered macro called — genuinely unreachable at the macro layer (see
@@ -236,6 +237,8 @@ function engState() {
   if (!(s.jobs instanceof Map)) s.jobs = new Map(); // userId -> Array<job>
   if (!(s.models instanceof Map)) s.models = new Map(); // userId -> working FEA model
   if (!(s.workspaces instanceof Map)) s.workspaces = new Map(); // userId -> { [panelKey]: { state, updatedAt } }
+  if (!(s.beamStudies instanceof Map)) s.beamStudies = new Map(); // studyKey(userId, workspaceId) -> current ConKay beam study
+  if (!(s.workspaceLogs instanceof Map)) s.workspaceLogs = new Map(); // studyKey -> ConKay workspace conversation
   return s;
 }
 function persist() {
@@ -967,6 +970,220 @@ export default function registerEngineeringActions(registerLensAction) {
           summary: fea.summary,
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── beamStudy — the ConKay workspace's parametric I-beam study ─────────
+  // dims (mm) + material + support + one point load → real section
+  // properties, a real beam-frame solve through the same runFEA solver, and
+  // the textbook result for the same case (lib/conkay/beam-study.js). The run
+  // is recorded in the sim-job history like runFEA, and kept as the user's
+  // current study so the workspace reopens on it.
+  // One current study per (user, ConKay workspace). The key always starts
+  // with the session's user id, so a workspace id from the client can only
+  // ever address that user's own studies.
+  const beamStudyKey = (ctx, params) => {
+    const ws = egClean(params?.workspaceId, 80);
+    return ws ? `${egActor(ctx)}::${ws}` : egActor(ctx);
+  };
+
+  registerLensAction('engineering', 'beamStudy', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const matId = egClean(data.material || 'steel-a992', 40);
+      const mat = MATERIAL_LIBRARY[matId];
+      if (!mat) return { ok: false, error: `unknown material: ${matId}` };
+      const study = buildBeamStudy({ dims: data.dims, material: mat, support: data.support, loadN: data.loadN, segments: data.segments });
+      if (!study.ok) return { ok: false, error: study.error };
+      const t0 = Date.now();
+      const fea = runFEA({ ...study.model, onStage: ctx?.emitMacroStage });
+      const elapsedMs = Date.now() - t0;
+      if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
+      const summary = summarizeBeamStudy(study, fea, mat);
+      const name = egClean(data.name || 'I-beam study', 80);
+      const updatedAt = new Date().toISOString();
+      const utilizationByMember = fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) }));
+      const s = engState();
+      let jobId = null;
+      if (s) {
+        const userId = egActor(ctx);
+        const jobs = egList(s.jobs, userId);
+        jobId = egId('sim');
+        jobs.unshift({ id: jobId, name, type: 'fea-beam-study', status: 'completed', elapsedMs, summary: fea.summary, createdAt: updatedAt });
+        if (jobs.length > 50) jobs.length = 50;
+        s.beamStudies.set(beamStudyKey(ctx, data), {
+          workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
+          jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
+          utilizationByMember, dtuId: null, updatedAt,
+        });
+        persist();
+      }
+      return {
+        ok: true,
+        result: {
+          jobId, elapsedMs, name, updatedAt,
+          dims: study.dims, support: study.support, loadN: study.loadN, loadNode: study.loadNode,
+          material: { id: matId, label: mat.label, E: mat.E, yield: mat.yield },
+          section: study.section,
+          ...summary,
+          utilizationByMember,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'beamStudy-get', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      const saved = s ? s.beamStudies.get(beamStudyKey(ctx, params)) || null : null;
+      if (!saved) return { ok: true, result: { study: null } };
+      const mat = MATERIAL_LIBRARY[saved.material];
+      return { ok: true, result: { study: { ...saved, materialInfo: mat ? { id: saved.material, label: mat.label, E: mat.E, yield: mat.yield } : null } } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // Parameter sweep: solve the same study at several values of one input
+  // (a dimension, or the load) and return each solve's numbers side by side.
+  // Read-only for the current study — it records one sim job for the sweep
+  // and never replaces what the workspace has open.
+  const SWEEP_PARAMS = ['length', 'height', 'flangeWidth', 'flangeThickness', 'webThickness', 'loadN'];
+  const SWEEP_LABELS = { length: 'L', height: 'D', flangeWidth: 'W', flangeThickness: 't_f', webThickness: 't_w', loadN: 'load' };
+  registerLensAction('engineering', 'beamSweep', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const param = egClean(data.param, 40);
+      if (!SWEEP_PARAMS.includes(param)) return { ok: false, error: `param must be one of ${SWEEP_PARAMS.join(', ')}` };
+      const values = (Array.isArray(data.values) ? data.values : []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
+      if (values.length < 2 || values.length > 12) return { ok: false, error: 'values: 2 to 12 positive numbers' };
+      const matId = egClean(data.material || 'steel-a992', 40);
+      const mat = MATERIAL_LIBRARY[matId];
+      if (!mat) return { ok: false, error: `unknown material: ${matId}` };
+      const t0 = Date.now();
+      const rows = [];
+      for (const value of values) {
+        const dims = param === 'loadN' ? data.dims : { ...(data.dims || {}), [param]: value };
+        const loadN = param === 'loadN' ? value : data.loadN;
+        const study = buildBeamStudy({ dims, material: mat, support: data.support, loadN, segments: data.segments });
+        if (!study.ok) { rows.push({ value, ok: false, error: study.error }); continue; }
+        const fea = runFEA(study.model);
+        if (!fea.ok) { rows.push({ value, ok: false, error: fea.error || 'FEA solve failed' }); continue; }
+        const sum = summarizeBeamStudy(study, fea, mat);
+        rows.push({
+          value, ok: true,
+          maxStressMPa: sum.maxStressMPa, maxDeflectionMm: sum.maxDeflectionMm,
+          utilization: sum.utilization, safetyFactor: sum.safetyFactor, pass: sum.pass,
+          handCheckAgrees: sum.handCheck.agrees, areaMm2: study.section.areaMm2,
+        });
+      }
+      const elapsedMs = Date.now() - t0;
+      const solved = rows.filter((r) => r.ok);
+      if (solved.length === 0) return { ok: false, error: rows[0]?.error || 'no value could be solved' };
+      // Lightest section that still passes — area is mass per unit length.
+      const passing = solved.filter((r) => r.pass);
+      const lightestPassing = passing.length
+        ? passing.reduce((a, b) => (b.areaMm2 < a.areaMm2 ? b : a)).value
+        : null;
+      let jobId = null;
+      const s = engState();
+      if (s) {
+        const jobs = egList(s.jobs, egActor(ctx));
+        jobId = egId('sim');
+        jobs.unshift({ id: jobId, name: `Sweep ${SWEEP_LABELS[param]}`, type: 'fea-beam-sweep', status: 'completed', elapsedMs, summary: { runs: rows.length, solved: solved.length, passing: passing.length }, createdAt: new Date().toISOString() });
+        if (jobs.length > 50) jobs.length = 50;
+        persist();
+      }
+      return { ok: true, result: { jobId, param, elapsedMs, material: { id: matId, label: mat.label }, rows, lightestPassing } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ConKay workspace conversation, kept per (user, workspace) beside the
+  // study so it follows the user across devices. Append-only from the
+  // client; capped so one workspace cannot grow without bound.
+  const LOG_MAX = 120;
+  const cleanLogEntry = (m) => {
+    if (!m || typeof m !== 'object') return null;
+    const role = m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : null;
+    const id = egClean(m.id, 64);
+    const text = String(m.text ?? '').slice(0, 8000);
+    if (!role || !id) return null;
+    const entry = { id, role, text, at: egClean(m.at, 40) || new Date().toISOString() };
+    if (m.error === true) entry.error = true;
+    for (const k of ['chips', 'tools', 'sweep']) {
+      if (m[k] === undefined || m[k] === null) continue;
+      try {
+        const json = JSON.stringify(m[k]);
+        if (json.length <= 20000) entry[k] = JSON.parse(json);
+      } catch { /* unserialisable extras are dropped, the text is kept */ }
+    }
+    return entry;
+  };
+
+  registerLensAction('engineering', 'workspaceLog-get', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      const log = s ? s.workspaceLogs.get(beamStudyKey(ctx, params)) || [] : [];
+      return { ok: true, result: { messages: log } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'workspaceLog-append', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const incoming = (Array.isArray(params?.messages) ? params.messages : []).slice(0, 20).map(cleanLogEntry).filter(Boolean);
+      if (incoming.length === 0) return { ok: false, error: 'messages required' };
+      const key = beamStudyKey(ctx, params);
+      const log = s.workspaceLogs.get(key) || [];
+      const seen = new Set(log.map((m) => m.id));
+      for (const m of incoming) if (!seen.has(m.id)) { log.push(m); seen.add(m.id); }
+      if (log.length > LOG_MAX) log.splice(0, log.length - LOG_MAX);
+      s.workspaceLogs.set(key, log);
+      persist();
+      return { ok: true, result: { count: log.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'workspaceLog-clear', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const had = (s.workspaceLogs.get(beamStudyKey(ctx, params)) || []).length;
+      s.workspaceLogs.delete(beamStudyKey(ctx, params));
+      persist();
+      return { ok: true, result: { cleared: had } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // Record that the current study was kept as a DTU. The caller has already
+  // created the DTU and read it back; the id is only attached to the study
+  // whose sim job produced it, so a stale page cannot cite a newer run.
+  registerLensAction('engineering', 'beamStudy-keep', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const saved = s.beamStudies.get(beamStudyKey(ctx, params));
+      if (!saved) return { ok: false, error: 'no study to keep — run one first' };
+      const jobId = egClean(params?.jobId, 80);
+      if (!jobId || jobId !== saved.jobId) return { ok: false, error: 'that run is no longer the current study' };
+      const dtuId = egClean(params?.dtuId, 80);
+      if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(dtuId)) return { ok: false, error: 'dtuId required' };
+      saved.dtuId = dtuId;
+      persist();
+      return { ok: true, result: { jobId, dtuId } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

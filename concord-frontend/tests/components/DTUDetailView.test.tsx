@@ -106,3 +106,44 @@ describe('DTUDetailView — Workspace Bus "send to bus" action', () => {
     expect(latestHistory[0].dtu.title).toBe('Q3 Revenue Forecast');
   });
 });
+
+describe('DTUDetailView — Open in ConKay, tabs and export', () => {
+  it('hands the loaded DTU to the ConKay workspace and closes the modal', async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DTUDetailView dtuId="dtu-42" onClose={onClose} />);
+    const link = await screen.findByRole('link', { name: /Open in ConKay/ });
+    expect(link.getAttribute('href')).toBe('/lenses/conkay?dtu=dtu-42&title=Q3+Revenue+Forecast');
+    fireEvent.click(link);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows the real properties on the Metadata tab and loads lineage on demand', async () => {
+    renderWithProviders(<DTUDetailView dtuId="dtu-42" onClose={() => {}} />);
+    await screen.findByRole('link', { name: /Open in ConKay/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Metadata' }));
+    await waitFor(() => expect(screen.getAllByText('dtu-42').length).toBeGreaterThan(0));
+    expect(screen.getAllByText('finance').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Lineage' }));
+    const { apiHelpers } = await import('@/lib/api/client');
+    await waitFor(() => expect(apiHelpers.dtus.lineage).toHaveBeenCalledWith('dtu-42'));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
+  });
+
+  it('copies the public share URL and exports the .dtu file', async () => {
+    const writeText = vi.fn();
+    Object.assign(navigator, { clipboard: { writeText } });
+    const blob = new Blob(['x']);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) });
+    vi.stubGlobal('fetch', fetchMock);
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    renderWithProviders(<DTUDetailView dtuId="dtu-42" onClose={() => {}} />);
+    await screen.findByRole('link', { name: /Open in ConKay/ });
+    fireEvent.click(screen.getByTitle('Copy public share URL'));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/dtu/dtu-42`);
+    fireEvent.click(screen.getByTitle('Download as .dtu file'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/dtus/dtu-42/export.dtu'));
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:x'));
+    vi.unstubAllGlobals();
+  });
+});

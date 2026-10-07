@@ -32,6 +32,11 @@ const feedbackFn = vi.fn();
 const forgeFn = vi.fn();
 const lensDeleteFn = vi.fn();
 const cogStatusFn = vi.fn();
+// Choosing ConKay routes to its own lens; nothing here exercises that, but
+// the panel holds a router.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+}));
 vi.mock('@/lib/api/client', () => ({
   lensRun: vi.fn(async () => ({ data: { ok: true, result: {} } })),
   api: {
