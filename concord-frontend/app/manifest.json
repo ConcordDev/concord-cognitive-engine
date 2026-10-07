@@ -1,7 +1,7 @@
 {
-  "name": "Concordos Cognitive Engine",
+  "name": "Concord — AI that shows its receipts",
   "short_name": "Concordos",
-  "description": "Sovereign cognitive engine with 5 core workspaces: Chat, Board, Graph, Code, Studio",
+  "description": "AI that shows its receipts: every answer comes with the formula, the inputs, the check, and a record you can re-run.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",

@@ -12,9 +12,9 @@ import type { Metadata } from 'next';
 import { HomeClient } from '@/components/home/HomeClient';
 
 export const metadata: Metadata = {
-  title: 'Concordos — Sovereign Cognitive Engine',
+  title: 'Concord — AI that shows its receipts',
   description:
-    'A sovereign knowledge operating system that grows with you. 259 domain lenses, DTU-based memory, lattice governance, local-first AI. No ads, no extraction, no surveillance.',
+    'Concord gives engineers AI answers they can check: a real solver, the textbook hand check beside it, and a reproducible record of the inputs and assumptions.',
   alternates: {
     canonical: '/',
   },
@@ -43,16 +43,18 @@ export default function HomePage() {
 
         <main className="px-8 pt-20 pb-32 max-w-6xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-center">
-            <span className="text-white">Your Personal</span>
+            <span className="text-white">AI that shows</span>
             <br />
             <span className="bg-gradient-to-r from-neon-cyan via-neon-blue to-neon-purple bg-clip-text text-transparent">
-              Cognitive Engine
+              its receipts
             </span>
           </h1>
 
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8 text-center">
-            A sovereign knowledge operating system that grows with you.
-            Your thoughts never leave your control.
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-4 text-center">
+            Every answer comes with its working: the formula, the inputs, the check, and a record you can re-run, starting with engineering, where ConKay checks a beam against the textbook hand calculation.
+          </p>
+          <p className="text-base text-gray-400 max-w-2xl mx-auto mb-8 text-center">
+            The same engine also powers music, art, games and a creator marketplace.
           </p>
 
           {/* Primary CTAs — let visitors experience it before committing. */}

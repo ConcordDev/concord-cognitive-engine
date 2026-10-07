@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 export interface SplashScreenProps {
   /** Show the splash. Caller flips to false when ready. */
   visible: boolean;
-  /** Override the displayed tagline. Default: "Cognitive operating system" */
+  /** Override the displayed tagline. Default: "AI that shows its receipts" */
   tagline?: string;
   /** Show the brand mark + wordmark. Default true. */
   showLogo?: boolean;
@@ -27,7 +27,7 @@ export interface SplashScreenProps {
  */
 export default function SplashScreen({
   visible,
-  tagline = 'Cognitive operating system',
+  tagline = 'AI that shows its receipts',
   showLogo = true,
   autoHideMs,
   onHidden,

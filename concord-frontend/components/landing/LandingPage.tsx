@@ -59,21 +59,23 @@ export function LandingPage(_props: LandingPageProps) {
       {/* Hero Section */}
       <section className="relative z-10 px-8 pt-20 pb-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-full text-sm text-neon-purple mb-8">
-          <Lock className="w-4 h-4" />
-          <span>Sovereignty Lock — Your Mind, Your Rules</span>
+          <Zap className="w-4 h-4" />
+          <span>Engineering first: checked answers, not guesses</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-          <span className="text-white">Your Personal</span>
+          <span className="text-white">AI that shows</span>
           <br />
           <span className="bg-gradient-to-r from-neon-cyan via-neon-blue to-neon-purple bg-clip-text text-transparent">
-            Cognitive Engine
+            its receipts
           </span>
         </h1>
 
-        <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-          A sovereign knowledge operating system that grows with you.
-          Your thoughts never leave your control.
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-4">
+          Every answer comes with its working: the formula, the inputs, the check, and a record you can re-run, starting with engineering, where ConKay checks a beam against the textbook hand calculation.
+        </p>
+        <p className="text-base text-gray-400 max-w-2xl mx-auto mb-8">
+          The same engine also powers music, art, games and a creator marketplace.
         </p>
 
         {/* Trust Signal — above the fold, before CTA */}
