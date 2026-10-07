@@ -111,6 +111,10 @@ export const LENS_STATE_KEYS = Object.freeze([
   // timelines, mutual-aid consent/shares, and feed dedup survive a restart.
   // The CAD domain stores nested per-user/per-agency Maps and Sets here.
   "emergencyServicesLens",
+  // 48 -> 49: "electricalLens" so panel schedules, estimates/invoices,
+  // inspection checklists, one-lines, and material prices survive a restart.
+  // The Electrical domain stores per-user arrays inside Maps here.
+  "electricalLens",
 ]);
 
 function serializeValue(v) {

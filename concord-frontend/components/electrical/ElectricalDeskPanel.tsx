@@ -6,7 +6,7 @@
  * sibling panels mounted by the thin page shell.
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -28,8 +28,15 @@ const MODE_TABS = ARTIFACT_TABS.map((t) => ({
   icon: t.id === 'jobs' ? Wrench : t.id === 'codes' ? FileText : t.id === 'clients' ? Users : Award,
 }));
 
-export function ElectricalDeskPanel({ mode }: { mode: 'dashboard' | 'jobs' | 'codes' | 'clients' | 'certs' }) {
+export function ElectricalDeskPanel({
+  mode,
+  createOnMount = false,
+}: {
+  mode: 'dashboard' | 'jobs' | 'codes' | 'clients' | 'certs';
+  createOnMount?: boolean;
+}) {
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const createHandled = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -111,6 +118,12 @@ export function ElectricalDeskPanel({ mode }: { mode: 'dashboard' | 'jobs' | 'co
     setFormJurisdiction('');
     setEditorOpen(true);
   };
+  useEffect(() => {
+    if (createOnMount && !createHandled.current) {
+      createHandled.current = true;
+      openCreate();
+    }
+  }, [createOnMount]);
   const openEdit = (item: LensItem<TradeArtifact>) => {
     const d = item.data as unknown as TradeArtifact;
     setEditingItem(item);

@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 48);
+    assert.equal(LENS_STATE_KEYS.length, 49);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -92,6 +92,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("atlasLens"));
     assert.ok(LENS_STATE_KEYS.includes("energyLens"));
     assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
+    assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -723,6 +724,34 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.emergencyServicesLens.mutualAidConsent.has("org_b"));
     assert.ok(STATE.emergencyServicesLens.feedSeen instanceof Set);
     assert.ok(STATE.emergencyServicesLens.feedSeen.has("quake_us7000test"));
+  });
+
+  it("roundtrips STATE.electricalLens (panels, estimates, invoices, inspections, diagrams, and prices)", () => {
+    STATE.electricalLens = {
+      panels: new Map([["user_a", [{ id: "panel_1", name: "Main", circuits: [{ id: "ckt_1", breaker: 20 }] }]]]),
+      estimates: new Map([["user_a", [{ id: "est_1", client: "Ramaj", laborLines: [], materialLines: [] }]]]),
+      invoices: new Map([["user_a", [{ id: "inv_1", estimateId: "est_1", status: "unpaid", total: 4200 }]]]),
+      checklists: new Map([["user_a", [{ id: "chk_1", template: "service", items: [{ id: "item_1", passed: true }] }]]]),
+      diagrams: new Map([["user_a", [{ id: "diag_1", nodes: [{ id: "node_1", kind: "utility" }], edges: [] }]]]),
+      priceList: new Map([["user_a", [{ id: "mp_1", name: "20A breaker", price: 9.4 }]]]),
+      seq: 17,
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.electricalLens.panels instanceof Map);
+    assert.equal(STATE.electricalLens.panels.get("user_a")[0].circuits[0].breaker, 20);
+    assert.ok(STATE.electricalLens.estimates instanceof Map);
+    assert.equal(STATE.electricalLens.estimates.get("user_a")[0].client, "Ramaj");
+    assert.ok(STATE.electricalLens.invoices instanceof Map);
+    assert.equal(STATE.electricalLens.invoices.get("user_a")[0].total, 4200);
+    assert.ok(STATE.electricalLens.checklists instanceof Map);
+    assert.equal(STATE.electricalLens.checklists.get("user_a")[0].items[0].passed, true);
+    assert.ok(STATE.electricalLens.diagrams instanceof Map);
+    assert.equal(STATE.electricalLens.diagrams.get("user_a")[0].nodes[0].kind, "utility");
+    assert.ok(STATE.electricalLens.priceList instanceof Map);
+    assert.equal(STATE.electricalLens.priceList.get("user_a")[0].price, 9.4);
+    assert.equal(STATE.electricalLens.seq, 17);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
