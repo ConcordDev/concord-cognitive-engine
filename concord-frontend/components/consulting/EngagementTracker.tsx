@@ -7,7 +7,8 @@
  * / consulting-dashboard macros.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Briefcase, Plus, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -17,26 +18,30 @@ interface Dash { engagements: number; active: number; loggedHours: number; bille
 
 const EDITABLE_STATUSES = ['active', 'on_hold', 'complete'] as const;
 
-export function EngagementTracker() {
-  const [engs, setEngs] = useState<Engagement[]>([]);
-  const [dash, setDash] = useState<Dash | null>(null);
+export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}) {
   const [active, setActive] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ rate: '', budgetHours: '', status: 'active' as string });
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['consulting', 'engagement-tracker'],
+    queryFn: async () => {
     const [el, d] = await Promise.all([
       lensRun('consulting', 'engagement-list', {}),
       lensRun('consulting', 'consulting-dashboard', {}),
     ]);
-    setEngs((el.data?.result?.engagements as Engagement[]) || []);
-    setDash((d.data?.result as Dash) || null);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      if (!el.data?.ok) throw new Error(el.data?.error || 'Could not load engagements');
+      if (!d.data?.ok) throw new Error(d.data?.error || 'Could not load practice dashboard');
+      return {
+        engs: (el.data.result?.engagements as Engagement[]) || [],
+        dash: (d.data.result as Dash) || null,
+      };
+    },
+  });
+  const engs = data?.engs || [];
+  const dash = data?.dash || null;
 
   async function addEng() {
     if (!form.name.trim()) return;
@@ -45,18 +50,21 @@ export function EngagementTracker() {
       rate: form.rate ? Number(form.rate) : 0, budgetHours: form.budgetHours ? Number(form.budgetHours) : 0,
     });
     setForm({ name: '', client: '', rate: '', budgetHours: '' });
-    await refresh();
+    await refetch();
+    onChanged?.();
   }
   async function delEng(id: string) {
     await lensRun('consulting', 'engagement-delete', { id });
     if (active === id) setActive(null);
-    await refresh();
+    await refetch();
+    onChanged?.();
   }
   async function logTime(engagementId: string) {
     if (!timeForm.hours) return;
     await lensRun('consulting', 'time-log', { engagementId, hours: Number(timeForm.hours), note: timeForm.note.trim() });
     setTimeForm({ hours: '', note: '' });
-    await refresh();
+    await refetch();
+    onChanged?.();
   }
   function openEdit(e: Engagement) {
     setEditingId(e.id);
@@ -70,10 +78,19 @@ export function EngagementTracker() {
       status: editForm.status,
     });
     setEditingId(null);
-    await refresh();
+    await refetch();
+    onChanged?.();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex items-center justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-4 text-center" role="alert">
+        <p className="text-sm text-rose-300">{error instanceof Error ? error.message : 'Could not load engagements'}</p>
+        <button type="button" onClick={() => void refetch()} className="mt-2 text-xs font-semibold text-rose-200 underline">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -83,7 +100,7 @@ export function EngagementTracker() {
       </div>
       <p className="text-[10px] text-zinc-500 mb-3">
         Live engagement status, rates, and time logs — for freeform briefs and scope notes,
-        see the Engagement Records tab above.
+        open Engagement notes in the records rail.
       </p>
 
       {dash && (

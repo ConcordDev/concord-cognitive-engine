@@ -1,186 +1,165 @@
 /**
- * /lenses/crafting — four-UX-state contract.
+ * /lenses/crafting — the bench.
  *
- * Pins that the Crafting workbench renders genuine loading / error (with a
- * working Retry) / empty / populated states against the real backend surface
- * the page drives — the personal-locker recipe feed (api.get
- * '/api/personal-locker/dtus') and the crafting favorite macros
- * (lensRun('crafting','favorite_list' | 'favorite_toggle')) — plus a11y
- * (the recipe search input carries an accessible name; loading is role=status;
- * error is role=alert with a working Retry).
- *
- * No fabricated data: every state is driven by a controllable mock of the page's
- * two real channels (axios `api` + `lensRun`), in exactly the shape the server
- * returns. The headless LensShell, the dynamic-imported panels, and the heavy
- * lens-primitive cards are render-only stubs so the test stays on the MineTab's
- * own state machine.
+ * The page loads GET /api/crafting/recipes and saves with
+ * POST /api/crafting/design, then requires that same id on the next GET.
+ * It does not call the locker, favorites, character, or balance endpoints.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
+import { pieceDesignBody } from '@/components/crafting/bench';
 
-// ── the page's two backend channels ─────────────────────────────────────────
 const apiGet = vi.fn();
 const apiPost = vi.fn();
-const lensRun = vi.fn();
 vi.mock('@/lib/api/client', () => ({
-  api: { get: (...a: unknown[]) => apiGet(...a), post: (...a: unknown[]) => apiPost(...a) },
-  lensRun: (...args: unknown[]) => lensRun(...args),
+  api: { get: (...args: unknown[]) => apiGet(...args), post: (...args: unknown[]) => apiPost(...args) },
+  lensRun: vi.fn(),
 }));
 
-// ── persistence hooks (Forge tab craft-session artifacts) ───────────────────
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useArtifacts: () => ({ data: { artifacts: [] }, isLoading: false, isError: false }),
-  useCreateArtifact: () => ({ mutate: vi.fn() }),
-}));
-
-// ── headless shell + heavy children: render-only stubs ──────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
-vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/crafting/RecipeLedger', () => ({ RecipeLedger: () => null }));
-vi.mock('@/components/crafting/CraftingWorkbench', () => ({ CraftingWorkbench: () => null }));
-// dynamic() panels — return a no-op component so next/dynamic resolves to null.
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
 
-vi.mock('lucide-react', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  const make = (name: string) => {
-    const Icon = React.forwardRef<SVGSVGElement, Record<string, unknown>>((props, ref) =>
-      React.createElement('span', { 'data-testid': `icon-${name}`, ref, ...props }));
-    Icon.displayName = name;
-    return Icon;
-  };
-  return new Proxy(actual, {
-    get: (target, prop: string) => (prop in target ? make(prop) : (target as Record<string, unknown>)[prop]),
-  });
-});
-
-// Import AFTER mocks are registered.
 import CraftingPage from '@/app/lenses/crafting/page';
 
-// api.get returns an axios-shaped { data }.
 function ok(data: Record<string, unknown>) {
   return Promise.resolve({ data });
 }
-function lensReply(result: Record<string, unknown>, success = true) {
-  return Promise.resolve({ data: { ok: success, result } });
-}
 
-const RECIPE = {
-  id: 'dtu_iron_sword',
-  title: 'Iron Sword',
-  meta: { type: 'blueprint', description: 'A sturdy blade.' },
-  created_at: '2026-02-01T00:00:00Z',
+const USER = {
+  ok: true,
+  user: { id: 'u1', username: 'ramaj', email: 'r@example.com', role: 'user' },
 };
 
-// Default: header/aux endpoints resolve harmlessly; tests override the
-// personal-locker feed + favorite macros to drive each state.
-function baseApiGet(url: string) {
-  if (url === '/api/personal-locker/dtus') return ok({ dtus: [] });
-  if (typeof url === 'string' && url.startsWith('/api/crafting/character/')) return ok({ level: 1 });
-  if (typeof url === 'string' && url.startsWith('/api/crafting/resource-bars/')) return ok({ bars: [] });
-  if (url === '/api/economy/balance') return ok({ balance: 0 });
-  return ok({});
+function authAndRecipes(recipes: Record<string, unknown>[]) {
+  apiGet.mockImplementation((url: string) => {
+    if (url === '/api/auth/me') return ok(USER);
+    if (url === '/api/crafting/recipes') return ok({ ok: true, recipes });
+    return ok({});
+  });
 }
 
 beforeEach(() => {
   apiGet.mockReset();
   apiPost.mockReset();
-  lensRun.mockReset();
-  lensRun.mockImplementation((_d: string, name: string) =>
-    name === 'favorite_list' ? lensReply({ favorites: [], count: 0 }) : lensReply({}, true));
-  // jsdom localStorage exists; ensure no avatar id surprises.
-  window.localStorage.clear();
 });
 
-describe('crafting lens — four UX states (MineTab, the default surface)', () => {
-  it('LOADING: shows a role=status indicator while the recipe feed is in flight', async () => {
-    // personal-locker call (the MineTab load) never resolves → stays loading.
+describe('crafting bench', () => {
+  it('shows a status while the recipe list is in flight', async () => {
     apiGet.mockImplementation((url: string) => {
-      if (url === '/api/personal-locker/dtus') return new Promise(() => {});
-      return baseApiGet(url);
+      if (url === '/api/auth/me') return ok(USER);
+      if (url === '/api/crafting/recipes') return new Promise(() => {});
+      return ok({});
     });
-    const { container } = render(<CraftingPage />);
-    await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
+    const { getByRole } = render(<CraftingPage />);
+    await waitFor(() => expect(getByRole('status').textContent).toMatch(/Opening the bench/));
   });
 
-  it('a11y: the recipe search input carries an accessible name', async () => {
-    apiGet.mockImplementation(baseApiGet);
-    const { getByLabelText } = render(<CraftingPage />);
-    await waitFor(() => expect(getByLabelText('Search recipes')).toBeInTheDocument());
+  it('greets the signed-in person and says the bench is clear', async () => {
+    authAndRecipes([]);
+    const { getByRole, getByText } = render(<CraftingPage />);
+    await waitFor(() => expect(getByRole('heading', { name: 'The piece on the bench, Ramaj' })).toBeInTheDocument());
+    expect(getByText('The bench is clear.')).toBeInTheDocument();
+    expect(apiGet.mock.calls.some((call) => call[0] === '/api/personal-locker/dtus')).toBe(false);
+    expect(apiGet.mock.calls.some((call) => String(call[0]).includes('/api/crafting/character/'))).toBe(false);
+    expect(apiGet.mock.calls.some((call) => call[0] === '/api/economy/balance')).toBe(false);
   });
 
-  it('EMPTY: an empty recipe feed shows the honest "no personal recipes yet" CTA', async () => {
-    apiGet.mockImplementation(baseApiGet);
-    const { getByText } = render(<CraftingPage />);
-    await waitFor(() =>
-      expect(getByText(/No personal recipes yet/i)).toBeInTheDocument());
-  });
-
-  it('ERROR: a failed recipe feed shows role=alert + a working Retry that re-fetches', async () => {
+  it('shows the server error and retries the recipe list', async () => {
     let fail = true;
     apiGet.mockImplementation((url: string) => {
-      if (url === '/api/personal-locker/dtus') {
-        // header refresh swallows errors with .catch(); MineTab load surfaces them.
-        return fail ? Promise.reject(new Error('feed exploded')) : ok({ dtus: [] });
+      if (url === '/api/auth/me') return ok(USER);
+      if (url === '/api/crafting/recipes') {
+        return fail ? Promise.reject(new Error('feed exploded')) : ok({ ok: true, recipes: [] });
       }
-      return baseApiGet(url);
+      return ok({});
     });
-    const { container, getByText } = render(<CraftingPage />);
+    const { getByRole, getByText } = render(<CraftingPage />);
+    await waitFor(() => expect(getByRole('alert').textContent).toMatch(/feed exploded/));
 
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/feed exploded/i)).toBeInTheDocument();
-
-    // Retry re-runs the MineTab load → now succeeds → empty CTA appears.
-    const before = apiGet.mock.calls.filter((c) => c[0] === '/api/personal-locker/dtus').length;
+    const before = apiGet.mock.calls.filter((call) => call[0] === '/api/crafting/recipes').length;
     fail = false;
     await act(async () => { fireEvent.click(getByText('Retry')); });
     await waitFor(() =>
-      expect(apiGet.mock.calls.filter((c) => c[0] === '/api/personal-locker/dtus').length)
-        .toBeGreaterThan(before));
-    await waitFor(() => expect(getByText(/No personal recipes yet/i)).toBeInTheDocument());
+      expect(apiGet.mock.calls.filter((call) => call[0] === '/api/crafting/recipes').length).toBeGreaterThan(before));
+    await waitFor(() => expect(getByText('The bench is clear.')).toBeInTheDocument());
   });
 
-  it('POPULATED: a real recipe renders, and the favorite star reflects favorite_list', async () => {
-    apiGet.mockImplementation((url: string) =>
-      url === '/api/personal-locker/dtus' ? ok({ dtus: [RECIPE] }) : baseApiGet(url));
-    // favorite_list already starred this recipe → star should read favorited.
-    lensRun.mockImplementation((_d: string, name: string) => {
-      if (name === 'favorite_list') {
-        return lensReply({ favorites: [{ recipeId: 'dtu_iron_sword', recipeName: 'Iron Sword', favoritedAt: '2026-02-01T00:00:00Z' }], count: 1 });
-      }
-      return lensReply({}, true);
-    });
+  it('renders a recipe title returned by the list', async () => {
+    authAndRecipes([{ id: 'r1', title: 'Bench hook', type: 'recipe' }]);
+    const { getByText, queryByText } = render(<CraftingPage />);
+    await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
+    expect(queryByText('The bench is clear.')).toBeNull();
+  });
+
+  it('skips a row that has no title', async () => {
+    authAndRecipes([{ id: 'r1', title: '' }]);
     const { getByText } = render(<CraftingPage />);
-    await waitFor(() => expect(getByText('Iron Sword')).toBeInTheDocument());
-    expect(getByText('List on marketplace')).toBeInTheDocument();
+    await waitFor(() => expect(getByText('The bench is clear.')).toBeInTheDocument());
   });
 
-  it('POPULATED: toggling the star fires the real favorite_toggle macro', async () => {
-    apiGet.mockImplementation((url: string) =>
-      url === '/api/personal-locker/dtus' ? ok({ dtus: [RECIPE] }) : baseApiGet(url));
-    const { getByText, getByLabelText } = render(<CraftingPage />);
-    await waitFor(() => expect(getByText('Iron Sword')).toBeInTheDocument());
+  it('does not post until the piece has a name', async () => {
+    authAndRecipes([]);
+    const { getByRole, getByLabelText } = render(<CraftingPage />);
+    const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    await act(async () => { fireEvent.click(button); });
+    expect(getByLabelText('Piece name')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(button); });
+    expect(apiPost).not.toHaveBeenCalled();
+  });
 
-    lensRun.mockImplementation((_d: string, name: string) => {
-      if (name === 'favorite_list') return lensReply({ favorites: [], count: 0 });
-      if (name === 'favorite_toggle') return lensReply({ favorited: true, recipeId: 'dtu_iron_sword', count: 1 });
-      return lensReply({}, true);
+  it('posts the piece and shows it only after the list reads it back', async () => {
+    let recipes: Record<string, unknown>[] = [];
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') return ok(USER);
+      if (url === '/api/crafting/recipes') return ok({ ok: true, recipes });
+      return ok({});
     });
-    await act(async () => { fireEvent.click(getByLabelText('Toggle favorite')); });
-    await waitFor(() =>
-      expect(lensRun.mock.calls.some((c) => c[1] === 'favorite_toggle')).toBe(true));
-    const toggleCall = lensRun.mock.calls.find((c) => c[1] === 'favorite_toggle');
-    expect(toggleCall?.[2]).toMatchObject({ recipeId: 'dtu_iron_sword' });
+    apiPost.mockImplementation((url: string, body: { name: string }) => {
+      expect(url).toBe('/api/crafting/design');
+      expect(body).toEqual(pieceDesignBody('Bench hook'));
+      recipes = [{ id: 'r-new', title: body.name, type: 'recipe' }];
+      return ok({ ok: true, recipe: { id: 'r-new', name: body.name } });
+    });
+
+    const { getByRole, getByLabelText, getByText, queryByText } = render(<CraftingPage />);
+    const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    await act(async () => { fireEvent.click(button); });
+    fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Bench hook' } });
+    await act(async () => { fireEvent.click(button); });
+
+    await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
+    expect(queryByText('Piece name')).toBeNull();
+    expect(apiPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the validator error and does not invent a row', async () => {
+    authAndRecipes([]);
+    apiPost.mockRejectedValue({
+      response: { data: { ok: false, error: 'Recipe design is not valid in this world', errors: ['Skill crafting requires level 10'] } },
+    });
+    const { getByRole, getByLabelText } = render(<CraftingPage />);
+    const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    await act(async () => { fireEvent.click(button); });
+    fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Iron Sword' } });
+    await act(async () => { fireEvent.click(button); });
+    await waitFor(() => expect(getByRole('alert').textContent).toMatch(/Skill crafting requires level 10/));
+    expect(getByRole('heading', { name: 'The piece on the bench, Ramaj' })).toBeInTheDocument();
+  });
+
+  it('says so when the follow-up list does not contain the new id', async () => {
+    authAndRecipes([]);
+    apiPost.mockResolvedValue({ data: { ok: true, recipe: { id: 'missing', name: 'Ghost' } } });
+    const { getByRole, getByLabelText, queryByText } = render(<CraftingPage />);
+    const button = await waitFor(() => getByRole('button', { name: '+ Start a piece' }));
+    await act(async () => { fireEvent.click(button); });
+    fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Ghost' } });
+    await act(async () => { fireEvent.click(button); });
+    await waitFor(() => expect(getByRole('alert').textContent).toMatch(/did not read it back/));
+    expect(queryByText('Ghost')).toBeNull();
   });
 });

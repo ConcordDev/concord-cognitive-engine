@@ -12,6 +12,7 @@
  */
 
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
+import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
 
 // === DATA DIRECTORY (canonical) ===
@@ -61728,60 +61729,7 @@ app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
 
 // ── Phase BE1 — photo gallery + freecam screenshots ────────────────────
 
-app.post("/api/photos/save", requireAuth(), asyncHandler(async (req, res) => {
-  const { savePhoto } = await import("./lib/photo-gallery.js");
-  const userId = req.user?.id || req.user?.userId;
-  res.json(await savePhoto(db, userId, req.body || {}));
-}));
-
-app.post("/api/photos/:photoId/share", requireAuth(), asyncHandler(async (req, res) => {
-  const { sharePhoto } = await import("./lib/photo-gallery.js");
-  res.json(sharePhoto(db, req.params.photoId));
-}));
-
-app.post("/api/photos/:photoId/delete", requireAuth(), asyncHandler(async (req, res) => {
-  const { deletePhoto } = await import("./lib/photo-gallery.js");
-  const userId = req.user?.id || req.user?.userId;
-  res.json(deletePhoto(db, userId, req.params.photoId));
-}));
-
-app.get("/api/photos/mine", requireAuth(), asyncHandler(async (req, res) => {
-  const { listMyPhotos } = await import("./lib/photo-gallery.js");
-  const userId = req.user?.id || req.user?.userId;
-  res.json({ ok: true, photos: listMyPhotos(db, userId, Number(req.query.limit) || 50) });
-}));
-
-app.get("/api/photos/world/:worldId/public", asyncHandler(async (req, res) => {
-  const { listPublicPhotosInWorld } = await import("./lib/photo-gallery.js");
-  res.json({ ok: true, photos: listPublicPhotosInWorld(db, req.params.worldId, Number(req.query.limit) || 50) });
-}));
-
-// The actual PNG bytes for a photo. Mirrors the `photos.get` macro's
-// owner-or-public gate: the owner (via cookie auth, best-effort-decoded
-// above even on this Gate-1-bypassed path) can always view their own
-// photo; anyone else only when it has been shared (visibility='public').
-// Verify-pass fix (2026-07-09): the gallery lib + share/DTU-mint path were
-// fully real, but nothing ever served the stored blob back to a browser —
-// every gallery card rendered caption/timestamp text only, no image.
-app.get("/api/photos/:photoId/image", asyncHandler(async (req, res) => {
-  const row = db.prepare(
-    `SELECT user_id, visibility, blob_path FROM user_photos WHERE id = ?`,
-  ).get(req.params.photoId);
-  if (!row) return res.status(404).json({ ok: false, error: "not_found" });
-  const userId = req.user?.id || req.user?.userId;
-  if (row.visibility !== "public" && row.user_id !== userId) {
-    // Don't disclose existence of a private photo to a non-owner.
-    return res.status(404).json({ ok: false, error: "not_found" });
-  }
-  if (!row.blob_path || !fs.existsSync(row.blob_path)) {
-    return res.status(404).json({ ok: false, error: "blob_missing" });
-  }
-  res.setHeader(
-    "Cache-Control",
-    row.visibility === "public" ? "public, max-age=3600" : "private, no-store",
-  );
-  res.sendFile(path.resolve(row.blob_path));
-}));
+app.use("/api/photos", createPhotosRouter({ db, requireAuth }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.
 app.post("/api/announcements", requireAuth(), asyncHandler(async (req, res) => {

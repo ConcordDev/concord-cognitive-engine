@@ -1406,4 +1406,230 @@ export default function registerCommonsenseActions(registerLensAction) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
+
+  // The card's thread. The fact Map above dies on restart and is the
+  // wrong shape for a question, a later finding, and a later exception.
+  // List returns id and question. The finding and the exception come
+  // back only from check-detail.
+  function checkDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function checksReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='commonsense_checks'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function checkActor(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "";
+  }
+  function checkClean(value, max) {
+    return String(value ?? "").trim().slice(0, max);
+  }
+  function checkNow() {
+    return new Date().toISOString();
+  }
+  function checkId() {
+    return `ck_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function checkBucket(userId) {
+    const st = csState();
+    if (!(st.checks instanceof Map)) st.checks = new Map();
+    if (!st.checks.has(userId)) st.checks.set(userId, []);
+    return st.checks.get(userId);
+  }
+  function checkFromRow(row) {
+    const question = typeof row.question === "string" ? row.question.trim() : "";
+    if (!question || !row.id) return null;
+    const finding = typeof row.finding === "string" ? row.finding : "";
+    const exception = typeof row.exception === "string" && row.exception.trim() ? row.exception : null;
+    return {
+      id: row.id,
+      question,
+      finding,
+      exception,
+      createdAt: row.created_at || row.createdAt || "",
+      updatedAt: row.updated_at || row.updatedAt || "",
+    };
+  }
+  function readCheckRows(ctx, userId) {
+    const db = checkDb(ctx);
+    if (!checksReady(db)) return [];
+    return db.prepare(
+      "SELECT id, question, finding, exception, created_at, updated_at FROM commonsense_checks WHERE user_id = ? ORDER BY created_at ASC, id ASC",
+    ).all(userId);
+  }
+  function writeCheckRow(ctx, userId, check) {
+    const db = checkDb(ctx);
+    if (!checksReady(db)) {
+      const err = new Error("check_not_saved");
+      err.code = "check_not_saved";
+      throw err;
+    }
+    db.prepare(`
+      INSERT INTO commonsense_checks
+        (id, user_id, question, finding, exception, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        question = excluded.question,
+        finding = excluded.finding,
+        exception = excluded.exception,
+        updated_at = excluded.updated_at
+    `).run(
+      check.id,
+      userId,
+      check.question,
+      check.finding,
+      check.exception,
+      check.createdAt,
+      check.updatedAt,
+    );
+  }
+  function hydrateChecks(ctx, userId) {
+    const bucket = checkBucket(userId);
+    const seen = new Set(bucket.map((item) => item.id));
+    for (const row of readCheckRows(ctx, userId)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      const check = checkFromRow(row);
+      if (!check) continue;
+      bucket.push(check);
+      seen.add(check.id);
+    }
+    return bucket;
+  }
+  function findCheck(ctx, userId, id) {
+    const live = checkBucket(userId).find((item) => item.id === id);
+    if (live) return live;
+    return hydrateChecks(ctx, userId).find((item) => item.id === id) || null;
+  }
+  function orderedChecks(ctx, userId) {
+    return hydrateChecks(ctx, userId)
+      .filter((item) => item.question)
+      .slice()
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.id).localeCompare(String(b.id)));
+  }
+  function checkFace(check) {
+    return { id: check.id, question: check.question };
+  }
+
+  registerLensAction("commonsense", "check-ask", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const question = checkClean(params.question, 4000);
+      if (!question) return { ok: false, error: "question required" };
+      const now = checkNow();
+      const check = {
+        id: checkId(),
+        question,
+        finding: "",
+        exception: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const bucket = checkBucket(userId);
+      bucket.push(check);
+      try {
+        writeCheckRow(ctx, userId, check);
+      } catch (err) {
+        const idx = bucket.findIndex((item) => item.id === check.id);
+        if (idx >= 0) bucket.splice(idx, 1);
+        return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { checkId: check.id, check: checkFace(check) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-list", (ctx, _artifact, _params) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const checks = orderedChecks(ctx, userId).map(checkFace);
+      return { ok: true, result: { checks, count: checks.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-detail", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = checkClean(params.id || params.checkId, 80);
+      if (!id) return { ok: false, error: "missing_check_id" };
+      const check = findCheck(ctx, userId, id);
+      if (!check) return { ok: false, error: "check_not_found" };
+      return {
+        ok: true,
+        result: {
+          check: {
+            id: check.id,
+            question: check.question,
+            finding: check.finding,
+            exception: check.exception,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-finding", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = checkClean(params.id || params.checkId, 80);
+      if (!id) return { ok: false, error: "missing_check_id" };
+      const finding = checkClean(params.finding, 8000);
+      if (!finding) return { ok: false, error: "finding required" };
+      const check = findCheck(ctx, userId, id);
+      if (!check) return { ok: false, error: "check_not_found" };
+      const previous = check.finding;
+      const previousAt = check.updatedAt;
+      check.finding = finding;
+      check.updatedAt = checkNow();
+      try {
+        writeCheckRow(ctx, userId, check);
+      } catch (err) {
+        check.finding = previous;
+        check.updatedAt = previousAt;
+        return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { checkId: check.id, check: checkFace(check) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-exception", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = checkClean(params.id || params.checkId, 80);
+      if (!id) return { ok: false, error: "missing_check_id" };
+      const exception = checkClean(params.exception, 8000);
+      if (!exception) return { ok: false, error: "exception required" };
+      const check = findCheck(ctx, userId, id);
+      if (!check) return { ok: false, error: "check_not_found" };
+      const previous = check.exception;
+      const previousAt = check.updatedAt;
+      check.exception = exception;
+      check.updatedAt = checkNow();
+      try {
+        writeCheckRow(ctx, userId, check);
+      } catch (err) {
+        check.exception = previous;
+        check.updatedAt = previousAt;
+        return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { checkId: check.id, check: checkFace(check) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }

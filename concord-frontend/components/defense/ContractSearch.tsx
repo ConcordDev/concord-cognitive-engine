@@ -56,12 +56,25 @@ export function ContractSearch() {
   const [awardType, setAwardType] = useState<typeof AWARD_TYPES[number]>('contracts');
   const [results, setResults] = useState<Award[]>([]);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const searchMutation = useMutation({
     mutationFn: async () => callMacro<{ results: Award[]; totalAmount: number }>('usaspending-dod-contracts', { keyword: keyword.trim(), awardType, limit: 30 }),
     onSuccess: (env) => {
-      if (env.ok && env.result) { setResults(env.result.results); setTotal(env.result.totalAmount); }
-      else { setResults([]); setTotal(0); }
+      if (env.ok && env.result) {
+        setResults(env.result.results);
+        setTotal(env.result.totalAmount);
+        setError(null);
+      } else {
+        setResults([]);
+        setTotal(0);
+        setError(env.error || 'USAspending search failed');
+      }
+    },
+    onError: (requestError) => {
+      setResults([]);
+      setTotal(0);
+      setError(requestError instanceof Error ? requestError.message : 'USAspending search failed');
     },
   });
 
@@ -92,6 +105,12 @@ export function ContractSearch() {
           Search
         </button>
       </form>
+
+      {error && (
+        <div role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
 
       {results.length > 0 && (
         <>

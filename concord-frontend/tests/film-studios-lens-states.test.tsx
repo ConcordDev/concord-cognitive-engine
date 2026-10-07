@@ -1,169 +1,210 @@
 /**
- * /lenses/film-studios — four-UX-state contract for the Film Studios lens.
+ * /lenses/film-studios — one production.
  *
- * Pins that the Discover surface renders genuine loading / error (with a WORKING
- * Retry) / empty / populated states against its real backend channel
- * (apiHelpers.filmStudio.discover → GET /api/film-studio/discover).
- *
- * Defect this test guards against (fixed 2026-06-27): the discover queryFn used
- * to `.catch(() => return [])`, which RESOLVES the query successfully — so a
- * real network failure rendered as a silently-empty page and `isError` could
- * never fire. The catch was removed so the rejection propagates, the
- * role="alert" error state surfaces, and Retry re-fetches.
- *
- * a11y: loading is role="status", error is role="alert" with a Retry that
- * RE-FETCHES (we assert the underlying call count grows + the surface recovers).
- * No fabricated data — each state is driven by a mocked discover() standing in
- * for the real route, in the exact { films: [...] } shape it returns.
+ * + New production calls film-studios.project-create and shows the title
+ * only after project-list contains that id and title. Opening it calls
+ * scene-list. Add scene calls scene-add and shows the slugline only after
+ * scene-list contains that id and location. Choosing the scene reads
+ * scene-list again.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-// ── backend channel: apiHelpers.filmStudio.discover (+ constants) ────────────
-const discover = vi.fn();
-const constants = vi.fn(() => Promise.resolve({ data: {} }));
-const components = vi.fn(() => Promise.resolve({ data: {} }));
-const crew = vi.fn(() => Promise.resolve({ data: {} }));
-const create = vi.fn(() => Promise.resolve({ data: {} }));
-
-vi.mock('@/lib/api/client', () => ({
-  apiHelpers: {
-    filmStudio: {
-      discover: (...a: unknown[]) => discover(...a),
-      constants: (...a: unknown[]) => constants(...a),
-      components: (...a: unknown[]) => components(...a),
-      crew: (...a: unknown[]) => crew(...a),
-      create: (...a: unknown[]) => create(...a),
-    },
-  },
+const { lensRun, authUser } = vi.hoisted(() => ({
+  lensRun: vi.fn(),
+  authUser: { current: null as { username: string } | null },
 }));
 
-// ── lens data / artifact hooks (My-films + compute actions) — inert ──────────
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({ items: [], create: vi.fn(), isError: false, error: null, refetch: vi.fn() }),
-}));
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: () => ({ mutateAsync: vi.fn() }),
-}));
-vi.mock('@/hooks/useLensDTUs', () => ({
-  useLensDTUs: () => ({ contextDTUs: [], isLoading: false }),
-}));
-
-// ── headless chrome + side panels: render-only / inert stubs ────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
+    React.createElement('div', null, children),
 }));
-vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
 }));
-vi.mock('@/store/ui', () => ({
-  useUIStore: Object.assign(() => {}, { getState: () => ({ addToast: () => {} }) }),
-}));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
-vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/media/UniversalPlayer', () => ({ UniversalPlayer: () => null }));
-vi.mock('@/components/film-studios/FilmStackFeed', () => ({ FilmStackFeed: () => null }));
-vi.mock('@/components/film-studios/FilmStudioSection', () => ({ FilmStudioSection: () => null }));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
 import FilmStudiosPage from '@/app/lenses/film-studios/page';
 
-const FILM = {
-  id: 'film_1', title: 'Neon Tide', type: 'short_film', status: 'draft',
-  duration: 600, resolution: '1080p', crew: [], components: [], createdAt: '2026-06-27',
-};
-
-function renderPage() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    React.createElement(QueryClientProvider, { client: qc }, React.createElement(FilmStudiosPage)),
-  );
+function listed(projects: { id: string; title: string }[]) {
+  return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
+}
+function scenesOf(scenes: { id: string; location: string; slugline: string }[]) {
+  return { data: { ok: true, result: { scenes, count: scenes.length }, error: null } };
 }
 
 beforeEach(() => {
-  discover.mockReset();
-  constants.mockReset(); constants.mockImplementation(() => Promise.resolve({ data: {} }));
+  lensRun.mockReset();
+  authUser.current = null;
 });
 
-// The page's default active tab is "Production", not "Discover" — every
-// test below needs to switch tabs before the discover()-driven UI mounts.
-function goToDiscover(getByRole: (role: string, opts: { name: RegExp }) => HTMLElement) {
-  fireEvent.click(getByRole('button', { name: /Discover/i }));
-}
-
-describe('film-studios lens — Discover tab four UX states', () => {
-  it('LOADING: shows a role=status indicator while discover is in flight', async () => {
-    discover.mockImplementation(() => new Promise(() => {})); // never resolves
-    const { getByText, getByRole, container } = renderPage();
-    await act(async () => { goToDiscover(getByRole); });
-    await waitFor(() => expect(getByText(/Loading films/i)).toBeInTheDocument());
-    expect(container.querySelector('[role="status"]')).toBeTruthy();
+describe('film studios production', () => {
+  it('EMPTY: shows both panes and offers + New production', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<FilmStudiosPage />);
+    expect(await view.findByText('No production open.')).toBeInTheDocument();
+    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'The production' })).toBeInTheDocument();
+    expect(view.getByRole('button', { name: '+ New production' })).toBeEnabled();
+    expect(view.queryByRole('button', { name: 'Add scene' })).toBeNull();
+    expect(view.queryByRole('button', { name: 'Discover' })).toBeNull();
+    expect(view.queryByRole('textbox')).toBeNull();
   });
 
-  it('EMPTY: shows the honest empty CTA when the catalog is empty', async () => {
-    discover.mockImplementation(() => Promise.resolve({ data: { films: [] } }));
-    const { getByText, getByTestId, getByRole } = renderPage();
-    await act(async () => { goToDiscover(getByRole); });
-    await waitFor(() => expect(getByTestId('film-discover-empty')).toBeInTheDocument());
-    expect(getByText(/No films found/i)).toBeInTheDocument();
-    // the CTA is a real, clickable button
-    expect(getByRole('button', { name: /Create your first film/i })).toBeInTheDocument();
+  it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
+    lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'STATE unavailable' } });
+    const view = render(<FilmStudiosPage />);
+    expect(await view.findByRole('alert')).toHaveTextContent(/STATE unavailable/);
+    lensRun.mockResolvedValue(listed([]));
+    fireEvent.click(view.getByRole('button', { name: 'Retry' }));
+    expect(await view.findByText('No production open.')).toBeInTheDocument();
   });
 
-  it('ERROR: a failed discover shows role=alert + a working Retry that re-fetches and recovers', async () => {
-    let fail = true;
-    discover.mockImplementation(() => {
-      if (fail) return Promise.reject(new Error('discovery offline'));
-      return Promise.resolve({ data: { films: [FILM] } });
+  it('PRODUCTION: a blank title does not call project-create', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New production' }));
+    fireEvent.click(view.getByRole('button', { name: '+ New production' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
+    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('project-create');
+  });
+
+  it('PRODUCTION: shows the title only after project-list contains the id and title', async () => {
+    const projects: { id: string; title: string }[] = [];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      if (action === 'project-create') {
+        projects.push({ id: 'prj_1', title: input?.title || '' });
+        return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
+      }
+      throw new Error(action);
     });
-    const { getByText, getByRole, container } = renderPage();
-    await act(async () => { goToDiscover(getByRole); });
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/discovery offline/i)).toBeInTheDocument();
-
-    const before = discover.mock.calls.length;
-    fail = false;
-    await act(async () => { fireEvent.click(getByText('Retry')); });
-    await waitFor(() => expect(discover.mock.calls.length).toBeGreaterThan(before));
-    // recovers to the populated row
-    await waitFor(() => expect(getByText('Neon Tide')).toBeInTheDocument());
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New production' }));
+    fireEvent.change(view.getByTestId('film-title'), { target: { value: '  Door production  ' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New production' }));
+    expect(await view.findByRole('button', { name: 'Door production' })).toHaveAttribute('aria-pressed', 'true');
+    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Add scene' })).toBeEnabled();
+    const save = lensRun.mock.calls.find((call) => call[1] === 'project-create');
+    expect(save?.[0]).toBe('film-studios');
+    expect(save?.[2]).toEqual({ title: 'Door production' });
   });
 
-  it('POPULATED: renders the real film row from the discover route', async () => {
-    discover.mockImplementation(() => Promise.resolve({ data: { films: [FILM] } }));
-    const { getByText, getByRole } = renderPage();
-    await act(async () => { goToDiscover(getByRole); });
-    await waitFor(() => expect(getByText('Neon Tide')).toBeInTheDocument());
-    // the "Featured" badge marks the first row + Preview action is present
-    expect(getByText(/Featured/i)).toBeInTheDocument();
-    expect(getByText(/Preview/i)).toBeInTheDocument();
+  it('PRODUCTION: a list miss does not show the title', async () => {
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed([]);
+      if (action === 'project-create') {
+        return { data: { ok: true, result: { project: { id: 'prj_missing', title: 'Lost production' } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: '+ New production' }));
+    fireEvent.change(view.getByTestId('film-title'), { target: { value: 'Lost production' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New production' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
+    expect(view.queryByRole('button', { name: 'Lost production' })).toBeNull();
   });
 
-  it('a11y: the tab controls are real buttons with accessible text', async () => {
-    discover.mockImplementation(() => Promise.resolve({ data: { films: [] } }));
-    const { getByRole } = renderPage();
-    await waitFor(() => expect(getByRole('button', { name: /Discover/i })).toBeInTheDocument());
-    expect(getByRole('button', { name: /My Films/i })).toBeInTheDocument();
+  it('SCENE: a blank location does not call scene-add', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    expect(await view.findByRole('button', { name: 'Add scene' })).toBeEnabled();
+    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/A location is required/);
+    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('scene-add');
+  });
+
+  it('SCENE: shows the slugline only after scene-list contains the id and location', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    const scenes: { id: string; location: string; slugline: string }[] = [];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { location?: string; projectId?: string }) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf(scenes);
+      if (action === 'scene-add') {
+        scenes.push({ id: 'scn_1', location: input?.location || '', slugline: `INT. ${input?.location} - DAY` });
+        return { data: { ok: true, result: { scene: { id: 'scn_1', location: input?.location } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add scene' }));
+    fireEvent.change(view.getByTestId('film-location'), { target: { value: '  Kitchen  ' } });
+    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    expect(await view.findByRole('heading', { name: 'INT. Kitchen - DAY' })).toBeInTheDocument();
+    expect(view.queryByText('Nothing selected.')).toBeNull();
+    const save = lensRun.mock.calls.find((call) => call[1] === 'scene-add');
+    expect(save?.[2]).toEqual({ projectId: 'prj_1', location: 'Kitchen' });
+  });
+
+  it('SCENE: choosing a scene reads scene-list again', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    const scenes = [{ id: 'scn_1', location: 'Kitchen', slugline: 'INT. Kitchen - DAY' }];
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf(scenes);
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    const sceneButton = await view.findByRole('button', { name: 'INT. Kitchen - DAY' });
+    expect(view.getByText('Nothing selected.')).toBeInTheDocument();
+    const before = lensRun.mock.calls.filter((call) => call[1] === 'scene-list').length;
+    fireEvent.click(sceneButton);
+    expect(await view.findByRole('heading', { name: 'INT. Kitchen - DAY' })).toBeInTheDocument();
+    expect(lensRun.mock.calls.filter((call) => call[1] === 'scene-list').length).toBeGreaterThan(before);
+  });
+
+  it('GREETING: names the signed-in person', async () => {
+    authUser.current = { username: 'ramaj' };
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<FilmStudiosPage />);
+    expect(await view.findByRole('heading', { name: 'The production, Ramaj' })).toBeInTheDocument();
+  });
+
+  it('LOAD: skips a row with a blank title', async () => {
+    lensRun.mockResolvedValue(listed([{ id: 'prj_blank', title: '   ' } as { id: string; title: string }]));
+    const view = render(<FilmStudiosPage />);
+    expect(await view.findByText('No production open.')).toBeInTheDocument();
+    expect(view.queryByRole('button', { name: 'prj_blank' })).toBeNull();
+  });
+
+  it('PRODUCTION: a second production stays beside the first', async () => {
+    const projects: { id: string; title: string }[] = [{ id: 'prj_1', title: 'Door production' }];
+    let n = 1;
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      if (action === 'project-create') {
+        n += 1;
+        const id = `prj_${n}`;
+        projects.push({ id, title: input?.title || '' });
+        return { data: { ok: true, result: { project: { id, title: input?.title } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    expect(await view.findByRole('button', { name: 'Door production' })).toBeInTheDocument();
+    fireEvent.click(view.getByRole('button', { name: '+ New production' }));
+    fireEvent.change(view.getByTestId('film-title'), { target: { value: 'Night production' } });
+    fireEvent.click(view.getByRole('button', { name: '+ New production' }));
+    expect(await view.findByRole('button', { name: 'Night production' })).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Door production' })).toBeInTheDocument();
   });
 });

@@ -70,6 +70,42 @@ export default function registerGameDesignActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // gameDesignLens is not in the shared snapshot key list. A design title
+  // is written here so a process restart can list it. Callers with no
+  // table (unit stubs) keep the in-memory path. Genre and platform stay
+  // off this row so a restart does not invent the create defaults.
+  function gdDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function designsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_designs'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writeDesignRow(ctx, game) {
+    const db = gdDb(ctx);
+    if (!designsReady(db)) return;
+    db.prepare(`
+      INSERT INTO game_designs (id, user_id, title, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+    `).run(game.id, gdAid(ctx), game.title, game.createdAt, game.updatedAt);
+  }
+  function deleteDesignRow(ctx, id) {
+    const db = gdDb(ctx);
+    if (!designsReady(db) || !id) return;
+    db.prepare("DELETE FROM game_designs WHERE id = ? AND user_id = ?").run(String(id), gdAid(ctx));
+  }
+  function readDesignRows(ctx) {
+    const db = gdDb(ctx);
+    if (!designsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, created_at, updated_at FROM game_designs WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(gdAid(ctx));
+  }
   const gdId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const gdNow = () => new Date().toISOString();
   const gdAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -162,13 +198,35 @@ export default function registerGameDesignActions(registerLensAction) {
       createdAt: gdNow(), updatedAt: gdNow(),
     };
     gdListB(s.games, gdAid(ctx)).push(game);
+    try {
+      writeDesignRow(ctx, game);
+    } catch (e) {
+      const arr = s.games.get(gdAid(ctx)) || [];
+      const idx = arr.findIndex((g) => g.id === game.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "design_not_saved", detail: String(e?.message || e) };
+    }
     saveGdState();
     return { ok: true, result: { game } };
   });
 
   registerLensAction("game-design", "game-list", (ctx, _a, _params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const games = s.games.get(gdAid(ctx)) || [];
+    const games = [...(s.games.get(gdAid(ctx)) || [])];
+    const seen = new Set(games.map((g) => g.id));
+    for (const row of readDesignRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      games.push({
+        id: row.id,
+        title: row.title,
+        genre: null,
+        platform: null,
+        pitch: null,
+        createdAt: row.created_at || "",
+        updatedAt: row.updated_at || "",
+      });
+    }
     return { ok: true, result: { games, count: games.length } };
   });
 
@@ -210,6 +268,11 @@ export default function registerGameDesignActions(registerLensAction) {
     const arr = s.games.get(userId) || [];
     const i = arr.findIndex((g) => g.id === params.id);
     if (i < 0) return { ok: false, error: "game not found" };
+    try {
+      deleteDesignRow(ctx, params.id);
+    } catch (e) {
+      return { ok: false, error: "design_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     for (const k of ["gdd", "mechanics", "entities", "levels"]) {
       const list = s[k].get(userId);

@@ -27,6 +27,7 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 // The gallery list still comes from raw fetch (/api/photos/mine); the
 // lightbox detail comes from the real macro channel. Mock both separately.

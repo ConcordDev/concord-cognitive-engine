@@ -39,8 +39,13 @@ export function EmergencyServicesActionPanel() {
   const [breathing, setBreathing] = useState(true);
   const [conscious, setConscious] = useState(true);
   const [pulse, setPulse] = useState('');
-  const [dispText, setDispText] = useState('');
-  const [logText, setLogText] = useState('');
+  const [dispatchIncident, setDispatchIncident] = useState('');
+  const [dispatchPriority, setDispatchPriority] = useState('');
+  const [dispatchUnit, setDispatchUnit] = useState('');
+  const [dispatchDistance, setDispatchDistance] = useState('');
+  const [logType, setLogType] = useState('');
+  const [logDate, setLogDate] = useState('');
+  const [logResponse, setLogResponse] = useState('');
   const [vehicles, setVehicles] = useState('');
   const [vehiclesReady, setVehiclesReady] = useState('');
   const [personnel, setPersonnel] = useState('');
@@ -75,18 +80,38 @@ export function EmergencyServicesActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDisp() {
-    if (!dispText.trim()) { err('Paste dispatch JSON first.'); return; }
-    try { const parsed = JSON.parse(dispText); setBusy('disp'); setFeedback(null);
-      const r = await callMacro<DispResult>('dispatchOptimize', { artifact: { data: parsed } });
+    const priority = parseInt(dispatchPriority, 10);
+    const distanceKm = parseFloat(dispatchDistance);
+    if (!dispatchIncident.trim() || !dispatchUnit.trim() || !Number.isFinite(priority) || !Number.isFinite(distanceKm)) {
+      err('Incident, priority, unit, and distance are required.');
+      return;
+    }
+    try {
+      setBusy('disp'); setFeedback(null);
+      const r = await callMacro<DispResult>('dispatchOptimize', {
+        artifact: {
+          data: {
+            incidents: [{ description: dispatchIncident.trim(), priority }],
+            units: [{ name: dispatchUnit.trim(), status: 'available', distanceKm }],
+          },
+        },
+      });
       if (r.ok && r.result) { setDispResult(r.result); pipe.publish('ems.disp', r.result, { label: `Disp ${r.result.activeIncidents}/${r.result.available}` }); ok(`${r.result.activeIncidents} incidents · ${r.result.available} units${r.result.coverageGap ? ' (gap!)' : ''}.`); } else err(r.error ?? 'disp failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid dispatch JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLog() {
-    if (!logText.trim()) { err('Paste incident log JSON first.'); return; }
-    try { const parsed = JSON.parse(logText); setBusy('log'); setFeedback(null);
-      const r = await callMacro<LogResult>('incidentLog', { artifact: { data: parsed } });
+    const responseMinutes = parseFloat(logResponse);
+    if (!logType.trim() || !logDate || !Number.isFinite(responseMinutes)) {
+      err('Incident type, date, and response minutes are required.');
+      return;
+    }
+    try {
+      setBusy('log'); setFeedback(null);
+      const r = await callMacro<LogResult>('incidentLog', {
+        artifact: { data: { incidents: [{ type: logType.trim(), timestamp: new Date(logDate).toISOString(), responseMinutes }] } },
+      });
       if (r.ok && r.result) { setLogResult(r.result); pipe.publish('ems.log', r.result, { label: `Log ${r.result.total24h}/24h` }); ok(`${r.result.total24h} in 24h · avg ${r.result.avgResponseMinutes}min.`); } else err(r.error ?? 'log failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid log JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actReady() {
     const v = parseInt(vehicles, 10), vr = parseInt(vehiclesReady, 10), p = parseInt(personnel, 10), pd = parseInt(personnelOnDuty, 10), s = parseFloat(suppliesPercent);
@@ -195,13 +220,20 @@ export function EmergencyServicesActionPanel() {
             <RecallSlot ctl={publishRecall} />
           </div>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Dispatch JSON</label>
-          <textarea value={dispText} onChange={(e) => setDispText(e.target.value)} rows={9} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Dispatch scenario</div>
+          <input type="text" value={dispatchIncident} onChange={(e) => setDispatchIncident(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Incident description" />
+          <div className="grid grid-cols-2 gap-1">
+            <input type="number" min="1" max="5" value={dispatchPriority} onChange={(e) => setDispatchPriority(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Priority 1-5" />
+            <input type="number" min="0" step="0.1" value={dispatchDistance} onChange={(e) => setDispatchDistance(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Distance km" />
+          </div>
+          <input type="text" value={dispatchUnit} onChange={(e) => setDispatchUnit(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Available unit" />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Incident log JSON</label>
-          <textarea value={logText} onChange={(e) => setLogText(e.target.value)} rows={9} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Incident log entry</div>
+          <input type="text" value={logType} onChange={(e) => setLogType(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Incident type" />
+          <input type="datetime-local" aria-label="Incident date and time" value={logDate} onChange={(e) => setLogDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
+          <input type="number" min="0" step="0.1" value={logResponse} onChange={(e) => setLogResponse(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Response minutes" />
         </div>
       </div>
 

@@ -1,149 +1,220 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { Gamepad2, Plus, Wrench } from 'lucide-react';
+/**
+ * Game Design — one design.
+ *
+ * game-list is the card. + New design calls game-create, then shows the
+ * title only after game-list contains that id and the same title. A blank
+ * title is not sent. Titles are stored in game_designs, so a server
+ * restart still lists them. Genre and platform stay off this screen.
+ * The two rules are empty-card chrome. The workbench tabs are other
+ * macros. They are not on this screen.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { GameDesignSection } from '@/components/game-design/GameDesignSection';
-import { GameDevRepos } from '@/components/game-design/GameDevRepos';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 
-/**
- * Game Design lens — a Tiled + LDtk + Nuclino-shape workbench, backed by
- * the 98-macro `game-design` domain (server/domains/gamedesign.js).
- *
- * The full designed surface is `GameDesignSection` (project roster +
- * 12 real tabs: Design Doc, Mechanics, Loops, Entities, Levels,
- * Narrative, Assets, Animation, Behavior, Play & Test, Collab,
- * Analysis) — every tab reads and writes through real `lensRun()`
- * calls into `getGdState()`. This page used to also carry a duplicate,
- * disconnected "Projects/GDD/Mechanics/Narrative/Levels/Balance"
- * scaffold below it (the pre-rebuild generic template): its "Narrative"
- * and "Levels" tabs kept pure client-side React state that was never
- * persisted anywhere (added a "character" or "level", it vanished on
- * refresh), its "Projects"/"Mechanics" tabs wrote through the generic
- * artifact CRUD store (a second, parallel data model the real engine
- * never reads), and its "Design Analysis" buttons always operated on
- * that same empty parallel store — so 3 of 4 analysis buttons could
- * only ever render "add X to analyze," permanently. See
- * docs/lens-specs/game-design-capability-map.md for the full audit;
- * that entire scaffold was removed rather than fixed in place.
- */
-type Desk = 'studio' | 'tooling';
+interface Design {
+  id: string;
+  title: string;
+}
 
-const DESKS: { id: Desk; label: string; keys: string; title: string; hint: string; icon: typeof Gamepad2 }[] = [
-  { id: 'studio', label: 'Studio', keys: '1', title: 'The design', hint: 'Design doc, mechanics, levels, narrative, assets and playtest', icon: Gamepad2 },
-  { id: 'tooling', label: 'Tooling', keys: '2', title: 'The toolbox', hint: 'Game dev tooling repositories on GitHub', icon: Wrench },
-];
+type Phase = 'loading' | 'ready' | 'error';
+
+function designsFrom(rows: unknown): Design[] {
+  if (!Array.isArray(rows)) return [];
+  const out: Design[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as { id?: string }).id;
+    const title = (row as { title?: string }).title;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    out.push({ id, title: title.trim() });
+  }
+  return out;
+}
+
+function isWarming(message: string): boolean {
+  return /service_overloaded|event_loop_lag|status code 503/i.test(message);
+}
+
+// game-list is a small read. A 503 here is the admission gate refusing
+// PROTECTED calls while boot lag is over 900ms, not a failed design query.
+// Retry on that gate only. Any other error surfaces immediately.
+async function readDesigns(): Promise<Design[]> {
+  let last = 'Could not read the design.';
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const list = await lensRun<{ games?: unknown }>('game-design', 'game-list', {});
+    if (list.data?.ok) return designsFrom(list.data.result?.games);
+    last = list.data?.error || last;
+    if (!isWarming(last) || attempt === 7) throw new Error(last);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error(last);
+}
 
 export default function GameDesignPage() {
   useLensNav('game-design');
-  const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('game-design');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [desk, setDesk] = useState<Desk>('studio');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [designs, setDesigns] = useState<Design[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const newDesign = useCallback(() => {
-    setDesk('studio');
-    let tries = 0;
-    const focus = () => {
-      const el = document.getElementById('gd-new-game-title');
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
-      if (++tries < 20) requestAnimationFrame(focus);
-    };
-    requestAnimationFrame(focus);
-  }, []);
+  const pull = useCallback(async () => readDesigns(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setDesigns(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the design.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setDesigns(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the design.');
+    });
+  }, [pull]);
+
+  const openDesign = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      return;
+    }
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setActionError('A title is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await lensRun<{ game?: { id?: string; title?: string } }>(
+        'game-design',
+        'game-create',
+        { title: trimmed },
+      );
+      const id = created.data?.result?.game?.id;
+      if (!created.data?.ok || !id) {
+        throw new Error(created.data?.error || 'Could not open that design.');
+      }
+      const rows = await readDesigns();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.title !== trimmed) {
+        throw new Error('Opened, but the design did not read it back.');
+      }
+      setDesigns(rows);
+      setTitle('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that design.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, composing, phase, title]);
 
   useLensCommand(
-    [
-      ...DESKS.map((d) => ({
-        id: `desk-${d.id}`,
-        keys: d.keys,
-        description: `${d.label} — ${d.hint}`,
-        category: 'navigation' as const,
-        action: () => setDesk(d.id),
-      })),
-      { id: 'new-game', keys: 'n', description: 'New game project', category: 'actions' as const, action: newDesign },
-    ],
+    [{ id: 'game-design-new', keys: 'n', description: '+ New design', category: 'actions', action: () => { void openDesign(); } }],
     { lensId: 'game-design' },
   );
 
-  const current = DESKS.find((d) => d.id === desk)!;
+  const empty = phase === 'ready' && designs.length === 0 && !composing;
 
   return (
     <LensShell lensId="game-design" asMain={false}>
-      <FirstRunTour lensId="game-design" />
-      <DepthBadge lensId="game-design" size="sm" className="ml-2" />
-      <div data-lens-theme="game-design" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Game Design</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{desk === 'studio' && who ? `, ${who}` : ''}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="game-design" data={{}} compact />
-          </div>
-        </div>
+      <div data-lens-theme="game-design" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Game Design</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The design{who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Game design desks">
-          {DESKS.map((d) => {
-            const Icon = d.icon;
-            const on = desk === d.id;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDesk(d.id)}
-                aria-current={on ? 'page' : undefined}
-                title={`${d.hint} (${d.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {d.label}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{d.keys}</kbd>
+        <section
+          aria-label="Design"
+          className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
+        >
+          {phase === 'loading' && (
+            <p data-testid="gd-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+              Opening the design.
+            </p>
+          )}
+          {phase === 'error' && (
+            <div data-testid="gd-error" role="alert">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the design.'}</p>
+              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
               </button>
-            );
-          })}
-        </nav>
+            </div>
+          )}
+          {empty && (
+            <div data-testid="gd-empty">
+              <p className="text-[14px] text-zinc-500">No design open.</p>
+              <div aria-hidden="true" data-testid="gd-rule" className="mt-6 h-px w-2/3 bg-white/10" />
+              <div aria-hidden="true" data-testid="gd-rule" className="mt-4 h-px w-1/2 bg-white/10" />
+            </div>
+          )}
+          {phase === 'ready' && designs.length > 0 && (
+            <ul data-testid="gd-designs" className="space-y-4">
+              {designs.map((item) => (
+                <li key={item.id}>
+                  <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{item.title}</h2>
+                </li>
+              ))}
+            </ul>
+          )}
+          {phase === 'ready' && composing && (
+            <label className="mt-4 block text-[14px] text-zinc-400">
+              Title
+              <input
+                data-testid="gd-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); void openDesign(); }
+                }}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+        </section>
 
-        {desk === 'studio' && (
-          <div className="space-y-5">
-            <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} compact />
-            <GameDesignSection />
-          </div>
-        )}
-        {desk === 'tooling' && (
-          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <GameDevRepos />
-          </section>
-        )}
-
-        <CrossLensRecentsPanel lensId="game-design" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+        {actionError ? (
+          <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
+        ) : null}
 
         <button
           type="button"
-          onClick={newDesign}
-          title="New game project (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void openDesign(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          New design
+          + New design
         </button>
       </div>
     </LensShell>

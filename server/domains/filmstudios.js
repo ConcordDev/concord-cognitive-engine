@@ -76,6 +76,105 @@ export default function registerFilmStudiosActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // filmLens is not in the shared snapshot key list. A production title
+  // and its scenes are written here so a process restart can list them.
+  // Callers with no table (unit stubs) keep the in-memory path.
+  function fmDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function fmTable(db, name) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name);
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writeProductionRow(ctx, project) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_productions")) return;
+    db.prepare(`
+      INSERT INTO film_studio_productions (id, user_id, title, format, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        format = excluded.format,
+        updated_at = excluded.updated_at
+    `).run(project.id, fmAid(ctx), project.title, project.format || null, project.createdAt, project.createdAt);
+  }
+  function writeSceneRow(ctx, scene) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_scenes")) return;
+    db.prepare(`
+      INSERT INTO film_studio_scenes (
+        id, user_id, project_id, number, int_ext, location, time_of_day, page_eighths, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        number = excluded.number,
+        int_ext = excluded.int_ext,
+        location = excluded.location,
+        time_of_day = excluded.time_of_day,
+        page_eighths = excluded.page_eighths
+    `).run(
+      scene.id, fmAid(ctx), scene.projectId, scene.number || null, scene.intExt || null,
+      scene.location, scene.timeOfDay || null,
+      Number.isFinite(scene.pageEighths) ? scene.pageEighths : null,
+      scene.createdAt,
+    );
+  }
+  function deleteProductionRows(ctx, id) {
+    const db = fmDb(ctx);
+    if (!id) return;
+    const userId = fmAid(ctx);
+    if (fmTable(db, "film_studio_scenes")) {
+      db.prepare("DELETE FROM film_studio_scenes WHERE project_id = ? AND user_id = ?").run(String(id), userId);
+    }
+    if (fmTable(db, "film_studio_productions")) {
+      db.prepare("DELETE FROM film_studio_productions WHERE id = ? AND user_id = ?").run(String(id), userId);
+    }
+  }
+  function deleteSceneRow(ctx, id) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_scenes") || !id) return;
+    db.prepare("DELETE FROM film_studio_scenes WHERE id = ? AND user_id = ?").run(String(id), fmAid(ctx));
+  }
+  function readProductionRows(ctx) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_productions")) return [];
+    return db.prepare(
+      "SELECT id, title, format, created_at, updated_at FROM film_studio_productions WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(fmAid(ctx));
+  }
+  function readProductionRow(ctx, id) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_productions") || !id) return null;
+    return db.prepare(
+      "SELECT id, title, format, created_at, updated_at FROM film_studio_productions WHERE id = ? AND user_id = ?",
+    ).get(String(id), fmAid(ctx)) || null;
+  }
+  function readSceneRows(ctx, projectId) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_scenes") || !projectId) return [];
+    return db.prepare(
+      `SELECT id, project_id, number, int_ext, location, time_of_day, page_eighths, created_at
+       FROM film_studio_scenes WHERE user_id = ? AND project_id = ? ORDER BY created_at ASC`,
+    ).all(fmAid(ctx), String(projectId));
+  }
+  function ensureProject(ctx, s, userId, projectId) {
+    const mem = fmProject(s, userId, projectId);
+    if (mem) return mem;
+    const row = readProductionRow(ctx, projectId);
+    if (!row || typeof row.title !== "string" || !row.title.trim()) return null;
+    const project = {
+      id: row.id,
+      title: row.title,
+      format: row.format || null,
+      logline: null,
+      createdAt: row.created_at || "",
+    };
+    fmListB(s.projects, userId).push(project);
+    return project;
+  }
   const fmId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const fmNow = () => new Date().toISOString();
   const fmAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -126,13 +225,33 @@ export default function registerFilmStudiosActions(registerLensAction) {
       createdAt: fmNow(),
     };
     fmListB(s.projects, fmAid(ctx)).push(project);
+    try {
+      writeProductionRow(ctx, project);
+    } catch (e) {
+      const arr = s.projects.get(fmAid(ctx)) || [];
+      const idx = arr.findIndex((p) => p.id === project.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "production_not_saved", detail: String(e?.message || e) };
+    }
     saveFmState();
     return { ok: true, result: { project } };
   });
 
   registerLensAction("film-studios", "project-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const projects = s.projects.get(fmAid(ctx)) || [];
+    const projects = [...(s.projects.get(fmAid(ctx)) || [])];
+    const seen = new Set(projects.map((p) => p.id));
+    for (const row of readProductionRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      projects.push({
+        id: row.id,
+        title: row.title,
+        format: row.format || null,
+        logline: null,
+        createdAt: row.created_at || "",
+      });
+    }
     return { ok: true, result: { projects, count: projects.length } };
   });
 
@@ -142,6 +261,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
     const arr = s.projects.get(userId) || [];
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
+    try {
+      deleteProductionRows(ctx, params.id);
+    } catch (e) {
+      return { ok: false, error: "production_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     // cascade: drop all child records for this project
     for (const k of ["scenes", "breakdownEls", "shots", "shootDays", "budget",
@@ -157,7 +281,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   registerLensAction("film-studios", "scene-add", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
-    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    if (!ensureProject(ctx, s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const location = fmClean(params.location, 120);
     if (!location) return { ok: false, error: "scene location required" };
     const scene = {
@@ -173,6 +297,14 @@ export default function registerFilmStudiosActions(registerLensAction) {
       createdAt: fmNow(),
     };
     fmListB(s.scenes, userId).push(scene);
+    try {
+      writeSceneRow(ctx, scene);
+    } catch (e) {
+      const arr = s.scenes.get(userId) || [];
+      const idx = arr.findIndex((x) => x.id === scene.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "scene_not_saved", detail: String(e?.message || e) };
+    }
     saveFmState();
     return { ok: true, result: { scene: { ...scene, slugline: fmSlugline(scene) } } };
   });
@@ -191,7 +323,30 @@ export default function registerFilmStudiosActions(registerLensAction) {
         breakdownElements: els.filter((e) => e.sceneId === sc.id),
         shootDayNumber: days.find((d) => d.id === sc.shootDayId)?.dayNumber ?? null,
       }));
-    const totalEighths = scenes.reduce((a, x) => a + x.pageEighths, 0);
+    const seen = new Set(scenes.map((sc) => sc.id));
+    for (const row of readSceneRows(ctx, params.projectId)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.location !== "string" || !row.location.trim()) continue;
+      const sc = {
+        id: row.id,
+        projectId: String(row.project_id || params.projectId),
+        number: row.number || "",
+        intExt: row.int_ext || null,
+        location: row.location,
+        timeOfDay: row.time_of_day || null,
+        description: null,
+        pageEighths: Number.isFinite(row.page_eighths) ? row.page_eighths : null,
+        castIds: [],
+        shootDayId: null,
+        stripOrder: 0,
+        createdAt: row.created_at || "",
+        breakdownElements: [],
+        shootDayNumber: null,
+      };
+      sc.slugline = sc.intExt && sc.timeOfDay ? fmSlugline(sc) : null;
+      scenes.push(sc);
+    }
+    const totalEighths = scenes.reduce((a, x) => a + (Number.isFinite(x.pageEighths) ? x.pageEighths : 0), 0);
     return {
       ok: true,
       result: { scenes, count: scenes.length, totalPages: Math.round((totalEighths / 8) * 10) / 10 },
@@ -219,6 +374,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
     const arr = s.scenes.get(userId) || [];
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "scene not found" };
+    try {
+      deleteSceneRow(ctx, params.id);
+    } catch (e) {
+      return { ok: false, error: "scene_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     s.breakdownEls.set(userId, (s.breakdownEls.get(userId) || []).filter((e) => e.sceneId !== params.id));
     s.shots.set(userId, (s.shots.get(userId) || []).filter((sh) => sh.sceneId !== params.id));

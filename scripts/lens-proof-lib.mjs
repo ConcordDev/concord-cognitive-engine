@@ -22,8 +22,8 @@ export const PROOF_DIR = join(homedir(), '.zuko/lens-northstar/proof');
 const PROOF_USER = process.env.PROOF_USER || 'wbproof_muv96clt';
 const PROOF_PASS = process.env.PROOF_PASS || 'TestPass123!';
 
-/** Stop line: throw when the boot volume has under 5 GB free. */
-export function checkDisk(log, minGb = 5) {
+/** Stop line: throw when the boot volume has under 2.5 GB free. Dutch 2026-10-06 temporary while swap pressure. */
+export function checkDisk(log, minGb = 2.5) {
   const out = execFileSync('df', ['-k', '/'], { encoding: 'utf8' }).trim().split('\n').pop().split(/\s+/);
   const freeGb = Number(out[3]) / 1024 / 1024;
   log(`disk free ${freeGb.toFixed(2)} GB`);

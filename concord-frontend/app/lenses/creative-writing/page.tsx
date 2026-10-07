@@ -1,142 +1,226 @@
 'use client';
 
 /**
- * Creative Writing lens: the north-star look (serif title, pill desks, teal
- * floating CTA). The manuscript studio (real project/chapter/scene/character/
- * thread/snapshot macros), the Datamuse word tools and Project Gutenberg
- * search are all kept; the CTA focuses the real "new manuscript" input.
+ * Creative Writing — one page.
  *
- * The earlier generic works/prompts CRUD tabs were removed 2026-07 — they were
- * a disconnected shadow app that never reached the real macros. See
- * docs/lens-specs/creative-writing-capability-map.md.
+ * project-list is the cabinet. + New page calls project-create, then
+ * shows the title only after project-list contains that id and the same
+ * title. Titles are stored in creative_writing_pages, so a server
+ * restart still lists them. A blank title is not sent. The numbered
+ * comment is the empty state. It is not a text field. Studio, word
+ * tools, and Gutenberg are other macros. They are not on this screen.
  */
 
-import { useCallback, useState } from 'react';
-import { BookOpen, Library, Plus, SpellCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
-import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
-import { CreativeWritingSection } from '@/components/creative-writing/CreativeWritingSection';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 
-type Desk = 'studio' | 'words' | 'gutenberg';
+interface PageRow {
+  id: string;
+  title: string;
+}
 
-const DESKS: { id: Desk; label: string; keys: string; title: string; hint: string; icon: typeof BookOpen }[] = [
-  { id: 'studio', label: 'Studio', keys: '1', title: 'The page', hint: 'Manuscripts, chapters, scenes, characters and threads', icon: BookOpen },
-  { id: 'words', label: 'Word tools', keys: '2', title: 'The right word', hint: 'Rhymes, synonyms and related words', icon: SpellCheck },
-  { id: 'gutenberg', label: 'Gutenberg', keys: '3', title: 'The shelf', hint: 'Search Project Gutenberg public-domain books', icon: Library },
-];
+type Phase = 'loading' | 'ready' | 'error';
+
+interface RawPage {
+  id?: string;
+  title?: string;
+}
+
+function pagesFrom(rows: unknown): PageRow[] {
+  if (!Array.isArray(rows)) return [];
+  const out: PageRow[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as RawPage).id;
+    const title = (row as RawPage).title;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    out.push({ id, title: title.trim() });
+  }
+  return out;
+}
+
+async function readPages(): Promise<PageRow[]> {
+  const list = await lensRun<{ projects?: unknown }>('creative-writing', 'project-list', {});
+  if (!list.data?.ok) throw new Error(list.data?.error || 'Could not read the page.');
+  return pagesFrom(list.data.result?.projects);
+}
+
+function LineNumbers() {
+  return (
+    <ol className="w-10 shrink-0 select-none border-r border-white/10 py-4 text-right font-mono text-[13px] text-zinc-600">
+      {[1, 2, 3, 4].map((n) => (
+        <li key={n} className="h-7 px-2 leading-7">{n}</li>
+      ))}
+    </ol>
+  );
+}
 
 export default function CreativeWritingPage() {
   useLensNav('creative-writing');
-  const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative-writing');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [desk, setDesk] = useState<Desk>('studio');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [pages, setPages] = useState<PageRow[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const newPage = useCallback(() => {
-    setDesk('studio');
-    let tries = 0;
-    const focus = () => {
-      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="creative-writing"] input[placeholder="New manuscript title"]');
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
-      if (++tries < 20) requestAnimationFrame(focus);
-    };
-    requestAnimationFrame(focus);
-  }, []);
+  const pull = useCallback(async () => readPages(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setPages(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the page.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setPages(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the page.');
+    });
+  }, [pull]);
+
+  const openPage = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      return;
+    }
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setActionError('A title is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await lensRun<{ project?: { id?: string; title?: string } }>(
+        'creative-writing',
+        'project-create',
+        { title: trimmed },
+      );
+      const id = created.data?.result?.project?.id;
+      if (!created.data?.ok || !id) {
+        throw new Error(created.data?.error || 'Could not open that page.');
+      }
+      const rows = await readPages();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.title !== trimmed) {
+        throw new Error('Opened, but the page did not read it back.');
+      }
+      setPages(rows);
+      setTitle('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that page.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, composing, phase, title]);
 
   useLensCommand(
-    [
-      ...DESKS.map((d) => ({
-        id: `desk-${d.id}`,
-        keys: d.keys,
-        description: `${d.label} — ${d.hint}`,
-        category: 'navigation' as const,
-        action: () => setDesk(d.id),
-      })),
-      { id: 'new-page', keys: 'n', description: 'New manuscript', category: 'actions' as const, action: newPage },
-    ],
+    [{ id: 'creative-writing-new', keys: 'n', description: '+ New page', category: 'actions', action: () => { void openPage(); } }],
     { lensId: 'creative-writing' },
   );
 
-  const current = DESKS.find((d) => d.id === desk)!;
-
   return (
     <LensShell lensId="creative-writing" asMain={false}>
-      <FirstRunTour lensId="creative-writing" />
-      <DepthBadge lensId="creative-writing" size="sm" className="ml-2" />
-      <div data-lens-theme="creative-writing" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Creative Writing</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{desk === 'studio' && who ? `, ${who}` : ''}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="creative-writing" data={realtimeData || {}} compact />
-          </div>
-        </div>
+      <div data-lens-theme="creative-writing" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Creative Writing</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The page{who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Creative writing desks">
-          {DESKS.map((d) => {
-            const Icon = d.icon;
-            const on = desk === d.id;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDesk(d.id)}
-                aria-current={on ? 'page' : undefined}
-                title={`${d.hint} (${d.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {d.label}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{d.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        {desk === 'studio' && (
-          <div className="space-y-5">
-            <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} compact />
-            <CreativeWritingSection />
+        <section
+          aria-label="Page"
+          className="min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950"
+        >
+          <div className="flex min-h-[22rem]">
+            <LineNumbers />
+            <div className="min-w-0 flex-1 py-4 pl-4 pr-6">
+              {phase === 'loading' && (
+                <p data-testid="creative-writing-loading" role="status" aria-busy="true" className="font-mono text-[14px] leading-7 text-zinc-500">
+                  Opening the page.
+                </p>
+              )}
+              {phase === 'error' && (
+                <div data-testid="creative-writing-error" role="alert">
+                  <p className="font-mono text-[14px] leading-7 text-zinc-300">{loadError || 'Could not load the page.'}</p>
+                  <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                    Retry
+                  </button>
+                </div>
+              )}
+              {phase === 'ready' && pages.length === 0 && !composing && (
+                <div data-testid="creative-writing-empty">
+                  <p className="h-7 font-mono text-[14px] leading-7 text-zinc-500">{'// the page is empty.'}</p>
+                  <p className="h-7" />
+                  <p className="h-7">
+                    <span className="inline-block h-5 w-0.5 translate-y-1 bg-teal-400" aria-hidden="true" />
+                  </p>
+                </div>
+              )}
+              {phase === 'ready' && pages.length > 0 && (
+                <ul data-testid="creative-writing-pages" className="space-y-2">
+                  {pages.map((item) => (
+                    <li key={item.id}>
+                      <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{item.title}</h2>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {phase === 'ready' && composing && (
+                <label className="block font-mono text-[14px] text-zinc-400">
+                  Title
+                  <input
+                    data-testid="creative-writing-title"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') { event.preventDefault(); void openPage(); }
+                    }}
+                    className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                    autoFocus
+                  />
+                </label>
+              )}
+              {actionError ? (
+                <p role="alert" className="mt-4 font-mono text-[14px] text-zinc-300">{actionError}</p>
+              ) : null}
+            </div>
           </div>
-        )}
-        {desk === 'words' && <DatamusePanel domain="creative-writing" />}
-        {desk === 'gutenberg' && (
-          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <GutendexSearch />
-          </section>
-        )}
-
-        <CrossLensRecentsPanel lensId="creative-writing" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+        </section>
 
         <button
           type="button"
-          onClick={newPage}
-          title="New manuscript (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void openPage(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          New page
+          + New page
         </button>
       </div>
     </LensShell>

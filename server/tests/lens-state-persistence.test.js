@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 46);
+    assert.equal(LENS_STATE_KEYS.length, 52);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -90,6 +90,12 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("creatorLens"));
     assert.ok(LENS_STATE_KEYS.includes("astronomyLens"));
     assert.ok(LENS_STATE_KEYS.includes("atlasLens"));
+    assert.ok(LENS_STATE_KEYS.includes("energyLens"));
+    assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
+    assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
+    assert.ok(LENS_STATE_KEYS.includes("defenseLens"));
+    assert.ok(LENS_STATE_KEYS.includes("debugLens"));
+    assert.ok(LENS_STATE_KEYS.includes("consultingLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -671,6 +677,165 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.atlasLens.recentSearches.get("user_a")[0], "Eiffel Tower");
     assert.ok(STATE.atlasLens.seq instanceof Map);
     assert.equal(STATE.atlasLens.seq.get("user_a").place, 2);
+  });
+
+  it("roundtrips STATE.energyLens (meters, readings, live samples, rates, and TOU plan)", () => {
+    STATE.energyLens = {
+      devices: new Map([["user_a", [{ id: "meter_1", name: "Main meter", category: "meter", wattage: 0 }]]]),
+      readings: new Map([["user_a", [{ id: "reading_1", deviceId: "meter_1", kwh: 12.5, date: "2026-10-06" }]]]),
+      solar: new Map([["user_a", [{ id: "solar_1", kwh: 6.4, date: "2026-10-06" }]]]),
+      rates: new Map([["user_a", { ratePerKwh: 0.21, utility: "Proof utility" }]]),
+      goals: new Map([["user_a", [{ id: "goal_1", targetKwh: 500, period: "month" }]]]),
+      alerts: new Map([["user_a", []]]),
+      livePower: new Map([["user_a", [{ id: "sample_1", deviceId: "meter_1", watts: 725 }]]]),
+      touPlans: new Map([["user_a", { peakRate: 0.31, offPeakRate: 0.12, peakStartHour: 16, peakEndHour: 21 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.energyLens.devices instanceof Map);
+    assert.equal(STATE.energyLens.devices.get("user_a")[0].category, "meter");
+    assert.equal(STATE.energyLens.readings.get("user_a")[0].kwh, 12.5);
+    assert.equal(STATE.energyLens.solar.get("user_a")[0].kwh, 6.4);
+    assert.equal(STATE.energyLens.rates.get("user_a").ratePerKwh, 0.21);
+    assert.equal(STATE.energyLens.goals.get("user_a")[0].targetKwh, 500);
+    assert.ok(STATE.energyLens.alerts instanceof Map);
+    assert.equal(STATE.energyLens.livePower.get("user_a")[0].watts, 725);
+    assert.equal(STATE.energyLens.touPlans.get("user_a").offPeakRate, 0.12);
+  });
+
+  it("roundtrips STATE.emergencyServicesLens (CAD board, timeline, mutual aid, and feed dedup)", () => {
+    STATE.emergencyServicesLens = {
+      incidents: new Map([["user_a", [{ id: "inc_1", summary: "Warehouse alarm", status: "open", priority: 2 }]]]),
+      units: new Map([["user_a", [{ id: "unit_1", name: "Engine 3", status: "available", lat: 35.1, lng: -80.8 }]]]),
+      eventLog: new Map([["user_a", [{ id: "ev_1", incidentId: "inc_1", kind: "created", detail: "fire", at: "2026-10-07T00:00:00Z" }]]]),
+      mutualAid: [{ id: "ma_1", incidentId: "inc_1", sourceOrgId: "org_a", targetOrgId: "org_b", status: "active", committedUnits: [] }],
+      mutualAidConsent: new Set(["org_b"]),
+      feedSeen: new Set(["quake_us7000test"]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.emergencyServicesLens.incidents instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.incidents.get("user_a")[0].summary, "Warehouse alarm");
+    assert.ok(STATE.emergencyServicesLens.units instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.units.get("user_a")[0].name, "Engine 3");
+    assert.ok(STATE.emergencyServicesLens.eventLog instanceof Map);
+    assert.equal(STATE.emergencyServicesLens.eventLog.get("user_a")[0].kind, "created");
+    assert.equal(STATE.emergencyServicesLens.mutualAid[0].targetOrgId, "org_b");
+    assert.ok(STATE.emergencyServicesLens.mutualAidConsent instanceof Set);
+    assert.ok(STATE.emergencyServicesLens.mutualAidConsent.has("org_b"));
+    assert.ok(STATE.emergencyServicesLens.feedSeen instanceof Set);
+    assert.ok(STATE.emergencyServicesLens.feedSeen.has("quake_us7000test"));
+  });
+
+  it("roundtrips STATE.electricalLens (panels, estimates, invoices, inspections, diagrams, and prices)", () => {
+    STATE.electricalLens = {
+      panels: new Map([["user_a", [{ id: "panel_1", name: "Main", circuits: [{ id: "ckt_1", breaker: 20 }] }]]]),
+      estimates: new Map([["user_a", [{ id: "est_1", client: "Ramaj", laborLines: [], materialLines: [] }]]]),
+      invoices: new Map([["user_a", [{ id: "inv_1", estimateId: "est_1", status: "unpaid", total: 4200 }]]]),
+      checklists: new Map([["user_a", [{ id: "chk_1", template: "service", items: [{ id: "item_1", passed: true }] }]]]),
+      diagrams: new Map([["user_a", [{ id: "diag_1", nodes: [{ id: "node_1", kind: "utility" }], edges: [] }]]]),
+      priceList: new Map([["user_a", [{ id: "mp_1", name: "20A breaker", price: 9.4 }]]]),
+      seq: 17,
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.electricalLens.panels instanceof Map);
+    assert.equal(STATE.electricalLens.panels.get("user_a")[0].circuits[0].breaker, 20);
+    assert.ok(STATE.electricalLens.estimates instanceof Map);
+    assert.equal(STATE.electricalLens.estimates.get("user_a")[0].client, "Ramaj");
+    assert.ok(STATE.electricalLens.invoices instanceof Map);
+    assert.equal(STATE.electricalLens.invoices.get("user_a")[0].total, 4200);
+    assert.ok(STATE.electricalLens.checklists instanceof Map);
+    assert.equal(STATE.electricalLens.checklists.get("user_a")[0].items[0].passed, true);
+    assert.ok(STATE.electricalLens.diagrams instanceof Map);
+    assert.equal(STATE.electricalLens.diagrams.get("user_a")[0].nodes[0].kind, "utility");
+    assert.ok(STATE.electricalLens.priceList instanceof Map);
+    assert.equal(STATE.electricalLens.priceList.get("user_a")[0].price, 9.4);
+    assert.equal(STATE.electricalLens.seq, 17);
+  });
+
+  it("roundtrips STATE.defenseLens (COP, missions, readiness, threats, personnel, logistics, and comms)", () => {
+    STATE.defenseLens = {
+      assets: new Map([["user_a", new Map([["asset_1", { id: "asset_1", designation: "Falcon 1", readiness: 92 }]])]]),
+      threats: new Map([["user_a", new Map([["threat_1", { id: "threat_1", name: "Storm front", severity: "high", history: [] }]])]]),
+      ops: new Map([["user_a", new Map([["cop_1", { id: "cop_1", label: "North sector", isCopMarker: true, lat: 38.9, lon: -77 }]])]]),
+      tasks: new Map([["user_a", new Map([["task_1", { id: "task_1", name: "Establish comms", dependsOn: [], status: "pending" }]])]]),
+      personnel: new Map([["user_a", new Map([["person_1", { id: "person_1", name: "Sgt Doe", availability: "available" }]])]]),
+      supply: new Map([["user_a", new Map([["supply_1", { id: "supply_1", item: "Medical kits", status: "approved", history: [] }]])]]),
+      comms: new Map([["user_a", new Map([["msg_1", { id: "msg_1", channel: "ops", body: "Sector clear", acknowledged: true }]])]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["assets", "threats", "ops", "tasks", "personnel", "supply", "comms"]) {
+      assert.ok(STATE.defenseLens[key] instanceof Map);
+      assert.ok(STATE.defenseLens[key].get("user_a") instanceof Map);
+    }
+    assert.equal(STATE.defenseLens.assets.get("user_a").get("asset_1").readiness, 92);
+    assert.equal(STATE.defenseLens.threats.get("user_a").get("threat_1").severity, "high");
+    assert.equal(STATE.defenseLens.ops.get("user_a").get("cop_1").label, "North sector");
+    assert.equal(STATE.defenseLens.tasks.get("user_a").get("task_1").name, "Establish comms");
+    assert.equal(STATE.defenseLens.personnel.get("user_a").get("person_1").availability, "available");
+    assert.equal(STATE.defenseLens.supply.get("user_a").get("supply_1").status, "approved");
+    assert.equal(STATE.defenseLens.comms.get("user_a").get("msg_1").acknowledged, true);
+  });
+
+  it("roundtrips STATE.debugLens (issues, traces, alerts, metrics, and releases)", () => {
+    STATE.debugLens = {
+      issues: new Map([["user_a", [{ id: "issue_1", message: "Cannot read property", status: "open", count: 2 }]]]),
+      traces: new Map([["user_a", [{ id: "trace_1", name: "GET /api/status", spans: [{ spanId: "root", durationMs: 12 }] }]]]),
+      alertRules: new Map([["user_a", [{ id: "alert_1", metric: "macro_latency_ms", threshold: 80, enabled: true }]]]),
+      metrics: new Map([["user_a", [{ metric: "macro_latency_ms", value: 42, unit: "ms" }]]]),
+      releases: new Map([["user_a", [{ id: "rel_1", version: "v1.2.3", environment: "production" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["issues", "traces", "alertRules", "metrics", "releases"]) {
+      assert.ok(STATE.debugLens[key] instanceof Map);
+      assert.ok(Array.isArray(STATE.debugLens[key].get("user_a")));
+    }
+    assert.equal(STATE.debugLens.issues.get("user_a")[0].count, 2);
+    assert.equal(STATE.debugLens.traces.get("user_a")[0].spans[0].durationMs, 12);
+    assert.equal(STATE.debugLens.alertRules.get("user_a")[0].threshold, 80);
+    assert.equal(STATE.debugLens.metrics.get("user_a")[0].value, 42);
+    assert.equal(STATE.debugLens.releases.get("user_a")[0].version, "v1.2.3");
+  });
+
+  it("roundtrips STATE.consultingLens (practice operations and client approvals)", () => {
+    STATE.consultingLens = {
+      engagements: new Map([["user_a", [{
+        id: "eng_1",
+        name: "Operating model",
+        client: "Acme",
+        rate: 250,
+        budgetHours: 80,
+        status: "active",
+        timeEntries: [{ id: "te_1", hours: 2.5, note: "Workshop", date: "2026-10-07", invoiceId: "inv_1" }],
+      }]]]),
+      invoices: new Map([["user_a", [{ id: "inv_1", number: "INV-0001", total: 625, status: "sent" }]]]),
+      proposals: new Map([["user_a", [{ id: "prop_1", title: "Operating model", sections: [], status: "draft" }]]]),
+      consultants: new Map([["user_a", [{ id: "con_1", name: "Ari", weeklyCapacity: 40, costRate: 100 }]]]),
+      allocations: new Map([["user_a", [{ id: "alloc_1", consultantId: "con_1", engagementId: "eng_1", week: "2026-W41", hours: 20 }]]]),
+      expenses: new Map([["user_a", [{ id: "exp_1", engagementId: "eng_1", amount: 42, status: "approved" }]]]),
+      timers: new Map([["user_a", { engagementId: "eng_1", startedAt: 1234 }]]),
+      retainers: new Map([["user_a", [{ id: "ret_1", client: "Acme", monthlyAmount: 5000, periods: [] }]]]),
+      shares: new Map([["user_a", [{ id: "share_1", title: "Readout", approvalStatus: "approved" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["engagements", "invoices", "proposals", "consultants", "allocations", "expenses", "timers", "retainers", "shares"]) {
+      assert.ok(STATE.consultingLens[key] instanceof Map);
+    }
+    assert.equal(STATE.consultingLens.engagements.get("user_a")[0].timeEntries[0].invoiceId, "inv_1");
+    assert.equal(STATE.consultingLens.invoices.get("user_a")[0].total, 625);
+    assert.equal(STATE.consultingLens.allocations.get("user_a")[0].week, "2026-W41");
+    assert.equal(STATE.consultingLens.timers.get("user_a").startedAt, 1234);
+    assert.equal(STATE.consultingLens.shares.get("user_a")[0].approvalStatus, "approved");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

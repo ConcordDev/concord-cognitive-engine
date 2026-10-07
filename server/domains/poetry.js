@@ -91,6 +91,45 @@ export default function registerPoetryActions(registerLensAction) {
   const poActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const poClean = (v, max = 12000) => String(v == null ? "" : v).trim().slice(0, max);
   const poList = (s, userId) => { if (!s.poems.has(userId)) s.poems.set(userId, []); return s.poems.get(userId); };
+  // poetryLens is not on the shared snapshot key list. The title and the
+  // body are written here so a process restart can read the poem. Callers
+  // with no table keep the in-memory path. Form and status stay off the
+  // row so a restart does not invent them.
+  function poDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function poemsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='poetry_poems'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writePoemRow(ctx, poem) {
+    const db = poDb(ctx);
+    if (!poemsReady(db)) return;
+    db.prepare(`
+      INSERT INTO poetry_poems (id, user_id, title, body, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        body = excluded.body,
+        updated_at = excluded.updated_at
+    `).run(poem.id, poActor(ctx), poem.title, poem.body || "", poem.createdAt, poem.updatedAt);
+  }
+  function deletePoemRow(ctx, id) {
+    const db = poDb(ctx);
+    if (!poemsReady(db) || !id) return;
+    db.prepare("DELETE FROM poetry_poems WHERE id = ? AND user_id = ?").run(String(id), poActor(ctx));
+  }
+  function readPoemRows(ctx) {
+    const db = poDb(ctx);
+    if (!poemsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, body, created_at, updated_at FROM poetry_poems WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(poActor(ctx));
+  }
 
   // Compact prosody analysis shared by poem-analyze.
   function analyzePoem(body) {
@@ -141,6 +180,14 @@ export default function registerPoetryActions(registerLensAction) {
       updatedAt: poNow(),
     };
     poList(s, poActor(ctx)).push(poem);
+    try {
+      writePoemRow(ctx, poem);
+    } catch (e) {
+      const arr = poList(s, poActor(ctx));
+      const idx = arr.findIndex((p) => p.id === poem.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "poem_not_saved", detail: String(e?.message || e) };
+    }
     savePoetry();
     return { ok: true, result: { poem } };
   });
@@ -148,6 +195,22 @@ export default function registerPoetryActions(registerLensAction) {
   registerLensAction("poetry", "poem-list", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let poems = [...poList(s, poActor(ctx))];
+    const seen = new Set(poems.map((p) => p.id));
+    for (const row of readPoemRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      poems.push({
+        id: row.id,
+        title: row.title,
+        body: typeof row.body === "string" ? row.body : "",
+        form: null,
+        status: null,
+        tags: [],
+        createdAt: row.created_at || "",
+        updatedAt: row.updated_at || "",
+        persistedOnly: true,
+      });
+    }
     if (params.form) poems = poems.filter((p) => p.form === String(params.form).toLowerCase());
     if (params.status) poems = poems.filter((p) => p.status === params.status);
     // Server-side search across BOTH title and body — matches on real poem
@@ -163,7 +226,8 @@ export default function registerPoetryActions(registerLensAction) {
     poems.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const out = poems.map((p) => ({
       id: p.id, title: p.title, form: p.form, status: p.status,
-      lineCount: p.body.split("\n").filter((l) => l.trim()).length, updatedAt: p.updatedAt,
+      lineCount: String(p.body || "").split("\n").filter((l) => l.trim()).length,
+      updatedAt: p.updatedAt,
     }));
     return { ok: true, result: { poems: out, count: out.length } };
   });
@@ -171,20 +235,50 @@ export default function registerPoetryActions(registerLensAction) {
   registerLensAction("poetry", "poem-detail", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
-    if (!poem) return { ok: false, error: "poem not found" };
-    return { ok: true, result: { poem } };
+    if (poem) return { ok: true, result: { poem } };
+    const row = readPoemRows(ctx).find((item) => item.id === params.id);
+    if (!row || typeof row.title !== "string" || !row.title.trim()) return { ok: false, error: "poem not found" };
+    return {
+      ok: true,
+      result: {
+        poem: {
+          id: row.id,
+          title: row.title,
+          body: typeof row.body === "string" ? row.body : "",
+          form: null,
+          tags: [],
+          status: null,
+          createdAt: row.created_at || "",
+          updatedAt: row.updated_at || "",
+        },
+      },
+    };
   });
 
   registerLensAction("poetry", "poem-update", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
     if (!poem) return { ok: false, error: "poem not found" };
+    const previous = {
+      title: poem.title,
+      body: poem.body,
+      form: poem.form,
+      status: poem.status,
+      tags: poem.tags,
+      updatedAt: poem.updatedAt,
+    };
     if (params.title != null) poem.title = poClean(params.title, 160) || poem.title;
     if (params.body != null) poem.body = poClean(params.body, 12000);
     if (params.form != null) poem.form = poClean(params.form, 40).toLowerCase() || poem.form;
     if (params.status != null && ["draft", "revising", "finished"].includes(params.status)) poem.status = params.status;
     if (Array.isArray(params.tags)) poem.tags = params.tags.map((t) => poClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
     poem.updatedAt = poNow();
+    try {
+      writePoemRow(ctx, poem);
+    } catch (e) {
+      Object.assign(poem, previous);
+      return { ok: false, error: "poem_not_saved", detail: String(e?.message || e) };
+    }
     savePoetry();
     return { ok: true, result: { poem } };
   });
@@ -194,6 +288,11 @@ export default function registerPoetryActions(registerLensAction) {
     const arr = poList(s, poActor(ctx));
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "poem not found" };
+    try {
+      deletePoemRow(ctx, params.id);
+    } catch (e) {
+      return { ok: false, error: "poem_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     savePoetry();
     return { ok: true, result: { deleted: params.id } };

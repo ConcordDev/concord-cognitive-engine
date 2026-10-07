@@ -7,7 +7,8 @@
  * allocation-delete / staffing-plan.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Users, Loader2, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -18,21 +19,21 @@ interface Allocation { id: string; consultantId: string; engagementId: string; w
 interface EngagementOption { id: string; name: string }
 
 export function StaffingPlanner({ engagements }: { engagements: EngagementOption[] }) {
-  const [rows, setRows] = useState<PlanRow[]>([]);
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [cForm, setCForm] = useState({ name: '', role: '', weeklyCapacity: '', costRate: '' });
   const [aForm, setAForm] = useState({ consultantId: '', engagementId: '', week: '', hours: '' });
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'staffing'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'staffing-plan', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load staffing plan');
     const res = r.data?.result as { rows?: PlanRow[]; allocations?: Allocation[] } | null;
-    setRows(res?.rows || []);
-    setAllocations(res?.allocations || []);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return { rows: res?.rows || [], allocations: res?.allocations || [] };
+    },
+  });
+  const rows = data?.rows || [];
+  const allocations = data?.allocations || [];
 
   async function addConsultant() {
     if (!cForm.name.trim()) return;
@@ -42,11 +43,11 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
       costRate: cForm.costRate ? Number(cForm.costRate) : 0,
     });
     setCForm({ name: '', role: '', weeklyCapacity: '', costRate: '' });
-    await refresh();
+    await refetch();
   }
   async function delConsultant(id: string) {
     await lensRun('consulting', 'consultant-delete', { id });
-    await refresh();
+    await refetch();
   }
   async function addAllocation() {
     setError('');
@@ -59,14 +60,15 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
     });
     if (!r.data?.ok) { setError(r.data?.error || 'Allocation failed'); return; }
     setAForm({ consultantId: '', engagementId: '', week: '', hours: '' });
-    await refresh();
+    await refetch();
   }
   async function delAllocation(id: string) {
     await lensRun('consulting', 'allocation-delete', { id });
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load staffing plan'}</div>;
 
   // Build a per-week chart: one row per week, one series column per consultant.
   const weekSet = new Set<string>();

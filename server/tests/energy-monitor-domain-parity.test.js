@@ -37,6 +37,11 @@ describe("energy.device-*", () => {
     assert.equal(call("device-list", ctxB, {}).result.count, 0);
   });
 
+  it("accepts meter as a first-class device category", () => {
+    const meter = newDevice(ctxA, { name: "Main panel", category: "meter", wattage: 0 });
+    assert.equal(meter.category, "meter");
+  });
+
   it("update and delete (delete clears readings)", () => {
     const d = newDevice();
     assert.equal(call("device-update", ctxA, { id: d.id, wattage: 4000 }).result.device.wattage, 4000);

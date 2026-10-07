@@ -1,293 +1,396 @@
 'use client';
 
 /**
- * Concord Link Frontier Lens
+ * Concord Link Frontier — the frontier link.
  *
- * `GET /api/cross-world/feed` and `GET /api/cross-world/royalty-flow`
- * (`server/lib/cross-world-feed.js`, mounted in `server.js`) are real,
- * tested, working routes — but before this lens they were consumed ONLY by
- * the pre-login `/explore` marketing page. A logged-in player never saw the
- * cross-world news ticker or the royalty-flow ledger in-game; there was no
- * `/lenses/concord-link-frontier` at all. This closes that gap.
- *
- * REST-backed by design (same posture as `/lenses/ops-telemetry` and
- * `/lenses/world-observatory`) — there is no `concord-link-frontier` macro
- * domain, so this page calls the two real HTTP routes directly with
- * `credentials: 'include'` (the established pattern for authenticated,
- * non-macro lens fetches — see `app/lenses/ops-telemetry/page.tsx`).
- *
- * `/api/cross-world/feed` is public-read (no PII in server-generated event
- * summaries); `/api/cross-world/royalty-flow` requires auth. Both are called
- * the same way here since a logged-in player always has the auth cookie.
- *
- * Honest-empty-state invariant: when the feed or royalty-flow window is
- * genuinely quiet, this renders the fact plainly ("no cross-world activity
- * yet" / "no cross-world royalty flow yet") — never a fabricated ticker row
- * or placeholder flow, matching the pattern in `/lenses/world-observatory`.
+ * The frame matches the concept: one grid, empty copy, Open the link.
+ * Open stores a name. The bearing and the mark are later steps on
+ * that grid. link-list is id and name. The bearing and the mark show
+ * only after link-detail returns them. The cross-world feed and the
+ * royalty ledger stay unmounted.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import { useUIStore } from '@/store/ui';
-import { Globe, Coins, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 
-// ── Real response shapes (server/lib/cross-world-feed.js) ──────────────────
-
-interface CrossWorldEvent {
-  kind: string;
-  worldId: string;
-  ts: number;
-  summary: string;
-  ref?: Record<string, unknown>;
-  notability: number;
+interface LinkRow {
+  id: string;
+  name: string;
+  bearing: string;
+  mark: string | null;
 }
 
-interface CrossWorldRoyaltyFlow {
-  citationId: string;
-  parentDtuId: string;
-  parentTitle: string | null;
-  parentWorldId: string;
-  parentCreator: string | null;
-  childDtuId: string;
-  childTitle: string | null;
-  childWorldId: string;
-  childCreator: string | null;
-  amountCC: number;
-  payoutTs: number | null;
-  createdAt: string | number;
+type Phase = 'loading' | 'ready' | 'error';
+type Mode = 'view' | 'open' | 'bearing' | 'mark';
+
+function isWarming(message: string): boolean {
+  return /service_overloaded|event_loop_lag|status code 503/i.test(message);
 }
 
-const REFRESH_MS = 15_000;
-
-function formatKind(kind: string): string {
-  return kind.replace(/[:_-]/g, ' ');
-}
-
-function formatTs(ts: number | null | undefined): string {
-  if (ts == null || !Number.isFinite(ts)) return '';
-  // Event/citation timestamps are unix seconds; royalty payoutTs likewise.
-  const ms = ts > 1e12 ? ts : ts * 1000;
-  try {
-    return new Date(ms).toLocaleString();
-  } catch {
-    return '';
+async function runLink<T>(name: string, input: Record<string, unknown>, fallback: string): Promise<T> {
+  let last = fallback;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await lensRun<T>('concord-link-frontier', name, input);
+    if (response.data?.ok && response.data.result) return response.data.result;
+    last = response.data?.error || last;
+    if (!isWarming(last) || attempt === 7) throw new Error(last);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
+  throw new Error(last);
 }
 
-type LinkView = 'feed' | 'royalty';
+async function readBoard(): Promise<LinkRow[]> {
+  const listed = await runLink<{ links?: unknown }>('link-list', {}, 'Could not read the link.');
+  const slim: { id: string; name: string }[] = [];
+  if (Array.isArray(listed.links)) {
+    for (const row of listed.links) {
+      if (!row || typeof row !== 'object') continue;
+      const id = (row as { id?: unknown }).id;
+      const name = (row as { name?: unknown }).name;
+      if (typeof id !== 'string' || !id) continue;
+      if (typeof name !== 'string' || !name.trim()) continue;
+      slim.push({ id, name: name.trim() });
+    }
+  }
+  const links: LinkRow[] = [];
+  for (const row of slim) {
+    const detail = await runLink<{ link?: unknown }>('link-detail', { id: row.id }, 'Could not read the link.');
+    const link = detail.link;
+    if (!link || typeof link !== 'object') continue;
+    const body = link as { id?: unknown; name?: unknown; bearing?: unknown; mark?: unknown };
+    if (body.id !== row.id || typeof body.name !== 'string' || body.name.trim() !== row.name) continue;
+    const mark = typeof body.mark === 'string' && body.mark.trim() ? body.mark : null;
+    links.push({
+      id: row.id,
+      name: row.name,
+      bearing: typeof body.bearing === 'string' ? body.bearing : '',
+      mark,
+    });
+  }
+  return links;
+}
+
+const GRID = {
+  backgroundImage: 'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
+  backgroundSize: '28px 28px',
+} as const;
 
 export default function ConcordLinkFrontierPage() {
+  useLensNav('concord-link-frontier');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [view, setView] = useState<LinkView>('feed');
-  const [events, setEvents] = useState<CrossWorldEvent[]>([]);
-  const [worldsActive, setWorldsActive] = useState(0);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [feedError, setFeedError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [links, setLinks] = useState<LinkRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>('view');
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [name, setName] = useState('');
+  const [bearing, setBearing] = useState('');
+  const [mark, setMark] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const [flows, setFlows] = useState<CrossWorldRoyaltyFlow[]>([]);
-  const [totalRoyaltyCC, setTotalRoyaltyCC] = useState(0);
-  const [flowLoading, setFlowLoading] = useState(false);
-  const [flowError, setFlowError] = useState<string | null>(null);
-
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-
-  const refresh = useCallback(async (announce = false) => {
-    setFeedLoading(true);
-    setFlowLoading(true);
-    setFeedError(null);
-    setFlowError(null);
-    try {
-      const [feedRes, flowRes] = await Promise.all([
-        fetch('/api/cross-world/feed?limit=50&sinceMs=3600000', { credentials: 'include' }),
-        fetch('/api/cross-world/royalty-flow?limit=50&sinceMs=86400000', { credentials: 'include' }),
-      ]);
-
-      if (feedRes.status === 403 || feedRes.status === 401) {
-        setFeedError('Sign in to see the cross-world feed.');
-      } else {
-        const feedJson = await feedRes.json().catch(() => null);
-        if (feedJson?.ok) {
-          setEvents(Array.isArray(feedJson.events) ? feedJson.events : []);
-          setWorldsActive(typeof feedJson.worlds === 'number' ? feedJson.worlds : 0);
-        } else {
-          setFeedError(feedJson?.error || 'Failed to load cross-world feed');
-        }
-      }
-
-      if (flowRes.status === 403 || flowRes.status === 401) {
-        setFlowError('Sign in to see cross-world royalty flow.');
-      } else {
-        const flowJson = await flowRes.json().catch(() => null);
-        if (flowJson?.ok) {
-          setFlows(Array.isArray(flowJson.flows) ? flowJson.flows : []);
-          setTotalRoyaltyCC(typeof flowJson.totalRoyaltyCC === 'number' ? flowJson.totalRoyaltyCC : 0);
-        } else {
-          setFlowError(flowJson?.error || 'Failed to load cross-world royalty flow');
-        }
-      }
-
-      setHasLoadedOnce(true);
-      setLastRefresh(new Date());
-      if (announce) useUIStore.getState().addToast({ type: 'success', message: 'Cross-world feed synced.' });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setFeedError((prev) => prev ?? msg);
-      setFlowError((prev) => prev ?? msg);
-      setHasLoadedOnce(true);
-      if (announce) useUIStore.getState().addToast({ type: 'error', message: 'Could not sync the cross-world feed.' });
-    } finally {
-      setFeedLoading(false);
-      setFlowLoading(false);
-    }
+  const applyBoard = useCallback((rows: LinkRow[], preferId?: string) => {
+    setLinks(rows);
+    setSelectedId((current) => {
+      const want = preferId || current;
+      if (want && rows.some((item) => item.id === want)) return want;
+      return rows[0]?.id || null;
+    });
   }, []);
 
-  useEffect(() => {
-    Promise.resolve().then(() => refresh());
-  }, [refresh]);
+  const pull = useCallback(async (preferId?: string) => {
+    const rows = await readBoard();
+    applyBoard(rows, preferId);
+    setMode('view');
+    setPhase('ready');
+  }, [applyBoard]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        refresh();
+    let cancelled = false;
+    readBoard().then((rows) => {
+      if (cancelled) return;
+      applyBoard(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the link.');
+    });
+    return () => { cancelled = true; };
+  }, [applyBoard]);
+
+  const retry = useCallback(() => {
+    if (busy) return;
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    setName('');
+    setBearing('');
+    setMark('');
+    pull().catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the link.');
+    });
+  }, [busy, pull]);
+
+  const openLink = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (mode !== 'open') {
+      setMode('open');
+      setActionError('');
+      return;
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setActionError('A name is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await runLink<{ linkId?: string }>('link-open', { name: trimmed }, 'Could not open that link.');
+      const id = created.linkId;
+      if (!id) throw new Error('Could not open that link.');
+      const rows = await readBoard();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.name !== trimmed || row.bearing || row.mark) {
+        throw new Error('Opened, but the board did not read it back.');
       }
-    }, REFRESH_MS);
-    return () => clearInterval(id);
-  }, [refresh]);
+      applyBoard(rows, id);
+      setName('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, mode, name, phase]);
+
+  const saveBearing = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    if (mode !== 'bearing') {
+      const current = links.find((item) => item.id === selectedId);
+      setBearing(current?.bearing || '');
+      setMode('bearing');
+      setActionError('');
+      return;
+    }
+    const next = bearing.trim();
+    if (!next) {
+      setActionError('A bearing is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-bearing', { id: selectedId, bearing: next }, 'Could not save that bearing.');
+      const rows = await readBoard();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.bearing !== next) throw new Error('Saved, but the board did not read the bearing back.');
+      applyBoard(rows, selectedId);
+      setBearing('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that bearing.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, bearing, busy, links, mode, phase, selectedId]);
+
+  const saveMark = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    const current = links.find((item) => item.id === selectedId);
+    if (!current?.bearing) return;
+    if (mode !== 'mark') {
+      setMark(current.mark || '');
+      setMode('mark');
+      setActionError('');
+      return;
+    }
+    const note = mark.trim();
+    if (!note) {
+      setActionError('A mark is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-mark', { id: selectedId, mark: note }, 'Could not save that mark.');
+      const rows = await readBoard();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.mark !== note) throw new Error('Saved, but the board did not read the mark back.');
+      applyBoard(rows, selectedId);
+      setMark('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that mark.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
+
+  const openRow = useCallback(async (id: string) => {
+    if (busy || phase !== 'ready') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      const detail = await runLink<{ link?: { id?: string; name?: string; bearing?: unknown; mark?: unknown } }>(
+        'link-detail',
+        { id },
+        'Could not read the link.',
+      );
+      const body = detail.link;
+      setLinks((rows) => rows.map((item) => {
+        if (item.id !== id || !body || body.id !== id || body.name !== item.name) return item;
+        return {
+          ...item,
+          bearing: typeof body.bearing === 'string' ? body.bearing : '',
+          mark: typeof body.mark === 'string' && body.mark.trim() ? body.mark : null,
+        };
+      }));
+      setSelectedId(id);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not read the link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, phase]);
 
   useLensCommand(
-    [
-      { id: 'view-feed', keys: '1', description: 'Cross-world feed', category: 'navigation', action: () => setView('feed') },
-      { id: 'view-royalty', keys: '2', description: 'Cross-world royalty flow', category: 'navigation', action: () => setView('royalty') },
-      { id: 'refresh', keys: 'r', description: 'Refresh the cross-world feed now', category: 'actions', action: () => { void refresh(true); } },
-    ],
+    [{ id: 'clf-open', keys: 'o', description: 'Open the link', category: 'actions', action: () => { void openLink(); } }],
     { lensId: 'concord-link-frontier' },
   );
 
-  const loading = feedLoading || flowLoading;
-  const titles: Record<LinkView, string> = {
-    feed: 'What is happening across worlds',
-    royalty: 'Where the royalties are flowing',
-  };
+  const selected = links.find((item) => item.id === selectedId) || null;
+  const empty = phase === 'ready' && mode === 'view' && links.length === 0;
 
   return (
     <LensShell lensId="concord-link-frontier" asMain={false}>
-      <DepthBadge lensId="concord-link-frontier" size="sm" className="ml-2" />
-      <NorthStarFrame
-        lensId="concord-link-frontier"
-        crumb="Concord Link Frontier"
-        title={`${titles[view]}${view === 'feed' && who ? `, ${who}` : ''}`}
-        subtitle="The news layer of the federation: notable cross-world events and citation royalty flow, live."
-        tabs={[
-          { id: 'feed', label: `Cross-world feed (${events.length})`, icon: Globe, keys: '1', hint: 'Notable events across worlds' },
-          { id: 'royalty', label: `Royalty flow (${flows.length})`, icon: Coins, keys: '2', hint: 'Citations whose parent and child live in different worlds' },
-        ]}
-        activeTab={view}
-        onTab={(id) => {
-          setView(id as LinkView);
-          document.getElementById(id === 'feed' ? 'link-feed' : 'link-royalty')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-        tabsLabel="Frontier views"
-        cta={{ label: loading ? 'Syncing…' : 'Sync the feed', icon: RefreshCcw, onClick: () => { void refresh(true); }, disabled: loading, title: 'Refresh the cross-world feed now (R)' }}
-      >
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500 sm:gap-3">
-          {lastRefresh && <span>last synced {lastRefresh.toLocaleTimeString()}</span>}
-          <span aria-hidden="true">·</span>
-          <span>{worldsActive} world{worldsActive === 1 ? '' : 's'} active in the feed window</span>
-          <span aria-hidden="true">·</span>
-          <span>{totalRoyaltyCC.toLocaleString()} CC in cross-world royalties (24h)</span>
-        </div>
-        {!hasLoadedOnce && loading && (
-          <div role="status" aria-busy="true" aria-label="Loading Concord Link Frontier" className="mb-4 rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-zinc-400">
-            Tuning in to the federation…
-          </div>
-        )}
-        <section className="grid gap-4 xl:grid-cols-2">
-<div id="link-feed" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-white/20">
-            <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
-              <Globe className="h-4 w-4" /> Cross-world feed
-            </h2>
-            {feedError && (
-              <div role="alert" className="mb-2 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{feedError}</span>
-              </div>
-            )}
-            {!feedError && events.length === 0 ? (
-              <p className="text-[11px] text-slate-500">No cross-world activity yet.</p>
-            ) : (
-              <div className="divide-y divide-zinc-900" role="list" aria-label="Cross-world event feed">
-                {events.map((e, i) => (
-                  <div key={`${e.kind}:${e.worldId}:${e.ts}:${i}`} className="flex items-start gap-3 py-2">
-                    <span className="mt-0.5 shrink-0 text-cyan-400"><Globe className="h-3.5 w-3.5" aria-hidden="true" /></span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] text-slate-200">{e.summary}</p>
-                      <p className="mt-0.5 text-[10px] text-slate-500">
-                        {formatKind(e.kind)} · <span className="font-mono">{e.worldId}</span>
-                        {e.ts ? ` · ${formatTs(e.ts)}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <div data-lens-theme="concord-link-frontier" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Concord Link Frontier</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The frontier link{who ? `, ${who}` : ''}
+        </h1>
 
-
-
-<div id="link-royalty" className="scroll-mt-24 rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-white/20">
-            <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-emerald-300">
-              <Coins className="h-4 w-4" /> Cross-world royalty flow
-            </h2>
-            {flowError && (
-              <div role="alert" className="mb-2 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{flowError}</span>
-              </div>
-            )}
-            {!flowError && flows.length === 0 ? (
-              <p className="text-[11px] text-slate-500">No cross-world royalty flow yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px]" aria-label="Cross-world royalty flow">
-                  <caption className="sr-only">Citations where the parent and child DTU live in different worlds</caption>
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-left text-slate-400">
-                      <th scope="col" className="px-2 py-1">parent</th>
-                      <th className="px-2 py-1">child</th>
-                      <th className="px-2 py-1 text-right">amount (CC)</th>
-                      <th className="px-2 py-1">when</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {flows.map((f) => (
-                      <tr key={f.citationId} className="border-b border-zinc-900">
-                        <td className="px-2 py-1 text-slate-200">
-                          <span>{f.parentTitle || f.parentDtuId}</span>
-                          <span className="ml-1 font-mono text-[9px] text-emerald-300/60">{f.parentWorldId}</span>
-                        </td>
-                        <td className="px-2 py-1 text-slate-200">
-                          <span>{f.childTitle || f.childDtuId}</span>
-                          <span className="ml-1 font-mono text-[9px] text-emerald-300/60">{f.childWorldId}</span>
-                        </td>
-                        <td className="px-2 py-1 text-right font-mono text-emerald-200">
-                          {f.amountCC ? f.amountCC.toLocaleString() : '—'}
-                        </td>
-                        <td className="px-2 py-1 text-slate-400">{formatTs(f.payoutTs ?? (typeof f.createdAt === 'number' ? f.createdAt : null))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
+        <section aria-label="Link" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5" style={GRID}>
+          {phase === 'loading' && (
+            <p data-testid="clf-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+              Reading the link.
+            </p>
+          )}
+          {phase === 'error' && (
+            <div data-testid="clf-error" role="alert">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the link.'}</p>
+              <button type="button" onClick={retry} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
+              </button>
+            </div>
+          )}
+          {empty && (
+            <p data-testid="clf-empty" className="flex min-h-[16rem] items-center justify-center text-center text-[15px] text-zinc-400">
+              No link open.
+            </p>
+          )}
+          {phase === 'ready' && mode === 'view' && selected && (
+            <div className="mb-6">
+              <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{selected.name}</h2>
+              {selected.bearing ? <p data-testid="clf-bearing" className="mt-3 text-[15px] text-zinc-300">{selected.bearing}</p> : null}
+              {selected.mark ? <p data-testid="clf-mark" className="mt-3 text-[15px] text-zinc-300">{selected.mark}</p> : null}
+            </div>
+          )}
+          {phase === 'ready' && mode === 'view' && links.length > 0 && (
+            <ul data-testid="clf-board" className="space-y-2 border-t border-white/10 pt-4">
+              {links.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => { void openRow(item.id); }}
+                    className="text-left text-[15px] text-zinc-200 underline-offset-4 hover:underline"
+                  >
+                    {item.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {phase === 'ready' && mode === 'open' && (
+            <label className="block text-[14px] text-zinc-400">
+              Name
+              <input
+                data-testid="clf-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'bearing' && (
+            <label className="block text-[14px] text-zinc-400">
+              Bearing
+              <input
+                data-testid="clf-bearing-input"
+                value={bearing}
+                onChange={(event) => setBearing(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'mark' && (
+            <label className="block text-[14px] text-zinc-400">
+              Mark
+              <input
+                data-testid="clf-mark-input"
+                value={mark}
+                onChange={(event) => setMark(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'view' && selected && (
+            <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveBearing(); }} className="text-[14px] text-zinc-100 underline">
+                {selected.bearing ? 'Edit the bearing' : 'Set the bearing'}
+              </button>
+              {selected.bearing ? (
+                <button type="button" onClick={() => { void saveMark(); }} className="text-[14px] text-zinc-100 underline">
+                  {selected.mark ? 'Edit the mark' : 'Mark the link'}
+                </button>
+              ) : null}
+            </div>
+          )}
+          {phase === 'ready' && mode === 'bearing' && (
+            <button type="button" onClick={() => { void saveBearing(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the bearing
+            </button>
+          )}
+          {phase === 'ready' && mode === 'mark' && (
+            <button type="button" onClick={() => { void saveMark(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the mark
+            </button>
+          )}
         </section>
-      </NorthStarFrame>
+
+        {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
+
+        <button
+          type="button"
+          onClick={() => { void openLink(); }}
+          disabled={phase === 'loading' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          {mode === 'open' ? 'Open this' : 'Open the link'}
+        </button>
+      </div>
     </LensShell>
   );
 }

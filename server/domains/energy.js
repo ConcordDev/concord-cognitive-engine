@@ -231,7 +231,7 @@ export default function registerEnergyActions(registerLensAction) {
   const EN_DAY = 86400000;
   const DEFAULT_RATE = 0.17; // $/kWh fallback when no utility rate is set
 
-  const DEVICE_CATEGORIES = ["hvac", "appliance", "lighting", "electronics", "ev_charger", "water_heater", "kitchen", "laundry", "other"];
+  const DEVICE_CATEGORIES = ["meter", "hvac", "appliance", "lighting", "electronics", "ev_charger", "water_heater", "kitchen", "laundry", "other"];
 
   function userRate(s, userId) {
     const r = s.rates.get(userId);
@@ -621,10 +621,14 @@ export default function registerEnergyActions(registerLensAction) {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureLiveState(s);
     const userId = enAid(ctx);
+    const deviceId = enClean(params.deviceId, 80) || null;
+    if (deviceId && !findDevice(s, userId, deviceId)) {
+      return { ok: false, error: "device not found" };
+    }
     const minutes = Math.max(1, Math.min(360, Math.round(enNum(params.minutes, 60))));
     const cutoff = Date.now() - minutes * 60000;
     const samples = (s.livePower.get(userId) || [])
-      .filter((x) => x.ts >= cutoff)
+      .filter((x) => x.ts >= cutoff && (!deviceId || x.deviceId === deviceId))
       .sort((a, b) => a.ts - b.ts);
     const wattValues = samples.map((x) => x.watts);
     const current = wattValues.length ? wattValues[wattValues.length - 1] : 0;

@@ -6,16 +6,18 @@ import { CmdButton } from '@/components/debug/debug-helpers';
 
 export function TestConsolePanel() {
   const {
-    debugCmd, customCmd, setCustomCmd, handleCustomCmd,
-    debugOutput, copyConsole, clearConsole, consoleEndRef,
+    debugCmd, debugOutput, copyConsole, clearConsole, consoleEndRef,
   } = useDebugDesk();
 
   return (
 <div className="panel p-4">
   <h2 className="font-semibold mb-4 flex items-center gap-2">
     <Terminal className="w-4 h-4 text-neon-green" />
-    Test Console
+    Privileged Diagnostics
   </h2>
+  <p className="mb-4 text-xs text-gray-400">
+    Named server diagnostics only. Authorization and availability are enforced by each endpoint.
+  </p>
   <div className="space-y-4">
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <CmdButton
@@ -37,7 +39,7 @@ export function TestConsolePanel() {
         disabled={debugCmd.isPending}
       />
       <CmdButton
-        label="Sim Growth"
+        label="Pipeline Metrics"
         color="neon-cyan"
         onClick={() => debugCmd.mutate('growth')}
         disabled={debugCmd.isPending}
@@ -66,26 +68,6 @@ export function TestConsolePanel() {
         onClick={() => debugCmd.mutate('gc')}
         disabled={debugCmd.isPending}
       />
-    </div>
-
-    {/* Custom Command */}
-    <div className="flex gap-2">
-      <input
-        className="flex-1 px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-mono focus:border-neon-green outline-none"
-        placeholder="Enter custom endpoint (e.g., 'status')..."
-        value={customCmd}
-        onChange={(e) => setCustomCmd(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleCustomCmd();
-        }}
-      />
-      <button
-        className="btn-neon text-sm"
-        disabled={!customCmd.trim() || debugCmd.isPending}
-        onClick={handleCustomCmd}
-      >
-        Run
-      </button>
     </div>
 
     {/* Console Output */}

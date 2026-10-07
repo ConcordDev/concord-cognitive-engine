@@ -106,7 +106,7 @@ export function NvdCveFeed() {
                       {sev === 'CRITICAL' || sev === 'HIGH' ? <AlertOctagon className="inline h-2.5 w-2.5 mr-0.5" /> : <Shield className="inline h-2.5 w-2.5 mr-0.5" />}
                       {sev}{score != null ? ` · ${score}` : ''}
                     </span>
-                    {cweList.slice(0, 2).map((w) => <span key={w} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{w}</span>)}
+                    {cweList.slice(0, 2).map((w, index) => <span key={`${w}-${index}`} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{w}</span>)}
                   </div>
                   <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{desc}</p>
                   <div className="mt-1 text-[10px] text-zinc-400">published {v.cve.published?.slice(0, 10)}</div>

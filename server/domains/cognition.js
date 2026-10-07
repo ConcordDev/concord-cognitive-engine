@@ -111,6 +111,70 @@ export default function registerCognitionMacros(_register) {
   const cogActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const cogId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const cogList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
+  // cognitionLens is not on the shared snapshot key list. The title and the
+  // trace object are written here so a process restart can list and open
+  // the same trace. Callers with no table keep the in-memory path. Mode
+  // and traceId are read back from the stored trace, not filled in.
+  function cogDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function tracesReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cognition_traces'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writeTraceRow(ctx, entry) {
+    const db = cogDb(ctx);
+    if (!tracesReady(db)) return;
+    const body = JSON.stringify(entry.trace);
+    if (body.length > 512000) {
+      const err = new Error("trace_too_large");
+      err.code = "trace_too_large";
+      throw err;
+    }
+    db.prepare(`
+      INSERT INTO cognition_traces (id, user_id, title, note, trace_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        note = excluded.note,
+        trace_json = excluded.trace_json
+    `).run(entry.id, cogActor(ctx), entry.title, entry.note || "", body, entry.createdAt);
+  }
+  function deleteTraceRow(ctx, id) {
+    const db = cogDb(ctx);
+    if (!tracesReady(db) || !id) return 0;
+    const res = db.prepare("DELETE FROM cognition_traces WHERE id = ? AND user_id = ?").run(String(id), cogActor(ctx));
+    return res?.changes || 0;
+  }
+  function readTraceRows(ctx) {
+    const db = cogDb(ctx);
+    if (!tracesReady(db)) return [];
+    const rows = db.prepare(
+      "SELECT id, title, note, trace_json, created_at FROM cognition_traces WHERE user_id = ? ORDER BY created_at DESC",
+    ).all(cogActor(ctx));
+    const out = [];
+    for (const row of rows) {
+      if (!row?.id || typeof row.title !== "string" || !row.title.trim()) continue;
+      let trace = null;
+      try { trace = JSON.parse(row.trace_json); } catch (_e) { continue; }
+      if (!trace || typeof trace !== "object") continue;
+      out.push({
+        id: row.id,
+        kind: "hlr_trace",
+        title: row.title,
+        mode: trace.input?.mode || trace.mode || null,
+        traceId: trace.traceId || trace.id || null,
+        note: typeof row.note === "string" ? row.note : "",
+        trace,
+        createdAt: row.created_at || "",
+      });
+    }
+    return out;
+  }
 
   // HLR is lazily imported so the domain module stays loadable in tests
   // even when the engine isn't on the classpath. The promise is cached.
@@ -308,6 +372,14 @@ export default function registerCognitionMacros(_register) {
       const list = cogList(s.exports, cogActor(ctx));
       list.unshift(entry);
       if (list.length > 200) list.length = 200;
+      try {
+        writeTraceRow(ctx, entry);
+      } catch (err) {
+        const idx = list.findIndex((item) => item.id === entry.id);
+        if (idx >= 0) list.splice(idx, 1);
+        const code = err?.code === "trace_too_large" ? "trace_too_large" : "trace_not_saved";
+        return { ok: false, error: code, detail: String(err?.message || err) };
+      }
       saveCog();
       return { ok: true, result: { export: { ...entry, trace: undefined }, exportId: entry.id, total: list.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -317,7 +389,12 @@ export default function registerCognitionMacros(_register) {
   register("cognition", "listExports", (ctx, _input = {}) => {
     try {
       const s = getCogState();
-      const list = cogList(s.exports, cogActor(ctx));
+      const memory = cogList(s.exports, cogActor(ctx));
+      const seen = new Set(memory.map((e) => e.id));
+      const list = memory.slice();
+      for (const row of readTraceRows(ctx)) {
+        if (!seen.has(row.id)) list.push(row);
+      }
       // Return metadata only — the full trace is fetched on demand.
       const exports = list.map((e) => ({
         id: e.id,
@@ -338,7 +415,8 @@ export default function registerCognitionMacros(_register) {
       const params = input || {};
       const s = getCogState();
       const list = cogList(s.exports, cogActor(ctx));
-      const entry = list.find((e) => e.id === params.exportId);
+      const entry = list.find((e) => e.id === params.exportId)
+        || readTraceRows(ctx).find((e) => e.id === params.exportId);
       if (!entry) return { ok: false, error: "export_not_found" };
       return { ok: true, result: { export: entry } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -351,8 +429,14 @@ export default function registerCognitionMacros(_register) {
       const s = getCogState();
       const list = cogList(s.exports, cogActor(ctx));
       const idx = list.findIndex((e) => e.id === params.exportId);
-      if (idx < 0) return { ok: false, error: "export_not_found" };
-      list.splice(idx, 1);
+      let removed = 0;
+      try {
+        removed = deleteTraceRow(ctx, params.exportId);
+      } catch (err) {
+        return { ok: false, error: "trace_not_saved", detail: String(err?.message || err) };
+      }
+      if (idx < 0 && !removed) return { ok: false, error: "export_not_found" };
+      if (idx >= 0) list.splice(idx, 1);
       saveCog();
       return { ok: true, result: { deleted: params.exportId, count: list.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

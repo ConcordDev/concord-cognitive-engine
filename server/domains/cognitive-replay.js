@@ -25,6 +25,7 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     const s = STATE.cognitiveReplay;
     // snapshots: userId -> Array<snapshot>
     if (!(s.snapshots instanceof Map)) s.snapshots = new Map();
+    if (!(s.moments instanceof Map)) s.moments = new Map();
     return s;
   }
   function saveReplayState() {
@@ -463,4 +464,145 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       return { ok: false, error: String(err?.message || err) };
     }
   }, { note: "Delete one of the caller's own cognitive snapshots." });
+
+  // A chosen moment is the title plus the line. cognitiveReplay is not
+  // on the shared snapshot key list, so the row is the restart read-back.
+  // A missing table stays a no-op. Role, brain, and clock are not stored.
+  function replayDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function momentsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cognitive_replay_moments'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function momentActor(ctx) {
+    return uid(ctx) || "anon";
+  }
+  function momentList(userId) {
+    const s = getReplayState();
+    if (!s.moments.has(userId)) s.moments.set(userId, []);
+    return s.moments.get(userId);
+  }
+  function writeMomentRow(ctx, moment) {
+    const db = replayDb(ctx);
+    if (!momentsReady(db)) return;
+    db.prepare(`
+      INSERT INTO cognitive_replay_moments (id, user_id, title, line, created_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        line = excluded.line
+    `).run(moment.id, momentActor(ctx), moment.title, moment.line, moment.createdAt);
+  }
+  function readMomentRows(ctx) {
+    const db = replayDb(ctx);
+    if (!momentsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, line, created_at FROM cognitive_replay_moments WHERE user_id = ? ORDER BY created_at DESC",
+    ).all(momentActor(ctx));
+  }
+  function lineFromEvent(userId, eventId) {
+    const event = collectEvents(userId).find((item) => item.eventId === eventId);
+    if (!event) return { error: "event_not_found" };
+    const line = typeof event.contentPreview === "string" ? event.contentPreview.trim() : "";
+    if (!line) return { error: "moment line required" };
+    return { line: line.slice(0, 4000) };
+  }
+
+  registerLensAction("cognitive-replay", "moment-choose", (ctx, artifact, params) => {
+    try {
+      const userId = momentActor(ctx);
+      if (!uid(ctx)) return { ok: false, error: "no_actor" };
+      const title = String(param(artifact, params, "title") || "").trim().slice(0, 160);
+      if (!title) return { ok: false, error: "moment title required" };
+      const eventId = param(artifact, params, "eventId");
+      let line = String(param(artifact, params, "line") || "").trim().slice(0, 4000);
+      if (eventId) {
+        const pinned = lineFromEvent(userId, String(eventId));
+        if (pinned.error) return { ok: false, error: pinned.error };
+        line = pinned.line;
+      }
+      if (!line) return { ok: false, error: "moment line required" };
+      const moment = {
+        id: `cr_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`,
+        title,
+        line,
+        createdAt: new Date().toISOString(),
+      };
+      momentList(userId).unshift(moment);
+      try {
+        writeMomentRow(ctx, moment);
+      } catch (err) {
+        const arr = momentList(userId);
+        const idx = arr.findIndex((item) => item.id === moment.id);
+        if (idx >= 0) arr.splice(idx, 1);
+        return { ok: false, error: "moment_not_saved", detail: String(err?.message || err) };
+      }
+      saveReplayState();
+      return { ok: true, result: { momentId: moment.id, moment: { id: moment.id, title: moment.title } } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Choose a moment. Stores the title and the line. An eventId pins the live preview." });
+
+  registerLensAction("cognitive-replay", "moment-list", (ctx, _artifact, _params) => {
+    try {
+      const userId = momentActor(ctx);
+      if (!uid(ctx)) return { ok: false, error: "no_actor" };
+      const moments = [...momentList(userId)];
+      const seen = new Set(moments.map((item) => item.id));
+      for (const row of readMomentRows(ctx)) {
+        if (!row?.id || seen.has(row.id)) continue;
+        if (typeof row.title !== "string" || !row.title.trim()) continue;
+        moments.push({
+          id: row.id,
+          title: row.title.trim(),
+          line: typeof row.line === "string" ? row.line : "",
+          createdAt: row.created_at || "",
+        });
+      }
+      return {
+        ok: true,
+        result: {
+          moments: moments.map((item) => ({ id: item.id, title: item.title })),
+          count: moments.length,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "List chosen moments. Titles only. The line is moment-detail." });
+
+  registerLensAction("cognitive-replay", "moment-detail", (ctx, artifact, params) => {
+    try {
+      const userId = momentActor(ctx);
+      if (!uid(ctx)) return { ok: false, error: "no_actor" };
+      const id = param(artifact, params, "id") || param(artifact, params, "momentId");
+      if (!id) return { ok: false, error: "missing_moment_id" };
+      const live = momentList(userId).find((item) => item.id === id);
+      if (live) {
+        return { ok: true, result: { moment: { id: live.id, title: live.title, line: live.line } } };
+      }
+      const row = readMomentRows(ctx).find((item) => item.id === id);
+      if (!row || typeof row.title !== "string" || !row.title.trim()) {
+        return { ok: false, error: "moment_not_found" };
+      }
+      return {
+        ok: true,
+        result: {
+          moment: {
+            id: row.id,
+            title: row.title.trim(),
+            line: typeof row.line === "string" ? row.line : "",
+          },
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Read one chosen moment, including the line." });
 }

@@ -1,191 +1,206 @@
 'use client';
 
 /**
- * Animation Lens — FlipaClip + Pencil2D-parity frame-by-frame animator,
- * rebuilt as a real app (Frontend Rebuild Program, Wave 2, Creative/
- * design-tool archetype).
+ * Animation — one shot.
  *
- * Capability map: docs/lens-specs/animation-capability-map.md.
- *
- * The old page's "Projects" tab was a generic per-user DTU-artifact CRUD
- * (`useLensData('animation','project')`) with ZERO connection to the real
- * `anim-create`/frame/stroke/rig substrate below it — clicking a "project"
- * card just flipped a tab to a static placeholder message, and a "Advance"
- * button toggled a fake `status: draft→in-progress→rendering→complete`
- * label with no frame ever drawn and no render ever run. That entire fake
- * system is retired. `AnimationStudioSection` (real `anim-*`/frame/stroke/
- * rig/audio/export macros, `STATE.animationLens`-backed) is now the single
- * "Projects" surface — it already was the real one, just buried below a
- * fake one.
+ * anim-list is the cabinet. + New shot calls anim-create, then shows
+ * the title only after anim-list contains that id and the same title.
+ * Titles are stored in animation_shots, so a server restart still lists
+ * them. A blank title is not sent. Frames, the toolkit, and the
+ * reference wall are other macros. They are not on this screen.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Wrench, Image as ImageIcon, RefreshCw, Film, Layers, Sparkles, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { AnimationStudioSection } from '@/components/animation/AnimationStudioSection';
-import { AnimationMotionToolkit } from '@/components/animation/AnimationMotionToolkit';
-import { AnimationReferenceImages } from '@/components/animation/AnimationReferenceImages';
-import { AnimationReference } from '@/components/animation/AnimationReference';
-import { StatTile, StatTileGrid, Skeleton, ErrorState, DensityToggle } from '@/components/ui';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
-import { useLensDTUs } from '@/hooks/useLensDTUs';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 
-interface AnimDashboard {
-  animations: number;
-  totalFrames: number;
-  latestAnimation: { id: string; title: string } | null;
+interface Shot {
+  id: string;
+  title: string;
 }
 
-type TabId = 'studio' | 'toolkit' | 'reference';
+type Phase = 'loading' | 'ready' | 'error';
 
-const TABS: { id: TabId; label: string; title: string; icon: typeof Film; hotkey: string }[] = [
-  { id: 'studio', label: 'Studio', title: 'The shot', icon: Film, hotkey: '1' },
-  { id: 'toolkit', label: 'Motion Toolkit', title: 'The motion', icon: Wrench, hotkey: '2' },
-  { id: 'reference', label: 'Reference', title: 'The reference', icon: ImageIcon, hotkey: '3' },
-];
+interface ShotRow {
+  id?: string;
+  title?: string;
+}
+
+function shotsFrom(rows: unknown): Shot[] {
+  if (!Array.isArray(rows)) return [];
+  const out: Shot[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as ShotRow).id;
+    const title = (row as ShotRow).title;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    out.push({ id, title: title.trim() });
+  }
+  return out;
+}
+
+async function readShots(): Promise<Shot[]> {
+  const list = await lensRun<{ animations?: unknown }>('animation', 'anim-list', {});
+  if (!list.data?.ok) throw new Error(list.data?.error || 'Could not read the shot.');
+  return shotsFrom(list.data.result?.animations);
+}
 
 export default function AnimationPage() {
   useLensNav('animation');
-  const { contextDTUs } = useLensDTUs({ lens: 'animation' });
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [tab, setTab] = useState<TabId>('studio');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const stats = useMacroDispatchFeedback<AnimDashboard>();
-  const loadStats = useCallback(() => { void stats.dispatch('animation', 'anim-dashboard', {}); }, [stats]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadStats(); }, []);
+  const pull = useCallback(async () => readShots(), []);
 
-  const newShot = useCallback(() => {
-    setTab('studio');
-    let tries = 0;
-    const focus = () => {
-      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="animation"] input[placeholder="Title"]');
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
-      if (++tries < 20) requestAnimationFrame(focus);
-    };
-    requestAnimationFrame(focus);
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setShots(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the shot.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setShots(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the shot.');
+    });
+  }, [pull]);
+
+  const openShot = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      return;
+    }
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setActionError('A title is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await lensRun<{ animation?: { id?: string; title?: string } }>(
+        'animation',
+        'anim-create',
+        { title: trimmed },
+      );
+      const id = created.data?.result?.animation?.id;
+      if (!created.data?.ok || !id) {
+        throw new Error(created.data?.error || 'Could not open that shot.');
+      }
+      const rows = await readShots();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.title !== trimmed) {
+        throw new Error('Opened, but the shot did not read it back.');
+      }
+      setShots(rows);
+      setTitle('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that shot.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, composing, phase, title]);
 
   useLensCommand(
-    [
-      ...TABS.map((t) => ({
-        id: `tab-${t.id}`, keys: t.hotkey, description: t.label, category: 'navigation' as const,
-        action: () => setTab(t.id),
-      })),
-      { id: 'new-shot', keys: 'n', description: 'New shot', category: 'actions' as const, action: newShot },
-      { id: 'refresh-stats', keys: 'r', description: 'Refresh dashboard', category: 'actions' as const, action: loadStats },
-    ],
-    { lensId: 'animation' }
+    [{ id: 'animation-new', keys: 'n', description: '+ New shot', category: 'actions', action: () => { void openShot(); } }],
+    { lensId: 'animation' },
   );
-
-  const dash = stats.status === 'done' ? stats.result : null;
-  const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="animation" asMain={false}>
-      <FirstRunTour lensId="animation" />
-      <DepthBadge lensId="animation" size="sm" className="ml-2" />
-      <div data-lens-theme="animation" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Animation</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{tab === 'studio' && who ? `, ${who}` : ''}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 pt-2">
-            <DensityToggle variant="dropdown" />
-            <button
-              type="button"
-              onClick={loadStats}
-              disabled={statsLoading}
-              className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-zinc-100 disabled:opacity-50"
-              aria-label="Refresh dashboard"
-              title="Refresh dashboard (R)"
-            >
-              <RefreshCw className={cn('h-4 w-4', statsLoading && 'animate-spin')} />
-            </button>
-            <DTUExportButton domain="animation" data={dash || {}} compact />
-          </div>
-        </div>
+      <div data-lens-theme="animation" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">Animation</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The shot{who ? `, ${who}` : ''}
+        </h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Animation views">
-          {TABS.map((t) => {
-            const on = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                aria-current={on ? 'page' : undefined}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <t.icon className="h-3.5 w-3.5" />
-                {t.label}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.hotkey}</kbd>
+        <section
+          aria-label="Shot"
+          className="flex min-h-[22rem] flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
+        >
+          {phase === 'loading' && (
+            <p data-testid="animation-loading" role="status" aria-busy="true" className="text-center text-[14px] text-zinc-500">
+              Opening the shot.
+            </p>
+          )}
+          {phase === 'error' && (
+            <div data-testid="animation-error" role="alert" className="text-center">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the shot.'}</p>
+              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
               </button>
-            );
-          })}
-        </nav>
-
-        <div className="mb-6">
-          {statsLoading && !dash ? (
-            <StatTileGrid columns={4}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-2xl border border-white/10 bg-[#111] p-3">
-                  <Skeleton variant="line" lines={2} />
-                </div>
+            </div>
+          )}
+          {phase === 'ready' && shots.length === 0 && !composing && (
+            <div data-testid="animation-empty" className="text-center">
+              <p className="text-[14px] text-zinc-500">No shot open.</p>
+            </div>
+          )}
+          {phase === 'ready' && shots.length > 0 && (
+            <ul data-testid="animation-shots" className="space-y-6">
+              {shots.map((item) => (
+                <li key={item.id}>
+                  <h2 className="font-vault text-[1.5rem] text-zinc-100">{item.title}</h2>
+                </li>
               ))}
-            </StatTileGrid>
-          ) : stats.status === 'error' ? (
-            <ErrorState message={stats.error || 'Failed to load dashboard.'} onRetry={loadStats} retrying={statsLoading} variant="inline" />
-          ) : dash ? (
-            <StatTileGrid columns={4}>
-              <StatTile label="Animations" value={dash.animations} icon={<Film className="h-3.5 w-3.5" />} />
-              <StatTile label="Total frames" value={dash.totalFrames} icon={<Layers className="h-3.5 w-3.5" />} />
-              <StatTile label="Latest" value={dash.latestAnimation?.title || '--'} />
-              <StatTile label="DTUs" value={contextDTUs.length} icon={<Sparkles className="h-3.5 w-3.5" />} />
-            </StatTileGrid>
+            </ul>
+          )}
+          {phase === 'ready' && composing && (
+            <label className="mt-6 block text-[14px] text-zinc-400">
+              Title
+              <input
+                data-testid="animation-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); void openShot(); }
+                }}
+                className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[16px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {actionError ? (
+            <p role="alert" className="mt-4 text-center text-[14px] text-zinc-300">{actionError}</p>
           ) : null}
-        </div>
-
-        {tab === 'studio' && <AnimationStudioSection />}
-        {tab === 'toolkit' && <AnimationMotionToolkit />}
-        {tab === 'reference' && (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <AnimationReferenceImages />
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <AnimationReference />
-            </div>
-          </div>
-        )}
-
-        <CrossLensRecentsPanel lensId="animation" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+        </section>
 
         <button
           type="button"
-          onClick={newShot}
-          title="New shot (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void openShot(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          New shot
+          + New shot
         </button>
       </div>
     </LensShell>

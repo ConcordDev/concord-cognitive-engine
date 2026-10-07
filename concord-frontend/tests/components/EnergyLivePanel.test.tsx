@@ -11,7 +11,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 
 const lensRun = vi.fn();
 vi.mock('@/lib/api/client', () => ({
@@ -38,16 +38,13 @@ describe('EnergyLivePanel — real live polling', () => {
       if (action === 'live-stream') {
         return { data: { ok: true, result: { samples: [], current, peak: current + 111, avgWatts: current - 33 } } };
       }
-      if (action === 'device-list') {
-        return { data: { ok: true, result: { devices: [] } } };
-      }
       return { data: { ok: true, result: {} } };
     });
   }
 
   it('polls the real energy.live-stream macro on an interval, not just once on mount', async () => {
     mockStream(500);
-    render(<EnergyLivePanel onChange={vi.fn()} />);
+    render(<EnergyLivePanel meterId="meter_1" meterName="Main panel" onChange={vi.fn()} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     expect(screen.getByText('500')).toBeInTheDocument();
@@ -64,7 +61,7 @@ describe('EnergyLivePanel — real live polling', () => {
 
   it('a real wattage change updates the "Now" tile to the new server value', async () => {
     mockStream(100);
-    render(<EnergyLivePanel onChange={vi.fn()} />);
+    render(<EnergyLivePanel meterId="meter_1" meterName="Main panel" onChange={vi.fn()} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByText('100')).toBeInTheDocument();
 
@@ -77,7 +74,7 @@ describe('EnergyLivePanel — real live polling', () => {
 
   it('stops polling on unmount (no leaked interval calling a dead component)', async () => {
     mockStream(200);
-    const { unmount } = render(<EnergyLivePanel onChange={vi.fn()} />);
+    const { unmount } = render(<EnergyLivePanel meterId="meter_1" meterName="Main panel" onChange={vi.fn()} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByText('200')).toBeInTheDocument();
 
@@ -85,5 +82,16 @@ describe('EnergyLivePanel — real live polling', () => {
     unmount();
     await act(async () => { await vi.advanceTimersByTimeAsync(20000); });
     expect(lensRun.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('submits a real sample against the selected meter and reconciles', async () => {
+    mockStream(0);
+    render(<EnergyLivePanel meterId="meter_1" meterName="Main panel" onChange={vi.fn()} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+    fireEvent.change(screen.getByLabelText('Watts now'), { target: { value: '725' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Sample/i })); });
+
+    expect(lensRun).toHaveBeenCalledWith('energy', 'live-sample', { watts: 725, deviceId: 'meter_1' });
   });
 });

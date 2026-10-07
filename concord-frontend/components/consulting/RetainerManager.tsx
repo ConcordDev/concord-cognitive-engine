@@ -7,7 +7,8 @@
  * retainer-bill / retainer-update / retainer-delete.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Repeat, Loader2, Trash2, Plus, Receipt, Pause, Play } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -24,23 +25,23 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function RetainerManager() {
-  const [retainers, setRetainers] = useState<Retainer[]>([]);
-  const [mrr, setMrr] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ client: '', label: '', monthlyAmount: '', cadence: 'monthly', includedHours: '' });
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [billHours, setBillHours] = useState('');
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'retainers'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'retainer-list', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load retainers');
     const res = r.data?.result as { retainers?: Retainer[]; mrr?: number } | null;
-    setRetainers(res?.retainers || []);
-    setMrr(res?.mrr || 0);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return { retainers: res?.retainers || [], mrr: res?.mrr || 0 };
+    },
+  });
+  const retainers = data?.retainers || [];
+  const mrr = data?.mrr || 0;
 
   async function create() {
     setError('');
@@ -53,24 +54,25 @@ export function RetainerManager() {
     if (!r.data?.ok) { setError(r.data?.error || 'Failed'); return; }
     setForm({ client: '', label: '', monthlyAmount: '', cadence: 'monthly', includedHours: '' });
     setOpen(false);
-    await refresh();
+    await refetch();
   }
   async function bill(id: string) {
     await lensRun('consulting', 'retainer-bill', { id, hoursUsed: billHours ? Number(billHours) : 0 });
     setBillHours('');
-    await refresh();
+    await refetch();
   }
   async function toggleStatus(r: Retainer) {
     const next = r.status === 'active' ? 'paused' : 'active';
     await lensRun('consulting', 'retainer-update', { id: r.id, status: next });
-    await refresh();
+    await refetch();
   }
   async function del(id: string) {
     await lensRun('consulting', 'retainer-delete', { id });
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load retainers'}</div>;
 
   return (
     <div className="space-y-3">

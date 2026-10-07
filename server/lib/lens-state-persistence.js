@@ -102,6 +102,30 @@ export const LENS_STATE_KEYS = Object.freeze([
   // domain stores per-user Maps here; without this key a hard restart
   // wiped every saved place while the PlacesPanel still showed it.
   "atlasLens",
+  // 46 -> 47: "energyLens" so a user's meters, readings, live samples,
+  // solar entries, rates, goals, alerts, and time-of-use plan survive a
+  // restart. The Energy domain stores per-user Maps here; without this key
+  // the meter workspace appeared persistent until the server restarted.
+  "energyLens",
+  // 47 -> 48: "emergencyServicesLens" so incidents, units, positions,
+  // timelines, mutual-aid consent/shares, and feed dedup survive a restart.
+  // The CAD domain stores nested per-user/per-agency Maps and Sets here.
+  "emergencyServicesLens",
+  // 48 -> 49: "electricalLens" so panel schedules, estimates/invoices,
+  // inspection checklists, one-lines, and material prices survive a restart.
+  // The Electrical domain stores per-user arrays inside Maps here.
+  "electricalLens",
+  // 49 -> 50: "defenseLens" so the common operating picture, mission
+  // tasks, assets, threats, personnel, supply requests, and comms log
+  // survive a restart. The Defense domain stores nested per-user Maps here.
+  "defenseLens",
+  // 50 -> 51: "debugLens" so issue records, measured traces, metric
+  // samples, alert rules, and release records survive a restart.
+  "debugLens",
+  // 51 -> 52: "consultingLens" so engagements, time entries, invoices,
+  // proposals, staffing, expenses, timers, retainers, and portal approvals
+  // survive a restart.
+  "consultingLens",
 ]);
 
 function serializeValue(v) {

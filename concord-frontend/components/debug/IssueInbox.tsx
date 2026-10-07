@@ -1,9 +1,7 @@
 'use client';
 
-/* eslint-disable react-hooks/exhaustive-deps */
-
 /**
- * IssueInbox — Sentry-style live error stream / issue inbox.
+ * IssueInbox — Sentry-style authored exception registry.
  *
  * Wires the `debug` domain macros:
  *   issue-ingest · issue-list · issue-detail · issue-update · issue-delete
@@ -104,8 +102,9 @@ export function IssueInbox() {
   }, [statusFilter, query]);
 
   useEffect(() => {
-    load();
-  }, [statusFilter]);
+    const frame = requestAnimationFrame(() => void load());
+    return () => cancelAnimationFrame(frame);
+  }, [load]);
 
   const ingest = useCallback(async () => {
     if (!form.message.trim()) return;
@@ -173,7 +172,7 @@ export function IssueInbox() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
-          <Bug className="w-4 h-4 text-red-400" /> Issue Inbox
+          <Bug className="w-4 h-4 text-red-400" /> Issue Registry
         </h3>
         <button
           onClick={load}
@@ -205,9 +204,12 @@ export function IssueInbox() {
         </div>
       )}
 
-      {/* Quick ingest */}
+      {/* Authored exception record */}
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
-        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Report Exception</p>
+        <div>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider">Record Observed Exception</p>
+          <p className="mt-1 text-[11px] text-gray-500">This creates an authored issue record; Debug does not claim an automatic external APM collector.</p>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <input
             value={form.type}
@@ -256,7 +258,7 @@ export function IssueInbox() {
           ) : (
             <AlertTriangle className="w-3 h-3" />
           )}
-          Ingest Exception
+          Record Exception
         </button>
       </div>
 

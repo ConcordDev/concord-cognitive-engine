@@ -5,7 +5,7 @@
  * Wires consulting.profitability-report.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Loader2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -25,18 +25,17 @@ const HEALTH_COLOR: Record<string, string> = {
 };
 
 export function ProfitabilityReport() {
-  const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const { data: report, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['consulting', 'profitability'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'profitability-report', {});
-    setReport((r.data?.result as Report) || null);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load profitability');
+      return (r.data.result as Report) || null;
+    },
+  });
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{error instanceof Error ? error.message : 'Could not load profitability'}</div>;
 
   const rows = report?.rows || [];
   const chartData = rows.map(r => ({ name: r.name, billed: r.billed, cost: r.totalCost }));
@@ -48,7 +47,7 @@ export function ProfitabilityReport() {
           <TrendingUp className="w-4 h-4 text-indigo-400" />
           <h3 className="text-sm font-bold text-zinc-100">Profitability</h3>
         </div>
-        <button onClick={refresh} aria-label="Refresh" className="text-zinc-400 hover:text-indigo-400"><RefreshCw className="w-3.5 h-3.5" /></button>
+        <button onClick={() => void refetch()} aria-label="Refresh" className="text-zinc-400 hover:text-indigo-400"><RefreshCw className="w-3.5 h-3.5" /></button>
       </div>
 
       {report && (

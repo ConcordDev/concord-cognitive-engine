@@ -46,7 +46,7 @@ export function StatusPanel() {
     },
     {
       label: 'Memory',
-      status: 'ok' as const,
+      status: (perfMetrics?.memory ? 'ok' : 'warn') as 'ok' | 'warn',
       detail: perfMetrics?.memory
         ? `${Math.round((perfMetrics.memory.heapUsed || 0) / 1024 / 1024)}MB`
         : 'N/A',

@@ -12,6 +12,7 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 import PhotosLensPage from '@/app/lenses/photos/page';
 
@@ -38,16 +39,16 @@ describe('PhotosLensPage — four UX states', () => {
     // A fetch that never resolves keeps the page in the loading state.
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
     render(<PhotosLensPage />);
-    expect(screen.getByRole('status')).toHaveTextContent(/loading photos/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/Opening the frame/);
   });
 
   it('empty: shows an honest empty state when the gallery is empty', async () => {
     vi.stubGlobal('fetch', vi.fn(() => okResponse([])));
     render(<PhotosLensPage />);
-    await waitFor(() => expect(screen.getByText(/no photos yet/i)).toBeInTheDocument());
-    // Not an error, not a spinner.
+    await waitFor(() => expect(screen.getByText(/No frame yet/)).toBeInTheDocument());
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Friends/i })).not.toBeInTheDocument();
   });
 
   it('error: shows an honest error + a working Retry that re-fetches', async () => {
@@ -58,7 +59,7 @@ describe('PhotosLensPage — four UX states', () => {
     render(<PhotosLensPage />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/could not load photos/i);
+    expect(alert).toHaveTextContent(/HTTP 500/);
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
     await waitFor(() => expect(screen.getByText('Summit at dawn')).toBeInTheDocument());
@@ -70,13 +71,8 @@ describe('PhotosLensPage — four UX states', () => {
     render(<PhotosLensPage />);
     await waitFor(() => expect(screen.getByText('Summit at dawn')).toBeInTheDocument());
     expect(screen.getByText('Shared vista')).toBeInTheDocument();
-    // The unshared photo offers a Share button; the shared one shows the badge.
-    // Match the share ACTION specifically — /share/i alone also matches the
-    // shared photo's "Delete photo Shared vista" label (its caption contains
-    // "Shared"), now that each control has a descriptive per-photo aria-label.
     expect(screen.getByRole('button', { name: /share photo/i })).toBeInTheDocument();
     expect(screen.getByText(/dtu minted/i)).toBeInTheDocument();
-    // a11y: tabs are toggle buttons with aria-pressed.
-    expect(screen.getByRole('button', { name: /my photos/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: /Friends/i })).not.toBeInTheDocument();
   });
 });

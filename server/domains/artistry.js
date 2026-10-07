@@ -457,6 +457,41 @@ export default function registerArtistryActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // artistryLens is not in the shared snapshot key list. The title of a
+  // study is written to artistry_studies so a process restart can list it.
+  // Callers with no table (unit stubs) keep the in-memory path.
+  function artDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function studiesReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='artistry_studies'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writeStudyRow(ctx, project) {
+    const db = artDb(ctx);
+    if (!studiesReady(db)) return;
+    db.prepare(`
+      INSERT INTO artistry_studies (id, user_id, title, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+    `).run(project.id, artAid(ctx), project.title, project.createdAt, project.updatedAt);
+  }
+  function deleteStudyRow(ctx, id) {
+    const db = artDb(ctx);
+    if (!studiesReady(db) || !id) return;
+    db.prepare("DELETE FROM artistry_studies WHERE id = ? AND user_id = ?").run(String(id), artAid(ctx));
+  }
+  function readStudyRows(ctx) {
+    const db = artDb(ctx);
+    if (!studiesReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, created_at, updated_at FROM artistry_studies WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(artAid(ctx));
+  }
   const artId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const artNow = () => new Date().toISOString();
   const artAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -554,6 +589,14 @@ export default function registerArtistryActions(registerLensAction) {
         updatedAt: artNow(),
       };
       artList(s.projects, uid).unshift(project);
+      try {
+        writeStudyRow(ctx, project);
+      } catch (e) {
+        const arr = s.projects.get(uid) || [];
+        const idx = arr.findIndex((x) => x.id === project.id);
+        if (idx >= 0) arr.splice(idx, 1);
+        return { ok: false, error: "study_not_saved", detail: String(e?.message || e) };
+      }
       saveArtState();
       return { ok: true, result: { project } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -568,6 +611,8 @@ export default function registerArtistryActions(registerLensAction) {
       const list = artList(s.projects, uid);
       const proj = list.find((x) => x.id === p.projectId);
       if (!proj) return { ok: false, error: "project_not_found" };
+      const previousTitle = proj.title;
+      const previousUpdated = proj.updatedAt;
       if (p.title !== undefined) proj.title = artClean(p.title, 160) || proj.title;
       if (p.description !== undefined) proj.description = artClean(p.description, 4000);
       if (p.discipline !== undefined) proj.discipline = artClean(p.discipline, 60) || proj.discipline;
@@ -589,6 +634,13 @@ export default function registerArtistryActions(registerLensAction) {
         })).filter((st) => st.title);
       }
       proj.updatedAt = artNow();
+      try {
+        writeStudyRow(ctx, proj);
+      } catch (e) {
+        proj.title = previousTitle;
+        proj.updatedAt = previousUpdated;
+        return { ok: false, error: "study_not_saved", detail: String(e?.message || e) };
+      }
       saveArtState();
       return { ok: true, result: { project: proj } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -600,8 +652,14 @@ export default function registerArtistryActions(registerLensAction) {
       if (!s) return { ok: false, error: "state_unavailable" };
       const uid = artAid(ctx);
       const list = artList(s.projects, uid);
-      const idx = list.findIndex((x) => x.id === (params || {}).projectId);
+      const projectId = (params || {}).projectId;
+      const idx = list.findIndex((x) => x.id === projectId);
       if (idx === -1) return { ok: false, error: "project_not_found" };
+      try {
+        deleteStudyRow(ctx, projectId);
+      } catch (e) {
+        return { ok: false, error: "study_not_saved", detail: String(e?.message || e) };
+      }
       list.splice(idx, 1);
       saveArtState();
       return { ok: true, result: { deleted: true } };
@@ -617,6 +675,29 @@ export default function registerArtistryActions(registerLensAction) {
       const viewerId = artAid(ctx);
       let list = (s.projects.get(ownerId) || []).slice();
       if (ownerId !== viewerId) list = list.filter((x) => x.published);
+      if (ownerId === viewerId) {
+        const seen = new Set(list.map((proj) => proj.id));
+        for (const row of readStudyRows(ctx)) {
+          if (!row?.id || seen.has(row.id)) continue;
+          if (typeof row.title !== "string" || !row.title.trim()) continue;
+          list.push({
+            id: row.id,
+            userId: ownerId,
+            title: row.title,
+            description: "",
+            discipline: null,
+            tools: [],
+            tags: [],
+            images: [],
+            processSteps: [],
+            coverUrl: "",
+            published: null,
+            views: null,
+            createdAt: row.created_at || "",
+            updatedAt: row.updated_at || "",
+          });
+        }
+      }
       list = list.map((proj) => ({
         ...proj,
         appreciations: (s.appreciations.get(proj.id) || []).length,

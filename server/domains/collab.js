@@ -47,6 +47,10 @@ export default function registerCollabActions(registerLensAction) {
     for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters", "invites"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
+    // rooms: userId -> Array<{ id, title, note, createdAt }>
+    // The opened room is not on the shared snapshot key list. The sqlite
+    // row is the restart read-back. Live rosters stay memory-only.
+    if (!(s.rooms instanceof Map)) s.rooms = new Map();
     return s;
   }
   function saveCollabState() {
@@ -1029,6 +1033,110 @@ export default function registerCollabActions(registerLensAction) {
         : all.filter((i) => i.toId === uid)
       ).sort((a, b) => b.sentAt - a.sentAt);
       return { ok: true, result: { invitations: list, scope, total: list.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  function roomDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function roomsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='collab_rooms'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function roomActor(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "";
+  }
+  function roomList(userId) {
+    const s = getCollabState();
+    if (!s.rooms.has(userId)) s.rooms.set(userId, []);
+    return s.rooms.get(userId);
+  }
+  function writeRoomRow(ctx, room) {
+    const db = roomDb(ctx);
+    if (!roomsReady(db)) return;
+    db.prepare(`
+      INSERT INTO collab_rooms (id, user_id, title, note, created_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET title = excluded.title, note = excluded.note
+    `).run(room.id, roomActor(ctx), room.title, room.note, room.createdAt);
+  }
+  function readRoomRows(ctx) {
+    const db = roomDb(ctx);
+    if (!roomsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, note, created_at FROM collab_rooms WHERE user_id = ? ORDER BY created_at DESC",
+    ).all(roomActor(ctx));
+  }
+
+  registerLensAction("collab", "room-open", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const title = cbClean(params?.title, 160);
+      if (!title) return { ok: false, error: "room title required" };
+      const note = cbClean(params?.note, 8000);
+      if (!note) return { ok: false, error: "room note required" };
+      const room = { id: cbId("rm"), title, note, createdAt: new Date().toISOString() };
+      roomList(userId).unshift(room);
+      try {
+        writeRoomRow(ctx, room);
+      } catch (err) {
+        const arr = roomList(userId);
+        const idx = arr.findIndex((item) => item.id === room.id);
+        if (idx >= 0) arr.splice(idx, 1);
+        return { ok: false, error: "room_not_saved", detail: String(err?.message || err) };
+      }
+      saveCollabState();
+      return { ok: true, result: { roomId: room.id, room: { id: room.id, title: room.title } } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("collab", "room-list", (ctx, _artifact, _params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const rooms = [...roomList(userId)];
+      const seen = new Set(rooms.map((item) => item.id));
+      for (const row of readRoomRows(ctx)) {
+        if (!row?.id || seen.has(row.id)) continue;
+        if (typeof row.title !== "string" || !row.title.trim()) continue;
+        rooms.push({
+          id: row.id,
+          title: row.title.trim(),
+          note: typeof row.note === "string" ? row.note : "",
+          createdAt: row.created_at || "",
+        });
+      }
+      return {
+        ok: true,
+        result: {
+          rooms: rooms.map((item) => ({ id: item.id, title: item.title })),
+          count: rooms.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("collab", "room-detail", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const live = roomList(userId).find((item) => item.id === id);
+      if (live) return { ok: true, result: { room: { id: live.id, title: live.title, note: live.note } } };
+      const row = readRoomRows(ctx).find((item) => item.id === id);
+      if (!row || typeof row.title !== "string" || !row.title.trim()) {
+        return { ok: false, error: "room_not_found" };
+      }
+      return {
+        ok: true,
+        result: { room: { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "" } },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 }

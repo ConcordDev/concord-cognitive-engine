@@ -1,41 +1,39 @@
-// Phase CA4 — confirm narrative-walk lens reads cinematic catalog.
+// Narrative trail reads the real bundled cinematic catalog.
 
-import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import NarrativeWalkLensPage from '@/app/lenses/narrative-walk/page';
-// The north-star frame wires these into the page; stub them for a headless render.
+
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+
+import NarrativeWalkLensPage from '@/app/lenses/narrative-walk/page';
+import { cancelActiveSequence } from '@/lib/world-lens/cinematic-director';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.resolve(__dirname, '..', 'app', 'lenses', 'narrative-walk', 'page.tsx');
 
-describe('Phase CA4 — Narrative walk lens', () => {
+describe('Narrative walk lens — real catalog', () => {
   const source = readFileSync(FILE, 'utf8');
 
-  it('imports the cinematic-director + sequences-registry', () => {
+  beforeEach(() => { localStorage.clear(); });
+  afterEach(() => { cancelActiveSequence(); localStorage.clear(); });
+
+  it('imports the cinematic director and the sequence registry', () => {
     expect(source).toMatch(/cinematic-director/);
     expect(source).toMatch(/cinematic-sequences-registry/);
-  });
-
-  it('calls ensureCinematicsRegistered + listSequences and renders the real authored catalog', async () => {
-    render(<NarrativeWalkLensPage />);
-    expect(screen.getByRole('status')).toBeInTheDocument(); // "Loading the cinematic library…"
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
-    // The real registry ships 11 authored sequences (per this file's own
-    // header comment) — assert real catalog entries rendered, not a stub.
-    const items = screen.getAllByRole('listitem');
-    expect(items.length).toBeGreaterThanOrEqual(10);
-  });
-
-  it('plays a sequence on click via director.playSequence', () => {
     expect(source).toMatch(/playSequence/);
+    expect(source).toMatch(/concordia:narrative-walk:open/);
   });
 
-  it('persists watched set to localStorage', () => {
-    expect(source).toMatch(/localStorage/);
-    expect(source).toMatch(/concordia:narrative-walk:watched/);
+  it('stays closed until Begin, then shows the first authored sequence', async () => {
+    render(<NarrativeWalkLensPage />);
+    expect(screen.getByRole('status')).toHaveTextContent(/Opening the trail/);
+    expect(await screen.findByText('No walk open.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Begin the walk' }));
+    expect(await screen.findByRole('heading', { name: 'Lattice Quest Realised' })).toBeInTheDocument();
+    expect(screen.getByText(/lattice-born quest/)).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem('concordia:narrative-walk:open')).toBe('quest_lattice_realised'));
   });
 });

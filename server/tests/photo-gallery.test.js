@@ -68,6 +68,19 @@ describe("Phase BE1 — photo gallery", async () => {
     assert.equal(dtu.creator_id, "u1");
   });
 
+  it("does not stamp dtu_id when the dtus insert fails", async () => {
+    const bare = new Database(":memory:");
+    upPhotos(bare);
+    const r = await savePhoto(bare, "u1", { worldId: "hub", dataUrl: TINY_PNG, caption: "held" });
+    const s = sharePhoto(bare, r.id);
+    assert.equal(s.ok, false);
+    assert.equal(s.error, "dtu_insert_failed");
+    const row = bare.prepare("SELECT dtu_id, visibility FROM user_photos WHERE id = ?").get(r.id);
+    assert.equal(row.dtu_id, null);
+    assert.equal(row.visibility, "private");
+    assert.equal(listPublicPhotosInWorld(bare, "hub").length, 0);
+  });
+
   it("share is idempotent (re-share returns alreadyShared:true)", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
     sharePhoto(db, r.id);

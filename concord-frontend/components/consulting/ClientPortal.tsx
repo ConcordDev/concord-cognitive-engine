@@ -6,7 +6,8 @@
  * portal-list / portal-respond / portal-delete.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Share2, Loader2, Trash2, Plus, Check, X, Link2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -25,23 +26,26 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function ClientPortal({ engagements }: { engagements: EngagementOption[] }) {
-  const [shares, setShares] = useState<Share[]>([]);
-  const [counts, setCounts] = useState({ awaiting: 0, approved: 0 });
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: '', engagementId: '', client: '', summary: '', link: '' });
   const [error, setError] = useState('');
   const [respondFor, setRespondFor] = useState<Share | null>(null);
   const [respForm, setRespForm] = useState({ decision: 'approved', respondedBy: '', note: '' });
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'portal'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'portal-list', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load client portal');
     const res = r.data?.result as { shares?: Share[]; awaiting?: number; approved?: number } | null;
-    setShares(res?.shares || []);
-    setCounts({ awaiting: res?.awaiting || 0, approved: res?.approved || 0 });
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return {
+        shares: res?.shares || [],
+        counts: { awaiting: res?.awaiting || 0, approved: res?.approved || 0 },
+      };
+    },
+  });
+  const shares = data?.shares || [];
+  const counts = data?.counts || { awaiting: 0, approved: 0 };
 
   async function share() {
     setError('');
@@ -53,7 +57,7 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
     if (!r.data?.ok) { setError(r.data?.error || 'Failed'); return; }
     setForm({ title: '', engagementId: '', client: '', summary: '', link: '' });
     setOpen(false);
-    await refresh();
+    await refetch();
   }
   async function respond() {
     if (!respondFor) return;
@@ -63,14 +67,15 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
     });
     setRespondFor(null);
     setRespForm({ decision: 'approved', respondedBy: '', note: '' });
-    await refresh();
+    await refetch();
   }
   async function del(id: string) {
     await lensRun('consulting', 'portal-delete', { id });
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load client portal'}</div>;
 
   return (
     <div className="space-y-3">

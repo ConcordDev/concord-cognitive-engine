@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * CommsLog — secure comms message board, channel-filtered.
+ * CommsLog — classification-tagged communications record, channel-filtered.
  * Backed by defense.comms-post / comms-ack / comms-delete /
  * comms-log macros.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Trash2, Loader2, Radio, Check, Lock, Send } from 'lucide-react';
+import { Trash2, Loader2, Radio, Check, Tag, Send } from 'lucide-react';
 
 interface CommsMessage {
   id: string;
@@ -67,18 +67,23 @@ export function CommsLog() {
   const refresh = useCallback(async (filter: string | null) => {
     setLoading(true);
     setError(null);
-    const params: Record<string, unknown> = {};
-    if (filter) params.channel = filter;
-    const r = await lensRun<CommsLogResult>('defense', 'comms-log', params);
-    if (r.data?.ok && r.data.result) setData(r.data.result);
-    else setError(r.data?.error || 'Failed to load comms log');
-    setLoading(false);
+    try {
+      const params: Record<string, unknown> = {};
+      if (filter) params.channel = filter;
+      const r = await lensRun<CommsLogResult>('defense', 'comms-log', params);
+      if (r.data?.ok && r.data.result) setData(r.data.result);
+      else setError(r.data?.error || 'Failed to load communications log');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to load communications log');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    refresh(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const frame = requestAnimationFrame(() => { void refresh(null); });
+    return () => cancelAnimationFrame(frame);
+  }, [refresh]);
 
   const selectChannel = useCallback((c: string | null) => {
     setChannelFilter(c);
@@ -132,7 +137,10 @@ export function CommsLog() {
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-purple-400" />
-          <h3 className="text-sm font-semibold text-white">Secure Comms Log</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Communications Log</h3>
+            <p className="text-[10px] text-zinc-500">Classification labels are records, not encryption or clearance enforcement.</p>
+          </div>
         </div>
         {data && (
           <div className="flex gap-3 text-[11px]">
@@ -194,7 +202,7 @@ export function CommsLog() {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[10px] text-purple-400 shrink-0">#{m.channel}</span>
                   <span className={`text-[10px] font-bold uppercase shrink-0 flex items-center gap-0.5 ${CLASS_COLOR[m.classification].split(' ')[0]}`}>
-                    <Lock className="w-2.5 h-2.5" />
+                    <Tag className="w-2.5 h-2.5" />
                     {m.classification}
                   </span>
                   <span className={`text-[10px] uppercase shrink-0 ${PREC_COLOR[m.precedence]}`}>
