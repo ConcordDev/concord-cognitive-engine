@@ -88,8 +88,11 @@ async function readDesk(): Promise<{ alerts: AlertRow[]; frontId: string | null 
   let frontId: string | null = null;
   if (front.alert && typeof front.alert === 'object') {
     const face = front.alert as { id?: unknown; title?: unknown; status?: unknown };
-    if (typeof face.id === 'string' && typeof face.title === 'string') {
-      const match = alerts.find((item) => item.id === face.id && item.title === face.title.trim() && item.status === 'open');
+    const faceId = face.id;
+    const faceTitle = face.title;
+    if (typeof faceId === 'string' && typeof faceTitle === 'string') {
+      const title = faceTitle.trim();
+      const match = alerts.find((item) => item.id === faceId && item.title === title && item.status === 'open');
       if (match) frontId = match.id;
     }
   }
