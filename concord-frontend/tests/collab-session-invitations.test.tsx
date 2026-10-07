@@ -162,7 +162,7 @@ vi.mock('lucide-react', async (importOriginal) => {
   return new Proxy(actual, { get: (target, prop: string) => (prop in target ? make(prop) : (target as Record<string, unknown>)[prop]) });
 });
 
-import CollabLensPage from '@/app/lenses/collab/page';
+import { CollabHub as CollabLensPage } from '@/components/collab/CollabHub';
 import { lensRun } from '@/lib/api/client';
 
 function makeInvite(overrides: Partial<Record<string, unknown>> = {}) {
