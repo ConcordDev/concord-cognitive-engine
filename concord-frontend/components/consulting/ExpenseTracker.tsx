@@ -6,7 +6,8 @@
  * consulting.expense-create / expense-list / expense-update / expense-delete.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Receipt, Loader2, Trash2, Plus, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -25,20 +26,23 @@ const STATUS_COLOR: Record<string, string> = {
 const NEXT_STATUS = ['pending', 'approved', 'reimbursed'];
 
 export function ExpenseTracker({ engagements }: { engagements: EngagementOption[] }) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totals, setTotals] = useState({ total: 0, reimbursable: 0, approved: 0 });
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ engagementId: '', description: '', category: '', amount: '', reimbursable: true });
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'expenses'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'expense-list', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load expenses');
     const res = r.data?.result as { expenses?: Expense[]; total?: number; reimbursable?: number; approved?: number } | null;
-    setExpenses(res?.expenses || []);
-    setTotals({ total: res?.total || 0, reimbursable: res?.reimbursable || 0, approved: res?.approved || 0 });
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return {
+        expenses: res?.expenses || [],
+        totals: { total: res?.total || 0, reimbursable: res?.reimbursable || 0, approved: res?.approved || 0 },
+      };
+    },
+  });
+  const expenses = data?.expenses || [];
+  const totals = data?.totals || { total: 0, reimbursable: 0, approved: 0 };
 
   async function add() {
     setError('');
@@ -51,24 +55,25 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
     });
     if (!r.data?.ok) { setError(r.data?.error || 'Failed to add expense'); return; }
     setForm({ engagementId: '', description: '', category: '', amount: '', reimbursable: true });
-    await refresh();
+    await refetch();
   }
   async function cycleStatus(exp: Expense) {
     const idx = NEXT_STATUS.indexOf(exp.status);
     const next = idx >= 0 && idx < NEXT_STATUS.length - 1 ? NEXT_STATUS[idx + 1] : 'approved';
     await lensRun('consulting', 'expense-update', { id: exp.id, status: next });
-    await refresh();
+    await refetch();
   }
   async function reject(exp: Expense) {
     await lensRun('consulting', 'expense-update', { id: exp.id, status: 'rejected' });
-    await refresh();
+    await refetch();
   }
   async function del(id: string) {
     await lensRun('consulting', 'expense-delete', { id });
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load expenses'}</div>;
 
   return (
     <div className="space-y-3">

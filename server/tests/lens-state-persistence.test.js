@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 51);
+    assert.equal(LENS_STATE_KEYS.length, 52);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -95,6 +95,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
     assert.ok(LENS_STATE_KEYS.includes("defenseLens"));
     assert.ok(LENS_STATE_KEYS.includes("debugLens"));
+    assert.ok(LENS_STATE_KEYS.includes("consultingLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -802,6 +803,39 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.debugLens.alertRules.get("user_a")[0].threshold, 80);
     assert.equal(STATE.debugLens.metrics.get("user_a")[0].value, 42);
     assert.equal(STATE.debugLens.releases.get("user_a")[0].version, "v1.2.3");
+  });
+
+  it("roundtrips STATE.consultingLens (practice operations and client approvals)", () => {
+    STATE.consultingLens = {
+      engagements: new Map([["user_a", [{
+        id: "eng_1",
+        name: "Operating model",
+        client: "Acme",
+        rate: 250,
+        budgetHours: 80,
+        status: "active",
+        timeEntries: [{ id: "te_1", hours: 2.5, note: "Workshop", date: "2026-10-07", invoiceId: "inv_1" }],
+      }]]]),
+      invoices: new Map([["user_a", [{ id: "inv_1", number: "INV-0001", total: 625, status: "sent" }]]]),
+      proposals: new Map([["user_a", [{ id: "prop_1", title: "Operating model", sections: [], status: "draft" }]]]),
+      consultants: new Map([["user_a", [{ id: "con_1", name: "Ari", weeklyCapacity: 40, costRate: 100 }]]]),
+      allocations: new Map([["user_a", [{ id: "alloc_1", consultantId: "con_1", engagementId: "eng_1", week: "2026-W41", hours: 20 }]]]),
+      expenses: new Map([["user_a", [{ id: "exp_1", engagementId: "eng_1", amount: 42, status: "approved" }]]]),
+      timers: new Map([["user_a", { engagementId: "eng_1", startedAt: 1234 }]]),
+      retainers: new Map([["user_a", [{ id: "ret_1", client: "Acme", monthlyAmount: 5000, periods: [] }]]]),
+      shares: new Map([["user_a", [{ id: "share_1", title: "Readout", approvalStatus: "approved" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["engagements", "invoices", "proposals", "consultants", "allocations", "expenses", "timers", "retainers", "shares"]) {
+      assert.ok(STATE.consultingLens[key] instanceof Map);
+    }
+    assert.equal(STATE.consultingLens.engagements.get("user_a")[0].timeEntries[0].invoiceId, "inv_1");
+    assert.equal(STATE.consultingLens.invoices.get("user_a")[0].total, 625);
+    assert.equal(STATE.consultingLens.allocations.get("user_a")[0].week, "2026-W41");
+    assert.equal(STATE.consultingLens.timers.get("user_a").startedAt, 1234);
+    assert.equal(STATE.consultingLens.shares.get("user_a")[0].approvalStatus, "approved");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

@@ -6,7 +6,8 @@
  * timer-stop / timer-cancel.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Play, Square, X, Timer as TimerIcon, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -22,28 +23,26 @@ function fmt(elapsedHours: number): string {
 }
 
 export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOption[]; onLogged: () => void }) {
-  const [timer, setTimer] = useState<RunningTimer | null>(null);
-  const [loading, setLoading] = useState(true);
   const [engId, setEngId] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
-  const [, setTick] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
-  const refresh = useCallback(async () => {
+  const { data: timer = null, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'timer'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'timer-status', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load timer');
     const res = r.data?.result as { running?: boolean; timer?: RunningTimer } | null;
-    setTimer(res?.running && res.timer ? res.timer : null);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return res?.running && res.timer ? res.timer : null;
+    },
+  });
 
   // 1s display tick while a timer is running.
   useEffect(() => {
-    if (timer) {
-      intervalRef.current = setInterval(() => setTick(t => t + 1), 1000);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    if (!timer) return undefined;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
   }, [timer]);
 
   async function start() {
@@ -52,21 +51,23 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
     const r = await lensRun('consulting', 'timer-start', { engagementId: engId, note: note.trim() });
     if (!r.data?.ok) { setError(r.data?.error || 'Could not start timer'); return; }
     setNote('');
-    await refresh();
+    setNow(Date.now());
+    await refetch();
   }
   async function stop() {
     const r = await lensRun('consulting', 'timer-stop', {});
     if (r.data?.ok) { onLogged(); }
-    await refresh();
+    await refetch();
   }
   async function cancel() {
     await lensRun('consulting', 'timer-cancel', {});
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load timer'}</div>;
 
-  const elapsedHours = timer ? (Date.now() - timer.startedAt) / 3600000 : 0;
+  const elapsedHours = timer ? (now - timer.startedAt) / 3600000 : 0;
 
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">

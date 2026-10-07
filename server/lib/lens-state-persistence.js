@@ -122,6 +122,10 @@ export const LENS_STATE_KEYS = Object.freeze([
   // 50 -> 51: "debugLens" so issue records, measured traces, metric
   // samples, alert rules, and release records survive a restart.
   "debugLens",
+  // 51 -> 52: "consultingLens" so engagements, time entries, invoices,
+  // proposals, staffing, expenses, timers, retainers, and portal approvals
+  // survive a restart.
+  "consultingLens",
 ]);
 
 function serializeValue(v) {

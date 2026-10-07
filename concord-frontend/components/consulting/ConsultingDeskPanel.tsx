@@ -14,7 +14,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Lightbulb, Briefcase, FileText, Users, Clock, DollarSign, Plus, Search, X,
-  Trash2, BarChart3, Target, TrendingUp, ArrowRight, BookOpen, Star, Zap,
+  Trash2, Target, TrendingUp, ArrowRight, BookOpen, Star, Zap,
 } from 'lucide-react';
 import {
   type ModeTab, type Status, type ConsultingArtifact,
@@ -334,7 +334,7 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
       {mode === 'engagements' && (
         <p className={cn(ds.textMuted, 'text-xs')}>
           Freeform engagement briefs, scope notes, and fee terms — for live engagement status
-          and time tracking, see the Engagement Tracker tab.
+          and time tracking, open Engagements in the practice rail.
         </p>
       )}
       <div className="flex items-center gap-2">

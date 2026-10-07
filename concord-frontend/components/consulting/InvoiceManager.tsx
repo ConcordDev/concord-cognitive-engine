@@ -7,7 +7,8 @@
  * / invoice-delete / invoice-export.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2, Trash2, Check, Download, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -26,9 +27,6 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function InvoiceManager({ engagements }: { engagements: EngagementOption[] }) {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [totals, setTotals] = useState({ outstanding: 0, overdue: 0, collected: 0 });
-  const [loading, setLoading] = useState(true);
   const [engId, setEngId] = useState('');
   const [taxRate, setTaxRate] = useState('');
   const [dueInDays, setDueInDays] = useState('');
@@ -36,14 +34,20 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
   const [error, setError] = useState('');
   const [exportDoc, setExportDoc] = useState<{ number: string; text: string } | null>(null);
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({
+    queryKey: ['consulting', 'invoices'],
+    queryFn: async () => {
     const r = await lensRun('consulting', 'invoice-list', {});
+      if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load invoices');
     const res = r.data?.result as { invoices?: Invoice[]; outstanding?: number; overdue?: number; collected?: number } | null;
-    setInvoices(res?.invoices || []);
-    setTotals({ outstanding: res?.outstanding || 0, overdue: res?.overdue || 0, collected: res?.collected || 0 });
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      return {
+        invoices: res?.invoices || [],
+        totals: { outstanding: res?.outstanding || 0, overdue: res?.overdue || 0, collected: res?.collected || 0 },
+      };
+    },
+  });
+  const invoices = data?.invoices || [];
+  const totals = data?.totals || { outstanding: 0, overdue: 0, collected: 0 };
 
   async function generate() {
     if (!engId) { setError('Pick an engagement'); return; }
@@ -56,15 +60,15 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
     setBusy(false);
     if (!r.data?.ok) { setError(r.data?.error || 'No unbilled time to invoice'); return; }
     setEngId(''); setTaxRate(''); setDueInDays('');
-    await refresh();
+    await refetch();
   }
   async function markPaid(id: string) {
     await lensRun('consulting', 'invoice-mark-paid', { id });
-    await refresh();
+    await refetch();
   }
   async function del(id: string) {
     await lensRun('consulting', 'invoice-delete', { id });
-    await refresh();
+    await refetch();
   }
   async function exportInvoice(inv: Invoice) {
     const r = await lensRun('consulting', 'invoice-export', { id: inv.id });
@@ -81,7 +85,8 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load invoices'}</div>;
 
   return (
     <div className="space-y-3">

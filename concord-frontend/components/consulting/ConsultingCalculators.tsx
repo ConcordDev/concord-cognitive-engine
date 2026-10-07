@@ -13,9 +13,9 @@ import { useState } from 'react';
 import { Calculator, Gauge, ClipboardCheck, HeartPulse, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-type Tool = 'scope' | 'utilization' | 'proposal' | 'health';
+export type ConsultingCalculatorTool = 'scope' | 'utilization' | 'proposal' | 'health';
 
-const TOOLS: { id: Tool; label: string; icon: typeof Calculator }[] = [
+const TOOLS: { id: ConsultingCalculatorTool; label: string; icon: typeof Calculator }[] = [
   { id: 'scope', label: 'Fee & Scope', icon: Calculator },
   { id: 'utilization', label: 'Utilization', icon: Gauge },
   { id: 'proposal', label: 'Proposal Readiness', icon: ClipboardCheck },
@@ -260,15 +260,22 @@ function ClientHealthCalculator() {
   );
 }
 
-export function ConsultingCalculators() {
-  const [tool, setTool] = useState<Tool>('scope');
+export function ConsultingCalculators({
+  tool: controlledTool,
+  showNav = true,
+}: {
+  tool?: ConsultingCalculatorTool;
+  showNav?: boolean;
+} = {}) {
+  const [localTool, setLocalTool] = useState<ConsultingCalculatorTool>('scope');
+  const tool = controlledTool ?? localTool;
   return (
     <div className="space-y-3">
-      <nav className="flex flex-wrap gap-1.5">
+      {showNav && <nav className="flex flex-wrap gap-1.5">
         {TOOLS.map(t => {
           const Icon = t.icon;
           return (
-            <button key={t.id} onClick={() => setTool(t.id)}
+            <button key={t.id} onClick={() => setLocalTool(t.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 tool === t.id ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
               }`}>
@@ -276,7 +283,7 @@ export function ConsultingCalculators() {
             </button>
           );
         })}
-      </nav>
+      </nav>}
       {tool === 'scope' && <ScopeCalculator />}
       {tool === 'utilization' && <UtilizationCalculator />}
       {tool === 'proposal' && <ProposalReadinessCalculator />}

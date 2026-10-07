@@ -7,7 +7,8 @@
  * proposal-list / proposal-update-section / proposal-sign / proposal-delete.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { FileSignature, Loader2, Trash2, Plus, PenTool } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -20,9 +21,6 @@ interface Proposal {
 interface TemplateSection { key: string; prompt: string }
 
 export function ProposalBuilder() {
-  const [templates, setTemplates] = useState<TemplateSection[]>([]);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [client, setClient] = useState('');
@@ -32,16 +30,23 @@ export function ProposalBuilder() {
   const [signFor, setSignFor] = useState<string | null>(null);
   const [signerName, setSignerName] = useState('');
 
-  const refresh = useCallback(async () => {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['consulting', 'proposals'],
+    queryFn: async () => {
     const [t, p] = await Promise.all([
       lensRun('consulting', 'proposal-templates', {}),
       lensRun('consulting', 'proposal-list', {}),
     ]);
-    setTemplates(((t.data?.result as { sections?: TemplateSection[] } | null)?.sections) || []);
-    setProposals(((p.data?.result as { proposals?: Proposal[] } | null)?.proposals) || []);
-    setLoading(false);
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+      if (!t.data?.ok) throw new Error(t.data?.error || 'Could not load proposal templates');
+      if (!p.data?.ok) throw new Error(p.data?.error || 'Could not load proposals');
+      return {
+        templates: ((t.data.result as { sections?: TemplateSection[] } | null)?.sections) || [],
+        proposals: ((p.data.result as { proposals?: Proposal[] } | null)?.proposals) || [],
+      };
+    },
+  });
+  const templates = data?.templates || [];
+  const proposals = data?.proposals || [];
 
   function openCreate() {
     setTitle(''); setClient(''); setValue('');
@@ -56,24 +61,25 @@ export function ProposalBuilder() {
       sections: picked,
     });
     setOpen(false);
-    await refresh();
+    await refetch();
   }
   async function del(id: string) {
     await lensRun('consulting', 'proposal-delete', { id });
-    await refresh();
+    await refetch();
   }
   async function saveSection(id: string, sectionKey: string, content: string) {
     await lensRun('consulting', 'proposal-update-section', { id, sectionKey, content });
-    await refresh();
+    await refetch();
   }
   async function sign() {
     if (!signFor || !signerName.trim()) return;
     await lensRun('consulting', 'proposal-sign', { id: signFor, signerName: signerName.trim() });
     setSignFor(null); setSignerName('');
-    await refresh();
+    await refetch();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (isError) return <div role="alert" className="text-sm text-rose-300">{error instanceof Error ? error.message : 'Could not load proposals'}</div>;
 
   return (
     <div className="space-y-3">
