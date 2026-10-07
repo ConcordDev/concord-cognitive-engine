@@ -5,6 +5,10 @@
 > snapshot). This doc explains the **why** — the differentiation thesis — and is
 > written to survive an adversarial read. Every claim points at a file or a command;
 > nothing here asks for trust it hasn't earned.
+>
+> *Counts refreshed 2026-10-07 against `main` @ `973e214` (lenses, domains, macros,
+> domain-file sizes, depth tests). Rows that need the cartographer or `count-loc`
+> (tables, LOC) were not re-run.*
 
 ---
 
@@ -20,13 +24,13 @@ plausible-but-unchecked output, the thing that's scarce is the receipt.
 
 ## What it actually is (resist the "do-everything" misread)
 
-On the surface Concord looks like a do-everything platform: 260 lens "apps," 366
+On the surface Concord looks like a do-everything platform: 267 lens "apps," 441
 backend domains, a creator economy, a 3D civilization sim, a mesh network. The misread
 is "broad therefore shallow." The reality is the inverse — it's **one substrate wearing
 many faces**:
 
 - A single atomic unit (the **DTU** — a 4-layer, self-compressing knowledge unit)
-- A single dispatch spine (**~9,600 macros** behind one `/api/lens/run`)
+- A single dispatch spine (**~9,700 macros** behind one `/api/lens/run`)
 - A single economy (**citation→royalty cascade**) welded to the knowledge graph
 - A single set of brains (**5-model router**, plus a custom-tuned conscious model)
 
@@ -45,14 +49,14 @@ white space (grounded in `docs/SCIFI_FEASIBILITY_MAP.md §2`):
 | Vector | Who owns it | Concord |
 |---|---|---|
 | **Grounded / verified** | Perplexity | ✅ `reason.verify`, citation floors, drift monitor |
-| **General capability** | ChatGPT | ✅ 5-brain router + ~9,600 macros |
+| **General capability** | ChatGPT | ✅ 5-brain router + ~9,700 macros |
 | **Private / local / no-harvest** | Ollama | ✅ local 5-brain, consent gates, `personal_dtus_never_leak` |
 | **Controllable memory** | Notion | ✅ DTU substrate, scope/consent gates |
 | **Owned / no-subscription** | (grievance, unowned) | ✅ free + local + creator take-rate |
 
 The intersection is a real moat — no incumbent ships all five vectors at once, and that
 combination × depth is the product. But it is **no longer the only claim.** Post-WAVE4,
-each of the 260 lenses is built and judged to stand alone against its own category leader
+each of the 267 lenses is built and judged to stand alone against its own category leader
 (CLAUDE.md's per-lens-category-leadership invariant — "would this hold up shipped alone
 against Bloomberg Terminal / Linear / Ableton / EEGLAB"), and many match or beat it on
 capability. So Concord competes on individual surfaces *and* on the intersection — the
@@ -182,11 +186,11 @@ A pitch that hides these gets found out; one that names them gets believed:
 ## The receipts (why you don't have to trust any of this)
 
 Concord is unusually falsifiable for a project this size — by design. The most common
-skeptical read of any AI-heavy build is "it's wide and paper-thin — 420 domain files that
+skeptical read of any AI-heavy build is "it's wide and paper-thin — 441 domain files that
 just do enough to pass one test, wrapped in a pretty template." That's a specific, checkable
-claim, so check it instead of arguing about it: `server/domains/*.js` runs a median of 616
-lines and a p90 of 1,532 (`math.js` alone is 1,747 — a real symbolic CAS, not a stub), and
-`server/tests/depth/` holds 262 files totalling 35,793 combined test/assertion lines that
+claim, so check it instead of arguing about it: `server/domains/*.js` runs a median of 557
+lines and a p90 of about 1,500 (`math.js` alone is 1,747 — a real symbolic CAS, not a stub), and
+`server/tests/depth/` holds 297 files totalling 105,415 lines of tests that
 assert *computed values*, not shape. A representative one, `welding-behavior.test.js`:
 
 ```js
@@ -198,12 +202,12 @@ assert.match(r.result.recommended.rod, /^E\d/, "AWS electrode designation (E60xx
 That's real fillet-weld geometry and a real AWS electrode-designation check, run against
 the live macro, not a `res.status === 200` shell. A file that size with that much dedicated
 behavioral test coverage doesn't happen by "AI copy-pasting a clean template" — a template
-stamped 266 times would be uniform; the actual size distribution (14 to 4,053 lines) isn't.
+stamped 266 times would be uniform; the actual size distribution (14 to 4,081 lines) isn't.
 
 | Claim | Verify with |
 |---|---|
 | Scale (~2.8M LOC, one dev) | `npm run count-loc` |
-| Surface (266 lenses, 420 domains, 765 tables…) | `cd server && npm run cartograph:static` |
+| Surface (267 lenses, 441 domains, 765 tables…) | `cd server && npm run cartograph:static` |
 | Wiring (every lens reaches a backend) | `node scripts/verify-lens-backends.mjs` |
 | Domain-file depth distribution | `wc -l server/domains/*.js` |
 | Behavioral-test assertion count | `wc -l server/tests/depth/*.test.js` |

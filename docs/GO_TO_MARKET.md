@@ -7,6 +7,9 @@ ship, to whom, through which channels — and what has to be true first.*
 > **Honesty rule.** Every readiness claim below was checked against the live system on 2026-09-27
 > (a new-user QA account driving the same HTTP calls the site makes). Where something is untested or
 > a hypothesis, it says so. Don't cite a market number here that isn't in the research doc's sources.
+>
+> **Current repo counts** (re-measured 2026-10-07): see the root [`README.md`](../README.md),
+> "How it's built" and "Where we are". The readiness table below is the 2026-09-27 snapshot.
 
 ---
 
@@ -76,6 +79,12 @@ each gate for that audience is green.
 | Onboarding doesn't force Concordia on signup | all | 🔴 Open | Owner-noted: defer character creation to first World-lens open |
 | Lens wiring | all | 🟡 Regressed | Verifier: 254 wired / 12 no-backend-call (docs said 262/4) — audit after the Sep 10 de-stack |
 | Hosting off a single 16GB Mac | all | 🔴 Open | Swapping measured at 7.3/8 GB under load; plan: [`OFF_MAC_MIGRATION_BLUEPRINT.md`](OFF_MAC_MIGRATION_BLUEPRINT.md) |
+
+**Update 2026-10-07 (engineering wedge):** the site is up (checked 2026-10-07). Four ConKay PRs
+are open, and each one's own tests pass: the beam V&V corpus (#1015: 12 closed-form cases gated at 1e-6
+relative error, 14 pass / 0 fail), `analysisReceipt` on beam studies (#1016: solver id, input
+hash, units, assumptions, out-of-scope list), the ConKay engineering workspace (#1014) and the
+analytical Euler column check (#1017).
 
 **Rule of thumb:** audience 1 can launch when the A40 is back, "verify" is pitched precisely, and a
 chat-driven engineering check passes as a new user. Audience 3 needs a fresh build and onboarding fix.
