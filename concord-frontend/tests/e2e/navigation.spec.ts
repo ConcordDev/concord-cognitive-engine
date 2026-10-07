@@ -35,14 +35,14 @@ test.describe('Landing Page', () => {
     expect(response?.status()).toBeLessThan(500);
     await page.waitForLoadState('domcontentloaded').catch(() => {});
 
-    // SSR hero section: "Your Personal Cognitive Engine"
+    // SSR hero section: "AI that shows its receipts"
     const h1 = page.locator('h1');
     if (await h1.count() > 0) {
       await expect(h1.first()).toBeVisible({ timeout: 10_000 }).catch(() => {});
     }
-    const cognitiveEngine = page.locator('h1:has-text("Cognitive Engine"), p:has-text("cognitive engine")').first();
-    if (await cognitiveEngine.count() > 0) {
-      await expect(cognitiveEngine).toBeVisible({ timeout: 10_000 }).catch(() => {});
+    const receipts = page.locator('h1:has-text("its receipts")').first();
+    if (await receipts.count() > 0) {
+      await expect(receipts).toBeVisible({ timeout: 10_000 }).catch(() => {});
     }
   });
 

@@ -66,20 +66,20 @@ const sourceSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Concord OS — Sovereign Cognitive Engine',
+    default: 'Concord — AI that shows its receipts',
     template: '%s | Concord OS',
   },
   description:
-    'A sovereign knowledge operating system. No ads. No subscriptions. No data extraction. Free. 175+ domain lenses, local-first AI. Your thoughts never leave your control.',
+    'Concord gives engineers AI answers they can check: a real solver, the textbook hand check beside it, and a reproducible record of the inputs and assumptions.',
   keywords: [
-    'cognitive engine',
-    'knowledge OS',
-    'sovereign AI',
-    'DTU',
-    'lattice',
-    'local-first',
+    'AI that shows its receipts',
+    'verifiable AI',
+    'engineering calculations',
+    'beam deflection',
+    'hand check',
+    'FEA',
+    'reproducible results',
     'concord',
-    'cognitive operating system',
   ],
   authors: [{ name: 'Concord OS' }],
   creator: 'Concord OS',
@@ -90,23 +90,23 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'Concord OS',
-    title: 'Concord OS — Sovereign Cognitive Engine',
+    title: 'Concord — AI that shows its receipts',
     description:
-      "No ads. Ever. No subscriptions. No data extraction. Free. A sovereign cognitive engine with 175+ domain lenses and local-first AI. Not a promise — it's architecture.",
+      'Concord gives engineers AI answers they can check: a real solver, the textbook hand check beside it, and a reproducible record of the inputs and assumptions.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Concord OS — Your Personal Cognitive Engine',
+        alt: 'Concord — AI that shows its receipts',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Concord OS — Sovereign Cognitive Engine',
+    title: 'Concord — AI that shows its receipts',
     description:
-      'No ads. No subscriptions. No data extraction. Free. A sovereign cognitive engine — your thoughts never leave your control.',
+      'Concord gives engineers AI answers they can check: a real solver, the textbook hand check beside it, and a reproducible record of the inputs and assumptions.',
     images: ['/og-image.png'],
   },
   robots: {
