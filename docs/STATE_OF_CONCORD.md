@@ -2,6 +2,13 @@
 
 # State of Concord — verified snapshot (2026-08-01)
 
+> **2026-10-07 refresh (`main` @ `973e214`):** the §2 rows that carry a shell
+> command (lens directories, domain files, migrations, route files, lib modules,
+> `server.js`, heartbeats), the graded macro total and the §3 macro-depth table were
+> re-measured. Rows that need the verifier or cartographer (lens wiring, macro
+> domains, route prefixes, DB tables, socket events) and the §1 `count-loc` totals
+> were not re-run and keep their earlier values.
+
 > Every number here is reproduced from a command, not memory. Re-run the command
 > in the caption to verify. This doc supersedes the stale counts scattered in
 > CLAUDE.md and AUDIT_INVENTORY.md. **This is itself a re-refresh** — the prior
@@ -36,29 +43,29 @@ Still reclassifies 10 data-modules (172k lines, e.g. the deprecated 145k-line
 | Macro domains | **547** | verifier `macroDomains` |
 | Route prefixes | **2,983** | verifier `routePrefixes` |
 | Backend domain files | **441** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **451 files** (highest `452`) | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Numbered migrations | **452 files** (highest `453`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **136** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **800** top (`ls server/lib/*.js \| wc -l`) · **1,341** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **88,450 lines** | `wc -l server/server.js` |
+| Lib modules | **810** top (`ls server/lib/*.js \| wc -l`) · **1,351** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **88,857 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **765** | `cd server && npm run cartograph:static` |
 | Socket events (cartographer) | **337** | cartographer |
-| Heartbeats (registered) | **140** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
-| Macros (graded) | **9,495 pairs** | `npm run grade-macros` |
+| Heartbeats (registered, excluding tests) | **146** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ --exclude-dir=tests --exclude-dir=node_modules --exclude=*.test.js \| sort -u \| wc -l` |
+| Macros (graded) | **9,684 pairs** | `npm run grade-macros` |
 
 ## 3. Macro depth — read BOTH numbers (reproduce: `npm run grade-macros[:honest]`)
 
 | Mode | Score | Distribution |
 |---|---|---|
-| **Default (generous)** | **0.999** | stub 1 (0.0%) · functional 13 (0.1%) · utility 5,161 (54.4%) · production 4,320 (45.5%) |
-| **Honest floor** | **0.696** | stub 458 (4.8%) · functional 1,457 (15.3%) · utility 3,897 (41.0%) · production 3,683 (38.8%) |
+| **Default (generous)** | **0.999** | stub 1 (0.0%) · functional 18 (0.2%) · utility 5,284 (54.6%) · production 4,381 (45.2%) |
+| **Honest floor** | **0.69** | stub 504 (5.2%) · functional 1,540 (15.9%) · utility 3,936 (40.6%) · production 3,704 (38.2%) |
 
-**These measure TEST-coverage depth, not feature depth.** The honest 0.696 is a
+**These measure TEST-coverage depth, not feature depth.** The honest 0.69 is a
 *behavioral-test-coverage* score that taxes correctly-small `utility` code at 0.6
 **by design** — it is NOT "30% untested" and NOT a feature-quality grade. Feature
 depth (destinations built deep by composition; the novel primitives in §5) is a
-**different axis the grader doesn't measure.** Cite 0.696 for "how much is
+**different axis the grader doesn't measure.** Cite 0.69 for "how much is
 behaviorally tested," cite 0.999 / the novelty inventory for "is it real + deep."
-Note the total-macro-pair count here (9,495, the grader's own scan of registered
+Note the total-macro-pair count here (9,684, the grader's own scan of registered
 `(domain, macro)` pairs) differs from CLAUDE.md's 10,399 (a broader direct-grep
 across `register`/`registerLensAction` call sites, including some the grader's
 narrower scan doesn't attribute) — both are current and reproducible; they
