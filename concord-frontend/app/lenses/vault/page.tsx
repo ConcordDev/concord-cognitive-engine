@@ -1,364 +1,259 @@
 'use client';
 
 /**
- * /lenses/vault — TheVault.
+ * TheVault — one cabinet.
  *
- * A curated archive: open submission, closed admission. This page is the
- * PUBLIC surface — the wall you walk into and the cabinet of admitted records
- * standing on it. Submission and curation are separate surfaces; nothing here
- * can admit, decline, or reveal a decline, and nothing here needs to, because
- * the two public reads it uses (`vault.browse`, `vault.record`) hard-code
- * `status = 'admitted'` in the backend and accept no argument that could widen
- * them (`server/domains/vault.js`, invariant 3).
- *
- * ── The light island ──────────────────────────────────────────────────────
- * The platform shell is dark; museums, archives and paper are not. `LensShell`
- * is explicitly headless — no header, background, padding or min-height — so
- * this lens legitimately owns its entire visible surface, and it takes it: the
- * wall is warm cotton paper from the topbar down. The seam against the dark
- * chrome is deliberate rather than incidental — a brass hairline along the top
- * edge, so the island reads as a framed room you have stepped into rather than
- * as a light panel that failed to inherit the theme. This divergence is a
- * recorded exemption (`app/globals.css`, THEVAULT banner); it is not an
- * oversight for a later theming pass to "fix".
- *
- * ── Honest by construction ────────────────────────────────────────────────
- * Every value rendered on this page comes from a real macro. There is no seed
- * data, no sample record, no example creator, no invented count, and no
- * fallback roster — the archive opens empty and says so. The one substantial
- * body of authored copy (the six-axis rubric on the empty state) describes how
- * decisions are made; it stands in for no record.
- *
- * ── No vanity metrics ─────────────────────────────────────────────────────
- * Nothing here counts views, likes, plays or followers, and nothing is ordered
- * by popularity — the backend's order is `admitted_at DESC`, archival, and it
- * is used as given. The only numbers on the page are dates, identifiers, and
- * the drawer's position in the cabinet, which is a statement of PLACE (the
- * brief's "no infinite feed" rule) rather than a measure of attention.
+ * Left: vault.browse (admitted only) plus the signed-in user's
+ * vault.my_submissions. Empty copy is "Nothing unlocked."
+ * Right: "Nothing selected." until a row from that read is chosen.
+ * Open the vault calls vault.submit, then shows the title only after
+ * my_submissions contains that id and the same title. Status is the
+ * word the row came back with. This screen does not admit.
  */
 
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { cn } from '@/lib/utils';
-import { vault } from '@/lib/vault/tokens';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useAuth } from '@/hooks/useAuth';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { lensRun } from '@/lib/api/client';
 
-import { CuratorRoster } from '@/components/vault/CuratorRoster';
-import { VaultCabinet, VaultCabinetError, VaultCabinetSkeleton } from '@/components/vault/VaultCabinet';
-import { VaultEmptyState } from '@/components/vault/VaultEmptyState';
-import { DISCIPLINE_KINDS, formatDiscipline } from '@/components/vault/format';
-import type {
-  VaultCabinetEntry,
-  VaultCuratorShape,
-  VaultLoadState,
-  VaultRecordShape,
-} from '@/components/vault/types';
+interface Work {
+  id: string;
+  title: string;
+  status: string;
+}
 
-/** Rendered beside the cabinet so the scoped commands are discoverable, not hidden. */
-const KEY_HINTS = [
-  { keys: 'J', label: 'Next drawer' },
-  { keys: 'K', label: 'Previous drawer' },
-  { keys: 'O', label: 'Open / close' },
-  { keys: 'Esc', label: 'Close' },
-] as const;
+type Phase = 'loading' | 'ready' | 'error';
 
-function VaultLens() {
-  const searchParams = useSearchParams();
+interface WorkRow {
+  id?: string;
+  title?: string;
+  status?: string;
+}
 
-  const [browseState, setBrowseState] = useState<VaultLoadState>('loading');
-  const [everLoaded, setEverLoaded] = useState(false);
-  const [records, setRecords] = useState<VaultRecordShape[]>([]);
-  const [browseError, setBrowseError] = useState<string | null>(null);
+const STATUS_LABEL: Record<string, string> = {
+  submitted: 'Submitted',
+  under_review: 'Under review',
+  admitted: 'Admitted',
+  declined: 'Declined',
+  withdrawn: 'Withdrawn',
+};
 
-  const [discipline, setDiscipline] = useState<string | null>(null);
-  const [curatorFilter, setCuratorFilter] = useState<string | null>(null);
+function statusLabel(status: string): string {
+  return STATUS_LABEL[status] || status;
+}
 
-  const [curators, setCurators] = useState<VaultCuratorShape[]>([]);
+function worksFrom(rows: unknown): Work[] {
+  if (!Array.isArray(rows)) return [];
+  const out: Work[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as WorkRow).id;
+    const title = (row as WorkRow).title;
+    const status = (row as WorkRow).status;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    if (typeof status !== 'string' || !status) continue;
+    out.push({ id, title: title.trim(), status });
+  }
+  return out;
+}
 
-  const [openId, setOpenId] = useState<string | null>(() => searchParams?.get('record') || null);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+function mergeWorks(admitted: Work[], own: Work[]): Work[] {
+  const ownIds = new Set(own.map((row) => row.id));
+  return [...own, ...admitted.filter((row) => !ownIds.has(row.id))];
+}
 
-  /**
-   * A record reachable by permanent link but NOT in the current index — the
-   * browse read is capped and narrowable, so a linked record can legitimately
-   * sit outside it. This is the one place `vault.record` is genuinely needed:
-   * re-reading a row we already hold would be theatre.
-   */
-  const [linkedEntry, setLinkedEntry] = useState<VaultCabinetEntry | null>(null);
+async function readCabinet(): Promise<Work[]> {
+  const [browse, mine] = await Promise.all([
+    lensRun<{ records?: unknown }>('vault', 'browse', {}),
+    lensRun<{ submissions?: unknown }>('vault', 'my_submissions', {}),
+  ]);
+  if (!browse.data?.ok) throw new Error(browse.data?.error || 'Could not read the vault.');
+  if (!mine.data?.ok) throw new Error(mine.data?.error || 'Could not read the vault.');
+  return mergeWorks(
+    worksFrom(browse.data.result?.records),
+    worksFrom(mine.data.result?.submissions),
+  );
+}
 
-  // ── vault.browse — the index ──────────────────────────────────────────────
-  const browseSeq = useRef(0);
-  const runBrowse = useCallback(async () => {
-    const seq = ++browseSeq.current;
-    setBrowseState('loading');
-    setBrowseError(null);
+export default function VaultPage() {
+  useLensNav('vault');
+  const { user } = useAuth();
+  const who = titleCaseDisplayName(user?.username);
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [works, setWorks] = useState<Work[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
 
-    const input: Record<string, unknown> = {};
-    if (discipline) input.workKind = discipline;
-    if (curatorFilter) input.curatorId = curatorFilter;
+  const pull = useCallback(async () => readCabinet(), []);
 
-    const r = await lensRun<{ records?: VaultRecordShape[]; count?: number }>('vault', 'browse', input);
-    if (seq !== browseSeq.current) return; // a newer narrowing already superseded this one
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setWorks(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the vault.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
 
-    if (!r.data.ok || !r.data.result) {
-      setRecords([]);
-      setBrowseError(r.data.error);
-      setBrowseState('error');
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setWorks(rows);
+      setSelectedId((current) => (current && rows.some((row) => row.id === current) ? current : null));
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the vault.');
+    });
+  }, [pull]);
+
+  const openVault = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
       return;
     }
-    setRecords(Array.isArray(r.data.result.records) ? r.data.result.records : []);
-    setBrowseState('ready');
-    setEverLoaded(true);
-  }, [discipline, curatorFilter]);
-
-  useEffect(() => {
-    void runBrowse();
-  }, [runBrowse]);
-
-  // ── vault.curators — who vouches for the archive ─────────────────────────
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const r = await lensRun<{ curators?: VaultCuratorShape[] }>('vault', 'curators', {});
-      if (!alive) return;
-      if (r.data.ok && Array.isArray(r.data.result?.curators)) setCurators(r.data.result.curators);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  // ── vault.record — a permanently-linked record outside the current index ──
-  const fetchLinkedRecord = useCallback(async (id: string) => {
-    setLinkedEntry({ id, record: null, state: 'loading', error: null });
-    const r = await lensRun<{ record?: VaultRecordShape }>('vault', 'record', { submissionId: id });
-    if (r.data.ok && r.data.result?.record) {
-      setLinkedEntry({ id, record: r.data.result.record, state: 'ready', error: null });
-    } else {
-      setLinkedEntry({
-        id,
-        record: null,
-        state: 'error',
-        error: r.data.error || 'No admitted record answers to that identifier.',
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!openId || browseState !== 'ready') return;
-    if (records.some((r) => r.id === openId)) {
-      if (linkedEntry) setLinkedEntry(null);
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setActionError('A title is required.');
       return;
     }
-    if (linkedEntry && linkedEntry.id === openId) return; // already resolved, loading, or failed with a retry offered
-    void fetchLinkedRecord(openId);
-  }, [openId, browseState, records, linkedEntry, fetchLinkedRecord]);
-
-  // ── the cabinet's drawers ────────────────────────────────────────────────
-  const entries = useMemo<VaultCabinetEntry[]>(() => {
-    const base: VaultCabinetEntry[] = records.map((r) => ({
-      id: r.id,
-      record: r,
-      state: 'ready',
-      error: null,
-    }));
-    if (linkedEntry && !records.some((r) => r.id === linkedEntry.id)) return [linkedEntry, ...base];
-    return base;
-  }, [records, linkedEntry]);
-
-  /** A record is permanent, so its link is too — kept in the address bar without navigating. */
-  const setOpen = useCallback((id: string | null) => {
-    setOpenId(id);
-    if (typeof window === 'undefined') return;
+    setBusy(true);
+    setActionError('');
     try {
-      const url = new URL(window.location.href);
-      if (id) url.searchParams.set('record', id);
-      else url.searchParams.delete('record');
-      window.history.replaceState(null, '', `${url.pathname}${url.search}`);
-    } catch {
-      /* address-bar sync is a convenience; never let it break the archive */
+      const created = await lensRun<{ id?: string }>('vault', 'submit', { title: trimmed });
+      const id = created.data?.result?.id;
+      if (!created.data?.ok || !id) {
+        throw new Error(created.data?.error || 'Could not open that work.');
+      }
+      const rows = await readCabinet();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.title !== trimmed) {
+        throw new Error('Opened, but the vault did not read it back.');
+      }
+      setWorks(rows);
+      setSelectedId((current) => (current && rows.some((item) => item.id === current) ? current : null));
+      setTitle('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not open that work.');
+    } finally {
+      setBusy(false);
     }
-  }, []);
-
-  const handleToggle = useCallback(
-    (id: string) => {
-      setOpen(openId === id ? null : id);
-      const i = entries.findIndex((e) => e.id === id);
-      if (i >= 0) setSelectedIndex(i);
-    },
-    [openId, entries, setOpen],
-  );
-
-  const handleSelectCurator = useCallback((curatorId: string) => {
-    setCuratorFilter((prev) => (prev === curatorId ? null : curatorId));
-    setSelectedIndex(-1);
-  }, []);
-
-  const handleDiscipline = useCallback((kind: string) => {
-    setDiscipline((prev) => (prev === kind ? null : kind));
-    setSelectedIndex(-1);
-  }, []);
-
-  const clearFilters = useCallback(() => {
-    setDiscipline(null);
-    setCuratorFilter(null);
-    setSelectedIndex(-1);
-  }, []);
-
-  const moveSelection = useCallback(
-    (delta: number) => {
-      setSelectedIndex((prev) => {
-        if (entries.length === 0) return -1;
-        if (prev < 0) return delta > 0 ? 0 : entries.length - 1;
-        return Math.min(entries.length - 1, Math.max(0, prev + delta));
-      });
-    },
-    [entries.length],
-  );
-
-  const toggleSelected = useCallback(() => {
-    const entry = entries[selectedIndex];
-    if (entry) handleToggle(entry.id);
-  }, [entries, selectedIndex, handleToggle]);
+  }, [busy, composing, phase, title]);
 
   useLensCommand(
-    [
-      { id: 'next-drawer', keys: 'j', description: 'Next drawer', action: () => moveSelection(1) },
-      { id: 'prev-drawer', keys: 'k', description: 'Previous drawer', action: () => moveSelection(-1) },
-      { id: 'toggle-drawer', keys: 'o', description: 'Open or close the selected drawer', action: toggleSelected },
-      { id: 'close-drawer', keys: 'escape', description: 'Close the open drawer', action: () => setOpen(null) },
-    ],
+    [{ id: 'vault-open', keys: 'o', description: 'Open the vault', category: 'actions', action: () => { void openVault(); } }],
     { lensId: 'vault' },
   );
 
-  const filtering = browseState === 'loading' && everLoaded;
-  const filterActive = !!discipline || !!curatorFilter;
-  const showFilters = browseState !== 'error' && (entries.length > 0 || filterActive || filtering);
+  const selected = works.find((row) => row.id === selectedId) || null;
 
   return (
-    <LensShell lensId="vault">
-      <div className={cn(vault.wall, 'border-t border-vault-brassLine')} data-testid="vault-wall">
-        <div className="mx-auto max-w-5xl px-4 pb-24 pt-14 sm:px-8 sm:pt-20">
-          {/* ── The wall plaque ─────────────────────────────────────────── */}
-          <header className="vault-reveal">
-            <p className={vault.label}>Curated archive</p>
-            <h1 className={cn(vault.title, 'vault-letterpress-deep mt-4')}>TheVault</h1>
-            <p className={cn(vault.body, 'mt-5 max-w-[54ch]')}>
-              Creative work that deserves to outlive trends — preserved, contextualised, and admitted only
-              when a named human curator has argued for it in writing.
-            </p>
+    <LensShell lensId="vault" asMain={false}>
+      <div data-lens-theme="vault" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+        <p className="text-[14px] text-zinc-500">TheVault</p>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
+          The vault{who ? `, ${who}` : ''}
+        </h1>
 
-            {curators.length > 0 ? (
-              <div className="mt-10">
-                <CuratorRoster curators={curators} />
+        <div className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 sm:grid-cols-[minmax(0,16rem)_1fr]">
+          <section aria-label="Cabinet" className="border-white/10 px-5 py-6 sm:border-r">
+            {phase === 'loading' && (
+              <p data-testid="vault-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+                Opening the vault.
+              </p>
+            )}
+            {phase === 'error' && (
+              <div data-testid="vault-error" role="alert">
+                <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the vault.'}</p>
+                <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                  Retry
+                </button>
               </div>
-            ) : null}
-
-            <hr className={cn(vault.divider, 'mt-10')} />
-          </header>
-
-          {/* ── Narrowing. Archival axes only — discipline and curator. ──── */}
-          {showFilters ? (
-            <section aria-label="Narrow the archive" className="mt-8">
-              <h2 className={vault.label}>Filed under</h2>
-              <ul className="mt-4 flex list-none flex-wrap gap-2 p-0">
-                {DISCIPLINE_KINDS.map((kind) => {
-                  const active = discipline === kind;
-                  return (
-                    <li key={kind}>
-                      <button
-                        type="button"
-                        onClick={() => handleDiscipline(kind)}
-                        aria-pressed={active}
-                        disabled={filtering}
-                        className={cn(
-                          'rounded-sm border px-3 py-1.5 font-sans text-sm transition-colors disabled:opacity-40',
-                          active
-                            ? 'border-vault-brass bg-vault-brass text-vault-paper'
-                            : 'border-vault-rule bg-vault-card text-vault-graphite hover:border-vault-brassLine hover:text-vault-ink',
-                        )}
-                      >
-                        {formatDiscipline(kind)}
-                      </button>
-                    </li>
-                  );
-                })}
+            )}
+            {phase === 'ready' && works.length === 0 && (
+              <p data-testid="vault-empty" className="text-[14px] text-zinc-500">Nothing unlocked.</p>
+            )}
+            {phase === 'ready' && works.length > 0 && (
+              <ul data-testid="vault-works" className="space-y-2">
+                {works.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      aria-pressed={item.id === selectedId}
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        setComposing(false);
+                        setActionError('');
+                      }}
+                      className="w-full rounded-lg px-2 py-2 text-left hover:bg-white/5"
+                    >
+                      <span className="block font-vault text-[1.05rem] text-zinc-100">{item.title}</span>
+                      <span className="mt-1 block text-[12px] text-zinc-500">{statusLabel(item.status)}</span>
+                    </button>
+                  </li>
+                ))}
               </ul>
+            )}
+          </section>
 
-              {curatorFilter ? (
-                <p className={cn(vault.caption, 'mt-4 flex flex-wrap items-baseline gap-3')}>
-                  <span>Showing admissions by {curatorFilter}.</span>
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="underline decoration-vault-brassLine underline-offset-4 transition-colors hover:text-vault-brass"
-                  >
-                    Show the whole archive
-                  </button>
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-
-          {/* ── The cabinet ─────────────────────────────────────────────── */}
-          <section aria-label="Admitted records" className="mt-10">
-            {browseState === 'loading' && !everLoaded ? <VaultCabinetSkeleton /> : null}
-
-            {browseState === 'error' ? (
-              <VaultCabinetError message={browseError} onRetry={() => void runBrowse()} retrying={false} />
-            ) : null}
-
-            {browseState !== 'error' && (browseState === 'ready' || everLoaded) ? (
-              entries.length === 0 ? (
-                <VaultEmptyState
-                  kind={filterActive ? 'filtered' : 'archive'}
-                  filterLabel={discipline ? formatDiscipline(discipline) : null}
-                  onClearFilter={filterActive ? clearFilters : undefined}
+          <section aria-label="Record" className="px-6 py-6">
+            {phase === 'ready' && selected && (
+              <div data-testid="vault-selected">
+                <h2 className="font-vault text-[1.75rem] text-zinc-100">{selected.title}</h2>
+                <p className="mt-3 text-[14px] text-zinc-400">{statusLabel(selected.status)}</p>
+              </div>
+            )}
+            {phase === 'ready' && !selected && !composing && (
+              <p data-testid="vault-unselected" className="text-[14px] text-zinc-500">Nothing selected.</p>
+            )}
+            {phase === 'ready' && composing && (
+              <label className="block text-[14px] text-zinc-400">
+                Title
+                <input
+                  data-testid="vault-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') { event.preventDefault(); void openVault(); }
+                  }}
+                  className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[16px] text-zinc-100 outline-none"
+                  autoFocus
                 />
-              ) : (
-                <div
-                  aria-busy={filtering ? true : undefined}
-                  className={cn('transition-opacity', filtering ? 'opacity-60' : 'opacity-100')}
-                >
-                  <VaultCabinet
-                    entries={entries}
-                    openId={openId}
-                    selectedIndex={selectedIndex}
-                    onToggle={handleToggle}
-                    onRetryEntry={(id) => void fetchLinkedRecord(id)}
-                    onSelectCurator={handleSelectCurator}
-                    curatorFilter={curatorFilter}
-                    shortcuts={KEY_HINTS}
-                  />
-                </div>
-              )
+              </label>
+            )}
+            {actionError ? (
+              <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
             ) : null}
           </section>
         </div>
+
+        <button
+          type="button"
+          onClick={() => { void openVault(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+        >
+          Open the vault
+        </button>
       </div>
     </LensShell>
-  );
-}
-
-/** The paper is laid before anything is read, so the wall never flashes dark. */
-function VaultWallFallback() {
-  return (
-    <div className={cn(vault.wall, 'border-t border-vault-brassLine')} aria-busy="true">
-      <div className="mx-auto max-w-5xl px-4 pt-14 sm:px-8 sm:pt-20">
-        <p className={vault.label}>Curated archive</p>
-        <h1 className={cn(vault.title, 'vault-letterpress-deep mt-4')}>TheVault</h1>
-      </div>
-    </div>
-  );
-}
-
-export default function VaultLensPage() {
-  return (
-    <Suspense fallback={<VaultWallFallback />}>
-      <VaultLens />
-    </Suspense>
   );
 }
