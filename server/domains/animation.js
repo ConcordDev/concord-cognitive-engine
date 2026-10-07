@@ -87,6 +87,41 @@ export default function registerAnimationActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // animationLens is not in the shared snapshot key list. The title of a
+  // shot is written to animation_shots so a process restart can list it.
+  // Callers with no table (unit stubs) keep the in-memory path.
+  function animDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function shotsReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='animation_shots'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writeShotRow(ctx, anim) {
+    const db = animDb(ctx);
+    if (!shotsReady(db)) return;
+    db.prepare(`
+      INSERT INTO animation_shots (id, user_id, title, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+    `).run(anim.id, anAid(ctx), anim.title, anim.createdAt, anim.updatedAt);
+  }
+  function deleteShotRow(ctx, id) {
+    const db = animDb(ctx);
+    if (!shotsReady(db) || !id) return;
+    db.prepare("DELETE FROM animation_shots WHERE id = ? AND user_id = ?").run(String(id), anAid(ctx));
+  }
+  function readShotRows(ctx) {
+    const db = animDb(ctx);
+    if (!shotsReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, updated_at FROM animation_shots WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(anAid(ctx));
+  }
   const anId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const anNow = () => new Date().toISOString();
   const anAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -204,6 +239,14 @@ export default function registerAnimationActions(registerLensAction) {
       createdAt: anNow(), updatedAt: anNow(),
     };
     anListB(s.projects, anAid(ctx)).push(anim);
+    try {
+      writeShotRow(ctx, anim);
+    } catch (e) {
+      const arr = s.projects.get(anAid(ctx)) || [];
+      const idx = arr.findIndex((a) => a.id === anim.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "shot_not_saved", detail: String(e?.message || e) };
+    }
     saveAnimState();
     return { ok: true, result: { animation: anim } };
   });
@@ -218,8 +261,25 @@ export default function registerAnimationActions(registerLensAction) {
         frameCount: a.frames.length,
         durationFrames: a.frames.reduce((n, f) => n + f.exposure, 0),
         updatedAt: a.updatedAt,
-      }))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      }));
+    const seen = new Set(animations.map((a) => a.id));
+    for (const row of readShotRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      animations.push({
+        id: row.id,
+        title: row.title,
+        width: null,
+        height: null,
+        fps: null,
+        background: null,
+        thumbnail: null,
+        frameCount: null,
+        durationFrames: null,
+        updatedAt: row.updated_at || "",
+      });
+    }
+    animations.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
     return { ok: true, result: { animations, count: animations.length } };
   });
 
@@ -250,6 +310,9 @@ export default function registerAnimationActions(registerLensAction) {
     if (!title) return { ok: false, error: "title required" };
     anim.title = title;
     anim.updatedAt = anNow();
+    try { writeShotRow(ctx, anim); } catch (e) {
+      return { ok: false, error: "shot_not_saved", detail: String(e?.message || e) };
+    }
     saveAnimState();
     return { ok: true, result: { id: anim.id, title } };
   });
@@ -284,6 +347,9 @@ export default function registerAnimationActions(registerLensAction) {
     const arr = s.projects.get(anAid(ctx)) || [];
     const i = arr.findIndex((a) => a.id === params.id);
     if (i < 0) return { ok: false, error: "animation not found" };
+    try { deleteShotRow(ctx, params.id); } catch (e) {
+      return { ok: false, error: "shot_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     s.animUndo?.delete(params.id); // don't leak undo/redo history for a deleted project
     saveAnimState();
