@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 46);
+    assert.equal(LENS_STATE_KEYS.length, 47);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -90,6 +90,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("creatorLens"));
     assert.ok(LENS_STATE_KEYS.includes("astronomyLens"));
     assert.ok(LENS_STATE_KEYS.includes("atlasLens"));
+    assert.ok(LENS_STATE_KEYS.includes("energyLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -671,6 +672,31 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.atlasLens.recentSearches.get("user_a")[0], "Eiffel Tower");
     assert.ok(STATE.atlasLens.seq instanceof Map);
     assert.equal(STATE.atlasLens.seq.get("user_a").place, 2);
+  });
+
+  it("roundtrips STATE.energyLens (meters, readings, live samples, rates, and TOU plan)", () => {
+    STATE.energyLens = {
+      devices: new Map([["user_a", [{ id: "meter_1", name: "Main meter", category: "meter", wattage: 0 }]]]),
+      readings: new Map([["user_a", [{ id: "reading_1", deviceId: "meter_1", kwh: 12.5, date: "2026-10-06" }]]]),
+      solar: new Map([["user_a", [{ id: "solar_1", kwh: 6.4, date: "2026-10-06" }]]]),
+      rates: new Map([["user_a", { ratePerKwh: 0.21, utility: "Proof utility" }]]),
+      goals: new Map([["user_a", [{ id: "goal_1", targetKwh: 500, period: "month" }]]]),
+      alerts: new Map([["user_a", []]]),
+      livePower: new Map([["user_a", [{ id: "sample_1", deviceId: "meter_1", watts: 725 }]]]),
+      touPlans: new Map([["user_a", { peakRate: 0.31, offPeakRate: 0.12, peakStartHour: 16, peakEndHour: 21 }]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.energyLens.devices instanceof Map);
+    assert.equal(STATE.energyLens.devices.get("user_a")[0].category, "meter");
+    assert.equal(STATE.energyLens.readings.get("user_a")[0].kwh, 12.5);
+    assert.equal(STATE.energyLens.solar.get("user_a")[0].kwh, 6.4);
+    assert.equal(STATE.energyLens.rates.get("user_a").ratePerKwh, 0.21);
+    assert.equal(STATE.energyLens.goals.get("user_a")[0].targetKwh, 500);
+    assert.ok(STATE.energyLens.alerts instanceof Map);
+    assert.equal(STATE.energyLens.livePower.get("user_a")[0].watts, 725);
+    assert.equal(STATE.energyLens.touPlans.get("user_a").offPeakRate, 0.12);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

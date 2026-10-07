@@ -102,6 +102,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   // domain stores per-user Maps here; without this key a hard restart
   // wiped every saved place while the PlacesPanel still showed it.
   "atlasLens",
+  // 46 -> 47: "energyLens" so a user's meters, readings, live samples,
+  // solar entries, rates, goals, alerts, and time-of-use plan survive a
+  // restart. The Energy domain stores per-user Maps here; without this key
+  // the meter workspace appeared persistent until the server restarted.
+  "energyLens",
 ]);
 
 function serializeValue(v) {

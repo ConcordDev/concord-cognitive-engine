@@ -7,7 +7,7 @@
  * current / peak / average watts.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Loader2, Plus, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -16,48 +16,55 @@ import { cn } from '@/lib/utils';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface LiveSample { id: string; watts: number; at: string; deviceName: string }
-interface Device { id: string; name: string }
-
 // Sense/Emporia's whole identity is a power meter that visibly moves.
 // Real backend poll, not a fake ticker — every 5s while this tab is open
 // we re-call the same live-stream/device-list macros a manual refresh
 // would, so the "Now" tile reflects genuinely fresh server state.
 const POLL_MS = 5000;
 
-export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
+export function EnergyLivePanel({
+  meterId,
+  meterName,
+  onChange,
+}: {
+  meterId: string;
+  meterName: string;
+  onChange: () => void;
+}) {
   const [samples, setSamples] = useState<LiveSample[]>([]);
   const [current, setCurrent] = useState(0);
   const [peak, setPeak] = useState(0);
   const [avgWatts, setAvgWatts] = useState(0);
-  const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [watts, setWatts] = useState('');
-  const [deviceId, setDeviceId] = useState('');
-  const isFirstLoad = useRef(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     setPolling(true);
-    const [s, d] = await Promise.all([
-      lensRun('energy', 'live-stream', { minutes: 120 }),
-      lensRun('energy', 'device-list', {}),
-    ]);
-    if (s.data?.ok) {
-      const res = s.data.result as {
-        samples: LiveSample[]; current: number; peak: number; avgWatts: number;
-      };
-      setSamples(res.samples || []);
-      setCurrent(res.current || 0);
-      setPeak(res.peak || 0);
-      setAvgWatts(res.avgWatts || 0);
+    try {
+      const s = await lensRun('energy', 'live-stream', { minutes: 120, deviceId: meterId });
+      if (s.data?.ok) {
+        const res = s.data.result as {
+          samples: LiveSample[]; current: number; peak: number; avgWatts: number;
+        };
+        setSamples(res.samples || []);
+        setCurrent(res.current || 0);
+        setPeak(res.peak || 0);
+        setAvgWatts(res.avgWatts || 0);
+        setError(null);
+      } else {
+        setError(s.data?.error || 'Failed to load live readings.');
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Failed to load live readings.');
+    } finally {
+      setLoading(false);
+      setPolling(false);
+      setHasLoaded(true);
     }
-    setDevices((d.data?.result?.devices as Device[]) || []);
-    setLoading(false);
-    setPolling(false);
-    isFirstLoad.current = false;
-    onChange();
-  }, [onChange]);
+  }, [meterId]);
 
   // jitter: 0 — a dedicated test asserts the poll lands on the exact
   // POLL_MS cadence; pausing on a hidden tab is still the useful part here.
@@ -65,12 +72,17 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
 
   const submit = async () => {
     if (!(Number(watts) >= 0) || watts === '') { setError('Enter a wattage reading.'); return; }
-    const r = await lensRun('energy', 'live-sample', {
-      watts: Number(watts), ...(deviceId ? { deviceId } : {}),
-    });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setWatts(''); setError(null);
-    await refresh();
+    try {
+      const r = await lensRun('energy', 'live-sample', {
+        watts: Number(watts), deviceId: meterId,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Failed to submit reading.'); return; }
+      setWatts(''); setError(null);
+      await refresh();
+      await onChange();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Failed to submit reading.');
+    }
   };
 
   if (loading) {
@@ -97,7 +109,7 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
           <AnimatePresence mode="wait">
             <motion.p
               key={current}
-              initial={isFirstLoad.current ? false : { opacity: 0.3, scale: 0.94 }}
+              initial={hasLoaded ? { opacity: 0.3, scale: 0.94 } : false}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
               className="text-2xl font-bold text-lime-400"
@@ -117,14 +129,12 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_1.4fr_auto] gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <input placeholder="Watts now" inputMode="numeric" value={watts} onChange={(e) => setWatts(e.target.value)}
+      <div className="grid gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3 sm:grid-cols-[1fr_1.4fr_auto]">
+        <input aria-label="Watts now" placeholder="Watts now" inputMode="numeric" value={watts} onChange={(e) => setWatts(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
-          <option value="">Whole home</option>
-          {devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <div className="flex items-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300">
+          Recording on <span className="ml-1 font-medium text-zinc-100">{meterName}</span>
+        </div>
         <button type="button" onClick={submit}
           className="flex items-center justify-center gap-1 px-3 bg-lime-600 hover:bg-lime-500 text-white text-xs font-medium rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Sample

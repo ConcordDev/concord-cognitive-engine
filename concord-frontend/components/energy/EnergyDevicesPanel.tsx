@@ -9,51 +9,42 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Plug, Trash2, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-interface Device { id: string; name: string; category: string; wattage: number; alwaysOn: boolean; totalKwh: number }
+export interface EnergyDevice { id: string; name: string; category: string; wattage: number; alwaysOn: boolean; totalKwh: number }
 interface Consumer { deviceId: string; name: string; kwh: number; cost: number }
 
-const CATEGORIES = ['hvac', 'appliance', 'lighting', 'electronics', 'ev_charger', 'water_heater', 'kitchen', 'laundry'];
+const CATEGORIES = ['meter', 'hvac', 'appliance', 'lighting', 'electronics', 'ev_charger', 'water_heater', 'kitchen', 'laundry'];
 
-export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
-  const [devices, setDevices] = useState<Device[]>([]);
+export function EnergyDevicesPanel({
+  devices,
+  loading,
+  loadError,
+  refresh,
+}: {
+  devices: EnergyDevice[];
+  loading: boolean;
+  loadError: string | null;
+  refresh: () => Promise<void>;
+}) {
   const [consumers, setConsumers] = useState<Consumer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Distinct from `error` (form-action errors): a load FAILURE must read as a
-  // real error with a working Retry, never as a silent-empty device list.
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'appliance', wattage: '' });
   const [readingFor, setReadingFor] = useState<string | null>(null);
   const [readingKwh, setReadingKwh] = useState('');
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refreshConsumers = useCallback(async () => {
     try {
-      const [d, t] = await Promise.all([
-        lensRun('energy', 'device-list', {}),
-        lensRun('energy', 'top-consumers', { days: 30 }),
-      ]);
-      // /api/lens/run unwraps one {ok,result} layer, so a handler rejection
-      // surfaces at d.data.ok===false (lensRun normalizes both transport and
-      // handler-reject into this flag). Treat either as a real load error so
-      // the panel never renders an empty device list that masks a failure.
-      if (d.data?.ok === false) {
-        setLoadError(d.data?.error || 'Failed to load devices.');
-        return;
-      }
-      setDevices(d.data?.result?.devices || []);
+      const t = await lensRun('energy', 'top-consumers', { days: 30 });
       setConsumers(t.data?.result?.devices || []);
-      setLoadError(null);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Failed to load devices.');
-    } finally {
-      setLoading(false);
-      onChange();
+      setError(e instanceof Error ? e.message : 'Failed to load top consumers.');
     }
-  }, [onChange]);
+  }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { void refreshConsumers(); });
+    return () => cancelAnimationFrame(frame);
+  }, [refreshConsumers]);
 
   const add = async () => {
     if (!form.name.trim()) { setError('Device name is required.'); return; }
@@ -63,14 +54,19 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ name: '', category: 'appliance', wattage: '' });
     setShowAdd(false); setError(null);
-    await refresh();
+    await Promise.all([refresh(), refreshConsumers()]);
   };
-  const del = async (id: string) => { await lensRun('energy', 'device-delete', { id }); await refresh(); };
+  const del = async (id: string) => {
+    const r = await lensRun('energy', 'device-delete', { id });
+    if (r.data?.ok === false) { setError(r.data.error || 'Failed to delete device.'); return; }
+    await Promise.all([refresh(), refreshConsumers()]);
+  };
   const logReading = async (deviceId: string) => {
     if (!(Number(readingKwh) > 0)) { setError('Enter a kWh value.'); return; }
-    await lensRun('energy', 'reading-log', { deviceId, kwh: Number(readingKwh) });
+    const r = await lensRun('energy', 'reading-log', { deviceId, kwh: Number(readingKwh) });
+    if (r.data?.ok === false) { setError(r.data.error || 'Failed to log reading.'); return; }
     setReadingFor(null); setReadingKwh(''); setError(null);
-    await refresh();
+    await Promise.all([refresh(), refreshConsumers()]);
   };
 
   if (loading) {

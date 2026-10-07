@@ -4,7 +4,7 @@
  * EnergyGridCalcPanel — one-shot consumption analysis + grid-status
  * calculators wiring energy.consumptionAnalysis + energy.gridStatus,
  * the two energy macros with no prior UI. Distinct from
- * EnergyMonitorSection (persistent device/reading tracking): this is a
+ * EnergyWorkspace (persistent meter/device/reading tracking): this is a
  * quick "paste your meter readings" / "what's grid load right now"
  * calculator, the Sense-app-adjacent utility view.
  */

@@ -189,6 +189,21 @@ describe("energy.live-sample / live-stream — real-time consumption", () => {
     const b = call("live-stream", { actor: { userId: "user_b" }, userId: "user_b" }, {});
     assert.equal(b.result.count, 0);
   });
+
+  it("filters an owned meter stream and rejects another user's meter", () => {
+    const main = call("device-add", ctxA, { name: "Main panel", category: "meter" }).result.device;
+    const garage = call("device-add", ctxA, { name: "Garage meter", category: "meter" }).result.device;
+    call("live-sample", ctxA, { watts: 500, deviceId: main.id });
+    call("live-sample", ctxA, { watts: 200, deviceId: garage.id });
+
+    const stream = call("live-stream", ctxA, { deviceId: main.id });
+    assert.equal(stream.result.count, 1);
+    assert.equal(stream.result.current, 500);
+
+    const foreign = call("live-stream", { actor: { userId: "user_b" }, userId: "user_b" }, { deviceId: main.id });
+    assert.equal(foreign.ok, false);
+    assert.equal(foreign.error, "device not found");
+  });
 });
 
 describe("energy.disaggregate — per-device attribution", () => {
