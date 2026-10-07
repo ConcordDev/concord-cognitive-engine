@@ -63,6 +63,7 @@ import research from './research.js';
 import chat from './chat.js';
 import commandcenter from './commandcenter.js';
 import commonsense from './commonsense.js';
+import concordLinkFrontier from './concord-link-frontier.js';
 import docs from './docs.js';
 import eco from './eco.js';
 import entity from './entity.js';
@@ -380,6 +381,7 @@ export default [
   chat,
   commandcenter,
   commonsense,
+  concordLinkFrontier,
   docs,
   eco,
   entity,
