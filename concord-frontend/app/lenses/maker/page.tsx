@@ -1,128 +1,208 @@
 'use client';
 
 /**
- * Maker — one Retool/Twine/creative desk.
- * Thin shell: single `active` union → panels. Macros live in panels.
+ * Maker — the bench.
+ *
+ * One list: app-maker.projectList for the signed-in user.
+ * One action: + New make calls app-maker.projectCreate, then shows
+ * the name only after projectList contains that id and the same name.
+ *
+ * The editor, quest graph, and showcase are other macros. They are
+ * not on this screen. A blank name is not sent, so the server's
+ * "Untitled App" default is never stored from here.
  */
 
-import { useCallback, useState, type ComponentType } from 'react';
-import { AppWindow, Wand2, Sparkles, Hammer, GitBranch, LayoutGrid, Plus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { cn } from '@/lib/utils';
-import { ProjectBuilder } from '@/components/maker/ProjectBuilder';
-import { QuestGraphEditor } from '@/components/maker/QuestGraphEditor';
-import { MakerShowcase } from '@/components/maker/MakerShowcase';
-import { AppsPanel } from '@/components/maker/AppsPanel';
-import { QuestsPanel } from '@/components/maker/QuestsPanel';
-import { CreativePanel } from '@/components/maker/CreativePanel';
+import { lensRun } from '@/lib/api/client';
 
-type MakerView = 'builder' | 'designer' | 'apps' | 'quests' | 'creative' | 'showcase';
+interface Make {
+  id: string;
+  name: string;
+}
 
-const VIEWS: { id: MakerView; label: string; keys: string; title: string; hint: string; blurb: string; icon: typeof Hammer }[] = [
-  { id: 'builder', label: 'Builder', keys: 'b', title: 'The make', hint: 'No-code app builder', blurb: 'Drag components onto a canvas, model data, bind sources, wire workflows, snapshot versions, and deploy. No code.', icon: Hammer },
-  { id: 'designer', label: 'Quest Designer', keys: 'd', title: 'The branching path', hint: 'Quest node-graph designer', blurb: 'Author branching quests as a node graph (steps, choices, rewards and endings) and validate the structure.', icon: GitBranch },
-  { id: 'apps', label: 'Apps', keys: 'a', title: 'What you have built', hint: 'Your apps', blurb: '', icon: AppWindow },
-  { id: 'quests', label: 'Quests', keys: 'q', title: 'Quests in the world', hint: 'Quests', blurb: '', icon: Wand2 },
-  { id: 'creative', label: 'Creative', keys: 'c', title: 'Generate something', hint: 'Creative generation', blurb: '', icon: Sparkles },
-  { id: 'showcase', label: 'Showcase', keys: 's', title: 'What makers shipped', hint: 'Showcase', blurb: '', icon: LayoutGrid },
-];
+type Phase = 'loading' | 'ready' | 'error';
 
-const PANELS: Record<MakerView, ComponentType> = {
-  builder: ProjectBuilder,
-  designer: QuestGraphEditor,
-  apps: AppsPanel,
-  quests: QuestsPanel,
-  creative: CreativePanel,
-  showcase: MakerShowcase,
-};
+interface ProjectRow {
+  id?: string;
+  name?: string;
+}
 
-export default function MakerLensPage() {
+function makesFrom(rows: unknown): Make[] {
+  if (!Array.isArray(rows)) return [];
+  const out: Make[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as ProjectRow).id;
+    const name = (row as ProjectRow).name;
+    if (typeof id !== 'string' || !id) continue;
+    if (typeof name !== 'string' || !name.trim()) continue;
+    out.push({ id, name: name.trim() });
+  }
+  return out;
+}
+
+async function readBench(): Promise<Make[]> {
+  const list = await lensRun<{ projects?: unknown }>('app-maker', 'projectList', {});
+  if (!list.data?.ok) throw new Error(list.data?.error || 'Could not read the bench.');
+  return makesFrom(list.data.result?.projects);
+}
+
+export default function MakerPage() {
   useLensNav('maker');
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [active, setActive] = useState<MakerView>('builder');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [makes, setMakes] = useState<Make[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const newMake = useCallback(() => {
-    setActive('builder');
-    let tries = 0;
-    const focus = () => {
-      const el = document.querySelector<HTMLInputElement>('[data-lens-theme="maker"] input[placeholder="New app name"]');
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); return; }
-      if (++tries < 20) requestAnimationFrame(focus);
-    };
-    requestAnimationFrame(focus);
-  }, []);
+  const pull = useCallback(async () => readBench(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    pull().then((rows) => {
+      if (cancelled) return;
+      setMakes(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the bench.');
+    });
+    return () => { cancelled = true; };
+  }, [pull]);
+
+  const load = useCallback(() => {
+    setPhase('loading');
+    setLoadError('');
+    setActionError('');
+    pull().then((rows) => {
+      setMakes(rows);
+      setPhase('ready');
+    }).catch((err) => {
+      setPhase('error');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the bench.');
+    });
+  }, [pull]);
+
+  const make = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      return;
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setActionError('A name is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const created = await lensRun<{ project?: { id?: string } }>(
+        'app-maker',
+        'projectCreate',
+        { name: trimmed },
+      );
+      const id = created.data?.result?.project?.id;
+      if (!created.data?.ok || !id) {
+        throw new Error(created.data?.error || 'Could not start that make.');
+      }
+      const rows = await readBench();
+      const row = rows.find((item) => item.id === id);
+      if (!row || row.name !== trimmed) {
+        throw new Error('Made, but the bench did not read it back.');
+      }
+      setMakes(rows);
+      setName('');
+      setComposing(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not start that make.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, composing, name, phase]);
 
   useLensCommand(
-    [
-      ...VIEWS.map((v) => ({
-        id: `tab-${v.id}`,
-        keys: v.keys,
-        description: `${v.label} — ${v.hint}`,
-        category: 'navigation' as const,
-        action: () => setActive(v.id),
-      })),
-      { id: 'maker-new', keys: 'n', description: 'New make (name a new app)', category: 'actions' as const, action: newMake },
-    ],
+    [{ id: 'maker-new', keys: 'n', description: '+ New make', category: 'actions', action: () => { void make(); } }],
     { lensId: 'maker' },
   );
 
-  const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
-
   return (
     <LensShell lensId="maker" asMain={false}>
-      <FirstRunTour lensId="maker" />
-      <DepthBadge lensId="maker" size="sm" className="ml-2" />
-      <div data-lens-theme="maker" className="relative min-h-full px-8 pb-28 pt-6">
+      <div data-lens-theme="maker" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">Maker</p>
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{active === 'builder' && who ? `, ${who}` : ''}
+          The make{who ? `, ${who}` : ''}
         </h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Maker sections">
-          {VIEWS.map(({ id, label, keys, hint, icon: Icon }) => {
-            const on = active === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActive(id)}
-                aria-current={on ? 'page' : undefined}
-                title={`${hint} (${keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden />
-                {label}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{keys}</kbd>
+        <section
+          aria-label="Bench"
+          className="flex min-h-[22rem] flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
+        >
+          {phase === 'loading' && (
+            <p data-testid="maker-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+              Opening the bench.
+            </p>
+          )}
+          {phase === 'error' && (
+            <div data-testid="maker-error" role="alert" className="text-center">
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the bench.'}</p>
+              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+                Retry
               </button>
-            );
-          })}
-        </nav>
-
-        {current.blurb && <p className="mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-500">{current.blurb}</p>}
-        <Panel />
-
-        <CrossLensRecentsPanel lensId="maker" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+            </div>
+          )}
+          {phase === 'ready' && makes.length === 0 && !composing && (
+            <div data-testid="maker-empty" className="text-center">
+              <p className="text-[14px] text-zinc-500">Nothing on the bench.</p>
+            </div>
+          )}
+          {phase === 'ready' && makes.length > 0 && (
+            <ul data-testid="maker-makes" className="space-y-6">
+              {makes.map((item) => (
+                <li key={item.id}>
+                  <h2 className="font-vault text-[1.5rem] text-zinc-100">{item.name}</h2>
+                </li>
+              ))}
+            </ul>
+          )}
+          {phase === 'ready' && composing && (
+            <label className="mt-6 block text-[14px] text-zinc-400">
+              Name
+              <input
+                data-testid="maker-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); void make(); }
+                }}
+                className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[16px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {actionError ? (
+            <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
+          ) : null}
+        </section>
 
         <button
           type="button"
-          onClick={newMake}
-          title="New make (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          onClick={() => { void make(); }}
+          disabled={phase !== 'ready' || busy}
+          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
-          New make
+          + New make
         </button>
       </div>
     </LensShell>
