@@ -37,7 +37,7 @@ Citation drives the royalties. When someone sells a work that cites other creato
 
 - **Payments aren't switched on in production yet.** Stripe runs only when keys are configured, and there's no transaction volume.
 - **Open items before real-money launch:** forming the operating entity (the Terms and Privacy Policy still carry an "[Your LLC Name]" placeholder), and a legal review of the stored-value and cash-out design.
-- **Order of priority:** the engineering product and its pricing (team seats, usage-based MCP calls) come first. Marketplace payments with creator royalties follow once there are users creating work worth selling.
+- **Order of priority:** the engineering product and its pricing (free for individuals, per-seat for enterprises and teams, usage-based MCP calls) come first. Marketplace payments with creator royalties follow once there are users creating work worth selling.
 
 ## Contact
 

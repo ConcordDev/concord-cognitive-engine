@@ -114,11 +114,11 @@ These show how far the engine reaches. They are not the first market.
 |---|---|
 | 1–2 | Merge the V&V corpus, receipts, ConKay workspace and column check. Onboard design partners. Publish a 60-second receipt demo; launch on Show HN and engineering communities; list the MCP server in agent registries. |
 | 3–4 | Grow the verified case library (columns, frames, connections) with partner problems. Exportable calc packages built from receipts. Shared team workspaces. First paid pilots. |
-| 5–6 | Pricing in market: per-seat for engineering teams, usage-based for agents calling verified compute over MCP. Concordia as top of funnel: fresh browser build and short clips that route new users into Concord. |
+| 5–6 | Pricing in market: free for individual users; per-seat plans for enterprises, firms and engineering teams; usage-based for agents calling verified compute over MCP. Concordia as top of funnel: fresh browser build and short clips that route new users into Concord. |
 
 Metrics we track (from [`docs/GO_TO_MARKET.md`](docs/GO_TO_MARKET.md)): share of new accounts that get a computed, receipted answer in their first session; time to that answer (target under 2 minutes); D1/D7 retention.
 
-**Business model:** subscriptions for engineering teams and usage-based pricing for agent (MCP) calls first. Marketplace payments with creator royalties come later; details for crypto-focused funds are in [`docs/ECONOMY.md`](docs/ECONOMY.md).
+**Business model:** Concord is free for individual users. Enterprises, firms and engineering teams pay per seat, and agents calling verified compute over MCP pay by usage. Marketplace payments with creator royalties come later; details for crypto-focused funds are in [`docs/ECONOMY.md`](docs/ECONOMY.md).
 
 ## Architecture in one picture
 
