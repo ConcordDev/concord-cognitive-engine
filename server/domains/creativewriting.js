@@ -68,6 +68,41 @@ export default function registerCreativeWritingActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+  // writingLens is not in the shared snapshot key list. The title of a
+  // page is written to creative_writing_pages so a process restart can
+  // list it. Callers with no table (unit stubs) keep the in-memory path.
+  function cwDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function pagesReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='creative_writing_pages'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function writePageRow(ctx, project) {
+    const db = cwDb(ctx);
+    if (!pagesReady(db)) return;
+    db.prepare(`
+      INSERT INTO creative_writing_pages (id, user_id, title, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+    `).run(project.id, cwAid(ctx), project.title, project.createdAt, project.updatedAt);
+  }
+  function deletePageRow(ctx, id) {
+    const db = cwDb(ctx);
+    if (!pagesReady(db) || !id) return;
+    db.prepare("DELETE FROM creative_writing_pages WHERE id = ? AND user_id = ?").run(String(id), cwAid(ctx));
+  }
+  function readPageRows(ctx) {
+    const db = cwDb(ctx);
+    if (!pagesReady(db)) return [];
+    return db.prepare(
+      "SELECT id, title, created_at, updated_at FROM creative_writing_pages WHERE user_id = ? ORDER BY updated_at DESC",
+    ).all(cwAid(ctx));
+  }
   const cwId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const cwNow = () => new Date().toISOString();
   const cwAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -98,6 +133,14 @@ export default function registerCreativeWritingActions(registerLensAction) {
       createdAt: cwNow(), updatedAt: cwNow(),
     };
     cwListB(s.projects, cwAid(ctx)).push(project);
+    try {
+      writePageRow(ctx, project);
+    } catch (e) {
+      const arr = s.projects.get(cwAid(ctx)) || [];
+      const idx = arr.findIndex((p) => p.id === project.id);
+      if (idx >= 0) arr.splice(idx, 1);
+      return { ok: false, error: "page_not_saved", detail: String(e?.message || e) };
+    }
     saveCwState();
     return { ok: true, result: { project } };
   });
@@ -110,6 +153,22 @@ export default function registerCreativeWritingActions(registerLensAction) {
       ...p,
       wordCount: scenes.filter((x) => x.projectId === p.id).reduce((a, x) => a + x.wordCount, 0),
     }));
+    const seen = new Set(projects.map((p) => p.id));
+    for (const row of readPageRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      projects.push({
+        id: row.id,
+        title: row.title,
+        genre: null,
+        targetWords: null,
+        deadline: null,
+        logline: null,
+        createdAt: row.created_at || "",
+        updatedAt: row.updated_at || "",
+        wordCount: null,
+      });
+    }
     return { ok: true, result: { projects, count: projects.length } };
   });
 
@@ -139,12 +198,21 @@ export default function registerCreativeWritingActions(registerLensAction) {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = cwProject(s, cwAid(ctx), params.id);
     if (!project) return { ok: false, error: "project not found" };
+    const previousTitle = project.title;
+    const previousUpdated = project.updatedAt;
     if (params.title != null) project.title = cwClean(params.title, 160) || project.title;
     if (params.genre != null) project.genre = cwClean(params.genre, 40) || project.genre;
     if (params.targetWords != null) project.targetWords = Math.max(0, Math.round(cwNum(params.targetWords)));
     if (params.deadline != null) project.deadline = cwClean(params.deadline, 10).slice(0, 10) || null;
     if (params.logline != null) project.logline = cwClean(params.logline, 400) || null;
     project.updatedAt = cwNow();
+    try {
+      writePageRow(ctx, project);
+    } catch (e) {
+      project.title = previousTitle;
+      project.updatedAt = previousUpdated;
+      return { ok: false, error: "page_not_saved", detail: String(e?.message || e) };
+    }
     saveCwState();
     return { ok: true, result: { project } };
   });
@@ -155,6 +223,11 @@ export default function registerCreativeWritingActions(registerLensAction) {
     const arr = s.projects.get(userId) || [];
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
+    try {
+      deletePageRow(ctx, params.id);
+    } catch (e) {
+      return { ok: false, error: "page_not_saved", detail: String(e?.message || e) };
+    }
     arr.splice(i, 1);
     for (const k of ["chapters", "scenes", "characters", "threads", "sessions",
       "notes", "snapshots", "comments", "charRelations"]) {
