@@ -13,7 +13,8 @@
 //   - Cascading retry storms under load
 //   - Event-loop lag spikes from synchronous disk I/O on the hot path
 
-import logger from './logger.js';
+import { log } from '../logger.js';
+const logger = (level, event, meta) => log(level, 'batch-commit-buffer', event, meta);
 
 export function createBatchCommitBuffer(opts) {
   const {

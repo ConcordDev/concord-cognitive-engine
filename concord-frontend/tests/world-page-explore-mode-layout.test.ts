@@ -45,8 +45,9 @@ describe('world lens page — 2D dashboard panels hidden in 3D Explore mode', ()
   it('hides the World Actions Panel while viewMode is explore', () => {
     const idx = src.indexOf('{/* World Actions Panel');
     expect(idx).toBeGreaterThan(-1);
-    const slice = src.slice(idx, idx + 800);
-    expect(slice).toMatch(/\{viewMode !== 'explore' && \(/);
+    const slice = src.slice(idx, idx + 1600);
+    // Also hidden in District mode; the explore guard is what this pins.
+    expect(slice).toMatch(/\{viewMode !== 'explore'(?: && viewMode !== '\w+')* && \(/);
   });
 
   it('never mounts the generic Lens Features scaffold panel at all (removed, not just hidden)', () => {
@@ -61,7 +62,7 @@ describe('world lens page — 2D dashboard panels hidden in 3D Explore mode', ()
     const idx = src.indexOf('<EarthEventsLive');
     expect(idx).toBeGreaterThan(-1);
     const before = src.slice(Math.max(0, idx - 400), idx);
-    expect(before).toMatch(/\{viewMode !== 'explore' && \(/);
+    expect(before).toMatch(/\{viewMode !== 'explore'(?: && viewMode !== '\w+')* && \(/);
   });
 
   it('keeps the Factions/Quests/Marketplace/Adventure-kit affordance bar visible in every mode (deliberately not hidden)', () => {

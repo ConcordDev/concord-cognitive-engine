@@ -28,7 +28,7 @@ export async function playerMail(action: string, input: Record<string, unknown> 
   if (!r.data.ok || !body || body.ok === false) {
     return { ok: false, error: body?.error || r.data.error || 'mail_failed', dtuIds: body?.dtuIds };
   }
-  return { ok: true, ...body };
+  return { ...body, ok: true };
 }
 
 export function sendFailureText(error: string | undefined): string {

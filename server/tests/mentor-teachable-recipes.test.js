@@ -10,7 +10,7 @@ import registerKnowledgeTradeMacros from "../domains/knowledge-trade.js";
 
 function db() {
   const d = new Database(":memory:");
-  d.exec("CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, creator_id TEXT, meta_json TEXT)");
+  d.exec("CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, creator_id TEXT, data TEXT)");
   const ins = d.prepare("INSERT INTO dtus VALUES (?, ?, ?, ?)");
   ins.run("r1", "Iron sword", "npc_smith", JSON.stringify({ revision_num: 2 }));
   ins.run("r2", "Steel sword", "npc_smith", JSON.stringify({ revision_num: 6 }));

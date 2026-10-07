@@ -221,7 +221,7 @@ export default function SocialHubPage() {
                     {t.badge > 99 ? '99+' : t.badge}
                   </span>
                 )}
-                <kbd className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
+                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
               </button>
             );
           })}

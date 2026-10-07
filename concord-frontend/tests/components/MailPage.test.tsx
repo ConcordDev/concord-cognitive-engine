@@ -20,8 +20,17 @@ vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 // via axios (not the raw `fetch` this file already stubs) — mock it separately
 // so the recipient-search test can drive it deterministically.
 const apiGetMock = vi.fn();
+// Player mail goes through the mail.* macros (components/mail/playerMail.ts),
+// not REST. Each test still describes its folders as `/inbox` and `/sent`
+// responses on the stubbed fetch; this routes lensRun('mail', 'list' | 'sent')
+// to those, so the real playerMail → MailFolderPanel path runs.
 vi.mock('@/lib/api/client', () => ({
   api: { get: (...args: unknown[]) => apiGetMock(...args) },
+  lensRun: async (_domain: string, action: string) => {
+    const folder = action === 'list' ? 'inbox' : action;
+    const res = await (globalThis.fetch as unknown as (u: string) => Promise<Response>)(`/mail/${folder}`);
+    return { data: { ok: true, result: await res.json(), error: null } };
+  },
 }));
 
 // Capturing socket mock — lets a test fire the real server event name and

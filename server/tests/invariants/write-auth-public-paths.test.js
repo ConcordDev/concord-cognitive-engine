@@ -84,6 +84,11 @@ const SERVER_JS = path.join(
  *         to be minted/refreshed somehow). The actual world feed is a GET
  *         (`/api/spectate/:worldId/feed`) and needs no exemption. See the
  *         inline justification at this array's own declaration in server.js.
+ *   /api/esign/
+ *       — an anonymous document recipient signs only the signer slot resolved
+ *         by a cryptographically random, revocable link token. The route
+ *         requires typed-name consent, records the audit context, and is
+ *         covered by tests/e2e/esign-links-routes.test.js.
  *   /api/metrics/vitals
  *       — added 2026-08-24, found live during a real-browser load test.
  *         Web Vitals reporting (lib/perf.ts, navigator.sendBeacon) fires on
@@ -109,6 +114,7 @@ const EXPECTED = [
   "/api/stripe/webhook",
   "/api/welding/portal/",
   "/api/spectate/",
+  "/api/esign/",
 ];
 
 function parseAllowlist() {

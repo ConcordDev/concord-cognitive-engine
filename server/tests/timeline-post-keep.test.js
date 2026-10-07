@@ -54,6 +54,10 @@ describe("timeline post keep", () => {
   });
 
   it("keeps a cited DTU id on a thread draft and drops one that is not an id", () => {
+    globalThis._concordSTATE.dtus.set("dtu_tl_1", {
+      id: "dtu_tl_1",
+      creator_id: "user_a",
+    });
     const cited = call("thread.thread-draft", ctx, {
       title: "Harbor",
       content: "Harbor lights at dusk.",

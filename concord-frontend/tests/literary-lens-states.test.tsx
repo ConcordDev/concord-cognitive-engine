@@ -18,6 +18,8 @@ import React from 'react';
 
 // ── lensRun mock — the page's single backend channel ────────────────────────
 const lensRun = vi.fn();
+// The north-star frame wires these into the page; stub them for a headless render.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));

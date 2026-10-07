@@ -173,6 +173,12 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      # public/unity-client/Build/*.unityweb are Git LFS objects; a plain
+      # checkout leaves pointer files and the image would serve a broken
+      # Unity player. Pull just that folder into the build context.
+      - name: Fetch the Unity WebGL player from LFS
+        run: git lfs pull --include="concord-frontend/public/unity-client/**"
+
       - name: Build and push frontend image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:

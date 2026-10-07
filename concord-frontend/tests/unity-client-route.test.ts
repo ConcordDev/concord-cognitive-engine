@@ -114,7 +114,14 @@ describe('committed Unity WebGL player', () => {
     expect(fs.existsSync(index), 'public/unity-client/export-index.html missing').toBe(true);
     expect(fs.readFileSync(index, 'utf8')).toContain('concordia.loader.js');
     expect(fs.existsSync(wasm), 'concordia.wasm.unityweb missing from public/').toBe(true);
-    expect(fs.statSync(wasm).size).toBeGreaterThan(1_000_000);
+    // *.unityweb is a Git LFS object. A checkout without `git lfs pull` holds
+    // the pointer, which declares the real size; the deploy image pulls the
+    // bytes (deploy.yml). Either way the committed player must be the real one.
+    const head = fs.readFileSync(wasm).subarray(0, 200).toString('utf8');
+    const lfsSize = head.startsWith('version https://git-lfs.github.com/spec/v1')
+      ? Number(/^size (\d+)$/m.exec(head)?.[1] ?? 0)
+      : fs.statSync(wasm).size;
+    expect(lfsSize).toBeGreaterThan(1_000_000);
     expect(resolveUnityIndexPath()).toBeTruthy();
     expect(fs.existsSync(path.join(root, 'public', 'unity-client', 'Build', 'concordia.loader.js'))).toBe(
       true,
