@@ -1,68 +1,44 @@
 /**
- * /lenses/cognitive-replay — four-UX-state contract.
+ * /lenses/cognitive-replay — one moment.
  *
- * Pins that the Cognitive Replay lens renders genuine loading / error (with a
- * WORKING Retry that re-fetches) / empty / populated states against the real
- * backend channels:
- *   • the page's primary timeline load → POST /api/lens/run { chat.timeline }
- *   • the StatsBar child → lensRun('cognitive-replay','stats', …)
- *
- * The load-bearing regression this guards: a transport/fetch failure on the
- * timeline load must surface a role=alert error with a Retry, NOT be swallowed
- * into a silently-empty "No timeline events yet" page (that defect makes an
- * offline backend read identical to "no activity").
- *
- * No fabricated data: every state is driven by a mocked fetch / lensRun standing
- * in for the real backend, in exactly the shapes the macros return. The headless
- * LensShell + lens chrome + sibling fetching children are stubbed inert so each
- * assertion stays on the surface under test.
+ * Choose a moment calls cognitive-replay.moment-choose and shows the
+ * title only after moment-list contains that id and the same title, and
+ * the line only after moment-detail returns it. Role and brain stay off
+ * the card.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
-// ── lensRun mock — the children's backend channel ───────────────────────────
-const lensRun = vi.fn();
+const { lensRun, authUser } = vi.hoisted(() => ({
+  lensRun: vi.fn(),
+  authUser: { current: null as { username: string } | null },
+}));
+
+vi.mock('@/components/lens/LensShell', () => ({
+  LensShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', null, children),
+}));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: authUser.current, isLoading: false, isAuthenticated: !!authUser.current }),
+}));
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
-// ── headless shell + lens chrome: render-only stubs ─────────────────────────
-vi.mock('@/components/lens/LensShell', () => ({
-  LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
-}));
-vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('next/navigation', () => ({ useSearchParams: () => ({ get: () => null }) }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
-vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-// Sibling tab children that fetch on their own — inert unless under test.
-vi.mock('@/components/cognitive-replay/WrappedCards', () => ({ WrappedCards: () => React.createElement('div', { 'data-testid': 'tab-wrapped' }) }));
-vi.mock('@/components/cognitive-replay/ActivityHeatmap', () => ({ ActivityHeatmap: () => null }));
-vi.mock('@/components/cognitive-replay/FilteredTimeline', () => ({ FilteredTimeline: () => null }));
-vi.mock('@/components/cognitive-replay/WindowCompare', () => ({ WindowCompare: () => null }));
-vi.mock('@/components/cognitive-replay/SnapshotPanel', () => ({ SnapshotPanel: () => null }));
-vi.mock('@/components/cognitive-replay/EventDetailModal', () => ({ EventDetailModal: () => null }));
-vi.mock('@/components/cognitive-replay/TimelineExport', () => ({ TimelineExport: () => null }));
-// StatsBar is the one child we DON'T stub — it exercises the lensRun stats path.
-
-// Import AFTER mocks are registered.
 import CognitiveReplayPage from '@/app/lenses/cognitive-replay/page';
 import { StatsBar } from '@/components/cognitive-replay/StatsBar';
 
-// fetch helpers — the page's primary timeline channel.
-function fetchOk(body: Record<string, unknown>) {
-  return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+function listed(rows: { id: string; title: string }[]) {
+  return { data: { ok: true, result: { moments: rows, count: rows.length }, error: null } };
 }
 
-const EVENTS = [
-  { ts: 1700000000000, role: 'user', brainsUsed: [], toolCalls: [], dtusCited: [], tokenCount: 20, contentPreview: 'hello', sessionId: 's1' },
-  { ts: 1700003600000, role: 'assistant', brainsUsed: ['conscious'], toolCalls: [], dtusCited: ['dtu_1'], tokenCount: 100, contentPreview: 'a reply', sessionId: 's1' },
-];
+function opened(id: string, line: string) {
+  return { data: { ok: true, result: { moment: { id, title: 'kept', line } }, error: null } };
+}
 
 function lensReply(result: Record<string, unknown>, ok = true) {
   return Promise.resolve({ data: { ok, result } });
@@ -70,82 +46,129 @@ function lensReply(result: Record<string, unknown>, ok = true) {
 
 beforeEach(() => {
   lensRun.mockReset();
-  // StatsBar fires on mount in the populated page — give it a benign default.
-  lensRun.mockImplementation(() => lensReply({
-    sinceDays: 7, turns: 2, sessions: 1, totalTokens: 120, avgTokensPerTurn: 60,
-    totalToolCalls: 0, totalCitations: 1, topBrain: { brain: 'conscious', turns: 1 },
-    topTool: null, busiestDay: { day: '2023-11-14', turns: 2 }, brainCounts: { conscious: 1 }, spanDays: 1,
-  }));
+  authUser.current = null;
 });
 
-describe('cognitive-replay lens — page primary-load four UX states', () => {
-  it('LOADING: shows a role=status indicator while the timeline load is in flight', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {}))); // never resolves
-    const { container, getByText } = render(<CognitiveReplayPage />);
-    await waitFor(() => expect(getByText(/Loading your cognitive timeline/i)).toBeInTheDocument());
-    expect(container.querySelector('[role="status"]')).toBeTruthy();
+describe('cognitive replay card', () => {
+  it('EMPTY: says no moment chosen and offers Choose a moment', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByText('No moment chosen.')).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Replay the moment' })).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Choose a moment' })).toBeEnabled();
+    expect(view.container.querySelector('input')).toBeNull();
+    expect(view.queryByText('Wrapped')).toBeNull();
+    expect(view.queryByText('Heatmap')).toBeNull();
   });
 
-  it('EMPTY: a successful load with zero events shows the honest empty CTA, NOT an error', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: true, events: [] })));
-    const { getByText, container } = render(<CognitiveReplayPage />);
-    await waitFor(() => expect(getByText(/No timeline events yet/i)).toBeInTheDocument());
-    expect(container.querySelector('[role="alert"]')).toBeFalsy();
-    // empty state offers a real CTA to go start a chat.
-    expect(getByText(/Start a chat session/i)).toBeInTheDocument();
+  it('WARMING: a shed moment-list retries and then shows the empty card', async () => {
+    lensRun
+      .mockResolvedValueOnce({ data: { ok: false, result: null, error: 'service_overloaded' } })
+      .mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByText('No moment chosen.', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(view.queryByRole('alert')).toBeNull();
+    expect(lensRun).toHaveBeenCalledTimes(2);
   });
 
-  it('ERROR: a failed timeline fetch shows role=alert + a working Retry that re-fetches (not swallowed into empty)', async () => {
-    let fail = true;
-    const fetchMock = vi.fn(() => {
-      if (fail) return Promise.reject(new Error('network down'));
-      return fetchOk({ ok: true, events: EVENTS });
+  it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
+    lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'state_unavailable' } });
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
+    lensRun.mockResolvedValue(listed([]));
+    fireEvent.click(view.getByRole('button', { name: 'Retry' }));
+    expect(await view.findByText('No moment chosen.')).toBeInTheDocument();
+  });
+
+  it('does not send a blank title', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    expect(view.getByText('A title is required.')).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a blank line', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
+    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    expect(view.getByText('A line is required.')).toBeInTheDocument();
+    expect(lensRun.mock.calls.some((call) => call[1] === 'moment-choose')).toBe(false);
+  });
+
+  it('shows the title and the line only after list and detail match', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
+    fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
+    lensRun.mockImplementation((domain: string, name: string) => {
+      if (name === 'moment-choose') {
+        return Promise.resolve({ data: { ok: true, result: { momentId: 'cr_door' }, error: null } });
+      }
+      if (name === 'moment-list') return Promise.resolve(listed([{ id: 'cr_door', title: 'Door moment' }]));
+      if (name === 'moment-detail') return Promise.resolve(opened('cr_door', 'the hinge question'));
+      return Promise.resolve({ data: { ok: false, result: null, error: `unexpected ${domain}.${name}` } });
     });
-    vi.stubGlobal('fetch', fetchMock);
-    const { container, getByText } = render(<CognitiveReplayPage />);
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/Couldn't load your cognitive timeline/i)).toBeInTheDocument();
-    // CRITICAL: the failure is NOT presented as the empty "no activity" state.
-    expect(container.textContent).not.toMatch(/No timeline events yet/i);
-
-    const before = fetchMock.mock.calls.length;
-    fail = false;
-    await act(async () => { fireEvent.click(getByText('Retry')); });
-    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
-    // recovers to populated — the error alert is gone and real content renders.
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeFalsy());
-    expect(container.textContent).toMatch(/120 tokens/i);
-    expect(container.textContent).not.toMatch(/No timeline events yet/i);
+    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
+    expect(view.getByTestId('cr-line')).toHaveTextContent('the hinge question');
+    const choose = lensRun.mock.calls.find((call) => call[1] === 'moment-choose');
+    expect(choose?.[2]).toEqual({ title: 'Door moment', line: 'the hinge question' });
+    expect(view.queryByText('conscious')).toBeNull();
   });
 
-  it('POPULATED: a successful load renders the real turn/token rollup header', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: true, events: EVENTS })));
-    const { container } = render(<CognitiveReplayPage />);
-    // header is computed from the real events: 2 turns · 120 tokens · 1 DTU citation
-    await waitFor(() => expect(container.textContent).toMatch(/120 tokens/i));
-    expect(container.textContent).toMatch(/2 turns/i);
-    expect(container.textContent).toMatch(/1 DTU citation/i);
-    expect(container.querySelector('[role="alert"]')).toBeFalsy();
+  it('stays on the composer when the list does not contain the new id', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
+    fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
+    lensRun.mockImplementation((_domain: string, name: string) => {
+      if (name === 'moment-choose') {
+        return Promise.resolve({ data: { ok: true, result: { momentId: 'cr_door' }, error: null } });
+      }
+      if (name === 'moment-list') return Promise.resolve(listed([]));
+      return Promise.resolve(opened('cr_door', 'the hinge question'));
+    });
+    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
+    expect(view.getByTestId('cr-title')).toBeInTheDocument();
   });
 
-  it('POPULATED (correctly-nested envelope): unwraps { ok, result: { ok, events } } from chat.timeline', async () => {
-    // Regression pin: POST /api/lens/run always responds { ok: true, result:
-    // PAYLOAD } — the outer `ok` is a transport flag only. Before the fix the
-    // page read `data.ok` / `data.events` straight off the transport envelope,
-    // which is always undefined against this real (nested) shape.
-    vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: true, result: { ok: true, events: EVENTS } })));
-    const { container } = render(<CognitiveReplayPage />);
-    await waitFor(() => expect(container.textContent).toMatch(/120 tokens/i));
-    expect(container.textContent).toMatch(/2 turns/i);
-    expect(container.querySelector('[role="alert"]')).toBeFalsy();
+  it('greets the signed-in name', async () => {
+    authUser.current = { username: 'ramaj' };
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('heading', { name: 'Replay the moment, Ramaj' })).toBeInTheDocument();
   });
 
-  it('a non-ok JSON body (ok:false) surfaces an error, not a silently-empty page', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: false, error: 'timeline unavailable' })));
-    const { container, getByText } = render(<CognitiveReplayPage />);
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/timeline unavailable/i)).toBeInTheDocument();
-    expect(container.textContent).not.toMatch(/No timeline events yet/i);
+  it('loads a stored moment and does not render a brain', async () => {
+    lensRun.mockImplementation((_domain: string, name: string) => {
+      if (name === 'moment-list') return Promise.resolve(listed([{ id: 'cr_door', title: 'Door moment' }]));
+      if (name === 'moment-detail') return Promise.resolve(opened('cr_door', 'the hinge question'));
+      return Promise.resolve(listed([]));
+    });
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
+    expect(view.getByTestId('cr-line')).toHaveTextContent('the hinge question');
+    expect(view.queryByText('No moment chosen.')).toBeNull();
+    expect(view.queryByText('conscious')).toBeNull();
+  });
+
+  it('stays on the composer when choose is refused', async () => {
+    lensRun.mockResolvedValue(listed([]));
+    const view = render(<CognitiveReplayPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
+    fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
+    lensRun.mockResolvedValue({ data: { ok: false, result: null, error: 'moment_not_saved' } });
+    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/moment_not_saved/);
+    expect(view.getByTestId('cr-title')).toBeInTheDocument();
   });
 });
 
@@ -170,12 +193,10 @@ describe('cognitive-replay lens — StatsBar child four UX states', () => {
     const { container, getByText } = render(<StatsBar sinceDays={7} />);
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/stats offline/i)).toBeInTheDocument();
-
     const before = lensRun.mock.calls.length;
     fail = false;
     await act(async () => { fireEvent.click(getByText('Retry')); });
     await waitFor(() => expect(lensRun.mock.calls.length).toBeGreaterThan(before));
-    // recovers to the real computed rollup (320 tokens).
     await waitFor(() => expect(getByText('320')).toBeInTheDocument());
   });
 
