@@ -10,7 +10,84 @@
 // stiffness and yield from the engineering material library, stresses and
 // deflections from the solver. Units: inputs in mm / N, solver in SI.
 
+import { createHash } from "node:crypto";
 import { sectionProperties } from "../compute/engineering-compute.js";
+
+/** Direct-stiffness beam-frame solver identity (semver from server package). */
+export const FEA_SOLVER_ID = "fea-solver@5.0.0";
+
+const BEAM_ASSUMPTIONS = Object.freeze([
+  "Euler–Bernoulli beam theory",
+  "linear-static",
+  "small deflection",
+  "planar bending (out-of-plane DOFs restrained at supports)",
+  "isotropic linear-elastic material",
+]);
+
+const BEAM_OUT_OF_SCOPE = Object.freeze([
+  "shell",
+  "solid",
+  "buckling_eigen",
+  "modal",
+  "contact",
+  "plasticity",
+  "large_deflection",
+  "thermal_stress",
+  "dynamics",
+]);
+
+/** Stable JSON with sorted object keys (arrays keep order). */
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(",")}}`;
+}
+
+/**
+ * Canonical inputs that change the solve. Used for analysisReceipt.inputHash.
+ * @param {{ dims: object, support: string, loadN: number, material: { E: number, yield: number }, segments?: number }} input
+ */
+export function normalizeBeamStudyInputs(input = {}) {
+  const dims = input.dims || {};
+  return {
+    dims: {
+      length: Number(dims.length),
+      height: Number(dims.height),
+      flangeWidth: Number(dims.flangeWidth),
+      flangeThickness: Number(dims.flangeThickness),
+      webThickness: Number(dims.webThickness),
+    },
+    support: String(input.support || "simply-supported"),
+    loadN: Number(input.loadN),
+    material: {
+      E: Number(input.material?.E),
+      yield: Number(input.material?.yield),
+    },
+    segments: Number(input.segments) || 8,
+  };
+}
+
+/** SHA-256 hex of normalized study inputs (stable key order). */
+export function hashBeamStudyInputs(input = {}) {
+  const normalized = normalizeBeamStudyInputs(input);
+  return createHash("sha256").update(stableStringify(normalized)).digest("hex");
+}
+
+/**
+ * Provenance receipt attached to every successful beamStudy result.
+ * @param {{ dims: object, support: string, loadN: number, material: { E: number, yield: number }, segments?: number }} input
+ */
+export function buildAnalysisReceipt(input = {}) {
+  return {
+    solver: FEA_SOLVER_ID,
+    inputHash: hashBeamStudyInputs(input),
+    units: "SI",
+    assumptions: [...BEAM_ASSUMPTIONS],
+    outOfScope: [...BEAM_OUT_OF_SCOPE],
+  };
+}
+
 
 export const BEAM_SUPPORTS = ["simply-supported", "cantilever", "fixed"];
 
@@ -107,12 +184,21 @@ export function buildBeamStudy(input = {}) {
     support,
     loadN: P,
     loadNode,
+    segments: n,
+    material: { E: mat.E, yield: mat.yield },
     section: { areaMm2: sec.area * 1e6, IxMm4: sec.Ix * 1e12, IyMm4: sec.Iy * 1e12 },
     model: { nodes, members, loads: [{ nodeId: loadNode, Fy: -P }], supports },
     handCheck: {
       maxStressMPa: (Mmax * c) / sec.Ix / 1e6,
       maxDeflectionMm: deflection * 1000,
     },
+    analysisReceipt: buildAnalysisReceipt({
+      dims,
+      support,
+      loadN: P,
+      material: mat,
+      segments: n,
+    }),
   };
 }
 

@@ -1016,7 +1016,7 @@ export default function registerEngineeringActions(registerLensAction) {
         s.beamStudies.set(beamStudyKey(ctx, data), {
           workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
           jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
-          utilizationByMember, dtuId: null, updatedAt,
+          utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
         });
         persist();
       }
@@ -1029,6 +1029,7 @@ export default function registerEngineeringActions(registerLensAction) {
           section: study.section,
           ...summary,
           utilizationByMember,
+          analysisReceipt: study.analysisReceipt,
         },
       };
     } catch (e) {

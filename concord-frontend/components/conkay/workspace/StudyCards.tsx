@@ -7,7 +7,7 @@
  * and read back. Before the first solve, or after an edit, the cards say so.
  */
 
-import { Cpu, FileCheck2, Loader2, ShieldAlert, ShieldCheck, Sigma } from 'lucide-react';
+import { Cpu, FileCheck2, Loader2, Receipt, ShieldAlert, ShieldCheck, Sigma } from 'lucide-react';
 import type { BeamStudyResult } from '@/lib/conkay/workspace-commands';
 import type { SolveStatus } from './useConKayWorkspace';
 
@@ -100,6 +100,19 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping }: Pr
           </p>
         </div>
       </div>
+      {result.analysisReceipt && (
+        <div className={`${card} col-span-2 2xl:col-span-4`} title={`assumptions: ${(result.analysisReceipt.assumptions || []).join('; ')}; out of scope: ${(result.analysisReceipt.outOfScope || []).join(', ')}`}>
+          <Receipt className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+          <div className="min-w-0">
+            <p className="truncate font-mono text-[11px] text-slate-300">
+              {result.analysisReceipt.solver} · {result.analysisReceipt.units} · {result.analysisReceipt.inputHash.slice(0, 12)}…
+            </p>
+            <p className="truncate text-[10px] text-slate-500">
+              {(result.analysisReceipt.assumptions || []).slice(0, 3).join(' · ')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
