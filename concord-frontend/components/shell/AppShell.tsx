@@ -29,7 +29,6 @@ import { MobileNav } from '@/components/shell/MobileNav';
 // heavy component (shell-diet pass) — importing the hook here no longer
 // drags the component's render tree into the initial bundle.
 import { useQuickCapture } from '@/components/capture/useQuickCapture';
-import { useOnboarding } from '@/components/onboarding/useOnboarding';
 import { useEverTrue } from '@/hooks/useEverTrue';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
@@ -101,10 +100,6 @@ const SessionSidebar = dynamic(
 );
 const QuickCapture = dynamic(
   () => import('@/components/capture/QuickCapture').then((m) => ({ default: m.QuickCapture })),
-  { ssr: false }
-);
-const OnboardingWizard = dynamic(
-  () => import('@/components/onboarding/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
   { ssr: false }
 );
 const NowPlayingBar = dynamic(
@@ -185,11 +180,6 @@ export function AppShell({ children }: AppShellProps) {
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const quickCapture = useQuickCapture();
   const router = useRouter();
-  const {
-    isOpen: onboardingOpen,
-    complete: completeOnboarding,
-    close: dismissOnboarding,
-  } = useOnboarding();
   const activeSessionTitle = useSessionStore((s) => {
     const active = s.sessions.find((sess) => sess.id === s.activeSessionId);
     return active?.title || null;
@@ -199,7 +189,6 @@ export function AppShell({ children }: AppShellProps) {
   // same conditions that already governed whether they rendered anything.
   const sessionSidebarEverOpened = useEverTrue(sessionSidebarOpen);
   const quickCaptureEverOpened = useEverTrue(quickCapture.isOpen);
-  const onboardingEverNeeded = useEverTrue(onboardingOpen && pathname !== '/lenses/world');
   // NowPlayingBar renders null until a track is loaded — gate its mount the
   // same way so non-music sessions never pay for lucide icons + the
   // waveform/canvas visualizer code.
@@ -388,28 +377,9 @@ export function AppShell({ children }: AppShellProps) {
           HelpButton/SyncIndicator/InstallPrompt/ConKayOverlay's own summon
           button bottom-right — see ConKayWidgetLayer.tsx's position note). */}
       <ConKayWidgetLayer />
-      {onboardingEverNeeded && (
-        <OnboardingWizard
-          // Don't hijack the world lens with the abstract platform tour — a new
-          // player who just built their character landed here to PLAY. The
-          // game's own FirstWinWizard (Cook → Eat → Fight → Commune) is the right
-          // first-run surface in-world; the platform tour still appears the moment
-          // they visit the dashboard or a workspace lens.
-          isOpen={onboardingOpen && pathname !== '/lenses/world'}
-          onClose={dismissOnboarding}
-          onComplete={completeOnboarding}
-          onAction={(action) => {
-            const routes: Record<string, string> = {
-              openChat: '/lenses/chat',
-              openBoard: '/lenses/board',
-              openGraph: '/lenses/graph',
-              openCode: '/lenses/code',
-              openStudio: '/lenses/studio',
-            };
-            if (routes[action]) router.push(routes[action]);
-          }}
-        />
-      )}
+      {/* The 7-step "Welcome to Concord" platform tour was removed (Dutch,
+          2026-10-07): a forced modal walkthrough is cumbersome on a platform
+          this large. The cookie notice is now the only first-run gate. */}
       <OfflineBanner />
       <InstallPrompt />
       <SyncIndicator />

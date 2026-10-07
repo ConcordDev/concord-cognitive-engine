@@ -11,10 +11,19 @@
 
 export const ONBOARDING_COMPLETE_KEY = 'concord-onboarding-completed';
 
+// 2026-10-07: the 7-step welcome wizard was removed from AppShell. The cookie
+// notice is now the primary first-run entry, so secondary surfaces un-gate as
+// soon as it has been answered (or the legacy wizard flag is present).
+export const COOKIE_CONSENT_STORAGE_KEY = 'concord_cookie_consent';
+
 export function isOnboardingComplete(): boolean {
   try {
     if (typeof window === 'undefined') return true;
-    return window.localStorage.getItem(ONBOARDING_COMPLETE_KEY) === 'true';
+    const ls = window.localStorage;
+    return (
+      ls.getItem(ONBOARDING_COMPLETE_KEY) === 'true' ||
+      Boolean(ls.getItem(COOKIE_CONSENT_STORAGE_KEY))
+    );
   } catch {
     return true;
   }

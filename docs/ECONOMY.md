@@ -2,7 +2,7 @@
 
 *For funds that look at payments, creator economies or crypto. Everyone else can skip this: the economy is a later expansion, and Concord's first market is engineers who need AI answers they can check (see the [README](../README.md)).*
 
-*Last checked against the code: 2026-10-07, `main` @ `973e214`.*
+*Last checked against the code: 2026-10-07, `main` @ `33e7ef77d`.*
 
 ## In one line
 

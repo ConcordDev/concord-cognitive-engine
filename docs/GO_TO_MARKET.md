@@ -81,7 +81,7 @@ each gate for that audience is green.
 | Hosting off a single 16GB Mac | all | 🔴 Open | Swapping measured at 7.3/8 GB under load; plan: [`OFF_MAC_MIGRATION_BLUEPRINT.md`](OFF_MAC_MIGRATION_BLUEPRINT.md) |
 
 **Update 2026-10-07 (engineering wedge):** the site is up (checked 2026-10-07). Four ConKay PRs
-are open, and each one's own tests pass: the beam V&V corpus (#1015: 12 closed-form cases gated at 1e-6
+merged to `main` on 2026-10-07, and each one's own tests pass: the beam V&V corpus (#1015: 12 closed-form cases gated at 1e-6
 relative error, 14 pass / 0 fail), `analysisReceipt` on beam studies (#1016: solver id, input
 hash, units, assumptions, out-of-scope list), the ConKay engineering workspace (#1014) and the
 analytical Euler column check (#1017).

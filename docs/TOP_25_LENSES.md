@@ -2,7 +2,7 @@
 
 Ranked from `docs/PHASE12_AUDIT_lens-classification.csv` (the source-of-truth
 depth audit, which covered the 236 lens directories that existed when it ran;
-there are 267 lenses today).
+there are 268 lenses today).
 
 ## Scoring
 

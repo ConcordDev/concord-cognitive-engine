@@ -15,6 +15,11 @@ describe('onboarding sequencing gate', () => {
     expect(isOnboardingComplete()).toBe(true);
   });
 
+  it('wizard removed → answering the cookie notice un-gates secondary surfaces', () => {
+    window.localStorage.setItem('concord_cookie_consent', 'accepted');
+    expect(isOnboardingComplete()).toBe(true);
+  });
+
   it('uses the same key the OnboardingWizard writes on complete/dismiss', () => {
     // Contract: the wizard's completion key and this gate's key must match,
     // or the secondary surfaces would never un-gate.
