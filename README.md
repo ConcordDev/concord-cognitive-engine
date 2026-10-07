@@ -17,7 +17,7 @@ Concord:  Routed to the beam engine (not guessed by the language model).
 
 That exact question and answer are pinned by a test on `main` ([`server/tests/engineering-question-extract.test.js`](server/tests/engineering-question-extract.test.js)).
 
-**Why it's credible:** this is shipped software, not a deck. 7,632 commits, 3,463 test files, CI on every change, 441 backend domain modules and an MCP server that lets other AI agents call the same verified compute. One founder built it with AI coding agents, self-funded. Every number on this page can be re-measured from the repo ([commands below](#reproduce-the-numbers)).
+**Why it's credible:** this is shipped software, not a deck. 7,688 commits, 3,512 test files, CI on every change, 442 backend domain modules and an MCP server that lets other AI agents call the same verified compute. One founder built it with AI coding agents, self-funded. Every number on this page can be re-measured from the repo ([commands below](#reproduce-the-numbers)).
 
 ---
 
@@ -40,10 +40,10 @@ Concord's rule: **where software can compute the answer exactly, it computes it.
 **Live now**
 - [concord-os.org](https://concord-os.org) is up (checked 2026-10-07, 3:40 PM ET). Sign-up is free.
 - Chat routes written beam problems (simply supported, cantilever, fixed-fixed; imperial and SI) to the deterministic engine instead of the language model, and discloses assumed values such as steel's E. Tests assert the textbook PL³/48EI, PL³/3EI and PL³/192EI results.
-- The Engineering lens is a frame/FEA and multi-discipline calc desk backed by a 2D/3D frame solver ([`server/lib/simulation/fea-solver.js`](server/lib/simulation/fea-solver.js)) and 36 engineering operations (FEA, structural, thermal, hydraulic, tolerance chains, transformer sizing and more).
+- The Engineering lens is a frame/FEA and multi-discipline calc desk backed by a 2D/3D frame solver ([`server/lib/simulation/fea-solver.js`](server/lib/simulation/fea-solver.js)) and 44 engineering operations (FEA, structural, thermal, hydraulic, tolerance chains, transformer sizing and more).
 - A new-user QA pass on 2026-09-27 checked parts, load cases, FEA and 7 calculators against hand calculations, and found and fixed a column-solver bug ([`docs/GO_TO_MARKET.md`](docs/GO_TO_MARKET.md)).
 
-**Landing now (open pull requests; each one's own tests pass)**
+**Now on `main` (merged 2026-10-07; each pull request's own tests pass)**
 - **Beam V&V corpus** ([#1015](https://github.com/ConcordDev/concord-cognitive-engine/pull/1015)): 12 closed-form textbook cases (cantilevers, simply supported and fixed-fixed midspan loads, an inclined member, a portal frame, bending stress) run through the solver in CI, gated at a maximum relative error of 1e-6. Result: 14 pass, 0 fail.
 - **`analysisReceipt`** ([#1016](https://github.com/ConcordDev/concord-cognitive-engine/pull/1016)): every beam study carries a receipt with the solver id, a SHA-256 hash of the normalized inputs, units, assumptions and an explicit out-of-scope list. Change the span or the load and the hash changes.
 - **ConKay engineering workspace** ([#1014](https://github.com/ConcordDev/concord-cognitive-engine/pull/1014)): a parametric I-beam you can edit in plain language ("cantilever, 50 kN, A36", "t_w = 8 mm and re-run"), with the FEA result and hand check side by side, parameter sweeps that name the lightest passing section, and results kept as reproducible records.
@@ -66,7 +66,7 @@ node --test tests/engineering-question-extract.test.js tests/fea-frame-element.t
 
 ## How the same engine reaches other fields
 
-Engineering is the wedge. The engine behind it (compute where possible, check, keep the record) is general, and it already runs across **267 lenses in 13 categories**. A lens is a focused workspace on the same backend, for example:
+Engineering is the wedge. The engine behind it (compute where possible, check, keep the record) is general, and it already runs across **268 lenses in 13 categories**. A lens is a focused workspace on the same backend, for example:
 
 - **Accounting:** the largest domain module (4,081 lines): trial balance, P&L, AP aging, invoices, payroll summaries and runway forecasts.
 - **Science and technical:** symbolic math, physics, chemistry, materials, electrical systems and aviation weight-and-balance.
@@ -80,22 +80,22 @@ These show how far the engine reaches. They are not the first market.
 
 **One founder working with AI coding agents.** That is a strength investors can verify, not a gap to explain:
 
-- **7,632 commits** on `main`, about 90% of them (6,830) since April 2026. The repo's first commit was December 2025; full-time building has run about 7 months.
-- **3,463 test files** (754,477 lines), including **297 behavioral "depth" tests** that assert computed values rather than page shapes.
+- **7,688 commits** on `main`, about 90% of them (6,886) since April 2026. The repo's first commit was December 2025; full-time building has run about 7 months.
+- **3,512 test files** (761,451 lines), including **298 behavioral "depth" tests** that assert computed values rather than page shapes.
 - **CI on every change:** 25 GitHub workflows, 21 of which run on pushes or pull requests: tests, CodeQL, SAST/SCA/secret scanning, OWASP ZAP DAST, visual regression and more.
 - **Security work with regression tests:** fixes for an authenticated RCE, a wallet IDOR, SSRF gaps, privilege escalation and path traversal, each pinned by a test (see [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md)).
 - **Capital efficiency:** self-funded on about $20/month of tooling, with a $500–2,000/month GPU target for production. Concord runs local open models, so there are no per-token API fees.
 
 | Measured on `main` (2026-10-07) | Count |
 |---|---:|
-| Commits | 7,632 |
-| Test files / behavioral depth tests | 3,463 / 297 |
-| Backend domain modules | 441 |
+| Commits | 7,688 |
+| Test files / behavioral depth tests | 3,512 / 298 |
+| Backend domain modules | 442 |
 | Registered backend operations ("macros", graded) | 9,684 |
-| Lenses (13 categories) | 267 |
-| Database migrations | 452 |
-| API route files | 136 |
-| Frontend components / app pages | 3,429 / 333 |
+| Lenses (13 categories) | 268 |
+| Database migrations | 465 |
+| API route files | 137 |
+| Frontend components / app pages | 3,439 / 334 |
 | MCP tools (internal / public server) | 118 / 9 |
 | Lines of code (tracked source, 10 languages) | ~3.1M |
 | Unity C# (Concordia) | 63,703 lines |
@@ -104,7 +104,7 @@ These show how far the engine reaches. They are not the first market.
 
 **Stage, plainly:** pre-revenue with no paying users yet, and pre-entity (company formation is next). The product is live and free to try.
 
-**What is live:** the web app at concord-os.org, chat with deterministic engineering compute, the Engineering lens and FEA solver, 267 lenses, and an MCP server (OAuth 2.1 + PKCE) that exposes verified tools such as `concord.verify` and `concord.math` to other agents.
+**What is live:** the web app at concord-os.org, chat with deterministic engineering compute, the Engineering lens and FEA solver, 268 lenses, and an MCP server (OAuth 2.1 + PKCE) that exposes verified tools such as `concord.verify` and `concord.math` to other agents.
 
 **Design-partner plan (engineers):** recruit 5 practicing structural and mechanical engineers. Each brings calculations they already check by hand. We run them through Concord together every week and measure time to a checked answer, hand-check agreement and whether the receipt is good enough to file. Their feedback decides what gets verified next.
 
@@ -112,7 +112,7 @@ These show how far the engine reaches. They are not the first market.
 
 | Months | Focus |
 |---|---|
-| 1–2 | Merge the V&V corpus, receipts, ConKay workspace and column check. Onboard design partners. Publish a 60-second receipt demo; launch on Show HN and engineering communities; list the MCP server in agent registries. |
+| 1–2 | Onboard design partners on the V&V corpus, receipts, ConKay workspace and column check (all merged to `main` on 2026-10-07). Publish a 60-second receipt demo; launch on Show HN and engineering communities; list the MCP server in agent registries. |
 | 3–4 | Grow the verified case library (columns, frames, connections) with partner problems. Exportable calc packages built from receipts. Shared team workspaces. First paid pilots. |
 | 5–6 | Pricing in market: free for individual users; per-seat plans for enterprises, firms and engineering teams; usage-based for agents calling verified compute over MCP. Concordia as top of funnel: fresh browser build and short clips that route new users into Concord. |
 
@@ -152,7 +152,7 @@ Local development setup: [`docs/contributing/CONTRIBUTING.md`](docs/contributing
 
 ## Reproduce the numbers
 
-Every count above comes from git on `main` (commit `973e214`), so anyone can re-run it:
+Every count above comes from git on `main` (commit `33e7ef77d`), so anyone can re-run it:
 
 | Number | Command (run from the repo root) |
 |---|---|
