@@ -4,6 +4,25 @@ One row per lens this pass has actually exercised. Status is never COMPLETE from
 
 The signed-in clicks below used the production controls in a Vite harness, proxied to this repo's API. They were not clicks on the Next `/lenses/...` route. Those routes mount the same controls. Chat through Mail used port 3013 and API 5062. Calendar used port 3014 and API 5074. Marketplace used port 3015 and API 5076.
 
+## Chat — concept pass 2 (2026-10-06, browser on the Next route)
+
+Clicked on `/lenses/chat` in Next dev (port 3000) against `server.js` (port 5050), signed in, desktop 1280×800 and phone 390×844. No LLM was available, so replies were the offline stored-knowledge path.
+
+| Area | What was checked | Result |
+|---|---|---|
+| Concept match (`02-chat-northstar-concept.jpg`) | Greeting, three starter chips, one centered thread, neutral bubbles, floating composer with `+` / `Chat ▾` / mic / send | Matches. Avatars and purple user bubble removed; time shown once, inside the bubble; message actions appear on hover. |
+| Conversations drawer | Open, select, rename, delete controls, search box | Fixed: it slid under the app rail (title, search and New Chat clipped). Fixed: rename and search inputs rendered white because `lattice-bg` was never defined. |
+| Menus | Header ⋮, composer `+`, mode pill, Export | Fixed: none closed on Escape or outside click, so they stacked. |
+| `+` menu | Tools, Projects, Prompts, Schedule, Studio, Agent Mode | Each opens its real panel. |
+| Settings gear | Drawer gear | Fixed: was a toast pointing elsewhere; now opens Studio (voice, assistants, memory). |
+| Backend round-trips (signed-in session, `/api/lens/run`) | projects, prompts, memory, assistants, canvas, code-run, scheduled, share-create → share-view, thread-index → threads-search, branch-fork → branches-list, voice | All saved and read back. Fixed: code-run reported `console.log`'s log count as the return value. |
+| Offline reply | Ask with no LLM | Fixed: the same seed note was listed five times (#609…#649); now each distinct note once. |
+| Share link | Invalid token | Honest "share link not found". |
+| Page scroll | Open a menu | Fixed: the legal footer made the whole page scroll under the app. |
+| Phone | Composer, top bar, help launcher | Fixed: Send was off-screen; account avatar pushed off the top bar; help button covered the mode pill. |
+
+Not proven here: a streamed LLM reply (no model in this environment).
+
 ## Chat — COMPLETE (2026-10-04, `fe808941a`)
 
 | | |

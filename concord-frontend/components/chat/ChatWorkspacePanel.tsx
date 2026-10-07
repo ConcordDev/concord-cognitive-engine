@@ -35,7 +35,6 @@ import {
   Settings,
   Plus,
   Bot,
-  User,
   Sparkles,
   Copy,
   RefreshCw,
@@ -449,6 +448,29 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   const [conversationSearch, setConversationSearch] = useState('');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [composerPlusOpen, setComposerPlusOpen] = useState(false);
+  // The header ⋮, composer + and mode pill menus close on Escape or a click
+  // outside any of them, so opening one never stacks it over another.
+  const anyChatMenuOpen = moreMenuOpen || composerPlusOpen || modeSelectOpen;
+  useEffect(() => {
+    if (!anyChatMenuOpen) return;
+    const closeAll = () => {
+      setMoreMenuOpen(false);
+      setComposerPlusOpen(false);
+      setModeSelectOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeAll();
+    };
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest('[data-chat-menu]')) closeAll();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [anyChatMenuOpen]);
   // Front-door density: the 8 secondary workspace tools (Context/Tools/Systems/
   // Projects/Prompts/Schedule/Studio/Search) collapse into one "Workspace" overflow
   // so the header reads as a chat app, not a cockpit. Primary controls (AI mode,
@@ -713,8 +735,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // (chatted on laptop, opened on phone). Server-side messages always
   // override empty local state; non-empty local state wins to avoid
   // clobbering unsynced drafts from a recent send.
+  // Set when a send mints a brand-new session: its thread already lives in
+  // local state, so the load effect below must NOT re-read it from storage —
+  // that snapshot holds only the user turn and, if the reply landed before
+  // the effect flushed, would silently drop the assistant's first answer.
+  const locallyCreatedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedConversation) return;
+    if (locallyCreatedSessionRef.current === selectedConversation) {
+      locallyCreatedSessionRef.current = null;
+      return;
+    }
     const saved = loadMessagesForSession<Message>(selectedConversation);
     if (saved.length > 0) {
       setLocalMessages(saved);
@@ -1130,6 +1161,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           saveConversations(next);
           return next;
         });
+        locallyCreatedSessionRef.current = newId;
         setSelectedConversation(newId);
         // Save the user message for this new session right away
         saveMessagesForSession(newId, [userMsg] as ChatMessageLike[]);
@@ -2209,11 +2241,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     inputRef.current?.focus();
   }, []);
 
-  const formatTime = useCallback((dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }, []);
-
   const startNewChat = useCallback(() => {
     setSelectedConversation(null);
     setLocalMessages([]);
@@ -2351,25 +2378,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
           className={cn(
-            'flex gap-4 px-4 lg:px-6 py-3 group relative rounded transition-all',
+            'flex gap-4 px-4 lg:px-6 py-3 group relative rounded transition-all w-full max-w-4xl mx-auto',
             message.role === 'user' ? 'flex-row-reverse' : '',
             isPinned && 'bg-yellow-500/5 border-l-2 border-l-yellow-500/50'
           )}
         >
-          <div
-            className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg',
-              message.role === 'user'
-                ? 'bg-gradient-to-br from-neon-purple to-purple-700'
-                : 'bg-gradient-to-br from-neon-cyan/30 to-cyan-900/40 ring-1 ring-neon-cyan/20'
-            )}
-          >
-            {message.role === 'user' ? (
-              <User className="w-5 h-5 text-white" />
-            ) : (
-              <Bot className="w-5 h-5 text-neon-cyan" />
-            )}
-          </div>
           <div className={cn('flex-1 max-w-2xl', message.role === 'user' ? 'text-right' : '')}>
             {/* Pinned indicator */}
             {isPinned && (
@@ -2385,7 +2398,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 className={cn(
                   'mb-2 p-2 rounded-lg border text-xs text-gray-400 max-w-sm',
                   message.role === 'user'
-                    ? 'bg-neon-purple/10 border-neon-purple/30 ml-auto'
+                    ? 'bg-white/5 border-white/10 ml-auto'
                     : 'bg-lattice-bg border-lattice-border'
                 )}
               >
@@ -2410,10 +2423,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 className={cn(
                   'inline-block p-4 rounded-2xl shadow-sm',
                   message.role === 'user'
-                    ? 'bg-gradient-to-br from-neon-purple to-purple-700 text-white rounded-br-md'
+                    ? 'bg-[#262626] text-white rounded-br-md'
                     : message.role === 'system'
                       ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-md'
-                      : 'bg-lattice-surface border border-lattice-border text-gray-200 rounded-bl-md hover:border-lattice-border/80 transition-colors'
+                      : 'bg-[#141414] border border-white/10 text-gray-200 rounded-bl-md'
                 )}
               >
                 {editingMessageId === message.id ? (
@@ -2566,17 +2579,16 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               </div>
             )}
 
-            {/* Message action bar */}
+            {/* Message action bar — the time already sits in the bubble; actions
+                show on hover / focus on desktop and stay visible on touch. */}
             <div
               className={cn(
-                'flex items-center gap-2 mt-2 text-xs text-gray-400',
+                'flex items-center gap-2 mt-2 text-xs text-gray-400 transition-opacity',
+                'sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100',
                 message.role === 'user' ? 'justify-end' : ''
               )}
             >
-              <span>{formatTime(message.timestamp)}</span>
-
               {/* Copy button — available on ALL messages */}
-              <span>·</span>
               <button
                 onClick={() => copyToClipboard(message.content, message.id)}
                 className="hover:text-white transition-colors"
@@ -2758,7 +2770,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       regenerateMutation,
       handleRegenerate,
       copyToClipboard,
-      formatTime,
       pinnedMessages,
       copiedMessageId,
       togglePin,
@@ -2881,7 +2892,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         {/* Mobile sidebar backdrop */}
         {chatSidebarOpen && (
           <div
-            className={cn('fixed inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
+            className={cn('absolute inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
             onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         )}
 
@@ -2889,7 +2900,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         <aside
           className={cn(
             'w-80 border-r border-lattice-border flex flex-col bg-lattice-surface z-40 transition-transform duration-200',
-            'fixed inset-y-0 left-0',
+            // Anchored to the chat area, not the viewport, so the app rail never covers it.
+            'absolute inset-y-0 left-0',
             !cleanEmpty && 'lg:relative lg:translate-x-0',
             cleanEmpty
               ? (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
@@ -2918,12 +2930,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 <button
                   className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
                   aria-label="Chat settings"
-                  onClick={() =>
-                    useUIStore.getState().addToast({
-                      type: 'info',
-                      message: 'Use the mode selector in the chat rail to configure chat behavior',
-                    })
-                  }
+                  title="Voice, custom assistants and memory"
+                  onClick={() => {
+                    setChatSidebarOpen(false);
+                    setStudioOpen(true);
+                  }}
                 >
                   <Settings className="w-5 h-5 text-gray-400" />
                 </button>
@@ -2934,9 +2945,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 startNewChat();
                 setChatSidebarOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-white/10 text-white/90 font-medium rounded-lg hover:bg-white/5 transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-teal-400" />
               New Chat
             </button>
           </div>
@@ -3135,7 +3146,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 <MessageSquare className="w-5 h-5" />
               </button>
               <div className="flex items-center">
-                <div className="relative">
+                <div className="relative" data-chat-menu>
                   <button
                     type="button"
                     onClick={() => setMoreMenuOpen((v) => !v)}
@@ -3594,6 +3605,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               isConKay && 'relative z-10',
               // Floating composer overlays the bottom — leave room for last bubbles.
               !isEmptyThread && 'pb-28 sm:pb-32',
+              // The conversations / new-chat header floats over the top edge.
+              cleanEmpty && !isEmptyThread && 'pt-12',
             )}
             role="log"
             aria-label="Chat messages"
@@ -3882,7 +3895,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
                 <div className={cn('flex items-end', cleanEmpty ? 'gap-2' : 'gap-4')}>
                   <div className={cn(
-                    'flex-1 flex items-end rounded-2xl p-2',
+                    'flex-1 min-w-0 flex items-end rounded-2xl p-2',
                     cleanEmpty ? 'bg-black/50 border border-white/10' : 'bg-lattice-bg border border-lattice-border',
                   )}>
                     {/* Hidden file input */}
@@ -3896,7 +3909,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       aria-label="Attach files"
                     />
                     {cleanEmpty ? (
-                      <div className="relative">
+                      <div className="relative" data-chat-menu>
                         <button
                           type="button"
                           onClick={() => setComposerPlusOpen((v) => !v)}
@@ -3943,20 +3956,23 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       onKeyDown={handleKeyDown}
                       placeholder={cleanEmpty ? `Message ${chatWithLabel}` : `Message ${aiMode.name} mode${selectedPersona.id !== 'default' ? ` as ${selectedPersona.name}` : ''}... (/ for commands)`}
                       rows={1}
-                      className="flex-1 px-2 py-2 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none max-h-32"
+                      className="flex-1 min-w-0 px-2 py-2 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none max-h-32"
                       style={{ minHeight: '24px' }}
                       disabled={sendMutation.isPending}
                     />
                     {cleanEmpty && (
-                      <div className="relative">
+                      <div className="relative" data-chat-menu>
                         <button
                           type="button"
                           onClick={() => setModeSelectOpen((v) => !v)}
                           className="mx-1 mb-1 inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
                           aria-label="Choose mode"
+                          title={`Mode: ${aiMode.name}`}
+                          aria-expanded={modeSelectOpen}
                         >
                           <aiMode.icon className="w-3.5 h-3.5" />
-                          <span>{aiMode.name}</span>
+                          <span className="hidden sm:inline">{aiMode.name}</span>
+                          <ChevronDown className="w-3 h-3 text-white/50" />
                         </button>
                         <AnimatePresence>
                           {modeSelectOpen && (

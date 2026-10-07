@@ -15,16 +15,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { HelpCircle, X, Send, BookOpen, Bug, Mail } from "lucide-react";
 import { useUIStore } from "@/store/ui";
 import { reportClientError } from "@/hooks/useBugContext";
 import { Z_INDEX } from "@/lib/ui/z-index";
+import { isFullHeightLens } from "@/lib/full-height-lenses";
 
 const SUPPORT_EMAIL = "support@concord-os.org";
 
 // Desktop: the floating trigger is hidden (it covered lens CTAs); the sidebar
 // rail's help icon dispatches concord:open-help instead. Mobile keeps it.
 export function HelpButton() {
+  // On app-style lenses the composer docks at the bottom; sit above it.
+  const aboveComposer = isFullHeightLens(usePathname());
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"menu" | "report">("menu");
   const [kind, setKind] = useState("bug_report");
@@ -86,7 +90,7 @@ export function HelpButton() {
         onClick={() => { setOpen((v) => !v); setMode("menu"); setSent(false); }}
         aria-label="Help and feedback"
         style={{ zIndex: Z_INDEX.HELP }}
-        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center lg:hidden"
+        className={`fixed ${aboveComposer ? "bottom-40 md:bottom-36" : "bottom-20 md:bottom-5"} right-4 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center lg:hidden`}
         title="Help & feedback"
       >
         {open ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}

@@ -3482,6 +3482,7 @@ function releaseMutex() {
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
 import { startupFdGuard, startFdMonitor } from "./lib/fd-guard.js";
+import { distinctDtuSummaries } from "./lib/chat-offline-reply.js";
 import { getFactionRepBuffer, flushAllBuffers } from "./lib/batch-commit-buffer.js";
 
 // FD-limit guard: runs at module load. Detects under-provisioned
@@ -28550,14 +28551,11 @@ ${_operatorV6Block}` : "";
     const userQuestion = (Array.isArray(messages) && messages.length > 0)
       ? (messages[messages.length - 1]?.content || prompt || '')
       : (prompt || '');
-    // Build a helpful response from the DTU context
-    const topDtus = relevant.slice(0, 5);
-    if (topDtus.length > 0) {
+    // Build a helpful response from the DTU context, each distinct note once.
+    const topSummaries = distinctDtuSummaries(relevant, 5);
+    if (topSummaries.length > 0) {
       finalReply = `Based on what I know, here's what I can share about "${userQuestion.slice(0, 80)}":\n\n` +
-        topDtus.map(d => {
-          const summary = d.human?.summary || d.content || d.title;
-          return `\u2022 ${summary.slice(0, 300)}`;
-        }).join('\n\n') +
+        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n') +
         `\n\nI'm currently running without my full AI capabilities (LLM offline), so my responses are based on stored knowledge. Once my brain is back online, I can have much deeper conversations about this.`;
     } else {
       finalReply = `I'd love to help with "${userQuestion.slice(0, 80)}", but I'm currently running in limited mode (my AI brain is offline). I don't have stored knowledge on this topic yet. Once my brain comes back online, I'll be able to have a full conversation about this. In the meantime, try creating some DTUs about this topic so I can learn!`;

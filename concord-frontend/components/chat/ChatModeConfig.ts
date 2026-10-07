@@ -53,7 +53,7 @@ export interface SlashCommand {
 // ──────────────────────────────────────────────
 
 export const AI_MODES: AIMode[] = [
-  { id: 'overview', name: 'Overview', icon: MessageSquare, description: 'General conversation' },
+  { id: 'overview', name: 'Chat', icon: MessageSquare, description: 'General conversation' },
   { id: 'deep', name: 'Deep', icon: Brain, description: 'In-depth analysis' },
   {
     id: 'creative',
