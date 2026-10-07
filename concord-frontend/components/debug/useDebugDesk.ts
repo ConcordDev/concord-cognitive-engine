@@ -51,7 +51,6 @@ export function useDebugDesk() {
     '$ concord debug',
     'Ready. Type command or click button above.',
   ]);
-  const [customCmd, setCustomCmd] = useState('');
   const [logFilter, setLogFilter] = useState<LogLevel>('all');
   const [logSearch, setLogSearch] = useState('');
   const [inspectEntity, setInspectEntity] = useState('');
@@ -76,7 +75,7 @@ export function useDebugDesk() {
       if (cmd === 'perf') return apiHelpers.perf.metrics();
       if (cmd === 'backpressure') return apiHelpers.backpressure.status();
       if (cmd === 'gc') return apiHelpers.perf.gc();
-      return api.get('/api/status');
+      throw new Error(`Unknown diagnostic command: ${cmd}`);
     },
     onSuccess: (res) =>
       setDebugOutput((prev) => [...prev, JSON.stringify(res.data, null, 2).slice(0, 800)]),
@@ -138,12 +137,6 @@ export function useDebugDesk() {
     refetchInterval: 15000,
   });
 
-  const handleCustomCmd = useCallback(() => {
-    if (!customCmd.trim()) return;
-    debugCmd.mutate(customCmd.trim());
-    setCustomCmd('');
-  }, [customCmd, debugCmd]);
-
   const clearConsole = () => {
     setDebugOutput(['$ concord debug', 'Console cleared.']);
   };
@@ -198,8 +191,6 @@ export function useDebugDesk() {
     activeAction,
     handleDebugAction,
     debugOutput,
-    customCmd,
-    setCustomCmd,
     logFilter,
     setLogFilter,
     logSearch,
@@ -223,7 +214,6 @@ export function useDebugDesk() {
     isError: isError || isError2 || isError3,
     errorMessage: error?.message || error2?.message || error3?.message,
     refetchAll,
-    handleCustomCmd,
     clearConsole,
     copyConsole,
     logEntries,

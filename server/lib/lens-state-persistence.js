@@ -119,6 +119,9 @@ export const LENS_STATE_KEYS = Object.freeze([
   // tasks, assets, threats, personnel, supply requests, and comms log
   // survive a restart. The Defense domain stores nested per-user Maps here.
   "defenseLens",
+  // 50 -> 51: "debugLens" so issue records, measured traces, metric
+  // samples, alert rules, and release records survive a restart.
+  "debugLens",
 ]);
 
 function serializeValue(v) {

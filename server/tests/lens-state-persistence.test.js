@@ -66,7 +66,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 50);
+    assert.equal(LENS_STATE_KEYS.length, 51);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -94,6 +94,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
     assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
     assert.ok(LENS_STATE_KEYS.includes("defenseLens"));
+    assert.ok(LENS_STATE_KEYS.includes("debugLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -779,6 +780,28 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.defenseLens.personnel.get("user_a").get("person_1").availability, "available");
     assert.equal(STATE.defenseLens.supply.get("user_a").get("supply_1").status, "approved");
     assert.equal(STATE.defenseLens.comms.get("user_a").get("msg_1").acknowledged, true);
+  });
+
+  it("roundtrips STATE.debugLens (issues, traces, alerts, metrics, and releases)", () => {
+    STATE.debugLens = {
+      issues: new Map([["user_a", [{ id: "issue_1", message: "Cannot read property", status: "open", count: 2 }]]]),
+      traces: new Map([["user_a", [{ id: "trace_1", name: "GET /api/status", spans: [{ spanId: "root", durationMs: 12 }] }]]]),
+      alertRules: new Map([["user_a", [{ id: "alert_1", metric: "macro_latency_ms", threshold: 80, enabled: true }]]]),
+      metrics: new Map([["user_a", [{ metric: "macro_latency_ms", value: 42, unit: "ms" }]]]),
+      releases: new Map([["user_a", [{ id: "rel_1", version: "v1.2.3", environment: "production" }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["issues", "traces", "alertRules", "metrics", "releases"]) {
+      assert.ok(STATE.debugLens[key] instanceof Map);
+      assert.ok(Array.isArray(STATE.debugLens[key].get("user_a")));
+    }
+    assert.equal(STATE.debugLens.issues.get("user_a")[0].count, 2);
+    assert.equal(STATE.debugLens.traces.get("user_a")[0].spans[0].durationMs, 12);
+    assert.equal(STATE.debugLens.alertRules.get("user_a")[0].threshold, 80);
+    assert.equal(STATE.debugLens.metrics.get("user_a")[0].value, 42);
+    assert.equal(STATE.debugLens.releases.get("user_a")[0].version, "v1.2.3");
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {

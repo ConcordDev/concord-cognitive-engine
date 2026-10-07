@@ -107,8 +107,8 @@ function ProvenanceDashboard() {
       )}
 
       <div className="space-y-1.5">
-        {claims.map((claim) => (
-          <div key={claim.id} className="flex items-start gap-3 p-2.5 bg-white/5 rounded-lg">
+        {claims.map((claim, index) => (
+          <div key={claim.id || `claim-${index}`} className="flex items-start gap-3 p-2.5 bg-white/5 rounded-lg">
             <ClaimIcon status={claim.status} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

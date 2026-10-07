@@ -6,15 +6,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Eye, Database } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { ErrorState } from '@/components/common/EmptyState';
 
 export function ContextInspectorPanel() {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['context-inspector'],
-    queryFn: () =>
-      api
-        .get('/api/context/inspector')
-        .then((r) => r.data)
-        .catch(() => null),
+    queryFn: () => api.get('/api/context/inspector').then((r) => r.data),
     refetchInterval: 15000,
   });
 
@@ -24,6 +21,9 @@ export function ContextInspectorPanel() {
         Loading context engine state...
       </div>
     );
+  }
+  if (isError) {
+    return <ErrorState error={error instanceof Error ? error.message : 'Context inspector failed'} onRetry={() => void refetch()} />;
   }
 
   const ws = data?.workingSet;
@@ -188,4 +188,3 @@ export function ContextInspectorPanel() {
     </div>
   );
 }
-

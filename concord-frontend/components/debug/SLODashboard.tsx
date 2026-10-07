@@ -5,38 +5,42 @@ import { api } from '@/lib/api/client';
 import { CheckCircle, AlertCircle, Activity, Loader2 } from 'lucide-react';
 
 interface SLOStatus {
-  id: string;
-  description: string;
-  type: 'latency' | 'availability';
-  target: number;
-  budget: number;
-  window: string;
-  percentile?: string;
-  current?: number | null;
-  budgetUsed?: number | null;
+  sloId: string;
+  slo: {
+    description: string;
+    targetMs?: number;
+    targetRate?: number;
+    errorBudgetPercent?: number;
+    window: string;
+    percentile?: number;
+  };
   status: 'ok' | 'breached' | 'no_data';
-  sampleCount: number;
+  samples?: number;
+  successRate?: string;
+  p95LatencyMs?: number | null;
+  targetMet?: boolean;
+  errorBudgetConsumed?: number | string;
 }
 
 interface SLODashboardData {
   ok: boolean;
   breachedCount: number;
   slos: SLOStatus[];
-  generatedAt: number;
+  generatedAt: string | number;
 }
 
 function formatTarget(slo: SLOStatus): string {
-  if (slo.type === 'latency') {
-    const unit = slo.id.includes('voice') ? 'ms' : slo.target >= 1000 ? 'ms' : 'ms';
-    return `${slo.percentile || 'p95'} < ${slo.target}${unit}`;
+  if (slo.slo.targetMs != null) {
+    return `p${slo.slo.percentile || 95} < ${slo.slo.targetMs}ms`;
   }
-  return `${(slo.target * 100).toFixed(1)}%`;
+  return `${((slo.slo.targetRate || 0) * 100).toFixed(1)}%`;
 }
 
 function formatCurrent(slo: SLOStatus): string {
-  if (slo.current == null) return '—';
-  if (slo.type === 'latency') return `${Math.round(slo.current)}ms`;
-  return `${(slo.current * 100).toFixed(2)}%`;
+  if (slo.slo.targetMs != null) {
+    return slo.p95LatencyMs == null ? '—' : `${Math.round(slo.p95LatencyMs)}ms`;
+  }
+  return slo.successRate || '—';
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -100,7 +104,7 @@ function SLODashboard() {
       <div className="space-y-2">
         {slos.map((slo) => (
           <div
-            key={slo.id}
+            key={slo.sloId}
             className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10"
           >
             <span
@@ -110,14 +114,14 @@ function SLODashboard() {
               {slo.status === 'no_data' ? 'no data' : slo.status}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-white">{slo.id.replace(/_/g, ' ')}</p>
-              <p className="text-xs text-white/40 truncate">{slo.description}</p>
+              <p className="text-xs font-medium text-white">{slo.sloId.replace(/_/g, ' ')}</p>
+              <p className="text-xs text-white/40 truncate">{slo.slo.description}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-xs text-white/60">
                 Target: <span className="text-white">{formatTarget(slo)}</span>
               </p>
-              {slo.current != null && (
+              {slo.status !== 'no_data' && (
                 <p className="text-xs text-white/40">
                   Current:{' '}
                   <span className={slo.status === 'breached' ? 'text-red-400' : 'text-green-400'}>
@@ -125,8 +129,8 @@ function SLODashboard() {
                   </span>
                 </p>
               )}
-              {slo.sampleCount > 0 && (
-                <p className="text-xs text-white/25">{slo.sampleCount} samples</p>
+              {(slo.samples || 0) > 0 && (
+                <p className="text-xs text-white/25">{slo.samples} samples</p>
               )}
             </div>
           </div>

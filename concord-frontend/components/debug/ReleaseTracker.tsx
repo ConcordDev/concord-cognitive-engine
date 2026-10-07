@@ -1,7 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/exhaustive-deps */
-
 /**
  * ReleaseTracker — Sentry-style release / deploy tracking. Ties errors
  * to a version and surfaces crash-free status, regressions, and new
@@ -58,8 +56,9 @@ export function ReleaseTracker() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    const frame = requestAnimationFrame(() => void load());
+    return () => cancelAnimationFrame(frame);
+  }, [load]);
 
   const create = useCallback(async () => {
     if (!form.version.trim()) return;
@@ -183,7 +182,7 @@ export function ReleaseTracker() {
                 </span>
                 {rel.crashFree && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-green/20 text-neon-green flex items-center gap-0.5">
-                    <CheckCircle className="w-2.5 h-2.5" /> crash-free
+                    <CheckCircle className="w-2.5 h-2.5" /> no linked issues
                   </span>
                 )}
                 <span className="text-[10px] text-gray-400 ml-auto">

@@ -214,8 +214,8 @@ function InferenceTranscriptViewer() {
       )}
 
       <div className="space-y-2">
-        {traces.map((trace) => (
-          <TraceCard key={trace.inferenceId} trace={trace} />
+        {traces.map((trace, index) => (
+          <TraceCard key={trace.inferenceId || `trace-${index}`} trace={trace} />
         ))}
       </div>
     </div>
