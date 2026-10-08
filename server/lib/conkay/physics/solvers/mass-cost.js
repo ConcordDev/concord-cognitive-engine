@@ -5,6 +5,7 @@
 // NOT_COMPUTED with the reason, never given a stand-in value.
 
 import { registerSolver } from "../registry.js";
+import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 
 const PI = Math.PI;
 
@@ -59,7 +60,7 @@ function rollup(ctx, id, partSolver, asmSolver, output, unit) {
   const skipped = [];
   for (const child of ctx.children(id, "CONTAINS")) {
     // Joints, interfaces and other logical nodes have no body of their own.
-    if (child.kind !== "Assembly" && !child.geometry) { skipped.push(child.id); continue; }
+    if (child.kind !== "Assembly" && LOGICAL_KINDS.has(child.kind)) { skipped.push(child.id); continue; }
     const env = child.kind === "Assembly" ? ctx.result(asmSolver, child.id) : ctx.result(partSolver, child.id);
     const v = env?.outputs?.[output]?.value;
     if (!Number.isFinite(v)) { missing.push(`${child.id} (${env ? env.reason || env.status : "no geometry"})`); continue; }
@@ -67,6 +68,8 @@ function rollup(ctx, id, partSolver, asmSolver, output, unit) {
     parts.push({ id: child.id, [output]: v });
   }
   if (missing.length) return { notComputed: `${output} missing for ${missing.join(", ")}`, inputs: { parts: { value: parts } } };
+  // An assembly with nothing in it is not "0 kg": it hasn't been designed yet.
+  if (!parts.length) return { notComputed: `nothing with ${output} in this assembly yet` };
   return {
     inputs: { parts: { value: parts, unit }, ...(skipped.length ? { skipped: { value: skipped, note: "no geometry of their own" } } : {}) },
     outputs: { [output]: { value: total, unit } },

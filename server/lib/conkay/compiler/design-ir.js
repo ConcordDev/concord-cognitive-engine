@@ -24,8 +24,12 @@ export const NODE_KINDS = new Set([
   "Field", "Material", "Fluid", "Circuit", "Actuator", "Sensor", "HeatSource", "HeatSink", "Boundary",
   "Interface", "Process",
   // Common specializations of Part.
-  "Bolt", "Plate", "Tire",
+  "Bolt", "Plate", "Tire", "Seat",
 ]);
+
+// Kinds with no body of their own. Every other kind is physical: it needs
+// geometry before it has a mass, and an assembly can't be weighed without it.
+export const LOGICAL_KINDS = new Set(["Assembly", "Joint", "Constraint", "Load", "Field", "Material", "Boundary", "Interface", "Process"]);
 
 export const EDGE_TYPES = new Set([
   "BOLTED_TO", "WELDED_TO", "MATED_TO", "CONSTRAINS", "LOADS", "SUPPORTS", "CONDUCTS", "CONTAINS",

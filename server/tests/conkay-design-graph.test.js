@@ -543,7 +543,7 @@ describe("Gearing and tyre speed rating", () => {
       } } },
       { id: "CH1", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "4 m", width: "1.8 m", height: "0.0177 m" } },
       { id: "E1", kind: "Actuator", material: "aluminum-6061-t6", props: { maxPower: "300 kW", peakPowerRpm: 6500, redlineRpm: 7000 }, geometry: { shape: "box", length: "0.6 m", width: "0.6 m", height: "0.5 m" } },
-      { id: "T1", kind: "Tire", props: { speedRating: over.rating || "Y" } },
+      { id: "T1", kind: "Tire", material: "rubber-natural", props: { speedRating: over.rating || "Y" }, geometry: { shape: "shell", area: "1.2 m2", thickness: "10 mm" } },
     ],
     edges: ["CH1", "E1", "T1"].map((to) => ({ type: "CONTAINS", from: "CAR1", to })),
   });
@@ -581,5 +581,47 @@ describe("Gearing and tyre speed rating", () => {
   it("an unknown speed symbol is not computed", () => {
     const s = open(car({ rating: "X" }));
     assert.equal(s.result("tire.speed-rating@CAR1").status, "NOT_COMPUTED");
+  });
+});
+
+describe("Brief → system tree", () => {
+  const BRIEF = "a car that weighs 2,500 lb, does 180 mph, seats 4, with a futuristic aerodynamic look";
+
+  it("the car brief compiles to a road-vehicle tree with each target wired to its solver", async () => {
+    const { compileBrief } = await import("../lib/conkay/compiler/architectures.js");
+    const c = compileBrief(BRIEF);
+    assert.equal(c.architecture, "road-vehicle");
+    const ids = c.ir.nodes.map((n) => n.id);
+    for (const id of ["BODY", "CHASSIS", "ENGINE", "DRIVELINE", "SUSPENSION", "BRAKES", "TIRE_FL", "SEAT_4"]) assert.ok(ids.includes(id), id);
+    assert.ok(!ids.includes("SEAT_5"));
+    const of = Object.fromEntries(c.ir.requirements.map((r) => [r.id, r.of.solver]));
+    assert.deepEqual(of, { REQ_mass: "mass.assembly", REQ_topSpeed: "vehicle.top-speed", REQ_seats: "package.seat-count" });
+  });
+
+  it("the fresh skeleton passes nothing it hasn't computed: mass is not 0 kg, it's not computed", async () => {
+    const { compileBrief } = await import("../lib/conkay/compiler/architectures.js");
+    const s = open(compileBrief(BRIEF).ir);
+    assert.equal(s.result("mass.assembly@VEH").status, "NOT_COMPUTED");
+    assert.equal(s.result("requirement.check@REQ_mass").status, "NOT_COMPUTED");
+    assert.equal(s.result("requirement.check@REQ_topSpeed").status, "NOT_COMPUTED");
+    assert.match(s.result("vehicle.top-speed@VEH").reason, /dragCoefficient/);
+    // Seats are counted from the design itself, so that one is already judged.
+    assert.equal(s.result("package.seat-count@VEH").outputs.seats.value, 4);
+    assert.equal(s.result("requirement.check@REQ_seats").status, "PASS");
+  });
+
+  it("a physical part without geometry is missing from a roll-up, not skipped", () => {
+    const s = open({ design: { id: "x" }, nodes: [
+      { id: "A", kind: "Assembly" },
+      { id: "P", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "1 m", width: "1 m", height: "0.01 m" } },
+      { id: "T", kind: "Tire" },
+    ], edges: [{ type: "CONTAINS", from: "A", to: "P" }, { type: "CONTAINS", from: "A", to: "T" }] });
+    assert.equal(s.result("mass.assembly@A").status, "NOT_COMPUTED");
+    assert.match(s.result("mass.assembly@A").reason, /T \(no geometry\)/);
+  });
+
+  it("a brief with no architecture yet says so", async () => {
+    const { compileBrief } = await import("../lib/conkay/compiler/architectures.js");
+    assert.match(compileBrief("greenhouse for 500 plants, under $40k").error, /no architecture/);
   });
 });

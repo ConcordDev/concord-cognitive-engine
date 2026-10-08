@@ -17,6 +17,7 @@ import "./physics/solvers/structural-members.js";
 import "./physics/solvers/vehicle.js";
 import "./physics/solvers/mass-properties.js";
 import "./physics/solvers/powertrain.js";
+import "./physics/solvers/package.js";
 
 export { listSolvers };
 
