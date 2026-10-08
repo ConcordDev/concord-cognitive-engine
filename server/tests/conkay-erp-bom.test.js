@@ -96,3 +96,11 @@ describe('conkay ERP-shaped BOM', () => {
     assert.match(csv.filename, /\.csv$/);
   });
 });
+
+it('a part with an unknown material has no mass, not a 1000 kg/m³ guess', async () => {
+  const { estimatePartMassProps } = await import('../lib/conkay/erp-bom.js');
+  const r = estimatePartMassProps({ id: 'p1', material: 'unobtainium', meta: { intent: { dims: { x: 1, y: 1, z: 1 } } } });
+  assert.equal(r.massKg, null);
+  assert.equal(r.densityKgM3, null);
+  assert.match(r.massUnavailable, /no density/);
+});

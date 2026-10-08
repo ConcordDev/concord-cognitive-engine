@@ -147,6 +147,7 @@ import electrical from './electrical.js';
 import emergencyservices from './emergencyservices.js';
 import energy from './energy.js';
 import engineering from './engineering.js';
+import conkayDesign from './conkay-design.js';
 import experience from './experience.js';
 import exportdomain from './exportdomain.js';
 import fashion from './fashion.js';
@@ -464,6 +465,7 @@ export default [
   emergencyservices,
   energy,
   engineering,
+  conkayDesign,
   experience,
   exportdomain,
   fashion,
