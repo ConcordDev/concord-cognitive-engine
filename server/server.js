@@ -7541,6 +7541,11 @@ function validateCsrfToken(token, cookieToken) {
 }
 
 // CSRF middleware - validates token on state-changing requests
+// The one anonymous write under /api/public-share/: a reviewer's comment on a
+// proof link (POST /api/public-share/proof/:token/comment). Every gate that
+// lets it through matches this exact route, never a prefix.
+const PUBLIC_PROOF_COMMENT_RE = /^\/api\/public-share\/proof\/[^/]+\/comment$/;
+
 function csrfMiddleware(req, res, next) {
   // Skip CSRF for non-browser requests (API keys, no cookies)
   if (req.authMethod === "apiKey") return next();
@@ -7560,8 +7565,11 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/", "/api/esign/", "/api/public-share/proof/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/", "/api/esign/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
+  // The anonymous proof-link reviewer comment: exactly this one POST route,
+  // not the /api/public-share/ prefix. No session cookie exists to forge.
+  if (req.method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
   if (AUTH_MODE === "public") return next();
@@ -8181,7 +8189,7 @@ function authMiddleware(req, res, next) {
   // widened to any other action. The single anonymous write is a proof-link
   // reviewer comment, itself token-scoped and body-capped.
   if (req.method === "GET" && /^\/api\/public-share\/(proof|event|docs|experience|carpentry|give)\/[^/]+$/.test(req.path)) return next();
-  if (req.method === "POST" && /^\/api\/public-share\/proof\/[^/]+\/comment$/.test(req.path)) return next();
+  if (req.method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
 
   // Spectate public viewer — a read-only live world feed (spectator count +
   // goddess dispatches, no intervention) meant to be watchable by anyone
@@ -8380,7 +8388,7 @@ function requireRole(...roles) {
 // submissions were 401ing on every metric per page load, silently wasting
 // the same 30-req/min anonymous IP bucket real anonymous traffic (including
 // registration) also depends on.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/", "/api/public-share/proof/"]; // NOTE: /api/public-share/proof/ — only POST under /api/public-share/ is the token-scoped proof-link reviewer comment; the viewers are GET-only. // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/esign/ — reviewed, intentional (2026-10-06), same shape as the welding portal: POST /api/esign/:token/sign lets a recipient with no Concord account sign their own slot. The token (crypto.randomBytes(24), lib/esign-links.js) is the only caller-supplied identifier and resolves server-side to one signer slot; signing needs a typed name + explicit consent, records IP/user agent, is rate-limited (write.esign) and revocable; tests/e2e/esign-links-routes.test.js pins own-slot-only, unknown-token 404, sender-cannot-sign-recipient, consent/name-required-once, and that ordinary writes on the same server still need auth. NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/", "/api/esign/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/esign/ — reviewed, intentional (2026-10-06), same shape as the welding portal: POST /api/esign/:token/sign lets a recipient with no Concord account sign their own slot. The token (crypto.randomBytes(24), lib/esign-links.js) is the only caller-supplied identifier and resolves server-side to one signer slot; signing needs a typed name + explicit consent, records IP/user agent, is rate-limited (write.esign) and revocable; tests/e2e/esign-links-routes.test.js pins own-slot-only, unknown-token 404, sender-cannot-sign-recipient, consent/name-required-once, and that ordinary writes on the same server still need auth. NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -8390,6 +8398,10 @@ function productionWriteAuthMiddleware(req, res, next) {
   const method = req.method.toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return next();
   if (WRITE_AUTH_PUBLIC_PATHS.some(p => req.path.startsWith(p))) return next();
+  // Proof-link reviewer comments: one exact POST route, token-scoped and
+  // rate-limited (write.proof-comment). Deliberately not a prefix entry above,
+  // so no other write under /api/public-share/ is ever opened by it.
+  if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
   // In production, require at least an API key or authenticated session for writes
   if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
