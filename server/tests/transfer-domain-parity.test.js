@@ -312,3 +312,45 @@ describe("transfer — original analysis macros intact", () => {
     assert.equal(r.result.summary.totalEntities, 2);
   });
 });
+
+describe("transfer — URL source connectors", () => {
+  const okFetch = (body, status = 200) => async () => ({ ok: status < 400, status, text: async () => body });
+
+  it("validates the URL and only allows sources", () => {
+    assert.equal(call("connector-upsert", ctxA, { name: "u", kind: "url", url: "ftp://x" }).ok, false);
+    assert.equal(call("connector-upsert", ctxA, { name: "u", kind: "url", role: "destination", url: "https://x.example/a.csv" }).ok, false);
+  });
+
+  it("has no rows until fetched, then rows come from the fetched body and feed a pipeline", async () => {
+    const c = call("connector-upsert", ctxA, { name: "remote", kind: "url", url: "https://data.example/people.csv", format: "csv" }).result.connector;
+    assert.equal(c.rowCount, 0);
+    assert.equal(c.fetchedAt, null);
+
+    const r = await call("connector-refresh", { ...ctxA, transferFetch: okFetch("id,name\n1,Ann\n2,Ben") }, { id: c.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rowsFetched, 2);
+    assert.ok(r.result.connector.fetchedAt);
+    const read = call("connector-read", ctxA, { id: c.id });
+    assert.equal(read.result.rows.length, 2);
+    assert.equal(read.result.rows[1].name, "Ben");
+
+    const dst = makeDest(ctxA);
+    const pipe = call("pipeline-upsert", ctxA, { name: "p", sourceConnectorId: c.id, destConnectorId: dst.id,
+      mappings: [{ source: "id", target: "id" }, { source: "name", target: "name" }] }).result.pipeline;
+    const run = call("run-sync", ctxA, { pipelineId: pipe.id });
+    assert.equal(run.result.run.rowsWritten, 2);
+  });
+
+  it("records honest failures: HTTP error, invalid JSON, and non-url connectors", async () => {
+    const c = call("connector-upsert", ctxA, { name: "j", kind: "url", url: "https://data.example/x.json", format: "json" }).result.connector;
+    const e1 = await call("connector-refresh", { ...ctxA, transferFetch: okFetch("nope", 503) }, { id: c.id });
+    assert.equal(e1.ok, false);
+    assert.match(e1.error, /HTTP 503/);
+    const e2 = await call("connector-refresh", { ...ctxA, transferFetch: okFetch("{not json") }, { id: c.id });
+    assert.equal(e2.ok, false);
+    assert.match(e2.error, /not valid JSON/);
+    assert.equal(call("connector-read", ctxA, { id: c.id }).result.rows.length, 0);
+    const src = makeSource(ctxA);
+    assert.equal((await call("connector-refresh", ctxA, { id: src.id })).ok, false);
+  });
+});
