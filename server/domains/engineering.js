@@ -8,6 +8,8 @@
 
 import { runFEA } from '../lib/simulation/fea-solver.js';
 import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
+import crypto from 'node:crypto';
+import { meshToSTL } from '../lib/asset-gen/stl-export.js';
 // boltedConnection (AISC allowable-shear) + transformerSizing (ANSI kVA
 // ladder) are real, exported functions in engineering-compute.js that no
 // registered macro called — genuinely unreachable at the macro layer (see
@@ -514,7 +516,7 @@ export default function registerEngineeringActions(registerLensAction) {
   // ─── partMesh — triangle mesh for the 3-D parametric geometry viewer ─────
   // Returns a flat positions array + faces so a Three.js BufferGeometry can be
   // built client-side. Deterministic — same params always yield the same mesh.
-  registerLensAction('engineering', 'partMesh', (ctx, artifact, params) => {
+  const partMeshHandler = (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const kind = egClean(data.kind || 'box', 24);
@@ -648,6 +650,42 @@ export default function registerEngineeringActions(registerLensAction) {
           vertexCount: positions.length / 3,
           triangleCount: indices.length / 3,
           boundingBox: { x: round(bbox[0]), y: round(bbox[1]), z: round(bbox[2]) },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  };
+  registerLensAction('engineering', 'partMesh', partMeshHandler);
+
+  // ─── partStl — binary STL of a parametric part for fabrication ──────────
+  // Same geometry as partMesh (metres), written in millimetres (the STL
+  // convention slicers assume) times an optional scale. Returns the real
+  // file bytes (base64) and their SHA-256.
+  registerLensAction('engineering', 'partStl', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const scaleRaw = Number(data.scale ?? 1);
+      if (!Number.isFinite(scaleRaw) || scaleRaw <= 0 || scaleRaw > 1000) return { ok: false, error: 'scale must be between 0 and 1000' };
+      const mesh = partMeshHandler(ctx, artifact, params);
+      if (!mesh?.ok) return mesh;
+      const k = 1000 * scaleRaw;
+      const positions = mesh.result.positions.map((v) => v * k);
+      const stl = meshToSTL({ positions, indices: mesh.result.indices }, { header: `Concord ${mesh.result.kind} part (mm)` });
+      if (!stl.ok) return { ok: false, error: stl.reason, detail: stl.detail };
+      const sha256 = crypto.createHash('sha256').update(stl.buffer).digest('hex');
+      const bb = mesh.result.boundingBox;
+      return {
+        ok: true,
+        result: {
+          kind: mesh.result.kind,
+          filename: `${mesh.result.kind}-part.stl`,
+          base64: stl.buffer.toString('base64'),
+          byteLength: stl.buffer.length,
+          sha256,
+          triangleCount: stl.triangleCount,
+          units: 'mm',
+          boundingBoxMm: { x: +(bb.x * k).toFixed(3), y: +(bb.y * k).toFixed(3), z: +(bb.z * k).toFixed(3) },
         },
       };
     } catch (e) {
