@@ -348,10 +348,14 @@ export default function registerMeshActions(register) {
         body,
         encrypted: isChannel ? !!channels.get(to)?.psk : false,
         direction: "out",
-        state: online ? "delivered" : "queued",
+        // Chat is a per-user mesh log; nothing here transmits it (mesh.send
+        // routes DTUs over a transport). So a reachable destination makes the
+        // message "recorded", never "delivered".
+        state: online ? "recorded" : "queued",
+        transmitted: false,
         read: false,
         sentAt: new Date().toISOString(),
-        deliveredAt: online ? new Date().toISOString() : null,
+        recordedAt: online ? new Date().toISOString() : null,
       };
       userArr(meshState().meshMessages, uid).push(msg);
 
@@ -535,7 +539,8 @@ export default function registerMeshActions(register) {
 
   /**
    * queueRetry — retry a queued frame. If the destination node is now
-   * online, the frame is delivered and removed from the queue.
+   * online, the frame is released from the queue and the message recorded
+   * (not transmitted — see sendMessage).
    */
   registerLensAction("mesh", "queueRetry", (ctx, artifact, params) => {
     try {
@@ -554,12 +559,12 @@ export default function registerMeshActions(register) {
         q.splice(idx, 1);
         const msgs = userArr(meshState().meshMessages, uid);
         const msg = msgs.find((m) => m.id === frame.messageId);
-        if (msg) { msg.state = "delivered"; msg.deliveredAt = new Date().toISOString(); }
-        return { ok: true, result: { delivered: true, frameId: frame.id, attempts: frame.attempts } };
+        if (msg) { msg.state = "recorded"; msg.recordedAt = new Date().toISOString(); }
+        return { ok: true, result: { released: true, delivered: false, frameId: frame.id, attempts: frame.attempts } };
       }
       frame.state = "pending";
       frame.lastAttemptAt = new Date().toISOString();
-      return { ok: true, result: { delivered: false, frameId: frame.id, attempts: frame.attempts } };
+      return { ok: true, result: { released: false, delivered: false, frameId: frame.id, attempts: frame.attempts } };
     } catch (e) {
       return { ok: false, error: e?.message || "queueRetry failed" };
     }

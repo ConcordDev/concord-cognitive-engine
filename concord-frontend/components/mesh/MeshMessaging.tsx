@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * MeshMessaging — direct / group / broadcast chat over the mesh with
- * delivery + read state. Picks a node or channel, shows the thread from
+ * MeshMessaging — direct / group / broadcast mesh message log with read
+ * state. Messages are recorded, not transmitted (Send DTU routes over a real
+ * transport), so no message is ever shown as delivered. Picks a node or channel, shows the thread from
  * `mesh.conversation`, sends via `mesh.sendMessage`, marks read via
  * `mesh.markRead`. Offline destinations show a "queued" badge — the
  * backend store-and-forwards them automatically.
@@ -21,7 +22,7 @@ interface MeshMessage {
   body: string;
   encrypted: boolean;
   direction: 'in' | 'out';
-  state: 'delivered' | 'queued' | 'failed';
+  state: 'recorded' | 'queued' | 'failed';
   read: boolean;
   sentAt: string;
 }
@@ -32,7 +33,7 @@ function StateIcon({ m }: { m: MeshMessage }) {
   if (m.state === 'failed') return <AlertTriangle className="h-3 w-3 text-rose-400" aria-label="failed" />;
   if (m.state === 'queued') return <Clock className="h-3 w-3 text-amber-400" aria-label="queued" />;
   if (m.read) return <CheckCheck className="h-3 w-3 text-teal-300" aria-label="read" />;
-  return <Check className="h-3 w-3 text-teal-600" aria-label="delivered" />;
+  return <Check className="h-3 w-3 text-teal-600" aria-label="recorded (not transmitted)" />;
 }
 
 export function MeshMessaging() {
@@ -102,6 +103,7 @@ export function MeshMessaging() {
     <div className="grid gap-4 md:grid-cols-[200px_1fr]">
       <aside className="space-y-1">
         <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal-600">Conversations</h3>
+        <p className="mb-2 text-[10px] leading-snug text-gray-500">Messages here are a log and are not radioed out. Use Send DTU to route over a transport.</p>
         {targets.map((t) => (
           <button
             key={t.id}
