@@ -44,6 +44,7 @@ import {
   exportAssemblyBrepStep,
   exportPartBrepStep,
   importBrepStepToAssembly,
+  confineRequestPayload,
   featureRebuild,
   featureCreate,
   featureAppend,
@@ -920,17 +921,17 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
 
   /** POST /api/conkay/occ/feature-rebuild */
   router.post('/occ/feature-rebuild', auth, async (req, res) => {
-    const out = await featureRebuild(req.body || {});
+    const out = await featureRebuild(confineRequestPayload(req.body, { writes: 'feature-rebuild' }));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   router.post('/occ/feature-create', auth, async (req, res) => {
-    const out = await featureCreate(req.body || {});
+    const out = await featureCreate(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   router.post('/occ/feature-append', auth, async (req, res) => {
-    const out = await featureAppend(req.body || {});
+    const out = await featureAppend(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
@@ -940,53 +941,53 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
   });
 
   router.post('/occ/feature-undo', auth, async (req, res) => {
-    const out = await featureUndo(req.body || {});
+    const out = await featureUndo(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   router.post('/occ/sketch-extrude', auth, async (req, res) => {
-    const out = await sketchExtrude(req.body || {});
+    const out = await sketchExtrude(confineRequestPayload(req.body, { writes: 'sketch-extrude' }));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   router.post('/occ/measure', auth, async (req, res) => {
-    const out = await measureGeometry(req.body || {});
+    const out = await measureGeometry(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   router.post('/occ/mate-solids', auth, async (req, res) => {
-    const out = await mateSolids(req.body || {});
+    const out = await mateSolids(confineRequestPayload(req.body, { writes: 'mate-solids' }));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   /** POST /api/conkay/occ/mate-solve-dof — INDUSTRIAL_CLASS multi-DOF solver */
   router.post('/occ/mate-solve-dof', auth, async (req, res) => {
-    const out = await mateSolveDof(req.body || {});
+    const out = await mateSolveDof(confineRequestPayload(req.body, { writes: 'mate-solve-dof' }));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   /** POST /api/conkay/occ/sketch-solve — INDUSTRIAL_CLASS 2D constraints */
   router.post('/occ/sketch-solve', auth, async (req, res) => {
-    const out = await sketchSolve(req.body || {});
+    const out = await sketchSolve(confineRequestPayload(req.body, { writes: 'sketch-solve' }));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   /** POST /api/conkay/occ/gdt-digital — digital ASME Y14.5 harness (NOT ISO CMM) */
   router.post('/occ/gdt-digital', auth, async (req, res) => {
-    const out = await gdtDigital(req.body || {});
+    const out = await gdtDigital(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   /** POST /api/conkay/occ/feature-list — alias body form */
   router.post('/occ/feature-list', auth, async (req, res) => {
-    const out = await featureList(req.body || {});
+    const out = await featureList(confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 
   /** POST /api/conkay/assemblies/:id/parts/:partId/rebuild-solid */
   router.post('/assemblies/:id/parts/:partId/rebuild-solid', auth, async (req, res) => {
     if (!needDb(res)) return;
-    const out = await rebuildPartFromFeatures(db, req.params.id, req.params.partId, req.body || {});
+    const out = await rebuildPartFromFeatures(db, req.params.id, req.params.partId, confineRequestPayload(req.body));
     return res.status(out.ok ? 200 : 422).json(out);
   });
 

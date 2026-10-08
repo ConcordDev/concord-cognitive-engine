@@ -4,6 +4,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -36,6 +37,24 @@ function brepDataDir() {
   const dir = path.join(dataDir, 'conkay-brep');
   fs.mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+// Payload keys the OCC CLI treats as filesystem paths (scripts/conkay_occ_cli.py,
+// conkay_occ_industrial.py). A request body must never choose where the server
+// writes or what it reads, so request-facing calls go through
+// confineRequestPayload: these keys are dropped, and commands that write get a
+// fresh file under the server's own brep directory.
+const PATH_KEYS = ['out', 'path', 'keep_path', 'tmp_path', 'outPath', 'out_path', 'outDir', 'out_dir'];
+
+export function confineRequestPayload(payload, { writes = null } = {}) {
+  const body = { ...(payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}) };
+  for (const k of PATH_KEYS) delete body[k];
+  if (writes) {
+    const dir = path.join(brepDataDir(), 'requests');
+    fs.mkdirSync(dir, { recursive: true });
+    body.out = path.join(dir, `${writes}-${crypto.randomUUID()}.step`);
+  }
+  return body;
 }
 
 /**
@@ -314,7 +333,9 @@ export async function importBrepStepToAssembly(db, assemblyId, stepTextOrPath, o
 
   const keepPath = path.join(brepDataDir(), `import-${assemblyId}-${Date.now()}-brep.step`);
   let payload;
-  if (typeof stepTextOrPath === 'string' && fs.existsSync(stepTextOrPath) && !String(stepTextOrPath).includes('ISO-10303-21')) {
+  // A file path is only honoured for trusted internal callers (opts.allowPath).
+  // Text from a request is always parsed as STEP text, never opened as a path.
+  if (opts.allowPath === true && typeof stepTextOrPath === 'string' && fs.existsSync(stepTextOrPath) && !String(stepTextOrPath).includes('ISO-10303-21')) {
     payload = { path: stepTextOrPath, keep_path: keepPath, deflection: opts.deflection || 0.5 };
   } else {
     const text = Buffer.isBuffer(stepTextOrPath) ? stepTextOrPath.toString('utf8') : String(stepTextOrPath || '');
