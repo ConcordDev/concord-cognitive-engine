@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { AlertTriangle, Loader2, BarChart2, Flame, Wind, Droplets, Activity } from 'lucide-react';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -14,14 +15,16 @@ interface StressTestResult {
   passed: number;
   marginal: number;
   failed: number;
-  details: Array<{ buildingId: string; status: string; details: string }>;
+  skipped?: number;
+  model?: string;
+  details: Array<{ buildingId: string; name?: string; material: string; floors: number; stress: number; ratio: number; status: string; state: string }>;
 }
 
 const SCENARIOS: { id: ScenarioType; name: string; icon: React.ComponentType<{ className?: string }>; unit: string; range: [number, number]; step: number }[] = [
   { id: 'earthquake', name: 'Earthquake', icon: Activity, unit: 'Magnitude', range: [3, 9], step: 0.5 },
   { id: 'hurricane', name: 'Hurricane', icon: Wind, unit: 'Category', range: [1, 5], step: 1 },
   { id: 'flood', name: 'Flood', icon: Droplets, unit: 'Rainfall (mm/hr)', range: [10, 200], step: 10 },
-  { id: 'fire', name: 'Fire', icon: Flame, unit: 'Origin Building', range: [1, 10], step: 1 },
+  { id: 'fire', name: 'Fire', icon: Flame, unit: 'Intensity', range: [1, 10], step: 1 },
 ];
 
 interface StressTestPanelProps {
@@ -29,52 +32,36 @@ interface StressTestPanelProps {
   buildingCount: number;
 }
 
-export default function StressTestPanel({ districtId: _districtId, buildingCount }: StressTestPanelProps) {
+export default function StressTestPanel({ districtId }: StressTestPanelProps) {
   const [scenario, setScenario] = useState<ScenarioType>('earthquake');
   const [magnitude, setMagnitude] = useState(5);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<StressTestResult | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [result2, setResult2] = useState<StressTestResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const scenarioDef = SCENARIOS.find(s => s.id === scenario)!;
 
-  const runTest = useCallback((isCompare = false) => {
+  // Runs the real, deterministic district test on the server over this
+  // world's standing buildings (world.stress-test).
+  const runTest = useCallback(async (isCompare = false) => {
     setRunning(true);
-    // Simulate stress test
-    setTimeout(() => {
-      const tested = buildingCount;
-      const failRate = Math.min(0.9, (magnitude / scenarioDef.range[1]) ** 2);
-      const marginalRate = Math.min(0.3, failRate * 0.5);
-      const failed = Math.round(tested * failRate);
-      const marginal = Math.round(tested * marginalRate);
-      const passed = tested - failed - marginal;
-
-      const testResult: StressTestResult = {
-        scenario,
-        magnitude,
-        buildingsTested: tested,
-        passed: Math.max(0, passed),
-        marginal,
-        failed,
-        details: Array.from({ length: tested }, (_, i) => {
-          const r = Math.random();
-          return {
-            buildingId: `bldg-${i + 1}`,
-            status: r < failRate ? 'failed' : r < failRate + marginalRate ? 'marginal' : 'passed',
-            details: r < failRate ? `Structure failed at ${scenario} ${magnitude}` : 'Passed',
-          };
-        }),
-      };
-
-      if (isCompare) {
-        setResult2(testResult);
-      } else {
-        setResult(testResult);
+    setError(null);
+    try {
+      const r = await lensRun<StressTestResult>('world', 'stress-test', { worldId: districtId, scenario, magnitude });
+      if (!r.data?.ok || !r.data.result) {
+        setError(r.data?.error || 'Stress test failed');
+        return;
       }
+      if (isCompare) setResult2(r.data.result);
+      else setResult(r.data.result);
+    } catch {
+      setError('Stress test request failed');
+    } finally {
       setRunning(false);
-    }, 1200);
-  }, [scenario, magnitude, buildingCount, scenarioDef]);
+    }
+  }, [districtId, scenario, magnitude]);
 
   return (
     <div className={`${panel} p-4 space-y-4`}>
@@ -134,13 +121,15 @@ export default function StressTestPanel({ districtId: _districtId, buildingCount
 
       {/* Run button */}
       <button
-        onClick={() => runTest(false)}
+        onClick={() => void runTest(false)}
         disabled={running}
         className="w-full py-2 bg-orange-500/20 text-orange-300 rounded text-xs hover:bg-orange-500/30 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
         {running ? 'Running...' : `Run ${scenarioDef.name} Test`}
       </button>
+
+      {error && <p role="alert" className="text-[11px] text-red-300">{error}</p>}
 
       {/* Results */}
       {result && (
@@ -167,13 +156,15 @@ export default function StressTestPanel({ districtId: _districtId, buildingCount
             <div className="h-full bg-red-500" style={{ width: `${(result.failed / result.buildingsTested) * 100}%` }} />
           </div>
 
+          {result.model && <p className="text-[9px] text-gray-500">Model: {result.model}{result.skipped ? ` · ${result.skipped} skipped (unknown material)` : ''}</p>}
+
           {/* Per-building details */}
           <div className="max-h-32 overflow-y-auto space-y-0.5">
             {result.details.map((d, i) => (
               <div key={i} className={`text-[9px] px-2 py-0.5 rounded ${
                 d.status === 'passed' ? 'text-green-400' : d.status === 'marginal' ? 'text-yellow-400' : 'text-red-400'
               }`}>
-                {d.buildingId}: {d.details}
+                {d.name || d.buildingId} · {d.material}{d.floors > 1 ? ` · ${d.floors} floors` : ''}: {d.state} at {Math.round(d.ratio * 100)}% of ultimate strength
               </div>
             ))}
           </div>
@@ -185,7 +176,7 @@ export default function StressTestPanel({ districtId: _districtId, buildingCount
         <div className="border-t border-white/10 pt-3">
           <p className="text-[10px] text-gray-400 mb-2">Change magnitude and run again to compare:</p>
           <button
-            onClick={() => runTest(true)}
+            onClick={() => void runTest(true)}
             disabled={running}
             className="w-full py-1.5 border border-cyan-500/50 text-cyan-300 rounded text-xs hover:bg-cyan-500/10 transition-colors"
           >
