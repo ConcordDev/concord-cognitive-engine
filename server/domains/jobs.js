@@ -63,7 +63,12 @@ export default function registerJobsMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     const dk = String(input?.demographic_kind || "").trim();
     if (!dk) return { ok: false, reason: "missing_inputs" };
-    return setDemographicKind(db, userId, String(input?.worldId || DEFAULT_WORLD), dk);
+    // Ration-bearing categories need an admin; players can only mark
+    // themselves employed/unemployed.
+    const role = ctx?.actor?.role;
+    const isAdmin = role === "admin" || role === "owner" || role === "sovereign" || role === "founder";
+    const target = isAdmin && input?.userId ? String(input.userId) : userId;
+    return setDemographicKind(db, target, String(input?.worldId || DEFAULT_WORLD), dk, { verified: isAdmin });
   });
 
   register("jobs", "rations_table", async (ctx) => {

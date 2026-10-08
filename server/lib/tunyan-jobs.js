@@ -25,6 +25,21 @@ export function sparksPayer(reason) {
 }
 
 const RATION_TICK_DAYS = 30;
+const HUB_WORLD = "concordia-hub";
+// Categories a player may hold on their own say-so. The rest (pregnant,
+// child, elderly) carry larger rations and must be set by an admin.
+const SELF_SERVICE_DEMOGRAPHICS = new Set(["unemployed", "employed_baseline"]);
+
+// A world id must name a real world; with no worlds table only the hub exists.
+export function worldExists(db, worldId) {
+  const id = String(worldId || "");
+  if (!id) return false;
+  try {
+    return !!db.prepare(`SELECT 1 FROM worlds WHERE id = ?`).get(id);
+  } catch {
+    return id === HUB_WORLD;
+  }
+}
 const SHIFT_COOLDOWN_S = 6 * 3600; // can complete one shift per 6 in-real-time hours
 
 export function listOpenJobs(db) {
@@ -49,6 +64,7 @@ export function getMyEmployment(db, userId, worldId = "concordia-hub") {
 
 export function applyForJob(db, userId, worldId, jobId) {
   if (!db || !userId || !worldId || !jobId) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   try {
     const job = db.prepare(`SELECT id FROM tunyan_jobs WHERE id = ?`).get(jobId);
     if (!job) return { ok: false, reason: "job_not_found" };
@@ -58,8 +74,7 @@ export function applyForJob(db, userId, worldId, jobId) {
       ON CONFLICT(user_id, world_id) DO UPDATE
         SET job_id = excluded.job_id,
             demographic_kind = 'employed_baseline',
-            employed_at = unixepoch(),
-            last_shift_at = NULL
+            employed_at = unixepoch()
     `).run(userId, worldId, jobId);
     return { ok: true, action: "hired", jobId };
   } catch (err) {
@@ -89,11 +104,15 @@ export function resign(db, userId, worldId = "concordia-hub") {
  */
 export async function completeShift(db, userId, worldId = "concordia-hub", { mintFn = sparksPayer("tunyan_job_wage") } = {}) {
   if (!db || !userId) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   const emp = getMyEmployment(db, userId, worldId);
   if (!emp || !emp.job_id) return { ok: false, reason: "not_employed" };
   const now = Math.floor(Date.now() / 1000);
-  if (emp.last_shift_at && now - emp.last_shift_at < SHIFT_COOLDOWN_S) {
-    return { ok: false, reason: "shift_cooldown", retry_at: emp.last_shift_at + SHIFT_COOLDOWN_S };
+  // One paid shift per cooldown per player, across every world, so holding
+  // jobs in several worlds (or re-applying) can't multiply the wage rate.
+  const lastAny = db.prepare(`SELECT MAX(last_shift_at) AS t FROM player_employment WHERE user_id = ?`).get(userId)?.t;
+  if (lastAny && now - lastAny < SHIFT_COOLDOWN_S) {
+    return { ok: false, reason: "shift_cooldown", retry_at: lastAny + SHIFT_COOLDOWN_S };
   }
   const job = db.prepare(`SELECT wage_sparks FROM tunyan_jobs WHERE id = ?`).get(emp.job_id);
   if (!job) return { ok: false, reason: "job_missing" };
@@ -149,16 +168,22 @@ export async function mintRationsForEligible(db, { mintFn = sparksPayer("tunyan_
     `);
   } catch { /* table exists */ }
 
+  // One ration per player per period (their largest entitlement), not one
+  // per world they hold an employment row in.
   const rows = db.prepare(`
     SELECT pe.user_id, pe.world_id, pe.demographic_kind, re.monthly_sparks,
            (SELECT MAX(minted_at) FROM ration_mint_log
-              WHERE user_id = pe.user_id AND world_id = pe.world_id) AS last_minted_at
+              WHERE user_id = pe.user_id) AS last_minted_at
     FROM player_employment pe
     JOIN ration_entitlements re ON re.demographic_kind = pe.demographic_kind
     WHERE re.monthly_sparks > 0
+    ORDER BY pe.user_id, re.monthly_sparks DESC
   `).all();
+  const seenUsers = new Set();
 
   for (const row of rows) {
+    if (seenUsers.has(row.user_id)) continue;
+    seenUsers.add(row.user_id);
     if (row.last_minted_at && row.last_minted_at > cutoff) {
       skipped++;
       continue;
@@ -188,10 +213,14 @@ export async function mintRationsForEligible(db, { mintFn = sparksPayer("tunyan_
   return { ok: true, minted, skipped, failed };
 }
 
-export function setDemographicKind(db, userId, worldId, demographic_kind) {
+export function setDemographicKind(db, userId, worldId, demographic_kind, { verified = false } = {}) {
   if (!db || !userId || !worldId || !demographic_kind) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   const exists = db.prepare(`SELECT 1 FROM ration_entitlements WHERE demographic_kind = ?`).get(demographic_kind);
   if (!exists) return { ok: false, reason: "unknown_demographic" };
+  if (!verified && !SELF_SERVICE_DEMOGRAPHICS.has(demographic_kind)) {
+    return { ok: false, reason: "requires_verification", allowed: [...SELF_SERVICE_DEMOGRAPHICS] };
+  }
   try {
     db.prepare(`
       INSERT INTO player_employment (user_id, world_id, demographic_kind)
