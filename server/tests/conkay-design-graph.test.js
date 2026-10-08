@@ -222,6 +222,12 @@ describe("Design IR", () => {
     for (const s of ["unknown unit", "unknown material", "unknown kind", "must be positive", "unknown type"]) assert.match(text, new RegExp(s));
   });
 
+  it("refuses an oversized design up front", () => {
+    const c = compileDesignIR({ nodes: Array.from({ length: 2001 }, (_, i) => ({ id: `n${i}`, kind: "Part" })) });
+    assert.equal(c.ok, false);
+    assert.match(c.errors[0], /at most 2000/);
+  });
+
   it("converts every quantity to SI", () => {
     assert.ok(Math.abs(parseQuantity("0.875 in", "length").si - 0.022225) < 1e-12);
     assert.equal(parseQuantity("40 kN", "force").si, 40000);

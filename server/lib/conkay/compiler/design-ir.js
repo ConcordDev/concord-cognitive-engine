@@ -45,9 +45,14 @@ export const SHAPES = {
 // cantilever) and compression (axial) act on beams.
 const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compression: "force" };
 
+export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
+
 export function compileDesignIR(ir) {
   const errors = [];
   if (!ir || typeof ir !== "object") return { ok: false, errors: ["design IR must be an object"] };
+  for (const [k, max] of Object.entries(LIMITS)) {
+    if (Array.isArray(ir[k]) && ir[k].length > max) return { ok: false, errors: [`${k}: at most ${max} (got ${ir[k].length})`] };
+  }
   const design = { id: String(ir.design?.id || "design"), name: String(ir.design?.name || ir.design?.id || "Untitled design") };
 
   const materialOverrides = {};
