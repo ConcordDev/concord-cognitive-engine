@@ -263,6 +263,82 @@ function utilizationBand(u) {
   return 'low';
 }
 
+// Pure beam-study solves, shared by the signed-in ConKay workspace macros
+// (beamStudy / beamSweep, which also record a sim job and the open study)
+// and the no-login ConKay demo routes (routes/conkay-demo.js), which only
+// compute. Nothing here reads or writes state.
+const SWEEP_PARAMS = ['length', 'height', 'flangeWidth', 'flangeThickness', 'webThickness', 'loadN'];
+const SWEEP_LABELS = { length: 'L', height: 'D', flangeWidth: 'W', flangeThickness: 't_f', webThickness: 't_w', loadN: 'load' };
+
+export function listBeamMaterials() {
+  return Object.entries(MATERIAL_LIBRARY).map(([id, m]) => ({ id, ...m }));
+}
+
+export function solveBeamStudy(data = {}, { onStage } = {}) {
+  const matId = egClean(data.material || 'steel-a992', 40);
+  const mat = MATERIAL_LIBRARY[matId];
+  if (!mat) return { ok: false, error: `unknown material: ${matId}` };
+  const study = buildBeamStudy({ dims: data.dims, material: mat, support: data.support, loadN: data.loadN, segments: data.segments });
+  if (!study.ok) return { ok: false, error: study.error };
+  const t0 = Date.now();
+  const fea = runFEA({ ...study.model, onStage });
+  const elapsedMs = Date.now() - t0;
+  if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
+  const summary = summarizeBeamStudy(study, fea, mat);
+  const utilizationByMember = fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) }));
+  return {
+    ok: true, matId, mat, study, fea, summary, elapsedMs,
+    result: {
+      elapsedMs,
+      dims: study.dims, support: study.support, loadN: study.loadN, loadNode: study.loadNode,
+      material: { id: matId, label: mat.label, E: mat.E, yield: mat.yield },
+      section: study.section,
+      ...summary,
+      utilizationByMember,
+      analysisReceipt: study.analysisReceipt,
+    },
+  };
+}
+
+export function solveBeamSweep(data = {}) {
+  const param = egClean(data.param, 40);
+  if (!SWEEP_PARAMS.includes(param)) return { ok: false, error: `param must be one of ${SWEEP_PARAMS.join(', ')}` };
+  const values = (Array.isArray(data.values) ? data.values : []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
+  if (values.length < 2 || values.length > 12) return { ok: false, error: 'values: 2 to 12 positive numbers' };
+  const matId = egClean(data.material || 'steel-a992', 40);
+  const mat = MATERIAL_LIBRARY[matId];
+  if (!mat) return { ok: false, error: `unknown material: ${matId}` };
+  const t0 = Date.now();
+  const rows = [];
+  for (const value of values) {
+    const dims = param === 'loadN' ? data.dims : { ...(data.dims || {}), [param]: value };
+    const loadN = param === 'loadN' ? value : data.loadN;
+    const study = buildBeamStudy({ dims, material: mat, support: data.support, loadN, segments: data.segments });
+    if (!study.ok) { rows.push({ value, ok: false, error: study.error }); continue; }
+    const fea = runFEA(study.model);
+    if (!fea.ok) { rows.push({ value, ok: false, error: fea.error || 'FEA solve failed' }); continue; }
+    const sum = summarizeBeamStudy(study, fea, mat);
+    rows.push({
+      value, ok: true,
+      maxStressMPa: sum.maxStressMPa, maxDeflectionMm: sum.maxDeflectionMm,
+      utilization: sum.utilization, safetyFactor: sum.safetyFactor, pass: sum.pass,
+      handCheckAgrees: sum.handCheck.agrees, areaMm2: study.section.areaMm2,
+    });
+  }
+  const elapsedMs = Date.now() - t0;
+  const solved = rows.filter((r) => r.ok);
+  if (solved.length === 0) return { ok: false, error: rows[0]?.error || 'no value could be solved' };
+  // Lightest section that still passes — area is mass per unit length.
+  const passing = solved.filter((r) => r.pass);
+  const lightestPassing = passing.length
+    ? passing.reduce((a, b) => (b.areaMm2 < a.areaMm2 ? b : a)).value
+    : null;
+  return {
+    ok: true, param, elapsedMs, material: { id: matId, label: mat.label }, rows, lightestPassing,
+    solvedCount: solved.length, passingCount: passing.length,
+  };
+}
+
 export default function registerEngineeringActions(registerLensAction) {
   // ─── toleranceAnalysis (existing — kept) ─────────────────────────────────
   registerLensAction('engineering', 'toleranceAnalysis', (ctx, artifact, params) => {
@@ -992,19 +1068,11 @@ export default function registerEngineeringActions(registerLensAction) {
   registerLensAction('engineering', 'beamStudy', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      const matId = egClean(data.material || 'steel-a992', 40);
-      const mat = MATERIAL_LIBRARY[matId];
-      if (!mat) return { ok: false, error: `unknown material: ${matId}` };
-      const study = buildBeamStudy({ dims: data.dims, material: mat, support: data.support, loadN: data.loadN, segments: data.segments });
-      if (!study.ok) return { ok: false, error: study.error };
-      const t0 = Date.now();
-      const fea = runFEA({ ...study.model, onStage: ctx?.emitMacroStage });
-      const elapsedMs = Date.now() - t0;
-      if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
-      const summary = summarizeBeamStudy(study, fea, mat);
+      const solved = solveBeamStudy(data, { onStage: ctx?.emitMacroStage });
+      if (!solved.ok) return { ok: false, error: solved.error };
+      const { matId, study, fea, summary, elapsedMs, result } = solved;
       const name = egClean(data.name || 'I-beam study', 80);
       const updatedAt = new Date().toISOString();
-      const utilizationByMember = fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) }));
       const s = engState();
       let jobId = null;
       if (s) {
@@ -1016,22 +1084,11 @@ export default function registerEngineeringActions(registerLensAction) {
         s.beamStudies.set(beamStudyKey(ctx, data), {
           workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
           jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
-          utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
+          utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
         });
         persist();
       }
-      return {
-        ok: true,
-        result: {
-          jobId, elapsedMs, name, updatedAt,
-          dims: study.dims, support: study.support, loadN: study.loadN, loadNode: study.loadNode,
-          material: { id: matId, label: mat.label, E: mat.E, yield: mat.yield },
-          section: study.section,
-          ...summary,
-          utilizationByMember,
-          analysisReceipt: study.analysisReceipt,
-        },
-      };
+      return { ok: true, result: { jobId, name, updatedAt, ...result } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -1053,53 +1110,21 @@ export default function registerEngineeringActions(registerLensAction) {
   // (a dimension, or the load) and return each solve's numbers side by side.
   // Read-only for the current study — it records one sim job for the sweep
   // and never replaces what the workspace has open.
-  const SWEEP_PARAMS = ['length', 'height', 'flangeWidth', 'flangeThickness', 'webThickness', 'loadN'];
-  const SWEEP_LABELS = { length: 'L', height: 'D', flangeWidth: 'W', flangeThickness: 't_f', webThickness: 't_w', loadN: 'load' };
   registerLensAction('engineering', 'beamSweep', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      const param = egClean(data.param, 40);
-      if (!SWEEP_PARAMS.includes(param)) return { ok: false, error: `param must be one of ${SWEEP_PARAMS.join(', ')}` };
-      const values = (Array.isArray(data.values) ? data.values : []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
-      if (values.length < 2 || values.length > 12) return { ok: false, error: 'values: 2 to 12 positive numbers' };
-      const matId = egClean(data.material || 'steel-a992', 40);
-      const mat = MATERIAL_LIBRARY[matId];
-      if (!mat) return { ok: false, error: `unknown material: ${matId}` };
-      const t0 = Date.now();
-      const rows = [];
-      for (const value of values) {
-        const dims = param === 'loadN' ? data.dims : { ...(data.dims || {}), [param]: value };
-        const loadN = param === 'loadN' ? value : data.loadN;
-        const study = buildBeamStudy({ dims, material: mat, support: data.support, loadN, segments: data.segments });
-        if (!study.ok) { rows.push({ value, ok: false, error: study.error }); continue; }
-        const fea = runFEA(study.model);
-        if (!fea.ok) { rows.push({ value, ok: false, error: fea.error || 'FEA solve failed' }); continue; }
-        const sum = summarizeBeamStudy(study, fea, mat);
-        rows.push({
-          value, ok: true,
-          maxStressMPa: sum.maxStressMPa, maxDeflectionMm: sum.maxDeflectionMm,
-          utilization: sum.utilization, safetyFactor: sum.safetyFactor, pass: sum.pass,
-          handCheckAgrees: sum.handCheck.agrees, areaMm2: study.section.areaMm2,
-        });
-      }
-      const elapsedMs = Date.now() - t0;
-      const solved = rows.filter((r) => r.ok);
-      if (solved.length === 0) return { ok: false, error: rows[0]?.error || 'no value could be solved' };
-      // Lightest section that still passes — area is mass per unit length.
-      const passing = solved.filter((r) => r.pass);
-      const lightestPassing = passing.length
-        ? passing.reduce((a, b) => (b.areaMm2 < a.areaMm2 ? b : a)).value
-        : null;
+      const sweep = solveBeamSweep(data);
+      if (!sweep.ok) return { ok: false, error: sweep.error };
       let jobId = null;
       const s = engState();
       if (s) {
         const jobs = egList(s.jobs, egActor(ctx));
         jobId = egId('sim');
-        jobs.unshift({ id: jobId, name: `Sweep ${SWEEP_LABELS[param]}`, type: 'fea-beam-sweep', status: 'completed', elapsedMs, summary: { runs: rows.length, solved: solved.length, passing: passing.length }, createdAt: new Date().toISOString() });
+        jobs.unshift({ id: jobId, name: `Sweep ${SWEEP_LABELS[sweep.param]}`, type: 'fea-beam-sweep', status: 'completed', elapsedMs: sweep.elapsedMs, summary: { runs: sweep.rows.length, solved: sweep.solvedCount, passing: sweep.passingCount }, createdAt: new Date().toISOString() });
         if (jobs.length > 50) jobs.length = 50;
         persist();
       }
-      return { ok: true, result: { jobId, param, elapsedMs, material: { id: matId, label: mat.label }, rows, lightestPassing } };
+      return { ok: true, result: { jobId, param: sweep.param, elapsedMs: sweep.elapsedMs, material: sweep.material, rows: sweep.rows, lightestPassing: sweep.lightestPassing } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
