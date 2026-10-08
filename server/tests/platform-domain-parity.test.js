@@ -88,7 +88,9 @@ describe("platform deployment pipeline", () => {
   it("deploy-create + deploy-list + deploy-logs + deploy-rollback", () => {
     const c1 = call("deploy-create", ctxA, {}, { service: "web", ref: "main", environment: "production" });
     assert.equal(c1.ok, true);
-    assert.equal(c1.result.deployment.status, "ready");
+    assert.equal(c1.result.deployment.status, "recorded");
+    assert.equal(c1.result.deployment.buildSeconds, null);
+    assert.equal(c1.result.deployment.url, null);
     assert.equal(c1.result.deployment.active, true);
 
     const c2 = call("deploy-create", ctxA, {}, { service: "web", ref: "feature", environment: "production" });
@@ -116,12 +118,35 @@ describe("platform deployment pipeline", () => {
 });
 
 describe("platform live metrics", () => {
-  it("metrics-history returns a deterministic time series", () => {
-    const r = call("metrics-history", ctxA, {}, { service: "web", points: 24, stepMinutes: 30 });
+  it("metrics-history is empty (no_data) until samples are ingested", () => {
+    const r = call("metrics-history", ctxA, {}, { service: "web" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.series.length, 24);
-    assert.ok(r.result.current.cpu >= 0);
-    assert.ok(["healthy", "warning", "critical"].includes(r.result.health));
+    assert.equal(r.result.series.length, 0);
+    assert.equal(r.result.current, null);
+    assert.equal(r.result.health, "no_data");
+  });
+
+  it("metrics-ingest stores real samples and history reflects exactly them", () => {
+    const now = Date.now();
+    const ing = call("metrics-ingest", ctxA, {}, { service: "web", samples: [
+      { t: new Date(now - 60000).toISOString(), cpu: 40, memory: 50, requests: 100, latencyMs: 20 },
+      { t: new Date(now).toISOString(), cpu: 90, memory: 60, requests: 300, latencyMs: 30 },
+      { cpu: "nope" },
+    ] });
+    assert.equal(ing.ok, true);
+    assert.equal(ing.result.accepted, 2);
+    const r = call("metrics-history", ctxA, {}, { service: "web" });
+    assert.equal(r.result.series.length, 2);
+    assert.equal(r.result.current.cpu, 90);
+    assert.equal(r.result.summary.cpu.avg, 65);
+    assert.equal(r.result.summary.cpu.peak, 90);
+    assert.equal(r.result.health, "critical");
+    // another service / user sees nothing
+    assert.equal(call("metrics-history", ctxA, {}, { service: "api" }).result.series.length, 0);
+  });
+
+  it("metrics-ingest rejects samples with no numeric fields", () => {
+    assert.equal(call("metrics-ingest", ctxA, {}, { service: "web", samples: [{ foo: 1 }] }).ok, false);
   });
 });
 
@@ -152,18 +177,29 @@ describe("platform env / config management", () => {
 });
 
 describe("platform domain / routing management", () => {
-  it("domain-attach + domain-list + domain-verify + domain-remove", () => {
+  it("domain-attach starts unverified; domain-verify only succeeds on a real matching TXT record", async () => {
     const att = call("domain-attach", ctxA, {}, { host: "app.example.com", service: "web" });
     assert.equal(att.ok, true);
-    assert.ok(Array.isArray(att.result.domain.dnsRecords));
+    assert.equal(att.result.domain.verified, false);
+    assert.equal(att.result.domain.sslStatus, "not_managed");
+    const txt = att.result.domain.dnsRecords.find((r) => r.type === "TXT");
+    assert.ok(txt);
 
     const list = call("domain-list", ctxA, {}, {});
-    assert.equal(list.ok, true);
     assert.equal(list.result.count, 1);
+    assert.equal(list.result.pendingCount, 1);
 
-    const ver = call("domain-verify", ctxA, {}, { id: att.result.domain.id });
-    assert.equal(ver.ok, true);
-    assert.equal(ver.result.domain.verified, true);
+    // record missing -> not verified
+    const miss = await call("domain-verify", { ...ctxA, dnsResolveTxt: async () => [["unrelated"]] }, {}, { id: att.result.domain.id });
+    assert.equal(miss.ok, false);
+    // DNS failure -> honest error
+    const nx = await call("domain-verify", { ...ctxA, dnsResolveTxt: async () => { const e = new Error("x"); e.code = "ENOTFOUND"; throw e; } }, {}, { id: att.result.domain.id });
+    assert.equal(nx.ok, false);
+    assert.equal(call("domain-list", ctxA, {}, {}).result.verifiedCount, 0);
+
+    const ok = await call("domain-verify", { ...ctxA, dnsResolveTxt: async () => [[txt.value]] }, {}, { id: att.result.domain.id });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.domain.verified, true);
 
     const rm = call("domain-remove", ctxA, {}, { id: att.result.domain.id });
     assert.equal(rm.ok, true);
