@@ -125,7 +125,7 @@ function ToolCallCard({ call }: { call: ToolCall }) {
         )}
         {call.dtuId && (
           <a
-            href={`/lenses/dtu?id=${encodeURIComponent(call.dtuId)}`}
+            href={`/dtu/${encodeURIComponent(call.dtuId)}`}
             className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 mt-0.5"
           >
             open DTU <ExternalLink className="w-3 h-3" />
