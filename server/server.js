@@ -8210,6 +8210,9 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && /^\/api\/spectate\/[^/]+\/subscribe$/.test(req.path)) return next();
   if (req.method === "POST" && req.path === "/api/spectate/heartbeat") return next();
   if (req.method === "GET" && /^\/api\/spectate\/[^/]+\/feed$/.test(req.path)) return next();
+  // No-login ConKay demo: GET-only, compute-only beam FEA (routes/conkay-demo.js).
+  // Nothing under this prefix reads or writes user data.
+  if (req.method === "GET" && /^\/api\/conkay\/demo\/(materials|beam|sweep)$/.test(req.path)) return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -39158,6 +39161,11 @@ import createNPCShopRouter from "./routes/npc-shop.js";
 app.use("/api/tools", createToolsRouter({ requireAuth, db }));
 app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 
+// No-login ConKay demo — compute-only beam FEA for visitors without an
+// account (GET only; see routes/conkay-demo.js and the authMiddleware
+// bypass for /api/conkay/demo/*). Mounted before the signed-in routers.
+import createConkayDemoRouter from "./routes/conkay-demo.js";
+app.use("/api/conkay/demo", createConkayDemoRouter({ rateLimit: perEndpointRateLimit("read.conkay-demo") }));
 // ConKay free-text NLP → design intent → FEA/partMesh mesh arrays (v1 apply_mesh path)
 import createConkayDesignRouter from "./routes/conkay-design.js";
 app.use("/api/conkay", createConkayDesignRouter({ requireAuth, db }));

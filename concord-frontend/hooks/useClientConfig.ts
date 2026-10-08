@@ -86,7 +86,7 @@ async function fetchConfig(): Promise<ClientConfig> {
       const path = typeof window !== 'undefined' ? window.location.pathname : '';
       const guestPublic =
         path === '/' || path === '/explore' || path.startsWith('/explore/') ||
-        path === '/login' || path === '/register' || path === '/signup' || path.startsWith('/legal/');
+        path === '/login' || path === '/register' || path === '/signup' || path === '/conkay/demo' || path.startsWith('/legal/');
       if (guestPublic) {
         _cached = CLIENT_CONFIG_DEFAULTS;
         for (const cb of _subscribers) cb(_cached);

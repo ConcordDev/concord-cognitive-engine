@@ -100,7 +100,7 @@ export function useConkayInitiativePoll(enabled: boolean, intervalMs = 30_000): 
     async () => {
       try {
         const path = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (path === '/explore' || path.startsWith('/explore/') || path === '/login' || path === '/register') return;
+        if (path === '/explore' || path.startsWith('/explore/') || path === '/login' || path === '/register' || path === '/conkay/demo') return;
         const r = await fetch('/api/initiative/pending', { credentials: 'include' });
         if (!r.ok) return;
         const j = (await r.json()) as { ok?: boolean; initiatives?: unknown[] };

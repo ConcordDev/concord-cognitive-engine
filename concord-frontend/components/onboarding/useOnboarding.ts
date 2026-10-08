@@ -44,6 +44,7 @@ export function useOnboarding() {
       path === '/login' ||
       path === '/register' ||
       path === '/signup' ||
+      path === '/conkay/demo' ||
       path.startsWith('/legal/');
     if (guestPublic) {
       return;

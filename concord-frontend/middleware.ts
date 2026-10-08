@@ -125,6 +125,10 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
 const PUBLIC_PATHS = new Set([
   '/',
   '/explore',        // public "look around first" showcase — no account needed
+  // No-login ConKay demo: runs the real beam FEA through the GET-only
+  // /api/conkay/demo/* routes and saves nothing. Logged-out visits to
+  // /lenses/conkay are sent here instead of to /login (see below).
+  '/conkay/demo',
   '/login',
   '/register',
   '/signup',         // alias → /register
@@ -363,6 +367,10 @@ export function middleware(request: NextRequest) {
   const hasSession =
     request.cookies.has('concord_auth') ||
     request.cookies.has('concord_refresh');
+
+  if (!hasSession && pathname === '/lenses/conkay') {
+    return withCspHeaders(NextResponse.redirect(new URL('/conkay/demo', request.url)));
+  }
 
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url);
