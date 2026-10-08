@@ -45,6 +45,11 @@ export const SHAPES = {
 // cantilever) and compression (axial) act on beams.
 const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compression: "force" };
 
+// Node props that carry a unit; converted to SI like geometry. Other props
+// are passed through as plain values.
+export const TYPED_PROPS = { maxPower: "power" };
+const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density" };
+
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 
 export function compileDesignIR(ir) {
@@ -78,6 +83,23 @@ export function compileDesignIR(ir) {
     ids.add(id);
     if (!NODE_KINDS.has(n.kind)) { errors.push(`${where}: unknown kind "${n.kind}"`); continue; }
     const node = { id, kind: n.kind, name: String(n.name || id), material: null, geometry: null, props: { ...(n.props || {}) } };
+    for (const [k, dim] of Object.entries(TYPED_PROPS)) {
+      if (node.props[k] == null) continue;
+      const q = parseQuantity(node.props[k], dim);
+      if (!q.ok) errors.push(`${where}.props.${k}: ${q.error}`);
+      else if (q.si <= 0) errors.push(`${where}.props.${k}: must be positive`);
+      else node.props[k] = q.si;
+    }
+    if (node.props.vehicle && typeof node.props.vehicle === "object") {
+      const veh = { ...node.props.vehicle };
+      for (const [k, dim] of Object.entries(TYPED_VEHICLE_PROPS)) {
+        if (veh[k] == null || typeof veh[k] === "number") continue;
+        const q = parseQuantity(veh[k], dim);
+        if (!q.ok) errors.push(`${where}.props.vehicle.${k}: ${q.error}`);
+        else veh[k] = q.si;
+      }
+      node.props.vehicle = veh;
+    }
     if (n.material != null) {
       if (!getMaterial(n.material)) errors.push(`${where}: unknown material "${n.material}"`);
       else node.material = n.material;

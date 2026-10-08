@@ -298,3 +298,60 @@ describe("Existing structural compute, wrapped", () => {
     assert.equal(g1.domains.find((d) => d.domain === "structural.buckling").status, "not computed");
   });
 });
+
+describe("Vehicle top speed", () => {
+  const car = (over = {}) => ({
+    design: { id: "car", name: "Test car" },
+    nodes: [
+      { id: "CAR1", kind: "Assembly", name: "Car", props: { vehicle: { dragCoefficient: 0.30, frontalArea: "2.0 m2", rollingResistance: 0.012, drivelineEfficiency: 0.9, ...over.vehicle } } },
+      { id: "CH1", kind: "Part", name: "Chassis", material: "steel-a36", geometry: { shape: "box", length: "4 m", width: "1.8 m", height: "0.0177 m" } },
+      { id: "E1", kind: "Actuator", name: "Engine", material: "aluminum-6061-t6", props: { maxPower: over.power || "300 kW" }, geometry: { shape: "box", length: "0.6 m", width: "0.6 m", height: "0.5 m" } },
+    ],
+    edges: [{ type: "CONTAINS", from: "CAR1", to: "CH1" }, { type: "CONTAINS", from: "CAR1", to: "E1" }],
+    requirements: [{ id: "VMAX", label: "Top speed", of: { solver: "vehicle.top-speed", target: "CAR1", output: "topSpeed" }, min: "180 mph" }],
+  });
+
+  it("solves P·η = ½ρCdA·v³ + Crr·m·g·v", () => {
+    const s = open(car());
+    const e = s.result("vehicle.top-speed@CAR1");
+    assert.equal(e.status, "PASS", e.reason);
+    const v = e.outputs.topSpeed.value;
+    const m = e.inputs.mass.value;
+    const lhs = 300e3 * 0.9;
+    const rhs = 0.5 * 1.225 * 0.30 * 2.0 * v ** 3 + 0.012 * m * 9.80665 * v;
+    assert.ok(Math.abs(lhs - rhs) / lhs < 1e-9, `${lhs} vs ${rhs}`);
+    assert.match(e.inputs.dragCoefficient.source, /not computed from geometry/);
+  });
+
+  it("checks the 180 mph requirement against the solved speed", () => {
+    const s = open(car());
+    const v = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
+    const req = s.result("requirement.check@VMAX");
+    assert.equal(req.status, v >= 180 * 0.44704 ? "PASS" : "FAIL");
+  });
+
+  it("'what top speed with 400 hp?' reruns top speed and the requirement, not the masses", () => {
+    const s = open(car());
+    const before = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
+    const r = s.editText("set engine E1 power to 400 hp");
+    assert.equal(r.ok, true, r.error);
+    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.top-speed@CAR1"]);
+    const after = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
+    assert.ok(after < before, "400 hp (298 kW) is a little less than 300 kW");
+    assert.ok(Math.abs(s.graph.node("E1").props.maxPower - 400 * 745.6998715822702) < 1e-6);
+  });
+
+  it("a drag coefficient edit reruns the same two runs", () => {
+    const s = open(car());
+    const r = s.editText("set car CAR1 drag coefficient to 0.25");
+    assert.equal(r.ok, true, r.error);
+    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.top-speed@CAR1"]);
+    assert.equal(s.graph.node("CAR1").props.vehicle.dragCoefficient, 0.25);
+  });
+
+  it("missing vehicle data is not computed, and so is the requirement", () => {
+    const s = open(car({ vehicle: { dragCoefficient: undefined } }));
+    assert.equal(s.result("vehicle.top-speed@CAR1").status, "NOT_COMPUTED");
+    assert.equal(s.result("requirement.check@VMAX").status, "NOT_COMPUTED");
+  });
+});

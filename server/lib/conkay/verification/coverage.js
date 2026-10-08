@@ -12,6 +12,7 @@ export const KIND_DOMAINS = {
   Plate: ["mass", "cost", "structural.bearing", "structural.tearout", "corrosion"],
   Joint: ["structural.shear", "structural.bearing", "structural.tearout", "structural.slip", "corrosion.galvanic"],
   Assembly: ["mass", "cost"],
+  Actuator: ["mass", "cost", "thermal", "fatigue"],
   Part: ["mass", "cost"],
   Beam: ["mass", "cost", "structural.bending", "structural.buckling", "structural.deflection"],
 };

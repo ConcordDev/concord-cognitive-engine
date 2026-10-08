@@ -5,7 +5,7 @@
 // node property by path ("material", "geometry.diameter") and return the
 // dependency key the engine uses to find what to rerun.
 
-import { compileDesignIR, SHAPES } from "../compiler/design-ir.js";
+import { compileDesignIR, SHAPES, TYPED_PROPS } from "../compiler/design-ir.js";
 import { getMaterial } from "../materials/index.js";
 
 export function nodeKey(id, path) {
@@ -86,7 +86,16 @@ export class DesignGraph {
       }
       n.geometry[param] = value;
     } else if (path.startsWith("props.")) {
-      n.props[path.slice("props.".length)] = value;
+      const keys = path.slice("props.".length).split(".");
+      if (TYPED_PROPS[keys[0]] && keys.length === 1 && !(typeof value === "number" && Number.isFinite(value) && value > 0)) {
+        return { ok: false, error: `${keys[0]} must be a positive ${TYPED_PROPS[keys[0]]} in SI units` };
+      }
+      let o = n.props;
+      for (const k of keys.slice(0, -1)) {
+        if (o[k] == null || typeof o[k] !== "object") o[k] = {};
+        o = o[k];
+      }
+      o[keys.at(-1)] = value;
     } else {
       return { ok: false, error: `cannot edit "${path}"` };
     }

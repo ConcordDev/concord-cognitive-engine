@@ -13,7 +13,20 @@ import { parseQuantity } from "./units.js";
 import { resolveMaterialName } from "../materials/index.js";
 import { SHAPES } from "./design-ir.js";
 
-const KIND_WORDS = { bolt: "Bolt", bolts: "Bolt", plate: "Plate", plates: "Plate", joint: "Joint", joints: "Joint", part: "Part", parts: "Part", beam: "Beam", beams: "Beam" };
+const KIND_WORDS = {
+  bolt: "Bolt", bolts: "Bolt", plate: "Plate", plates: "Plate", joint: "Joint", joints: "Joint",
+  part: "Part", parts: "Part", beam: "Beam", beams: "Beam",
+  engine: "Actuator", engines: "Actuator", motor: "Actuator", motors: "Actuator",
+  vehicle: "Assembly", car: "Assembly", assembly: "Assembly",
+};
+
+// Non-geometry properties an edit can set: word(s) → [path, unit dimension | null].
+const PROP_WORDS = {
+  power: ["props.maxPower", "power"],
+  "drag coefficient": ["props.vehicle.dragCoefficient", null],
+  cd: ["props.vehicle.dragCoefficient", null],
+  "frontal area": ["props.vehicle.frontalArea", "area"],
+};
 const PARAMS = new Set(Object.values(SHAPES).flat());
 
 function resolveNodes(ref, graph) {
@@ -34,6 +47,25 @@ export function parseEdit(text, graph) {
   const m = t.match(/^(?:make|change|switch|set|swap)\s+(.+?)\s+(?:to|into|in)\s+(.+)$/i) || t.match(/^(?:make)\s+(.+?)\s+(\S+)$/i);
   if (!m) return { ok: false, error: 'I can read edits like "make bolt B1 stainless" or "set plate P1 thickness to 12 mm".' };
   let [, lhs, rhs] = m;
+
+  // "<ref> power|drag coefficient|frontal area to <value>"
+  for (const [word, [propPath, dim]] of Object.entries(PROP_WORDS)) {
+    const re = new RegExp(`^(.+?)\\s+${word}$`, "i");
+    const pm = lhs.trim().match(re);
+    if (!pm) continue;
+    const target = resolveNodes(pm[1], graph);
+    if (target.error) return { ok: false, error: target.error };
+    let value;
+    if (dim) {
+      const q = parseQuantity(rhs.trim(), dim);
+      if (!q.ok) return { ok: false, error: `${word}: ${q.error}` };
+      value = q.si;
+    } else {
+      value = Number(rhs.trim());
+      if (!(Number.isFinite(value) && value > 0)) return { ok: false, error: `${word} must be a positive number` };
+    }
+    return { ok: true, ops: target.nodes.map((n) => ({ node: n.id, path: propPath, value })), notes: [] };
+  }
 
   // "<ref> <param> to <quantity>"
   const lw = lhs.trim().split(/\s+/);

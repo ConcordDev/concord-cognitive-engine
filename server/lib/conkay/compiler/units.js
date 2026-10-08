@@ -19,6 +19,12 @@ const UNITS = {
   "kg/m3": ["density", 1], "kg/m³": ["density", 1], "g/cm3": ["density", 1000], "g/cm³": ["density", 1000],
   // area → m²
   m2: ["area", 1], "m²": ["area", 1], mm2: ["area", 1e-6], "mm²": ["area", 1e-6], in2: ["area", 0.00064516], "in²": ["area", 0.00064516],
+  // volume → m³
+  m3: ["volume", 1], "m³": ["volume", 1], L: ["volume", 1e-3],
+  // velocity → m/s
+  "m/s": ["velocity", 1], "km/h": ["velocity", 1 / 3.6], mph: ["velocity", 0.44704],
+  // power → W (hp is mechanical horsepower, 550 ft·lbf/s)
+  W: ["power", 1], kW: ["power", 1e3], MW: ["power", 1e6], hp: ["power", 745.6998715822702],
   // money
   USD: ["money", 1], "USD/kg": ["price_per_mass", 1],
   // dimensionless
@@ -27,7 +33,7 @@ const UNITS = {
 
 export const SI_UNIT = {
   length: "m", mass: "kg", force: "N", pressure: "Pa", density: "kg/m3",
-  area: "m2", money: "USD", price_per_mass: "USD/kg", ratio: "1",
+  area: "m2", volume: "m3", velocity: "m/s", power: "W", money: "USD", price_per_mass: "USD/kg", ratio: "1",
 };
 
 export function knownUnit(unit) {

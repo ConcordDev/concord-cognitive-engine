@@ -14,6 +14,7 @@ import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/requirements.js";
 import "./physics/solvers/structural-members.js";
+import "./physics/solvers/vehicle.js";
 
 export { listSolvers };
 
