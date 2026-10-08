@@ -11,9 +11,11 @@
 //                           { designId, ops }       → or graph ops [{ node, path, value (SI) }]
 //   conkay_design.list      {}                      → your designs
 //   conkay_design.solvers   {}                      → the solver registry
+//   conkay_design.parse-brief { brief }             → numeric targets + unparsed intent
 
 import crypto from "node:crypto";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
+import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 
 const SESSION_CACHE_MAX = 64;
 const sessions = new Map(); // designId -> session (LRU by insertion order)
@@ -66,6 +68,12 @@ export function _resetDesignSessionCache() {
 
 export default function registerConkayDesignActions(registerLensAction) {
   registerLensAction("conkay_design", "solvers", () => ({ ok: true, result: { solvers: listSolvers() } }));
+
+  registerLensAction("conkay_design", "parse-brief", (_ctx, _artifact, params) => {
+    const brief = String(params?.brief || "").slice(0, 4000);
+    if (!brief.trim()) return { ok: false, error: "send a brief" };
+    return { ok: true, result: parseBrief(brief) };
+  });
 
   registerLensAction("conkay_design", "open", (ctx, _artifact, params) => {
     const userId = actor(ctx);

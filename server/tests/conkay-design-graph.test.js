@@ -450,3 +450,42 @@ describe("Centre of gravity and axle loads", () => {
     assert.equal(s.result("vehicle.axle-loads@V1").status, "WARN");
   });
 });
+
+describe("Brief → requirements", () => {
+  it("reads the car brief's three numeric targets and keeps the rest as intent", async () => {
+    const { parseBrief } = await import("../lib/conkay/compiler/requirement-parser.js");
+    const r = parseBrief("a car that weighs 2,500 lb, does 180 mph, seats 4, with a futuristic aerodynamic look");
+    const by = Object.fromEntries(r.requirements.map((q) => [q.metric, q]));
+    assert.ok(Math.abs(by.mass.max.si - 2500 * 0.45359237) < 1e-9);
+    assert.equal(by.mass.source, "weighs 2,500 lb");
+    assert.ok(Math.abs(by.topSpeed.min.si - 180 * 0.44704) < 1e-9);
+    assert.equal(by.seats.min.si, 4);
+    assert.match(r.intent, /futuristic aerodynamic look/);
+  });
+
+  it("reads the aircraft brief, and says the bare distance was read as range", async () => {
+    const { parseBrief } = await import("../lib/conkay/compiler/requirement-parser.js");
+    const r = parseBrief("500 kg electric aircraft, 2 people, 800 miles");
+    const by = Object.fromEntries(r.requirements.map((q) => [q.metric, q]));
+    assert.equal(by.mass.max.si, 500);
+    assert.equal(by.seats.min.si, 2);
+    assert.ok(Math.abs(by.range.min.si - 800 * 1609.344) < 1e-6);
+    assert.match(by.range.note, /read as range/);
+    assert.equal(r.intent, "electric aircraft");
+  });
+
+  it("does not turn '500 plants' into seats; wind and budget are read", async () => {
+    const { parseBrief } = await import("../lib/conkay/compiler/requirement-parser.js");
+    const r = parseBrief("greenhouse for 500 plants, 120 mph wind, upstate NY year-round, solar, under $40k");
+    const metrics = r.requirements.map((q) => q.metric).sort();
+    assert.deepEqual(metrics, ["budget", "designWindSpeed"]);
+    assert.match(r.intent, /500 plants/);
+  });
+
+  it("a brief with no numbers yields no invented targets", async () => {
+    const { parseBrief } = await import("../lib/conkay/compiler/requirement-parser.js");
+    const r = parseBrief("a nice chair");
+    assert.deepEqual(r.requirements, []);
+    assert.match(r.note, /no numeric targets/);
+  });
+});
