@@ -1122,6 +1122,67 @@ Constraints:
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // Author-only lesson maintenance: edit in place, delete (renumbering), reorder.
+  function authoredCourse(ctx, params) {
+    const s = getEduState(); if (!s) return { error: { ok: false, error: "STATE unavailable" } };
+    const userId = eduActor(ctx);
+    const store = courseStore(ctx, s);
+    const course = store.get(String(params.courseId || ""));
+    if (!course || !courseVisibleTo(course, userId)) return { error: { ok: false, error: "course not found" } };
+    if (course.authorId !== userId) return { error: { ok: false, error: "not authorized: only the course author can change lessons" } };
+    return { course, store };
+  }
+  const renumberLessons = (course) => { course.lessons.forEach((l, i) => { l.order = i + 1; }); };
+
+  registerLensAction("education", "lessons-update", (ctx, _a, params = {}) => {
+    try {
+      const a = authoredCourse(ctx, params); if (a.error) return a.error;
+      const lesson = a.course.lessons.find((l) => l.id === params.lessonId);
+      if (!lesson) return { ok: false, error: "lesson not found" };
+      if (params.title != null) {
+        const t = String(params.title).trim();
+        if (!t) return { ok: false, error: "title required" };
+        lesson.title = t;
+      }
+      if (params.videoUrl != null) lesson.videoUrl = String(params.videoUrl);
+      if (params.durationMin != null) lesson.durationMin = Math.max(0, Number(params.durationMin) || 0);
+      if (["video", "reading", "quiz", "assignment", "discussion"].includes(params.kind)) lesson.kind = params.kind;
+      lesson.updatedAt = new Date().toISOString();
+      a.store.put(a.course);
+      saveStateIfAvailable();
+      return { ok: true, result: { lesson } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("education", "lessons-delete", (ctx, _a, params = {}) => {
+    try {
+      const a = authoredCourse(ctx, params); if (a.error) return a.error;
+      const i = a.course.lessons.findIndex((l) => l.id === params.lessonId);
+      if (i < 0) return { ok: false, error: "lesson not found" };
+      a.course.lessons.splice(i, 1);
+      renumberLessons(a.course);
+      a.store.put(a.course);
+      saveStateIfAvailable();
+      return { ok: true, result: { deleted: params.lessonId, lessons: a.course.lessons } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("education", "lessons-move", (ctx, _a, params = {}) => {
+    try {
+      const a = authoredCourse(ctx, params); if (a.error) return a.error;
+      const i = a.course.lessons.findIndex((l) => l.id === params.lessonId);
+      if (i < 0) return { ok: false, error: "lesson not found" };
+      const j = params.direction === "up" ? i - 1 : params.direction === "down" ? i + 1 : -1;
+      if (j < 0 || j >= a.course.lessons.length) return { ok: false, error: "cannot move in that direction" };
+      const [l] = a.course.lessons.splice(i, 1);
+      a.course.lessons.splice(j, 0, l);
+      renumberLessons(a.course);
+      a.store.put(a.course);
+      saveStateIfAvailable();
+      return { ok: true, result: { lessons: a.course.lessons } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   registerLensAction("education", "lessons-complete", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);

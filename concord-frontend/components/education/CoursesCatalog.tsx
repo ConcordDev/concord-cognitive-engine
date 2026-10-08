@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock, Lock, Users } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock, Lock, Users, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,6 +48,8 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   const [addingLesson, setAddingLesson] = useState(false);
   const [lessonForm, setLessonForm] = useState(emptyLessonForm);
   const [savingLesson, setSavingLesson] = useState(false);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [lessonErr, setLessonErr] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filterCategory, mineOnly]);
@@ -113,6 +115,47 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
     setExpandedId(c.id);
     setAddingLesson(false);
     if (!detailById[c.id]) await loadDetail(c.id);
+  }
+
+  async function reloadCourse(courseId: string) {
+    const r = await lensRun({ domain: 'education', action: 'courses-get', input: { id: courseId } });
+    const fresh = r.data?.result?.course as Course | undefined;
+    if (fresh) {
+      setDetailById(prev => ({ ...prev, [courseId]: fresh }));
+      setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, lessons: fresh.lessons } : c)));
+    }
+  }
+
+  async function lessonOp(courseId: string, action: 'lessons-delete' | 'lessons-move', lessonId: string, extra: Record<string, unknown> = {}) {
+    setLessonErr(null);
+    try {
+      const r = await lensRun({ domain: 'education', action, input: { courseId, lessonId, ...extra } });
+      if (!r.data?.ok) { setLessonErr(r.data?.error || `${action} failed`); return; }
+      await reloadCourse(courseId);
+    } catch (e) { console.error('[Courses] lesson op failed', e); setLessonErr('Request failed'); }
+  }
+
+  function startEditLesson(l: Lesson) {
+    setAddingLesson(false);
+    setEditingLessonId(l.id);
+    setLessonErr(null);
+    setLessonForm({ title: l.title, videoUrl: l.videoUrl || '', durationMin: l.durationMin ? String(l.durationMin) : '', kind: l.kind });
+  }
+
+  async function saveLessonEdit(courseId: string) {
+    if (!editingLessonId || !lessonForm.title.trim()) return;
+    setSavingLesson(true); setLessonErr(null);
+    try {
+      const r = await lensRun({
+        domain: 'education', action: 'lessons-update',
+        input: { courseId, lessonId: editingLessonId, title: lessonForm.title.trim(), videoUrl: lessonForm.videoUrl.trim(), durationMin: Number(lessonForm.durationMin) || 0, kind: lessonForm.kind },
+      });
+      if (!r.data?.ok) { setLessonErr(r.data?.error || 'Could not save lesson'); return; }
+      setEditingLessonId(null);
+      setLessonForm(emptyLessonForm);
+      await reloadCourse(courseId);
+    } catch (e) { console.error('[Courses] edit lesson failed', e); setLessonErr('Request failed'); }
+    finally { setSavingLesson(false); }
   }
 
   async function addLesson(courseId: string) {
@@ -254,13 +297,21 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                                     <span className="truncate flex-1">{l.order}. {l.title}</span>
                                     <span className="text-[10px] text-gray-500 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
                                     <span className="text-[9px] uppercase text-gray-500">{l.kind}</span>
+                                    {isOwner && (
+                                      <span className="inline-flex items-center gap-0.5">
+                                        <button aria-label="Move lesson up" disabled={l.order <= 1} onClick={() => lessonOp(c.id, 'lessons-move', l.id, { direction: 'up' })} className="p-0.5 text-gray-400 hover:text-white disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
+                                        <button aria-label="Move lesson down" disabled={l.order >= detail.lessons.length} onClick={() => lessonOp(c.id, 'lessons-move', l.id, { direction: 'down' })} className="p-0.5 text-gray-400 hover:text-white disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                                        <button aria-label="Edit lesson" onClick={() => startEditLesson(l)} className="p-0.5 text-gray-400 hover:text-cyan-300"><Pencil className="w-3 h-3" /></button>
+                                        <button aria-label="Delete lesson" onClick={() => lessonOp(c.id, 'lessons-delete', l.id)} className="p-0.5 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                                      </span>
+                                    )}
                                   </li>
                                 );
                               })}
                             </ul>
                           )}
                           {isOwner ? (
-                            addingLesson ? (
+                            addingLesson || editingLessonId ? (
                               <div className="mt-2 space-y-1.5 pb-2">
                                 <div className="grid grid-cols-4 gap-1.5">
                                   <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -271,11 +322,12 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                                 </div>
                                 <input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="Video URL (optional)" className="w-full px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
                                 <div className="flex items-center gap-2">
-                                  <button disabled={savingLesson} onClick={() => addLesson(c.id)} className="px-2.5 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
-                                    {savingLesson && <Loader2 className="w-2.5 h-2.5 animate-spin" />}Add lesson
+                                  <button disabled={savingLesson} onClick={() => (editingLessonId ? saveLessonEdit(c.id) : addLesson(c.id))} className="px-2.5 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
+                                    {savingLesson && <Loader2 className="w-2.5 h-2.5 animate-spin" />}{editingLessonId ? 'Save lesson' : 'Add lesson'}
                                   </button>
-                                  <button onClick={() => { setAddingLesson(false); setLessonForm(emptyLessonForm); }} className="px-2 py-1 text-[10px] text-gray-400">Cancel</button>
+                                  <button onClick={() => { setAddingLesson(false); setEditingLessonId(null); setLessonForm(emptyLessonForm); }} className="px-2 py-1 text-[10px] text-gray-400">Cancel</button>
                                 </div>
+                                {lessonErr && <p role="alert" className="text-[10px] text-rose-300">{lessonErr}</p>}
                               </div>
                             ) : (
                               <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>

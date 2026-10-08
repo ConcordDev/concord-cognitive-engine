@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookHeart, Sparkles, Search, Trash2, Loader2, CalendarHeart, Flame,
-  ImagePlus, X, FileText, Tag as TagIcon, Download, LayoutTemplate,
+  ImagePlus, X, FileText, Pencil, Tag as TagIcon, Download, LayoutTemplate,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -59,6 +59,9 @@ export function JournalStudio() {
   const [results, setResults] = useState<Entry[] | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ title: '', body: '', mood: 4, tags: '' });
+  const [editErr, setEditErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(async () => {
@@ -142,6 +145,27 @@ export function JournalStudio() {
     await lensRun('daily', 'entry-delete', { id });
     bumpAll();
   }, [bumpAll]);
+
+  const startEdit = useCallback((e: Entry) => {
+    setEditId(e.id);
+    setEditErr(null);
+    setEditDraft({ title: e.title || '', body: e.body, mood: e.mood ?? 4, tags: (e.tags || []).join(', ') });
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    if (!editId || !editDraft.body.trim()) return;
+    const r = await lensRun('daily', 'entry-update', {
+      id: editId,
+      title: editDraft.title.trim(),
+      body: editDraft.body.trim(),
+      mood: editDraft.mood,
+      tags: editDraft.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+    if (!r.data?.ok) { setEditErr(r.data?.error || 'Could not save changes'); return; }
+    setEditId(null);
+    setResults(null);
+    bumpAll();
+  }, [editId, editDraft, bumpAll]);
 
   const runSearch = useCallback(async () => {
     if (!search.trim()) { setResults(null); return; }
@@ -364,11 +388,40 @@ export function JournalStudio() {
                   {e.template && <span className="text-[9px] px-1 rounded bg-zinc-800 text-zinc-400">{e.template}</span>}
                   <div className="ml-auto flex items-center gap-1">
                     {(e.tags || []).map((t) => <span key={t} className="text-[9px] px-1 rounded bg-rose-900/40 text-rose-300">{t}</span>)}
-                    <button onClick={() => del(e.id)} aria-label="Delete entry" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => startEdit(e)} aria-label="Edit entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-300"><Pencil className="w-3 h-3" /></button>
+                    <button onClick={() => del(e.id)} aria-label="Delete entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 </div>
-                {e.title && <p className="text-sm font-semibold text-zinc-100">{e.title}</p>}
-                <p className="text-sm text-zinc-200 whitespace-pre-wrap">{e.body}</p>
+                {editId === e.id ? (
+                  <div className="space-y-2">
+                    <input value={editDraft.title} onChange={(ev) => setEditDraft({ ...editDraft, title: ev.target.value })}
+                      placeholder="Title (optional)" maxLength={160} aria-label="Entry title"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100" />
+                    <textarea value={editDraft.body} onChange={(ev) => setEditDraft({ ...editDraft, body: ev.target.value })} rows={4}
+                      aria-label="Entry body"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex gap-0.5">
+                        {MOODS.map((m, i) => (
+                          <button key={i} onClick={() => setEditDraft({ ...editDraft, mood: i + 1 })}
+                            className={cn('text-base rounded px-1', editDraft.mood === i + 1 ? 'bg-rose-600/30' : 'opacity-50 hover:opacity-100')}>{m}</button>
+                        ))}
+                      </div>
+                      <input value={editDraft.tags} onChange={(ev) => setEditDraft({ ...editDraft, tags: ev.target.value })}
+                        placeholder="tags, comma separated" aria-label="Entry tags"
+                        className="flex-1 min-w-[8rem] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                      <button onClick={() => void saveEdit()} disabled={!editDraft.body.trim()}
+                        className="px-2.5 py-1 text-xs font-semibold rounded bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-40">Save</button>
+                      <button onClick={() => setEditId(null)} className="px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+                    </div>
+                    {editErr && <p role="alert" className="text-[11px] text-rose-300">{editErr}</p>}
+                  </div>
+                ) : (
+                  <>
+                    {e.title && <p className="text-sm font-semibold text-zinc-100">{e.title}</p>}
+                    <p className="text-sm text-zinc-200 whitespace-pre-wrap">{e.body}</p>
+                  </>
+                )}
                 {(e.media || []).length > 0 && (
                   <div className="flex gap-2 flex-wrap mt-2">
                     {e.media.map((m, i) => m.kind === 'image' ? (
