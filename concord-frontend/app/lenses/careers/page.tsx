@@ -55,7 +55,11 @@ import { ReputationGate, type ReputationInfo } from '@/components/careers/Reputa
 import { CareerLadderPath } from '@/components/careers/CareerLadderPath';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
-interface WorkResult { ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string }
+interface CareerProgress { tier: number; xp: number; highestTier: number; shifts: number }
+interface WorkResult {
+  ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string;
+  progress?: CareerProgress; promotion?: { tier: number; title: string } | null; nextTierXp?: number | null;
+}
 // server/lib/professions.js#tierInfo — one rung of a track's 10-tier ladder.
 interface TierInfo {
   tier: number; title: string; skillGate: number; wageBase: number;
@@ -82,7 +86,12 @@ export default function CareersLens() {
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>('chef');
-  const [skill, setSkill] = useState(0.7);
+  const [progress, setProgress] = useState<CareerProgress | null>(null);
+  // Shift timing check: a marker sweeps the bar; stopping it near the centre
+  // is the shift's skill input. Position is a pure function of elapsed time.
+  const [timingStart, setTimingStart] = useState<number | null>(null);
+  const [markerPos, setMarkerPos] = useState(0);
+  const [lastAccuracy, setLastAccuracy] = useState<number | null>(null);
   const [last, setLast] = useState<WorkResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
@@ -128,15 +137,34 @@ export default function CareersLens() {
   }, []);
   useEffect(() => { if (state === 'ready' && selected) void Promise.resolve().then(() => loadLadder(selected)); }, [state, selected, loadLadder]);
 
-  const work = useCallback(async () => {
+  const loadProgress = useCallback(async (trackId: string) => {
+    try {
+      const r = (await lensRun<{ ok: boolean; progress?: CareerProgress }>('careers', 'progress', { trackId })).data.result;
+      setProgress(r?.ok && r.progress ? r.progress : null);
+    } catch { setProgress(null); }
+  }, []);
+  useEffect(() => { if (state === 'ready' && selected) void Promise.resolve().then(() => loadProgress(selected)); }, [state, selected, loadProgress]);
+
+  const markerAt = (ms: number) => (Math.sin(ms / 260) + 1) / 2;
+  useEffect(() => {
+    if (timingStart === null) return;
+    let raf = 0;
+    const tick = () => { setMarkerPos(markerAt(performance.now() - timingStart)); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [timingStart]);
+
+  const work = useCallback(async (skillInput: number) => {
     setNote(null);
     setWorking(true);
     try {
-      const r = (await lensRun<WorkResult>('careers', 'work', { trackId: selected, tier: 5, attribute: 0.7, skillInput: skill })).data.result;
+      const r = (await lensRun<WorkResult>('careers', 'work', { trackId: selected, skillInput })).data.result;
       setLast(r);
       if (r?.ok) {
+        if (r.progress) setProgress(r.progress);
         setNote(`Worked a ${selected} shift — earned ${r.wage} sparks (+${r.xp} XP).`);
         addToast({ type: 'success', message: `Shift complete — earned ${r.wage} sparks (+${r.xp} XP).`, duration: 2500 });
+        if (r.promotion) addToast({ type: 'success', message: `Promoted to tier ${r.promotion.tier}: ${r.promotion.title}`, duration: 4000 });
         // a completed shift may have produced a contract-relevant state change; refresh contracts.
         try {
           const c = (await lensRun<{ contracts?: Contract[] }>('careers', 'contracts', {})).data.result;
@@ -152,7 +180,21 @@ export default function CareersLens() {
     } finally {
       setWorking(false);
     }
-  }, [selected, skill, addToast]);
+  }, [selected, addToast]);
+
+  const onShiftButton = useCallback(() => {
+    if (working) return;
+    if (timingStart === null) {
+      setTimingStart(performance.now());
+      return;
+    }
+    const pos = markerAt(performance.now() - timingStart);
+    const accuracy = Math.max(0, 1 - Math.abs(pos - 0.5) * 2);
+    setMarkerPos(pos);
+    setTimingStart(null);
+    setLastAccuracy(accuracy);
+    void work(Math.round(accuracy * 100) / 100);
+  }, [working, timingStart, work]);
 
   const refreshContracts = useCallback(async () => {
     try {
@@ -196,7 +238,7 @@ export default function CareersLens() {
           <RefreshCw className="w-4 h-4" aria-hidden="true" />
         </button>
       }
-      cta={state === 'ready' && tracks.length > 0 ? { label: working ? 'Working…' : 'Clock in', icon: Hammer, onClick: () => void work(), disabled: working, title: 'Work a shift on the selected track' } : undefined}
+      cta={state === 'ready' && tracks.length > 0 ? { label: working ? 'Working…' : timingStart === null ? 'Clock in' : 'Stop', icon: Hammer, onClick: onShiftButton, disabled: working, title: 'Start a shift, then stop the marker' } : undefined}
     >
     <div className="w-full">
       {state === 'disabled' ? (
@@ -235,16 +277,43 @@ export default function CareersLens() {
               <select id="career-track" value={selected} onChange={(e) => setSelected(e.target.value)} className="bg-black/60 border border-white/10 rounded px-2 py-1">
                 {tracks.map((t) => <option key={t.id} value={t.id}>{t.id} · {t.activity}</option>)}
               </select>
-              <label className="flex items-center gap-2" htmlFor="career-skill">skill
-                <input id="career-skill" type="range" min={0} max={1} step={0.05} value={skill} onChange={(e) => setSkill(Number(e.target.value))} aria-valuetext={skill.toFixed(2)} />
-                <span className="tabular-nums">{skill.toFixed(2)}</span>
-              </label>
-              <button onClick={() => void work()} disabled={working} aria-label="Play a work shift" className="bg-amber-600 hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-black font-medium rounded px-3 py-1">
-                {working ? 'Working…' : 'Play shift'}
+              <button
+                onClick={onShiftButton}
+                disabled={working}
+                aria-label={timingStart === null ? 'Play a work shift' : 'Stop the marker'}
+                className="bg-amber-600 hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-black font-medium rounded px-3 py-1"
+              >
+                {working ? 'Working…' : timingStart === null ? 'Play shift' : 'Stop'}
               </button>
+              {progress && (
+                <span className="text-xs text-gray-400 tabular-nums">
+                  Tier {progress.tier} · {progress.xp} XP{progress.tier < 10 ? ` / ${progress.tier * 100} to promote` : ' · top tier'} · {progress.shifts} shifts
+                </span>
+              )}
+            </div>
+            <div className="mt-3">
+              <div
+                role="meter"
+                aria-label="Shift timing"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(markerPos * 100)}
+                className="relative h-3 rounded-full bg-black/60 border border-white/10 overflow-hidden"
+              >
+                <div className="absolute inset-y-0 left-[40%] w-[20%] bg-amber-500/25" />
+                <div className="absolute inset-y-0 w-1 rounded bg-amber-200" style={{ left: `calc(${(markerPos * 100).toFixed(2)}% - 2px)` }} />
+              </div>
+              <p className="mt-1 text-[11px] text-gray-500">
+                {timingStart !== null
+                  ? 'Stop the marker inside the shaded zone. Closer to the centre is a better shift.'
+                  : 'Start a shift, then stop the marker in the centre. Accuracy is your shift skill.'}
+              </p>
             </div>
             {last?.ok && (
-              <p className="mt-2 text-xs text-gray-300">performance {(last.performanceScore ?? 0).toFixed(2)} → <span className="text-amber-200">{last.wage} sparks</span> · +{last.xp} XP</p>
+              <p className="mt-2 text-xs text-gray-300">
+                {lastAccuracy !== null && <>accuracy {lastAccuracy.toFixed(2)} → </>}performance {(last.performanceScore ?? 0).toFixed(2)} → <span className="text-amber-200">{last.wage} sparks</span> · +{last.xp} XP
+                {last.promotion && <span className="ml-1 text-emerald-300">· promoted to {last.promotion.title}</span>}
+              </p>
             )}
           </section>
 
@@ -263,7 +332,7 @@ export default function CareersLens() {
               <p className="text-gray-500 text-xs">No ladder data for this track.</p>
             ) : (
               <>
-              <CareerLadderPath ladder={ladder} skill={skill} gatedTiers={reputation?.gatedTiers ?? []} />
+              <CareerLadderPath ladder={ladder} currentTier={progress?.tier ?? 1} gatedTiers={reputation?.gatedTiers ?? []} />
               <ol className="space-y-1 text-xs">
                 {ladder.map((t) => {
                   const gated = !!reputation && reputation.gatedTiers.includes(t.tier);

@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import registerCareerMacros from "../domains/careers.js";
 import { up as upContracts } from "../migrations/312_career_contracts.js";
+import { up as upProgress } from "../migrations/469_player_career_progress.js";
 
 function collectMacros() {
   const map = new Map();
@@ -25,6 +26,7 @@ function collectMacros() {
 
 function freshDb() {
   const db = new Database(":memory:");
+  upProgress(db);
   // The career system reads/writes the canonical sparks stores. 048 ALTERs an
   // existing users table; in isolation we create it with the columns it needs.
   db.exec(`
@@ -67,7 +69,7 @@ describe("careers domain macros", () => {
   beforeEach(() => { db = freshDb(); macros = collectMacros(); });
 
   it("registers the full read + write surface", () => {
-    for (const name of ["tracks", "ladder", "work", "contracts", "offer", "accept", "counter", "reject", "employers", "myReputation"]) {
+    for (const name of ["tracks", "ladder", "work", "progress", "contracts", "offer", "accept", "counter", "reject", "employers", "myReputation"]) {
       assert.equal(typeof macros.get(name), "function", `missing macro: ${name}`);
     }
   });
@@ -103,12 +105,33 @@ describe("careers domain macros", () => {
     const r = await macros.get("work")(ctxFor(db, "player1"), { trackId: "chef", tier: 5, attribute: 0.9, skillInput: 0.9 });
     assert.equal(r.ok, true);
     assert.equal(r.trackId, "chef");
-    assert.equal(r.tier, 5);
+    assert.equal(r.tier, 1, "a client-claimed tier is ignored; a new worker starts at tier 1");
     assert.ok(r.performanceScore > 0 && r.performanceScore <= 1, "performance in [0,1]");
     assert.ok(r.wage > 0, "earned a positive wage");
     assert.equal(r.paid, true);
     // the wallet really moved — not a pretended credit
     assert.equal(getSparks(db, "player1"), r.wage);
+  });
+
+  it("work persists XP and promotes per the engine gate (tier × 100 XP, performance ≥ 0.6)", async () => {
+    seedUser(db, "climber", 0);
+    const ctx = ctxFor(db, "climber");
+    let last;
+    for (let i = 0; i < 12; i++) last = await macros.get("work")(ctx, { trackId: "chef", skillInput: 1 });
+    const prog = await macros.get("progress")(ctx, { trackId: "chef" });
+    assert.equal(prog.ok, true);
+    assert.equal(prog.progress.shifts, 12);
+    assert.equal(prog.progress.xp, last.progress.xp);
+    assert.ok(prog.progress.tier >= 2, `expected a promotion after 12 strong shifts, got tier ${prog.progress.tier}`);
+    assert.ok(prog.progress.xp >= (prog.progress.tier - 1) * 100, "tier never outruns cumulative XP");
+    const all = await macros.get("progress")(ctx, {});
+    assert.deepEqual(all.tracks.map((t) => t.trackId), ["chef"]);
+
+    // a weak shift earns XP but never promotes
+    seedUser(db, "weak", 0);
+    for (let i = 0; i < 8; i++) await macros.get("work")(ctxFor(db, "weak"), { trackId: "chef", skillInput: 0 });
+    const weak = await macros.get("progress")(ctxFor(db, "weak"), { trackId: "chef" });
+    assert.ok(weak.progress.xp > 0);
   });
 
   it("work requires auth and rejects an unknown track", async () => {

@@ -136,12 +136,12 @@ describe('careers lens — five UX states', () => {
     await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
   });
 
-  it('a11y: the track select, skill slider, and shift button carry accessible names', async () => {
+  it('a11y: the track select, shift timing bar, and shift button carry accessible names', async () => {
     lensRun.mockImplementation((_d: string, name: string) =>
       name === 'tracks' ? reply({ ok: true, tracks: TRACKS }) : reply({ ok: true, contracts: [] }));
     const { getByLabelText } = render(<CareersLens />);
     await waitFor(() => expect(getByLabelText('Profession track')).toBeInTheDocument());
-    expect(getByLabelText(/skill/i)).toBeInTheDocument();
+    expect(getByLabelText('Shift timing')).toBeInTheDocument();
     expect(getByLabelText('Play a work shift')).toBeInTheDocument();
     expect(getByLabelText('Refresh careers')).toBeInTheDocument();
   });
@@ -163,7 +163,13 @@ describe('careers lens — five UX states', () => {
 
     // play a shift → the work macro fires, the wage shows, and a success toast surfaces
     await act(async () => { fireEvent.click(getByLabelText('Play a work shift')); });
+    await act(async () => { fireEvent.click(getByLabelText('Stop the marker')); });
     await waitFor(() => expect(getByText(/earned 38 sparks/i)).toBeInTheDocument());
+    const workCall = lensRun.mock.calls.find((c) => c[1] === 'work');
+    expect(workCall![2]).not.toHaveProperty('tier');
+    expect(workCall![2]).not.toHaveProperty('attribute');
+    expect(workCall![2].skillInput).toBeGreaterThanOrEqual(0);
+    expect(workCall![2].skillInput).toBeLessThanOrEqual(1);
     expect(lensRun.mock.calls.some((c) => c[1] === 'work')).toBe(true);
     expect(addToast.mock.calls.some((c) => c[0]?.type === 'success')).toBe(true);
   });
@@ -178,6 +184,7 @@ describe('careers lens — five UX states', () => {
     const { getByText, getByLabelText } = render(<CareersLens />);
     await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
     await act(async () => { fireEvent.click(getByLabelText('Play a work shift')); });
+    await act(async () => { fireEvent.click(getByLabelText('Stop the marker')); });
     await waitFor(() => expect(getByText(/exhausted/i)).toBeInTheDocument());
     expect(addToast.mock.calls.some((c) => c[0]?.type === 'error')).toBe(true);
   });
