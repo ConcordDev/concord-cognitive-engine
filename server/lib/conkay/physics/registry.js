@@ -32,7 +32,7 @@ export function getSolver(id) {
 }
 
 export function listSolvers() {
-  return [...SOLVERS.values()].map(({ id, version, domain, fidelity, method, reference }) => ({ id, version, domain, fidelity, method, reference: reference || null }));
+  return [...SOLVERS.values()].map(({ id, version, domain, domains, fidelity, method, reference }) => ({ id, version, domain, domains: domains || [domain], fidelity, method, reference: reference || null }));
 }
 
 export function runId(solverId, target) {
@@ -49,7 +49,7 @@ function canonical(v) {
 export function envelope(solver, target, raw, { runtimeMs, revision }) {
   const base = {
     runId: runId(solver.id, target),
-    solver: { id: solver.id, version: solver.version, domain: solver.domain, fidelity: `L${solver.fidelity}`, method: solver.method, reference: solver.reference || null },
+    solver: { id: solver.id, version: solver.version, domain: solver.domain, domains: solver.domains || [solver.domain], fidelity: `L${solver.fidelity}`, method: solver.method, reference: solver.reference || null },
     target,
     runtimeMs,
   };
@@ -75,6 +75,8 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     warnings,
     assumptions: raw.assumptions || [],
     covers: raw.covers || [target],
+    // The wrapped engine's own receipt, when it produces one (e.g. the FEA analysisReceipt).
+    ...(raw.receipt ? { engineReceipt: raw.receipt } : {}),
     provenance: {
       revision,
       computedAt: new Date().toISOString(),

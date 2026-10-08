@@ -242,3 +242,53 @@ describe("Engine", () => {
     assert.ok(e.results().some((r) => r.status === "ERROR" && /cycle/.test(r.error)));
   });
 });
+
+describe("Existing structural compute, wrapped", () => {
+  const frame = (over = {}) => ({
+    design: { id: "frame" },
+    nodes: [
+      { id: "G1", kind: "Beam", material: "steel-a992", props: { support: over.support || "simply-supported" }, geometry: { shape: "i-beam", length: "4 m", height: "300 mm", flangeWidth: "150 mm", flangeThickness: "12 mm", webThickness: "8 mm" } },
+      { id: "C1", kind: "Beam", material: "steel-a992", props: { support: "simply-supported" }, geometry: { shape: "i-beam", length: over.columnLength || "6 m", height: "200 mm", flangeWidth: "200 mm", flangeThickness: "12 mm", webThickness: "8 mm" } },
+    ],
+    loadCases: [{ id: "LC1", loads: [{ target: "G1", pointLoad: "60 kN" }, { target: "C1", compression: "300 kN" }] }],
+  });
+
+  it("beam.fea matches the closed-form PL/4 and PL³/48EI", () => {
+    const s = open(frame());
+    const e = s.result("beam.fea@G1");
+    const Ix = (150 * 300 ** 3) / 12 - (142 * 276 ** 3) / 12; // mm⁴
+    assert.ok(Math.abs(e.outputs.maxStress.value / 1e6 - (60e3 * 4000 / 4) * 150 / Ix) < 1e-6);
+    assert.ok(Math.abs(e.outputs.maxDeflection.value * 1000 - (60e3 * 4000 ** 3) / (48 * 200000 * Ix)) < 1e-6);
+    assert.equal(e.solver.fidelity, "L2");
+    assert.ok(e.engineReceipt?.solver, "carries the FEA engine's own receipt");
+  });
+
+  it("beam.euler-buckling matches π²EI/(KL)² on the weak axis", () => {
+    const s = open(frame());
+    const e = s.result("beam.euler-buckling@C1");
+    const Iy = (2 * 12 * 200 ** 3) / 12 + (176 * 8 ** 3) / 12; // mm⁴
+    const pcr = (Math.PI ** 2 * 200000 * Iy) / 6000 ** 2; // N
+    assert.ok(Math.abs(e.outputs.criticalLoad.value - pcr) / pcr < 1e-9, `${e.outputs.criticalLoad.value} vs ${pcr}`);
+    assert.equal(e.warnings.length, 0, "KL/r 118 is in the elastic range for A992");
+  });
+
+  it("a stocky column warns that Euler overestimates it", () => {
+    const s = open(frame({ columnLength: "3 m" }));
+    assert.match(s.result("beam.euler-buckling@C1").warnings[0], /inelastic/);
+    assert.equal(s.result("beam.euler-buckling@C1").status, "WARN");
+  });
+
+  it("an unknown support is not computed, not quietly simply-supported", () => {
+    const s = open(frame({ support: "glued" }));
+    assert.equal(s.result("beam.fea@G1").status, "NOT_COMPUTED");
+  });
+
+  it("a beam edit reruns that beam only, and coverage shows bending and deflection", () => {
+    const s = open(frame());
+    const r = s.editText("set beam G1 height to 250 mm");
+    assert.deepEqual([...r.rerun].sort(), ["beam.fea@G1", "cost.part@G1", "mass.part@G1"]);
+    const g1 = s.coverage().find((c) => c.node === "G1");
+    assert.equal(g1.domains.find((d) => d.domain === "structural.deflection").solver, "beam.fea");
+    assert.equal(g1.domains.find((d) => d.domain === "structural.buckling").status, "not computed");
+  });
+});

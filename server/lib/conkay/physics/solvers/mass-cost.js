@@ -15,6 +15,7 @@ function volumeM3(g) {
     case "cylinder":
     case "rod":
     case "bolt": return (PI * g.diameter * g.diameter / 4) * g.length;
+    case "i-beam": return (2 * g.flangeWidth * g.flangeThickness + (g.height - 2 * g.flangeThickness) * g.webThickness) * g.length;
     default: return null;
   }
 }

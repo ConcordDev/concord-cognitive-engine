@@ -11,7 +11,7 @@
 //   materials:    { [materialId]: { costPerKgUsd: "9 USD/kg", source } }  // user prices / overrides
 //   nodes:        [{ id, kind, name?, material?, geometry?: { shape, ...quantities }, props? }]
 //   edges:        [{ type, from, to, props? }]
-//   loadCases:    [{ id, label?, loads: [{ target, shear?: "40 kN", tension?: "..." }] }]
+//   loadCases:    [{ id, label?, loads: [{ target, shear?, tension?, pointLoad?, compression? }] }]
 //   requirements: [{ id, label, of: { solver, target, output }, max?: q, min?: q }]
 // }
 
@@ -38,9 +38,12 @@ export const SHAPES = {
   cylinder: ["diameter", "length"],
   rod: ["diameter", "length"],
   bolt: ["diameter", "length"],
+  "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
 };
 
-const LOAD_KEYS = { shear: "force", tension: "force" };
+// shear/tension act on joints; pointLoad (midspan, or the tip of a
+// cantilever) and compression (axial) act on beams.
+const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compression: "force" };
 
 export function compileDesignIR(ir) {
   const errors = [];

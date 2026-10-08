@@ -17,7 +17,7 @@ export const KIND_DOMAINS = {
 };
 
 export function coverage(graph, envelopes) {
-  const solverDomains = new Set(listSolvers().map((s) => s.domain));
+  const solverDomains = new Set(listSolvers().flatMap((s) => s.domains));
   const out = [];
   for (const node of graph.nodes.values()) {
     const domains = KIND_DOMAINS[node.kind];
@@ -26,7 +26,7 @@ export function coverage(graph, envelopes) {
       continue;
     }
     const rows = domains.map((domain) => {
-      const hits = envelopes.filter((e) => e?.solver?.domain === domain && (e.covers || [e.target]).includes(node.id));
+      const hits = envelopes.filter((e) => (e?.solver?.domains || [e?.solver?.domain]).includes(domain) && (e.covers || [e.target]).includes(node.id));
       if (!hits.length) {
         return { domain, status: "not computed", reason: solverDomains.has(domain) ? "solver did not apply to this node" : `no ${domain} solver yet` };
       }
