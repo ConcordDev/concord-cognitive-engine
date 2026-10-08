@@ -278,7 +278,8 @@ describe("environment.recs-* (renewable energy certificates)", () => {
   it("purchase / retire cycle with registry + serial", () => {
     const p = call("recs-purchase", ctxA, { mwh: 500, tech: "solar", registry: "WREGIS", vintage: "2026", pricePerMwhUsd: 3.5 });
     assert.equal(p.ok, true);
-    assert.match(p.result.rec.certificateNumber, /^REC-/);
+    assert.equal(p.result.rec.certificateNumber, "");
+    assert.equal(p.result.rec.verified, false);
     const r = call("recs-retire", ctxA, { id: p.result.rec.id, reason: "Scope 2 market-based reduction" });
     assert.equal(r.result.rec.status, "retired");
   });
@@ -290,10 +291,14 @@ describe("environment.recs-* (renewable energy certificates)", () => {
 });
 
 describe("environment.offsets-* (carbon offsets)", () => {
-  it("purchase / retire cycle with serial", () => {
+  it("logs a self-reported purchase, never inventing a registry serial", () => {
     const p = call("offsets-purchase", ctxA, { tonnes: 100, project: "Brazil REDD+ Acre", kind: "forestry_redd", registry: "Verra_VCS", vintage: "2024", pricePerTonneUsd: 12 });
     assert.equal(p.ok, true);
-    assert.match(p.result.offset.serialNumber, /^OFF-/);
+    assert.equal(p.result.offset.serialNumber, "");
+    assert.equal(p.result.offset.verified, false);
+    const q = call("offsets-purchase", ctxA, { tonnes: 5, serialNumber: " 1234-5678-VCU " });
+    assert.equal(q.result.offset.serialNumber, "1234-5678-VCU");
+
     const r = call("offsets-retire", ctxA, { id: p.result.offset.id });
     assert.equal(r.result.offset.status, "retired");
   });
