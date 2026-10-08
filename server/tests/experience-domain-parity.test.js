@@ -5,7 +5,7 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerExperienceActions from "../domains/experience.js";
+import registerExperienceActions, { _setExperienceMailerForTest } from "../domains/experience.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -149,7 +149,7 @@ describe("experience — survey builder with branching + NPS/CSAT", () => {
 });
 
 describe("experience — participant recruitment / panel", () => {
-  it("addParticipant + listPanel + screenPanel + inviteParticipants", () => {
+  it("addParticipant + listPanel + screenPanel + inviteParticipants", async () => {
     const p1 = call("addParticipant", ctxA, { name: "Alex", attributes: { age: 30, device: "mobile" } });
     const p2 = call("addParticipant", ctxA, { name: "Sam", attributes: { age: 55, device: "desktop" } });
     assert.equal(p1.ok, true);
@@ -162,7 +162,14 @@ describe("experience — participant recruitment / panel", () => {
     assert.equal(screened.ok, true);
     assert.equal(screened.result.matchCount, 1);
 
-    const invited = call("inviteParticipants", ctxA, { participantIds: [p1.result.participant.id], studyName: "Beta" });
+    const unsent = await call("inviteParticipants", ctxA, { participantIds: [p1.result.participant.id], studyName: "Beta" });
+    assert.equal(unsent.ok, true);
+    assert.equal(unsent.result.invited, 0);
+    assert.equal(unsent.result.notSent[0].reason, "no_email");
+    const em = call("addParticipant", ctxA, { name: "Em", email: "em@example.com" });
+    _setExperienceMailerForTest(async () => ({ ok: true }));
+    const invited = await call("inviteParticipants", ctxA, { participantIds: [em.result.participant.id], studyName: "Beta" });
+    _setExperienceMailerForTest(null);
     assert.equal(invited.ok, true);
     assert.equal(invited.result.invited, 1);
   });

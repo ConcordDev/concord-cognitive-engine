@@ -132,17 +132,18 @@ function TestsPanel() {
     setBusy(false);
   };
 
-  const simulateRun = async (test: UXTest) => {
-    // Record a participant run from manually-marked task outcomes.
+  const [obs, setObs] = useState<Record<string, { success: boolean; sec: string }>>({});
+
+  const recordObserved = async (test: UXTest) => {
+    // Outcomes are what the moderator observed: pass/fail and seconds per task. No clicks are invented.
     setBusy(true);
-    const tasks = test.tasks.map((task, i) => ({
-      taskId: task.id,
-      success: i % 2 === 0,
-      durationMs: 3000 + i * 1500,
-      events: [{ t: 0, kind: 'click', x: 0.5, y: 0.5, target: task.prompt }],
-    }));
+    const tasks = test.tasks.map((task) => {
+      const o = obs[task.id];
+      return { taskId: task.id, success: !!o?.success, durationMs: Math.max(0, Math.round((parseFloat(o?.sec || '0') || 0) * 1000)), events: [] };
+    });
     await run('recordRun', { testId: test.id, participant: participant || 'Anonymous', tasks });
     setParticipant('');
+    setObs({});
     await load();
     setBusy(false);
   };
@@ -184,9 +185,21 @@ function TestsPanel() {
                 <ol className="text-[11px] text-gray-400 space-y-0.5 list-decimal list-inside">
                   {t.tasks.map(task => <li key={task.id}>{task.prompt}</li>)}
                 </ol>
+                <p className="text-[11px] text-gray-400">Enter what you observed for this participant.</p>
+                <div className="space-y-1">
+                  {t.tasks.map(task => (
+                    <div key={task.id} className="flex items-center gap-2 text-[11px] text-gray-300">
+                      <label className="flex items-center gap-1 min-w-[70px]">
+                        <input type="checkbox" checked={!!obs[task.id]?.success} onChange={e => setObs({ ...obs, [task.id]: { success: e.target.checked, sec: obs[task.id]?.sec || '' } })} /> completed
+                      </label>
+                      <input className={`${inputCls} max-w-[80px]`} inputMode="decimal" value={obs[task.id]?.sec || ''} onChange={e => setObs({ ...obs, [task.id]: { success: !!obs[task.id]?.success, sec: e.target.value } })} placeholder="seconds" aria-label={`Seconds taken: ${task.prompt}`} />
+                      <span className="truncate text-gray-400">{task.prompt}</span>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex items-center gap-2">
                   <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant name" />
-                  <button onClick={() => simulateRun(t)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40">
+                  <button onClick={() => recordObserved(t)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40">
                     <Play className="w-3 h-3" /> Record run
                   </button>
                 </div>
@@ -210,7 +223,7 @@ function TestsPanel() {
                   {r.tasks.map(tr => (
                     <span key={tr.taskId} className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 ${tr.success ? 'bg-neon-green/15 text-neon-green' : 'bg-red-500/15 text-red-400'}`}>
                       {tr.success ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
-                      {(tr.durationMs / 1000).toFixed(1)}s · {tr.clickCount} clicks
+                      {(tr.durationMs / 1000).toFixed(1)}s{tr.clickCount > 0 ? ` · ${tr.clickCount} clicks` : ''}
                     </span>
                   ))}
                 </div>
@@ -873,10 +886,15 @@ function PanelTab() {
     setBusy(false);
   };
 
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const invite = async (ids: string[]) => {
     if (ids.length === 0) return;
     setBusy(true);
-    await run('inviteParticipants', { participantIds: ids, studyName: 'Recruited study' });
+    const r = await run('inviteParticipants', { participantIds: ids, studyName: 'Recruited study' });
+    if (r) {
+      const miss = (r.notSent || []).length;
+      setInviteMsg(`${r.invited} of ${r.attempted} emailed from your Gmail.${miss ? ` ${miss} not sent (${[...new Set((r.notSent || []).map((n: { reason: string }) => n.reason))].join(', ')}) — link Gmail or add an email address.` : ''}`);
+    } else setInviteMsg('Invites could not be sent.');
     setMatched(null);
     await load();
     setBusy(false);
@@ -910,6 +928,7 @@ function PanelTab() {
             <Target className="w-3 h-3" /> Screen
           </button>
         </div>
+        {inviteMsg && <p role="status" className="mt-2 text-[11px] text-amber-300">{inviteMsg}</p>}
         {matched && (
           <div className="mt-2">
             <p className="text-[11px] text-gray-400 mb-1">{matched.length} qualified · {qualifyRate}% qualify rate</p>
@@ -932,8 +951,8 @@ function PanelTab() {
               <p className="text-xs text-white">{p.name} {p.email && <span className="text-gray-600">· {p.email}</span>}</p>
               <p className="text-[10px] text-gray-400">{Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'no attributes'}</p>
             </div>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.status === 'invited' ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-zinc-800 text-gray-400'}`}>
-              {p.status}{p.invitedCount > 0 ? ` ×${p.invitedCount}` : ''}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.status === 'invited' ? 'bg-neon-cyan/15 text-neon-cyan' : p.status === 'invite_not_sent' ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-gray-400'}`}>
+              {p.status === 'invite_not_sent' ? 'invite not sent' : p.status}{p.invitedCount > 0 ? ` ×${p.invitedCount}` : ''}
             </span>
           </div>
         ))}

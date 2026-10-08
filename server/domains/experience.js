@@ -13,6 +13,11 @@
 // Stateful macros persist per-user data in globalThis._concordSTATE.experienceLens
 // (Maps keyed by userId). Every handler returns { ok, result?, error? } and
 // never throws.
+import { writeGmailMessage } from "../lib/connector-client.js";
+
+let testMailer = null;
+export function _setExperienceMailerForTest(fn) { testMailer = typeof fn === "function" ? fn : null; }
+
 export default function registerExperienceActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────────────
   // Artifact-bound analytical macros (unchanged behaviour)
@@ -599,23 +604,46 @@ export default function registerExperienceActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("experience", "inviteParticipants", (ctx, _a, params = {}) => {
+  registerLensAction("experience", "inviteParticipants", async (ctx, _a, params = {}) => {
     try {
       const x = xState();
-      const panel = arr(x.panel, uid(ctx));
+      const userId = uid(ctx);
+      const panel = arr(x.panel, userId);
       const ids = list(params.participantIds).map(String);
+      const studyName = clean(params.studyName, 160) || "a research study";
+      const targets = panel.filter((p) => ids.includes(p.id));
+      if (!targets.length) return { ok: false, error: "no matching participants to invite" };
+      // An invite only counts when an email actually went out from the researcher's own Gmail.
       let invited = 0;
-      for (const p of panel) {
-        if (ids.includes(p.id)) {
-          p.status = "invited";
-          p.invitedCount = (p.invitedCount || 0) + 1;
-          p.lastInvitedTo = clean(params.studyName, 160) || p.lastInvitedTo || null;
-          invited += 1;
+      const notSent = [];
+      for (const p of targets) {
+        if (!p.email) { p.status = "invite_not_sent"; p.lastInviteError = "no_email"; notSent.push({ id: p.id, name: p.name, reason: "no_email" }); continue; }
+        try {
+          const mail = {
+            to: p.name ? `${p.name} <${p.email}>` : p.email,
+            subject: `You're invited to take part in ${studyName}`,
+            body: `Hi ${p.name || "there"},\n\nYou've been invited to take part in ${studyName}. Reply to this email if you're interested and the researcher will share the details.\n\nIf you weren't expecting this, you can ignore it.`,
+          };
+          const sent = testMailer ? await testMailer(mail) : (ctx?.db ? await writeGmailMessage(ctx.db, userId, mail) : { ok: false, reason: "no_gmail_linked" });
+          if (sent?.ok) {
+            p.status = "invited";
+            p.invitedCount = (p.invitedCount || 0) + 1;
+            p.lastInvitedTo = studyName === "a research study" ? (p.lastInvitedTo || null) : studyName;
+            p.lastInviteError = null;
+            invited += 1;
+          } else {
+            p.status = "invite_not_sent";
+            p.lastInviteError = sent?.reason || "send_failed";
+            notSent.push({ id: p.id, name: p.name, email: p.email, reason: p.lastInviteError });
+          }
+        } catch (e) {
+          p.status = "invite_not_sent";
+          p.lastInviteError = String(e?.message || e);
+          notSent.push({ id: p.id, name: p.name, email: p.email, reason: p.lastInviteError });
         }
       }
-      if (!invited) return { ok: false, error: "no matching participants to invite" };
       save();
-      return { ok: true, result: { invited, studyName: clean(params.studyName, 160) } };
+      return { ok: true, result: { invited, attempted: targets.length, notSent, studyName: clean(params.studyName, 160) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
