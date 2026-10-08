@@ -549,7 +549,8 @@ describe("backlog 1 — bank aggregation (accounts-sync-link / -pull)", () => {
     const r = call("accounts-sync-link", ctxA, { institution: "Chase", name: "Checking", kind: "checking", balance: 4000, provider: "plaid" });
     assert.equal(r.ok, true);
     assert.equal(r.result.account.synced, true);
-    assert.equal(r.result.account.provider, "plaid");
+    assert.equal(r.result.account.provider, "manual", "no Plaid/MX link exists, so the provider is always manual import");
+    assert.equal(r.result.account.lastSyncedAt, null);
     assert.equal(r.result.syncEnabled, true);
   });
   it("sync-pull ingests + auto-categorises a transaction batch into the ledger", () => {
