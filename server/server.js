@@ -2017,6 +2017,7 @@ import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
 import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
+import { isStrongShareToken } from "./lib/share-token.js";
 import { ingestClientError } from "./lib/client-error-intake.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
@@ -57516,16 +57517,20 @@ app.get("/api/chat/share/:token", async (req, res) => {
   }
 });
 
+// tokenPrefix: kinds addressed by a bearer token only accept the strong
+// format (lib/share-token.js); legacy short tokens are refused here.
+// Event and give pages are published-on-purpose pages addressed by slug.
 const _PUBLIC_SHARE_KINDS = {
-  proof: { action: "creative.prooflink-public-get", param: "token" },
+  proof: { action: "creative.prooflink-public-get", param: "token", tokenPrefix: "pl" },
   event: { action: "events.public-page", param: "slug" },
-  docs: { action: "docs.share-public", param: "token" },
-  experience: { action: "experience.share-public", param: "token" },
-  carpentry: { action: "carpentry.portalPublicView", param: "token" },
+  docs: { action: "docs.share-public", param: "token", tokenPrefix: "shr" },
+  experience: { action: "experience.share-public", param: "token", tokenPrefix: "share" },
+  carpentry: { action: "carpentry.portalPublicView", param: "token", tokenPrefix: "cpt" },
   give: { action: "nonprofit.donation-page-public", param: "slug" },
 };
 function _runPublicShare(kind, id, action, extra) {
   const spec = _PUBLIC_SHARE_KINDS[kind];
+  if (spec?.tokenPrefix && !isStrongShareToken(id, spec.tokenPrefix)) return { ok: false, error: "not_found" };
   const name = action || spec?.action;
   const handler = spec && name ? LENS_ACTIONS.get(name) : null;
   if (!handler) return { ok: false, error: "share_unavailable" };
@@ -57546,7 +57551,7 @@ app.get("/api/public-share/:kind/:id", async (req, res) => {
   }
 });
 
-app.post("/api/public-share/proof/:token/comment", async (req, res) => {
+app.post("/api/public-share/proof/:token/comment", perEndpointRateLimit("write.proof-comment"), async (req, res) => {
   try {
     const b = req.body || {};
     const result = await _runPublicShare("proof", req.params.token, "creative.prooflink-public-comment", {

@@ -180,7 +180,7 @@ describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function ()
     const port = await getFreePort();
     dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-pubshare-'));
     base = 'http://127.0.0.1:' + port;
-    serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'hybrid' }, 90000);
+    serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'hybrid', CONCORD_RATE_LIMIT_BYPASS: '0' }, 90000);
     owner = await registerUser(base, 'shareOwner');
 
     const asset = await run('creative', 'review-asset-create', { name: 'Cut v3', kind: 'image', src: 'https://example.com/a.png' });
@@ -245,6 +245,20 @@ describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function ()
     assert.equal((await getJSON(base, '/api/public-share/proof/pl_nope')).status, 404);
     const c = await postJSON(base, '/api/public-share/proof/' + proofToken + '/comment', { body: '   ' });
     assert.notEqual(c.status, 200, JSON.stringify(c));
+  });
+
+  it('proof: anonymous comments are rate-limited per IP', async function () {
+    const statuses = [];
+    for (let i = 0; i < 8; i++) {
+      const c = await postJSON(base, '/api/public-share/proof/' + proofToken + '/comment', { body: 'burst ' + i, authorName: 'Bot' });
+      statuses.push(c.status);
+    }
+    assert.ok(statuses.includes(429), 'a burst of anonymous comments hits the limit: ' + statuses.join(','));
+  });
+
+  it('proof/docs: legacy short tokens are refused even if they existed', async function () {
+    assert.equal((await getJSON(base, '/api/public-share/proof/pl_ab12cd34lq3x9k')).status, 404);
+    assert.equal((await getJSON(base, '/api/public-share/docs/shr_lq3x9k_ab12cd')).status, 404);
   });
 
   it('event: published page resolves by slug without auth', async function () {

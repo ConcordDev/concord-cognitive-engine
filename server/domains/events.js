@@ -467,8 +467,9 @@ export default function registerEventsActions(registerLensAction) {
     }
     if (!found) return { ok: false, error: "public page not found" };
     ensureEventCollections(found);
+    // Count the view in memory only; it is persisted with the owner's next
+    // save, so anonymous traffic never triggers a state write.
     if (found.publicPage) found.publicPage.views = (found.publicPage.views || 0) + 1;
-    saveEvents();
     const tiers = found.tiers.map((t) => ({
       id: t.id, name: t.name, price: t.price,
       remaining: Math.max(0, t.quantity - t.sold),

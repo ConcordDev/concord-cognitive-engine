@@ -14,6 +14,7 @@
 // (Maps keyed by userId). Every handler returns { ok, result?, error? } and
 // never throws.
 import crypto from "node:crypto";
+import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
 
 let testMailer = null;
@@ -671,7 +672,7 @@ export default function registerExperienceActions(registerLensAction) {
         endMs,
         durationMs: endMs - startMs,
         sentiment: ["positive", "neutral", "negative"].includes(params.sentiment) ? params.sentiment : "neutral",
-        shareToken: `share_${crypto.randomBytes(18).toString("base64url")}`,
+        shareToken: newShareToken("share"),
         createdAt: Date.now(),
       };
       arr(x.clips, uid(ctx)).unshift(clip);
@@ -686,6 +687,12 @@ export default function registerExperienceActions(registerLensAction) {
   registerLensAction("experience", "listClips", (ctx, _a, params = {}) => {
     try {
       const x = xState();
+      // Reissue legacy short share tokens (refused publicly) on the owner's clips and reels.
+      let reissued = false;
+      for (const item of [...arr(x.clips, uid(ctx)), ...arr(x.reels, uid(ctx))]) {
+        if (item.shareToken && !isStrongShareToken(item.shareToken, "share")) { item.shareToken = newShareToken("share"); reissued = true; }
+      }
+      if (reissued) save();
       let clips = arr(x.clips, uid(ctx));
       if (params.runId) clips = clips.filter(c => c.runId === params.runId);
       const bySentiment = { positive: 0, neutral: 0, negative: 0 };
@@ -737,7 +744,7 @@ export default function registerExperienceActions(registerLensAction) {
         clips: ordered,
         clipCount: ordered.length,
         totalDurationMs: ordered.reduce((s, c) => s + c.durationMs, 0),
-        shareToken: `share_${crypto.randomBytes(18).toString("base64url")}`,
+        shareToken: newShareToken("share"),
       };
       arr(x.reels, uid(ctx)).unshift(reel);
       save();

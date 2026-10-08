@@ -569,7 +569,7 @@ function PhotoJobLog() {
 
 interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; total: number; status: string; signature: { signedBy: string; decision: string } | null }
 interface InvoiceListResult { invoices: Invoice[]; outstanding: number; collected: number }
-interface PortalShare { token: string; client: string; estimateId: string; estimateAmount: number; jobName: string; progressPct: number; status: string; clientDecision: { decision: string; signedBy: string } | null; milestones: { label: string; done: boolean }[] }
+interface PortalShare { token: string; client: string; estimateId: string; estimateAmount: number; jobName: string; progressPct: number; status: string; expiresAt?: string; clientDecision: { decision: string; signedBy: string } | null; milestones: { label: string; done: boolean }[] }
 
 function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -712,7 +712,30 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                   <span className="text-[12px] text-white">{p.client}{p.jobName ? ` · ${p.jobName}` : ''}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-200' : p.status === 'declined' ? 'bg-rose-500/20 text-rose-200' : 'bg-zinc-700 text-zinc-300'}`}>{p.status}</span>
                 </div>
-                <div className="mt-1 font-mono text-[10px] text-zinc-400">{p.token}</div>
+                <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400">
+                  {p.status === 'revoked' ? (
+                    <span>Link revoked</span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { void navigator.clipboard?.writeText(`${window.location.origin}/portal/carpentry/${p.token}`).catch(() => {}); }}
+                        className="text-amber-300 underline"
+                      >
+                        Copy client link
+                      </button>
+                      {p.expiresAt && <span>expires {new Date(p.expiresAt).toLocaleDateString()}</span>}
+                      <button
+                        type="button"
+                        onClick={async () => { setBusy(true); await run('portalRevoke', { token: p.token }); await reload(); setBusy(false); }}
+                        disabled={busy}
+                        className="ml-auto text-rose-300 underline"
+                      >
+                        Revoke
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full bg-amber-500" style={{ width: `${p.progressPct}%` }} />
                 </div>

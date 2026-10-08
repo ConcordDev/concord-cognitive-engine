@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 // Deterministic per-form skeleton for structural-poetry generation — no
@@ -1124,7 +1125,7 @@ export default function registerCreativeActions(registerLensAction) {
     const userId = crAid(ctx);
     const asset = (s.reviewAssets.get(userId) || []).find((a) => a.id === params.assetId);
     if (!asset) return { ok: false, error: "review asset not found" };
-    const token = `pl_${crypto.randomBytes(18).toString("base64url")}`;
+    const token = newShareToken("pl");
     const link = {
       id: crId("pln"), token, assetId: asset.id, ownerId: userId,
       label: crClean(params.label, 160) || asset.name,
@@ -1145,6 +1146,19 @@ export default function registerCreativeActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = crAid(ctx);
     const ext = s.proofExtComments.get(userId) || [];
+    // Links minted before tokens were strong are refused publicly; give the
+    // owner a fresh unguessable link and move its comments along with it.
+    let reissued = false;
+    for (const l of s.proofLinks.get(userId) || []) {
+      if (!isStrongShareToken(l.token, "pl")) {
+        const fresh = newShareToken("pl");
+        for (const c of ext) if (c.token === l.token) c.token = fresh;
+        l.previousTokenRetiredAt = new Date().toISOString();
+        l.token = fresh;
+        reissued = true;
+      }
+    }
+    if (reissued) saveCrState();
     const links = (s.proofLinks.get(userId) || [])
       .map((l) => ({
         ...l,

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/docs.js
 // Domain actions for documentation management: readability scoring,
 // cross-reference analysis, and semantic version diffing.
@@ -1320,14 +1321,14 @@ export default function registerDocsActions(registerLensAction) {
         pageId: page.id,
         visibility,
         role,
-        token: visibility === "private" ? null : (m.get(page.id)?.token || `shr_${crypto.randomBytes(18).toString("base64url")}`),
+        token: visibility === "private" ? null : (m.get(page.id)?.token || newShareToken("shr")),
         invites: m.get(page.id)?.invites || [],
         updatedAt: dcNow(),
       };
     } else {
       share.visibility = visibility;
       share.role = role;
-      if (!share.token) share.token = `shr_${crypto.randomBytes(18).toString("base64url")}`;
+      if (!share.token) share.token = newShareToken("shr");
       share.updatedAt = dcNow();
     }
     m.set(page.id, share);
@@ -1349,6 +1350,12 @@ export default function registerDocsActions(registerLensAction) {
       pageId: page.id, visibility: "private", role: "view",
       token: null, invites: [], updatedAt: null,
     };
+    // Reissue a legacy short token (refused publicly) as a strong one.
+    if (share.token && !isStrongShareToken(share.token, "shr")) {
+      share.token = newShareToken("shr");
+      share.updatedAt = new Date().toISOString();
+      saveDocs();
+    }
     return {
       ok: true,
       result: {
