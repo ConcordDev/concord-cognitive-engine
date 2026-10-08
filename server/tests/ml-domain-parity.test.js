@@ -143,12 +143,24 @@ describe("ml.playground-infer", () => {
     assert.equal((await call("playground-infer", ctxA, { modelId: "m" })).ok, false);
   });
 
-  it("runs inference and reports latency", async () => {
-    globalThis.fetch = async () => ({ ok: true, json: async () => ([{ label: "POSITIVE", score: 0.99 }]) });
-    const r = await call("playground-infer", ctxA, { modelId: "distilbert", input: "great movie" });
+  it("runs inference through the HF router with the server token and reports latency", async () => {
+    let seen;
+    globalThis.fetch = async (url, init) => { seen = { url, init }; return { ok: true, json: async () => ([{ label: "POSITIVE", score: 0.99 }]) }; };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "distilbert", input: "great movie" });
     assert.equal(r.ok, true);
+    assert.equal(seen.url, "https://router.huggingface.co/hf-inference/models/distilbert");
+    assert.equal(seen.init.headers.Authorization, "Bearer hf_test");
     assert.equal(typeof r.result.latencyMs, "number");
     assert.ok(Array.isArray(r.result.output));
+  });
+
+  it("without a Hugging Face token, inference is reported unavailable (no request made)", async () => {
+    let called = false;
+    globalThis.fetch = async () => { called = true; return { ok: true, json: async () => ({}) }; };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "" }, { modelId: "distilbert", input: "x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /inference_unavailable/);
+    assert.equal(called, false);
   });
 });
 
@@ -282,13 +294,13 @@ describe("ml deployments", () => {
     assert.equal(call("deploy-scale", ctxA, {}, { deploymentId: dep.id, replicas: 4 }).ok, false);
 
     let calledUrl = null;
-    const okCtx = { ...ctxA, mlFetch: async (url) => { calledUrl = url; return { ok: true, status: 200, json: async () => [{ generated_text: "hi there" }] }; } };
+    const okCtx = { ...ctxA, hfToken: "hf_test", mlFetch: async (url) => { calledUrl = url; return { ok: true, status: 200, json: async () => [{ generated_text: "hi there" }] }; } };
     const inv = await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id, input: "hi" });
     assert.equal(inv.ok, true);
     assert.match(calledUrl, /models\/gpt2$/);
     assert.deepEqual(inv.result.output, [{ generated_text: "hi there" }]);
 
-    const badCtx = { ...ctxA, mlFetch: async () => ({ ok: false, status: 503, json: async () => ({ error: "loading" }) }) };
+    const badCtx = { ...ctxA, hfToken: "hf_test", mlFetch: async () => ({ ok: false, status: 503, json: async () => ({ error: "loading" }) }) };
     const fail = await call("deploy-invoke", badCtx, {}, { deploymentId: dep.id, input: "hi" });
     assert.equal(fail.ok, false);
 

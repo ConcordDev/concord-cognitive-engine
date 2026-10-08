@@ -1,5 +1,6 @@
 // server/domains/ml.js
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { readHfToken } from "../lib/asset-gen/organic/providers.js";
 import { buildFeatureMatrix, trainLogisticRegression, trainKMeans } from "../lib/ml-trainer.js";
 
 export default function registerMlActions(registerLensAction) {
@@ -228,18 +229,23 @@ export default function registerMlActions(registerLensAction) {
   });
 
   // ─── Inference playground — run a hosted HF model on user input ───────
+  // Hosted inference goes through Hugging Face's Inference Providers router
+  // (the old api-inference.huggingface.co host no longer resolves) and needs
+  // the server's HF token. Without one, inference is reported unavailable.
   async function hfInfer(ctx, modelId, input) {
     const doFetch = typeof ctx?.mlFetch === "function" ? ctx.mlFetch : fetch;
+    const token = typeof ctx?.hfToken === "string" ? ctx.hfToken : await readHfToken();
+    if (!token) return { ok: false, error: "inference_unavailable: no Hugging Face token configured on this server (HF_TOKEN)" };
     const started = Date.now();
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 20000);
       let body;
       try {
-        const r = await doFetch(`https://api-inference.huggingface.co/models/${modelId}`, {
+        const r = await doFetch(`https://router.huggingface.co/hf-inference/models/${modelId}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ inputs: input, options: { wait_for_model: true } }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ inputs: input }),
           signal: ctrl.signal,
         });
         body = await r.json().catch(() => null);
@@ -248,7 +254,7 @@ export default function registerMlActions(registerLensAction) {
           return { ok: false, error: `inference failed: ${msg}` };
         }
       } finally { clearTimeout(t); }
-      return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, source: "huggingface-inference-api" } };
+      return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, source: "huggingface-inference-providers" } };
     } catch (e) {
       return { ok: false, error: `inference api unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
