@@ -292,3 +292,41 @@ describe("detectOffline + badNumericField unit helpers", () => {
     assert.equal(badNumericField({ limit: 1e308 }, ["limit"]), "limit");
   });
 });
+
+describe("translation glossary", () => {
+  it("translate puts the glossary in the system prompt and reports terms the engine ignored", async () => {
+    const h = makeHarness({ llm: { reply: { content: "Abre el panel de Concord y el tablero" } } });
+    const r = await h.call("translate", {
+      text: "Open the Concord dashboard and the lattice",
+      targetLanguage: "es",
+      glossary: [
+        { source: "dashboard", target: "panel" },
+        { source: "lattice", target: "retícula" },
+        { source: "unused", target: "nada" },
+        { source: "", target: "x" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.match(h.calls[0].system, /"dashboard" -> "panel"/);
+    assert.match(h.calls[0].system, /"lattice" -> "retícula"/);
+    assert.equal(r.result.glossaryApplied, 3);
+    assert.deepEqual(r.result.glossaryMisses, [{ source: "lattice", target: "retícula" }]);
+  });
+
+  it("batch reports glossary misses per item index", async () => {
+    const h = makeHarness({ llm: { reply: { content: '["el panel","el tablero"]' } } });
+    const r = await h.call("batch", {
+      items: ["the dashboard", "the dashboard"],
+      targetLanguage: "es",
+      glossary: [{ source: "dashboard", target: "panel" }],
+    });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.glossaryMisses, [{ index: 1, source: "dashboard", target: "panel" }]);
+  });
+
+  it("no glossary leaves the prompt without a glossary block", async () => {
+    const h = makeHarness({ llm: { reply: { content: "hola" } } });
+    await h.call("translate", { text: "hello", targetLanguage: "es" });
+    assert.doesNotMatch(h.calls[0].system, /Glossary/);
+  });
+});

@@ -26,18 +26,21 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 // catalog, the shared From/To/Register selectors, the mode toggle, and the
 // server-local Saved store (useLensData → the real lens-artifact substrate).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
   SingleTranslatePanel,
   BatchTranslatePanel,
+  DocumentTranslatePanel,
+  GlossaryEditor,
   SavedTranslations,
   btnStyle,
   selStyle,
   type Language,
   type SavedTranslation,
+  type GlossaryTerm,
 } from '@/components/translation/TranslationPanels';
 
 const DOMAIN = 'translation';
@@ -52,12 +55,29 @@ export default function TranslationLens() {
   const [source, setSource] = useState('auto');
   const [target, setTarget] = useState('es');
   const [formality, setFormality] = useState('neutral');
-  const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [mode, setMode] = useState<'single' | 'batch' | 'document'>('single');
 
   // Saved translations — the generic per-user, server-LOCAL lens artifact store
   // (sovereignty intact: text still never leaves your server). Shared by both modes.
   const { items: saved, create: saveTranslation, remove: removeTranslation } =
     useLensData<SavedTranslation>(DOMAIN, 'translation', { noSeed: true });
+
+  const { items: glossaryItems, create: addGlossary, remove: removeGlossary } =
+    useLensData<GlossaryTerm>(DOMAIN, 'glossary', { noSeed: true });
+  const glossaryRows = useMemo(
+    () => glossaryItems.filter((g) => g.data?.kind === 'glossary' && g.data.source && g.data.target),
+    [glossaryItems],
+  );
+  const glossary = useMemo(() => glossaryRows.map((g) => g.data), [glossaryRows]);
+  const onAddGlossary = useCallback((t: GlossaryTerm) => {
+    addGlossary({ title: `${t.source} → ${t.target}`, data: t });
+  }, [addGlossary]);
+
+  const swap = useCallback(() => {
+    if (source === 'auto') return;
+    setSource(target);
+    setTarget(source);
+  }, [source, target]);
 
   const onSave = useCallback((t: SavedTranslation) => {
     saveTranslation({ title: `${t.input.slice(0, 40) || 'Translation'} → ${t.target}`, data: t });
@@ -81,8 +101,9 @@ export default function TranslationLens() {
   useEffect(() => loadCatalog(), [loadCatalog]);
 
   const focusInput = useCallback(() => {
-    const label = mode === 'single' ? 'Text to translate' : 'Lines to batch translate';
-    const el = document.querySelector<HTMLElement>(`textarea[aria-label="${label}"]`);
+    const el = mode === 'document'
+      ? document.querySelector<HTMLElement>('input[aria-label="Document to translate"]')
+      : document.querySelector<HTMLElement>(`textarea[aria-label="${mode === 'single' ? 'Text to translate' : 'Lines to batch translate'}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el?.focus();
   }, [mode]);
@@ -91,6 +112,7 @@ export default function TranslationLens() {
     [
       { id: 'mode-single', keys: '1', description: 'Single translation', category: 'navigation' as const, action: () => setMode('single') },
       { id: 'mode-batch', keys: '2', description: 'Batch translate', category: 'navigation' as const, action: () => setMode('batch') },
+      { id: 'mode-document', keys: '3', description: 'Translate a document', category: 'navigation' as const, action: () => setMode('document') },
       { id: 'translate-focus', keys: 'n', description: 'Write something to translate', category: 'actions' as const, action: focusInput },
     ],
     { lensId: 'translation' },
@@ -143,10 +165,20 @@ export default function TranslationLens() {
               >
                 Batch translate
               </button>
+              <button
+                role="tab"
+                aria-selected={mode === 'document'}
+                aria-label="Document translation mode"
+                onClick={() => setMode('document')}
+                style={btnStyle(mode === 'document')}
+              >
+                Document
+              </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-3">
               {mode === 'single' && (
+                <>
                 <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
                   From
                   <select aria-label="Translate from" value={source} onChange={(e) => setSource(e.target.value)} style={selStyle}>
@@ -156,6 +188,17 @@ export default function TranslationLens() {
                     ))}
                   </select>
                 </label>
+                <button
+                  type="button"
+                  aria-label="Swap languages"
+                  title={source === 'auto' ? 'Pick a source language to swap' : 'Swap languages'}
+                  onClick={swap}
+                  disabled={source === 'auto'}
+                  style={{ ...btnStyle(false), alignSelf: 'flex-end', opacity: source === 'auto' ? 0.4 : 1 }}
+                >
+                  ⇄
+                </button>
+                </>
               )}
               <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
                 To
@@ -175,10 +218,14 @@ export default function TranslationLens() {
               </label>
             </div>
 
+            <GlossaryEditor terms={glossaryRows} onAdd={onAddGlossary} onRemove={removeGlossary} />
+
             {mode === 'single' ? (
-              <SingleTranslatePanel source={source} target={target} formality={formality} onSave={onSave} />
+              <SingleTranslatePanel source={source} target={target} formality={formality} onSave={onSave} glossary={glossary} />
+            ) : mode === 'batch' ? (
+              <BatchTranslatePanel target={target} formality={formality} onSave={onSave} glossary={glossary} />
             ) : (
-              <BatchTranslatePanel target={target} formality={formality} onSave={onSave} />
+              <DocumentTranslatePanel target={target} formality={formality} glossary={glossary} />
             )}
 
             <SavedTranslations saved={saved} onRemove={removeTranslation} />
