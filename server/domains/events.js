@@ -454,15 +454,18 @@ export default function registerEventsActions(registerLensAction) {
     };
   });
 
-  registerLensAction("events", "public-page", (ctx, _a, params = {}) => {
+  registerLensAction("events", "public-page", (_ctx, _a, params = {}) => {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    // Public lookup by slug across the actor's events (RSVP landing data).
+    // Anonymous lookup by slug across every user's PUBLISHED events.
+    const slug = String(params.slug || "");
     let found = null;
-    const event = evList(s, evActor(ctx)).find((e) => {
-      if (e.publicPage && e.publicPage.slug === params.slug) { found = e; return true; }
-      return false;
-    });
-    if (!event || !found) return { ok: false, error: "public page not found" };
+    if (slug) {
+      for (const list of s.events.values()) {
+        found = (list || []).find((e) => e.publicPage && e.publicPage.published && e.publicPage.slug === slug) || null;
+        if (found) break;
+      }
+    }
+    if (!found) return { ok: false, error: "public page not found" };
     ensureEventCollections(found);
     if (found.publicPage) found.publicPage.views = (found.publicPage.views || 0) + 1;
     saveEvents();

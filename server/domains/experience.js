@@ -13,6 +13,7 @@
 // Stateful macros persist per-user data in globalThis._concordSTATE.experienceLens
 // (Maps keyed by userId). Every handler returns { ok, result?, error? } and
 // never throws.
+import crypto from "node:crypto";
 import { writeGmailMessage } from "../lib/connector-client.js";
 
 let testMailer = null;
@@ -67,6 +68,7 @@ export default function registerExperienceActions(registerLensAction) {
     if (!(x.panel instanceof Map)) x.panel = new Map();        // userId -> Array<participant>
     if (!(x.clips instanceof Map)) x.clips = new Map();        // userId -> Array<highlight clip>
     if (!(x.protos instanceof Map)) x.protos = new Map();      // userId -> Array<prototype embed>
+    if (!(x.reels instanceof Map)) x.reels = new Map();        // userId -> Array<highlight reel>
     return x;
   }
   function save() {
@@ -669,7 +671,7 @@ export default function registerExperienceActions(registerLensAction) {
         endMs,
         durationMs: endMs - startMs,
         sentiment: ["positive", "neutral", "negative"].includes(params.sentiment) ? params.sentiment : "neutral",
-        shareToken: gid("share"),
+        shareToken: `share_${crypto.randomBytes(18).toString("base64url")}`,
         createdAt: Date.now(),
       };
       arr(x.clips, uid(ctx)).unshift(clip);
@@ -700,6 +702,28 @@ export default function registerExperienceActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // Anonymous read of one clip or reel by its unguessable share token.
+  registerLensAction("experience", "share-public", (_ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const token = clean(params.token, 120);
+      if (token.length < 8) return { ok: false, error: "share not found" };
+      const pub = (c) => ({
+        label: c.label, note: c.note, sentiment: c.sentiment,
+        startMs: c.startMs, endMs: c.endMs, durationMs: c.durationMs,
+      });
+      for (const clips of x.clips.values()) {
+        const c = (clips || []).find((k) => k.shareToken === token);
+        if (c) return { ok: true, result: { kind: "clip", clip: pub(c) } };
+      }
+      for (const reels of x.reels.values()) {
+        const r = (reels || []).find((k) => k.shareToken === token);
+        if (r) return { ok: true, result: { kind: "reel", reel: { name: r.name, totalDurationMs: r.totalDurationMs, clips: (r.clips || []).map(pub) } } };
+      }
+      return { ok: false, error: "share not found" };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("experience", "buildReel", (ctx, _a, params = {}) => {
     try {
       const x = xState();
@@ -713,8 +737,10 @@ export default function registerExperienceActions(registerLensAction) {
         clips: ordered,
         clipCount: ordered.length,
         totalDurationMs: ordered.reduce((s, c) => s + c.durationMs, 0),
-        shareToken: gid("share"),
+        shareToken: `share_${crypto.randomBytes(18).toString("base64url")}`,
       };
+      arr(x.reels, uid(ctx)).unshift(reel);
+      save();
       return { ok: true, result: { reel, shareUrl: `/share/reel/${reel.shareToken}` } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });

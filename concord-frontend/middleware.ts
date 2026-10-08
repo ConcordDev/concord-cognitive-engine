@@ -215,6 +215,16 @@ const PUBLIC_PREFIXES = [
   // visitor to /login before the page ever renders, same as the animation
   // share fix above — this is the #1 organic loop for a chat product.
   '/share/chat/',
+  // Public share pages for creative proof links (`/proof/:token`), published
+  // event pages (`/e/:slug`), shared docs (`/shared/docs/:token`) and
+  // experience clips/reels (`/share/clip|reel/:token`), all backed by the
+  // token-scoped `/api/public-share/:kind/:id` route (server.js). Without
+  // these prefixes an anonymous recipient is 307'd to /login.
+  '/proof/',
+  '/e/',
+  '/shared/docs/',
+  '/share/clip/',
+  '/share/reel/',
   // Spectate public viewer — a read-only, no-account-required live world
   // feed at `/spectate/:worldId`, backed by the public
   // `/api/spectate/:worldId/subscribe|feed` + `/api/spectate/heartbeat`

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 // Deterministic per-form skeleton for structural-poetry generation — no
@@ -1123,7 +1124,7 @@ export default function registerCreativeActions(registerLensAction) {
     const userId = crAid(ctx);
     const asset = (s.reviewAssets.get(userId) || []).find((a) => a.id === params.assetId);
     if (!asset) return { ok: false, error: "review asset not found" };
-    const token = `pl_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+    const token = `pl_${crypto.randomBytes(18).toString("base64url")}`;
     const link = {
       id: crId("pln"), token, assetId: asset.id, ownerId: userId,
       label: crClean(params.label, 160) || asset.name,
@@ -1229,6 +1230,9 @@ export default function registerCreativeActions(registerLensAction) {
     if (!asset) return { ok: false, error: "proof asset unavailable" };
     const body = crClean(params.body, 1200);
     if (!body) return { ok: false, error: "comment body required" };
+    if ((s.proofExtComments.get(found.ownerId) || []).filter((c) => c.token === token).length >= 500) {
+      return { ok: false, error: "comment limit reached for this link" };
+    }
     const comment = {
       id: crId("xcm"), token,
       authorName: crClean(params.authorName, 80) || "Guest reviewer",

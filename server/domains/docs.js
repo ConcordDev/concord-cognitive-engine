@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 // server/domains/docs.js
 // Domain actions for documentation management: readability scoring,
 // cross-reference analysis, and semantic version diffing.
@@ -1319,14 +1320,14 @@ export default function registerDocsActions(registerLensAction) {
         pageId: page.id,
         visibility,
         role,
-        token: visibility === "private" ? null : (m.get(page.id)?.token || dcId("shr")),
+        token: visibility === "private" ? null : (m.get(page.id)?.token || `shr_${crypto.randomBytes(18).toString("base64url")}`),
         invites: m.get(page.id)?.invites || [],
         updatedAt: dcNow(),
       };
     } else {
       share.visibility = visibility;
       share.role = role;
-      if (!share.token) share.token = dcId("shr");
+      if (!share.token) share.token = `shr_${crypto.randomBytes(18).toString("base64url")}`;
       share.updatedAt = dcNow();
     }
     m.set(page.id, share);
@@ -1356,6 +1357,39 @@ export default function registerDocsActions(registerLensAction) {
           ? null : `/shared/docs/${share.token}`,
       },
     };
+  });
+
+  // Anonymous read of one shared page by its unguessable token. Read-only
+  // even when the owner chose role "edit": there is no public write path, so
+  // the link never grants editing and the response says so.
+  registerLensAction("docs", "share-public", (_ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const token = String(params.token || "");
+    if (token.length < 8) return { ok: false, error: "share not found" };
+    let share = null;
+    for (const sh of dcShares(s).values()) {
+      if (sh.token === token && sh.visibility !== "private") { share = sh; break; }
+    }
+    if (!share) return { ok: false, error: "share not found" };
+    for (const pages of s.pages.values()) {
+      const page = (pages || []).find((p) => p.id === share.pageId);
+      if (!page) continue;
+      return {
+        ok: true,
+        result: {
+          kind: "docs",
+          title: page.title,
+          icon: page.icon,
+          updatedAt: page.updatedAt,
+          readOnly: true,
+          blocks: (page.blocks || []).map((b) => ({
+            type: b.type, text: b.text, checked: b.checked === true,
+            rows: Array.isArray(b.data?.rows) ? b.data.rows : undefined,
+          })),
+        },
+      };
+    }
+    return { ok: false, error: "share not found" };
   });
 
   registerLensAction("docs", "share-invite", (ctx, _a, params = {}) => {
