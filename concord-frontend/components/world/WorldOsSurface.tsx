@@ -1250,6 +1250,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
 import { getStoredQualityPreset, hasStoredQualityPreset } from '@/lib/world-lens/quality-preset';
@@ -6571,7 +6572,18 @@ export default function WorldOsSurface() {
                 reports={[]}
                 permissions={[]}
                 undoHistory={[]}
-                onReport={() => {}}
+                onReport={(targetType, description) => {
+                  // Files a real report on this world with the moderation service.
+                  void api.post('/api/moderation/report', {
+                    contentId: `${currentWorldId}:${targetType}`,
+                    contentType: 'world',
+                    category: 'other',
+                    reason: `[${targetType}] ${description}`,
+                  }).then(
+                    () => useUIStore.getState().addToast({ type: 'success', message: 'Report sent to moderators', duration: 3000 }),
+                    (err: unknown) => useUIStore.getState().addToast({ type: 'error', message: `Report failed: ${err instanceof Error ? err.message : 'unknown error'}`, duration: 6000 }),
+                  );
+                }}
                 onUndo={() => {}}
               />
             </SummonDrawer>
