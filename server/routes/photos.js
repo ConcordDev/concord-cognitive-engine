@@ -2,9 +2,9 @@
 // Share checks the owner here. sharePhoto itself does not, because the
 // photos.share macro already gated the caller before this file existed.
 
-import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
+import logger from "../logger.js";
 import {
   savePhoto,
   sharePhoto,
@@ -41,7 +41,12 @@ export function createPhotosRouter({ db, requireAuth }) {
   const auth = requireAuth();
 
   router.post("/save", auth, async (req, res) => {
-    send(res, await savePhoto(db, userIdOf(req), req.body || {}));
+    try {
+      send(res, await savePhoto(db, userIdOf(req), req.body || {}));
+    } catch (err) {
+      logger.error("photos", "save_failed", { error: err?.message });
+      send(res, { ok: false, error: "save_failed" });
+    }
   });
 
   router.post("/:photoId/share", auth, (req, res) => {
@@ -87,14 +92,17 @@ export function createPhotosRouter({ db, requireAuth }) {
     if (row.visibility !== "public" && row.user_id !== userId) {
       return send(res, { ok: false, error: "not_found" });
     }
-    if (!row.blob_path || !fs.existsSync(row.blob_path)) {
-      return send(res, { ok: false, error: "blob_missing" });
-    }
+    if (!row.blob_path) return send(res, { ok: false, error: "blob_missing" });
     res.setHeader(
       "Cache-Control",
       row.visibility === "public" ? "public, max-age=3600" : "private, no-store",
     );
-    res.sendFile(path.resolve(row.blob_path));
+    // sendFile checks the file asynchronously; a missing blob comes back here.
+    res.sendFile(path.resolve(row.blob_path), (err) => {
+      if (!err || res.headersSent) return;
+      res.removeHeader("Cache-Control");
+      send(res, { ok: false, error: err.code === "ENOENT" ? "blob_missing" : "read_failed" });
+    });
   });
 
   return router;
