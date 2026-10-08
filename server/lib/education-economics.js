@@ -95,8 +95,10 @@ export class EducationEconomics {
 
     if (wallet && typeof wallet.credit === "function" && safeAmount > 0) {
       try {
-        await wallet.credit(safeStudent, safeAmount, { kind, ...meta, transactionId });
-        entry.applied = true;
+        const r = await wallet.credit(safeStudent, safeAmount, { kind, ...meta, transactionId });
+        // A wallet that answers { ok:false } did not move funds.
+        entry.applied = !(r && r.ok === false);
+        if (!entry.applied) entry.walletError = r.error || r.reason || "wallet_refused";
       } catch (_err) {
         entry.applied = false;
       }
@@ -128,7 +130,7 @@ export class EducationEconomics {
     }
 
     this.ledger.push(entry);
-    return { ok: true, amount: safeAmount, transactionId, applied: entry.applied };
+    return { ok: true, amount: safeAmount, transactionId, applied: entry.applied, ...(entry.walletError ? { walletError: entry.walletError } : {}) };
   }
 
   // ---------------------------------------------------------------------
@@ -168,8 +170,9 @@ export class EducationEconomics {
 
     if (wallet && typeof wallet.debit === "function" && safeAmount > 0) {
       try {
-        await wallet.debit(safeStudent, safeAmount, { kind, ...meta, transactionId });
-        entry.applied = true;
+        const r = await wallet.debit(safeStudent, safeAmount, { kind, ...meta, transactionId });
+        entry.applied = !(r && r.ok === false);
+        if (!entry.applied) entry.walletError = r.error || r.reason || "wallet_refused";
       } catch (_err) {
         entry.applied = false;
       }
@@ -178,7 +181,7 @@ export class EducationEconomics {
     }
 
     this.ledger.push(entry);
-    return { ok: true, amount: safeAmount, transactionId, applied: entry.applied };
+    return { ok: true, amount: safeAmount, transactionId, applied: entry.applied, ...(entry.walletError ? { walletError: entry.walletError } : {}) };
   }
 
   // ---------------------------------------------------------------------
