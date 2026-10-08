@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Send, Loader2, Copy } from 'lucide-react';
+import { Building2, Plus, Send, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -47,12 +47,7 @@ export function SuppliersPortal() {
   async function invite(id: string) {
     try {
       const r = await lensRun({ domain: 'environment', action: 'suppliers-invite', input: { id } });
-      const link = r.data?.result?.portalLink;
-      if (link) {
-        const fullUrl = window.location.origin + link;
-        navigator.clipboard?.writeText(fullUrl).catch(() => {});
-        alert(`Invitation portal link copied to clipboard:\n${fullUrl}`);
-      }
+      if (!r.data?.ok) console.error('[Suppliers] invite failed', r.data?.error);
       await refresh();
     } catch (e) { console.error('[Suppliers] invite', e); }
   }
@@ -107,12 +102,10 @@ export function SuppliersPortal() {
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   {s.invitationStatus === 'not_invited' && (
-                    <button onClick={() => invite(s.id)} className="px-2 py-0.5 text-[10px] rounded bg-violet-500/30 text-violet-300 hover:bg-violet-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Invite</button>
+                    <button onClick={() => invite(s.id)} className="px-2 py-0.5 text-[10px] rounded bg-violet-500/30 text-violet-300 hover:bg-violet-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Mark invited</button>
                   )}
-                  {s.invitationStatus === 'invited' && s.portalToken && (
-                    <>
-                      <button onClick={() => { navigator.clipboard?.writeText(window.location.origin + '/supplier-portal/' + s.portalToken); }} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50 inline-flex items-center gap-1"><Copy className="w-2.5 h-2.5" />Copy portal link</button>
-                    </>
+                  {s.invitationStatus === 'invited' && (
+                    <span className="text-[10px] text-gray-400">Invited (contact them directly; Concord sends nothing)</span>
                   )}
                   {s.invitationStatus !== 'responded' && (
                     <button onClick={() => setDiscloseFor(s.id)} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50">Record disclosure</button>

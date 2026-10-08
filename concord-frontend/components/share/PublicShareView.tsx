@@ -2,7 +2,8 @@
 
 /**
  * Public, no-account viewer for token-scoped share links (creative proof
- * links, published event pages, shared docs pages, experience clips/reels).
+ * links, published event pages, shared docs pages, experience clips/reels,
+ * carpentry client job portals, nonprofit campaign pages).
  * Plain fetch against `/api/public-share/:kind/:id` — no cookie, no session.
  * The id is the only access control and resolves server-side to exactly one
  * shared object. Nothing here is writable except a proof reviewer's comment.
@@ -11,7 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CalendarDays, Loader2, MapPin, MessageSquare } from 'lucide-react';
 
-export type ShareKind = 'proof' | 'event' | 'docs' | 'experience';
+export type ShareKind = 'proof' | 'event' | 'docs' | 'experience' | 'carpentry' | 'give';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- each kind returns its own server-defined shape */
 type Result = Record<string, any>;
@@ -151,6 +152,66 @@ function EventView({ data }: { data: Result }) {
   );
 }
 
+function CarpentryPortalView({ data }: { data: Result }) {
+  const sh = data.share || {};
+  const money = (n: unknown) => `$${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return (
+    <>
+      <p className="text-sm text-zinc-500">Job portal for {sh.client}</p>
+      <h1 className="mt-1 text-3xl font-semibold">{sh.jobName || 'Your project'}</h1>
+      {sh.estimateAmount > 0 && <p className="mt-2 text-zinc-300">Estimate {sh.estimateId ? `${sh.estimateId} · ` : ''}{money(sh.estimateAmount)}</p>}
+      <div className="mt-5" aria-label="Progress">
+        <div className="flex justify-between text-sm text-zinc-400"><span>Progress</span><span>{sh.progressPct ?? 0}%</span></div>
+        <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full bg-teal-400" style={{ width: `${Math.max(0, Math.min(100, Number(sh.progressPct) || 0))}%` }} />
+        </div>
+      </div>
+      {(sh.milestones || []).length > 0 && (
+        <ul className="mt-5 space-y-2">
+          {sh.milestones.map((m: Result, i: number) => (
+            <li key={i} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!m.done} readOnly aria-label={m.label} />
+              <span className={m.done ? 'text-zinc-500 line-through' : 'text-zinc-200'}>{m.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-6 rounded-xl border border-white/10 bg-[#111] p-3 text-sm text-zinc-400">
+        {sh.clientDecision
+          ? `Estimate ${sh.clientDecision.decision} by ${sh.clientDecision.signedBy} on ${new Date(sh.clientDecision.respondedAt).toLocaleDateString()}.`
+          : 'To approve or decline this estimate, reply to your contractor directly.'}
+      </p>
+    </>
+  );
+}
+
+function GivePageView({ data }: { data: Result }) {
+  const p = data.page || {};
+  const money = (n: unknown) => `$${Number(n || 0).toLocaleString()}`;
+  return (
+    <>
+      {p.coverImage && (
+        // eslint-disable-next-line @next/next/no-img-element -- organisation-supplied cover URL
+        <img src={p.coverImage} alt="" className="mb-5 max-h-64 w-full rounded-2xl object-cover" />
+      )}
+      <p className="text-sm text-zinc-500">Campaign</p>
+      <h1 className="mt-1 text-4xl font-semibold">{p.title}</h1>
+      {p.goal > 0 && (
+        <div className="mt-5">
+          <div className="flex justify-between text-sm text-zinc-300"><span>{money(p.raised)} raised of {money(p.goal)}</span><span>{p.donorCount} donors</span></div>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full" style={{ width: `${Math.min(100, p.progressPct || 0)}%`, background: p.accentColor || '#2dd4bf' }} />
+          </div>
+        </div>
+      )}
+      {p.story && <p className="mt-6 whitespace-pre-wrap leading-relaxed text-zinc-200">{p.story}</p>}
+      <p className="mt-6 rounded-xl border border-white/10 bg-[#111] p-3 text-sm text-zinc-400">
+        This page does not take payments. To give, contact the organisation directly.
+      </p>
+    </>
+  );
+}
+
 function ClipRow({ c }: { c: Result }) {
   return (
     <li className="rounded-xl border border-white/10 bg-[#111] p-3 text-sm">
@@ -193,6 +254,8 @@ export default function PublicShareView({ kind, id }: { kind: ShareKind; id: str
           </div>
         ) : kind === 'proof' ? <ProofView id={id} data={data} reload={() => void load()} />
           : kind === 'event' ? <EventView data={data} />
+          : kind === 'carpentry' ? <CarpentryPortalView data={data} />
+          : kind === 'give' ? <GivePageView data={data} />
           : kind === 'docs' ? (
             <>
               <p className="text-sm text-zinc-500">Shared page · read-only</p>

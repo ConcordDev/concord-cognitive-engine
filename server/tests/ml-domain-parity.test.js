@@ -331,3 +331,23 @@ describe("ml demo spaces", () => {
     assert.equal(call("space-create", ctxA, {}, { modelId: "m" }).ok, false);
   });
 });
+
+describe("ml spaces — openable by slug", () => {
+  it("space-get resolves public spaces for anyone, private only for the owner, and counts views", () => {
+    const pub = call("space-create", ctxA, {}, { title: "Sentiment Demo", modelId: "distilbert" }).result.space;
+    const dup = call("space-create", ctxA, {}, { title: "Sentiment Demo", modelId: "distilbert" }).result.space;
+    assert.notEqual(pub.url, dup.url, "slugs are unique");
+    const slug = pub.url.split("/").pop();
+    const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+    const viewed = call("space-get", ctxB, {}, { slug });
+    assert.equal(viewed.ok, true);
+    assert.equal(viewed.result.space.modelId, "distilbert");
+    assert.equal(viewed.result.isOwner, false);
+    assert.equal(viewed.result.space.views, 1);
+
+    const priv = call("space-create", ctxA, {}, { title: "Secret", modelId: "gpt2", private: true }).result.space;
+    const pslug = priv.url.split("/").pop();
+    assert.equal(call("space-get", ctxB, {}, { slug: pslug }).ok, false);
+    assert.equal(call("space-get", ctxA, {}, { slug: pslug }).ok, true);
+  });
+});

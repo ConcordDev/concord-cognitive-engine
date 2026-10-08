@@ -237,7 +237,7 @@ describe("environment.suppliers-* (Scope 3 portal)", () => {
     assert.equal(a.result.supplier.invitationStatus, "not_invited");
     const inv = call("suppliers-invite", ctxA, { id: a.result.supplier.id });
     assert.equal(inv.result.supplier.invitationStatus, "invited");
-    assert.match(inv.result.portalLink, /supplier-portal/);
+    assert.equal(inv.result.portalLink, null);
     const disc = call("suppliers-record-disclosure", ctxA, { id: a.result.supplier.id, co2eTonnes: 1240.5, year: "2026" });
     assert.equal(disc.result.supplier.invitationStatus, "responded");
     assert.equal(disc.result.supplier.reportedCo2eTonnes, 1240.5);

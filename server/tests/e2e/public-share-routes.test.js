@@ -172,7 +172,7 @@ async function registerUser(base, label) {
 
 
 describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function () {
-  let base, serverProc, dataDir, owner, proofToken, eventSlug, docToken, privatePageId;
+  let base, serverProc, dataDir, owner, proofToken, eventSlug, docToken, privatePageId, portalToken, giveSlug, draftGiveSlug;
 
   const run = (domain, action, input) => postJSON(base, '/api/lens/run', { domain, action, input }, owner);
 
@@ -209,6 +209,17 @@ describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function ()
     const pg2 = await run('docs', 'page-create', { title: 'Private Notes' });
     privatePageId = pg2.body?.result?.page?.id;
     await run('docs', 'share-set', { pageId: privatePageId, visibility: 'private' });
+
+    const portal = await run('carpentry', 'portalCreate', { client: 'Pat', jobName: 'Back deck', progressPct: 30 });
+    portalToken = portal.body?.result?.token;
+    assert.ok(portalToken, JSON.stringify(portal.body));
+
+    const gp = await run('nonprofit', 'donation-page-create', { title: 'Plant Trees', goal: 500 });
+    const gpage = gp.body?.result?.page;
+    giveSlug = gpage?.slug;
+    await run('nonprofit', 'donation-page-update', { id: gpage?.id, published: true });
+    const dp = await run('nonprofit', 'donation-page-create', { title: 'Draft Drive', goal: 100 });
+    draftGiveSlug = dp.body?.result?.page?.slug;
   });
 
   after(async function () {
@@ -261,6 +272,23 @@ describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function ()
 
   it('experience: unknown token 404s', async function () {
     assert.equal((await getJSON(base, '/api/public-share/experience/share_nope')).status, 404);
+  });
+
+  it('carpentry: client portal is readable anonymously without the owner id', async function () {
+    const r = await getJSON(base, '/api/public-share/carpentry/' + portalToken);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const share = r.body?.result?.share || r.body?.share;
+    assert.equal(share.jobName, 'Back deck');
+    assert.equal(share.ownerId, undefined);
+    assert.equal((await getJSON(base, '/api/public-share/carpentry/portal_nope')).status, 404);
+  });
+
+  it('give: published campaign page is public, drafts 404', async function () {
+    const r = await getJSON(base, '/api/public-share/give/' + giveSlug);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const page = r.body?.result?.page || r.body?.page;
+    assert.equal(page.title, 'Plant Trees');
+    assert.equal((await getJSON(base, '/api/public-share/give/' + draftGiveSlug)).status, 404);
   });
 
   it('unknown kind 404s and cannot smuggle an action', async function () {

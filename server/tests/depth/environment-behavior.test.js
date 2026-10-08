@@ -246,8 +246,8 @@ describe("environment — supplier portal CRUD round-trips (shared ctx)", () => 
     const inv = await lensRun("environment", "suppliers-invite", { params: { id } }, ctx);
     assert.equal(inv.ok, true);
     assert.equal(inv.result.supplier.invitationStatus, "invited");
-    assert.ok(inv.result.supplier.portalToken);
-    assert.ok(inv.result.portalLink.startsWith("/supplier-portal/"));
+    assert.equal(inv.result.portalLink, null, "no supplier portal exists, so no link is produced");
+    assert.match(inv.result.note, /Contact the supplier directly/);
 
     const disc = await lensRun("environment", "suppliers-record-disclosure", { params: { id, co2eTonnes: 42.567, year: "2025" } }, ctx);
     assert.equal(disc.ok, true);

@@ -268,3 +268,14 @@ describe("carpentry client portal", () => {
     assert.equal(call("portalRespond", ctxA, { token: create.result.token, decision: "maybe" }).ok, false);
   });
 });
+
+describe("carpentry — public portal projection", () => {
+  it("portalPublicView returns the share without the owner id", () => {
+    const create = call("portalCreate", ctxA, { client: "Pat", jobName: "Deck", progressPct: 40 });
+    const pub = call("portalPublicView", {}, { token: create.result.token });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.share.jobName, "Deck");
+    assert.equal(pub.result.share.ownerId, undefined);
+    assert.equal(call("portalPublicView", {}, { token: "nope" }).ok, false);
+  });
+});

@@ -721,6 +721,20 @@ export default function registerCarpentryActions(registerLensAction) {
     }
   });
 
+  // public, token-scoped projection for /portal/carpentry/:token (no owner id)
+  registerLensAction("carpentry", "portalPublicView", (_ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const share = s.portalShares.get(cpClean(params.token, 120));
+      if (!share) return { ok: false, error: "portal not found or expired" };
+      const { ownerId: _owner, ...pub } = share;
+      return { ok: true, result: { share: pub } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   // owner lists their active portals
   registerLensAction("carpentry", "portalList", (ctx, _a, _params = {}) => {
     try {

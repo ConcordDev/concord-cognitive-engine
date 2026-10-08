@@ -366,11 +366,12 @@ export default function registerEnvironmentActions(registerLensAction) {
     const id = String(params.id || "");
     const sup = ensureEnvBucket(s, "suppliers", userId).find(x => x.id === id);
     if (!sup) return { ok: false, error: "supplier not found" };
+    // Concord has no supplier-facing portal and sends no invitation; this
+    // records that the operator invited the supplier themselves.
     sup.invitationStatus = "invited";
     sup.invitedAt = new Date().toISOString();
-    sup.portalToken = uidEnv("tok");
     saveEnvState();
-    return { ok: true, result: { supplier: sup, portalLink: `/supplier-portal/${sup.portalToken}` } };
+    return { ok: true, result: { supplier: sup, portalLink: null, note: "Invitation recorded. Contact the supplier directly and record their disclosure here when it arrives." } };
   });
 
   registerLensAction("environment", "suppliers-record-disclosure", (ctx, _a, params = {}) => {

@@ -312,3 +312,16 @@ describe("nonprofit.search-orgs (ProPublica search)", () => {
     assert.match(r.error, /unreachable/);
   });
 });
+
+describe("nonprofit — public campaign page", () => {
+  it("donation-page-public serves published pages only, without donor identities", () => {
+    const p = call("donation-page-create", ctxA, { title: "Plant Trees", goal: 500 }).result.page;
+    assert.equal(call("donation-page-public", {}, { slug: p.slug }).ok, false, "unpublished pages are not public");
+    call("donation-page-update", ctxA, { id: p.id, published: true });
+    const pub = call("donation-page-public", {}, { slug: p.slug });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.page.title, "Plant Trees");
+    assert.equal(pub.result.page.donations, undefined);
+    assert.equal(pub.result.acceptsOnlinePayments, false);
+  });
+});

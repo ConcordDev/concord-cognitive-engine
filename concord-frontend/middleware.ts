@@ -225,6 +225,9 @@ const PUBLIC_PREFIXES = [
   '/shared/docs/',
   '/share/clip/',
   '/share/reel/',
+  // Carpentry client job portal and nonprofit campaign pages, same route.
+  '/portal/carpentry/',
+  '/give/',
   // Spectate public viewer — a read-only, no-account-required live world
   // feed at `/spectate/:worldId`, backed by the public
   // `/api/spectate/:worldId/subscribe|feed` + `/api/spectate/heartbeat`

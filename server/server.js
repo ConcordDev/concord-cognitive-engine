@@ -8179,7 +8179,7 @@ function authMiddleware(req, res, next) {
   // maps to one hardcoded read handler (see _runPublicShare), so this can't be
   // widened to any other action. The single anonymous write is a proof-link
   // reviewer comment, itself token-scoped and body-capped.
-  if (req.method === "GET" && /^\/api\/public-share\/(proof|event|docs|experience)\/[^/]+$/.test(req.path)) return next();
+  if (req.method === "GET" && /^\/api\/public-share\/(proof|event|docs|experience|carpentry|give)\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/public-share\/proof\/[^/]+\/comment$/.test(req.path)) return next();
 
   // Spectate public viewer — a read-only live world feed (spectator count +
@@ -57521,6 +57521,8 @@ const _PUBLIC_SHARE_KINDS = {
   event: { action: "events.public-page", param: "slug" },
   docs: { action: "docs.share-public", param: "token" },
   experience: { action: "experience.share-public", param: "token" },
+  carpentry: { action: "carpentry.portalPublicView", param: "token" },
+  give: { action: "nonprofit.donation-page-public", param: "slug" },
 };
 function _runPublicShare(kind, id, action, extra) {
   const spec = _PUBLIC_SHARE_KINDS[kind];

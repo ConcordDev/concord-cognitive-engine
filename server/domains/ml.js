@@ -646,7 +646,11 @@ export default function registerMlActions(registerLensAction) {
     const modelId = mlClean(params.modelId || params.model, 200);
     if (!title) return { ok: false, error: "space title required" };
     if (!modelId) return { ok: false, error: "modelId required" };
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "space";
+    const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "space";
+    const taken = new Set();
+    for (const list of m.spaces.values()) for (const x of (Array.isArray(list) ? list : [])) taken.add(x.url);
+    let slug = base;
+    for (let n = 2; taken.has(`/lenses/ml/space/${slug}`); n++) slug = `${base}-${n}`;
     const space = {
       id: mlId("space"), title, modelId,
       description: mlClean(params.description, 500),
@@ -660,6 +664,24 @@ export default function registerMlActions(registerLensAction) {
     mlList(m.spaces, userId).unshift(space);
     saveMl();
     return { ok: true, result: { space } };
+  });
+
+  // Open one space by its URL slug. Public spaces are visible to any signed-in
+  // user; private ones only to their owner. Each open counts one real view.
+  registerLensAction("ml", "space-get", (ctx, _a, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const slug = mlClean(params.slug, 80);
+    if (!slug) return { ok: false, error: "slug required" };
+    for (const [owner, list] of m.spaces) {
+      const sp = (Array.isArray(list) ? list : []).find((x) => x.url === `/lenses/ml/space/${slug}`);
+      if (!sp) continue;
+      if (sp.visibility === "private" && owner !== userId) continue;
+      sp.views = (sp.views || 0) + 1;
+      saveMl();
+      return { ok: true, result: { space: sp, isOwner: owner === userId } };
+    }
+    return { ok: false, error: "space not found" };
   });
 
   registerLensAction("ml", "space-list", (ctx, _a, _params = {}) => {
