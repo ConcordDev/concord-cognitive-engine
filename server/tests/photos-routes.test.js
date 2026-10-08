@@ -131,3 +131,43 @@ test("share is non-200 and does not stamp dtu_id when the dtus insert fails", as
     fs.rmSync(TMP, { recursive: true, force: true });
   }
 });
+
+test("image: the owner gets the bytes; a blob gone from disk is a 404, not a crash", async () => {
+  const db = freshDb({ withDtus: true });
+  const actor = { id: "owner" };
+  const saved = await savePhoto(db, "owner", { dataUrl: TINY_PNG, caption: "frame" });
+  const server = await listen(appFor(db, actor));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const ok = await fetch(`${base}/api/photos/${saved.id}/image`);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get("cache-control"), "private, no-store");
+    assert.ok((await ok.arrayBuffer()).byteLength > 0);
+
+    const { blob_path } = db.prepare("SELECT blob_path FROM user_photos WHERE id = ?").get(saved.id);
+    fs.unlinkSync(blob_path);
+    const gone = await fetch(`${base}/api/photos/${saved.id}/image`);
+    assert.equal(gone.status, 404);
+    assert.deepEqual(await gone.json(), { ok: false, error: "blob_missing" });
+  } finally {
+    server.close();
+  }
+});
+
+test("save: a database failure is a 500 with ok:false (savePhoto reports it; the route catch guards unexpected throws)", async () => {
+  const db = freshDb({ withDtus: true });
+  db.close(); // every query now fails
+  const server = await listen(appFor(db, { id: "owner" }));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await fetch(`${base}/api/photos/save`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dataUrl: TINY_PNG }),
+    });
+    assert.equal(res.status, 500);
+    assert.equal((await res.json()).ok, false);
+  } finally {
+    server.close();
+  }
+});
