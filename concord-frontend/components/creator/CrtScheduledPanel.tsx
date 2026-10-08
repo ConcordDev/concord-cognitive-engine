@@ -160,13 +160,13 @@ export function CrtScheduledPanel() {
             onClick={runDue}
             className="flex items-center gap-1 text-[11px] px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg"
           >
-            <PlayCircle className="w-3.5 h-3.5" /> Publish {dueCount} due
+            <PlayCircle className="w-3.5 h-3.5" /> Mark {dueCount} due as published
           </button>
         )}
       </div>
 
       {queue.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic">No scheduled releases yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No scheduled releases yet. This is a release planner: it tracks what is due and marks it published, but does not post to external platforms.</p>
       ) : (
         <ul className="space-y-1">
           {queue.map((q) => (
