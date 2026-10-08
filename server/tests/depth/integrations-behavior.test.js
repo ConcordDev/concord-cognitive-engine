@@ -268,13 +268,16 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
     const zapId = save.result.zap.id;
     assert.equal(save.result.zap.enabled, true);
 
-    // amount 250 → filter passes → action dispatches → success
+    // amount 250 → filter passes → the action calls the real slack.post macro.
+    // With no Slack OAuth connected the connector refuses, so the run errors
+    // honestly rather than claiming a dispatch.
     const pass = await lensRun("integrations", "zapRun", { params: { zapId, triggerData: { amount: 250 } } }, ctx);
     assert.equal(pass.ok, true);
-    assert.equal(pass.result.run.status, "success");
+    assert.equal(pass.result.run.status, "error");
     const actionTrace = pass.result.run.trace.find((t) => t.kind === "action");
     assert.equal(actionTrace.actionId, "post_message");
     assert.equal(actionTrace.payload.text, 250); // $.amount resolved from the bag
+    assert.equal(actionTrace.ok, false);
 
     // amount 50 → filter fails → halts as filtered
     const halt = await lensRun("integrations", "zapRun", { params: { zapId, triggerData: { amount: 50 } } }, ctx);
@@ -285,7 +288,7 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
     // runHistory reflects both runs and the success/filtered split
     const hist = await lensRun("integrations", "runHistory", { params: { zapId } }, ctx);
     assert.equal(hist.result.total, 2);
-    assert.equal(hist.result.summary.success, 1);
+    assert.equal(hist.result.summary.error, 1);
     assert.equal(hist.result.summary.filtered, 1);
   });
 

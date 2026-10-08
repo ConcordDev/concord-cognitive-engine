@@ -292,7 +292,7 @@ function RunTrace({ run }: { run: RunRecord }) {
     id: `t${i}`,
     label: String(t.kind),
     time: i,
-    tone: t.kind === 'error' ? 'bad' : t.kind === 'filter' && t.passed === false ? 'warn' : 'good',
+    tone: t.kind === 'error' || (t.kind === 'action' && t.ok === false) ? 'bad' : t.kind === 'filter' && t.passed === false ? 'warn' : 'good',
     detail: JSON.stringify(t),
   }));
   return (
@@ -308,7 +308,13 @@ function RunTrace({ run }: { run: RunRecord }) {
             {t.condition && <span className="text-yellow-400"> · {String(t.condition)} = {String(t.passed)}</span>}
             {t.branchLabel && <span className="text-neon-purple"> {'→'} {String(t.branchLabel)}</span>}
             {t.op && <span className="text-gray-400"> · {String(t.op)} = {JSON.stringify(t.output)}</span>}
-            {t.actionId && <span className="text-neon-green"> · {String(t.actionId)}</span>}
+            {t.actionId && (
+              <span className={t.ok === false ? 'text-rose-400' : 'text-neon-green'}>
+                {' · '}{String(t.connectorId || '')}.{String(t.actionId)}
+                {t.ok === false ? ` · ${t.notConnected ? 'not connected' : 'failed'}: ${String(t.error || '')}` : ' · done'}
+              </span>
+            )}
+            {t.kind === 'error' && <span className="text-rose-400"> · {String(t.message || '')}</span>}
             {t.expression && <span className="text-blue-400"> · {String(t.expression)} = {JSON.stringify(t.output)}</span>}
           </div>
         ))}

@@ -786,7 +786,39 @@ export default function registerIntegrationsActions(registerLensAction) {
   });
 
   // ── Zap run engine — executes the step graph, records run history ──
-  function executeSteps(steps, bag, trace, depth) {
+  // Zap action steps run through the real connector macros. Anything without
+  // a backing macro reports not_connected instead of a pretend dispatch.
+  const ACTION_MACROS = {
+    "slack.post_message": "slack.post",
+    "gmail.send_email": "gmail.send",
+    "gmail.add_label": "gmail.modify",
+    "github.create_issue": "github.issue-create",
+    "google_sheets.add_row": "sheets.append",
+  };
+  async function runAction(ctx, step, payload) {
+    const key = `${step.connectorId}.${step.actionId}`;
+    if (key === "concord_dtu.create_dtu") {
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro !== "function") return { ok: false, error: "tool runtime unavailable" };
+      const r = await runMacro("dtu", "create", {
+        title: String(payload.title || "Untitled"),
+        human: { summary: String(payload.summary || payload.body || ""), bullets: [] },
+        tags: Array.isArray(payload.tags) ? payload.tags : [],
+        tier: "regular", source: "agent_tool",
+      }, ctx);
+      return r?.ok ? { ok: true, result: { dtuId: r.id || r.dtu?.id } } : { ok: false, error: r?.error || "dtu create failed" };
+    }
+    const target = ACTION_MACROS[key];
+    if (!target) return { ok: false, notConnected: true, error: `${key} is not connected in Concord` };
+    const lensActions = ctx?.lensActions || globalThis.__concordLensActions;
+    const handler = lensActions?.get?.(target);
+    if (typeof handler !== "function") return { ok: false, error: `${target} unavailable` };
+    const [domain] = target.split(".");
+    const r = await handler(ctx, { id: null, domain, type: "domain_action", data: payload, meta: {} }, payload);
+    return r?.ok ? { ok: true, result: r.result ?? r } : { ok: false, error: r?.error || r?.reason || `${target} failed` };
+  }
+
+  async function executeSteps(ctx, steps, bag, trace, depth) {
     if (depth > 6) { trace.push({ kind: "error", message: "max nesting depth" }); return false; }
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
@@ -804,7 +836,7 @@ export default function registerIntegrationsActions(registerLensAction) {
         }
         trace.push({ stepIndex: i, kind: "path", branchTaken: taken, branchLabel: taken >= 0 ? (branches[taken].label || `branch ${taken}`) : "none" });
         if (taken >= 0) {
-          const ok = executeSteps(branches[taken].steps || [], bag, trace, depth + 1);
+          const ok = await executeSteps(ctx, branches[taken].steps || [], bag, trace, depth + 1);
           if (!ok) return false;
         }
       } else if (step.kind === "formatter") {
@@ -816,11 +848,16 @@ export default function registerIntegrationsActions(registerLensAction) {
         bag[step.outputKey || `step${i}`] = r.value;
         trace.push({ stepIndex: i, kind: "code", expression: step.expression, output: r.value, ok: r.ok });
       } else if (step.kind === "delay") {
-        trace.push({ stepIndex: i, kind: "delay", seconds: step.seconds || 0, note: "simulated" });
+        trace.push({ stepIndex: i, kind: "delay", seconds: step.seconds || 0, note: "not applied in manual runs" });
       } else if (step.kind === "action") {
         const mapped = applyFieldMap(step.fieldMap || {}, bag);
-        bag[step.outputKey || `step${i}`] = { dispatched: true, action: step.actionId, payload: mapped };
-        trace.push({ stepIndex: i, kind: "action", connectorId: step.connectorId, actionId: step.actionId, payload: mapped });
+        const r = await runAction(ctx, step, mapped || {});
+        trace.push({
+          stepIndex: i, kind: "action", connectorId: step.connectorId, actionId: step.actionId, payload: mapped,
+          ok: r.ok, ...(r.ok ? { output: r.result } : { error: r.error, notConnected: !!r.notConnected }),
+        });
+        if (!r.ok) throw new Error(`Step ${i + 1} (${step.connectorId}.${step.actionId}) failed: ${r.error}`);
+        bag[step.outputKey || `step${i}`] = r.result;
       }
     }
     return true;
@@ -833,7 +870,7 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (arr.length > 200) arr.length = 200;
   }
 
-  registerLensAction("integrations", "zapRun", (ctx, _artifact, params = {}) => {
+  registerLensAction("integrations", "zapRun", async (ctx, _artifact, params = {}) => {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = intActor(ctx);
@@ -846,7 +883,7 @@ export default function registerIntegrationsActions(registerLensAction) {
     let status = "success";
     let haltedAt = null;
     try {
-      const completed = executeSteps(zap.steps || [], bag, trace, 0);
+      const completed = await executeSteps(ctx, zap.steps || [], bag, trace, 0);
       if (!completed) { status = "filtered"; haltedAt = trace.findIndex(t => t.kind === "filter" && t.passed === false); }
     } catch (e) {
       status = "error";
@@ -896,7 +933,7 @@ export default function registerIntegrationsActions(registerLensAction) {
   });
 
   // Run replay / retry — re-executes a recorded run's zap with same input.
-  registerLensAction("integrations", "retryRun", (ctx, _artifact, params = {}) => {
+  registerLensAction("integrations", "retryRun", async (ctx, _artifact, params = {}) => {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = intActor(ctx);
@@ -911,7 +948,7 @@ export default function registerIntegrationsActions(registerLensAction) {
     const trace = [{ kind: "trigger", event: zap.trigger.event, replayOf: original.id }];
     let status = "success";
     try {
-      const completed = executeSteps(zap.steps || [], bag, trace, 0);
+      const completed = await executeSteps(ctx, zap.steps || [], bag, trace, 0);
       if (!completed) status = "filtered";
     } catch (e) {
       status = "error";

@@ -133,48 +133,64 @@ describe("integrations zap run engine + history + retry", () => {
       name: "Runner", trigger: { event: "dtu.created" }, steps,
     }).result.zap;
   }
+  // Real connector macros are reached through the LENS_ACTIONS map; a stub
+  // slack.post stands in for the OAuth-backed connector here.
+  const posted = [];
+  const lensActions = new Map([["slack.post", async (_c, _a, p) => { posted.push(p); return { ok: true, result: { ts: "1.0" } }; }]]);
+  const ctxZ = { ...ctxA, lensActions };
 
-  it("runs a zap end-to-end and records run history", () => {
+  it("runs a zap end-to-end through the real connector macro and records history", async () => {
+    posted.length = 0;
     const zap = makeZap([
       { kind: "filter", condition: "data.amount > 100" },
       { kind: "code", expression: "len($.data.tag)", outputKey: "taglen" },
-      { kind: "action", actionId: "create_dtu", fieldMap: { title: "$.data.title" } },
+      { kind: "action", connectorId: "slack", actionId: "post_message", fieldMap: { channel: "C1", text: "$.data.title" } },
     ]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 200, tag: "abc", title: "T" } } });
+    const run = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: { data: { amount: 200, tag: "abc", title: "T" } } });
     assert.equal(run.ok, true);
     assert.equal(run.result.run.status, "success");
+    assert.deepEqual(posted, [{ channel: "C1", text: "T" }]);
     const hist = call("runHistory", ctxA, { zapId: zap.id });
     assert.equal(hist.result.total, 1);
     assert.equal(hist.result.summary.success, 1);
   });
 
-  it("halts a run when a filter fails", () => {
+  it("an action with no backing connector errors the run instead of pretending to dispatch", async () => {
+    const zap = makeZap([{ kind: "action", connectorId: "stripe", actionId: "refund" }]);
+    const run = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: {} });
+    assert.equal(run.result.run.status, "error");
+    const act = run.result.run.trace.find((t) => t.kind === "action");
+    assert.equal(act.ok, false);
+    assert.equal(act.notConnected, true);
+  });
+
+  it("halts a run when a filter fails", async () => {
     const zap = makeZap([{ kind: "filter", condition: "data.amount > 1000" }]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 1 } } });
+    const run = await call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 1 } } });
     assert.equal(run.result.run.status, "filtered");
   });
 
-  it("takes the matching branch in a path step", () => {
+  it("takes the matching branch in a path step", async () => {
     const zap = makeZap([{
       kind: "path",
       branches: [
-        { label: "big", condition: "data.amount > 100", steps: [{ kind: "action", actionId: "a1" }] },
-        { label: "small", condition: "", steps: [{ kind: "action", actionId: "a2" }] },
+        { label: "big", condition: "data.amount > 100", steps: [{ kind: "code", expression: "1 + 1", outputKey: "x" }] },
+        { label: "small", condition: "", steps: [] },
       ],
     }]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 500 } } });
+    const run = await call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 500 } } });
     const pathTrace = run.result.run.trace.find((t) => t.kind === "path");
     assert.equal(pathTrace.branchLabel, "big");
   });
 
-  it("replays a recorded run via retryRun", () => {
-    const zap = makeZap([{ kind: "action", actionId: "create_dtu" }]);
-    const first = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { x: 1 } } });
-    const retry = call("retryRun", ctxA, { runId: first.result.run.id });
+  it("replays a recorded run via retryRun", async () => {
+    const zap = makeZap([{ kind: "action", connectorId: "slack", actionId: "post_message", fieldMap: { channel: "C1", text: "hi" } }]);
+    const first = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: { data: { x: 1 } } });
+    const retry = await call("retryRun", ctxZ, { runId: first.result.run.id });
     assert.equal(retry.ok, true);
     assert.equal(retry.result.run.attempt, 2);
     assert.equal(retry.result.run.replayOf, first.result.run.id);
-    assert.equal(call("retryRun", ctxA, { runId: "missing" }).ok, false);
+    assert.equal((await call("retryRun", ctxA, { runId: "missing" })).ok, false);
   });
 });
 
