@@ -1287,7 +1287,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           data.response ||
           (data.error
             ? `Error: ${data.error}`
-            : 'The conscious brain is not responding. Check that the Ollama service is running.'),
+            : 'No answer came back from the model. Please try again; if it keeps happening, the chat brain may be overloaded or misconfigured.'),
         timestamp: new Date().toISOString(),
         refs: data.refs,
         sources: data.sources as Message['sources'],

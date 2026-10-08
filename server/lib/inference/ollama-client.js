@@ -93,6 +93,11 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     const tokensOut = j?.eval_count || 0;
 
     noteEndpointFinish(endpoint, { ok: true });
+    // A thinking model can spend the whole budget on `thinking` and return no
+    // answer; that is a failure, not an empty success.
+    if (!text && toolCalls.length === 0 && (message.thinking || j?.thinking)) {
+      return { ok: false, text: "", toolCalls, tokensIn, tokensOut, error: `empty_answer: model only produced thinking (done_reason ${j?.done_reason || "unknown"})` };
+    }
     return { ok: true, text, toolCalls, tokensIn, tokensOut };
   } catch (err) {
     noteEndpointFinish(endpoint, { ok: false });

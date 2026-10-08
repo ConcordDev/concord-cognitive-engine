@@ -33,9 +33,25 @@
 //    sized to that Ollama's CPU allowance. A caller's explicit num_thread is
 //    kept — but note num_thread is also a load key, so keep it uniform.
 //
+// 3. Thinking is OFF by default on chat/generate.
+//    The brains are thinking models (qwen3.5 family). By default they spend
+//    the token budget on a separate `thinking` field and return an EMPTY
+//    answer: measured 2026-10-08 on prod, concord-conscious with
+//    num_predict 200 returned content "" and 200 tokens of thinking
+//    (done_reason "length"); with think:false it answered in 0.2 s. Every
+//    caller reads `response` / `message.content`, so the empty answer
+//    surfaced as "The conscious brain is not responding." A request that sets
+//    `think` itself is left alone. CONCORD_OLLAMA_THINK=1 restores the model
+//    default everywhere.
+//
 // Pinned by tests/ollama-request-guard.test.js.
 
 const OLLAMA_PATHS = new Set(["/api/chat", "/api/generate", "/api/embed", "/api/embeddings"]);
+const GENERATION_PATHS = new Set(["/api/chat", "/api/generate"]);
+
+export function thinkingDisabled(env = process.env) {
+  return String(env.CONCORD_OLLAMA_THINK ?? "0") !== "1";
+}
 
 function positiveInt(v) {
   const n = Number(v);
@@ -94,7 +110,7 @@ export function buildContextMap(brains, env = process.env) {
 }
 
 /** Returns the rewritten body string, or null when nothing should change. */
-export function guardBody(bodyText, { threads = null, ctxForModel = null } = {}) {
+export function guardBody(bodyText, { threads = null, ctxForModel = null, disableThink = false } = {}) {
   if (typeof bodyText !== "string") return null;
   let body;
   try { body = JSON.parse(bodyText); } catch { return null; }
@@ -104,7 +120,9 @@ export function guardBody(bodyText, { threads = null, ctxForModel = null } = {})
   if (threads && options.num_thread == null) { options.num_thread = threads; changed = true; }
   const pinned = ctxForModel && typeof body.model === "string" ? ctxForModel.get(body.model) : null;
   if (pinned && options.num_ctx !== pinned) { options.num_ctx = pinned; changed = true; }
-  return changed ? JSON.stringify({ ...body, options }) : null;
+  const thinkOff = disableThink && body.think === undefined;
+  if (thinkOff) changed = true;
+  return changed ? JSON.stringify({ ...body, ...(thinkOff ? { think: false } : {}), options }) : null;
 }
 
 let _installed = null;
@@ -118,17 +136,23 @@ export function installOllamaRequestGuard(brains, env = process.env) {
   const threads = buildThreadMap(brains, env);
   const ctx = buildContextMap(brains, env);
   const origins = new Set(Object.values(brains || {}).flatMap(originsOf));
-  if (_installed) { Object.assign(_installed, { threads, ctx, origins }); return { threads, ctx }; }
-  if ((threads.size === 0 && ctx.size === 0) || typeof globalThis.fetch !== "function") return { threads, ctx };
+  const disableThink = thinkingDisabled(env);
+  if (_installed) { Object.assign(_installed, { threads, ctx, origins, disableThink }); return { threads, ctx }; }
+  if ((threads.size === 0 && ctx.size === 0 && !disableThink) || typeof globalThis.fetch !== "function") return { threads, ctx };
   const inner = globalThis.fetch;
-  const state = { threads, ctx, origins };
+  const state = { threads, ctx, origins, disableThink };
   globalThis.fetch = function ollamaGuardedFetch(input, init) {
     try {
       const raw = typeof input === "string" ? input : input instanceof URL ? input.href : null;
       if (raw && init && typeof init.body === "string") {
         const u = new URL(raw);
-        if (state.origins.has(u.origin) && OLLAMA_PATHS.has(u.pathname.replace(/\/+$/, ""))) {
-          const next = guardBody(init.body, { threads: state.threads.get(u.origin), ctxForModel: state.ctx });
+        const pathname = u.pathname.replace(/\/+$/, "");
+        if (state.origins.has(u.origin) && OLLAMA_PATHS.has(pathname)) {
+          const next = guardBody(init.body, {
+            threads: state.threads.get(u.origin),
+            ctxForModel: state.ctx,
+            disableThink: state.disableThink && GENERATION_PATHS.has(pathname),
+          });
           if (next) return inner.call(this, input, { ...init, body: next });
         }
       }
