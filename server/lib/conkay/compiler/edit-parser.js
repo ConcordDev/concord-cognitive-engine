@@ -26,6 +26,7 @@ const PROP_WORDS = {
   "drag coefficient": ["props.vehicle.dragCoefficient", null],
   cd: ["props.vehicle.dragCoefficient", null],
   "frontal area": ["props.vehicle.frontalArea", "area"],
+  "x position": ["position.x", "length"], "y position": ["position.y", "length"], "z position": ["position.z", "length"],
 };
 const PARAMS = new Set(Object.values(SHAPES).flat());
 

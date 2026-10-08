@@ -9,7 +9,8 @@
 // {
 //   design:       { id, name }
 //   materials:    { [materialId]: { costPerKgUsd: "9 USD/kg", source } }  // user prices / overrides
-//   nodes:        [{ id, kind, name?, material?, geometry?: { shape, ...quantities }, props? }]
+//   nodes:        [{ id, kind, name?, material?, geometry?: { shape, ...quantities }, position?: { x, y, z }, props? }]
+//                 position is the part's centroid in the design frame (vehicles: x increases toward the rear)
 //   edges:        [{ type, from, to, props? }]
 //   loadCases:    [{ id, label?, loads: [{ target, shear?, tension?, pointLoad?, compression? }] }]
 //   requirements: [{ id, label, of: { solver, target, output }, max?: q, min?: q }]
@@ -54,7 +55,7 @@ const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compre
 // Node props that carry a unit; converted to SI like geometry. Other props
 // are passed through as plain values.
 export const TYPED_PROPS = { maxPower: "power" };
-const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density" };
+const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length" };
 
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 
@@ -88,7 +89,16 @@ export function compileDesignIR(ir) {
     if (ids.has(id)) { errors.push(`${where}: duplicate id`); continue; }
     ids.add(id);
     if (!NODE_KINDS.has(n.kind)) { errors.push(`${where}: unknown kind "${n.kind}"`); continue; }
-    const node = { id, kind: n.kind, name: String(n.name || id), material: null, geometry: null, props: { ...(n.props || {}) } };
+    const node = { id, kind: n.kind, name: String(n.name || id), material: null, geometry: null, position: null, props: { ...(n.props || {}) } };
+    if (n.position != null) {
+      const pos = {};
+      for (const axis of ["x", "y", "z"]) {
+        const q = parseQuantity(n.position[axis], "length");
+        if (!q.ok) errors.push(`${where}.position.${axis}: ${q.error}`);
+        else pos[axis] = q.si;
+      }
+      node.position = pos;
+    }
     for (const [k, dim] of Object.entries(TYPED_PROPS)) {
       if (node.props[k] == null) continue;
       const q = parseQuantity(node.props[k], dim);

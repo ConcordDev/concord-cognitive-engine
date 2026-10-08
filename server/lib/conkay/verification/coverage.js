@@ -11,7 +11,7 @@ export const KIND_DOMAINS = {
   Bolt: ["mass", "cost", "structural.shear", "structural.tension", "fatigue", "corrosion"],
   Plate: ["mass", "cost", "structural.bearing", "structural.tearout", "corrosion"],
   Joint: ["structural.shear", "structural.bearing", "structural.tearout", "structural.slip", "corrosion.galvanic"],
-  Assembly: ["mass", "cost"],
+  Assembly: ["mass", "mass.cg", "cost"],
   Actuator: ["mass", "cost", "thermal", "fatigue"],
   Part: ["mass", "cost"],
   Beam: ["mass", "cost", "structural.bending", "structural.buckling", "structural.deflection"],

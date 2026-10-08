@@ -47,7 +47,9 @@ export const vehicleTopSpeed = registerSolver({
   method: "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection",
   targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id),
   run(ctx, id) {
-    const v = ctx.get(id, "props.vehicle") || {};
+    // Read only the keys used, so moving an axle doesn't rerun top speed.
+    const v = Object.fromEntries(["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency", "airDensity", "dragCoefficientSource", "frontalAreaSource"]
+      .map((k) => [k, ctx.get(id, `props.vehicle.${k}`)]));
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     if (v.drivelineEfficiency > 1) return { notComputed: "drivelineEfficiency must be at most 1" };

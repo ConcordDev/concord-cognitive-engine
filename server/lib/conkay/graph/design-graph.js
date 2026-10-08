@@ -85,6 +85,10 @@ export class DesignGraph {
         return { ok: false, error: `${param} must be a positive ${paramDim(param)}` };
       }
       n.geometry[param] = value;
+    } else if (/^position\.[xyz]$/.test(path)) {
+      if (!n.position) return { ok: false, error: `${id} has no position` };
+      if (!(typeof value === "number" && Number.isFinite(value))) return { ok: false, error: "position must be a length" };
+      n.position[path.slice(-1)] = value;
     } else if (path.startsWith("props.")) {
       const keys = path.slice("props.".length).split(".");
       if (TYPED_PROPS[keys[0]] && keys.length === 1 && !(typeof value === "number" && Number.isFinite(value) && value > 0)) {

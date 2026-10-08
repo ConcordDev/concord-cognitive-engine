@@ -95,7 +95,8 @@ describe("Solver registry", () => {
 });
 
 describe("Acceptance: change one bolt to stainless", () => {
-  const AFFECTED = ["mass.part@B1", "cost.part@B1", "joint.bolt-shear@J1", "mass.assembly@A1", "cost.assembly@A1", "requirement.check@R1"].sort();
+  // mass.cg@A1 reads the bolt's mass, so it reruns too (it stays NOT_COMPUTED: the bracket has no positions).
+  const AFFECTED = ["mass.part@B1", "cost.part@B1", "joint.bolt-shear@J1", "mass.assembly@A1", "mass.cg@A1", "cost.assembly@A1", "requirement.check@R1"].sort();
 
   it("reruns only what depends on the bolt's material", () => {
     const s = open(bracket());
@@ -387,5 +388,65 @@ describe("Shells and the added materials", () => {
     const { getMaterial } = await import("../lib/conkay/materials/index.js");
     for (const id of ["cfrp-quasi-iso", "glass-soda-lime", "cast-iron-gray-30"]) assert.equal(getMaterial(id).yieldPa, null, id);
     assert.equal(getMaterial("astm-a325").basis, "specified minimum");
+  });
+});
+
+describe("Centre of gravity and axle loads", () => {
+  // Two steel boxes on a 1 m spacing plus a point-mass engine block.
+  const rig = (over = {}) => ({
+    design: { id: "rig" },
+    nodes: [
+      { id: "V1", kind: "Assembly", name: "Rig", props: { vehicle: { frontAxleX: "0.5 m", rearAxleX: "3.0 m" } } },
+      { id: "F1", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "0.5 m", width: "0.4 m", height: "0.2 m" }, position: { x: "1 m", y: "0 m", z: "0.3 m" } },
+      { id: "R1", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "0.5 m", width: "0.4 m", height: "0.2 m" }, position: over.r1 || { x: "2 m", y: "0 m", z: "0.3 m" } },
+      { id: "E1", kind: "Actuator", material: "aluminum-6061-t6", geometry: { shape: "cylinder", diameter: "0.3 m", length: "0.5 m" }, position: { x: "0.6 m", y: "0 m", z: "0.5 m" } },
+    ],
+    edges: ["F1", "R1", "E1"].map((to) => ({ type: "CONTAINS", from: "V1", to })),
+  });
+
+  it("CG and inertia match the hand sum", () => {
+    const s = open(rig());
+    const e = s.result("mass.cg@V1");
+    assert.equal(e.status, "PASS", e.reason);
+    const mb = 0.5 * 0.4 * 0.2 * 7850; // each box
+    const me = Math.PI * 0.15 ** 2 * 0.5 * 2700; // engine
+    const M = 2 * mb + me;
+    const cgx = (mb * 1 + mb * 2 + me * 0.6) / M;
+    const cgz = (2 * mb * 0.3 + me * 0.5) / M;
+    assert.ok(Math.abs(e.outputs.cgX.value - cgx) < 1e-12);
+    assert.ok(Math.abs(e.outputs.cgZ.value - cgz) < 1e-12);
+    const ownYY = (mb * (0.5 ** 2 + 0.2 ** 2)) / 12;
+    const Iyy = 2 * ownYY + mb * ((1 - cgx) ** 2 + (0.3 - cgz) ** 2) + mb * ((2 - cgx) ** 2 + (0.3 - cgz) ** 2) + me * ((0.6 - cgx) ** 2 + (0.5 - cgz) ** 2);
+    assert.ok(Math.abs(e.outputs.Iyy.value - Iyy) / Iyy < 1e-12);
+    assert.match(e.assumptions.join(" "), /point masses.*E1/);
+  });
+
+  it("axle loads split the weight by moment balance", () => {
+    const s = open(rig());
+    const cg = s.result("mass.cg@V1").outputs;
+    const a = s.result("vehicle.axle-loads@V1").outputs;
+    assert.ok(Math.abs(a.frontShare.value - (3.0 - cg.cgX.value) / 2.5) < 1e-12);
+    assert.ok(Math.abs(a.frontAxleLoad.value + a.rearAxleLoad.value - cg.mass.value * 9.80665) < 1e-9);
+  });
+
+  it("moving a part reruns the CG and axle loads, not any mass", () => {
+    const s = open(rig());
+    const r = s.editText("set R1 x position to 2.5 m");
+    assert.equal(r.ok, true, r.error);
+    assert.deepEqual([...r.rerun].sort(), ["mass.cg@V1", "vehicle.axle-loads@V1"]);
+  });
+
+  it("a part with no position makes the CG not computed, not placed at the origin", () => {
+    const ir = rig();
+    delete ir.nodes[2].position;
+    const s = open(ir);
+    assert.equal(s.result("mass.cg@V1").status, "NOT_COMPUTED");
+    assert.match(s.result("mass.cg@V1").reason, /R1 \(no position\)/);
+    assert.equal(s.result("vehicle.axle-loads@V1").status, "NOT_COMPUTED");
+  });
+
+  it("a CG behind the rear axle warns", () => {
+    const s = open(rig({ r1: { x: "40 m", y: "0 m", z: "0.3 m" } }));
+    assert.equal(s.result("vehicle.axle-loads@V1").status, "WARN");
   });
 });
