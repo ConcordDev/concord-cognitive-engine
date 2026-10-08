@@ -695,11 +695,11 @@ describe('ChatWorkspacePanel — sending', () => {
     expect(chatCall![1]).toMatchObject({ message: 'hello?', mode: 'overview' });
   });
 
-  it('shows an honest "brain not responding" reply when the backend returns nothing usable', async () => {
+  it('shows an honest "no answer" reply when the backend returns nothing usable', async () => {
     fetchHandler = async (url) => (url === '/api/chat/stream' ? jsonResponse({}) : jsonResponse({ ok: false }));
     renderPanel();
     send('anyone home?');
-    expect(await screen.findByText(/The conscious brain is not responding/)).toBeInTheDocument();
+    expect(await screen.findByText(/No answer came back from the model/)).toBeInTheDocument();
   });
 
   it('surfaces a backend error field as the reply', async () => {

@@ -1,7 +1,7 @@
 // server/tests/ollama-request-guard.test.js — lib/ollama-request-guard.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildThreadMap, buildContextMap, guardBody, installOllamaRequestGuard } from "../lib/ollama-request-guard.js";
+import { buildThreadMap, buildContextMap, guardBody, installOllamaRequestGuard, thinkingDisabled } from "../lib/ollama-request-guard.js";
 
 const brains = {
   conscious: { url: "http://gpu0:11436", urls: ["http://gpu0:11436"], model: "concord-conscious:latest", contextWindow: 32768 },
@@ -60,7 +60,24 @@ test("installed wrapper rewrites only brain-bound inference calls", async () => 
     const a = JSON.parse(seen[0].body).options;
     assert.equal(a.num_thread, 4);
     assert.equal(a.num_ctx, 4096);
+    assert.equal(JSON.parse(seen[0].body).think, false, "thinking is off by default on brain chat calls");
     assert.equal(seen[1].body, body);
     assert.equal(seen[2].body, body);
+
+    // embeddings never get a think flag; an explicit think is respected
+    seen.length = 0;
+    await fetch("http://gpu1:11437/api/embed", { method: "POST", body: JSON.stringify({ model: "qwen2.5:7b", input: "x" }) });
+    await fetch("http://gpu1:11437/api/generate", { method: "POST", body: JSON.stringify({ model: "qwen2.5:7b", prompt: "x", think: true }) });
+    assert.equal(JSON.parse(seen[0].body).think, undefined);
+    assert.equal(JSON.parse(seen[1].body).think, true);
   } finally { globalThis.fetch = orig; }
+});
+
+test("think: guardBody only adds think:false when asked and the caller didn't set it; env switch", () => {
+  const b = JSON.stringify({ model: "m", prompt: "hi" });
+  assert.equal(JSON.parse(guardBody(b, { disableThink: true })).think, false);
+  assert.equal(guardBody(b, { disableThink: false }), null);
+  assert.equal(guardBody(JSON.stringify({ model: "m", think: true }), { disableThink: true }), null);
+  assert.equal(thinkingDisabled({}), true);
+  assert.equal(thinkingDisabled({ CONCORD_OLLAMA_THINK: "1" }), false);
 });
