@@ -1410,10 +1410,11 @@ export default function registerDocsActions(registerLensAction) {
     const role = ["view", "edit"].includes(params.role) ? params.role : "view";
     const existing = share.invites.find((iv) => iv.invitee === invitee);
     if (existing) existing.role = role;
-    else share.invites.push({ id: dcId("inv"), invitee, role, invitedAt: dcNow() });
+    else share.invites.push({ id: dcId("inv"), invitee, role, invitedAt: dcNow(), accessGranted: false });
     share.updatedAt = dcNow();
     saveDocs();
-    return { ok: true, result: { invites: share.invites } };
+    return { ok: true, result: { invites: share.invites,
+      note: "Collaborator list only: invitees are not notified and gain no access. Share the public link for others to read this page." } };
   });
 
   registerLensAction("docs", "share-revoke", (ctx, _a, params = {}) => {

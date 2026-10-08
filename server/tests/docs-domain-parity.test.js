@@ -265,6 +265,7 @@ describe("docs — share / permission controls", () => {
     assert.ok(set.result.shareUrl);
     const inv = call("share-invite", ctxA, { pageId: p.id, invitee: "teammate", role: "view" });
     assert.equal(inv.result.invites.length, 1);
+    assert.equal(inv.result.invites[0].accessGranted, false);
     const rev = call("share-revoke", ctxA, { pageId: p.id, inviteId: inv.result.invites[0].id });
     assert.equal(rev.result.invites.length, 0);
   });

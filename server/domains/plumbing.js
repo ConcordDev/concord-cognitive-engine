@@ -625,8 +625,11 @@ export default function registerPlumbingActions(registerLensAction) {
         channel: ["sms", "email"].includes(params.channel) ? params.channel : "sms",
         message: clean(params.message, 600) || templates[kind],
         assignmentId: clean(params.assignmentId, 64) || null,
-        status: "sent",
-        sentAt: new Date().toISOString(),
+        // No SMS/email gateway is wired here: this is a message log, not a delivery.
+        status: "logged",
+        delivered: false,
+        sentAt: null,
+        loggedAt: new Date().toISOString(),
       };
       notices.unshift(notice);
       if (notices.length > 300) notices.length = 300;

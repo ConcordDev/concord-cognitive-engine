@@ -55,7 +55,7 @@ interface ServicePlan {
   id: string; client: string; clientId?: string | null; title: string; cadence: string; fee: number;
   startDate: string; nextVisit: string; visitsCompleted: number; active: boolean;
 }
-interface Notice { id: string; client: string; kind: string; channel: string; message: string; status: string; sentAt: string; }
+interface Notice { id: string; client: string; kind: string; channel: string; message: string; status: string; sentAt: string | null; }
 interface PartStock { id: string; name: string; sku: string; onHand: number; reorderAt: number; unitCost: number; }
 interface Inspection {
   id: string; number: string; assignmentId: string; jobTitle: string | null; jobFound: boolean; address: string | null;
@@ -864,7 +864,7 @@ export function FieldServiceConsole() {
       {section === 'notify' && (
         <div className="space-y-4">
           <div className={cardCls}>
-            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Bell className="h-3.5 w-3.5 text-blue-400" /> Send Customer Notification</h4>
+            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Bell className="h-3.5 w-3.5 text-blue-400" /> Draft Customer Message</h4>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <input className={inputCls} placeholder="Client" value={ntfClient} onChange={(e) => setNtfClient(e.target.value)} />
               <select className={inputCls} value={ntfKind} onChange={(e) => setNtfKind(e.target.value)}>
@@ -876,27 +876,28 @@ export function FieldServiceConsole() {
               <input className={inputCls} placeholder="When (optional)" value={ntfWhen} onChange={(e) => setNtfWhen(e.target.value)} />
             </div>
             <textarea className={`${inputCls} mt-2 w-full`} rows={2} placeholder="Custom message (blank = templated)" value={ntfMessage} onChange={(e) => setNtfMessage(e.target.value)} />
-            <button className={`${btnCls} mt-2`} onClick={sendNotice} disabled={busy}><Send className="h-3.5 w-3.5" /> Send</button>
+            <button className={`${btnCls} mt-2`} onClick={sendNotice} disabled={busy}><Send className="h-3.5 w-3.5" /> Log message</button>
+            <p className="mt-2 text-[11px] text-zinc-400">Concord stores the message text and a log entry; it does not send SMS or email. Copy the text into your own phone or mail app.</p>
           </div>
           {Object.keys(noticeKinds).length > 0 && (
             <div className={cardCls}>
-              <h4 className="mb-2 text-xs font-semibold text-white">Sent by Type</h4>
-              <ChartKit kind="bar" data={Object.entries(noticeKinds).map(([k, v]) => ({ kind: k, count: v }))} xKey="kind" series={[{ key: 'count', label: 'Sent', color: '#06b6d4' }]} height={160} />
+              <h4 className="mb-2 text-xs font-semibold text-white">Logged by Type</h4>
+              <ChartKit kind="bar" data={Object.entries(noticeKinds).map(([k, v]) => ({ kind: k, count: v }))} xKey="kind" series={[{ key: 'count', label: 'Logged', color: '#06b6d4' }]} height={160} />
             </div>
           )}
           <div className={cardCls}>
-            <h4 className="mb-2 text-xs font-semibold text-white">Notification Log</h4>
+            <h4 className="mb-2 text-xs font-semibold text-white">Message Log (not sent)</h4>
             <div className="max-h-72 space-y-1.5 overflow-y-auto">
               {notices.map((n) => (
                 <div key={n.id} className="rounded border border-zinc-800 px-2 py-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-white">{n.client}</span>
-                    <span className="text-zinc-400">{n.kind} · {n.channel}</span>
+                    <span className="text-zinc-400">{n.kind} · {n.channel} · not sent</span>
                   </div>
                   <p className="mt-0.5 text-zinc-400">{n.message}</p>
                 </div>
               ))}
-              {notices.length === 0 && <p className="text-xs text-zinc-400">No notifications sent.</p>}
+              {notices.length === 0 && <p className="text-xs text-zinc-400">No messages logged.</p>}
             </div>
           </div>
         </div>

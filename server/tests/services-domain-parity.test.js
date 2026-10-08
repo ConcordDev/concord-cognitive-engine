@@ -145,7 +145,8 @@ describe("services — automated reminder delivery", () => {
     call("reminderSchedule", ctxA, { client: "Ada", channel: "sms", target: "555-0100", sendAt: "2020-01-01T09:00:00Z" });
     const d = call("reminderDispatch", ctxA, { now: "2026-01-01T00:00:00Z" });
     assert.equal(d.ok, true);
-    assert.equal(d.result.dispatched, 1);
+    assert.equal(d.result.queued, 1);
+    assert.equal(d.result.deliveredByConcord, 0);
   });
 
   it("fails a reminder with no contact target", () => {

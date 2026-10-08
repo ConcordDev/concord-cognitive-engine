@@ -214,6 +214,8 @@ describe("plumbing customer notifications", () => {
     const n = call("notifySend", ctxA, { client: "Pat", kind: "on_the_way", channel: "sms" });
     assert.equal(n.ok, true);
     assert.match(n.result.notice.message, /on the way/);
+    assert.equal(n.result.notice.status, "logged");
+    assert.equal(n.result.notice.delivered, false);
   });
 
   it("notifyLog tallies notices by kind", () => {
