@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState, useRef } from 'react';
 import { Timer, Loader2, Plus, Play, Square, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -92,7 +93,7 @@ export function TimeTracker() {
   async function deleteEntry(id: string) {
     try {
       const r = await lensRun({ domain: 'legal', action: 'time-entries-delete', input: { id } });
-      if (r.data?.ok === false) alert(r.data?.error);
+      if (r.data?.ok === false) showToast('error', r.data?.error || 'Action failed');
       await refresh();
     } catch (e) { console.error('[Time] delete failed', e); }
   }

@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/docs.js
 // Domain actions for documentation management: readability scoring,
 // cross-reference analysis, and semantic version diffing.
@@ -1319,14 +1321,14 @@ export default function registerDocsActions(registerLensAction) {
         pageId: page.id,
         visibility,
         role,
-        token: visibility === "private" ? null : (m.get(page.id)?.token || dcId("shr")),
+        token: visibility === "private" ? null : (m.get(page.id)?.token || newShareToken("shr")),
         invites: m.get(page.id)?.invites || [],
         updatedAt: dcNow(),
       };
     } else {
       share.visibility = visibility;
       share.role = role;
-      if (!share.token) share.token = dcId("shr");
+      if (!share.token) share.token = newShareToken("shr");
       share.updatedAt = dcNow();
     }
     m.set(page.id, share);
@@ -1348,6 +1350,12 @@ export default function registerDocsActions(registerLensAction) {
       pageId: page.id, visibility: "private", role: "view",
       token: null, invites: [], updatedAt: null,
     };
+    // Reissue a legacy short token (refused publicly) as a strong one.
+    if (share.token && !isStrongShareToken(share.token, "shr")) {
+      share.token = newShareToken("shr");
+      share.updatedAt = new Date().toISOString();
+      saveDocs();
+    }
     return {
       ok: true,
       result: {
@@ -1356,6 +1364,39 @@ export default function registerDocsActions(registerLensAction) {
           ? null : `/shared/docs/${share.token}`,
       },
     };
+  });
+
+  // Anonymous read of one shared page by its unguessable token. Read-only
+  // even when the owner chose role "edit": there is no public write path, so
+  // the link never grants editing and the response says so.
+  registerLensAction("docs", "share-public", (_ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const token = String(params.token || "");
+    if (token.length < 8) return { ok: false, error: "share not found" };
+    let share = null;
+    for (const sh of dcShares(s).values()) {
+      if (sh.token === token && sh.visibility !== "private") { share = sh; break; }
+    }
+    if (!share) return { ok: false, error: "share not found" };
+    for (const pages of s.pages.values()) {
+      const page = (pages || []).find((p) => p.id === share.pageId);
+      if (!page) continue;
+      return {
+        ok: true,
+        result: {
+          kind: "docs",
+          title: page.title,
+          icon: page.icon,
+          updatedAt: page.updatedAt,
+          readOnly: true,
+          blocks: (page.blocks || []).map((b) => ({
+            type: b.type, text: b.text, checked: b.checked === true,
+            rows: Array.isArray(b.data?.rows) ? b.data.rows : undefined,
+          })),
+        },
+      };
+    }
+    return { ok: false, error: "share not found" };
   });
 
   registerLensAction("docs", "share-invite", (ctx, _a, params = {}) => {
@@ -1376,10 +1417,11 @@ export default function registerDocsActions(registerLensAction) {
     const role = ["view", "edit"].includes(params.role) ? params.role : "view";
     const existing = share.invites.find((iv) => iv.invitee === invitee);
     if (existing) existing.role = role;
-    else share.invites.push({ id: dcId("inv"), invitee, role, invitedAt: dcNow() });
+    else share.invites.push({ id: dcId("inv"), invitee, role, invitedAt: dcNow(), accessGranted: false });
     share.updatedAt = dcNow();
     saveDocs();
-    return { ok: true, result: { invites: share.invites } };
+    return { ok: true, result: { invites: share.invites,
+      note: "Collaborator list only: invitees are not notified and gain no access. Share the public link for others to read this page." } };
   });
 
   registerLensAction("docs", "share-revoke", (ctx, _a, params = {}) => {

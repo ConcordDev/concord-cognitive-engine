@@ -133,48 +133,64 @@ describe("integrations zap run engine + history + retry", () => {
       name: "Runner", trigger: { event: "dtu.created" }, steps,
     }).result.zap;
   }
+  // Real connector macros are reached through the LENS_ACTIONS map; a stub
+  // slack.post stands in for the OAuth-backed connector here.
+  const posted = [];
+  const lensActions = new Map([["slack.post", async (_c, _a, p) => { posted.push(p); return { ok: true, result: { ts: "1.0" } }; }]]);
+  const ctxZ = { ...ctxA, lensActions };
 
-  it("runs a zap end-to-end and records run history", () => {
+  it("runs a zap end-to-end through the real connector macro and records history", async () => {
+    posted.length = 0;
     const zap = makeZap([
       { kind: "filter", condition: "data.amount > 100" },
       { kind: "code", expression: "len($.data.tag)", outputKey: "taglen" },
-      { kind: "action", actionId: "create_dtu", fieldMap: { title: "$.data.title" } },
+      { kind: "action", connectorId: "slack", actionId: "post_message", fieldMap: { channel: "C1", text: "$.data.title" } },
     ]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 200, tag: "abc", title: "T" } } });
+    const run = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: { data: { amount: 200, tag: "abc", title: "T" } } });
     assert.equal(run.ok, true);
     assert.equal(run.result.run.status, "success");
+    assert.deepEqual(posted, [{ channel: "C1", text: "T" }]);
     const hist = call("runHistory", ctxA, { zapId: zap.id });
     assert.equal(hist.result.total, 1);
     assert.equal(hist.result.summary.success, 1);
   });
 
-  it("halts a run when a filter fails", () => {
+  it("an action with no backing connector errors the run instead of pretending to dispatch", async () => {
+    const zap = makeZap([{ kind: "action", connectorId: "stripe", actionId: "refund" }]);
+    const run = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: {} });
+    assert.equal(run.result.run.status, "error");
+    const act = run.result.run.trace.find((t) => t.kind === "action");
+    assert.equal(act.ok, false);
+    assert.equal(act.notConnected, true);
+  });
+
+  it("halts a run when a filter fails", async () => {
     const zap = makeZap([{ kind: "filter", condition: "data.amount > 1000" }]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 1 } } });
+    const run = await call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 1 } } });
     assert.equal(run.result.run.status, "filtered");
   });
 
-  it("takes the matching branch in a path step", () => {
+  it("takes the matching branch in a path step", async () => {
     const zap = makeZap([{
       kind: "path",
       branches: [
-        { label: "big", condition: "data.amount > 100", steps: [{ kind: "action", actionId: "a1" }] },
-        { label: "small", condition: "", steps: [{ kind: "action", actionId: "a2" }] },
+        { label: "big", condition: "data.amount > 100", steps: [{ kind: "code", expression: "1 + 1", outputKey: "x" }] },
+        { label: "small", condition: "", steps: [] },
       ],
     }]);
-    const run = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 500 } } });
+    const run = await call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { amount: 500 } } });
     const pathTrace = run.result.run.trace.find((t) => t.kind === "path");
     assert.equal(pathTrace.branchLabel, "big");
   });
 
-  it("replays a recorded run via retryRun", () => {
-    const zap = makeZap([{ kind: "action", actionId: "create_dtu" }]);
-    const first = call("zapRun", ctxA, { zapId: zap.id, triggerData: { data: { x: 1 } } });
-    const retry = call("retryRun", ctxA, { runId: first.result.run.id });
+  it("replays a recorded run via retryRun", async () => {
+    const zap = makeZap([{ kind: "action", connectorId: "slack", actionId: "post_message", fieldMap: { channel: "C1", text: "hi" } }]);
+    const first = await call("zapRun", ctxZ, { zapId: zap.id, triggerData: { data: { x: 1 } } });
+    const retry = await call("retryRun", ctxZ, { runId: first.result.run.id });
     assert.equal(retry.ok, true);
     assert.equal(retry.result.run.attempt, 2);
     assert.equal(retry.result.run.replayOf, first.result.run.id);
-    assert.equal(call("retryRun", ctxA, { runId: "missing" }).ok, false);
+    assert.equal((await call("retryRun", ctxA, { runId: "missing" })).ok, false);
   });
 });
 
@@ -198,17 +214,36 @@ describe("integrations scheduled / polling triggers", () => {
 });
 
 describe("integrations webhook test / activate / retry / signature", () => {
-  it("test-fires a webhook and records a signed delivery", () => {
-    const r = call("webhookTest", ctxA, { webhookId: "wh_1", url: "https://example.com/hook" });
+  const sent = [];
+  const okFetch = async (url, init) => { sent.push({ url, init }); return { ok: true, status: 204 }; };
+  const failFetch = async () => ({ ok: false, status: 500 });
+  const ctxOk = { ...ctxA, integrationsFetch: okFetch };
+  const ctxFail = { ...ctxA, integrationsFetch: failFetch };
+
+  it("test-fire really POSTs a signed payload and records the real response", async () => {
+    sent.length = 0;
+    const r = await call("webhookTest", ctxOk, { webhookId: "wh_1", url: "https://example.com/hook" });
     assert.equal(r.ok, true);
     assert.equal(r.result.delivered, true);
-    assert.match(r.result.signature, /^sha=/);
+    assert.equal(r.result.delivery.statusCode, 204);
+    assert.match(r.result.signature, /^sha256=[0-9a-f]{64}$/);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, "https://example.com/hook");
+    assert.equal(sent[0].init.headers["X-Concord-Signature"], r.result.signature);
     const deliveries = call("webhookDeliveries", ctxA, { webhookId: "wh_1" });
     assert.equal(deliveries.result.total, 1);
   });
 
-  it("fails a test-fire with no target URL", () => {
-    const r = call("webhookTest", ctxA, { webhookId: "wh_2" });
+  it("a non-2xx response is recorded as failed, not delivered", async () => {
+    const r = await call("webhookTest", ctxFail, { webhookId: "wh_1b", url: "https://example.com/hook" });
+    assert.equal(r.ok, false);
+    assert.equal(r.result.delivered, false);
+    assert.equal(r.result.delivery.status, "failed");
+    assert.equal(r.result.delivery.statusCode, 500);
+  });
+
+  it("fails a test-fire with no target URL", async () => {
+    const r = await call("webhookTest", ctxA, { webhookId: "wh_2" });
     assert.equal(r.ok, false);
   });
 
@@ -221,16 +256,18 @@ describe("integrations webhook test / activate / retry / signature", () => {
     assert.equal(call("webhookActivate", ctxA, {}).ok, false);
   });
 
-  it("retries a delivery with backoff and verifies signatures", () => {
-    const test = call("webhookTest", ctxA, { webhookId: "wh_4", url: "https://x.dev/h" });
-    const retry = call("webhookRetry", ctxA, { webhookId: "wh_4", deliveryId: test.result.delivery.id });
+  it("retries a delivery for real with backoff and verifies HMAC signatures", async () => {
+    const test = await call("webhookTest", ctxFail, { webhookId: "wh_4", url: "https://x.dev/h" });
+    sent.length = 0;
+    const retry = await call("webhookRetry", ctxOk, { webhookId: "wh_4", deliveryId: test.result.delivery.id });
     assert.equal(retry.ok, true);
     assert.equal(retry.result.attempt, 2);
+    assert.equal(retry.result.retry.status, "delivered");
+    assert.equal(sent[0].url, "https://x.dev/h");
     assert.ok(retry.result.nextBackoffSeconds > 0);
 
     const body = JSON.stringify({ event: "ping" });
-    // verifyWebhookSignature only knows the secret after the webhook has meta.
-    const bad = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: "sha=deadbeef" });
+    const bad = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: "sha256=deadbeef" });
     assert.equal(bad.ok, true);
     assert.equal(bad.result.valid, false);
     const good = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: bad.result.expected });

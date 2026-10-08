@@ -805,13 +805,15 @@ export default function registerServicesActions(registerLensAction) {
           failed.push(r);
           continue;
         }
-        r.status = "delivered";
-        r.deliveredAt = new Date().toISOString();
+        // Concord has no SMS/email gateway; due reminders are marked queued for the
+        // operator to send from their own channel, never reported as delivered.
+        r.status = "queued";
+        r.queuedAt = new Date().toISOString();
         delivered.push(r);
       }
       return {
         ok: true,
-        result: { dispatched: delivered.length, failed: failed.length, delivered, failures: failed },
+        result: { queued: delivered.length, failed: failed.length, deliveredByConcord: 0, queuedReminders: delivered, failures: failed },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -822,7 +824,7 @@ export default function registerServicesActions(registerLensAction) {
       const userId = svcActor(ctx);
       const list = svcList(s.reminders, userId).slice()
         .sort((a, b) => (a.sendAt || "").localeCompare(b.sendAt || ""));
-      const counts = { scheduled: 0, delivered: 0, failed: 0 };
+      const counts = { scheduled: 0, queued: 0, failed: 0 };
       for (const r of list) counts[r.status] = (counts[r.status] || 0) + 1;
       return { ok: true, result: { reminders: list, count: list.length, counts } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

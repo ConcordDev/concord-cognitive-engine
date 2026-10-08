@@ -31,14 +31,14 @@ describe('WebhookSignatureVerifier — integrations.verifyWebhookSignature', () 
       return Promise.resolve({
         data: {
           ok: true,
-          result: { valid: true, expected: 'sha=abc123', provided: 'sha=abc123', signatureHeader: 'X-Concord-Signature' },
+          result: { valid: true, expected: 'sha256=abc123', provided: 'sha256=abc123', signatureHeader: 'X-Concord-Signature' },
           error: null,
         },
       });
     });
 
     await act(async () => { render(<WebhookSignatureVerifier webhookId="wh_1" />); });
-    fireEvent.change(screen.getByPlaceholderText('sha=...'), { target: { value: 'sha=abc123' } });
+    fireEvent.change(screen.getByPlaceholderText('sha256=...'), { target: { value: 'sha256=abc123' } });
     fireEvent.click(screen.getByText('Verify'));
 
     await waitFor(() => expect(screen.getByTestId('webhook-signature-result')).toBeInTheDocument());
@@ -51,26 +51,26 @@ describe('WebhookSignatureVerifier — integrations.verifyWebhookSignature', () 
     lensRunMock.mockResolvedValue({
       data: {
         ok: true,
-        result: { valid: false, expected: 'sha=real000', provided: 'sha=wrong111', signatureHeader: 'X-Concord-Signature' },
+        result: { valid: false, expected: 'sha256=real000', provided: 'sha256=wrong111', signatureHeader: 'X-Concord-Signature' },
         error: null,
       },
     });
 
     await act(async () => { render(<WebhookSignatureVerifier webhookId="wh_1" />); });
-    fireEvent.change(screen.getByPlaceholderText('sha=...'), { target: { value: 'sha=wrong111' } });
+    fireEvent.change(screen.getByPlaceholderText('sha256=...'), { target: { value: 'sha256=wrong111' } });
     fireEvent.click(screen.getByText('Verify'));
 
     await waitFor(() => expect(screen.getByTestId('webhook-signature-result')).toBeInTheDocument());
     const result = screen.getByTestId('webhook-signature-result');
     expect(result.textContent).toContain('Signature does not match.');
-    expect(result.textContent).toContain('sha=real000');
+    expect(result.textContent).toContain('sha256=real000');
   });
 
   it('surfaces an honest error when the macro call fails', async () => {
     lensRunMock.mockResolvedValue({ data: { ok: false, result: null, error: 'webhookId required' } });
 
     await act(async () => { render(<WebhookSignatureVerifier webhookId="wh_1" />); });
-    fireEvent.change(screen.getByPlaceholderText('sha=...'), { target: { value: 'sha=x' } });
+    fireEvent.change(screen.getByPlaceholderText('sha256=...'), { target: { value: 'sha256=x' } });
     fireEvent.click(screen.getByText('Verify'));
 
     await waitFor(() => expect(screen.getByText('webhookId required')).toBeInTheDocument());
@@ -81,7 +81,7 @@ describe('WebhookSignatureVerifier — integrations.verifyWebhookSignature', () 
     await act(async () => { render(<WebhookSignatureVerifier webhookId="wh_1" />); });
     // Body has a sample default, but signature is empty — button must stay disabled.
     expect(screen.getByText('Verify').closest('button')).toBeDisabled();
-    fireEvent.change(screen.getByPlaceholderText('sha=...'), { target: { value: 'sha=x' } });
+    fireEvent.change(screen.getByPlaceholderText('sha256=...'), { target: { value: 'sha256=x' } });
     expect(screen.getByText('Verify').closest('button')).not.toBeDisabled();
   });
 });

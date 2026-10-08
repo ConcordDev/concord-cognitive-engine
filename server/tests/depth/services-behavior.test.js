@@ -214,15 +214,15 @@ describe("services — CRUD round-trips + validation (shared owner ctx)", () => 
     assert.match(overlap.result.error, /overlaps/);
   });
 
-  it("reminderSchedule → reminderDispatch: a due reminder with a target is delivered", async () => {
+  it("reminderSchedule → reminderDispatch: a due reminder with a target is queued, never claimed delivered", async () => {
     const sched = await lensRun("services", "reminderSchedule", {
       params: { client: "Xan", channel: "email", target: "xan@ex.com", sendAt: "2026-06-01T09:00:00", body: "See you soon" },
     }, ctx);
     assert.equal(sched.ok, true);
     // dispatch with `now` past the sendAt → delivered
     const disp = await lensRun("services", "reminderDispatch", { params: { now: "2026-06-02T00:00:00" } }, ctx);
-    assert.ok(disp.result.dispatched >= 1);
-    assert.ok(disp.result.delivered.some((r) => r.id === sched.result.reminder.id && r.status === "delivered"));
+    assert.ok(disp.result.queued >= 1);
+    assert.ok(disp.result.queuedReminders.some((r) => r.id === sched.result.reminder.id && r.status === "queued"));
   });
 
   it("reminderDispatch marks a due reminder with no target as failed", async () => {

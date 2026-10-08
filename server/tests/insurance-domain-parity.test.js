@@ -534,7 +534,8 @@ describe("insurance.esign-* + binder (#7 e-signature + binder)", () => {
       signers: [{ name: "Insured One", role: "applicant" }, { name: "Agent Two", role: "producer" }],
     });
     assert.equal(e.ok, true);
-    assert.equal(e.result.envelope.status, "sent");
+    assert.equal(e.result.envelope.status, "awaiting_signatures");
+    assert.equal(e.result.envelope.delivered, false);
     call("esign-sign", ctxA, { id: e.result.envelope.id, signerName: "Insured One" });
     const final = call("esign-sign", ctxA, { id: e.result.envelope.id, signerName: "Agent Two" });
     assert.equal(final.result.status, "completed");

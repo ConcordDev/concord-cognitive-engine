@@ -5,7 +5,7 @@ import { CheckCircle, Plus, Loader2, MapPin, FileSignature, Camera } from 'lucid
 import { lensRun } from '@/lib/api/client';
 
 interface POD { id: string; shipmentId: string; signatureName: string; signatureUrl: string | null; photoUrl: string | null; gpsLat: number | null; gpsLng: number | null; deliveredAt: string; receivedBy: string }
-interface Shipment { id: string; trackingNumber: string; origin: string; destination: string; status: string }
+interface Shipment { id: string; trackingNumber: string | null; reference?: string; origin: string; destination: string; status: string }
 
 export function DeliveryProofPanel() {
   const [pods, setPods] = useState<POD[]>([]);
@@ -52,7 +52,7 @@ export function DeliveryProofPanel() {
       <div className="p-3 border-b border-white/10 grid grid-cols-3 gap-2">
         <select value={form.shipmentId} onChange={e => setForm({ ...form, shipmentId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Select pending shipment…</option>
-          {shipments.map(s => <option key={s.id} value={s.id}>{s.trackingNumber} · {s.destination}</option>)}
+          {shipments.map(s => <option key={s.id} value={s.id}>{s.trackingNumber || s.reference || 'No tracking #'} · {s.destination}</option>)}
         </select>
         <input value={form.signatureName} onChange={e => setForm({ ...form, signatureName: e.target.value })} placeholder="Signed by (name)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.receivedBy} onChange={e => setForm({ ...form, receivedBy: e.target.value })} placeholder="Received by" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

@@ -107,7 +107,7 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
                     {sp.tierName} · {sp.monthlyCc} CC/mo · every {sp.dispatchFreqHours}h · since {new Date(sp.startedAt * 1000).toLocaleDateString()}
                   </p>
                   <p className="text-[10px] text-zinc-400 font-mono">
-                    contributed {sp.totalContributed} CC · next charge {new Date(sp.nextChargeAt * 1000).toLocaleDateString()}
+                    pledged {sp.totalContributed} CC · renews {new Date(sp.nextChargeAt * 1000).toLocaleDateString()}
                   </p>
                 </div>
               </div>

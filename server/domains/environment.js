@@ -366,11 +366,12 @@ export default function registerEnvironmentActions(registerLensAction) {
     const id = String(params.id || "");
     const sup = ensureEnvBucket(s, "suppliers", userId).find(x => x.id === id);
     if (!sup) return { ok: false, error: "supplier not found" };
+    // Concord has no supplier-facing portal and sends no invitation; this
+    // records that the operator invited the supplier themselves.
     sup.invitationStatus = "invited";
     sup.invitedAt = new Date().toISOString();
-    sup.portalToken = uidEnv("tok");
     saveEnvState();
-    return { ok: true, result: { supplier: sup, portalLink: `/supplier-portal/${sup.portalToken}` } };
+    return { ok: true, result: { supplier: sup, portalLink: null, note: "Invitation recorded. Contact the supplier directly and record their disclosure here when it arrives." } };
   });
 
   registerLensAction("environment", "suppliers-record-disclosure", (ctx, _a, params = {}) => {
@@ -519,7 +520,9 @@ export default function registerEnvironmentActions(registerLensAction) {
       tech: ["solar", "wind", "hydro", "biomass", "geothermal"].includes(params.tech) ? params.tech : "solar",
       vintage: String(params.vintage || new Date().getFullYear()),
       registry: ["WREGIS", "M-RETS", "PJM-GATS", "NEPOOL-GIS", "ERCOT", "NAR"].includes(params.registry) ? params.registry : "WREGIS",
-      certificateNumber: `REC-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      // Certificate number is user-supplied from the tracking-registry record; never invented.
+      certificateNumber: String(params.certificateNumber || "").trim().slice(0, 80),
+      verified: false,
       pricePerMwhUsd: Math.max(0, Number(params.pricePerMwhUsd) || 0),
       status: "purchased",
       retiredAt: null,
@@ -553,6 +556,7 @@ export default function registerEnvironmentActions(registerLensAction) {
     return { ok: true, result: { offsets } };
   });
 
+  // Records an offset purchase the user made elsewhere (self-reported, unverified).
   registerLensAction("environment", "offsets-purchase", (ctx, _a, params = {}) => {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
@@ -565,7 +569,10 @@ export default function registerEnvironmentActions(registerLensAction) {
       registry: ["Verra_VCS", "Gold_Standard", "Climate_Action_Reserve", "American_Carbon_Registry", "Puro_earth"].includes(params.registry) ? params.registry : "Verra_VCS",
       vintage: String(params.vintage || new Date().getFullYear()),
       pricePerTonneUsd: Math.max(0, Number(params.pricePerTonneUsd) || 0),
-      serialNumber: `OFF-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      // Registry serial is whatever the user typed from their registry retirement/purchase
+      // record. Concord does not buy credits or contact a registry, so it never invents one.
+      serialNumber: String(params.serialNumber || "").trim().slice(0, 80),
+      verified: false,
       status: "purchased",
       retiredAt: null,
       purchasedAt: new Date().toISOString(),

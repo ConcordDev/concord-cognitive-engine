@@ -77,7 +77,7 @@ function baseImpl(overrides: Record<string, (input?: unknown) => unknown> = {}) 
           result: {
             deviceCount: 1, onlineCount: 1, lastSyncAt: null, dtusSynced: 0,
             usedBytes: 0, quotaBytes: DEVICE.quotaBytes, quotaPct: 0,
-            openConflicts: 0, state: 'synced',
+            openConflicts: 0, state: 'online',
           },
           error: null,
         },

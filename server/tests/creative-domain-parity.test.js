@@ -314,3 +314,19 @@ describe("creative proof links", () => {
     assert.equal(call("prooflink-public-comment", {}, { token: lk.token, body: "no" }).ok, false);
   });
 });
+
+describe("creative proof links — legacy token reissue", () => {
+  it("a legacy short token is refused-by-format and reissued on list, comments follow", () => {
+    const asset = call("review-asset-create", ctxA, { name: "Old cut", kind: "image" }).result.asset;
+    const lk = call("prooflink-create", ctxA, { assetId: asset.id }).result.link;
+    const s = globalThis._concordSTATE.creativeLens;
+    const legacy = "pl_ab12cd34lq3x9k";
+    s.proofLinks.get("user_a").find((l) => l.id === lk.id).token = legacy;
+    s.proofExtComments.set("user_a", [{ id: "c1", token: legacy, body: "hi" }]);
+    const list = call("prooflink-list", ctxA, {});
+    const fresh = list.result.links.find((l) => l.id === lk.id).token;
+    assert.notEqual(fresh, legacy);
+    assert.match(fresh, /^pl_[A-Za-z0-9_-]{24}$/);
+    assert.equal(s.proofExtComments.get("user_a")[0].token, fresh);
+  });
+});

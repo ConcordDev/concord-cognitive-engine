@@ -1416,9 +1416,11 @@ Generate the summary.`;
       balance: Number(params.balance) || 0,
       currency: "USD",
       status: "active",
+      // Import-enabled: transactions arrive via accounts-sync-pull from a
+      // user-exported file. No Plaid/MX connection exists.
       synced: true,
-      provider: ["plaid", "mx", "manual"].includes(params.provider) ? params.provider : "plaid",
-      lastSyncedAt: new Date().toISOString(),
+      provider: "manual",
+      lastSyncedAt: null,
       linkedAt: new Date().toISOString(),
     };
     ensureBucket(state, "accounts", userId).push(acct);

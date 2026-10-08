@@ -619,6 +619,35 @@ export default function registerNonprofitActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // Public campaign page for /give/:slug — published pages only, no donor
+  // identities. Concord takes no payments here; the page says how to give.
+  registerLensAction("nonprofit", "donation-page-public", (_ctx, _a, params = {}) => {
+    try {
+      const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const slug = npClean(params.slug, 60);
+      if (!slug) return { ok: false, error: "slug required" };
+      for (const list of npMap(s, "donationPages").values()) {
+        const p = (Array.isArray(list) ? list : []).find((x) => x.slug === slug && x.published);
+        if (p) {
+          return {
+            ok: true,
+            result: {
+              page: {
+                slug: p.slug, title: p.title, story: p.story || "", goal: p.goal || 0,
+                raised: p.raised || 0, donorCount: (p.donations || []).length,
+                progressPct: p.goal > 0 ? Math.round((p.raised / p.goal) * 100) : 0,
+                suggestedAmounts: p.suggestedAmounts || [], accentColor: p.accentColor || null,
+                coverImage: p.coverImage || null,
+              },
+              acceptsOnlinePayments: false,
+            },
+          };
+        }
+      }
+      return { ok: false, error: "page not found or not published" };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("nonprofit", "donation-page-list", (ctx, _a, _p = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };

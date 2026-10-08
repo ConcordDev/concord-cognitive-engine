@@ -12,6 +12,7 @@ import type {
   MemberType,
 } from '@/lib/world-lens/types';
 import { computeRealtimeFeedback, validateStructure } from '@/lib/world-lens/validation-engine';
+import { useAuth } from '@/hooks/useAuth';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -44,6 +45,8 @@ export default function GuidedCreator({
   onPublish,
   onCancel,
 }: GuidedCreatorProps) {
+  const { user } = useAuth();
+  const creatorName = user?.username ? `@${user.username}` : 'anonymous';
   const [step, setStep] = useState<GuidedStep>('intent');
   const [category, setCategory] = useState<BuildingCategory | null>(null);
   const [members, setMembers] = useState<StructuralMember[]>([]);
@@ -100,8 +103,7 @@ export default function GuidedCreator({
 
   const runValidation = useCallback(() => {
     setValidating(true);
-    // Simulate async validation
-    setTimeout(() => {
+    {
       const building: BuildingDTU = {
         id: `bldg-${Date.now()}`,
         name: name || 'Unnamed Building',
@@ -111,7 +113,7 @@ export default function GuidedCreator({
         foundations,
         systems: {},
         materialRefs: [...new Set([...members, ...foundations].map(m => m.materialId))],
-        creator: '@current_user',
+        creator: creatorName,
         citations: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -119,8 +121,8 @@ export default function GuidedCreator({
       const report = validateStructure(building, district, materials);
       setValidationReport(report);
       setValidating(false);
-    }, 800);
-  }, [name, description, category, members, foundations, district, materials]);
+    }
+  }, [creatorName, name, description, category, members, foundations, district, materials]);
 
   const handlePublish = useCallback(() => {
     const building: BuildingDTU = {
@@ -132,14 +134,14 @@ export default function GuidedCreator({
       foundations,
       systems: {},
       materialRefs: [...new Set([...members, ...foundations].map(m => m.materialId))],
-      creator: '@current_user',
+      creator: creatorName,
       citations: 0,
       validationReport: validationReport || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     onPublish(building);
-  }, [name, description, category, members, foundations, validationReport, onPublish]);
+  }, [creatorName, name, description, category, members, foundations, validationReport, onPublish]);
 
   const feedbackColor = (id: string) => {
     const fb = feedbackMap.get(id);

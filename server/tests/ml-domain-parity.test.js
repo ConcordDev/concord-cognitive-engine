@@ -143,12 +143,24 @@ describe("ml.playground-infer", () => {
     assert.equal((await call("playground-infer", ctxA, { modelId: "m" })).ok, false);
   });
 
-  it("runs inference and reports latency", async () => {
-    globalThis.fetch = async () => ({ ok: true, json: async () => ([{ label: "POSITIVE", score: 0.99 }]) });
-    const r = await call("playground-infer", ctxA, { modelId: "distilbert", input: "great movie" });
+  it("runs inference through the HF router with the server token and reports latency", async () => {
+    let seen;
+    globalThis.fetch = async (url, init) => { seen = { url, init }; return { ok: true, json: async () => ([{ label: "POSITIVE", score: 0.99 }]) }; };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "distilbert", input: "great movie" });
     assert.equal(r.ok, true);
+    assert.equal(seen.url, "https://router.huggingface.co/hf-inference/models/distilbert");
+    assert.equal(seen.init.headers.Authorization, "Bearer hf_test");
     assert.equal(typeof r.result.latencyMs, "number");
     assert.ok(Array.isArray(r.result.output));
+  });
+
+  it("without a Hugging Face token, inference is reported unavailable (no request made)", async () => {
+    let called = false;
+    globalThis.fetch = async () => { called = true; return { ok: true, json: async () => ({}) }; };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "" }, { modelId: "distilbert", input: "x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /inference_unavailable/);
+    assert.equal(called, false);
   });
 });
 
@@ -270,20 +282,40 @@ describe("ml.automl-templates", () => {
 
 // ─── deployments ─────────────────────────────────────────────────────────
 describe("ml deployments", () => {
-  it("creates, scales, stops and lists deployments", () => {
+  it("creates a deployment with no fabricated endpoint, invokes it for real, records real stats, stops it", async () => {
     const create = call("deploy-create", ctxA, {}, { modelId: "gpt2", name: "GPT-2" });
     assert.equal(create.ok, true);
-    const id = create.result.deployment.id;
-    assert.ok(create.result.deployment.endpoint.startsWith("/api/ml/serve/"));
+    const dep = create.result.deployment;
+    assert.equal(dep.endpoint, undefined);
+    assert.deepEqual(dep.invoke, { domain: "ml", name: "deploy-invoke", input: { deploymentId: dep.id } });
+    assert.equal(dep.totalRequests, 0);
+    assert.equal(dep.avgLatency, null);
 
-    const scale = call("deploy-scale", ctxA, {}, { deploymentId: id, replicas: 4 });
-    assert.equal(scale.result.deployment.replicas, 4);
+    assert.equal(call("deploy-scale", ctxA, {}, { deploymentId: dep.id, replicas: 4 }).ok, false);
 
-    const stop = call("deploy-stop", ctxA, {}, { deploymentId: id });
+    let calledUrl = null;
+    const okCtx = { ...ctxA, hfToken: "hf_test", mlFetch: async (url) => { calledUrl = url; return { ok: true, status: 200, json: async () => [{ generated_text: "hi there" }] }; } };
+    const inv = await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id, input: "hi" });
+    assert.equal(inv.ok, true);
+    assert.match(calledUrl, /models\/gpt2$/);
+    assert.deepEqual(inv.result.output, [{ generated_text: "hi there" }]);
+
+    const badCtx = { ...ctxA, hfToken: "hf_test", mlFetch: async () => ({ ok: false, status: 503, json: async () => ({ error: "loading" }) }) };
+    const fail = await call("deploy-invoke", badCtx, {}, { deploymentId: dep.id, input: "hi" });
+    assert.equal(fail.ok, false);
+
+    let listed = call("deploy-list", ctxA, {}, {}).result.deployments[0];
+    assert.equal(listed.totalRequests, 2);
+    assert.equal(listed.errorCount, 1);
+    assert.equal(typeof listed.avgLatency, "number");
+
+    assert.equal((await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id })).ok, false);
+    const stop = call("deploy-stop", ctxA, {}, { deploymentId: dep.id });
     assert.equal(stop.result.deployment.status, "inactive");
-
-    const list = call("deploy-list", ctxA, {}, {});
-    assert.equal(list.result.count, 1);
+    assert.equal((await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id, input: "hi" })).ok, false);
+    assert.equal(call("deploy-stop", ctxA, {}, { deploymentId: dep.id, resume: true }).result.deployment.status, "active");
+    listed = call("deploy-list", ctxA, {}, {});
+    assert.equal(listed.result.count, 1);
   });
 
   it("rejects a missing modelId", () => {
@@ -309,5 +341,25 @@ describe("ml demo spaces", () => {
   it("requires title and modelId", () => {
     assert.equal(call("space-create", ctxA, {}, { title: "x" }).ok, false);
     assert.equal(call("space-create", ctxA, {}, { modelId: "m" }).ok, false);
+  });
+});
+
+describe("ml spaces — openable by slug", () => {
+  it("space-get resolves public spaces for anyone, private only for the owner, and counts views", () => {
+    const pub = call("space-create", ctxA, {}, { title: "Sentiment Demo", modelId: "distilbert" }).result.space;
+    const dup = call("space-create", ctxA, {}, { title: "Sentiment Demo", modelId: "distilbert" }).result.space;
+    assert.notEqual(pub.url, dup.url, "slugs are unique");
+    const slug = pub.url.split("/").pop();
+    const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+    const viewed = call("space-get", ctxB, {}, { slug });
+    assert.equal(viewed.ok, true);
+    assert.equal(viewed.result.space.modelId, "distilbert");
+    assert.equal(viewed.result.isOwner, false);
+    assert.equal(viewed.result.space.views, 1);
+
+    const priv = call("space-create", ctxA, {}, { title: "Secret", modelId: "gpt2", private: true }).result.space;
+    const pslug = priv.url.split("/").pop();
+    assert.equal(call("space-get", ctxB, {}, { slug: pslug }).ok, false);
+    assert.equal(call("space-get", ctxA, {}, { slug: pslug }).ok, true);
   });
 });

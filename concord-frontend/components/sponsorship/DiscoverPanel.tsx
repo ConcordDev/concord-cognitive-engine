@@ -57,7 +57,7 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
     const r = await lensRun('sponsorship', 'subscribe', { creatorId, tierId: tier.tierId });
     setBusy(false);
     if (r.data?.ok) {
-      setMsg(`Subscribed to ${tier.name} — ${tier.monthlyCc} CC/mo`);
+      setMsg(`Subscribed to ${tier.name} — ${tier.monthlyCc} CC/mo pledged (not charged; billing isn't connected)`);
       setExpanded(null);
       onSubscribed();
       void load();

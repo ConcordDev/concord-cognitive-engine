@@ -1,3 +1,5 @@
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
+import { executeToolCall } from "../lib/chat-agent.js";
 // server/domains/agents.js
 // Domain actions for autonomous agents: capability scoring, task routing,
 // swarm coordination, performance benchmarking — plus a real agent runtime:
@@ -168,62 +170,124 @@ export default function registerAgentsActions(registerLensAction) {
   const arr = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
   const submap = (m, k) => { if (!(m.get(k) instanceof Map)) m.set(k, new Map()); return m.get(k); };
 
-  // ── Tool catalog: deterministic simulated executors per tool ──────────
-  // Each executor is pure compute — no LLM, no network — so a run is fully
-  // reproducible and inspectable. Real tool semantics modelled per kind.
+  // ── Tool catalog ──────────────────────────────────────────────────────
+  // Every step executes for real or fails honestly. `live` tools run against
+  // Concord's real runtime (web search via expert_mode, the user's own DTUs,
+  // the local LLM). The rest have no backing a goal string can drive and
+  // return a "not_connected" step instead of invented output.
   const TOOL_CATALOG = {
-    web_search:  { kind: "io",      cost: 120, latency: 800 },
-    dtu_create:  { kind: "write",   cost: 60,  latency: 220 },
-    dtu_read:    { kind: "read",    cost: 30,  latency: 140 },
-    dtu_update:  { kind: "write",   cost: 50,  latency: 200 },
-    summarize:   { kind: "compute", cost: 180, latency: 600 },
-    classify:    { kind: "compute", cost: 90,  latency: 300 },
-    db_query:    { kind: "read",    cost: 40,  latency: 180 },
-    graph_check: { kind: "read",    cost: 45,  latency: 190 },
-    metric_read: { kind: "read",    cost: 25,  latency: 110 },
-    alert_send:  { kind: "io",      cost: 35,  latency: 250 },
-    text_generate:{ kind: "compute",cost: 240, latency: 900 },
-    code_execute:{ kind: "io",      cost: 200, latency: 700 },
-    file_read:   { kind: "read",    cost: 30,  latency: 120 },
-    file_write:  { kind: "write",   cost: 55,  latency: 210 },
+    web_search:   { kind: "io",      live: true },
+    dtu_create:   { kind: "write",   live: true },
+    dtu_read:     { kind: "read",    live: true },
+    summarize:    { kind: "compute", live: true },
+    classify:     { kind: "compute", live: true },
+    text_generate:{ kind: "compute", live: true },
+    dtu_update:   { kind: "write",   live: false },
+    db_query:     { kind: "read",    live: false },
+    graph_check:  { kind: "read",    live: false },
+    metric_read:  { kind: "read",    live: false },
+    alert_send:   { kind: "io",      live: false },
+    code_execute: { kind: "io",      live: false },
+    file_read:    { kind: "read",    live: false },
+    file_write:   { kind: "write",   live: false },
   };
   function toolMeta(name) {
-    return TOOL_CATALOG[name] || { kind: "compute", cost: 100, latency: 400 };
+    return TOOL_CATALOG[name] || { kind: "compute", live: false };
   }
-  // Deterministic pseudo-output for a tool given a step seed.
-  function runTool(toolName, stepInput, seed) {
-    const meta = toolMeta(toolName);
-    // jitter latency/cost a little, deterministically by seed
-    const h = Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
-    const latencyMs = Math.round(meta.latency * (0.7 + h * 0.6));
-    const tokens = Math.round(meta.cost * (0.8 + h * 0.4));
-    let output;
-    switch (toolName) {
-      case "web_search":
-        output = { hits: 3, topResult: `result for "${stepInput}"`, snippet: `Information about ${stepInput}.` };
-        break;
-      case "dtu_create": output = { dtuId: aId("dtu"), title: stepInput, created: true }; break;
-      case "dtu_read": output = { dtuId: stepInput || aId("dtu"), found: true, layers: 4 }; break;
-      case "dtu_update": output = { dtuId: stepInput || aId("dtu"), revised: true }; break;
-      case "summarize": output = { summary: `Summary of ${stepInput}`.slice(0, 120), compressionRatio: 0.18 }; break;
-      case "classify": output = { label: h > 0.5 ? "positive" : "neutral", confidence: Math.round((0.6 + h * 0.4) * 100) / 100 }; break;
-      case "db_query": output = { rows: Math.round(h * 50), query: stepInput }; break;
-      case "graph_check": output = { connected: h > 0.3, nodes: Math.round(h * 200) }; break;
-      case "metric_read": output = { value: Math.round(h * 1000) / 10, metric: stepInput }; break;
-      case "alert_send": output = { delivered: true, channel: "ops", message: stepInput }; break;
-      case "text_generate": output = { text: `Generated content for: ${stepInput}`, wordCount: Math.round(80 + h * 400) }; break;
-      case "code_execute": output = { exitCode: 0, stdout: `executed: ${stepInput}` }; break;
-      case "file_read": output = { path: stepInput, bytes: Math.round(h * 8000) }; break;
-      case "file_write": output = { path: stepInput, bytesWritten: Math.round(h * 4000) }; break;
-      default: output = { ok: true, note: `tool ${toolName} ran on "${stepInput}"` };
+  // Rough token estimate (chars / 4) for budget accounting; always labelled
+  // as an estimate in run records.
+  const estTokens = (...parts) => Math.ceil(parts.map((p) => (typeof p === "string" ? p : JSON.stringify(p ?? ""))).join("").length / 4);
+  const llmText = (res) => String(res?.text || res?.content || res?.message?.content || "").trim();
+
+  function searchOwnDtus(userId, query) {
+    const dtus = globalThis._concordSTATE?.dtus;
+    if (!dtus || typeof dtus.values !== "function") return [];
+    const terms = String(query).toLowerCase().split(/\W+/).filter((t) => t.length > 3).slice(0, 8);
+    const hits = [];
+    for (const d of dtus.values()) {
+      const owner = d?.ownerId || d?.author || d?.userId || d?.createdBy || d?.meta?.createdBy;
+      if (owner !== userId) continue;
+      const hay = `${d?.title || ""} ${d?.human?.summary || ""}`.toLowerCase();
+      const score = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+      if (score > 0) hits.push({ id: d.id, title: d.title || "(untitled)", summary: String(d?.human?.summary || "").slice(0, 300), score });
     }
-    return { output, latencyMs, tokens, kind: meta.kind };
+    return hits.sort((x, y) => y.score - x.score).slice(0, 5);
   }
 
-  // ── Feature 1 + 2: autonomous run loop + tool-call inspector ──────────
-  // Executes a real multi-step task. Each step picks a tool, runs it,
-  // records inputs/outputs/latency/tokens. Budget-enforced.
-  registerLensAction("agents", "executeRun", (ctx, _a, params = {}) => {
+  // Execute one step for real. Returns { ok, status, output|error, latencyMs, tokens, kind }.
+  async function runTool(ctx, userId, toolName, stepInput, agent = {}, context = "") {
+    const meta = toolMeta(toolName);
+    const t0 = Date.now();
+    const done = (ok, payload, extraTokens = "") => ({
+      ok,
+      status: ok ? "ok" : (payload.notConnected ? "not_connected" : "error"),
+      ...(ok ? { output: payload } : { error: payload.error }),
+      latencyMs: Date.now() - t0,
+      tokens: ok ? estTokens(stepInput, context, payload, extraTokens) : 0,
+      kind: meta.kind,
+    });
+    if (!meta.live) {
+      return done(false, { notConnected: true, error: `${toolName} is not connected in Concord; no output was produced` });
+    }
+    try {
+      if (toolName === "web_search" || toolName === "dtu_create") {
+        const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+        const lensActions = ctx?.lensActions || globalThis.__concordLensActions || new Map();
+        if (typeof runMacro !== "function") return done(false, { error: "tool runtime unavailable" });
+        const call = toolName === "web_search"
+          ? { tool: "web_search", params: { query: stepInput, limit: 5 } }
+          : { tool: "create_dtu", params: { title: stepInput.slice(0, 120), summary: context.slice(0, 1500) || stepInput } };
+        const r = await executeToolCall(ctx, runMacro, lensActions, call);
+        if (!r?.ok) return done(false, { error: r?.error || `${toolName} failed` });
+        const { tool: _t, ok: _o, ...rest } = r;
+        return done(true, rest);
+      }
+      if (toolName === "dtu_read") {
+        const hits = searchOwnDtus(userId, stepInput);
+        return done(true, { query: stepInput, found: hits.length, dtus: hits });
+      }
+      // summarize / classify / text_generate → local LLM
+      if (!ctx?.llm?.chat) return done(false, { error: "llm_unavailable" });
+      const res = await ctx.llm.chat({
+        system: TASK_PROMPTS.agentLensStep({ agentName: agent.name, goal: agent.goal, tool: toolName, guidance: agent.guidance || [] }),
+        messages: [{ role: "user", content: `${stepInput}${context ? `\n\nMaterial:\n${context.slice(0, 6000)}` : ""}` }],
+        temperature: 0.3,
+        maxTokens: 600,
+        slot: "utility",
+      });
+      const text = llmText(res);
+      if (!text) return done(false, { error: "llm_empty_response" });
+      return done(true, { text }, text);
+    } catch (e) {
+      return done(false, { error: String(e?.message || e) });
+    }
+  }
+
+  // Material a later step can work from: the text of earlier successful steps.
+  const stepMaterial = (steps) => steps
+    .filter((st) => st.status === "ok")
+    .map((st) => {
+      const o = st.output || {};
+      if (o.text) return o.text;
+      if (Array.isArray(o.results)) return o.results.map((x) => `${x.title}: ${x.snippet}`).join("\n");
+      if (Array.isArray(o.dtus)) return o.dtus.map((x) => `${x.title}: ${x.summary}`).join("\n");
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  const recentGuidance = (s, userId, agentId) => {
+    const thread = submap(s.threads, userId).get(agentId);
+    return thread ? thread.messages.filter((m) => m.role === "user").slice(-3).map((m) => m.text.slice(0, 300)) : [];
+  };
+
+  const runStatus = (steps) => {
+    if (!steps.length) return "failed";
+    const okCount = steps.filter((st) => st.status === "ok").length;
+    return okCount === steps.length ? "completed" : okCount === 0 ? "failed" : "partial";
+  };
+
+  registerLensAction("agents", "executeRun", async (ctx, _a, params = {}) => {
     try {
       const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = aActor(ctx);
@@ -246,20 +310,17 @@ export default function registerAgentsActions(registerLensAction) {
       let stoppedReason = null;
       const startedAt = new Date().toISOString();
 
+      const agent = { name: agentName, goal, guidance: recentGuidance(s, userId, agentId) };
       for (let i = 0; i < maxSteps; i++) {
         const tool = tools[i % tools.length];
-        const stepInput = `${goal} — step ${i + 1}`;
-        const exec = runTool(tool, stepInput, i + 1 + agentName.length);
-
-        // Budget check: if this step would exceed remaining token budget, halt.
-        if (budget && budget.enforce) {
-          const remaining = budget.tokenLimit - (budget.tokensUsed || 0) - tokensSpent;
-          if (exec.tokens > remaining) {
-            status = "halted";
-            stoppedReason = "token_budget_exceeded";
-            break;
-          }
+        // Budget check before spending: halt once the enforced limit is reached.
+        if (budget && budget.enforce && budget.tokenLimit - (budget.tokensUsed || 0) - tokensSpent <= 0) {
+          status = "halted";
+          stoppedReason = "token_budget_exceeded";
+          break;
         }
+        const stepInput = goal;
+        const exec = await runTool(ctx, userId, tool, stepInput, agent, stepMaterial(steps));
         tokensSpent += exec.tokens;
 
         steps.push({
@@ -267,18 +328,25 @@ export default function registerAgentsActions(registerLensAction) {
           tool,
           toolKind: exec.kind,
           input: stepInput,
-          output: exec.output,
+          ...(exec.ok ? { output: exec.output } : { error: exec.error }),
           latencyMs: exec.latencyMs,
           tokens: exec.tokens,
-          status: "ok",
+          tokensEstimated: true,
+          status: exec.status,
           ts: new Date().toISOString(),
         });
 
-        // Convergence: research/summarize tasks finish once a summary exists.
-        if (tool === "summarize" && i >= Math.min(2, maxSteps - 1)) {
+        if (budget && budget.enforce && budget.tokenLimit - (budget.tokensUsed || 0) - tokensSpent < 0) {
+          status = "halted";
+          stoppedReason = "token_budget_exceeded";
+          break;
+        }
+        // Convergence: once a summary exists the task is done.
+        if (tool === "summarize" && exec.ok && i >= Math.min(2, maxSteps - 1)) {
           break;
         }
       }
+      if (status !== "halted") status = runStatus(steps);
 
       const totalLatency = steps.reduce((x, st) => x + st.latencyMs, 0);
       const run = {
@@ -292,6 +360,7 @@ export default function registerAgentsActions(registerLensAction) {
         stepCount: steps.length,
         totalLatencyMs: totalLatency,
         totalTokens: tokensSpent,
+        tokensEstimated: true,
         startedAt,
         finishedAt: new Date().toISOString(),
       };
@@ -419,7 +488,7 @@ export default function registerAgentsActions(registerLensAction) {
 
   // Run a whole orchestration graph: orchestrator node delegates a sub-run
   // to every downstream worker, then aggregates.
-  registerLensAction("agents", "runGraph", (ctx, _a, params = {}) => {
+  registerLensAction("agents", "runGraph", async (ctx, _a, params = {}) => {
     try {
       const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = aActor(ctx);
@@ -430,17 +499,19 @@ export default function registerAgentsActions(registerLensAction) {
       // Worker nodes = nodes that are an edge target.
       const targets = new Set(graph.edges.map(e => e.to));
       const workers = graph.nodes.filter(n => targets.has(n.id) || n.role === "worker");
-      const dispatched = (workers.length ? workers : graph.nodes).map((w, i) => {
+      const dispatched = [];
+      for (const w of (workers.length ? workers : graph.nodes)) {
         const tools = ["dtu_read", "summarize"];
         const sub = [];
         let toks = 0;
-        for (let st = 0; st < 3; st++) {
-          const exec = runTool(tools[st % tools.length], `${goal} via ${w.label}`, st + 1 + i + w.label.length);
+        const agent = { name: w.label, goal };
+        for (let st = 0; st < tools.length; st++) {
+          const exec = await runTool(ctx, userId, tools[st], `${goal} (${w.label})`, agent, stepMaterial(sub));
           toks += exec.tokens;
-          sub.push({ index: st + 1, tool: tools[st % tools.length], output: exec.output, latencyMs: exec.latencyMs, tokens: exec.tokens });
+          sub.push({ index: st + 1, tool: tools[st], status: exec.status, ...(exec.ok ? { output: exec.output } : { error: exec.error }), latencyMs: exec.latencyMs, tokens: exec.tokens });
         }
-        return { node: w.id, agentLabel: w.label, role: w.role, steps: sub, tokens: toks };
-      });
+        dispatched.push({ node: w.id, agentLabel: w.label, role: w.role, steps: sub, tokens: toks, status: runStatus(sub) });
+      }
       const orchestration = {
         id: aId("orch"),
         graphId: graph.id,
@@ -448,6 +519,7 @@ export default function registerAgentsActions(registerLensAction) {
         goal,
         dispatched,
         totalTokens: dispatched.reduce((x, d) => x + d.tokens, 0),
+        tokensEstimated: true,
         workerCount: dispatched.length,
         ranAt: new Date().toISOString(),
       };
@@ -530,7 +602,7 @@ export default function registerAgentsActions(registerLensAction) {
 
   // Manually fire a schedule (also models the webhook/event arriving):
   // executes a real run and records the firing.
-  registerLensAction("agents", "fireSchedule", (ctx, _a, params = {}) => {
+  registerLensAction("agents", "fireSchedule", async (ctx, _a, params = {}) => {
     try {
       const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = aActor(ctx);
@@ -539,23 +611,25 @@ export default function registerAgentsActions(registerLensAction) {
       if (!sch) return { ok: false, error: "schedule not found" };
       if (!sch.enabled) return { ok: false, error: "schedule is disabled" };
 
-      // Execute a 4-step run for the scheduled agent.
-      const tools = ["dtu_read", "metric_read", "classify", "summarize"];
+      // Execute a 3-step run for the scheduled agent.
+      const tools = ["dtu_read", "classify", "summarize"];
       const steps = [];
       let toks = 0;
-      for (let i = 0; i < 4; i++) {
-        const exec = runTool(tools[i], `${sch.goal} — fire ${sch.fireCount + 1}`, i + 1 + sch.fireCount);
+      const agent = { name: sch.agentName, goal: sch.goal, guidance: recentGuidance(s, userId, sch.agentId) };
+      for (let i = 0; i < tools.length; i++) {
+        const exec = await runTool(ctx, userId, tools[i], sch.goal, agent, stepMaterial(steps));
         toks += exec.tokens;
-        steps.push({ index: i + 1, tool: tools[i], toolKind: exec.kind, output: exec.output, latencyMs: exec.latencyMs, tokens: exec.tokens, status: "ok", ts: new Date().toISOString() });
+        steps.push({ index: i + 1, tool: tools[i], toolKind: exec.kind, ...(exec.ok ? { output: exec.output } : { error: exec.error }), latencyMs: exec.latencyMs, tokens: exec.tokens, tokensEstimated: true, status: exec.status, ts: new Date().toISOString() });
       }
       const run = {
         id: aId("run"),
         agentId: sch.agentId,
         agentName: sch.agentName,
         goal: sch.goal,
-        status: "completed",
+        status: runStatus(steps),
         stoppedReason: null,
         trigger: `schedule:${sch.kind}`,
+        tokensEstimated: true,
         steps, stepCount: steps.length,
         totalLatencyMs: steps.reduce((x, st) => x + st.latencyMs, 0),
         totalTokens: toks,
@@ -575,7 +649,7 @@ export default function registerAgentsActions(registerLensAction) {
   });
 
   // ── Feature 5: conversation thread per agent ─────────────────────────
-  registerLensAction("agents", "postMessage", (ctx, _a, params = {}) => {
+  registerLensAction("agents", "postMessage", async (ctx, _a, params = {}) => {
     try {
       const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = aActor(ctx);
@@ -591,19 +665,34 @@ export default function registerAgentsActions(registerLensAction) {
       }
       const userMsg = { id: aId("msg"), role: "user", text, ts: new Date().toISOString() };
       thread.messages.push(userMsg);
-      // Deterministic agent reply — grounded in the agent's tools/goal.
-      const tools = Array.isArray(params.tools) ? params.tools : [];
-      const toolHint = tools.length ? ` I can use ${tools.slice(0, 3).join(", ")} to help.` : "";
-      const reply = {
-        id: aId("msg"),
-        role: "agent",
-        text: `Acknowledged: "${text.slice(0, 80)}". I will incorporate this into my next run.${toolHint}`,
-        ts: new Date().toISOString(),
-      };
-      thread.messages.push(reply);
+      // Operator messages are fed into this agent's next runs (recentGuidance).
+      // The reply comes from the local LLM; with no LLM there is no reply.
+      const tools = Array.isArray(params.tools) ? params.tools.map((t) => aClean(t, 60)).slice(0, 8) : [];
+      let reply = null;
+      if (ctx?.llm?.chat) {
+        try {
+          const res = await ctx.llm.chat({
+            system: TASK_PROMPTS.agentLensChatReply({ agentName: thread.agentName, goal: aClean(params.goal, 300), tools }),
+            messages: thread.messages.slice(-10).map((m) => ({ role: m.role === "agent" ? "assistant" : "user", content: m.text })),
+            temperature: 0.4,
+            maxTokens: 200,
+            slot: "utility",
+          });
+          const t = llmText(res);
+          if (t) reply = { id: aId("msg"), role: "agent", text: t.slice(0, 2000), ts: new Date().toISOString() };
+        } catch { reply = null; }
+      }
+      if (reply) thread.messages.push(reply);
       if (thread.messages.length > 400) thread.messages = thread.messages.slice(-400);
       saveAgents();
-      return { ok: true, result: { thread } };
+      return {
+        ok: true,
+        result: {
+          thread,
+          replied: !!reply,
+          ...(reply ? {} : { note: "Saved. The agent model is unavailable, so there is no reply; the message still guides this agent's next runs." }),
+        },
+      };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

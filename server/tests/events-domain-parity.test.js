@@ -2,9 +2,9 @@
 // seating, budget builder, agenda, check-in, and blast macros added to reach
 // Eventbrite/Cvent feature parity. Pattern mirrors travel-domain-parity.test.js.
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
-import registerEventsActions from "../domains/events.js";
+import registerEventsActions, { _setEventsMailerForTest } from "../domains/events.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -214,37 +214,68 @@ describe("events check-in / QR scanning", () => {
 });
 
 describe("events email / notification blasts", () => {
-  it("sends a blast to all registrants and lists it", () => {
+  const sentMail = [];
+  beforeEach(() => { sentMail.length = 0; _setEventsMailerForTest(async (m) => { sentMail.push(m); return { ok: true }; }); });
+  after(() => _setEventsMailerForTest(null));
+
+  it("emails every registrant in the segment and records real delivery", async () => {
     const eventId = newEvent();
     const tierId = call("tier-create", ctxA, { eventId, name: "GA", price: 0, quantity: 10 }).result.tier.id;
     call("register-attendee", ctxA, { eventId, tierId, name: "P", email: "p@x.io" });
-    const blast = call("blast-send", ctxA, { eventId, subject: "Reminder", body: "See you soon", segment: "all" });
+    const blast = await call("blast-send", ctxA, { eventId, subject: "Reminder", body: "See you soon", segment: "all" });
     assert.equal(blast.ok, true);
     assert.equal(blast.result.delivered, 1);
-    const list = call("blast-list", ctxA, { eventId });
-    assert.equal(list.result.count, 1);
+    assert.equal(blast.result.status, "sent");
+    assert.equal(sentMail.length, 1);
+    assert.match(sentMail[0].to, /p@x\.io/);
+    assert.equal(call("blast-list", ctxA, { eventId }).result.count, 1);
   });
 
-  it("segments a blast to not-checked-in registrants", () => {
+  it("reports delivered=0 and not_sent when no mail transport accepts the message", async () => {
+    _setEventsMailerForTest(null); // no db on ctx, no Gmail linked
+    const eventId = newEvent();
+    const tierId = call("tier-create", ctxA, { eventId, name: "GA", price: 0, quantity: 10 }).result.tier.id;
+    call("register-attendee", ctxA, { eventId, tierId, name: "P", email: "p@x.io" });
+    const blast = await call("blast-send", ctxA, { eventId, subject: "Reminder", body: "Hi" });
+    assert.equal(blast.result.delivered, 0);
+    assert.equal(blast.result.status, "not_sent");
+    assert.deepEqual(blast.result.pendingEmails, ["p@x.io"]);
+    assert.equal(call("blast-list", ctxA, { eventId }).result.totalDelivered, 0);
+  });
+
+  it("is partial when only some sends succeed", async () => {
+    _setEventsMailerForTest(async (m) => (/b@x\.io/.test(m.to) ? { ok: false, reason: "http_500" } : { ok: true }));
+    const eventId = newEvent();
+    const tierId = call("tier-create", ctxA, { eventId, name: "GA", price: 0, quantity: 10 }).result.tier.id;
+    call("register-attendee", ctxA, { eventId, tierId, name: "A", email: "a@x.io" });
+    call("register-attendee", ctxA, { eventId, tierId, name: "B", email: "b@x.io" });
+    const blast = await call("blast-send", ctxA, { eventId, subject: "S", body: "B" });
+    assert.equal(blast.result.status, "partial");
+    assert.equal(blast.result.delivered, 1);
+    assert.deepEqual(blast.result.pendingEmails, ["b@x.io"]);
+  });
+
+  it("segments a blast to not-checked-in registrants", async () => {
     const eventId = newEvent();
     const tierId = call("tier-create", ctxA, { eventId, name: "GA", price: 0, quantity: 10 }).result.tier.id;
     const r1 = call("register-attendee", ctxA, { eventId, tierId, name: "A", email: "a@x.io" }).result.registration;
     call("register-attendee", ctxA, { eventId, tierId, name: "B", email: "b@x.io" });
     call("check-in", ctxA, { eventId, registrationId: r1.id });
-    const blast = call("blast-send", ctxA, { eventId, subject: "Where are you", body: "...", segment: "not-checked-in" });
+    const blast = await call("blast-send", ctxA, { eventId, subject: "Where are you", body: "...", segment: "not-checked-in" });
     assert.equal(blast.result.delivered, 1);
+    assert.match(sentMail[0].to, /b@x\.io/);
   });
 
-  it("rejects a blast with no subject and deletes a blast", () => {
+  it("rejects a blast with no subject and deletes a blast", async () => {
     const eventId = newEvent();
-    assert.equal(call("blast-send", ctxA, { eventId, body: "x" }).ok, false);
-    const blastId = call("blast-send", ctxA, { eventId, subject: "S", body: "B" }).result.blast.id;
+    assert.equal((await call("blast-send", ctxA, { eventId, body: "x" })).ok, false);
+    const blastId = (await call("blast-send", ctxA, { eventId, subject: "S", body: "B" })).result.blast.id;
     assert.equal(call("blast-delete", ctxA, { eventId, blastId }).ok, true);
   });
 });
 
 describe("events macro guards — never throw, return ok:false", () => {
-  it("every new macro fails gracefully for an unknown event id", () => {
+  it("every new macro fails gracefully for an unknown event id", async () => {
     const macros = [
       "tier-create", "tier-list", "tier-update", "tier-delete",
       "register-attendee", "registration-list", "registration-cancel",
@@ -256,7 +287,7 @@ describe("events macro guards — never throw, return ok:false", () => {
       "blast-send", "blast-list", "blast-delete",
     ];
     for (const m of macros) {
-      const r = call(m, ctxA, { eventId: "evt_does_not_exist" });
+      const r = await call(m, ctxA, { eventId: "evt_does_not_exist" });
       assert.equal(r.ok, false, `${m} should return ok:false`);
       assert.ok(typeof r.error === "string", `${m} should carry an error string`);
     }

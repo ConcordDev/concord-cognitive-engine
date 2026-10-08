@@ -201,7 +201,7 @@ describe("observe — synthetic monitoring", () => {
 
 // ---------------------------------------------------------------- 7. on-call
 describe("observe — on-call paging", () => {
-  it("sets up schedule + routes, pages, and acknowledges", () => {
+  it("sets up schedule + routes, pages, and acknowledges", async () => {
     const setup = call("oncallSetup", ctxA, {}, {
       schedule: [{ person: "alice", startsAt: new Date(Date.now() - 1000).toISOString() }],
       routes: [{ name: "primary", channel: "dm", target: "alice", minSeverity: "sev3" }],
@@ -209,18 +209,39 @@ describe("observe — on-call paging", () => {
     assert.equal(setup.ok, true);
     const status = call("oncallStatus", ctxA, {}, {});
     assert.equal(status.result.current.person, "alice");
-    const page = call("pageOnCall", ctxA, {}, { severity: "sev1", summary: "outage" });
+    const page = await call("pageOnCall", ctxA, {}, { severity: "sev1", summary: "outage" });
     assert.equal(page.ok, true);
     assert.equal(page.result.page.pagedPerson, "alice");
-    assert.equal(page.result.routesNotified, 1);
+    assert.equal(page.result.routesMatched, 1);
+    assert.equal(page.result.routesDelivered, 0, "a dm route has no sender, so it is not delivered");
+    assert.equal(page.result.page.routesFired[0].delivered, false);
     const ack = call("acknowledgePage", ctxA, {}, { id: page.result.page.id });
     assert.equal(ack.ok, true);
     assert.equal(ack.result.page.ackedBy, "user_a");
   });
 
-  it("severity routing — sev4 page does not fire a sev3-floor route", () => {
+  it("severity routing — sev4 page does not fire a sev3-floor route", async () => {
     call("oncallSetup", ctxA, {}, { routes: [{ name: "r", channel: "dm", target: "t", minSeverity: "sev2" }] });
-    const page = call("pageOnCall", ctxA, {}, { severity: "sev4", summary: "minor" });
-    assert.equal(page.result.routesNotified, 0);
+    const page = await call("pageOnCall", ctxA, {}, { severity: "sev4", summary: "minor" });
+    assert.equal(page.result.routesMatched, 0);
+  });
+
+  it("webhook routes are really POSTed and only a 2xx counts as delivered", async () => {
+    call("oncallSetup", ctxA, {}, { routes: [
+      { name: "hook", channel: "webhook", target: "https://hooks.example.com/page", minSeverity: "sev3" },
+      { name: "plain", channel: "webhook", target: "http://hooks.example.com/x", minSeverity: "sev3" },
+    ] });
+    const sent = [];
+    const okCtx = { ...ctxA, observeFetch: async (url, init) => { sent.push({ url, body: JSON.parse(init.body) }); return { ok: true, status: 200 }; } };
+    const page = await call("pageOnCall", okCtx, {}, { severity: "sev2", summary: "db down" });
+    assert.equal(page.result.routesMatched, 2);
+    assert.equal(page.result.routesDelivered, 1);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, "https://hooks.example.com/page");
+    assert.equal(sent[0].body.summary, "db down");
+    const failCtx = { ...ctxA, observeFetch: async () => ({ ok: false, status: 500 }) };
+    const failed = await call("pageOnCall", failCtx, {}, { severity: "sev2", summary: "db down" });
+    assert.equal(failed.result.routesDelivered, 0);
+    assert.match(failed.result.page.routesFired[0].reason, /HTTP 500/);
   });
 });

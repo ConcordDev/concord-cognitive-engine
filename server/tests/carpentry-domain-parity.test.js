@@ -268,3 +268,49 @@ describe("carpentry client portal", () => {
     assert.equal(call("portalRespond", ctxA, { token: create.result.token, decision: "maybe" }).ok, false);
   });
 });
+
+describe("carpentry — public portal projection", () => {
+  it("portalPublicView returns the share without the owner id", () => {
+    const create = call("portalCreate", ctxA, { client: "Pat", jobName: "Deck", progressPct: 40 });
+    const pub = call("portalPublicView", {}, { token: create.result.token });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.share.jobName, "Deck");
+    assert.equal(pub.result.share.ownerId, undefined);
+    assert.equal(call("portalPublicView", {}, { token: "nope" }).ok, false);
+  });
+});
+
+describe("carpentry — portal link safety", () => {
+  it("strong tokens, expiry, revocation, one response, and legacy reissue", () => {
+    const create = call("portalCreate", ctxA, { client: "Pat", jobName: "Deck", expiresInDays: 7 });
+    const token = create.result.token;
+    assert.match(token, /^cpt_[A-Za-z0-9_-]{24}$/);
+    assert.ok(Date.parse(create.result.share.expiresAt) > Date.now());
+
+    // expired links stop resolving
+    const s = globalThis._concordSTATE.carpentryLens;
+    s.portalShares.get(token).expiresAt = new Date(Date.now() - 1000).toISOString();
+    assert.equal(call("portalPublicView", {}, { token }).ok, false);
+    s.portalShares.get(token).expiresAt = new Date(Date.now() + 86400000).toISOString();
+
+    // the client can respond once
+    const ctxClient = { actor: { userId: "client" }, userId: "client" };
+    assert.equal(call("portalRespond", ctxClient, { token, decision: "approved" }).ok, true);
+    assert.equal(call("portalRespond", ctxClient, { token, decision: "declined" }).ok, false);
+    assert.equal(call("portalView", ctxClient, { token }).result.share.ownerId, undefined);
+
+    // only the owner can revoke, and a revoked link is dead
+    assert.equal(call("portalRevoke", ctxClient, { token }).ok, false);
+    assert.equal(call("portalRevoke", ctxA, { token }).ok, true);
+    assert.equal(call("portalPublicView", {}, { token }).ok, false);
+
+    // a legacy guessable token is refused publicly and reissued to the owner
+    s.portalShares.set("portal_lq3x9k_ab12cd", { token: "portal_lq3x9k_ab12cd", ownerId: "user_a", client: "Old", status: "open", createdAt: new Date().toISOString() });
+    assert.equal(call("portalPublicView", {}, { token: "portal_lq3x9k_ab12cd" }).ok, false);
+    const list = call("portalList", ctxA, {});
+    const old = list.result.shares.find((x) => x.client === "Old");
+    assert.match(old.token, /^cpt_/);
+    assert.ok(old.expiresAt);
+    assert.equal(call("portalPublicView", {}, { token: old.token }).ok, true);
+  });
+});

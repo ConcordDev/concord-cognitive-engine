@@ -65,13 +65,16 @@ describe("sync.sync_now", () => {
     assert.equal(r.ok, false);
   });
 
-  it("runs a sync pass and writes a log entry", () => {
+  it("prepares the device's sync set, transfers nothing, and does not mark it synced", () => {
     const dev = call("register_device", ctxA, { deviceLabel: "iPhone" }).result.device;
     const r = call("sync_now", ctxA, { deviceId: dev.id });
     assert.equal(r.ok, true);
     assert.equal(typeof r.result.dtuCount, "number");
-    assert.ok(["ok", "quota_exceeded"].includes(r.result.status));
+    assert.ok(["prepared", "quota_exceeded"].includes(r.result.status));
+    assert.equal(r.result.transferred, false);
     assert.ok(r.result.logEntry);
+    const listed = call("list_devices", ctxA, {}).result.devices.find((d) => d.id === dev.id);
+    assert.equal(listed.lastSyncAt, null);
   });
 });
 

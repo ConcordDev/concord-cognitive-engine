@@ -2,6 +2,11 @@
 // Domain actions for data/knowledge transfer: schema mapping, data quality
 // assessment, and migration plan generation.
 
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+
+const URL_FETCH_TIMEOUT_MS = 15000;
+const URL_MAX_BYTES = 5 * 1024 * 1024;
+
 export default function registerTransferActions(registerLensAction) {
   /**
    * schemaMapping
@@ -642,6 +647,10 @@ export default function registerTransferActions(registerLensAction) {
       } catch (_e) { return []; }
     }
     if (connector.kind === "inline") return Array.isArray(connector.rows) ? connector.rows : [];
+    if (connector.kind === "url") {
+      // Rows come only from the last real fetch (connector-refresh).
+      return readConnectorRows({ kind: connector.format === "json" ? "json" : "csv", payload: connector.payload || (connector.format === "json" ? "[]" : "") });
+    }
     return [];
   }
 
@@ -659,15 +668,29 @@ export default function registerTransferActions(registerLensAction) {
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "Connector name is required." };
       const role = params.role === "destination" ? "destination" : "source";
-      const kind = ["csv", "json", "inline"].includes(params.kind) ? params.kind : "csv";
+      const kind = ["csv", "json", "inline", "url"].includes(params.kind) ? params.kind : "csv";
+      let url = null;
+      if (kind === "url") {
+        if (role !== "source") return { ok: false, error: "URL connectors can only be sources." };
+        url = String(params.url || "").trim();
+        if (!/^https?:\/\/[^\s]+$/i.test(url)) return { ok: false, error: "A valid http(s) URL is required." };
+      }
       if (!s.connectors.has(userId)) s.connectors.set(userId, new Map());
       const map = s.connectors.get(userId);
       const id = params.id && map.has(params.id) ? params.id : xferId("conn");
       const existing = map.get(id);
       const connector = {
         id, name, role, kind,
-        payload: params.payload !== undefined ? String(params.payload) : (existing?.payload || ""),
+        payload: kind === "url"
+          ? (existing?.url === url ? existing?.payload || "" : "")
+          : (params.payload !== undefined ? String(params.payload) : (existing?.payload || "")),
         rows: Array.isArray(params.rows) ? params.rows : (existing?.rows || []),
+        ...(kind === "url" ? {
+          url,
+          format: params.format === "json" ? "json" : "csv",
+          fetchedAt: existing?.url === url ? existing?.fetchedAt || null : null,
+          lastFetchError: null,
+        } : {}),
         createdAt: existing?.createdAt || nowIso(),
         updatedAt: nowIso(),
       };
@@ -731,6 +754,57 @@ export default function registerTransferActions(registerLensAction) {
   /**
    * connector-delete — remove a connector.
    */
+  /**
+   * connector-refresh — fetch a URL connector's source (SSRF-guarded) and
+   * cache the body as its payload. Rows reflect only what was actually
+   * fetched; failures are returned and recorded, never papered over.
+   */
+  registerLensAction("transfer", "connector-refresh", async (ctx, _artifact, params = {}) => {
+    try {
+      const s = getXferState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const connector = s.connectors.get(xferActor(ctx))?.get(params.id);
+      if (!connector) return { ok: false, error: "Connector not found." };
+      if (connector.kind !== "url") return { ok: false, error: "Only URL connectors can be fetched." };
+      const fetchImpl = typeof ctx?.transferFetch === "function" ? ctx.transferFetch : undefined;
+      let timer;
+      let body;
+      try {
+        const res = await Promise.race([
+          fetchPublicUrl(connector.url, { headers: { Accept: connector.format === "json" ? "application/json" : "text/csv,text/plain,*/*" } }, fetchImpl ? { fetchImpl } : {}),
+          new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timed out")), URL_FETCH_TIMEOUT_MS); }),
+        ]);
+        if (!res?.ok) throw new Error(`HTTP ${res?.status}`);
+        body = await res.text();
+      } catch (e) {
+        connector.lastFetchError = e?.code === "SSRF_BLOCKED" ? "URL blocked (private or invalid address)" : `Fetch failed: ${e?.message || e}`;
+        saveXferState();
+        return { ok: false, error: connector.lastFetchError };
+      } finally { clearTimeout(timer); }
+      if (body.length > URL_MAX_BYTES) {
+        connector.lastFetchError = `Response is larger than ${URL_MAX_BYTES / 1048576} MB.`;
+        saveXferState();
+        return { ok: false, error: connector.lastFetchError };
+      }
+      if (connector.format === "json") {
+        try { JSON.parse(body); } catch {
+          connector.lastFetchError = "Response is not valid JSON.";
+          saveXferState();
+          return { ok: false, error: connector.lastFetchError };
+        }
+      }
+      connector.payload = body;
+      connector.fetchedAt = nowIso();
+      connector.lastFetchError = null;
+      const rows = readConnectorRows(connector);
+      connector.schema = deriveSchema(rows);
+      connector.rowCount = rows.length;
+      connector.updatedAt = nowIso();
+      saveXferState();
+      return { ok: true, result: { connector, rowsFetched: rows.length, bytes: body.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("transfer", "connector-delete", (ctx, _artifact, params = {}) => {
     try {
       const s = getXferState();

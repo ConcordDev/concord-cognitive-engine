@@ -54,6 +54,7 @@ function DeploymentsTab() {
   const [openLogs, setOpenLogs] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [sha, setSha] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,7 +67,7 @@ function DeploymentsTab() {
 
   const create = async () => {
     setBusy('create');
-    await run('deploy-create', { service, ref, environment, message: `Deploy ${ref}` });
+    await run('deploy-create', { service, ref, environment, sha: sha || undefined, message: `Release ${ref}` });
     await load();
     setBusy(null);
   };
@@ -92,6 +93,9 @@ function DeploymentsTab() {
         <label className="flex flex-col gap-1 text-[10px] text-gray-400">Git ref
           <input className={input} value={ref} onChange={(e) => setRef(e.target.value)} />
         </label>
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Commit SHA (optional)
+          <input className={input} value={sha} onChange={(e) => setSha(e.target.value)} placeholder="a1b2c3d" />
+        </label>
         <label className="flex flex-col gap-1 text-[10px] text-gray-400">Environment
           <select className={input} value={environment} onChange={(e) => setEnvironment(e.target.value)}>
             <option value="production">production</option>
@@ -101,7 +105,7 @@ function DeploymentsTab() {
         </label>
         <button className={btn} onClick={create} disabled={busy === 'create'}>
           {busy === 'create' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Rocket className="w-3 h-3" />}
-          Deploy
+          Record release
         </button>
         <button className={btn} onClick={load} disabled={loading}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
@@ -109,20 +113,20 @@ function DeploymentsTab() {
       </div>
 
       {deployments.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-8">No deployments yet. Trigger one above.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No releases recorded yet. Concord tracks what you ship and lets you mark a prior release current; it does not run your builds.</p>
       ) : deployments.map((d) => (
         <div key={d.id} className={`${card} p-3`}>
           <div className="flex items-center gap-3 flex-wrap">
             <GitBranch className="w-4 h-4 text-neon-blue shrink-0" />
             <span className="text-sm font-mono text-gray-200">{d.service}</span>
-            <span className="text-xs text-gray-400">{d.ref} · {d.sha}</span>
+            <span className="text-xs text-gray-400">{d.ref}{d.sha ? ` · ${d.sha}` : ''}</span>
             <span className="text-[10px] px-2 py-0.5 rounded bg-lattice-surface text-gray-400">{d.environment}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded ${d.status === 'ready' ? 'bg-neon-green/15 text-neon-green' : 'bg-yellow-500/15 text-yellow-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded ${d.status === 'recorded' ? 'bg-neon-blue/15 text-neon-blue' : 'bg-yellow-500/15 text-yellow-400'}`}>
               {d.status}
             </span>
             {d.active && <span className="text-[10px] px-2 py-0.5 rounded bg-neon-blue/15 text-neon-blue">ACTIVE</span>}
             {d.rolledBack && <span className="text-[10px] px-2 py-0.5 rounded bg-neon-orange/15 text-neon-orange">rolled back</span>}
-            <span className="text-[10px] text-gray-400 ml-auto">{d.buildSeconds}s build</span>
+            <span className="text-[10px] text-gray-400 ml-auto">{d.buildSeconds != null ? `${d.buildSeconds}s build (reported)` : 'build time not reported'}</span>
             <button className={btn} onClick={() => showLogs(d.id)}>
               {openLogs === d.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />} Logs
             </button>
@@ -172,14 +176,20 @@ function MetricsTab() {
         <button className={btn} onClick={load} disabled={loading}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Load
         </button>
-        {data && (
+        {data && data.health !== 'no_data' && (
           <span className={`text-[10px] px-2 py-1 rounded ml-auto ${
             data.health === 'critical' ? 'bg-red-400/15 text-red-400'
               : data.health === 'warning' ? 'bg-yellow-500/15 text-yellow-400'
                 : 'bg-neon-green/15 text-neon-green'}`}>{data.health}</span>
         )}
       </div>
-      {data && (
+      {data && data.health === 'no_data' && (
+        <p className="text-xs text-gray-400 text-center py-8">
+          No metrics have been reported for this service. Send samples (cpu, memory, requests, latencyMs) with the
+          <span className="font-mono"> platform / metrics-ingest </span> action from your service or agent; nothing is simulated here.
+        </p>
+      )}
+      {data && data.health !== 'no_data' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(['cpu', 'memory', 'requests', 'latencyMs'] as const).map((k) => (
@@ -311,7 +321,12 @@ function DomainsTab() {
     else { setHost(''); await load(); }
     setBusy(false);
   };
-  const verify = async (id: string) => { await run('domain-verify', { id }); await load(); };
+  const verify = async (id: string) => {
+    setErr('');
+    const r = await lensRun('platform', 'domain-verify', { id });
+    if (!r.data?.ok) setErr(r.data?.error || 'Verification failed');
+    await load();
+  };
   const remove = async (id: string) => { await run('domain-remove', { id }); await load(); };
 
   return (
@@ -339,7 +354,7 @@ function DomainsTab() {
             <span className={`text-[10px] px-2 py-0.5 rounded ${d.verified ? 'bg-neon-green/15 text-neon-green' : 'bg-yellow-500/15 text-yellow-400'}`}>
               {d.verified ? 'verified' : 'pending'}
             </span>
-            <span className="text-[10px] text-gray-400">SSL: {d.sslStatus}</span>
+            <span className="text-[10px] text-gray-400">{d.sslStatus === 'not_managed' ? 'TLS: not managed by Concord' : `SSL: ${d.sslStatus}`}</span>
             <button className={`${btn} ml-auto`} onClick={() => setOpenDns(openDns === d.id ? null : d.id)}>
               {openDns === d.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />} DNS
             </button>

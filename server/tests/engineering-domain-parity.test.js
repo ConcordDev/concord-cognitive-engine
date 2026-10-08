@@ -234,3 +234,22 @@ describe('engineering — BOM', () => {
     assert.equal(r.result.criticalPath[0].partNumber, 'W8X31');
   });
 });
+
+describe('engineering.partStl — real binary STL for fabrication', () => {
+  it('writes a valid binary STL in millimetres with the true SHA-256', async () => {
+    const { createHash } = await import('node:crypto');
+    const r = call('partStl', {}, {}, { kind: 'box', params: { width: 0.02, height: 0.01, length: 0.03 } });
+    assert.equal(r.ok, true);
+    const buf = Buffer.from(r.result.base64, 'base64');
+    assert.equal(buf.length, r.result.byteLength);
+    assert.equal(createHash('sha256').update(buf).digest('hex'), r.result.sha256);
+    // binary STL: 80-byte header + uint32 count + 50 bytes per triangle
+    const n = buf.readUInt32LE(80);
+    assert.equal(n, 12, 'a box is 12 triangles');
+    assert.equal(buf.length, 84 + 50 * n);
+    assert.deepEqual(r.result.boundingBoxMm, { x: 20, y: 10, z: 30 });
+    const scaled = call('partStl', {}, {}, { kind: 'box', params: { width: 0.02, height: 0.01, length: 0.03 }, scale: 2 });
+    assert.equal(scaled.result.boundingBoxMm.x, 40);
+    assert.equal(call('partStl', {}, {}, { kind: 'box', scale: -1 }).ok, false);
+  });
+});

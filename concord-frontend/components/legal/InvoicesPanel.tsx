@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -48,7 +49,7 @@ export function InvoicesPanel() {
         domain: 'legal', action: 'invoices-from-time',
         input: { matterId: billMatter, taxRate: Number(taxRate) || 0 },
       });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setBillMatter(''); setTaxRate('');
       await refresh();
     } catch (e) { console.error('[Invoices] bill failed', e); }

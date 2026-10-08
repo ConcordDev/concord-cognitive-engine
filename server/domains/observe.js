@@ -16,6 +16,8 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps keyed
 // by userId. Every handler returns { ok, result?, error? } and never throws.
 
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+
 export default function registerObserveActions(registerLensAction) {
   // ---- per-user STATE -------------------------------------------------
   function getObserveState() {
@@ -779,9 +781,11 @@ export default function registerObserveActions(registerLensAction) {
   /**
    * pageOnCall — page the on-call engineer. Severity-routes the page to
    * every matching notification route (sev1 reaches every route, sev4
-   * only sev4-or-broader routes) and records it in the page log.
+   * only sev4-or-broader routes) and records it in the page log. Webhook
+   * routes are actually POSTed (SSRF-guarded); email/SMS/DM have no sender
+   * wired, so they are recorded as not delivered — never "notified".
    */
-  registerLensAction("observe", "pageOnCall", (ctx, _artifact, params = {}) => {
+  registerLensAction("observe", "pageOnCall", async (ctx, _artifact, params = {}) => {
     try {
       const s = getObserveState();
       if (!s) return { ok: false, error: "state unavailable" };
@@ -799,6 +803,32 @@ export default function registerObserveActions(registerLensAction) {
       // a route fires if the incident is at least as severe as the route's floor
       const fired = (cur.routes || []).filter((r) => sevRank[severity] <= sevRank[r.minSeverity || "sev3"])
         .map((r) => ({ route: r.name, channel: r.channel, target: r.target }));
+      const fetchImpl = typeof ctx?.observeFetch === "function" ? ctx.observeFetch : undefined;
+      for (const f of fired) {
+        if (f.channel !== "webhook") {
+          f.delivered = false;
+          f.reason = `${f.channel} paging is not connected; contact ${f.target} directly`;
+          continue;
+        }
+        if (!/^https:\/\//i.test(f.target)) { f.delivered = false; f.reason = "webhook target must be an https URL"; continue; }
+        let timer;
+        try {
+          const res = await Promise.race([
+            fetchPublicUrl(f.target, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ source: "concord-observe", severity, summary, pagedPerson: current?.person || null, at: new Date(now).toISOString() }),
+            }, fetchImpl ? { fetchImpl } : {}),
+            new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), 8000); }),
+          ]);
+          f.delivered = !!res?.ok;
+          f.status = res?.status ?? null;
+          if (!res?.ok) f.reason = `webhook returned HTTP ${res?.status}`;
+        } catch (e) {
+          f.delivered = false;
+          f.reason = e?.code === "SSRF_BLOCKED" ? "webhook URL blocked (private or invalid address)" : `webhook failed: ${e?.message || e}`;
+        } finally { clearTimeout(timer); }
+      }
       const page = {
         id: oId("page"),
         severity, summary,
@@ -813,7 +843,7 @@ export default function registerObserveActions(registerLensAction) {
       if (cur.pages.length > 500) cur.pages.splice(0, cur.pages.length - 500);
       s.oncall.set(uid, cur);
       save();
-      return { ok: true, result: { page, routesNotified: fired.length } };
+      return { ok: true, result: { page, routesMatched: fired.length, routesDelivered: fired.filter((f) => f.delivered).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

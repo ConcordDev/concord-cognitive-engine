@@ -13,6 +13,10 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
+// The agents lens runs LLM-backed steps on ctx.llm; a stub stands in for the
+// local model so these suites exercise the real step pipeline offline.
+const STUB_LLM = { chat: async (opts) => ({ content: `model output for: ${String(opts.messages.at(-1)?.content || "").slice(0, 40)}` }) };
+
 describe("agents — calc contracts (exact computed values)", () => {
   it("evaluateCapability: success/skill/latency fold into score + Elite tier", async () => {
     const r = await lensRun("agents", "evaluateCapability", {
@@ -117,7 +121,7 @@ describe("agents — calc contracts (exact computed values)", () => {
 
 describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("agents-crud"); });
+  before(async () => { ctx = await depthCtx("agents-crud"); ctx.llm = STUB_LLM; });
 
   it("executeRun → listRuns → getRunTrace: a run records steps and reads back", async () => {
     const run = await lensRun("agents", "executeRun", {
@@ -138,20 +142,21 @@ describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)"
   });
 
   it("setBudget + executeRun: an over-budget run halts on token_budget_exceeded", async () => {
-    const set = await lensRun("agents", "setBudget", { params: { agentId: "ag2", tokenLimit: 50, enforce: true } }, ctx);
-    assert.equal(set.result.budget.tokenLimit, 50);
+    const set = await lensRun("agents", "setBudget", { params: { agentId: "ag2", tokenLimit: 1, enforce: true } }, ctx);
+    assert.equal(set.result.budget.tokenLimit, 1);
 
-    // text_generate costs ~240 tokens/step; first step already exceeds the 50 limit.
+    // The first real step spends more (estimated) tokens than the 1-token limit,
+    // so the run halts after it and does not start a second step.
     const run = await lensRun("agents", "executeRun", {
       params: { agentId: "ag2", agentName: "Spender", goal: "write", tools: ["text_generate"], maxSteps: 5 },
     }, ctx);
     assert.equal(run.result.run.status, "halted");
     assert.equal(run.result.run.stoppedReason, "token_budget_exceeded");
-    assert.equal(run.result.run.stepCount, 0);
+    assert.equal(run.result.run.stepCount, 1);
 
     const budget = await lensRun("agents", "getBudget", { params: { agentId: "ag2" } }, ctx);
-    assert.equal(budget.result.budget.tokenLimit, 50);
-    assert.equal(budget.result.budget.tokensUsed, 0); // nothing committed since run halted at step 0
+    assert.equal(budget.result.budget.tokenLimit, 1);
+    assert.equal(budget.result.budget.tokensUsed, run.result.run.totalTokens, "the spent step is committed");
   });
 
   it("setBudget rejects a non-positive tokenLimit", async () => {
@@ -204,7 +209,7 @@ describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)"
 
     const fired = await lensRun("agents", "fireSchedule", { params: { id } }, ctx);
     assert.equal(fired.result.run.status, "completed");
-    assert.equal(fired.result.run.stepCount, 4);
+    assert.equal(fired.result.run.stepCount, 3);
     assert.equal(fired.result.schedule.fireCount, 1);
     assert.equal(fired.result.run.trigger, "schedule:interval");
   });
@@ -215,7 +220,7 @@ describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)"
     assert.match(bad.result.error, /spec required/);
   });
 
-  it("postMessage → getThread: user message + deterministic agent reply round-trip", async () => {
+  it("postMessage → getThread: user message + model agent reply round-trip", async () => {
     const post = await lensRun("agents", "postMessage", {
       params: { agentId: "ag7", agentName: "Chatty", text: "hello there", tools: ["web_search"] },
     }, ctx);
@@ -246,7 +251,7 @@ describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)"
 
 describe("agents — schedule/graph/thread lifecycle + templates + overview (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("agents-lifecycle"); });
+  before(async () => { ctx = await depthCtx("agents-lifecycle"); ctx.llm = STUB_LLM; });
 
   it("createSchedule → listSchedules → toggleSchedule → deleteSchedule full lifecycle", async () => {
     const sched = await lensRun("agents", "createSchedule", {
@@ -465,8 +470,8 @@ describe("agents — schedule/graph/thread lifecycle + templates + overview (sha
     // No edge targets, but both nodes are workers → workers list = both.
     assert.equal(run.result.orchestration.workerCount, 2);
     assert.equal(run.result.orchestration.graphName, "Flat");
-    // Each dispatched worker ran 3 sub-steps.
-    assert.equal(run.result.orchestration.dispatched[0].steps.length, 3);
+    // Each dispatched worker ran its 2 sub-steps (dtu_read → summarize).
+    assert.equal(run.result.orchestration.dispatched[0].steps.length, 2);
   });
 
   it("fireSchedule rejects a disabled schedule and an unknown id", async () => {

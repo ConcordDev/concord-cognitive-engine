@@ -5,14 +5,14 @@ import { Truck, Plus, X, Loader2, Hash } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Pickup { id: string; carrierId: string; carrierName: string; address: string; date: string; timeWindow: string; packageCount: number; status: string; confirmationNumber: string }
+interface Pickup { id: string; carrierId: string; carrierName: string; address: string; date: string; timeWindow: string; packageCount: number; status: string; confirmationNumber: string | null }
 interface Carrier { id: string; name: string; code: string }
 
 export function PickupsPanel() {
   const [pickups, setPickups] = useState<Pickup[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1' });
+  const [form, setForm] = useState({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1', confirmationNumber: '' });
 
   useEffect(() => { refresh(); }, []);
 
@@ -33,7 +33,7 @@ export function PickupsPanel() {
     if (!form.carrierId || !form.address.trim() || !form.date) return;
     try {
       await lensRun({ domain: 'logistics', action: 'pickups-schedule', input: { ...form, packageCount: Number(form.packageCount) || 1 } });
-      setForm({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1' });
+      setForm({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1', confirmationNumber: '' });
       await refresh();
     } catch (e) { console.error('[Pickups] schedule', e); }
   }
@@ -64,7 +64,9 @@ export function PickupsPanel() {
           <option>9am-12pm</option><option>12pm-5pm</option><option>9am-5pm</option>
         </select>
         <input type="number" value={form.packageCount} onChange={e => setForm({ ...form, packageCount: e.target.value })} placeholder="Pkg count" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <button onClick={schedule} className="col-span-4 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule pickup</button>
+        <input value={form.confirmationNumber} onChange={e => setForm({ ...form, confirmationNumber: e.target.value })} placeholder="Carrier conf. # (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <p className="col-span-5 text-[10px] text-gray-500">Concord does not contact the carrier. Book the pickup with them, then record it here with their confirmation number.</p>
+        <button onClick={schedule} className="col-span-5 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule pickup</button>
       </div>
 
       <div className="max-h-80 overflow-y-auto">
@@ -79,7 +81,7 @@ export function PickupsPanel() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-white">{p.carrierName}</span>
-                    <span className="text-[10px] font-mono text-cyan-300 inline-flex items-center gap-0.5"><Hash className="w-2.5 h-2.5" />{p.confirmationNumber}</span>
+                    <span className="text-[10px] font-mono text-cyan-300 inline-flex items-center gap-0.5"><Hash className="w-2.5 h-2.5" />{p.confirmationNumber || 'no carrier conf.'}</span>
                     <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded ml-auto', p.status === 'scheduled' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>
                   </div>
                   <div className="text-[10px] text-gray-400 truncate">{p.address}</div>

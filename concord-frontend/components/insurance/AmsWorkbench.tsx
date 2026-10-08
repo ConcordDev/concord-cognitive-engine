@@ -1245,7 +1245,7 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
             <Plus className="w-3.5 h-3.5" /> Add signer
           </button>
           <button onClick={createEnvelope} disabled={busy || !title.trim()} className={cn(btnPrimary, 'ml-auto justify-center')}>
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Send for signature
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Create envelope
           </button>
         </div>
       </div>
@@ -1268,7 +1268,7 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
                     env.status === 'completed' ? 'bg-green-500/20 text-green-300' :
                     env.status === 'voided' ? 'bg-red-500/20 text-red-300' :
                     'bg-yellow-500/20 text-yellow-300',
-                  )}>{env.status}</span>
+                  )}>{env.status === 'awaiting_signatures' || env.status === 'sent' ? 'awaiting signatures' : env.status}</span>
                   <span className="ml-auto text-[10px] text-gray-400">{signedCount}/{env.signers.length} signed</span>
                 </div>
                 <ul className="mt-2 space-y-1">

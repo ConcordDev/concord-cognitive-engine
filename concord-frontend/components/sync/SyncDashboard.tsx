@@ -115,7 +115,7 @@ const TONE_FOR_KIND: Record<string, TimelineEvent['tone']> = {
 };
 
 const STATE_BADGE: Record<string, { text: string; cls: string }> = {
-  synced: { text: 'All synced', cls: 'bg-emerald-900/60 text-emerald-200 border-emerald-700/50' },
+  online: { text: 'Devices online', cls: 'bg-emerald-900/60 text-emerald-200 border-emerald-700/50' },
   needs_attention: { text: 'Needs attention', cls: 'bg-amber-900/60 text-amber-200 border-amber-700/50' },
   all_offline: { text: 'All devices offline', cls: 'bg-zinc-800 text-zinc-300 border-zinc-700' },
   no_devices: { text: 'No devices', cls: 'bg-zinc-800 text-zinc-400 border-zinc-700' },
@@ -188,8 +188,8 @@ export function SyncDashboard() {
     if (r.data?.ok) {
       const res = r.data.result as { dtuCount: number; status: string };
       flash(res.status === 'quota_exceeded'
-        ? `Sync partial — quota exceeded`
-        : `Synced ${res.dtuCount} DTUs`);
+        ? `${res.dtuCount} DTUs in scope exceed this device's quota`
+        : `${res.dtuCount} DTUs in scope. Download the portable pack to move them to the device.`);
       await refresh();
     } else {
       flash(`Sync failed: ${r.data?.error || 'unknown'}`);
@@ -316,7 +316,7 @@ export function SyncDashboard() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              {status.state === 'synced' && <CheckCircle2 className="h-6 w-6 text-emerald-400" />}
+              {status.state === 'online' && <CheckCircle2 className="h-6 w-6 text-emerald-400" />}
               {status.state === 'needs_attention' && <AlertTriangle className="h-6 w-6 text-amber-400" />}
               {(status.state === 'all_offline' || status.state === 'no_devices') && <WifiOff className="h-6 w-6 text-zinc-400" />}
               <div>
@@ -324,13 +324,13 @@ export function SyncDashboard() {
                   {(STATE_BADGE[status.state] || STATE_BADGE.no_devices).text}
                 </span>
                 <p className="mt-1 text-xs text-zinc-400">
-                  Last sync {status.lastSyncAt ? ago(status.lastSyncAt) : 'never'}
+                  Last pack exported {status.lastSyncAt ? ago(status.lastSyncAt) : 'never'}
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Devices" value={`${status.onlineCount}/${status.deviceCount}`} hint="online" />
-              <Stat label="DTUs synced" value={status.dtusSynced.toLocaleString()} />
+              <Stat label="DTUs in last pack" value={status.dtusSynced.toLocaleString()} />
               <Stat label="Storage" value={fmtBytes(status.usedBytes)} hint={`${status.quotaPct}% of quota`} />
               <Stat label="Conflicts" value={String(status.openConflicts)} hint="open" warn={status.openConflicts > 0} />
             </div>
@@ -473,7 +473,7 @@ export function SyncDashboard() {
                       <p className="text-sm font-semibold text-zinc-100">{d.label}</p>
                       <p className="text-[11px] text-zinc-400">
                         {d.online ? 'Online' : `Last seen ${ago(d.lastSeenAt)}`}
-                        {' · '}<Clock className="inline h-3 w-3" /> last sync {ago(d.lastSyncAt)}
+                        {' · '}<Clock className="inline h-3 w-3" /> last pack {d.lastSyncAt ? ago(d.lastSyncAt) : 'never'}
                         {d.lastSyncStatus === 'quota_exceeded' && (
                           <span className="ml-1 text-amber-400">· quota exceeded</span>
                         )}
@@ -488,7 +488,7 @@ export function SyncDashboard() {
                       {busy === `sync:${d.id}`
                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         : <RefreshCw className="h-3.5 w-3.5" />}
-                      Sync now
+                      Check scope
                     </button>
                     <button
                       type="button" onClick={() => exportPack(d.id, d.label)} disabled={busy === `export:${d.id}`}

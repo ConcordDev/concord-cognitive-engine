@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Scale, Loader2, Plus, ArrowDown, ArrowUp, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -79,7 +80,7 @@ export function TrustAccountsPanel() {
         domain: 'legal', action,
         input: { ...txnForm, accountId: activeAcct.id, amount: Number(txnForm.amount) },
       });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setTxnForm({ kind: 'deposit', matterId: '', amount: '', memo: '', payee: '', checkNumber: '' });
       setShowTxnForm(false);
       await refreshAccount(activeAcct.id);

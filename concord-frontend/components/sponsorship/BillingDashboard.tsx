@@ -58,28 +58,31 @@ export function BillingDashboard({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div className="space-y-4">
+      <p role="note" className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200/80">
+        Sponsorship billing isn&apos;t connected yet. Amounts below are pledges you recorded; no Concord Coin has been charged.
+      </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat label="Monthly committed" value={`${b.monthlyCommitted} CC`} />
-        <Stat label="Total contributed" value={`${b.totalContributed} CC`} />
+        <Stat label="Monthly pledged" value={`${b.monthlyCommitted} CC`} />
+        <Stat label="Total pledged" value={`${b.totalContributed} CC`} />
         <Stat label="Active" value={String(b.activeCount)} />
         <Stat label="Paused" value={String(b.pausedCount)} />
       </div>
 
       <section>
-        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Contribution trend (6 months)</h3>
+        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Pledge trend (6 months)</h3>
         <ChartKit
           kind="bar"
           data={chartData}
           xKey="label"
-          series={[{ key: 'cc', label: 'CC charged', color: '#f59e0b' }]}
+          series={[{ key: 'cc', label: 'CC pledged', color: '#f59e0b' }]}
           height={180}
         />
       </section>
 
       <section>
-        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Upcoming charges</h3>
+        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Upcoming renewals</h3>
         {b.upcomingCharges.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic">No upcoming charges.</p>
+          <p className="text-[11px] text-zinc-400 italic">No upcoming renewals.</p>
         ) : (
           <ul className="space-y-1">
             {b.upcomingCharges.map((c, i) => (
@@ -93,9 +96,9 @@ export function BillingDashboard({ refreshKey }: { refreshKey: number }) {
       </section>
 
       <section>
-        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Payment history</h3>
+        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Pledge history</h3>
         {b.paymentHistory.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic">No payments yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No pledges yet.</p>
         ) : (
           <ul className="space-y-1">
             {b.paymentHistory.map((p) => (
@@ -104,7 +107,7 @@ export function BillingDashboard({ refreshKey }: { refreshKey: number }) {
                   {p.creatorName} <span className="text-zinc-600">· {p.note}</span>
                 </span>
                 <span className="font-mono text-zinc-400">
-                  {p.kind === 'charge' ? `${p.amountCc} CC` : p.kind} · {new Date(p.at * 1000).toLocaleDateString()}
+                  {p.kind === 'charge' ? `${p.amountCc} CC pledged` : p.kind} · {new Date(p.at * 1000).toLocaleDateString()}
                 </span>
               </li>
             ))}

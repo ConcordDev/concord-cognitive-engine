@@ -168,7 +168,7 @@ export function WebhooksPanel({ showCreate, setShowCreate }: { showCreate: boole
     },
     onSuccess: (data, wh) => {
       const sig = data?.signature ? ` (sig ${data.signature.slice(0, 14)}…)` : '';
-      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'success', message: `Test delivered successfully${sig}` } }));
+      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'success', message: `${data?.message || 'Delivered'}${sig}` } }));
       setTimeout(() => setWebhookTestResults((prev) => { const n = { ...prev }; delete n[wh.id]; return n; }), 5000);
     },
     onError: (err, wh) => {

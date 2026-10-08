@@ -244,6 +244,28 @@ describe("repos — CI workflow runs + logs", () => {
     assert.ok(logs.result.steps.length > 0);
   });
 
+  it("run conclusions come from the repo files, not a canned pass", () => {
+    const id = freshRepo();
+    const call_ = (n, p) => call(n, ctxA, p);
+    const clean = call_("workflow-run", { repoId: id }).result.run;
+    const cleanSteps = call_("workflow-logs", { repoId: id, runId: clean.id }).result.steps;
+    const skipped = cleanSteps.filter((st) => st.conclusion === "skipped").map((st) => st.name);
+    assert.deepEqual(skipped, ["Test", "Build"]);
+    assert.ok(cleanSteps.every((st) => st.logs.length > 0));
+    const w = call_("file-save", { repoId: id, path: "bad.json", content: "{nope" });
+    const w2 = call_("file-save", { repoId: id, path: "bad.js", content: "function ({" });
+    const w3 = call_("file-save", { repoId: id, path: "s.js", content: "const password = 'hunter2';" });
+    const r = call_("workflow-run", { repoId: id }).result.run;
+    assert.equal(r.conclusion, "failure");
+    const steps = call_("workflow-logs", { repoId: id, runId: r.id }).result.steps;
+    const byName = Object.fromEntries(steps.map((st) => [st.name, st]));
+    assert.equal(byName["Validate JSON"].conclusion, "failure");
+    assert.equal(byName["Syntax check (JS)"].conclusion, "failure");
+    assert.equal(byName["Static scan (blocking rules)"].conclusion, "failure");
+    assert.match(byName["Validate JSON"].logs.join("\n"), /bad\.json/);
+    void w; void w2; void w3;
+  });
+
   it("workflow-logs fails on unknown run", () => {
     const id = freshRepo();
     assert.equal(call("workflow-logs", ctxA, { repoId: id, runId: "nope" }).ok, false);

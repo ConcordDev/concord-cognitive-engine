@@ -302,7 +302,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
     if (dirty) { flash('err', 'Save the layout before publishing'); return; }
     const navLabel = window.prompt('Nav label?', active?.name) || active?.name;
     const d = await call('publish', { canvasId: activeId, navLabel });
-    if (d.ok) { await loadPublished(); flash('ok', 'Published to navigation'); }
+    if (d.ok) { await loadPublished(); flash('ok', 'Marked published (listed under Published lenses here)'); }
     else flash('err', d.error || 'publish failed');
   }, [activeId, dirty, active, loadPublished, flash]);
 
@@ -687,9 +687,9 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
           {/* Published lenses */}
           <div className="panel p-3">
             <p className="text-xs uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
-              <Rocket className="w-3.5 h-3.5" /> In Navigation
+              <Rocket className="w-3.5 h-3.5" /> Published lenses
             </p>
-            {published.length === 0 && <p className="text-xs text-gray-400">Nothing published.</p>}
+            {published.length === 0 && <p className="text-xs text-gray-400">Nothing published. Publishing records the lens here; it does not add an entry to the main sidebar.</p>}
             {published.map((p) => (
               <div key={String(p.canvasId)} className="group flex items-center justify-between text-xs py-1">
                 <span className="truncate">{String(p.icon)} {String(p.navLabel)}

@@ -21,7 +21,7 @@ interface Invoice {
 interface EngagementOption { id: string; name: string }
 
 const STATUS_COLOR: Record<string, string> = {
-  sent: 'text-sky-400 bg-sky-500/10',
+  issued: 'text-sky-400 bg-sky-500/10',
   paid: 'text-emerald-400 bg-emerald-500/10',
   overdue: 'text-rose-400 bg-rose-500/10',
 };

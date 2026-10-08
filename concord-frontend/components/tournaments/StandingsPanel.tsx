@@ -83,6 +83,7 @@ export function StandingsPanel({
           <span className="text-2xl font-bold text-amber-300">{t.prizePoolCc}</span>
           <span className="text-xs text-slate-400">CC prize pool</span>
         </div>
+        <p className="mb-3 text-[11px] text-slate-500">Concord calculates the split. It does not hold or send prize money; pay winners yourself.</p>
 
         {t.status === 'completed' ? (
           <>

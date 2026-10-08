@@ -16,7 +16,7 @@
 
 import { CATEGORIES, TRACKS, ladderFor, activityFor, isTrack, tierInfo } from "../lib/professions.js";
 import { resolveSession, fidelityPayMultiplier, fidelityXpMultiplier } from "../lib/career-fidelity.js";
-import { shiftPay, promotionXp } from "../lib/career-engine.js";
+import { shiftPay, promotionXp, promotionReady, promotionReward } from "../lib/career-engine.js";
 import { resolveMinigame, isMinigame } from "../lib/sport-minigames.js";
 import { creditSparks } from "../lib/sparks-service.js";
 import {
@@ -47,6 +47,43 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// Per-track progression. The tier a shift pays at is read from here, never
+// taken from the client. skillLevel = cumulative promotion XP / 10, so the
+// engine's skill gate (tier × 10) means tier × 100 XP.
+const BASE_ATTRIBUTE = 0.5;
+// The shift input comes from a browser-side timing check the server can't
+// verify, so pay is rate-limited server-side: one paid shift per player per
+// cooldown across all tracks.
+const shiftCooldownS = () => Math.max(0, Number(process.env.CONCORD_CAREER_SHIFT_COOLDOWN_S ?? 1800) || 0);
+
+function lastShiftAt(db, uid) {
+  try {
+    return db.prepare(`SELECT MAX(last_shift_at) AS t FROM player_career_progress WHERE user_id = ?`).get(uid)?.t || null;
+  } catch { return null; }
+}
+
+function readProgress(db, uid, trackId) {
+  try {
+    const row = db.prepare(`SELECT tier, xp, highest_tier, shifts, last_shift_day, last_shift_at FROM player_career_progress WHERE user_id = ? AND track_id = ?`).get(uid, trackId);
+    if (row) return { tier: row.tier, xp: row.xp, highestTier: row.highest_tier, shifts: row.shifts, lastShiftDay: row.last_shift_day, lastShiftAt: row.last_shift_at ?? null, persisted: true };
+  } catch { /* table absent → fresh progress, not persisted */ }
+  return { tier: 1, xp: 0, highestTier: 1, shifts: 0, lastShiftDay: null, lastShiftAt: null, persisted: false };
+}
+
+function writeProgress(db, uid, trackId, p) {
+  try {
+    db.prepare(`
+      INSERT INTO player_career_progress (user_id, track_id, tier, xp, highest_tier, shifts, last_shift_day, last_shift_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+      ON CONFLICT(user_id, track_id) DO UPDATE SET
+        tier = excluded.tier, xp = excluded.xp, highest_tier = excluded.highest_tier,
+        shifts = excluded.shifts, last_shift_day = excluded.last_shift_day,
+        last_shift_at = excluded.last_shift_at, updated_at = unixepoch()
+    `).run(uid, trackId, p.tier, p.xp, p.highestTier, p.shifts, p.lastShiftDay, p.lastShiftAt ?? null);
+    return true;
+  } catch { return false; }
+}
+
 export default function registerCareerMacros(register) {
   register("careers", "tracks", async (ctx) => {
     const g = gate(ctx); if (g) return g;
@@ -70,8 +107,17 @@ export default function registerCareerMacros(register) {
     if (b) return { ok: false, reason: `invalid_${b}` };
     const trackId = input.trackId;
     if (!isTrack(trackId)) return { ok: false, reason: "unknown_track" };
-    const tier = Math.max(1, Math.min(10, Number(input.tier) || 1));
-    const attribute = clamp01(input.attribute ?? 0.5);
+    // Tier, mastery and attribute are server-owned; a client-sent tier or
+    // attribute is ignored so a request can't claim a higher wage.
+    const nowS = Math.floor(Date.now() / 1000);
+    const last = lastShiftAt(ctx.db, uid);
+    const cooldown = shiftCooldownS();
+    if (cooldown > 0 && last && nowS - last < cooldown) {
+      return { ok: false, reason: "shift_cooldown", retryAt: (last + cooldown) * 1000 };
+    }
+    const progress = readProgress(ctx.db, uid, trackId);
+    const tier = progress.tier;
+    const attribute = BASE_ATTRIBUTE;
 
     // performance: a sport-minigame attempt if one is named, else a play session.
     let performanceScore;
@@ -80,17 +126,52 @@ export default function registerCareerMacros(register) {
     } else {
       performanceScore = resolveSession("play", { attribute, skillInput: clamp01(input.skillInput ?? 0.5) }).performanceScore;
     }
-    const wage = Math.round(shiftPay(performanceScore, trackId, tier) * fidelityPayMultiplier("play"));
+    const wage = Math.round(shiftPay(performanceScore, trackId, tier, { masteryTierReached: progress.highestTier }) * fidelityPayMultiplier("play"));
     const xp = Math.round(promotionXp(performanceScore) * fidelityXpMultiplier("play"));
+    const today = new Date().toISOString().slice(0, 10);
+    const next = { ...progress, xp: progress.xp + xp, shifts: progress.shifts + 1, lastShiftDay: today, lastShiftAt: nowS };
+    const promo = promotionReady({
+      skillLevel: Math.floor(next.xp / 10),
+      dailyTaskDone: true,
+      performanceScore,
+      reputation: 0,
+    }, trackId, tier);
+    let promotion = null;
+    if (promo.ready) {
+      next.tier = promo.nextTier;
+      next.highestTier = Math.max(next.highestTier, next.tier);
+      promotion = promotionReward(trackId, next.tier);
+    }
+    const saved = writeProgress(ctx.db, uid, trackId, next);
     let paid = false;
     if (wage > 0) {
       const refId = `career:${uid}:${trackId}:${Date.now()}`;
       const c = creditSparks(ctx.db, { holderKind: "player", holderId: uid, amount: wage, refId, reason: "career_play_shift", worldId: input.worldId || "concordia-hub" });
       paid = !!c?.ok;
     }
-    return { ok: true, trackId, tier, performanceScore, wage, xp, paid, fidelity: "play" };
+    return {
+      ok: true, trackId, tier, performanceScore, wage, xp, paid, fidelity: "play",
+      progress: { tier: next.tier, xp: next.xp, highestTier: next.highestTier, shifts: next.shifts, saved },
+      promotion, gates: promo.gates,
+      nextTierXp: next.tier < 10 ? next.tier * 100 : null,
+    };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { note: "careers: play a shift (skill-input → sparks + XP)" });
+
+  register("careers", "progress", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    if (input.trackId !== undefined) {
+      if (!isTrack(input.trackId)) return { ok: false, reason: "unknown_track" };
+      const p = readProgress(ctx.db, uid, input.trackId);
+      return { ok: true, trackId: input.trackId, progress: p, nextTierXp: p.tier < 10 ? p.tier * 100 : null };
+    }
+    let rows = [];
+    try {
+      rows = ctx.db.prepare(`SELECT track_id, tier, xp, highest_tier, shifts, last_shift_day FROM player_career_progress WHERE user_id = ? ORDER BY updated_at DESC`).all(uid);
+    } catch { rows = []; }
+    return { ok: true, tracks: rows.map((r) => ({ trackId: r.track_id, tier: r.tier, xp: r.xp, highestTier: r.highest_tier, shifts: r.shifts, lastShiftDay: r.last_shift_day })) };
+  }, { note: "careers: my per-track tier, XP and mastery" });
 
   register("careers", "contracts", async (ctx) => {
     const g = gate(ctx); if (g) return g;

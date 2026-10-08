@@ -73,7 +73,7 @@ export function WebhookSignatureVerifier({ webhookId }: { webhookId: string }) {
         <input
           value={signature}
           onChange={(e) => setSignature(e.target.value)}
-          placeholder="sha=..."
+          placeholder="sha256=..."
           className="mt-1 w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-[11px] font-mono text-gray-200"
         />
       </label>

@@ -268,13 +268,16 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
     const zapId = save.result.zap.id;
     assert.equal(save.result.zap.enabled, true);
 
-    // amount 250 → filter passes → action dispatches → success
+    // amount 250 → filter passes → the action calls the real slack.post macro.
+    // With no Slack OAuth connected the connector refuses, so the run errors
+    // honestly rather than claiming a dispatch.
     const pass = await lensRun("integrations", "zapRun", { params: { zapId, triggerData: { amount: 250 } } }, ctx);
     assert.equal(pass.ok, true);
-    assert.equal(pass.result.run.status, "success");
+    assert.equal(pass.result.run.status, "error");
     const actionTrace = pass.result.run.trace.find((t) => t.kind === "action");
     assert.equal(actionTrace.actionId, "post_message");
     assert.equal(actionTrace.payload.text, 250); // $.amount resolved from the bag
+    assert.equal(actionTrace.ok, false);
 
     // amount 50 → filter fails → halts as filtered
     const halt = await lensRun("integrations", "zapRun", { params: { zapId, triggerData: { amount: 50 } } }, ctx);
@@ -285,7 +288,7 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
     // runHistory reflects both runs and the success/filtered split
     const hist = await lensRun("integrations", "runHistory", { params: { zapId } }, ctx);
     assert.equal(hist.result.total, 2);
-    assert.equal(hist.result.summary.success, 1);
+    assert.equal(hist.result.summary.error, 1);
     assert.equal(hist.result.summary.filtered, 1);
   });
 
@@ -346,20 +349,24 @@ describe("integrations — primitive evaluators (condition / formatter / code / 
 
 describe("integrations — webhook test, signature verify, and retry backoff (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("integrations-webhook"); });
+  // Webhook delivery goes through the SSRF-guarded fetch; tests inject a
+  // transport so the real request/response handling runs offline.
+  before(async () => {
+    ctx = await depthCtx("integrations-webhook");
+    ctx.integrationsFetch = async () => ({ ok: true, status: 200 });
+  });
 
   it("webhookTest with a url delivers and signs; without a url it refuses", async () => {
     const ok = await lensRun("integrations", "webhookTest", { params: { webhookId: "wh1", url: "https://hooks.example/x" } }, ctx);
     assert.equal(ok.ok, true);
     assert.equal(ok.result.delivered, true);
     assert.equal(ok.result.delivery.statusCode, 200);
-    assert.ok(ok.result.signature.startsWith("sha="));
+    assert.match(ok.result.signature, /^sha256=[0-9a-f]{64}$/);
 
     const noUrl = await lensRun("integrations", "webhookTest", { params: { webhookId: "wh2" } }, ctx);
     // handler returns { ok:false, result, error } — result IS present so it unwraps;
-    // delivered is false and status is no_url.
+    // nothing was sent, so delivered is false.
     assert.equal(noUrl.result.delivered, false);
-    assert.equal(noUrl.result.delivery.status, "no_url");
   });
 
   it("verifyWebhookSignature validates a correct signature and rejects a tampered one", async () => {
@@ -367,7 +374,7 @@ describe("integrations — webhook test, signature verify, and retry backoff (sh
     // Fire a test to ensure the webhook meta (and its secret) exists, then read deliveries.
     await lensRun("integrations", "webhookTest", { params: { webhookId: "wh3", url: "https://x", payload: JSON.parse(body) } }, ctx);
     // We don't know the secret, but verify can compute the expected sig itself.
-    const wrong = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: "sha=deadbeefdeadbeef" } }, ctx);
+    const wrong = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: "sha256=deadbeefdeadbeef" } }, ctx);
     assert.equal(wrong.result.valid, false);
     // Now feed back the expected signature it just told us → must validate.
     const good = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: wrong.result.expected } }, ctx);

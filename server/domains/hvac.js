@@ -713,13 +713,13 @@ export default function registerHVACActions(registerLensAction) {
       client: hvClean(params.client, 120),
       amount: Math.round(amount * 100) / 100,
       token,
-      status: "sent",
+      status: "awaiting_signature",
       signedName: null, signedAt: null,
       createdAt: hvNow(),
     };
     list.push(rec);
     saveHvacState();
-    return { ok: true, result: { signatureRequest: rec, message: `Approval request sent. Sign token ${token}.` } };
+    return { ok: true, result: { signatureRequest: rec, message: `Approval request created. Have the client sign on this device or share token ${token}; Concord does not send it.` } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("hvac", "estimate-sign", (ctx, _a, params = {}) => {
@@ -787,7 +787,7 @@ export default function registerHVACActions(registerLensAction) {
         collected: Math.round(collected * 100) / 100,
         fees: Math.round(fees * 100) / 100,
         net: Math.round((collected - fees) * 100) / 100,
-        pendingSignatures: signatures.filter((sg) => sg.status === "sent").length,
+        pendingSignatures: signatures.filter((sg) => (sg.status === "awaiting_signature" || sg.status === "sent")).length,
       },
     } };
   });

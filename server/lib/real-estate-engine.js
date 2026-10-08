@@ -19,8 +19,10 @@ function uid(prefix) {
   return `${prefix}_${crypto.randomBytes(6).toString("hex")}`;
 }
 
-function defaultDebit() { return { ok: true, simulated: true }; }
-function defaultCredit() { return { ok: true, simulated: true }; }
+// No wallet wired → no money moves, so purchases and rent fail honestly
+// instead of transferring buildings or marking rent paid for free.
+function defaultDebit() { return { ok: false, reason: "wallet_not_connected" }; }
+function defaultCredit() { return { ok: false, reason: "wallet_not_connected" }; }
 
 /* ───────── Ownership + listings ────────────────────────────────────── */
 
@@ -198,7 +200,12 @@ export function tickRentals(db, wallet = {}) {
       failed.push({ agreementId: a.id, reason: "tenant_debit_failed" });
       continue;
     }
-    credit(a.landlord_user_id, a.rent_cents, `rent_collected:${a.id}`);
+    const paid = credit(a.landlord_user_id, a.rent_cents, `rent_collected:${a.id}`);
+    if (!paid?.ok) {
+      if (a.tenant_kind === "player") credit(a.tenant_id, a.rent_cents, `rent_refund:${a.id}`);
+      failed.push({ agreementId: a.id, reason: "landlord_credit_failed", detail: paid?.reason });
+      continue;
+    }
     const nextDue = a.next_due_at + a.period_days * 86400;
     db.prepare(`
       UPDATE rental_agreements SET next_due_at = ?, last_paid_at = unixepoch() WHERE id = ?

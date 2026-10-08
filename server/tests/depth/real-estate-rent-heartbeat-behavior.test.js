@@ -104,14 +104,35 @@ describe("real-estate rent-collection heartbeat — direct handler invocation", 
     db.prepare("UPDATE rental_agreements SET next_due_at = ? WHERE id = ?")
       .run(Math.floor(Date.now() / 1000) - 86400, r.agreementId);
 
-    const result = await runRealEstateRentCollectionSweep({ db });
+    const moves = [];
+    const wallet = {
+      debit: (u, a, ref) => { moves.push(["debit", u, a, ref]); return { ok: true }; },
+      credit: (u, a, ref) => { moves.push(["credit", u, a, ref]); return { ok: true }; },
+    };
+    const result = await runRealEstateRentCollectionSweep({ db, wallet });
     assert.equal(result.ok, true);
     assert.equal(result.collected, 1);
     assert.equal(result.failed, 0);
+    assert.deepEqual(moves.map((m) => m.slice(0, 3)), [["debit", "bob", 500], ["credit", "alice", 500]]);
 
     const after = db.prepare("SELECT * FROM rental_agreements WHERE id = ?").get(r.agreementId);
     assert.ok(after.next_due_at > Math.floor(Date.now() / 1000), "next_due_at should have advanced");
     assert.ok(after.last_paid_at, "last_paid_at should be stamped");
+  });
+
+  it("without a connected wallet, rent is NOT marked paid (no fabricated collection)", async () => {
+    const r = createRentalAgreement(db, {
+      buildingId: "b1", landlordUserId: "alice",
+      tenantKind: "player", tenantId: "bob", rentCents: 500, periodDays: 7,
+    });
+    const past = Math.floor(Date.now() / 1000) - 86400;
+    db.prepare("UPDATE rental_agreements SET next_due_at = ? WHERE id = ?").run(past, r.agreementId);
+    const result = await runRealEstateRentCollectionSweep({ db });
+    assert.equal(result.collected, 0);
+    assert.equal(result.failed, 1);
+    const after = db.prepare("SELECT * FROM rental_agreements WHERE id = ?").get(r.agreementId);
+    assert.equal(after.next_due_at, past);
+    assert.equal(after.last_paid_at, null);
   });
 
   it("does NOT collect rent that isn't due yet", async () => {
@@ -140,13 +161,14 @@ describe("real-estate rent-collection heartbeat — direct handler invocation", 
     db.prepare("UPDATE rental_agreements SET next_due_at = ? WHERE id = ?")
       .run(Math.floor(Date.now() / 1000) - 10, r.agreementId);
 
-    // Reference: call the engine directly with a no-op wallet (same default
-    // the sweep falls back to when economy/wallet.js isn't resolvable).
-    const reference = tickRentals(db, {});
+    // Reference: call the engine directly with the same accepting wallet the
+    // sweep is given.
+    const okWallet = { debit: () => ({ ok: true }), credit: () => ({ ok: true }) };
+    const reference = tickRentals(db, okWallet);
     // Re-due it again for the sweep's own pass (tickRentals already advanced it).
     db.prepare("UPDATE rental_agreements SET next_due_at = ? WHERE id = ?")
       .run(Math.floor(Date.now() / 1000) - 10, r.agreementId);
-    const swept = await runRealEstateRentCollectionSweep({ db });
+    const swept = await runRealEstateRentCollectionSweep({ db, wallet: okWallet });
 
     assert.equal(swept.collected, reference.collected);
     assert.deepEqual(swept.details.collected[0].agreementId, reference.details.collected[0].agreementId);

@@ -153,8 +153,13 @@ export function WorldPropertiesPanel() {
     setError(null);
     try {
       const r = await lensRun({ domain: 'real_estate', action: 'purchase', input: { listingId } });
-      if (r.data?.ok) await refresh();
-      else setError(r.data?.error || 'Purchase failed.');
+      const res = (r.data?.result ?? r.data) as { ok?: boolean; reason?: string; reasonDetail?: string } | undefined;
+      if (r.data?.ok && res?.ok !== false) await refresh();
+      else if (res?.reason === 'wallet_debit_failed' || res?.reason === 'wallet_credit_failed') {
+        setError(res.reasonDetail === 'wallet_not_connected'
+          ? 'Property purchases need a connected wallet, which this server does not have. Nothing was charged and ownership did not change.'
+          : 'The payment did not go through. Nothing was charged and ownership did not change.');
+      } else setError(r.data?.error || res?.reason || 'Purchase failed.');
     } catch (e) {
       console.error('[WorldProperties] purchase failed', e);
       setError('Purchase failed.');
@@ -253,8 +258,11 @@ export function WorldPropertiesPanel() {
     setError(null);
     try {
       const r = await lensRun({ domain: 'real_estate', action: 'tick_rentals', input: {} });
-      if (r.data?.ok) await refresh();
-      else setError(r.data?.error || 'Rent collection failed.');
+      const res = (r.data?.result ?? r.data) as { collected?: number; failed?: number } | undefined;
+      if (r.data?.ok) {
+        await refresh();
+        if (res?.failed) setError(`${res.failed} rent payment${res.failed === 1 ? '' : 's'} could not be collected (no money moved). They stay due.`);
+      } else setError(r.data?.error || 'Rent collection failed.');
     } catch (e) {
       console.error('[WorldProperties] tick_rentals failed', e);
       setError('Rent collection failed.');

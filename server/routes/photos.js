@@ -11,19 +11,26 @@ import {
   deletePhoto,
   listMyPhotos,
   listPublicPhotosInWorld,
+  updatePhoto,
+  listAlbums,
+  createAlbum,
+  deleteAlbum,
+  setAlbumMembership,
+  listAlbumPhotos,
 } from "../lib/photo-gallery.js";
 
 export function photoHttpStatus(result) {
   if (result?.ok) return 200;
   const err = result?.error || result?.reason || "";
   if (err === "not_owner") return 403;
-  if (err === "no_photo" || err === "not_found" || err === "blob_missing") return 404;
+  if (err === "no_photo" || err === "no_album" || err === "not_found" || err === "blob_missing") return 404;
   if (
     err === "missing_inputs" ||
     err === "missing_dataUrl" ||
     err === "invalid_data_url" ||
     err === "invalid_visibility" ||
-    err === "blob_too_large"
+    err === "blob_too_large" ||
+    err === "missing_name"
   ) return 400;
   return 500;
 }
@@ -65,6 +72,32 @@ export function createPhotosRouter({ db, requireAuth }) {
 
   router.post("/:photoId/delete", auth, (req, res) => {
     send(res, deletePhoto(db, userIdOf(req), req.params.photoId));
+  });
+
+  router.post("/:photoId/update", auth, (req, res) => {
+    const b = req.body || {};
+    send(res, updatePhoto(db, userIdOf(req), req.params.photoId, { caption: b.caption, favorite: b.favorite }));
+  });
+
+  router.get("/albums", auth, (req, res) => {
+    res.json({ ok: true, albums: listAlbums(db, userIdOf(req)) });
+  });
+
+  router.post("/albums", auth, (req, res) => {
+    send(res, createAlbum(db, userIdOf(req), (req.body || {}).name));
+  });
+
+  router.post("/albums/:albumId/delete", auth, (req, res) => {
+    send(res, deleteAlbum(db, userIdOf(req), req.params.albumId));
+  });
+
+  router.post("/albums/:albumId/items", auth, (req, res) => {
+    const b = req.body || {};
+    send(res, setAlbumMembership(db, userIdOf(req), req.params.albumId, String(b.photoId || ""), b.add !== false));
+  });
+
+  router.get("/albums/:albumId/photos", auth, (req, res) => {
+    send(res, listAlbumPhotos(db, userIdOf(req), req.params.albumId));
   });
 
   router.get("/mine", auth, (req, res) => {

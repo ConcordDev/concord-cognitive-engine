@@ -2105,10 +2105,12 @@ export default function registerInsuranceActions(register) {
       docType: insClean(params.docType, 40).toLowerCase() || "application",
       policyId: policy ? policy.id : null,
       signers,
-      status: "sent",
+      // Signers are not emailed by Concord; they sign in this workspace.
+      status: "awaiting_signatures",
+      delivered: false,
       binderIssued: false,
       createdAt: insNow(),
-      audit: [{ at: insNow(), event: "Envelope sent for signature" }],
+      audit: [{ at: insNow(), event: "Envelope created; awaiting signatures (signers are not emailed)" }],
     };
     insListB(s.envelopes, userId).push(envelope);
     saveInsState();

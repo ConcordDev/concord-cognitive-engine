@@ -34,8 +34,19 @@ import { up as up179 } from "../migrations/179_tunyan_jobs.js";
 function setupDb() {
   const db = new Database(":memory:");
   up179(db);
+  db.exec(`
+    CREATE TABLE users (id TEXT PRIMARY KEY, sparks INTEGER NOT NULL DEFAULT 0, concordia_credits REAL NOT NULL DEFAULT 0);
+    CREATE TABLE sparks_ledger (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, delta INTEGER NOT NULL,
+      reason TEXT NOT NULL, world_id TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+  `);
+  for (const id of ["user_1", "user_unemployed", "user_pregnant", "user_employed"]) {
+    db.prepare("INSERT INTO users (id) VALUES (?)").run(id);
+  }
   return db;
 }
+const sparksOf = (db, id) => db.prepare("SELECT sparks FROM users WHERE id = ?").get(id)?.sparks ?? 0;
 
 describe("Phase 10 / tunyan-jobs — catalog", () => {
   it("seeds 7 named jobs", () => {
@@ -94,6 +105,18 @@ describe("Phase 10 / tunyan-jobs — completeShift", () => {
     assert.equal(r.action, "shift_paid");
     assert.equal(r.paid_sparks, 18); // seeded fisherman wage
     assert.equal(r.shifts_completed, 1);
+    assert.equal(sparksOf(db, "user_1"), 18, "the wage really reached the sparks wallet");
+  });
+
+  it("never reports a payment the wallet did not receive", async () => {
+    const db = setupDb();
+    applyForJob(db, "user_1", "concordia-hub", "job_fisherman");
+    const r = await completeShift(db, "user_1", "concordia-hub", { mintFn: async () => ({ ok: false, reason: "down" }) });
+    assert.equal(r.ok, true);
+    assert.equal(r.action, "shift_logged_unpaid");
+    assert.equal(r.paid_sparks, 0);
+    assert.equal(r.wage_sparks, 18);
+    assert.equal(sparksOf(db, "user_1"), 0);
   });
 
   it("enforces cooldown", async () => {
@@ -127,7 +150,7 @@ describe("Phase 10 / tunyan-jobs — setDemographicKind", () => {
 
   it("upserts known demographic", () => {
     const db = setupDb();
-    setDemographicKind(db, "user_1", "concordia-hub", "pregnant");
+    setDemographicKind(db, "user_1", "concordia-hub", "pregnant", { verified: true });
     const emp = getMyEmployment(db, "user_1");
     assert.equal(emp.demographic_kind, "pregnant");
   });
@@ -137,7 +160,7 @@ describe("Phase 10 / tunyan-jobs — mintRationsForEligible", () => {
   it("mints exactly once per eligible user", async () => {
     const db = setupDb();
     setDemographicKind(db, "user_unemployed", "concordia-hub", "unemployed");
-    setDemographicKind(db, "user_pregnant", "concordia-hub", "pregnant");
+    setDemographicKind(db, "user_pregnant", "concordia-hub", "pregnant", { verified: true });
     setDemographicKind(db, "user_employed", "concordia-hub", "employed_baseline");
     let mintCalls = 0;
     const mintFn = async () => { mintCalls++; return { ok: true }; };
@@ -148,5 +171,60 @@ describe("Phase 10 / tunyan-jobs — mintRationsForEligible", () => {
     const r2 = await mintRationsForEligible(db, { mintFn });
     assert.equal(r2.minted, 0);
     assert.equal(r2.skipped, 2);
+  });
+
+  it("pays rations on the sparks ledger by default and retries ones that failed", async () => {
+    const db = setupDb();
+    setDemographicKind(db, "user_unemployed", "concordia-hub", "unemployed");
+    const failed = await mintRationsForEligible(db, { mintFn: async () => ({ ok: false }) });
+    assert.equal(failed.minted, 0);
+    assert.equal(failed.failed, 1);
+    const paid = await mintRationsForEligible(db);
+    assert.equal(paid.minted, 1, "an unpaid ration is retried, not marked delivered");
+    assert.ok(sparksOf(db, "user_unemployed") > 0);
+  });
+});
+
+describe("tunyan-jobs — exploit guards", () => {
+  it("re-applying for a job does not reset the shift cooldown", async () => {
+    const db = setupDb();
+    applyForJob(db, "user_1", "concordia-hub", "job_fisherman");
+    assert.equal((await completeShift(db, "user_1")).ok, true);
+    applyForJob(db, "user_1", "concordia-hub", "job_fisherman");
+    const again = await completeShift(db, "user_1");
+    assert.equal(again.ok, false);
+    assert.equal(again.reason, "shift_cooldown");
+  });
+
+  it("unknown worlds are rejected, and the cooldown spans all worlds", async () => {
+    const db = setupDb();
+    assert.equal(applyForJob(db, "user_1", "made-up-world", "job_fisherman").reason, "unknown_world");
+    db.exec("CREATE TABLE worlds (id TEXT PRIMARY KEY)");
+    db.prepare("INSERT INTO worlds VALUES (?), (?)").run("concordia-hub", "second-world");
+    applyForJob(db, "user_1", "concordia-hub", "job_fisherman");
+    applyForJob(db, "user_1", "second-world", "job_fisherman");
+    assert.equal((await completeShift(db, "user_1", "concordia-hub")).ok, true);
+    const other = await completeShift(db, "user_1", "second-world");
+    assert.equal(other.reason, "shift_cooldown", "a second world can't double the wage rate");
+  });
+
+  it("players cannot self-assign ration categories that need verification", () => {
+    const db = setupDb();
+    const r = setDemographicKind(db, "user_1", "concordia-hub", "pregnant");
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "requires_verification");
+    assert.equal(setDemographicKind(db, "user_1", "concordia-hub", "unemployed").ok, true);
+  });
+
+  it("a player gets one ration per period even with rows in several worlds", async () => {
+    const db = setupDb();
+    db.exec("CREATE TABLE worlds (id TEXT PRIMARY KEY)");
+    db.prepare("INSERT INTO worlds VALUES (?), (?)").run("concordia-hub", "second-world");
+    setDemographicKind(db, "user_1", "concordia-hub", "unemployed");
+    setDemographicKind(db, "user_1", "second-world", "elderly", { verified: true });
+    const r = await mintRationsForEligible(db);
+    assert.equal(r.minted, 1);
+    assert.equal(sparksOf(db, "user_1"), 50, "the larger entitlement, once");
+    assert.equal((await mintRationsForEligible(db)).minted, 0);
   });
 });

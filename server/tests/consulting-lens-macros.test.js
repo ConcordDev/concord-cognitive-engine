@@ -216,7 +216,7 @@ describe("consulting.invoice-create — subtotal/tax/total + no double-bill", ()
     assert.equal(r.result.invoice.subtotal, 1600); // 8h × 200
     assert.equal(r.result.invoice.tax, 160);
     assert.equal(r.result.invoice.total, 1760);
-    assert.equal(r.result.invoice.status, "sent");
+    assert.equal(r.result.invoice.status, "issued");
     assert.equal(r.result.invoice.lineItems.length, 2);
     // invoice-list rollup the InvoiceManager reads
     const list = call("invoice-list", ctxA, {});

@@ -21,7 +21,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiHelpers } from './api/client';
+import { api, apiHelpers } from './api/client';
 import { useUIStore } from '@/store/ui';
 
 type Handler = (event: CustomEvent) => void | Promise<void>;
@@ -58,13 +58,37 @@ function buildHandlers(opts: {
 
   return {
     // ── Media (UniversalPlayer) ────────────────────────────────────
-    'media:like': (e) => callMacro('media', 'like', { dtuId: e.detail?.dtuId }, 'Liked'),
+    'media:like': async (e) => {
+      try {
+        const r = await api.post(`/api/media/${encodeURIComponent(String(e.detail?.dtuId || ''))}/like`);
+        addToast({ type: 'success', message: (r.data as { liked?: boolean })?.liked === false ? 'Like removed' : 'Liked', duration: 2000 });
+      } catch (err) {
+        addToast({ type: 'error', message: `Like failed: ${err instanceof Error ? err.message : 'unknown error'}`, duration: 5000 });
+      }
+    },
     'media:chat': (e) => router.push(`/lenses/chat?context=media:${e.detail?.dtuId}`),
-    'media:tip': (e) => callMacro('media', 'tip', { dtuId: e.detail?.dtuId, amount: e.detail?.amount }, `Tipped ${e.detail?.amount}`),
-    'media:comment': (e) => router.push(`/lenses/dtu/${e.detail?.dtuId}#comments`),
+    // Real CC tip through the auth-guarded tip route; the player only
+    // dispatches this after the user confirms the amount and recipient.
+    'media:tip': async (e) => {
+      const { dtuId, amount, creatorId } = e.detail || {};
+      if (!creatorId) { addToast({ type: 'error', message: 'This stream has no creator to tip.', duration: 5000 }); return; }
+      try {
+        const me = await api.get('/api/auth/me');
+        const tipperId = (me.data as { user?: { id?: string } })?.user?.id;
+        if (!tipperId) { addToast({ type: 'error', message: 'Sign in to tip.', duration: 5000 }); return; }
+        const r = await api.post('/api/connective-tissue/tip', {
+          tipperId, creatorId, contentId: dtuId, contentType: 'media', lensId: 'media', amount,
+        });
+        const body = r.data as { ok?: boolean; error?: string };
+        if (body?.ok === false) addToast({ type: 'error', message: `Tip failed: ${body.error || 'declined'}`, duration: 6000 });
+        else addToast({ type: 'success', message: `Sent a ${amount} CC tip`, duration: 3000 });
+      } catch (err) {
+        addToast({ type: 'error', message: `Tip failed: ${err instanceof Error ? err.message : 'unknown error'}`, duration: 6000 });
+      }
+    },
+    'media:comment': (e) => router.push(`/dtu/${e.detail?.dtuId}#comments`),
 
     // ── Lens-page action buttons ──────────────────────────────────
-    'creative-writing:share-for-review': () => callMacro('creative_writing', 'share_for_review', {}, 'Submitted for review'),
     'whiteboard:toggle-export-menu': () => addToast({ type: 'info', message: 'Use the file menu to export your whiteboard', duration: 4000 }),
 
     // ── Agent + cognitive ─────────────────────────────────────────
@@ -74,13 +98,13 @@ function buildHandlers(opts: {
     },
 
     // ── DTU navigation ────────────────────────────────────────────
-    'dtu:open-external': (e) => router.push(`/lenses/dtu/${e.detail?.dtuId}`),
-    'pipeline:view-dtu': (e) => router.push(`/lenses/dtu/${e.detail?.dtuId}`),
-    'dep-graph:open-dtu': (e) => router.push(`/lenses/dtu/${e.detail?.nodeId}`),
+    'dtu:open-external': (e) => router.push(`/dtu/${e.detail?.dtuId}`),
+    'pipeline:view-dtu': (e) => router.push(`/dtu/${e.detail?.dtuId}`),
+    'dep-graph:open-dtu': (e) => router.push(`/dtu/${e.detail?.nodeId}`),
     'backlinks:create-link': (e) => callMacro('editor', 'create_backlink', { mention: e.detail?.mention }, 'Link created'),
 
     // ── Music ─────────────────────────────────────────────────────
-    'music:like-track': (e) => callMacro('music', 'like', { trackId: e.detail?.trackId }, 'Liked track'),
+    'music:like-track': (e) => callMacro('music', 'track-like', { id: e.detail?.trackId }, 'Like toggled'),
     'playlist:share': (e) => {
       const url = `${window.location.origin}/lenses/music/playlist/${e.detail?.playlistId}`;
       void navigator.clipboard?.writeText(url).then(() => addToast({ type: 'success', message: 'Playlist URL copied', duration: 3000 }));
@@ -104,9 +128,7 @@ function buildHandlers(opts: {
     'digital-twin:create': () => router.push('/lenses/digital-twin/new'),
     'events:calendar-prev': () => addToast({ type: 'info', message: 'Previous month', duration: 1500 }),
     'events:calendar-next': () => addToast({ type: 'info', message: 'Next month', duration: 1500 }),
-    'fabrication:download': (e) => addToast({ type: 'success', message: `Downloading ${e.detail?.extension} file…`, duration: 3000 }),
     'mobile-companion:quick-action': (e) => callMacro('mobile_companion', 'quick_action', { actionId: e.detail?.actionId }, 'Action sent'),
-    'mobile-companion:teleport': (e) => callMacro('world', 'teleport', { location: e.detail?.location }, `Teleporting to ${e.detail?.location}`),
     'moderation:unban': (e) => callMacro('moderation', 'unban', { userId: e.detail?.userId }, 'Unbanned'),
     'moderation:mute-player': () => addToast({ type: 'info', message: 'Click a player avatar to mute them', duration: 4000 }),
     'moderation:kick-from-world': () => addToast({ type: 'info', message: 'Click a player avatar to kick them', duration: 4000 }),
@@ -120,7 +142,6 @@ function buildHandlers(opts: {
     'replay:render-timelapse': () => callMacro('replay', 'render_timelapse', {}, 'Timelapse render queued'),
     'save-system:backup-world': () => callMacro('world', 'backup', {}, 'World backup created'),
     'save-system:restore-backup': () => router.push('/settings'),
-    'sensor:register-device': () => router.push('/lenses/sensor/register'),
     'smart-notifications:suggestion-accept': (e) => callMacro('notifications', 'accept_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion accepted'),
     'smart-notifications:suggestion-decline': (e) => callMacro('notifications', 'decline_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion declined'),
 

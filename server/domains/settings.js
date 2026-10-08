@@ -12,7 +12,8 @@
 //   - keybinding remap storage
 //   - search-within-settings
 //   - account / security panel (sessions, 2FA, connected accounts,
-//     password-change request — all in-process, no DB schema added)
+//     password-change pre-check — in-process; real linked accounts, sign-out
+//     everywhere and password rotation are served by the /api/auth routes)
 //   - snapshot capture / list / apply / restore
 //
 // Persistence: per-process Maps hung off globalThis._concordSTATE keyed by
@@ -101,8 +102,7 @@ function store() {
       keybinds: new Map(),    // userId -> { id: keys }
       snapshots: new Map(),   // userId -> [ snapshot ]
       sessions: new Map(),    // userId -> [ session ]
-      accounts: new Map(),    // userId -> [ connectedAccount ]
-      security: new Map(),    // userId -> { twoFactorEnabled, lastPasswordChange }
+        security: new Map(),    // userId -> { twoFactorEnabled, lastPasswordChange }
     };
   }
   // Keep STATE.userPrefs (read by legacy `applied` callers) aliased to the
@@ -496,22 +496,24 @@ export default function registerSettingsActions(registerLensAction) {
 
   // ---- account / security -------------------------------------------------
 
-  // accountOverview — security posture for the account panel.
+  // accountOverview — what the settings lens can honestly report. Two-factor
+  // auth is not implemented (no TOTP/WebAuthn enrolment exists and the login
+  // flow has no second step), so it is reported as unavailable rather than as
+  // a toggleable switch. Per-device session history is not recorded at login,
+  // so only the request's own session is listed; real "sign out everywhere"
+  // is POST /api/auth/revoke-all-sessions, real linked sign-in providers are
+  // GET /api/auth/me/connections.
   reg("settings", "accountOverview", (ctx) => {
     try {
       const userId = actorId(ctx);
       const sec = ensureSecurity(userId);
-      const sessions = ensureSessions(userId, ctx);
-      const accounts = store().accounts.get(userId) || [];
       return {
         ok: true,
         result: {
           userId,
-          twoFactorEnabled: sec.twoFactorEnabled,
-          recoveryCodesIssued: sec.recoveryCodesIssued,
+          twoFactorAvailable: false,
+          twoFactorEnabled: false,
           lastPasswordChange: sec.lastPasswordChange,
-          activeSessions: sessions.length,
-          connectedAccounts: accounts.length,
         },
       };
     } catch (e) {
@@ -519,7 +521,8 @@ export default function registerSettingsActions(registerLensAction) {
     }
   });
 
-  // sessions — list active sessions (account → security panel).
+  // sessions — the session making this request (real UA/IP from the request).
+  // Other devices are not tracked server-side, so they are not listed.
   reg("settings", "sessions", (ctx) => {
     try {
       const userId = actorId(ctx);
@@ -527,10 +530,12 @@ export default function registerSettingsActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          sessions: list.map((s) => ({
-            id: s.id, current: !!s.current, userAgent: s.userAgent,
+          sessions: list.filter((s) => s.current).map((s) => ({
+            id: s.id, current: true, userAgent: s.userAgent,
             ip: s.ip, createdAt: s.createdAt, lastSeen: s.lastSeen,
           })),
+          otherDevicesTracked: false,
+          signOutEverywhere: "POST /api/auth/revoke-all-sessions",
         },
       };
     } catch (e) {
@@ -538,56 +543,17 @@ export default function registerSettingsActions(registerLensAction) {
     }
   });
 
-  // revokeSession — sign out a non-current session.
-  reg("settings", "revokeSession", (ctx, _artifact, params = {}) => {
-    try {
-      const userId = actorId(ctx);
-      const id = String(params.id || "").trim();
-      const list = ensureSessions(userId, ctx);
-      const target = list.find((s) => s.id === id);
-      if (!target) return { ok: false, error: `session not found: ${id}` };
-      if (target.current) return { ok: false, error: "cannot revoke the current session" };
-      store().sessions.set(userId, list.filter((s) => s.id !== id));
-      return { ok: true, result: { revoked: id, remaining: store().sessions.get(userId).length } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
+  const NOT_TRACKED = "per-device sessions are not tracked; use POST /api/auth/revoke-all-sessions to sign out of every device";
+  reg("settings", "revokeSession", () => ({ ok: false, error: NOT_TRACKED }));
+  reg("settings", "revokeOtherSessions", () => ({ ok: false, error: NOT_TRACKED }));
 
-  // revokeOtherSessions — sign out everywhere except the current device.
-  reg("settings", "revokeOtherSessions", (ctx) => {
-    try {
-      const userId = actorId(ctx);
-      const list = ensureSessions(userId, ctx);
-      const kept = list.filter((s) => s.current);
-      const revokedCount = list.length - kept.length;
-      store().sessions.set(userId, kept);
-      return { ok: true, result: { revokedCount, remaining: kept.length } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
-
-  // setTwoFactor — enable/disable 2FA. Enabling issues recovery codes.
-  reg("settings", "setTwoFactor", (ctx, _artifact, params = {}) => {
-    try {
-      const userId = actorId(ctx);
-      const sec = ensureSecurity(userId);
-      const enable = params.enabled === true || params.enabled === "true";
-      sec.twoFactorEnabled = enable;
-      let recoveryCodes = null;
-      if (enable) {
-        recoveryCodes = Array.from({ length: 8 }, () =>
-          crypto.randomBytes(5).toString("hex").replace(/(.{5})/, "$1-"));
-        sec.recoveryCodesIssued = recoveryCodes.length;
-      } else {
-        sec.recoveryCodesIssued = 0;
-      }
-      return { ok: true, result: { twoFactorEnabled: sec.twoFactorEnabled, recoveryCodes } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
+  // setTwoFactor — there is no second-factor mechanism to enable, so claiming
+  // one (and issuing "recovery codes" that recover nothing) would be a false
+  // security promise. Honest failure until real TOTP/WebAuthn lands.
+  reg("settings", "setTwoFactor", () => ({
+    ok: false,
+    error: "two-factor authentication is not available yet — no second factor is enforced at sign-in",
+  }));
 
   // changePassword — pre-flight policy check + bookkeeping ONLY. This does
   // NOT write to the real auth DB (the auth route owns that) and does NOT
@@ -629,55 +595,12 @@ export default function registerSettingsActions(registerLensAction) {
     }
   });
 
-  // connectAccount — link an external provider account.
-  reg("settings", "connectAccount", (ctx, _artifact, params = {}) => {
-    try {
-      const userId = actorId(ctx);
-      const provider = String(params.provider || "").trim().toLowerCase();
-      const handle = String(params.handle || "").trim().slice(0, 64);
-      const allowed = ["github", "google", "discord", "apple", "steam"];
-      if (!allowed.includes(provider)) {
-        return { ok: false, error: `unsupported provider: ${provider}` };
-      }
-      if (!handle) return { ok: false, error: "handle is required" };
-      const accounts = store().accounts;
-      const list = accounts.get(userId) || [];
-      if (list.some((a) => a.provider === provider)) {
-        return { ok: false, error: `${provider} is already connected` };
-      }
-      const acct = { id: uid("acct"), provider, handle, connectedAt: nowIso() };
-      list.push(acct);
-      accounts.set(userId, list);
-      return { ok: true, result: { account: acct, total: list.length } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
-
-  // disconnectAccount — unlink a connected provider account.
-  reg("settings", "disconnectAccount", (ctx, _artifact, params = {}) => {
-    try {
-      const userId = actorId(ctx);
-      const id = String(params.id || "").trim();
-      const accounts = store().accounts;
-      const list = accounts.get(userId) || [];
-      const next = list.filter((a) => a.id !== id);
-      if (next.length === list.length) return { ok: false, error: `connected account not found: ${id}` };
-      accounts.set(userId, next);
-      return { ok: true, result: { disconnected: id, remaining: next.length } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
-
-  // connectedAccounts — list linked external accounts.
-  reg("settings", "connectedAccounts", (ctx) => {
-    try {
-      const userId = actorId(ctx);
-      const list = store().accounts.get(userId) || [];
-      return { ok: true, result: { accounts: list } };
-    } catch (e) {
-      return { ok: false, error: String(e) };
-    }
-  });
+  // Linked sign-in providers live in the auth layer (oauth_connections), not
+  // here. Link / unlink / list are GET|POST|DELETE /api/auth/me/connections
+  // and /api/auth/link/:provider (google, apple) — typing a "handle" into a
+  // list in this domain linked nothing, so these macros fail honestly.
+  const USE_AUTH_ROUTES = "linked accounts are managed via /api/auth/me/connections and /api/auth/link/:provider (google, apple)";
+  reg("settings", "connectAccount", () => ({ ok: false, error: USE_AUTH_ROUTES }));
+  reg("settings", "disconnectAccount", () => ({ ok: false, error: USE_AUTH_ROUTES }));
+  reg("settings", "connectedAccounts", () => ({ ok: false, error: USE_AUTH_ROUTES }));
 }

@@ -68,6 +68,27 @@ const MAX_TEXT_LEN = 8000; // per string; keeps a single call bounded
 const MAX_BATCH = 50;
 
 const NAME_BY_CODE = new Map(LANGUAGES.map((l) => [l.code, l.name]));
+const MAX_GLOSSARY = 100;
+
+// Clean a caller-supplied glossary to [{source,target}] (trimmed, bounded).
+function cleanGlossary(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const g of raw.slice(0, MAX_GLOSSARY)) {
+    const source = String(g?.source ?? "").replace(/["\n\r]/g, " ").trim().slice(0, 120);
+    const target = String(g?.target ?? "").replace(/["\n\r]/g, " ").trim().slice(0, 120);
+    if (source && target) out.push({ source, target });
+  }
+  return out;
+}
+
+// Which glossary entries whose source term occurs in the input did NOT make it
+// into the output verbatim. Reported to the caller, never silently "fixed".
+function glossaryMisses(glossary, input, output) {
+  const lin = String(input).toLowerCase();
+  const lout = String(output).toLowerCase();
+  return glossary.filter((g) => lin.includes(g.source.toLowerCase()) && !lout.includes(g.target.toLowerCase()));
+}
 
 // ── Fail-CLOSED numeric guard (copied from literary.js) ─────────────────────
 // A NaN/Infinity/1e308/negative on any numeric input is rejected BEFORE use.
@@ -293,6 +314,7 @@ export default function registerTranslationMacros(_register) {
       const sourceLanguage = data.sourceLanguage || data.source || data.from || "auto";
       const formality = FORMALITIES.includes(data.formality) ? data.formality : "neutral";
       const preserveFormatting = data.preserveFormatting !== false;
+      const glossary = cleanGlossary(data.glossary);
 
       if (!text.trim()) return { ok: false, error: "text required" };
       if (!targetLanguage) return { ok: false, error: "targetLanguage required" };
@@ -306,6 +328,7 @@ export default function registerTranslationMacros(_register) {
         sourceLanguage: resolveLanguageName(sourceLanguage) || "auto",
         formality,
         preserveFormatting,
+        glossary,
       });
 
       const res = await ctx.llm.chat({
@@ -326,6 +349,8 @@ export default function registerTranslationMacros(_register) {
           formality,
           chars: text.length,
           model: res?.model || res?.brain || "utility",
+          glossaryApplied: glossary.length,
+          glossaryMisses: glossaryMisses(glossary, text, translated),
         },
       };
     } catch (e) {
@@ -341,6 +366,7 @@ export default function registerTranslationMacros(_register) {
       const items = Array.isArray(data.items) ? data.items.map((x) => String(x ?? "")) : [];
       const targetLanguage = resolveLanguageName(data.targetLanguage || data.target || data.to);
       const formality = FORMALITIES.includes(data.formality) ? data.formality : "neutral";
+      const glossary = cleanGlossary(data.glossary);
 
       if (!items.length) return { ok: false, error: "items[] required" };
       if (items.length > MAX_BATCH) return { ok: false, error: `too many items (${items.length} > ${MAX_BATCH})` };
@@ -350,7 +376,7 @@ export default function registerTranslationMacros(_register) {
       if (!ctx?.llm?.chat) return { ok: false, error: "translation_unavailable" };
 
       const system =
-        TASK_PROMPTS.machineTranslate({ targetLanguage, formality, preserveFormatting: true }) +
+        TASK_PROMPTS.machineTranslate({ targetLanguage, formality, preserveFormatting: true, glossary }) +
         `\nThe user message is a JSON array of strings. Return ONLY a JSON array of the same length, in the same order, each element the translation of the corresponding input. No other text.`;
 
       const res = await ctx.llm.chat({
@@ -373,7 +399,14 @@ export default function registerTranslationMacros(_register) {
       }
       return {
         ok: true,
-        result: { translations: arr.map((x) => String(x ?? "")), targetLanguage, formality, count: arr.length },
+        result: (() => {
+          const translations = arr.map((x) => String(x ?? ""));
+          const misses = [];
+          translations.forEach((t, i) => {
+            for (const g of glossaryMisses(glossary, items[i], t)) misses.push({ index: i, ...g });
+          });
+          return { translations, targetLanguage, formality, count: arr.length, glossaryApplied: glossary.length, glossaryMisses: misses };
+        })(),
       };
     } catch (e) {
       return { ok: false, error: "translation_unavailable", detail: String(e?.message || e) };
@@ -388,6 +421,8 @@ export {
   resolveLanguageName,
   detectOffline,
   badNumericField,
+  cleanGlossary,
+  glossaryMisses,
   MAX_TEXT_LEN,
   MAX_BATCH,
 };

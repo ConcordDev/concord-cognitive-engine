@@ -142,7 +142,7 @@ beforeEach(() => {
 describe('consulting lens — one Bonsai-style practice workspace', () => {
   it('opens on operational engagements with one grouped navigation rail', async () => {
     render(<ConsultingLens />);
-    expect(screen.getByRole('heading', { name: 'Run the client work, Ramaj' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'The engagement, Ramaj' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Consulting tools' })).toBeInTheDocument();
     expect(screen.getByTestId('engagements-panel')).toBeInTheDocument();
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('consulting', 'engagement-list', {}));

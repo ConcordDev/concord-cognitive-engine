@@ -26,8 +26,14 @@ const DOMAIN = 'agents';
 // ── Shared shapes ────────────────────────────────────────────────────────
 interface RunStep {
   index: number; tool: string; toolKind: string; input: string;
-  output: Record<string, any>; latencyMs: number; tokens: number; status: string; ts: string;
+  output?: Record<string, any>; error?: string; latencyMs: number; tokens: number; status: string; ts: string;
 }
+
+const STEP_TONE: Record<string, string> = {
+  ok: 'text-emerald-300',
+  error: 'text-rose-300',
+  not_connected: 'text-zinc-500',
+};
 interface AgentRun {
   id: string; agentId: string; agentName: string; goal: string; status: string;
   stoppedReason: string | null; steps: RunStep[]; stepCount: number;
@@ -294,12 +300,19 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
                 <div key={st.index} className="rounded border border-zinc-800 bg-zinc-900 p-2">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-mono text-cyan-300">{st.index}. {st.tool}</span>
-                    <span className="text-zinc-400">{st.latencyMs}ms · {st.tokens} tok</span>
+                    <span className="text-zinc-400">
+                      <span className={STEP_TONE[st.status] || 'text-zinc-400'}>{st.status === 'not_connected' ? 'not connected' : st.status}</span>
+                      {' · '}{st.latencyMs}ms · ~{st.tokens} tok
+                    </span>
                   </div>
                   <p className="mt-1 text-[10px] text-zinc-400">in: {st.input}</p>
-                  <pre className="mt-0.5 overflow-x-auto rounded bg-zinc-950 p-1.5 font-mono text-[10px] text-zinc-300">
-                    {JSON.stringify(st.output, null, 1)}
-                  </pre>
+                  {st.status === 'ok' ? (
+                    <pre className="mt-0.5 overflow-x-auto rounded bg-zinc-950 p-1.5 font-mono text-[10px] text-zinc-300">
+                      {st.output?.text ? st.output.text : JSON.stringify(st.output, null, 1)}
+                    </pre>
+                  ) : (
+                    <p className="mt-0.5 rounded bg-zinc-950 p-1.5 text-[10px] text-rose-200/80">{st.error || 'Step failed'}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -454,12 +467,12 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
                   <div key={d.node} className="rounded border border-zinc-800 bg-zinc-900 p-2">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-medium text-emerald-300">{d.agentLabel}</span>
-                      <span className="font-mono text-zinc-400">{d.steps.length} steps · {d.tokens} tok</span>
+                      <span className="font-mono text-zinc-400">{d.status ? `${d.status} · ` : ''}{d.steps.length} steps · ~{d.tokens} tok</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {d.steps.map((s: any) => (
-                        <span key={s.index} className="rounded bg-zinc-950 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400">
-                          {s.tool} {s.latencyMs}ms
+                        <span key={s.index} title={s.error || undefined} className={`rounded bg-zinc-950 px-1.5 py-0.5 font-mono text-[9px] ${STEP_TONE[s.status] || 'text-zinc-400'}`}>
+                          {s.tool} {s.status === 'ok' ? `${s.latencyMs}ms` : s.status === 'not_connected' ? 'not connected' : 'failed'}
                         </span>
                       ))}
                     </div>
@@ -587,7 +600,7 @@ function SchedulesPanel({ agents, onChange }: { agents: AgentLite[]; onChange: (
         </div>
         {fireResult && (
           <div className="rounded border border-cyan-500/30 bg-cyan-500/5 p-2">
-            <p className="text-[11px] text-cyan-200">Fired: {fireResult.stepCount} steps · {fireResult.totalTokens} tokens · {fireResult.status}</p>
+            <p className="text-[11px] text-cyan-200">Fired: {fireResult.stepCount} steps · ~{fireResult.totalTokens} est. tokens · {fireResult.status}</p>
           </div>
         )}
       </div>
@@ -601,6 +614,7 @@ function ThreadsPanel({ agents }: { agents: AgentLite[] }) {
   const [thread, setThread] = useState<Thread | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [threadNote, setThreadNote] = useState<string | null>(null);
 
   useEffect(() => { if (!agentId && agents[0]) setAgentId(agents[0].id); }, [agents, agentId]);
 
@@ -615,11 +629,15 @@ function ThreadsPanel({ agents }: { agents: AgentLite[] }) {
     if (!agentId || !text.trim()) return;
     setBusy(true);
     const a = agents.find((x) => x.id === agentId);
-    const r = await lensRun<{ thread: Thread }>(DOMAIN, 'postMessage', {
+    const r = await lensRun<{ thread: Thread; replied?: boolean; note?: string }>(DOMAIN, 'postMessage', {
       agentId, agentName: a?.name, text: text.trim(), tools: a?.tools,
     });
     setBusy(false);
-    if (r.data?.ok && r.data.result) { setThread(r.data.result.thread); setText(''); }
+    if (r.data?.ok && r.data.result) {
+      setThread(r.data.result.thread);
+      setText('');
+      setThreadNote(r.data.result.replied === false ? (r.data.result.note || 'No reply: the agent model is unavailable.') : null);
+    }
   };
 
   const clear = async () => {
@@ -640,7 +658,7 @@ function ThreadsPanel({ agents }: { agents: AgentLite[] }) {
         </button>
       </div>
       <div className="h-72 space-y-2 overflow-y-auto rounded border border-zinc-800 bg-zinc-900 p-2">
-        {!thread?.messages.length && <p className="py-12 text-center text-[11px] text-zinc-400">No messages. Start a conversation with this agent.</p>}
+        {!thread?.messages.length && <p className="py-12 text-center text-[11px] text-zinc-400">No messages. Guidance you send here is fed into this agent&apos;s next runs.</p>}
         {thread?.messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs ${
@@ -652,6 +670,7 @@ function ThreadsPanel({ agents }: { agents: AgentLite[] }) {
           </div>
         ))}
       </div>
+      {threadNote && <p role="status" className="text-[10px] text-amber-200/80">{threadNote}</p>}
       <div className="flex items-center gap-2">
         <input
           value={text} onChange={(e) => setText(e.target.value)}

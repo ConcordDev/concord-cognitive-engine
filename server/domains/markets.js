@@ -2,7 +2,7 @@
 //
 // Derivatives + global-markets companion to the equity-focused `market` lens.
 // Per research dispatched 2026-05-16: options chains with greeks, futures
-// continuous contracts, FX major pairs, simulated L2 depth, alerts/scanner.
+// continuous contracts, FX major pairs, inside-quote depth, alerts/scanner.
 // Per-user state, BSM-derived greeks, CME-symbol-native futures.
 //
 // W2-D — game-theoretic equilibrium macros (2026-07-24). Makes
@@ -175,7 +175,7 @@ export default function registerMarketsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  // ── Futures board (CME contracts with simulated bid/ask) ──
+  // ── Futures board (CME contracts, real Yahoo quotes) ──
 
   function frontMonth(_now = new Date()) {
     // Simplified: pick next quarter for HMUZ cycle. Real impl needs full calendar.
@@ -271,12 +271,13 @@ export default function registerMarketsActions(registerLensAction) {
       const q = byYahoo.get(`${p}=X`);
       if (!q || q.regularMarketPrice == null) return null;
       const mid = q.regularMarketPrice;
-      // Yahoo gives bid/ask when available, otherwise fall back to mid+/- typical spread
+      // Only a real quoted bid/ask is reported; no spread is invented when Yahoo omits it.
       const hasRealBidAsk = q.bid != null && q.ask != null && q.ask > q.bid;
-      const bid = hasRealBidAsk ? q.bid : mid - meta.pip * 0.5;
-      const ask = hasRealBidAsk ? q.ask : mid + meta.pip * 0.5;
-      const spread = ask - bid;
-      const spreadPips = spread / meta.pip;
+      const dp = p.includes("JPY") ? 3 : 5;
+      const bid = hasRealBidAsk ? round(q.bid, dp) : null;
+      const ask = hasRealBidAsk ? round(q.ask, dp) : null;
+      const spread = hasRealBidAsk ? round(q.ask - q.bid, dp) : null;
+      const spreadPips = hasRealBidAsk ? round((q.ask - q.bid) / meta.pip, 2) : null;
       const pipValue = p.endsWith("USD")
         ? meta.pip * 100_000
         : Math.round(meta.pip * 100_000 / mid * 100) / 100;
@@ -284,14 +285,11 @@ export default function registerMarketsActions(registerLensAction) {
         pair: p,
         name: meta.name,
         mid: round(mid, p.includes("JPY") ? 3 : 5),
-        bid: round(bid, p.includes("JPY") ? 3 : 5),
-        ask: round(ask, p.includes("JPY") ? 3 : 5),
-        spread: round(spread, p.includes("JPY") ? 3 : 5),
-        spreadPips: round(spreadPips, 2),
+        bid, ask, spread, spreadPips,
         pipValue,
         change: round(q.regularMarketChange ?? 0, p.includes("JPY") ? 3 : 5),
         changePercent: round(q.regularMarketChangePercent ?? 0, 3),
-        bidAskSource: hasRealBidAsk ? "yahoo-real" : "mid-derived",
+        bidAskSource: hasRealBidAsk ? "yahoo-real" : "unavailable",
       };
     }).filter(Boolean);
     return { ok: true, result: { quotes: result, count: result.length, source: "yahoo-finance" } };

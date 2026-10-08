@@ -14,6 +14,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { _setExperienceMailerForTest } from "../../domains/experience.js";
 
 describe("experience — analytical calc contracts (exact computed values)", () => {
   it("usabilityScore: SUS formula caps at 100 and grades A", async () => {
@@ -319,13 +320,22 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
   let ctx;
   before(async () => { ctx = await depthCtx("experience-invite-clips"); });
 
-  it("inviteParticipants: flips status to invited, bumps invitedCount, stamps studyName", async () => {
-    const p1 = await lensRun("experience", "addParticipant", { params: { name: "Invitee" } }, ctx);
+  it("inviteParticipants: only emailed participants become invited; no-email ones are reported not sent", async () => {
+    const noMail = await lensRun("experience", "addParticipant", { params: { name: "NoMail" } }, ctx);
+    const nm = await lensRun("experience", "inviteParticipants", { params: { participantIds: [noMail.result.participant.id], studyName: "X" } }, ctx);
+    assert.equal(nm.result.invited, 0);
+    assert.equal(nm.result.notSent[0].reason, "no_email");
+    const sentMail = [];
+    _setExperienceMailerForTest(async (m) => { sentMail.push(m); return { ok: true }; });
+    const p1 = await lensRun("experience", "addParticipant", { params: { name: "Invitee", email: "invitee@example.com" } }, ctx);
     const pid = p1.result.participant.id;
     const inv = await lensRun("experience", "inviteParticipants", {
       params: { participantIds: [pid], studyName: "Beta Test" },
     }, ctx);
+    _setExperienceMailerForTest(null);
     assert.equal(inv.result.invited, 1);
+    assert.equal(sentMail.length, 1);
+    assert.equal(sentMail[0].to, "Invitee <invitee@example.com>");
     assert.equal(inv.result.studyName, "Beta Test");
 
     const panel = await lensRun("experience", "listPanel", {}, ctx);

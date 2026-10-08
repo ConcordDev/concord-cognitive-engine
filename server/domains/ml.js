@@ -1,5 +1,6 @@
 // server/domains/ml.js
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { readHfToken } from "../lib/asset-gen/organic/providers.js";
 import { buildFeatureMatrix, trainLogisticRegression, trainKMeans } from "../lib/ml-trainer.js";
 
 export default function registerMlActions(registerLensAction) {
@@ -228,21 +229,23 @@ export default function registerMlActions(registerLensAction) {
   });
 
   // ─── Inference playground — run a hosted HF model on user input ───────
-  registerLensAction("ml", "playground-infer", async (_ctx, _a, params = {}) => {
-    const modelId = mlClean(params.modelId || params.model || "", 200);
-    const input = mlClean(params.input || params.text || "", 4000);
-    if (!modelId) return { ok: false, error: "modelId required" };
-    if (!input) return { ok: false, error: "input required" };
+  // Hosted inference goes through Hugging Face's Inference Providers router
+  // (the old api-inference.huggingface.co host no longer resolves) and needs
+  // the server's HF token. Without one, inference is reported unavailable.
+  async function hfInfer(ctx, modelId, input) {
+    const doFetch = typeof ctx?.mlFetch === "function" ? ctx.mlFetch : fetch;
+    const token = typeof ctx?.hfToken === "string" ? ctx.hfToken : await readHfToken();
+    if (!token) return { ok: false, error: "inference_unavailable: no Hugging Face token configured on this server (HF_TOKEN)" };
     const started = Date.now();
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 20000);
       let body;
       try {
-        const r = await fetch(`https://api-inference.huggingface.co/models/${modelId}`, {
+        const r = await doFetch(`https://router.huggingface.co/hf-inference/models/${modelId}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ inputs: input, options: { wait_for_model: true } }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ inputs: input }),
           signal: ctrl.signal,
         });
         body = await r.json().catch(() => null);
@@ -251,10 +254,18 @@ export default function registerMlActions(registerLensAction) {
           return { ok: false, error: `inference failed: ${msg}` };
         }
       } finally { clearTimeout(t); }
-      return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, source: "huggingface-inference-api" } };
+      return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, source: "huggingface-inference-providers" } };
     } catch (e) {
       return { ok: false, error: `inference api unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  }
+
+  registerLensAction("ml", "playground-infer", async (ctx, _a, params = {}) => {
+    const modelId = mlClean(params.modelId || params.model || "", 200);
+    const input = mlClean(params.input || params.text || "", 4000);
+    if (!modelId) return { ok: false, error: "modelId required" };
+    if (!input) return { ok: false, error: "input required" };
+    return hfInfer(ctx, modelId, input);
   });
 
   // ─── Training run tracking ────────────────────────────────────────────
@@ -569,21 +580,25 @@ export default function registerMlActions(registerLensAction) {
     return { ok: true, result: { count: filtered.length, task: task || "all", templates: filtered } };
   });
 
-  // ─── Deployment — publish a model as a callable endpoint ─────────────
+  // ─── Deployments — a named, versioned handle on a hosted model ───────
+  // Concord does not run model servers. A deployment pins a Hugging Face model
+  // id + version under a name and is invoked through ml.deploy-invoke, which
+  // calls the hosted inference API and records real request/latency/error
+  // stats. There are no replicas to scale.
   registerLensAction("ml", "deploy-create", (ctx, _a, params = {}) => {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
     const userId = mlActor(ctx);
     const modelId = mlClean(params.modelId || params.model, 200);
     const name = mlClean(params.name || modelId, 160);
     if (!modelId) return { ok: false, error: "modelId required" };
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "model";
+    const id = mlId("dep");
     const dep = {
-      id: mlId("dep"), modelId, modelName: name,
+      id, modelId, modelName: name,
       version: mlClean(params.version || "1.0.0", 20),
       status: "active",
-      endpoint: `/api/ml/serve/${slug}-${Math.random().toString(36).slice(2, 6)}`,
-      replicas: Math.max(1, mlNum(params.replicas, 1)),
-      requestsPerSec: 0, avgLatency: 0, errorRate: 0,
+      invoke: { domain: "ml", name: "deploy-invoke", input: { deploymentId: id } },
+      backend: "huggingface-inference-api",
+      totalRequests: 0, errorCount: 0, avgLatency: null, lastInvokedAt: null,
       createdAt: new Date().toISOString(),
     };
     mlList(m.deployments, userId).unshift(dep);
@@ -597,22 +612,34 @@ export default function registerMlActions(registerLensAction) {
     return { ok: true, result: { count: list.length, deployments: list } };
   });
 
-  registerLensAction("ml", "deploy-scale", (ctx, _a, params = {}) => {
+  registerLensAction("ml", "deploy-invoke", async (ctx, _a, params = {}) => {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
     const dep = mlList(m.deployments, mlActor(ctx)).find(d => d.id === mlClean(params.deploymentId || params.id, 80));
     if (!dep) return { ok: false, error: "deployment not found" };
-    dep.replicas = Math.min(16, Math.max(1, mlNum(params.replicas, dep.replicas + 1)));
-    dep.status = "scaling";
+    if (dep.status !== "active") return { ok: false, error: "deployment is stopped" };
+    const input = mlClean(params.input || params.text || "", 4000);
+    if (!input) return { ok: false, error: "input required" };
+    const r = await hfInfer(ctx, dep.modelId, input);
+    dep.totalRequests = (dep.totalRequests || 0) + 1;
+    dep.lastInvokedAt = new Date().toISOString();
+    if (!r.ok) dep.errorCount = (dep.errorCount || 0) + 1;
+    else {
+      const ok = dep.totalRequests - dep.errorCount;
+      dep.avgLatency = Math.round(((dep.avgLatency || 0) * (ok - 1) + r.result.latencyMs) / ok);
+    }
     saveMl();
-    return { ok: true, result: { deployment: dep } };
+    return r.ok ? { ok: true, result: { ...r.result, deploymentId: dep.id } } : r;
+  });
+
+  registerLensAction("ml", "deploy-scale", (_ctx, _a, _params = {}) => {
+    return { ok: false, error: "not supported: deployments call the hosted Hugging Face inference API; Concord runs no replicas to scale" };
   });
 
   registerLensAction("ml", "deploy-stop", (ctx, _a, params = {}) => {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
-    const list = mlList(m.deployments, mlActor(ctx));
-    const dep = list.find(d => d.id === mlClean(params.deploymentId || params.id, 80));
+    const dep = mlList(m.deployments, mlActor(ctx)).find(d => d.id === mlClean(params.deploymentId || params.id, 80));
     if (!dep) return { ok: false, error: "deployment not found" };
-    dep.status = "inactive";
+    dep.status = params.resume ? "active" : "inactive";
     saveMl();
     return { ok: true, result: { deployment: dep } };
   });
@@ -625,7 +652,11 @@ export default function registerMlActions(registerLensAction) {
     const modelId = mlClean(params.modelId || params.model, 200);
     if (!title) return { ok: false, error: "space title required" };
     if (!modelId) return { ok: false, error: "modelId required" };
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "space";
+    const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "space";
+    const taken = new Set();
+    for (const list of m.spaces.values()) for (const x of (Array.isArray(list) ? list : [])) taken.add(x.url);
+    let slug = base;
+    for (let n = 2; taken.has(`/lenses/ml/space/${slug}`); n++) slug = `${base}-${n}`;
     const space = {
       id: mlId("space"), title, modelId,
       description: mlClean(params.description, 500),
@@ -639,6 +670,24 @@ export default function registerMlActions(registerLensAction) {
     mlList(m.spaces, userId).unshift(space);
     saveMl();
     return { ok: true, result: { space } };
+  });
+
+  // Open one space by its URL slug. Public spaces are visible to any signed-in
+  // user; private ones only to their owner. Each open counts one real view.
+  registerLensAction("ml", "space-get", (ctx, _a, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const slug = mlClean(params.slug, 80);
+    if (!slug) return { ok: false, error: "slug required" };
+    for (const [owner, list] of m.spaces) {
+      const sp = (Array.isArray(list) ? list : []).find((x) => x.url === `/lenses/ml/space/${slug}`);
+      if (!sp) continue;
+      if (sp.visibility === "private" && owner !== userId) continue;
+      sp.views = (sp.views || 0) + 1;
+      saveMl();
+      return { ok: true, result: { space: sp, isOwner: owner === userId } };
+    }
+    return { ok: false, error: "space not found" };
   });
 
   registerLensAction("ml", "space-list", (ctx, _a, _params = {}) => {

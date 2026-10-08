@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 const ShipmentsMap = dynamic(() => import('./ShipmentsMap').then(m => m.ShipmentsMap), { ssr: false });
 
 interface Shipment {
-  id: string; trackingNumber: string; origin: string; destination: string;
+  id: string; trackingNumber: string | null; reference?: string; origin: string; destination: string;
   carrierId: string; mode: string; weightLbs: number; serviceLevel: string;
   status: string; estimatedDelivery: string | null; actualDelivery: string | null;
 }
@@ -30,7 +30,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '' });
+  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
 
   useEffect(() => { refresh(); }, []);
 
@@ -49,9 +49,9 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
     try {
       await lensRun({
         domain: 'logistics', action: 'shipments-create',
-        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee },
+        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee, trackingNumber: form.trackingNumber },
       });
-      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '' });
+      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
       setCreating(false);
       await refresh();
     } catch (e) { console.error('[Shipments] create', e); }
@@ -94,6 +94,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
           <input type="number" value={form.weightLbs} onChange={e => setForm({ ...form, weightLbs: e.target.value })} placeholder="Weight lbs" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.poNumber} onChange={e => setForm({ ...form, poNumber: e.target.value })} placeholder="PO #" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.consignee} onChange={e => setForm({ ...form, consignee: e.target.value })} placeholder="Consignee" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={form.trackingNumber} onChange={e => setForm({ ...form, trackingNumber: e.target.value })} placeholder="Carrier tracking # (optional)" title="Concord does not buy labels; enter the tracking number your carrier issued" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Create</button>
         </div>
       )}
@@ -108,7 +109,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
             {shipments.map(s => (
               <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03] group cursor-pointer" onClick={() => onSelect?.(s)}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-cyan-300">{s.trackingNumber}</span>
+                  <span className="text-xs font-mono text-cyan-300" title={s.trackingNumber ? 'Carrier tracking number' : 'Internal reference (no carrier tracking number recorded)'}>{s.trackingNumber || s.reference || 'No tracking #'}</span>
                   <span className="text-[9px] uppercase text-gray-400">{s.mode}</span>
                   <select value={s.status} onChange={e => { e.stopPropagation(); setStatus(s.id, e.target.value); }} onClick={e => e.stopPropagation()} className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0 cursor-pointer', STATUS_COLOUR[s.status])}>
                     {STATUSES.map(st => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}

@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Translation lens panels — the Single and Batch translate surfaces plus the
- * Saved-translations list. Extracted from translation/page.tsx; wires the same
+ * Translation lens panels — the Single, Batch and Document translate surfaces,
+ * the glossary editor, and the Saved-translations list. Extracted from translation/page.tsx; wires the same
  * real `translation` backend macros (translate / detect / batch) via lensRun.
  */
 
@@ -13,6 +13,27 @@ import { useUIStore } from '@/store/ui';
 export interface Language {
   code: string;
   name: string;
+}
+
+export interface GlossaryTerm {
+  kind: 'glossary';
+  source: string;
+  target: string;
+}
+
+type GlossaryMiss = { source: string; target: string; index?: number };
+
+function glossaryInput(glossary: GlossaryTerm[]) {
+  return glossary.length ? { glossary: glossary.map((g) => ({ source: g.source, target: g.target })) } : {};
+}
+
+function GlossaryWarning({ misses }: { misses: GlossaryMiss[] }) {
+  if (!misses.length) return null;
+  return (
+    <p data-testid="translation-glossary-misses" style={{ fontSize: 12, color: '#fbbf24', margin: '6px 0' }}>
+      Glossary not followed for: {misses.map((m) => `"${m.source}" → "${m.target}"${m.index != null ? ` (line ${m.index + 1})` : ''}`).join(', ')}. Review before using.
+    </p>
+  );
 }
 
 export interface SavedTranslation {
@@ -67,12 +88,13 @@ interface SaveFn {
 // ── Single ────────────────────────────────────────────────────────────────────
 
 export function SingleTranslatePanel({
-  source, target, formality, onSave,
+  source, target, formality, onSave, glossary = [],
 }: {
   source: string;
   target: string;
   formality: string;
   onSave: SaveFn;
+  glossary?: GlossaryTerm[];
 }) {
   const addToast = useUIStore((s) => s.addToast);
   const [text, setText] = useState('');
@@ -80,18 +102,23 @@ export function SingleTranslatePanel({
   const [detected, setDetected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [misses, setMisses] = useState<GlossaryMiss[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const handleTranslate = useCallback(async () => {
     if (!text.trim()) return;
     setBusy(true);
     setError(null);
     setOutput('');
+    setMisses([]);
+    setCopied(false);
     try {
-      const res = await lensRun<{ translated: string }>(DOMAIN, 'translate', {
-        text, sourceLanguage: source, targetLanguage: target, formality,
+      const res = await lensRun<{ translated: string; glossaryMisses?: GlossaryMiss[] }>(DOMAIN, 'translate', {
+        text, sourceLanguage: source, targetLanguage: target, formality, ...glossaryInput(glossary),
       });
       if (res.data?.ok && res.data.result?.translated) {
         setOutput(res.data.result.translated);
+        setMisses(res.data.result.glossaryMisses || []);
         addToast({ type: 'success', message: 'Translation ready', duration: 2500 });
       } else {
         setError(res.data?.error || 'translation_unavailable');
@@ -103,7 +130,16 @@ export function SingleTranslatePanel({
     } finally {
       setBusy(false);
     }
-  }, [text, source, target, formality, addToast]);
+  }, [text, source, target, formality, glossary, addToast]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopied(true);
+    } catch {
+      addToast({ type: 'error', message: 'Clipboard unavailable — select the text to copy it' });
+    }
+  }, [output, addToast]);
 
   const handleDetect = useCallback(async () => {
     if (!text.trim()) return;
@@ -166,15 +202,21 @@ export function SingleTranslatePanel({
           <div style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 15 }}>
             {output}
           </div>
-          <button
-            aria-label="Save translation"
-            onClick={() =>
-              onSave({ source, target, formality, input: text, output })
-            }
-            style={{ ...btnStyle(false), marginTop: 8 }}
-          >
-            Save translation
-          </button>
+          <GlossaryWarning misses={misses} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button
+              aria-label="Save translation"
+              onClick={() =>
+                onSave({ source, target, formality, input: text, output })
+              }
+              style={btnStyle(false)}
+            >
+              Save translation
+            </button>
+            <button aria-label="Copy translation" onClick={handleCopy} style={btnStyle(false)}>
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -190,17 +232,19 @@ export function SingleTranslatePanel({
 // ── Batch ─────────────────────────────────────────────────────────────────────
 
 export function BatchTranslatePanel({
-  target, formality, onSave,
+  target, formality, onSave, glossary = [],
 }: {
   target: string;
   formality: string;
   onSave: SaveFn;
+  glossary?: GlossaryTerm[];
 }) {
   const addToast = useUIStore((s) => s.addToast);
   const [batchText, setBatchText] = useState('');
   const [batchResults, setBatchResults] = useState<{ input: string; output: string }[] | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchMisses, setBatchMisses] = useState<GlossaryMiss[]>([]);
 
   const batchLines = batchText.split('\n').map((l) => l.trim()).filter(Boolean);
 
@@ -210,11 +254,13 @@ export function BatchTranslatePanel({
     setBatchBusy(true);
     setBatchError(null);
     setBatchResults(null);
+    setBatchMisses([]);
     try {
-      const res = await lensRun<{ translations: string[] }>(DOMAIN, 'batch', {
-        items, targetLanguage: target, formality,
+      const res = await lensRun<{ translations: string[]; glossaryMisses?: GlossaryMiss[] }>(DOMAIN, 'batch', {
+        items, targetLanguage: target, formality, ...glossaryInput(glossary),
       });
       if (res.data?.ok && Array.isArray(res.data.result?.translations)) {
+        setBatchMisses(res.data.result.glossaryMisses || []);
         setBatchResults(items.map((input, i) => ({ input, output: res.data!.result!.translations[i] ?? '' })));
         addToast({ type: 'success', message: `Translated ${items.length} lines`, duration: 2500 });
       } else {
@@ -227,7 +273,7 @@ export function BatchTranslatePanel({
     } finally {
       setBatchBusy(false);
     }
-  }, [batchText, target, formality, addToast]);
+  }, [batchText, target, formality, glossary, addToast]);
 
   return (
     <>
@@ -262,6 +308,7 @@ export function BatchTranslatePanel({
         </div>
       )}
 
+      <GlossaryWarning misses={batchMisses} />
       {batchResults && batchResults.length > 0 && (
         <ul
           data-testid="translation-batch-results"
@@ -293,6 +340,179 @@ export function BatchTranslatePanel({
         </div>
       )}
     </>
+  );
+}
+
+// ── Document ──────────────────────────────────────────────────────────────────
+
+const DOC_CHUNK_CHARS = 7000; // under the server's 8000-char batch cap
+const DOC_CHUNK_ITEMS = 50;
+const DOC_MAX_BYTES = 400_000;
+
+// Split into paragraphs (blank-line separated) and pack into batch-sized chunks.
+export function chunkDocument(text: string): { paragraphs: string[]; chunks: number[][]; tooLong: number | null } {
+  const paragraphs = text.replace(/\r\n/g, '\n').split(/\n{2,}/);
+  const chunks: number[][] = [];
+  let cur: number[] = [];
+  let len = 0;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+    if (!p.trim()) continue;
+    if (p.length > DOC_CHUNK_CHARS) return { paragraphs, chunks: [], tooLong: i };
+    if (cur.length && (len + p.length > DOC_CHUNK_CHARS || cur.length >= DOC_CHUNK_ITEMS)) {
+      chunks.push(cur);
+      cur = [];
+      len = 0;
+    }
+    cur.push(i);
+    len += p.length;
+  }
+  if (cur.length) chunks.push(cur);
+  return { paragraphs, chunks, tooLong: null };
+}
+
+export function DocumentTranslatePanel({
+  target, formality, glossary = [],
+}: {
+  target: string;
+  formality: string;
+  glossary?: GlossaryTerm[];
+}) {
+  const addToast = useUIStore((s) => s.addToast);
+  const [file, setFile] = useState<{ name: string; text: string } | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [misses, setMisses] = useState<GlossaryMiss[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const onFile = useCallback(async (f: File | undefined) => {
+    setResult(null); setError(null); setMisses([]); setProgress(null);
+    if (!f) { setFile(null); return; }
+    if (f.size > DOC_MAX_BYTES) { setError(`File is ${Math.round(f.size / 1000)} KB; the limit is ${DOC_MAX_BYTES / 1000} KB.`); return; }
+    const text = await f.text();
+    if (!text.trim()) { setError('That file has no text to translate.'); return; }
+    setFile({ name: f.name, text });
+  }, []);
+
+  const run = useCallback(async () => {
+    if (!file) return;
+    const { paragraphs, chunks, tooLong } = chunkDocument(file.text);
+    if (tooLong !== null) { setError(`Paragraph ${tooLong + 1} is longer than ${DOC_CHUNK_CHARS} characters; add a blank line to split it.`); return; }
+    setBusy(true); setError(null); setResult(null); setMisses([]);
+    const out = [...paragraphs];
+    const allMisses: GlossaryMiss[] = [];
+    try {
+      for (let c = 0; c < chunks.length; c++) {
+        setProgress({ done: c, total: chunks.length });
+        const idx = chunks[c];
+        const res = await lensRun<{ translations: string[]; glossaryMisses?: GlossaryMiss[] }>(DOMAIN, 'batch', {
+          items: idx.map((i) => paragraphs[i]), targetLanguage: target, formality, ...glossaryInput(glossary),
+        });
+        if (!res.data?.ok || !Array.isArray(res.data.result?.translations)) {
+          setError(`Stopped at part ${c + 1} of ${chunks.length}: ${friendlyError(res.data?.error || 'translation_unavailable')}`);
+          return;
+        }
+        res.data.result.translations.forEach((t, k) => { out[idx[k]] = t; });
+        for (const m of res.data.result.glossaryMisses || []) allMisses.push({ ...m, index: m.index != null ? idx[m.index] : undefined });
+      }
+      setProgress({ done: chunks.length, total: chunks.length });
+      setResult(out.join('\n\n'));
+      setMisses(allMisses);
+      addToast({ type: 'success', message: `Translated ${file.name}`, duration: 2500 });
+    } catch (e) {
+      setError(String((e as Error)?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }, [file, target, formality, glossary, addToast]);
+
+  const download = useCallback(() => {
+    if (!result || !file) return;
+    const dot = file.name.lastIndexOf('.');
+    const name = dot > 0 ? `${file.name.slice(0, dot)}.${target}${file.name.slice(dot)}` : `${file.name}.${target}.txt`;
+    const url = URL.createObjectURL(new Blob([result], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [result, file, target]);
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <input
+          type="file"
+          accept=".txt,.md,.markdown,.srt,.vtt,.csv,text/plain,text/markdown"
+          aria-label="Document to translate"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+          style={{ fontSize: 13 }}
+        />
+        <button aria-label="Translate document" onClick={run} disabled={busy || !file} style={btnStyle(true)}>
+          {busy ? 'Working…' : 'Translate document'}
+        </button>
+        {progress && busy && (
+          <span role="status" style={{ fontSize: 12, opacity: 0.7 }}>Part {progress.done + 1} of {progress.total}</span>
+        )}
+      </div>
+      <p style={{ fontSize: 12, opacity: 0.6, marginBottom: 12 }}>
+        Plain-text formats (.txt, .md, .srt, .vtt, .csv) up to {DOC_MAX_BYTES / 1000} KB. Paragraphs are translated in order and line structure is kept.
+      </p>
+      {error && (
+        <div data-testid="translation-doc-error" role="alert" style={{ padding: 12, borderRadius: 8, border: '1px solid #a33', color: '#f88', fontSize: 13, marginBottom: 12 }}>
+          {error}
+        </div>
+      )}
+      <GlossaryWarning misses={misses} />
+      {result !== null ? (
+        <div data-testid="translation-doc-result">
+          <pre style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 14, maxHeight: 360, overflow: 'auto', fontFamily: 'inherit' }}>{result}</pre>
+          <button aria-label="Download translated document" onClick={download} style={{ ...btnStyle(false), marginTop: 8 }}>Download</button>
+        </div>
+      ) : !error && !busy && (
+        <div data-testid="translation-doc-empty" style={{ padding: 16, opacity: 0.55, fontSize: 14, fontStyle: 'italic' }}>
+          {file ? `${file.name} is ready — press Translate document.` : 'No document yet — choose a text file above.'}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Glossary ──────────────────────────────────────────────────────────────────
+
+export function GlossaryEditor({
+  terms, onAdd, onRemove,
+}: {
+  terms: { id: string; data: GlossaryTerm }[];
+  onAdd: (t: GlossaryTerm) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [src, setSrc] = useState('');
+  const [tgt, setTgt] = useState('');
+  return (
+    <details data-testid="translation-glossary" style={{ marginBottom: 16, fontSize: 13 }}>
+      <summary style={{ cursor: 'pointer', opacity: 0.8 }}>Glossary ({terms.length})</summary>
+      <p style={{ opacity: 0.6, margin: '6px 0' }}>Terms are sent with every translation and checked in the result.</p>
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (src.trim() && tgt.trim()) { onAdd({ kind: 'glossary', source: src.trim(), target: tgt.trim() }); setSrc(''); setTgt(''); } }}
+        style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}
+      >
+        <input aria-label="Glossary source term" value={src} onChange={(e) => setSrc(e.target.value)} placeholder="Source term" maxLength={120} style={selStyle} />
+        <input aria-label="Glossary target term" value={tgt} onChange={(e) => setTgt(e.target.value)} placeholder="Always translate as" maxLength={120} style={selStyle} />
+        <button type="submit" aria-label="Add glossary term" disabled={!src.trim() || !tgt.trim()} style={btnStyle(false)}>Add</button>
+      </form>
+      {terms.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {terms.map((t) => (
+            <li key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '2px 0' }}>
+              <span>{t.data.source} → {t.data.target}</span>
+              <button aria-label={`Remove glossary term ${t.data.source}`} onClick={() => onRemove(t.id)} style={{ ...btnStyle(false), padding: '2px 8px', fontSize: 12 }}>Remove</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
   );
 }
 

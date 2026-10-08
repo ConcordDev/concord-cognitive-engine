@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check, Milestone } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -134,7 +135,7 @@ export function CalendarPanel() {
         input: { filingDate: timeline.filingDate, jurisdiction: timeline.jurisdiction },
       });
       const result = (r.data?.result || null) as TimelineResult | null;
-      if (result?.error) { setTimelineResult(null); alert(result.error); return; }
+      if (result?.error) { setTimelineResult(null); showToast('error', String(result.error)); return; }
       setTimelineResult(result);
     } catch (e) { console.error('[Calendar] timeline calc failed', e); }
     finally { setTimelineBusy(false); }
@@ -173,7 +174,7 @@ export function CalendarPanel() {
         domain: 'legal', action: 'ai-court-doc-to-calendar',
         input: { text: docText.trim(), triggerDate: parseTriggerDate || undefined },
       });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setSuggestions((r.data?.result?.suggestions || []) as CourtDocSuggestion[]);
     } catch (e) { console.error('[Calendar] parse court doc failed', e); }
     finally { setParseBusy(false); }

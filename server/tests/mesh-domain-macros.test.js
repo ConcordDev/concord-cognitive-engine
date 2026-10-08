@@ -158,19 +158,20 @@ describe("mesh — store-and-forward (offline send → queue → online retry �
 
     // node still offline → retry leaves it queued
     let retry = call("queueRetry", ctxA, { frameId });
-    assert.equal(retry.result.delivered, false);
+    assert.equal(retry.result.released, false);
     assert.equal(retry.result.attempts, 1);
 
     // bring the node online → retry delivers + dequeues + flips the message
     stored.lastSeen = new Date().toISOString();
     retry = call("queueRetry", ctxA, { frameId });
-    assert.equal(retry.result.delivered, true);
+    assert.equal(retry.result.released, true);
+    assert.equal(retry.result.delivered, false, "chat is never claimed delivered");
     assert.equal(retry.result.attempts, 2);
     assert.equal(call("queueList", ctxA, {}).result.total, 0, "frame dequeued");
 
     const conv = call("conversation", ctxA, { with: nodeId });
     const msg = conv.result.messages.find((m) => m.id === messageId);
-    assert.equal(msg.state, "delivered", "message promoted to delivered on retry");
+    assert.equal(msg.state, "recorded", "message released from queue and recorded, not delivered");
   });
 
   it("delivers immediately to an online node (no queue) and reads a conversation", () => {
@@ -178,7 +179,8 @@ describe("mesh — store-and-forward (offline send → queue → online retry �
     const nodeId = online.result.node.id;
     const sent = call("sendMessage", ctxA, { to: nodeId, body: "hi" });
     assert.equal(sent.result.queued, false);
-    assert.equal(sent.result.message.state, "delivered");
+    assert.equal(sent.result.message.state, "recorded");
+    assert.equal(sent.result.message.transmitted, false);
     assert.equal(call("queueList", ctxA, {}).result.total, 0);
 
     const conv = call("conversation", ctxA, { with: nodeId });

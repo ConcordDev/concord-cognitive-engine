@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { FolderOpen, Plus, FileText, Send, Eye } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -60,7 +61,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
         domain: 'legal', action: 'doc-generate',
         input: { templateId: genTemplate, matterId: genMatter, ...genExtras },
       });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setShowGen(false);
       setGenTemplate(''); setGenMatter(''); setGenExtras({ relief_sought: '', opposing_party: '' });
       await refresh();

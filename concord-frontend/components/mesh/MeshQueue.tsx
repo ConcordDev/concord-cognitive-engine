@@ -5,7 +5,7 @@
  * `mesh.queueList`, lets the operator retry (`mesh.queueRetry`),
  * re-prioritize (`mesh.queuePrioritize`) or drop (`mesh.queueDrop`)
  * each frame. Frames land here when a message is sent to an offline
- * node — they are delivered automatically once the node reappears.
+ * node; retry releases them once the node pings again (recorded, not transmitted).
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -700,12 +700,13 @@ describe("retail — discounts fixed_amount + abandoned carts (wave 13 top-up)",
     assert.equal(r.result.totalAbandoned, 1);
     assert.equal(r.result.totalLostValue, 60);
     assert.ok(r.result.carts.some((c) => c.id === cartId && c.subtotal === 60 && c.itemCount === 2 && c.ageHours === 3));
-    // recover with a discount code produces a shareable link carrying the code
+    // recover with a discount code drafts a reminder carrying the code
     const rec = await lensRun("retail", "abandoned-cart-recover", { params: { cartId, discountCode: "comeback" } }, actx);
     assert.equal(rec.ok, true);
     assert.equal(rec.result.recovery.kind, "discounted_recovery");
     assert.equal(rec.result.recovery.discountCode, "COMEBACK");
-    assert.ok(rec.result.recovery.shareableLink.includes("discount=COMEBACK"));
+    assert.ok(rec.result.recovery.message.includes("COMEBACK"));
+    assert.equal(rec.result.recovery.delivered, false);
   });
 });
 

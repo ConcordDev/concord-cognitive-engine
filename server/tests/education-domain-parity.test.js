@@ -326,6 +326,35 @@ describe("education.courses-* (CRUD + search)", () => {
       const goodLesson = call("lessons-create", ctxA, { courseId: id, title: "Real lesson" });
       assert.equal(goodLesson.ok, true);
     });
+
+    it("lessons-update / lessons-move / lessons-delete are author-only and keep order contiguous", () => {
+      const id = call("courses-create", ctxA, { title: "Editable Lessons", category: "cs" }).result.course.id;
+      const ids = ["One", "Two", "Three"].map((t) => call("lessons-create", ctxA, { courseId: id, title: t }).result.lesson.id);
+
+      const upd = call("lessons-update", ctxA, { courseId: id, lessonId: ids[0], title: "Uno", durationMin: 12, kind: "reading" });
+      assert.equal(upd.ok, true);
+      assert.equal(upd.result.lesson.title, "Uno");
+      assert.equal(upd.result.lesson.durationMin, 12);
+      assert.equal(upd.result.lesson.kind, "reading");
+      assert.equal(call("lessons-update", ctxA, { courseId: id, lessonId: ids[0], title: "  " }).ok, false);
+      assert.equal(call("lessons-update", ctxA, { courseId: id, lessonId: "nope", title: "x" }).ok, false);
+
+      for (const act of ["lessons-update", "lessons-delete", "lessons-move"]) {
+        const bad = call(act, ctxB, { courseId: id, lessonId: ids[0], title: "hax", direction: "down" });
+        assert.equal(bad.ok, false, act);
+      }
+
+      const mv = call("lessons-move", ctxA, { courseId: id, lessonId: ids[2], direction: "up" });
+      assert.deepEqual(mv.result.lessons.map((l) => l.id), [ids[0], ids[2], ids[1]]);
+      assert.deepEqual(mv.result.lessons.map((l) => l.order), [1, 2, 3]);
+      assert.equal(call("lessons-move", ctxA, { courseId: id, lessonId: ids[0], direction: "up" }).ok, false);
+
+      const del = call("lessons-delete", ctxA, { courseId: id, lessonId: ids[2] });
+      assert.equal(del.ok, true);
+      assert.deepEqual(del.result.lessons.map((l) => l.id), [ids[0], ids[1]]);
+      assert.deepEqual(del.result.lessons.map((l) => l.order), [1, 2]);
+      assert.equal(call("courses-get", ctxA, { id }).result.course.lessons.length, 2);
+    });
   });
   it("rejects empty title", () => {
     assert.equal(call("courses-create", ctxA, { title: "" }).ok, false);

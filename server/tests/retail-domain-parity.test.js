@@ -367,13 +367,16 @@ describe("retail.abandoned-carts-* (recovery)", () => {
     assert.equal(old.result.carts.length, 1);
     assert.equal(old.result.totalLostValue, 100);
   });
-  it("recovery creates discounted shareable link", () => {
+  it("recovery drafts a reminder with the code and does not claim delivery", () => {
     call("product-upsert", ctxA, { sku: "P1", name: "X", price: 100, stock: 10 });
     const c = call("cart-open", ctxA);
     call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
     const r = call("abandoned-cart-recover", ctxA, { cartId: c.result.cart.id, discountCode: "WIN10" });
     assert.equal(r.ok, true);
-    assert.match(r.result.recovery.shareableLink, /discount=WIN10/);
+    assert.equal(r.result.recovery.shareableLink, null);
+    assert.equal(r.result.recovery.delivered, false);
+    assert.match(r.result.recovery.message, /1 × X/);
+    assert.match(r.result.recovery.message, /WIN10/);
     assert.equal(r.result.recovery.kind, "discounted_recovery");
   });
 });

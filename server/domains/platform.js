@@ -5,6 +5,8 @@
 // environment/config management, domain routing, alerting, cost/usage, and an
 // audit log.
 
+import dns from "node:dns/promises";
+
 export default function registerPlatformActions(registerLensAction) {
   // ─── Per-user persistent platform state ─────────────────────────────
   function getPlatformState() {
@@ -36,14 +38,6 @@ export default function registerPlatformActions(registerLensAction) {
       meta: meta || null, at: pfNow(),
     });
     if (log.length > 500) log.length = 500;
-  }
-
-  // Deterministic pseudo-random series for live metrics so a freshly-deployed
-  // service surfaces realistic-shaped CPU/memory/request curves without DB.
-  function metricSeed(str) {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return (h >>> 0) / 4294967295;
   }
 
   /**
@@ -486,22 +480,12 @@ export default function registerPlatformActions(registerLensAction) {
   // DEPLOYMENT PIPELINE — build/deploy history with logs and rollback
   // ════════════════════════════════════════════════════════════════════
 
-  const DEPLOY_STAGES = ["queued", "building", "deploying", "ready"];
+  const DEPLOY_STAGES = ["recorded"];
 
-  function buildDeployLogs(service, ref, sha) {
-    return [
-      { ts: pfNow(), level: "info", msg: `Cloning ${service} @ ${ref}` },
-      { ts: pfNow(), level: "info", msg: `Checked out ${sha}` },
-      { ts: pfNow(), level: "info", msg: "Installing dependencies" },
-      { ts: pfNow(), level: "info", msg: "Running build" },
-      { ts: pfNow(), level: "info", msg: "Build completed" },
-      { ts: pfNow(), level: "info", msg: "Uploading build artifacts" },
-      { ts: pfNow(), level: "info", msg: "Assigning production traffic" },
-      { ts: pfNow(), level: "success", msg: "Deployment ready" },
-    ];
-  }
-
-  // deploy-create — start a new deployment (immediately resolves to ready)
+  // Concord does not build or host the user's services, so a "deployment" here
+  // is a release RECORD (what shipped, from which ref, where) with a rollback
+  // pointer — never a simulated build. Build timing / URL are stored only when
+  // the caller reports them from their own CI.
   registerLensAction("platform", "deploy-create", (ctx, _a, params = {}) => {
     try {
       const s = getPlatformState();
@@ -510,24 +494,24 @@ export default function registerPlatformActions(registerLensAction) {
       const service = pfClean(params.service, 80) || "default";
       const ref = pfClean(params.ref, 80) || "main";
       const environment = pfClean(params.environment, 40) || "production";
-      const sha = pfClean(params.sha, 12) || Math.random().toString(16).slice(2, 9);
-      const message = pfClean(params.message, 200) || `Deploy ${ref}`;
+      const sha = pfClean(params.sha, 40) || null;
+      const message = pfClean(params.message, 200) || `Release ${ref}`;
+      const url = /^https?:\/\//i.test(String(params.url || "")) ? pfClean(params.url, 300) : null;
+      const reported = params.buildSeconds == null || params.buildSeconds === "" ? NaN : Number(params.buildSeconds);
+      const buildSeconds = Number.isFinite(reported) && reported >= 0 ? Math.round(reported) : null;
       const list = pfList(s.deployments, userId);
-      const seed = metricSeed(`${service}${sha}${list.length}`);
       const deployment = {
         id: pfId("dep"), service, ref, environment, sha, message,
-        status: "ready", stage: "ready",
-        buildSeconds: Math.round(35 + seed * 120),
-        url: `https://${service}-${sha}.concord-os.org`,
-        createdAt: pfNow(), readyAt: pfNow(),
-        logs: buildDeployLogs(service, ref, sha),
+        status: "recorded", stage: "recorded",
+        buildSeconds, url,
+        createdAt: pfNow(), readyAt: null,
+        logs: [{ ts: pfNow(), level: "info", msg: `Release recorded: ${service} @ ${ref}${sha ? ` (${sha})` : ""} to ${environment}. Concord does not run builds or host this service; this entry tracks what you shipped.` }],
         active: environment === "production",
         rolledBack: false,
       };
-      // Only the newest production deploy is active.
       if (deployment.active) {
         for (const d of list) {
-          if (d.environment === "production" && d.active) d.active = false;
+          if (d.service === service && d.environment === "production" && d.active) d.active = false;
         }
       }
       list.unshift(deployment);
@@ -606,8 +590,7 @@ export default function registerPlatformActions(registerLensAction) {
       target.rolledBackAt = pfNow();
       target.logs = [
         ...(target.logs || []),
-        { ts: pfNow(), level: "warn", msg: `Rollback: promoting ${target.sha} to active` },
-        { ts: pfNow(), level: "success", msg: "Rollback complete" },
+        { ts: pfNow(), level: "warn", msg: `Marked ${target.sha || target.ref} as the current release. Redeploy it in your own pipeline; Concord only tracks the record.` },
       ];
       pfAudit(s, userId, "deploy.rollback", `${target.service}@${target.sha}`, { id });
       savePlatformState();
@@ -621,52 +604,67 @@ export default function registerPlatformActions(registerLensAction) {
   // LIVE RESOURCE METRICS — CPU / memory / request graphs over time
   // ════════════════════════════════════════════════════════════════════
 
-  // metrics-history — synthesized but deterministic resource time series
+  // metrics-ingest — record real samples reported by the user's service/agent
+  registerLensAction("platform", "metrics-ingest", (ctx, _a, params = {}) => {
+    try {
+      const s = getPlatformState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pfAid(ctx);
+      const service = pfClean(params.service, 80) || "default";
+      const samples = Array.isArray(params.samples) ? params.samples : [params];
+      const store = pfList(s.metrics, `${userId}::${service}`);
+      let accepted = 0;
+      for (const m of samples.slice(0, 500)) {
+        if (!m || typeof m !== "object") continue;
+        const point = { t: pfClean(m.t || m.timestamp, 40) || pfNow() };
+        if (Number.isNaN(Date.parse(point.t))) continue;
+        let any = false;
+        for (const f of ["cpu", "memory", "requests", "latencyMs", "errorRate", "bandwidthGB"]) {
+          if (m[f] != null && m[f] !== "" && Number.isFinite(Number(m[f]))) { point[f] = Number(m[f]); any = true; }
+        }
+        if (!any) continue;
+        store.push(point);
+        accepted++;
+      }
+      if (!accepted) return { ok: false, error: "no valid samples (need numeric cpu/memory/requests/latencyMs/errorRate/bandwidthGB)" };
+      store.sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
+      if (store.length > 2000) store.splice(0, store.length - 2000);
+      savePlatformState();
+      return { ok: true, result: { service, accepted, total: store.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // metrics-history — returns only samples the user ingested; never synthesized
   registerLensAction("platform", "metrics-history", (ctx, _a, params = {}) => {
     try {
       const s = getPlatformState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = pfAid(ctx);
       const service = pfClean(params.service, 80) || "default";
-      const points = Math.min(120, Math.max(6, Math.round(pfNum(params.points, 48))));
-      const stepMin = Math.min(1440, Math.max(1, Math.round(pfNum(params.stepMinutes, 30))));
-      const now = Date.now();
-      const base = metricSeed(`${userId}${service}`);
-      const series = [];
-      for (let i = points - 1; i >= 0; i--) {
-        const t = now - i * stepMin * 60000;
-        const phase = (i / points) * Math.PI * 2;
-        const wobble = metricSeed(`${service}${i}`);
-        const cpu = Math.round(Math.max(2, Math.min(98,
-          28 + base * 30 + Math.sin(phase * 3) * 18 + (wobble - 0.5) * 14)) * 10) / 10;
-        const memory = Math.round(Math.max(5, Math.min(96,
-          40 + base * 20 + Math.sin(phase * 1.5 + 1) * 12 + (wobble - 0.5) * 8)) * 10) / 10;
-        const requests = Math.round(Math.max(0,
-          120 + base * 400 + Math.sin(phase * 2) * 180 + (wobble - 0.5) * 90));
-        const latencyMs = Math.round(Math.max(8,
-          45 + base * 60 + Math.sin(phase * 2.5) * 25 + (wobble - 0.5) * 20));
-        series.push({
-          t: new Date(t).toISOString(),
-          label: new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          cpu, memory, requests, latencyMs,
-        });
+      const points = Math.min(500, Math.max(1, Math.round(pfNum(params.points, 48))));
+      const all = s.metrics.get(`${userId}::${service}`) || [];
+      const series = all.slice(-points).map((p) => ({
+        ...p,
+        label: new Date(p.t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      }));
+      if (!series.length) {
+        return { ok: true, result: { service, series: [], points: 0, current: null, summary: {}, health: "no_data",
+          note: "No metrics ingested for this service yet. Send samples with metrics-ingest from your service or agent." } };
       }
       const last = series[series.length - 1];
-      const avg = (k) => Math.round((series.reduce((a, p) => a + p[k], 0) / series.length) * 10) / 10;
-      const peak = (k) => Math.max(...series.map((p) => p[k]));
+      const summary = {};
+      for (const k of ["cpu", "memory", "requests", "latencyMs", "errorRate"]) {
+        const v = series.map((p) => p[k]).filter((x) => typeof x === "number");
+        if (v.length) summary[k] = { avg: Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10, peak: Math.max(...v) };
+      }
       return {
         ok: true,
         result: {
-          service, series, points: series.length,
-          current: last,
-          summary: {
-            cpu: { avg: avg("cpu"), peak: peak("cpu") },
-            memory: { avg: avg("memory"), peak: peak("memory") },
-            requests: { avg: avg("requests"), peak: peak("requests") },
-            latencyMs: { avg: avg("latencyMs"), peak: peak("latencyMs") },
-          },
-          health: last.cpu > 85 || last.memory > 90 ? "critical"
-            : last.cpu > 70 || last.memory > 78 ? "warning" : "healthy",
+          service, series, points: series.length, current: last, summary,
+          health: (last.cpu ?? 0) > 85 || (last.memory ?? 0) > 90 ? "critical"
+            : (last.cpu ?? 0) > 70 || (last.memory ?? 0) > 78 ? "warning" : "healthy",
         },
       };
     } catch (e) {
@@ -790,14 +788,12 @@ export default function registerPlatformActions(registerLensAction) {
       const service = pfClean(params.service, 80) || "default";
       const list = pfList(s.domains, userId);
       if (list.some((d) => d.host === host)) return { ok: false, error: "domain already attached" };
-      const seed = metricSeed(host);
       const domain = {
         id: pfId("dom"), host, service,
-        verified: seed > 0.5,
-        sslStatus: seed > 0.5 ? "issued" : "pending",
+        verified: false,
+        sslStatus: "not_managed",
         redirect: pfClean(params.redirect, 200) || null,
         dnsRecords: [
-          { type: "CNAME", name: host, value: "cname.concord-os.org" },
           { type: "TXT", name: `_concord.${host}`, value: `concord-verify=${pfId("vfy")}` },
         ],
         createdAt: pfNow(),
@@ -832,8 +828,8 @@ export default function registerPlatformActions(registerLensAction) {
     }
   });
 
-  // domain-verify — re-check DNS verification for a domain
-  registerLensAction("platform", "domain-verify", (ctx, _a, params = {}) => {
+  // domain-verify — look up the TXT record in real DNS; only a match verifies
+  registerLensAction("platform", "domain-verify", async (ctx, _a, params = {}) => {
     try {
       const s = getPlatformState();
       if (!s) return { ok: false, error: "STATE unavailable" };
@@ -841,8 +837,23 @@ export default function registerPlatformActions(registerLensAction) {
       const id = pfClean(params.id, 60);
       const dom = (s.domains.get(userId) || []).find((d) => d.id === id);
       if (!dom) return { ok: false, error: "domain not found" };
+      const txt = dom.dnsRecords.find((r) => r.type === "TXT");
+      const resolveTxt = typeof ctx?.dnsResolveTxt === "function" ? ctx.dnsResolveTxt : dns.resolveTxt;
+      let found = [];
+      try {
+        let timer;
+        const rows = await Promise.race([
+          resolveTxt(txt.name),
+          new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("dns_timeout")), 8000); }),
+        ]).finally(() => clearTimeout(timer));
+        found = rows.map((r) => (Array.isArray(r) ? r.join("") : String(r)));
+      } catch (e) {
+        return { ok: false, error: `DNS lookup for ${txt.name} failed (${e?.code || e?.message || "error"}). Add the TXT record and retry once it propagates.` };
+      }
+      if (!found.includes(txt.value)) {
+        return { ok: false, error: `TXT record ${txt.name} does not contain ${txt.value} yet.` };
+      }
       dom.verified = true;
-      dom.sslStatus = "issued";
       dom.verifiedAt = pfNow();
       pfAudit(s, userId, "domain.verify", dom.host, null);
       savePlatformState();
@@ -1021,9 +1032,11 @@ export default function registerPlatformActions(registerLensAction) {
 
       const buildMinutesUsed = Math.round(
         deployments.reduce((a, d) => a + (d.buildSeconds || 0), 0) / 60 * 100) / 100;
-      // Synthesized bandwidth from request volume of recent deploys.
-      const bandwidthGB = Math.round(
-        (metricSeed(userId) * 60 + deployments.length * 4.5) * 100) / 100;
+      let bandwidthGB = 0;
+      for (const [k, pts] of s.metrics) {
+        if (k.startsWith(`${userId}::`)) for (const p of pts) bandwidthGB += p.bandwidthGB || 0;
+      }
+      bandwidthGB = Math.round(bandwidthGB * 100) / 100;
       const RATES = { buildMinute: 0.0035, bandwidthGB: 0.15, domain: 0.0, deployment: 0.0 };
       const lineItems = [
         {
@@ -1032,7 +1045,7 @@ export default function registerPlatformActions(registerLensAction) {
           cost: Math.round(Math.max(0, buildMinutesUsed - quota.buildMinutes) * RATES.buildMinute * 100) / 100,
         },
         {
-          label: "Bandwidth (GB)", used: bandwidthGB, included: quota.bandwidthGB,
+          label: "Bandwidth (GB, ingested)", used: bandwidthGB, included: quota.bandwidthGB,
           overage: Math.max(0, bandwidthGB - quota.bandwidthGB),
           cost: Math.round(Math.max(0, bandwidthGB - quota.bandwidthGB) * RATES.bandwidthGB * 100) / 100,
         },

@@ -33,11 +33,13 @@ export interface FuturesContract {
 export interface ForexQuote {
   pair: string;
   name: string;
-  bid: number;
-  ask: number;
-  spread: number;
-  spreadPips: number;
+  mid?: number;
+  bid: number | null;
+  ask: number | null;
+  spread: number | null;
+  spreadPips: number | null;
   pipValue: number;
+  bidAskSource?: string;
 }
 
 export interface DepthLevel { price: number; size: number; }
@@ -277,9 +279,9 @@ function ForexTab() {
             {quotes.map((q) => (
               <tr key={q.pair} className="border-t border-white/5">
                 <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-400 font-sans">{q.name}</p></td>
-                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.bid}</td>
-                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.ask}</td>
-                <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips}p</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.bid == null ? `No quoted bid; mid ${q.mid ?? '—'}` : undefined}>{q.bid ?? '—'}</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100" title={q.ask == null ? `No quoted ask; mid ${q.mid ?? '—'}` : undefined}>{q.ask ?? '—'}</td>
+                <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips != null ? `${q.spreadPips}p` : 'n/a'}</td>
                 <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-400">${q.pipValue}</td>
               </tr>
             ))}

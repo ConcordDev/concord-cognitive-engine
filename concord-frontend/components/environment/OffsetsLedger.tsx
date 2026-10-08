@@ -5,7 +5,7 @@ import { Trees, Plus, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Offset { id: string; tonnes: number; project: string; kind: string; registry: string; vintage: string; pricePerTonneUsd: number; serialNumber: string; status: 'purchased' | 'retired'; retiredAt: string | null; retirementReason?: string }
+interface Offset { id: string; tonnes: number; project: string; kind: string; registry: string; vintage: string; pricePerTonneUsd: number; serialNumber: string; verified?: boolean; status: 'purchased' | 'retired'; retiredAt: string | null; retirementReason?: string }
 
 const KIND_LABEL: Record<string, string> = {
   forestry_redd: 'Forest REDD+',
@@ -21,7 +21,7 @@ const KIND_LABEL: Record<string, string> = {
 export function OffsetsLedger() {
   const [offsets, setOffsets] = useState<Offset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ tonnes: '', project: '', kind: 'forestry_redd', registry: 'Verra_VCS', vintage: String(new Date().getFullYear() - 1), pricePerTonneUsd: '' });
+  const [form, setForm] = useState({ tonnes: '', project: '', kind: 'forestry_redd', registry: 'Verra_VCS', vintage: String(new Date().getFullYear() - 1), pricePerTonneUsd: '', serialNumber: '' });
 
   useEffect(() => { refresh(); }, []);
 
@@ -38,7 +38,7 @@ export function OffsetsLedger() {
     if (!form.tonnes) return;
     try {
       await lensRun({ domain: 'environment', action: 'offsets-purchase', input: { ...form, tonnes: Number(form.tonnes), pricePerTonneUsd: Number(form.pricePerTonneUsd) || 0 } });
-      setForm({ ...form, tonnes: '', project: '', pricePerTonneUsd: '' });
+      setForm({ ...form, tonnes: '', project: '', pricePerTonneUsd: '', serialNumber: '' });
       await refresh();
     } catch (e) { console.error('[Offsets] purchase', e); }
   }
@@ -77,7 +77,9 @@ export function OffsetsLedger() {
           <option value="Puro_earth">Puro.earth</option>
         </select>
         <input type="number" step="0.01" value={form.pricePerTonneUsd} onChange={e => setForm({ ...form, pricePerTonneUsd: e.target.value })} placeholder="$/tonne" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <button onClick={purchase} className="col-span-6 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Purchase offsets</button>
+        <button onClick={purchase} className="col-span-6 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Log offset purchase</button>
+        <input value={form.serialNumber} onChange={e => setForm({ ...form, serialNumber: e.target.value })} placeholder="Registry serial (from your registry record, optional)" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <p className="col-span-6 text-[10px] text-gray-400">Concord does not sell or verify credits. Log purchases you made through a registry or broker; entries here are self-reported.</p>
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
@@ -91,7 +93,7 @@ export function OffsetsLedger() {
                 <Trees className={cn('w-3.5 h-3.5', o.status === 'retired' ? 'text-emerald-400' : 'text-amber-300')} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{o.project || KIND_LABEL[o.kind]}</div>
-                  <div className="text-[10px] text-gray-400 font-mono truncate">{o.serialNumber} · {o.registry.replace(/_/g, ' ')} · vintage {o.vintage}</div>
+                  <div className="text-[10px] text-gray-400 font-mono truncate">{o.serialNumber || 'no serial recorded'} · self-reported · {o.registry.replace(/_/g, ' ')} · vintage {o.vintage}</div>
                 </div>
                 <span className="font-mono text-sm tabular-nums text-emerald-300">{o.tonnes.toFixed(0)}t</span>
                 {o.pricePerTonneUsd > 0 && <span className="text-[10px] text-gray-400 font-mono">${(o.tonnes * o.pricePerTonneUsd).toFixed(0)}</span>}

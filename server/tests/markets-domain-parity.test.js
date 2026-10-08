@@ -119,6 +119,19 @@ describe("markets — forex quotes (Yahoo Finance live)", () => {
     const r = await call("forex-quotes", ctxA, { pairs: ["USDJPY"] });
     assert.ok(r.result.quotes[0].bid > 1);
   });
+
+  it("does not invent a bid/ask spread when Yahoo omits it", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ quoteResponse: { result: [{ symbol: "EURUSD=X", regularMarketPrice: 1.0875 }] } }),
+    });
+    const q = (await call("forex-quotes", ctxA, { pairs: ["EURUSD"] })).result.quotes[0];
+    assert.equal(q.mid, 1.0875);
+    assert.equal(q.bid, null);
+    assert.equal(q.ask, null);
+    assert.equal(q.spreadPips, null);
+    assert.equal(q.bidAskSource, "unavailable");
+  });
 });
 
 describe("markets — depth of book (real inside quote)", () => {

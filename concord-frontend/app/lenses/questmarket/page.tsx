@@ -10,7 +10,7 @@
  * for the full researched checklist and disposition of every item.
  *
  * Every tab below dispatches real `questmarket` macros — accept/submit/
- * verify moves real escrowed CC between real per-user wallets in the
+ * verify moves escrowed quest credits (QC) between per-user balances in the
  * lens-local ledger; nothing here is a fabricated success state.
  */
 
@@ -114,7 +114,7 @@ export default function QuestmarketLensPage() {
         lensId="questmarket"
         crumb="Questmarket"
         title={TITLES[tab]}
-        subtitle="Escrowed CC, accept → submit → verify lifecycle, reputation, achievements, and guilds"
+        subtitle="Escrowed quest credits (QC), accept → submit → verify lifecycle, reputation, achievements, and guilds"
         tabs={TABS.map((t) => ({
           id: t.id,
           label: t.badge ? `${t.label} · ${t.badge}` : t.label,

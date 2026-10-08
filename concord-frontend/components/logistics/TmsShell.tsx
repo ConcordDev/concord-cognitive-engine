@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
 
 export interface TmsShipment {
   id: string;
-  trackingNumber: string;
+  trackingNumber: string | null;
+  reference?: string;
   origin: string;
   destination: string;
   carrierCode?: string;
@@ -116,7 +117,7 @@ export function TmsShell({
                   <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03]">
                     <div className="flex items-center gap-2">
                       <Icon className="w-3.5 h-3.5 text-cyan-300 flex-shrink-0" />
-                      <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{s.trackingNumber.slice(0, 10)}…</span>
+                      <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{(s.trackingNumber || s.reference || 'no tracking #').slice(0, 10)}…</span>
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded ml-auto', STATUS_COLOUR[s.status])}>{s.status.replace(/_/g, ' ')}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-200">

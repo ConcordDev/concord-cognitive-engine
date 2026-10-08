@@ -68,8 +68,9 @@ export function MarketHeader({ refreshKey }: { refreshKey?: number }) {
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-amber-400" />
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Available CC</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Available quest credits</p>
               <p className="text-lg font-bold text-amber-300">{wallet.balance.toLocaleString()}</p>
+              <p className="text-[10px] text-zinc-500">Local to Questmarket · not Concord Coin</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -114,7 +115,7 @@ export function MarketHeader({ refreshKey }: { refreshKey?: number }) {
                       {e.type.replace('_', ' ')}
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="font-mono text-amber-300">{e.amount} CC</span>
+                      <span className="font-mono text-amber-300">{e.amount} QC</span>
                       <span className="text-zinc-600">{new Date(e.ts).toLocaleTimeString()}</span>
                     </span>
                   </div>

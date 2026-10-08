@@ -146,26 +146,27 @@ describe("sync — sync_now + status aggregation (shared ctx)", () => {
     assert.equal(r.result.error, "missing_deviceId");
   });
 
-  it("sync_now succeeds, sets status ok, and writes a log entry", async () => {
+  it("sync_now prepares the scoped set (no transfer) and writes a log entry", async () => {
     const r = await lensRun("sync", "sync_now", { params: { deviceId } }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(r.result.status, "ok");
+    assert.equal(r.result.status, "prepared");
+    assert.equal(r.result.transferred, false);
     assert.equal(r.result.deviceId, deviceId);
     assert.equal(typeof r.result.dtuCount, "number");
     assert.equal(typeof r.result.bytes, "number");
     assert.ok(r.result.logEntry, "a log entry is returned");
-    assert.equal(r.result.logEntry.kind, "sync");
+    assert.equal(r.result.logEntry.kind, "sync_prepared");
   });
 
-  it("sync_status aggregates the synced device as a live, synced fleet", async () => {
+  it("sync_status reports the registered device as online without claiming a sync", async () => {
     await lensRun("sync", "sync_now", { params: { deviceId } }, ctx);
     const st = await lensRun("sync", "sync_status", {}, ctx);
     assert.equal(st.ok, true);
     assert.equal(st.result.deviceCount, 1);
     assert.equal(st.result.onlineCount, 1);
     assert.equal(st.result.openConflicts, 0);
-    assert.equal(st.result.state, "synced");
-    assert.equal(typeof st.result.lastSyncAt, "number");
+    assert.equal(st.result.state, "online");
+    assert.equal(st.result.lastSyncAt, null, "preparing is not syncing");
   });
 
   it("sync_status on a user with no devices reports no_devices", async () => {

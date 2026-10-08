@@ -50,6 +50,8 @@ interface AgendaItem {
 interface Blast {
   id: string; subject: string; body: string; segment: string;
   recipientCount: number; sentAt: string;
+  delivered?: number; status?: 'sent' | 'partial' | 'not_sent' | 'no_recipients'; notSentReason?: string | null;
+  recipients?: Array<{ name?: string; email: string; sent?: boolean; reason?: string }>;
 }
 interface PublicPage {
   slug: string | null; published: boolean; headline: string; blurb: string; views: number;
@@ -1134,9 +1136,24 @@ export function EventOps() {
                             <p className="font-medium text-sm">{b.subject}</p>
                             <p className="text-xs text-gray-400 line-clamp-2">{b.body}</p>
                             <p className="text-xs text-gray-400 mt-1">
-                              {b.segment} · {b.recipientCount} recipient{b.recipientCount !== 1 ? 's' : ''} ·{' '}
+                              {b.segment} · {b.status === 'sent' || b.status === 'partial'
+                                ? `${b.delivered ?? 0} of ${b.recipientCount} emailed`
+                                : `${b.recipientCount} recipient${b.recipientCount !== 1 ? 's' : ''}, not emailed`} ·{' '}
                               {String(b.sentAt).slice(0, 16).replace('T', ' ')}
                             </p>
+                            {(b.status === 'not_sent' || b.status === 'partial') && (() => {
+                              const pending = (b.recipients || []).filter((r) => r.sent === false && r.email).map((r) => r.email);
+                              return (
+                                <p className="text-xs text-amber-300 mt-1">
+                                  {b.status === 'not_sent' ? 'Nothing was emailed — link Gmail in Connectors to send from here. ' : 'Some messages failed. '}
+                                  {pending.length > 0 && (
+                                    <a className="underline" href={`mailto:?bcc=${encodeURIComponent(pending.join(','))}&subject=${encodeURIComponent(b.subject)}&body=${encodeURIComponent(b.body)}`}>
+                                      Send the {pending.length} unsent from your mail app
+                                    </a>
+                                  )}
+                                </p>
+                              );
+                            })()}
                           </div>
                           <button onClick={() => delBlast(b.id)}
                             className={cn(ds.btnGhost, 'hover:text-red-400 shrink-0')} aria-label="Delete blast">

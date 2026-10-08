@@ -1,3 +1,4 @@
+import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/carpentry.js
 // Domain actions for carpentry: board foot calculation, joint strength analysis,
 // wood species selection, finish recommendation, plus a full trade-management
@@ -679,9 +680,11 @@ export default function registerCarpentryActions(registerLensAction) {
       if (!s) return { ok: false, error: "STATE unavailable" };
       const client = cpClean(params.client, 160);
       if (!client) return { ok: false, error: "client name required" };
-      const token = cpId("portal");
+      const token = newShareToken("cpt");
+      const days = Math.max(1, Math.min(180, Math.round(cpNum(params.expiresInDays) || 30)));
       const share = {
         token,
+        expiresAt: new Date(Date.now() + days * 86400000).toISOString(),
         ownerId: cpActor(ctx),
         client,
         estimateId: cpClean(params.estimateId, 120) || "",
@@ -708,14 +711,57 @@ export default function registerCarpentryActions(registerLensAction) {
   });
 
   // public read — client opens the portal with the token
-  registerLensAction("carpentry", "portalView", (_ctx, _a, params = {}) => {
+  registerLensAction("carpentry", "portalView", (ctx, _a, params = {}) => {
     try {
       const s = getCarpentryState();
       if (!s) return { ok: false, error: "STATE unavailable" };
-      const token = cpClean(params.token, 120);
-      const share = s.portalShares.get(token);
+      const own = s.portalShares.get(cpClean(params.token, 120));
+      if (own && own.ownerId === cpActor(ctx)) return { ok: true, result: { share: own } };
+      const share = livePortal(s, params.token);
       if (!share) return { ok: false, error: "portal not found or expired" };
-      return { ok: true, result: { share } };
+      const { ownerId: _owner, ...pub } = share;
+      return { ok: true, result: { share: pub } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // A portal link is usable only with a strong token, before it expires and
+  // while the owner hasn't revoked it.
+  const livePortal = (s, token) => {
+    const t = cpClean(token, 120);
+    if (!isStrongShareToken(t, "cpt")) return null;
+    const share = s.portalShares.get(t);
+    if (!share || share.status === "revoked") return null;
+    if (share.expiresAt && Date.parse(share.expiresAt) < Date.now()) return null;
+    return share;
+  };
+
+  // owner revokes a portal link
+  registerLensAction("carpentry", "portalRevoke", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const share = s.portalShares.get(cpClean(params.token, 120));
+      if (!share || share.ownerId !== cpActor(ctx)) return { ok: false, error: "portal not found" };
+      share.status = "revoked";
+      share.revokedAt = new Date().toISOString();
+      saveCarpentry();
+      return { ok: true, result: { token: share.token, status: share.status } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // public, token-scoped projection for /portal/carpentry/:token (no owner id)
+  registerLensAction("carpentry", "portalPublicView", (_ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const share = livePortal(s, params.token);
+      if (!share) return { ok: false, error: "portal not found or expired" };
+      const { ownerId: _owner, ...pub } = share;
+      return { ok: true, result: { share: pub } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -728,8 +774,17 @@ export default function registerCarpentryActions(registerLensAction) {
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = cpActor(ctx);
       const shares = [];
-      for (const share of s.portalShares.values()) {
-        if (share.ownerId === userId) shares.push(share);
+      for (const share of [...s.portalShares.values()]) {
+        if (share.ownerId !== userId) continue;
+        // Legacy portals had guessable tokens and no expiry: reissue.
+        if (!isStrongShareToken(share.token, "cpt")) {
+          s.portalShares.delete(share.token);
+          share.token = newShareToken("cpt");
+          if (!share.expiresAt) share.expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+          s.portalShares.set(share.token, share);
+          saveCarpentry();
+        }
+        shares.push(share);
       }
       shares.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
       return { ok: true, result: { shares, count: shares.length } };
@@ -743,9 +798,9 @@ export default function registerCarpentryActions(registerLensAction) {
     try {
       const s = getCarpentryState();
       if (!s) return { ok: false, error: "STATE unavailable" };
-      const token = cpClean(params.token, 120);
-      const share = s.portalShares.get(token);
+      const share = livePortal(s, params.token);
       if (!share) return { ok: false, error: "portal not found or expired" };
+      if (share.status !== "open") return { ok: false, error: `estimate already ${share.status}` };
       const decision = ["approved", "declined"].includes(params.decision) ? params.decision : null;
       if (!decision) return { ok: false, error: "decision must be 'approved' or 'declined'" };
       share.clientDecision = {

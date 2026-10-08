@@ -161,7 +161,7 @@ export function QuestBoard({
           {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <input type="number" value={minReward} onChange={(e) => setMinReward(e.target.value)}
-          placeholder="Min CC"
+          placeholder="Min QC"
           className="w-24 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
         <select value={sort} onChange={(e) => setSort(e.target.value)}
           className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
@@ -284,7 +284,7 @@ export function QuestBoard({
                 className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-zinc-400">Reward (CC, escrowed)</label>
+                  <label className="text-[10px] text-zinc-400">Reward (QC, escrowed)</label>
                   <input type="number" value={pReward} onChange={(e) => setPReward(e.target.value)}
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>
@@ -314,7 +314,7 @@ export function QuestBoard({
               </div>
               {Number(pReward) > 0 && (
                 <p className="text-[10px] text-amber-400/80">
-                  {pReward} CC will be locked in escrow and released to the verified claimant.
+                  {pReward} QC will be locked in escrow and released to the verified claimant.
                 </p>
               )}
             </div>

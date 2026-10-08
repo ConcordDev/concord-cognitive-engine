@@ -211,8 +211,20 @@ describe("real-estate domain macros", () => {
     assert.equal(list.ok, true);
     const active = await call("active_listings", ctxAlice(), {});
     assert.equal(active.listings.length, 1);
-    const purch = await call("purchase", ctxBob(), { listingId: list.listingId });
+    // No wallet connected → the purchase fails honestly and ownership stays put.
+    const blocked = await call("purchase", ctxBob(), { listingId: list.listingId });
+    assert.equal(blocked.ok, false);
+    assert.equal(blocked.reason, "wallet_debit_failed");
+    assert.equal((await call("owned", ctxBob())).buildings.length, 0);
+
+    const moves = [];
+    const realEstateWallet = {
+      debit: (u, a) => { moves.push(["debit", u, a]); return { ok: true }; },
+      credit: (u, a) => { moves.push(["credit", u, a]); return { ok: true }; },
+    };
+    const purch = await call("purchase", { ...ctxBob(), realEstateWallet }, { listingId: list.listingId });
     assert.equal(purch.ok, true);
+    assert.deepEqual(moves, [["debit", "bob", 8000], ["credit", "alice", 8000]]);
     const owned = await call("owned", ctxBob());
     assert.equal(owned.buildings[0].id, "b1");
   });

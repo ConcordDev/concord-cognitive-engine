@@ -166,7 +166,7 @@ export function CreatorHub() {
                 <span className="font-mono text-zinc-400 w-6">#{s.rank}</span>
                 <span className="text-zinc-200 flex-1 truncate">{s.userId}</span>
                 <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase ${BADGE_COLOR[s.badge] || BADGE_COLOR.bronze}`}>{s.badge}</span>
-                <span className="font-mono text-amber-300 text-[11px]">{s.totalContributed} CC</span>
+                <span className="font-mono text-amber-300 text-[11px]" title="Pledged, not charged">{s.totalContributed} CC pledged</span>
                 <span className="text-zinc-600 text-[10px]">{s.monthsSponsoring}mo</span>
               </li>
             ))}

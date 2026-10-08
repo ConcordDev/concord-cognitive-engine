@@ -10,7 +10,7 @@ interface REC { id: string; mwh: number; tech: string; vintage: string; registry
 export function RECsLedger() {
   const [recs, setRecs] = useState<REC[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ mwh: '', tech: 'solar', vintage: String(new Date().getFullYear()), registry: 'WREGIS', pricePerMwhUsd: '' });
+  const [form, setForm] = useState({ mwh: '', tech: 'solar', vintage: String(new Date().getFullYear()), registry: 'WREGIS', pricePerMwhUsd: '', certificateNumber: '' });
 
   useEffect(() => { refresh(); }, []);
 
@@ -27,7 +27,7 @@ export function RECsLedger() {
     if (!form.mwh) return;
     try {
       await lensRun({ domain: 'environment', action: 'recs-purchase', input: { ...form, mwh: Number(form.mwh), pricePerMwhUsd: Number(form.pricePerMwhUsd) || 0 } });
-      setForm({ ...form, mwh: '', pricePerMwhUsd: '' });
+      setForm({ ...form, mwh: '', pricePerMwhUsd: '', certificateNumber: '' });
       await refresh();
     } catch (e) { console.error('[RECs] purchase', e); }
   }
@@ -61,7 +61,9 @@ export function RECsLedger() {
           <option>WREGIS</option><option>M-RETS</option><option>PJM-GATS</option><option>NEPOOL-GIS</option><option>ERCOT</option><option>NAR</option>
         </select>
         <input type="number" step="0.01" value={form.pricePerMwhUsd} onChange={e => setForm({ ...form, pricePerMwhUsd: e.target.value })} placeholder="$/MWh" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <button onClick={purchase} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Purchase</button>
+        <button onClick={purchase} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Log purchase</button>
+        <input value={form.certificateNumber} onChange={e => setForm({ ...form, certificateNumber: e.target.value })} placeholder="Certificate # from your tracking registry (optional)" className="col-span-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <p className="col-span-full text-[10px] text-gray-400">Concord does not sell or verify RECs. Log certificates you bought elsewhere; entries are self-reported.</p>
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
@@ -74,7 +76,7 @@ export function RECsLedger() {
               <li key={r.id} className={cn('px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3', r.status === 'retired' && 'opacity-70')}>
                 <Award className={cn('w-3.5 h-3.5', r.status === 'retired' ? 'text-emerald-300' : 'text-amber-300')} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-mono text-amber-300">{r.certificateNumber}</div>
+                  <div className="text-xs font-mono text-amber-300">{r.certificateNumber || 'no certificate # recorded'} <span className="text-gray-500">· self-reported</span></div>
                   <div className="text-[10px] text-gray-400">{r.mwh.toFixed(0)} MWh · {r.tech} · {r.registry} · vintage {r.vintage}{r.retirementReason && ` · ${r.retirementReason}`}</div>
                 </div>
                 {r.pricePerMwhUsd > 0 && <span className="text-[10px] text-gray-400 font-mono">${(r.mwh * r.pricePerMwhUsd).toFixed(0)}</span>}

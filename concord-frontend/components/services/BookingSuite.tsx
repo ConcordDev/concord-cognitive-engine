@@ -499,8 +499,8 @@ function Reminders() {
   };
 
   const dispatch = async () => {
-    const { result } = await svc<{ dispatched: number; failed: number }>('reminderDispatch', { now: new Date().toISOString() });
-    if (result) setMsg(`Delivered ${result.dispatched}, ${result.failed} failed`);
+    const { result } = await svc<{ queued: number; failed: number }>('reminderDispatch', { now: new Date().toISOString() });
+    if (result) setMsg(`${result.queued} due reminder(s) queued to send, ${result.failed} failed (no contact). Concord has no SMS/email gateway; send queued ones from your own channel.`);
     load();
   };
 
@@ -508,7 +508,7 @@ function Reminders() {
     <div className="space-y-4">
       <div className={ds.grid3}>
         <div className={ds.panel}><p className={ds.textMuted}>Scheduled</p><p className="text-2xl font-bold text-blue-400">{counts.scheduled || 0}</p></div>
-        <div className={ds.panel}><p className={ds.textMuted}>Delivered</p><p className="text-2xl font-bold text-green-400">{counts.delivered || 0}</p></div>
+        <div className={ds.panel}><p className={ds.textMuted}>Queued to send</p><p className="text-2xl font-bold text-green-400">{counts.queued || 0}</p></div>
         <div className={ds.panel}><p className={ds.textMuted}>Failed</p><p className="text-2xl font-bold text-red-400">{counts.failed || 0}</p></div>
       </div>
 
@@ -537,7 +537,7 @@ function Reminders() {
             <span className={ds.badge(r.channel === 'sms' ? 'cyan-400' : 'purple-400')}>{r.channel}</span>
             <span className="flex-1 truncate">{r.client} — {r.body}</span>
             <span className={cn(ds.textMuted, 'text-xs')}>{r.sendAt.replace('T', ' ')}</span>
-            <span className={ds.badge(r.status === 'delivered' ? 'green-400' : r.status === 'failed' ? 'red-400' : 'blue-400')}>{r.status}</span>
+            <span className={ds.badge(r.status === 'queued' ? 'green-400' : r.status === 'failed' ? 'red-400' : 'blue-400')}>{r.status}</span>
           </div>
         ))}
         {reminders.length === 0 && <p className={ds.textMuted}>No reminders scheduled.</p>}

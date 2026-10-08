@@ -99,7 +99,7 @@ describe("ml lens — registration of the driven macros", () => {
       "experiment-start", "experiment-log", "experiment-finish", "experiment-list", "experiment-delete",
       "dataset-hub", "dataset-register", "dataset-list",
       "model-compare", "automl-templates",
-      "deploy-create", "deploy-list", "deploy-scale", "deploy-stop",
+      "deploy-create", "deploy-list", "deploy-invoke", "deploy-scale", "deploy-stop",
       "space-create", "space-list", "space-delete",
     ];
     for (const m of driven) {

@@ -1,4 +1,44 @@
 // server/domains/world.js
+import { stressResponse, MATERIALS } from "../lib/materials/stress.js";
+
+// District stress test load model (game units, same scale as the materials
+// engine's yield/ultimate). Deterministic and documented so results are
+// reproducible: taller buildings take more load, damaged ones less capacity.
+const STRESS_SCENARIOS = {
+  earthquake: { min: 3, max: 9, load: (m) => 6 * Math.pow(1.6, m - 3) },
+  hurricane: { min: 1, max: 5, load: (m) => 4 * Math.pow(m, 1.6) },
+  flood: { min: 10, max: 200, load: (m, b) => (m / 4) * (b.floors <= 1 ? 1.3 : 1) },
+  fire: { min: 1, max: 10, load: (m, b) => (["thatch", "wood"].includes(b.material) ? 12 : 3) * m },
+};
+const STRESS_MATERIAL_ALIAS = { brick: "stone" };
+
+export function runDistrictStressTest(buildings, scenario, magnitude) {
+  const sc = STRESS_SCENARIOS[scenario];
+  if (!sc) return { ok: false, error: `unknown scenario (use ${Object.keys(STRESS_SCENARIOS).join(", ")})` };
+  const m = Number(magnitude);
+  if (!Number.isFinite(m) || m < sc.min || m > sc.max) return { ok: false, error: `magnitude must be ${sc.min}–${sc.max} for ${scenario}` };
+  const details = [];
+  let passed = 0, marginal = 0, failed = 0, skipped = 0;
+  for (const raw of buildings) {
+    const material = STRESS_MATERIAL_ALIAS[raw.material] || raw.material || "stone";
+    if (!MATERIALS[material]) { skipped++; continue; }
+    const floors = Math.max(1, Number(raw.floors) || 1);
+    const health = Math.max(0.2, Math.min(1, Number(raw.health_pct ?? 1)));
+    const b = { material, floors };
+    const stress = (sc.load(m, b) * (1 + 0.15 * (floors - 1))) / health;
+    const r = stressResponse(material, stress);
+    const status = r.failed ? "failed" : r.state === "yielding" ? "marginal" : "passed";
+    if (status === "failed") failed++; else if (status === "marginal") marginal++; else passed++;
+    details.push({
+      buildingId: raw.id, name: raw.name || raw.building_type, material, floors,
+      health: Math.round(health * 100) / 100, stress: Math.round(stress * 10) / 10,
+      ratio: Math.round(r.ratio * 100) / 100, status, state: r.state,
+    });
+  }
+  details.sort((a, b2) => b2.ratio - a.ratio);
+  return { ok: true, result: { scenario, magnitude: m, buildingsTested: details.length, passed, marginal, failed, skipped, details, model: "materials engine yield/ultimate; simplified per-scenario load model" } };
+}
+
 export default function registerWorldActions(registerLensAction) {
   registerLensAction("world", "countryCompare", (ctx, artifact, _params) => {
     const countries = artifact.data?.countries || [];
@@ -812,6 +852,22 @@ export default function registerWorldActions(registerLensAction) {
     const partyId = s.partyOf.get(userId);
     const party = partyId ? s.parties.get(partyId) : null;
     return { ok: true, result: { party: party ? partyView(party) : null } };
+  });
+
+  // Read-only district stress test over the world's real buildings.
+  registerLensAction("world", "stress-test", (ctx, _artifact, params = {}) => {
+    try {
+      const db = ctx?.db;
+      if (!db) return { ok: false, error: "no_db" };
+      const worldId = String(params.worldId || params.districtId || "").slice(0, 80);
+      if (!worldId) return { ok: false, error: "worldId required" };
+      let rows = [];
+      try {
+        rows = db.prepare(`SELECT id, name, building_type, material, floors, health_pct, state FROM world_buildings WHERE world_id = ? AND state != 'collapsed' LIMIT 2000`).all(worldId);
+      } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+      if (!rows.length) return { ok: false, error: "no standing buildings in this world" };
+      return runDistrictStressTest(rows, String(params.scenario || ""), params.magnitude);
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   registerLensAction("world", "party-set-objective", (ctx, _artifact, params = {}) => {

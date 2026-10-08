@@ -115,7 +115,7 @@ describe('GardenStudio — Invoices tab (InvoiceTracker)', () => {
     ));
   });
 
-  it('sends a draft invoice via invoice-send and reloads the list', async () => {
+  it('marks a draft invoice sent via invoice-send and reloads the list', async () => {
     mockRoute({
       'invoice-list': () => ok({
         invoices: [DRAFT_INVOICE], count: 1,
@@ -128,7 +128,7 @@ describe('GardenStudio — Invoices tab (InvoiceTracker)', () => {
     await goToTab(/^Invoices$/);
     fireEvent.click(await screen.findByText('INV-0001')); // expand the card
 
-    fireEvent.click(screen.getByRole('button', { name: /Send to client/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Mark sent/i }));
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith(
       'landscaping', 'invoice-send', { id: 'inv_a' },
     ));

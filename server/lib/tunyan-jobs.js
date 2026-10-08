@@ -16,8 +16,30 @@
 //     not been minted within the past 30 days.
 
 import logger from "../logger.js";
+import { creditSparks } from "./sparks-service.js";
+
+// Default payer: the canonical sparks ledger (idempotent on refId).
+export function sparksPayer(reason) {
+  return async (db, uid, sparks, opts = {}) =>
+    creditSparks(db, { holderKind: "player", holderId: uid, amount: sparks, refId: opts.refId || null, reason, worldId: opts.worldId || null });
+}
 
 const RATION_TICK_DAYS = 30;
+const HUB_WORLD = "concordia-hub";
+// Categories a player may hold on their own say-so. The rest (pregnant,
+// child, elderly) carry larger rations and must be set by an admin.
+const SELF_SERVICE_DEMOGRAPHICS = new Set(["unemployed", "employed_baseline"]);
+
+// A world id must name a real world; with no worlds table only the hub exists.
+export function worldExists(db, worldId) {
+  const id = String(worldId || "");
+  if (!id) return false;
+  try {
+    return !!db.prepare(`SELECT 1 FROM worlds WHERE id = ?`).get(id);
+  } catch {
+    return id === HUB_WORLD;
+  }
+}
 const SHIFT_COOLDOWN_S = 6 * 3600; // can complete one shift per 6 in-real-time hours
 
 export function listOpenJobs(db) {
@@ -42,6 +64,7 @@ export function getMyEmployment(db, userId, worldId = "concordia-hub") {
 
 export function applyForJob(db, userId, worldId, jobId) {
   if (!db || !userId || !worldId || !jobId) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   try {
     const job = db.prepare(`SELECT id FROM tunyan_jobs WHERE id = ?`).get(jobId);
     if (!job) return { ok: false, reason: "job_not_found" };
@@ -51,8 +74,7 @@ export function applyForJob(db, userId, worldId, jobId) {
       ON CONFLICT(user_id, world_id) DO UPDATE
         SET job_id = excluded.job_id,
             demographic_kind = 'employed_baseline',
-            employed_at = unixepoch(),
-            last_shift_at = NULL
+            employed_at = unixepoch()
     `).run(userId, worldId, jobId);
     return { ok: true, action: "hired", jobId };
   } catch (err) {
@@ -80,13 +102,17 @@ export function resign(db, userId, worldId = "concordia-hub") {
  * mintCoins if the wallet module is present; otherwise we still
  * advance the shifts_completed counter (audit-only mode).
  */
-export async function completeShift(db, userId, worldId = "concordia-hub", { mintFn = null } = {}) {
+export async function completeShift(db, userId, worldId = "concordia-hub", { mintFn = sparksPayer("tunyan_job_wage") } = {}) {
   if (!db || !userId) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   const emp = getMyEmployment(db, userId, worldId);
   if (!emp || !emp.job_id) return { ok: false, reason: "not_employed" };
   const now = Math.floor(Date.now() / 1000);
-  if (emp.last_shift_at && now - emp.last_shift_at < SHIFT_COOLDOWN_S) {
-    return { ok: false, reason: "shift_cooldown", retry_at: emp.last_shift_at + SHIFT_COOLDOWN_S };
+  // One paid shift per cooldown per player, across every world, so holding
+  // jobs in several worlds (or re-applying) can't multiply the wage rate.
+  const lastAny = db.prepare(`SELECT MAX(last_shift_at) AS t FROM player_employment WHERE user_id = ?`).get(userId)?.t;
+  if (lastAny && now - lastAny < SHIFT_COOLDOWN_S) {
+    return { ok: false, reason: "shift_cooldown", retry_at: lastAny + SHIFT_COOLDOWN_S };
   }
   const job = db.prepare(`SELECT wage_sparks FROM tunyan_jobs WHERE id = ?`).get(emp.job_id);
   if (!job) return { ok: false, reason: "job_missing" };
@@ -103,11 +129,18 @@ export async function completeShift(db, userId, worldId = "concordia-hub", { min
   let paidViaMint = false;
   if (typeof mintFn === "function") {
     try {
-      const r = await mintFn(db, userId, job.wage_sparks, { refId: `wage:${emp.job_id}:${userId}:${now}` });
+      const r = await mintFn(db, userId, job.wage_sparks, { refId: `wage:${emp.job_id}:${userId}:${now}`, worldId });
       paidViaMint = !!r?.ok;
     } catch { /* mint failed — counter still incremented */ }
   }
-  return { ok: true, action: "shift_paid", paid_sparks: job.wage_sparks, shifts_completed: emp.shifts_completed + 1, paidViaMint };
+  return {
+    ok: true,
+    action: paidViaMint ? "shift_paid" : "shift_logged_unpaid",
+    paid_sparks: paidViaMint ? job.wage_sparks : 0,
+    wage_sparks: job.wage_sparks,
+    shifts_completed: emp.shifts_completed + 1,
+    paidViaMint,
+  };
 }
 
 /**
@@ -116,9 +149,9 @@ export async function completeShift(db, userId, worldId = "concordia-hub", { min
  *
  * `mintFn(db, userId, sparks, { refId })` matches the wallet API.
  */
-export async function mintRationsForEligible(db, { mintFn = null } = {}) {
+export async function mintRationsForEligible(db, { mintFn = sparksPayer("tunyan_ration") } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
-  let minted = 0, skipped = 0;
+  let minted = 0, skipped = 0, failed = 0;
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - RATION_TICK_DAYS * 86400;
 
@@ -135,29 +168,41 @@ export async function mintRationsForEligible(db, { mintFn = null } = {}) {
     `);
   } catch { /* table exists */ }
 
+  // One ration per player per period (their largest entitlement), not one
+  // per world they hold an employment row in.
   const rows = db.prepare(`
     SELECT pe.user_id, pe.world_id, pe.demographic_kind, re.monthly_sparks,
            (SELECT MAX(minted_at) FROM ration_mint_log
-              WHERE user_id = pe.user_id AND world_id = pe.world_id) AS last_minted_at
+              WHERE user_id = pe.user_id) AS last_minted_at
     FROM player_employment pe
     JOIN ration_entitlements re ON re.demographic_kind = pe.demographic_kind
     WHERE re.monthly_sparks > 0
+    ORDER BY pe.user_id, re.monthly_sparks DESC
   `).all();
+  const seenUsers = new Set();
 
   for (const row of rows) {
+    if (seenUsers.has(row.user_id)) continue;
+    seenUsers.add(row.user_id);
     if (row.last_minted_at && row.last_minted_at > cutoff) {
       skipped++;
       continue;
     }
+    let paid = false;
     if (typeof mintFn === "function") {
       try {
-        await mintFn(db, row.user_id, row.monthly_sparks, {
+        const r = await mintFn(db, row.user_id, row.monthly_sparks, {
           refId: `ration:${row.world_id}:${row.user_id}:${now}`,
+          worldId: row.world_id,
         });
+        paid = !!r?.ok;
       } catch (err) {
         try { logger.warn?.("ration_mint_failed", { userId: row.user_id, error: err?.message }); } catch { /* noop */ }
       }
     }
+    // Only a ration that actually reached the wallet is logged; an unpaid one
+    // is retried on the next cycle instead of being marked as delivered.
+    if (!paid) { failed++; continue; }
     db.prepare(`
       INSERT INTO ration_mint_log (user_id, world_id, demographic_kind, amount_sparks)
       VALUES (?, ?, ?, ?)
@@ -165,13 +210,17 @@ export async function mintRationsForEligible(db, { mintFn = null } = {}) {
     minted++;
   }
 
-  return { ok: true, minted, skipped };
+  return { ok: true, minted, skipped, failed };
 }
 
-export function setDemographicKind(db, userId, worldId, demographic_kind) {
+export function setDemographicKind(db, userId, worldId, demographic_kind, { verified = false } = {}) {
   if (!db || !userId || !worldId || !demographic_kind) return { ok: false, reason: "missing_inputs" };
+  if (!worldExists(db, worldId)) return { ok: false, reason: "unknown_world" };
   const exists = db.prepare(`SELECT 1 FROM ration_entitlements WHERE demographic_kind = ?`).get(demographic_kind);
   if (!exists) return { ok: false, reason: "unknown_demographic" };
+  if (!verified && !SELF_SERVICE_DEMOGRAPHICS.has(demographic_kind)) {
+    return { ok: false, reason: "requires_verification", allowed: [...SELF_SERVICE_DEMOGRAPHICS] };
+  }
   try {
     db.prepare(`
       INSERT INTO player_employment (user_id, world_id, demographic_kind)

@@ -4,6 +4,7 @@
 // real GitHub API lookups (commits, issues, language breakdown).
 // Free at 60 req/hr; GITHUB_TOKEN env raises to 5000/hr.
 
+import vm from "node:vm";
 import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
 import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
 
@@ -1232,14 +1233,13 @@ export default function registerReposActions(registerLensAction) {
   });
 
   // ── [M] Actions / CI run logs ──────────────────────────────────────
-  const RP_CI_STEPS = [
-    { name: "Checkout", logs: ["Fetching repository…", "Checked out HEAD"] },
-    { name: "Setup", logs: ["Installing toolchain…", "Cache restored"] },
-    { name: "Install dependencies", logs: ["Resolving packages…", "Installed in 4.2s"] },
-    { name: "Lint", logs: ["Running eslint…", "0 errors, 0 warnings"] },
-    { name: "Test", logs: ["Running test suite…", "All tests passed"] },
-    { name: "Build", logs: ["Compiling…", "Build artifact produced"] },
-  ];
+  // No build/test runner is attached to this server, so a run executes the
+  // checks that CAN be done honestly on the stored files (JSON validity, JS
+  // syntax, blocking static-scan rules) and reports build/test as skipped.
+  // Nothing here is a canned pass: a step's conclusion comes from the files.
+  const RP_ESM_RX = /^\s*(import\s|export\s)/m;
+  const RP_CI_BLOCKING_RULES = new Set(["no-eval", "hardcoded-secret"]);
+  const rpTimed = (fn) => { const t0 = performance.now(); const out = fn(); return { ...out, durationMs: Math.max(1, Math.round(performance.now() - t0)) }; };
   registerLensAction("repos", "workflow-run", (ctx, _a, params = {}) => {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1247,25 +1247,65 @@ export default function registerReposActions(registerLensAction) {
       if (!repo) return { ok: false, error: "repo not found" };
       const branch = rpClean(params.branch, 80) || repo.defaultBranch;
       const branchObj = repo.branches.find((b) => b.name === branch);
-      // Deterministic-ish outcome: fail if last commit deleted lines heavily.
-      const lastCommit = repo.commits.filter((c) => c.branch === branch).slice(-1)[0];
-      const failStep = (lastCommit && lastCommit.deletions > 40) ? 4 : -1;
-      const steps = RP_CI_STEPS.map((st, i) => {
-        let conclusion = "success";
-        if (failStep >= 0 && i === failStep) conclusion = "failure";
-        else if (failStep >= 0 && i > failStep) conclusion = "skipped";
-        const logs = conclusion === "failure"
-          ? [...st.logs.slice(0, 1), "ERROR: step failed (exit 1)"]
-          : conclusion === "skipped" ? ["Skipped"] : st.logs;
-        return { name: st.name, conclusion, durationMs: 800 + i * 350, logs };
-      });
+      const files = Array.isArray(repo.files) ? repo.files : [];
+      const steps = [];
+
+      steps.push({ name: "Checkout", ...rpTimed(() => ({
+        conclusion: "success",
+        logs: [`${files.length} file(s) in ${repo.name || "repository"} @ ${branchObj ? String(branchObj.head).slice(0, 7) : "no commits"}`],
+      })) });
+
+      steps.push({ name: "Validate JSON", ...rpTimed(() => {
+        const logs = []; let bad = 0; let n = 0;
+        for (const f of files) {
+          if (!/\.json$/i.test(f.path)) continue;
+          n++;
+          try { JSON.parse(f.content || ""); } catch (e) { bad++; logs.push(`ERROR ${f.path}: ${e.message}`); }
+        }
+        logs.unshift(n ? `${n} JSON file(s) checked, ${bad} invalid` : "No JSON files");
+        return { conclusion: bad ? "failure" : "success", logs };
+      }) });
+
+      steps.push({ name: "Syntax check (JS)", ...rpTimed(() => {
+        const logs = []; let bad = 0; let checked = 0; let esm = 0;
+        for (const f of files) {
+          if (!/\.(c?js)$/i.test(f.path)) continue;
+          if (RP_ESM_RX.test(f.content || "")) { esm++; continue; }
+          checked++;
+          try { new vm.Script(f.content || "", { filename: f.path }); } catch (e) { bad++; logs.push(`ERROR ${f.path}: ${e.message}`); }
+        }
+        logs.unshift(`${checked} script(s) parsed, ${bad} with syntax errors${esm ? `; ${esm} ES-module file(s) not parsed` : ""}`);
+        return { conclusion: bad ? "failure" : "success", logs };
+      }) });
+
+      steps.push({ name: "Static scan (blocking rules)", ...rpTimed(() => {
+        const logs = []; let hits = 0;
+        for (const f of files) {
+          (f.content || "").split("\n").forEach((line, idx) => {
+            for (const rule of RP_SCAN_RULES) {
+              if (RP_CI_BLOCKING_RULES.has(rule.rule) && rule.rx.test(line)) { hits++; logs.push(`ERROR ${f.path}:${idx + 1} ${rule.rule} — ${rule.message}`); }
+            }
+          });
+        }
+        logs.unshift(`${hits} blocking finding(s)`);
+        return { conclusion: hits ? "failure" : "success", logs };
+      }) });
+
+      for (const name of ["Test", "Build"]) {
+        steps.push({ name, conclusion: "skipped", durationMs: 0,
+          logs: [`Not run — no ${name.toLowerCase()} runner is attached to this server.`] });
+      }
+
+      // A failed step does not cancel the report of later checks, but the run
+      // conclusion is a failure if any executed step failed.
+      const failed = steps.some((st) => st.conclusion === "failure");
       const run = {
         id: rpId("run"),
         number: repo.workflowRuns.length + 1,
-        workflow: rpClean(params.workflow, 80) || "CI",
+        workflow: rpClean(params.workflow, 80) || "Static checks",
         branch, headSha: branchObj ? branchObj.head : null,
         status: "completed",
-        conclusion: failStep >= 0 ? "failure" : "success",
+        conclusion: failed ? "failure" : "success",
         steps, durationMs: steps.reduce((n, st) => n + st.durationMs, 0),
         triggeredBy: "you", createdAt: rpNow(),
       };

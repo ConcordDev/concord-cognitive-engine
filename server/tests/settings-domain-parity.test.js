@@ -162,21 +162,21 @@ describe("settings snapshots", () => {
 });
 
 describe("settings account & security", () => {
-  it("accountOverview reports posture", () => {
+  it("accountOverview reports posture honestly: 2FA is unavailable", () => {
     const r = call("accountOverview", ctxA);
     assert.equal(r.ok, true);
+    assert.equal(r.result.twoFactorAvailable, false);
     assert.equal(r.result.twoFactorEnabled, false);
-    assert.equal(r.result.activeSessions, 1);
   });
 
-  it("setTwoFactor enables and issues recovery codes", () => {
-    const on = call("setTwoFactor", ctxA, { enabled: true });
-    assert.equal(on.ok, true);
-    assert.equal(on.result.twoFactorEnabled, true);
-    assert.equal(on.result.recoveryCodes.length, 8);
-    const off = call("setTwoFactor", ctxA, { enabled: false });
-    assert.equal(off.result.twoFactorEnabled, false);
-    assert.equal(off.result.recoveryCodes, null);
+  it("setTwoFactor refuses instead of faking an enrolment or recovery codes", () => {
+    for (const enabled of [true, false]) {
+      const r = call("setTwoFactor", ctxA, { enabled });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /not available/);
+      assert.equal(r.result, undefined);
+    }
+    assert.equal(call("accountOverview", ctxA).result.twoFactorEnabled, false);
   });
 
   it("changePassword enforces policy", () => {
@@ -191,24 +191,30 @@ describe("settings account & security", () => {
     assert.equal(ok.result.accepted, true);
   });
 
-  it("sessions list and revoke", () => {
+  it("sessions lists only the request's own session and says other devices are untracked", () => {
     const list = call("sessions", ctxA);
     assert.equal(list.result.sessions.length, 1);
     assert.equal(list.result.sessions[0].current, true);
-    // cannot revoke current
-    assert.equal(call("revokeSession", ctxA, { id: list.result.sessions[0].id }).ok, false);
-    // revokeOtherSessions is a no-op when only the current session exists
-    assert.equal(call("revokeOtherSessions", ctxA).result.revokedCount, 0);
+    assert.equal(list.result.otherDevicesTracked, false);
+    assert.match(list.result.signOutEverywhere, /revoke-all-sessions/);
   });
 
-  it("connect / list / disconnect external accounts", () => {
-    const c = call("connectAccount", ctxA, { provider: "github", handle: "octocat" });
-    assert.equal(c.ok, true);
-    assert.equal(call("connectAccount", ctxA, { provider: "github", handle: "dup" }).ok, false);
-    assert.equal(call("connectAccount", ctxA, { provider: "myspace", handle: "x" }).ok, false);
-    assert.equal(call("connectedAccounts", ctxA).result.accounts.length, 1);
-    assert.equal(call("disconnectAccount", ctxA, { id: c.result.account.id }).ok, true);
-    assert.equal(call("connectedAccounts", ctxA).result.accounts.length, 0);
-    assert.equal(call("disconnectAccount", ctxA, { id: "missing" }).ok, false);
+  it("per-session revoke is an honest failure that points at the real endpoint", () => {
+    const id = call("sessions", ctxA).result.sessions[0].id;
+    for (const r of [call("revokeSession", ctxA, { id }), call("revokeOtherSessions", ctxA)]) {
+      assert.equal(r.ok, false);
+      assert.match(r.error, /revoke-all-sessions/);
+    }
+  });
+
+  it("linked-account macros defer to the real auth routes instead of keeping a fake list", () => {
+    for (const r of [
+      call("connectAccount", ctxA, { provider: "github", handle: "octocat" }),
+      call("disconnectAccount", ctxA, { id: "x" }),
+      call("connectedAccounts", ctxA),
+    ]) {
+      assert.equal(r.ok, false);
+      assert.match(r.error, /\/api\/auth\//);
+    }
   });
 });

@@ -17,7 +17,7 @@ import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import {
   Database, Plug, GitBranch, Play, FlaskConical, History, AlertTriangle,
-  Plus, Trash2, RefreshCw, ArrowRight, Clock, ShieldCheck, X, Wand2,
+  Plus, Trash2, RefreshCw, ArrowRight, Clock, ShieldCheck, X, Wand2, Download, Globe,
 } from 'lucide-react';
 
 const DOMAIN = 'transfer';
@@ -25,8 +25,10 @@ const DOMAIN = 'transfer';
 interface SchemaField { name: string; type?: string }
 interface Connector {
   id: string; name: string; role: 'source' | 'destination';
-  kind: 'csv' | 'json' | 'inline'; payload?: string; rowCount?: number;
+  kind: 'csv' | 'json' | 'inline' | 'url'; payload?: string; rowCount?: number;
   schema?: SchemaField[]; updatedAt?: string;
+  url?: string; format?: 'csv' | 'json'; fetchedAt?: string | null; lastFetchError?: string | null;
+  rows?: Record<string, unknown>[];
 }
 interface Mapping { source: string; target: string; transforms?: any[] }
 interface Schedule { mode: 'manual' | 'interval' | 'incremental'; intervalMinutes?: number; cdcKey?: string | null }
@@ -71,8 +73,10 @@ export function EtlWorkbench() {
   // connector draft
   const [cName, setCName] = useState('');
   const [cRole, setCRole] = useState<'source' | 'destination'>('source');
-  const [cKind, setCKind] = useState<'csv' | 'json'>('csv');
+  const [cKind, setCKind] = useState<'csv' | 'json' | 'url'>('csv');
   const [cPayload, setCPayload] = useState('');
+  const [cUrl, setCUrl] = useState('');
+  const [cFormat, setCFormat] = useState<'csv' | 'json'>('csv');
 
   // pipeline draft
   const [pName, setPName] = useState('');
@@ -116,17 +120,46 @@ export function EtlWorkbench() {
   const addConnector = useCallback(async () => {
     if (!cName.trim()) return;
     setBusy('connector');
-    const r = await run<{ connector: Connector }>('connector-upsert', {
-      name: cName.trim(), role: cRole, kind: cKind,
-      payload: cPayload || (cKind === 'json' ? '[]' : ''),
-    });
+    const res = await lensRun<{ connector: Connector }>(DOMAIN, 'connector-upsert', cKind === 'url'
+      ? { name: cName.trim(), role: 'source', kind: 'url', url: cUrl.trim(), format: cFormat }
+      : { name: cName.trim(), role: cRole, kind: cKind, payload: cPayload || (cKind === 'json' ? '[]' : '') });
+    const r = res.data?.ok ? res.data.result : null;
+    if (r && cKind === 'url') {
+      const f = await lensRun<{ rowsFetched: number }>(DOMAIN, 'connector-refresh', { id: r.connector.id });
+      setBusy(null);
+      flash(f.data?.ok
+        ? `Connector "${r.connector.name}" fetched — ${f.data.result?.rowsFetched ?? 0} rows`
+        : `Connector "${r.connector.name}" saved, but the fetch failed: ${f.data?.error || 'unknown error'}`);
+      setCName(''); setCUrl('');
+      loadConnectors();
+      return;
+    }
     setBusy(null);
     if (r) {
       flash(`Connector "${r.connector.name}" registered — ${r.connector.rowCount ?? 0} rows`);
       setCName(''); setCPayload('');
       loadConnectors();
-    } else { flash('Connector creation failed'); }
-  }, [cName, cRole, cKind, cPayload, flash, loadConnectors]);
+    } else { flash(`Connector creation failed${res.data?.error ? `: ${res.data.error}` : ''}`); }
+  }, [cName, cRole, cKind, cPayload, cUrl, cFormat, flash, loadConnectors]);
+
+  const refreshConnector = useCallback(async (c: Connector) => {
+    setBusy('fetch:' + c.id);
+    const f = await lensRun<{ rowsFetched: number }>(DOMAIN, 'connector-refresh', { id: c.id });
+    setBusy(null);
+    flash(f.data?.ok ? `Fetched ${f.data.result?.rowsFetched ?? 0} rows from ${c.name}` : `Fetch failed: ${f.data?.error || 'unknown error'}`);
+    loadConnectors();
+  }, [flash, loadConnectors]);
+
+  const downloadConnector = useCallback((c: Connector) => {
+    const isCsv = c.kind === 'csv';
+    const body = c.kind === 'inline' ? JSON.stringify(c.rows || [], null, 2) : (c.payload || '');
+    const url = URL.createObjectURL(new Blob([body], { type: isCsv ? 'text/csv' : 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${c.name.replace(/[^a-z0-9-_]+/gi, '_') || 'connector'}.${isCsv ? 'csv' : 'json'}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const removeConnector = useCallback(async (id: string) => {
     await run('connector-delete', { id });
@@ -235,22 +268,34 @@ export function EtlWorkbench() {
           </h3>
           <div className="grid grid-cols-2 gap-2">
             <input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Connector name…" className="input-lattice text-xs col-span-2" />
-            <select value={cRole} onChange={(e) => setCRole(e.target.value as any)} className="input-lattice text-xs">
+            <select value={cKind === 'url' ? 'source' : cRole} disabled={cKind === 'url'} onChange={(e) => setCRole(e.target.value as any)} aria-label="Connector role" className="input-lattice text-xs">
               <option value="source">source</option>
               <option value="destination">destination</option>
             </select>
-            <select value={cKind} onChange={(e) => setCKind(e.target.value as any)} className="input-lattice text-xs">
-              <option value="csv">CSV</option>
-              <option value="json">JSON</option>
+            <select value={cKind} onChange={(e) => setCKind(e.target.value as any)} aria-label="Connector kind" className="input-lattice text-xs">
+              <option value="csv">CSV (paste)</option>
+              <option value="json">JSON (paste)</option>
+              <option value="url">URL (fetch)</option>
             </select>
           </div>
-          <textarea
-            value={cPayload}
-            onChange={(e) => setCPayload(e.target.value)}
-            placeholder={cKind === 'csv' ? 'id,name,email\n1,Alice,a@x.com' : '[{"id":1,"name":"Alice"}]'}
-            className="input-lattice w-full h-20 resize-none text-xs font-mono"
-          />
-          <button onClick={addConnector} disabled={!cName.trim() || busy === 'connector'} className="btn-neon w-full text-xs flex items-center justify-center gap-1.5">
+          {cKind === 'url' ? (
+            <div className="grid grid-cols-3 gap-2">
+              <input value={cUrl} onChange={(e) => setCUrl(e.target.value)} placeholder="https://example.com/data.csv" aria-label="Source URL" className="input-lattice text-xs col-span-2 font-mono" />
+              <select value={cFormat} onChange={(e) => setCFormat(e.target.value as any)} aria-label="Source format" className="input-lattice text-xs">
+                <option value="csv">CSV</option>
+                <option value="json">JSON</option>
+              </select>
+              <p className="col-span-3 text-[10px] text-gray-400">Fetched from the server on demand (public URLs only). Rows always reflect the last successful fetch.</p>
+            </div>
+          ) : (
+            <textarea
+              value={cPayload}
+              onChange={(e) => setCPayload(e.target.value)}
+              placeholder={cKind === 'csv' ? 'id,name,email\n1,Alice,a@x.com' : '[{"id":1,"name":"Alice"}]'}
+              className="input-lattice w-full h-20 resize-none text-xs font-mono"
+            />
+          )}
+          <button onClick={addConnector} disabled={!cName.trim() || (cKind === 'url' && !cUrl.trim()) || busy === 'connector'} className="btn-neon w-full text-xs flex items-center justify-center gap-1.5">
             <Plus className="w-3.5 h-3.5" /> {busy === 'connector' ? 'Probing…' : 'Register connector'}
           </button>
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
@@ -265,6 +310,16 @@ export function EtlWorkbench() {
                       {c.name}
                     </span>
                     <div className="flex items-center gap-1">
+                      {c.kind === 'url' && (
+                        <button onClick={() => refreshConnector(c)} disabled={busy === 'fetch:' + c.id} title="Fetch now" aria-label={`Fetch ${c.name} now`} className="p-1 rounded hover:bg-white/10 text-neon-cyan">
+                          <Globe className={`w-3 h-3 ${busy === 'fetch:' + c.id ? 'animate-pulse' : ''}`} />
+                        </button>
+                      )}
+                      {c.role === 'destination' && (
+                        <button onClick={() => downloadConnector(c)} title="Download data" aria-label={`Download ${c.name}`} className="p-1 rounded hover:bg-white/10 text-gray-400">
+                          <Download className="w-3 h-3" />
+                        </button>
+                      )}
                       <button onClick={() => checkDrift(c.id)} disabled={busy === 'drift:' + c.id} title="Schema drift" className="p-1 rounded hover:bg-white/10 text-gray-400">
                         <RefreshCw className={`w-3 h-3 ${busy === 'drift:' + c.id ? 'animate-spin' : ''}`} />
                       </button>
@@ -274,8 +329,14 @@ export function EtlWorkbench() {
                     </div>
                   </div>
                   <p className="text-gray-400">
-                    {c.kind.toUpperCase()} · {c.rowCount ?? 0} rows · {(c.schema || []).length} fields
+                    {c.kind === 'url' ? `URL · ${(c.format || 'csv').toUpperCase()}` : c.kind.toUpperCase()} · {c.rowCount ?? 0} rows · {(c.schema || []).length} fields
                   </p>
+                  {c.kind === 'url' && (
+                    <p className="text-[10px] text-gray-400 truncate" title={c.url}>
+                      {c.url} · {c.fetchedAt ? `fetched ${new Date(c.fetchedAt).toLocaleString()}` : 'never fetched'}
+                      {c.lastFetchError && <span className="text-rose-400"> · {c.lastFetchError}</span>}
+                    </p>
+                  )}
                   {(c.schema || []).length > 0 && (
                     <p className="text-[10px] text-gray-400 truncate">
                       {(c.schema || []).map((f) => `${f.name}:${f.type || '?'}`).join('  ')}

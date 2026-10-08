@@ -894,7 +894,7 @@ function EsignPanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <p className="text-sm text-gray-400">
-          {signatures.filter((s) => s.status === 'sent').length} awaiting signature
+          {signatures.filter((s) => s.status === 'awaiting_signature' || s.status === 'sent').length} awaiting signature
         </p>
         <div className="flex-1" />
         <button onClick={() => setShowForm((v) => !v)} className={ds.btnPrimary}>
@@ -909,7 +909,7 @@ function EsignPanel() {
             <input type="number" className={ds.input} placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <button onClick={request} className={ds.btnPrimary} disabled={!estimateId.trim() || !(parseFloat(amount) > 0)}>
-            Send approval request
+            Create approval request
           </button>
         </div>
       )}
@@ -934,7 +934,7 @@ function EsignPanel() {
                       : 'bg-yellow-400/20 text-yellow-300',
                 )}
               >
-                {s.status}
+                {s.status === 'awaiting_signature' || s.status === 'sent' ? 'awaiting signature' : s.status}
               </span>
             </div>
             {s.status === 'signed' && (
@@ -942,7 +942,7 @@ function EsignPanel() {
                 Signed by {s.signedName} on {s.signedAt?.slice(0, 10)}
               </p>
             )}
-            {s.status === 'sent' && (
+            {(s.status === 'awaiting_signature' || s.status === 'sent') && (
               signFor === s.id ? (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <input

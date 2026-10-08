@@ -21,6 +21,12 @@ import {
   listMyPhotos,
   listPublicPhotosInWorld,
   sharePhoto,
+  updatePhoto,
+  listAlbums,
+  createAlbum,
+  deleteAlbum,
+  setAlbumMembership,
+  listAlbumPhotos,
 } from "../lib/photo-gallery.js";
 
 // Fail-CLOSED numeric guard (copied from server/domains/literary.js). A caller
@@ -112,4 +118,29 @@ export default function registerPhotosMacros(register) {
     if (owner.user_id !== userId) return { ok: false, reason: "not_owner" };
     return sharePhoto(db, photoId);
   }, { note: "share a photo — mints a kind='photo' DTU + flips visibility public (owner-only)" });
+
+  // Organize: caption / favorite edits and albums. All owner-scoped in the lib.
+  const withUser = (fn) => (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = actorUserId(ctx);
+    if (!userId) return { ok: false, reason: "no_user" };
+    return fn(db, userId, input || {});
+  };
+  register("photos", "update", withUser((db, userId, input) =>
+    updatePhoto(db, userId, String(input.photoId || input.id || ""), { caption: input.caption, favorite: input.favorite })),
+  { note: "edit an owned photo's caption and/or favorite flag" });
+  register("photos", "albums", withUser((db, userId) => {
+    const albums = listAlbums(db, userId);
+    return { ok: true, albums, count: albums.length };
+  }), { note: "the caller's photo albums with counts and cover" });
+  register("photos", "album-create", withUser((db, userId, input) => createAlbum(db, userId, input.name)),
+    { note: "create a photo album" });
+  register("photos", "album-delete", withUser((db, userId, input) => deleteAlbum(db, userId, String(input.albumId || ""))),
+    { note: "delete an album (photos are kept)" });
+  register("photos", "album-set", withUser((db, userId, input) =>
+    setAlbumMembership(db, userId, String(input.albumId || ""), String(input.photoId || ""), input.add !== false)),
+  { note: "add or remove an owned photo in an owned album" });
+  register("photos", "album-photos", withUser((db, userId, input) => listAlbumPhotos(db, userId, String(input.albumId || ""))),
+    { note: "photos in one of the caller's albums" });
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Briefcase, Loader2, Plus, X, Archive, ChevronRight, Pencil, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -110,7 +111,7 @@ export function MattersPanel() {
         domain: 'legal', action: 'matters-update',
         input: { id: activeId, ...editDraft, hourlyRate: Number(editDraft.hourlyRate) || 0 },
       });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setEditing(false);
       await openDetail(activeId);
       await refresh();
@@ -122,7 +123,7 @@ export function MattersPanel() {
     setAiBusy(true);
     try {
       const r = await lensRun({ domain: 'legal', action: 'ai-matter-update', input: { matterId: activeId } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setAiUpdate({ summary: r.data?.result?.summary || '', source: r.data?.result?.source || 'deterministic' });
     } catch (e) { console.error('[Matters] ai-update failed', e); }
     finally { setAiBusy(false); }

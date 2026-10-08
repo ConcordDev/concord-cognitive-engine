@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Users, Loader2, Plus, Trash2, AlertTriangle, Search, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -68,7 +69,7 @@ export function ContactsPanel() {
     if (!editDraft.name.trim()) return;
     try {
       const r = await lensRun({ domain: 'legal', action: 'contacts-update', input: { id, ...editDraft } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Action failed'); return; }
       setEditingId(null);
       await refresh();
     } catch (e) { console.error('[Contacts] update failed', e); }

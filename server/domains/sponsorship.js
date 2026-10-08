@@ -149,7 +149,7 @@ export default function registerSponsorshipActions(registerLensAction) {
       // First charge.
       arr(s.payouts, userId).push({
         id: nextId(s, "chg"), creatorId, creatorName: sp.creatorName,
-        amountCc: tier.monthlyCc, kind: "charge", at: nowS(), note: `Subscribed to ${tier.name}`,
+        amountCc: tier.monthlyCc, kind: "charge", charged: false, at: nowS(), note: `Pledged ${tier.name}`,
       });
       sp.totalContributed = tier.monthlyCc;
       return { ok: true, result: { sponsorship: sp } };
@@ -363,6 +363,9 @@ export default function registerSponsorshipActions(registerLensAction) {
           upcomingCharges: upcoming,
           paymentHistory: history,
           trend,
+          // No Concord Coin is debited for sponsorships: amounts are pledges
+          // recorded here, not completed charges.
+          billingConnected: false,
         },
       };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }

@@ -115,7 +115,8 @@ export function SharePanel({ pageId }: { pageId: string }) {
       )}
 
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Invite people</p>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Collaborator list</p>
+        <p className="text-[10px] text-zinc-500 mb-1">Notes who you intend to share with. Invitees are not notified and get no access; use the public link above to share.</p>
         <div className="flex gap-1 mb-1">
           <input value={invitee} onChange={e => setInvitee(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void invite(); }}
@@ -130,7 +131,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
             className="rounded bg-indigo-700 hover:bg-indigo-600 text-white text-[11px] px-2 disabled:opacity-50">Add</button>
         </div>
         {(share?.invites?.length ?? 0) === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic">No collaborators invited.</p>
+          <p className="text-[11px] text-zinc-400 italic">No collaborators listed.</p>
         ) : (
           <div className="space-y-1">
             {share!.invites.map(iv => (

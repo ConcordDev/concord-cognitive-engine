@@ -288,7 +288,7 @@ describe("hvac — estimate e-sign (wave 11 top-up)", () => {
   it("request-signature → sign: round-trip flips status to signed", async () => {
     const req = await lensRun("hvac", "estimate-request-signature", { params: { estimateId: "EST-9", amount: 1250, client: "Vega" } }, ctx);
     assert.equal(req.ok, true);
-    assert.equal(req.result.signatureRequest.status, "sent");
+    assert.equal(req.result.signatureRequest.status, "awaiting_signature");
     assert.equal(req.result.signatureRequest.amount, 1250);
     assert.match(req.result.signatureRequest.token, /^SIGN-/);
     const id = req.result.signatureRequest.id;

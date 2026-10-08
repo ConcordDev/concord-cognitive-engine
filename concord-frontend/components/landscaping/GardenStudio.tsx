@@ -1404,11 +1404,30 @@ const INVOICE_STATUS_STYLE: Record<InvoiceStatus, string> = {
 };
 const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
-  sent: 'Sent',
+  sent: 'Sent (by you)',
   accepted: 'Accepted',
   paid: 'Paid',
 };
 const PAYMENT_METHODS = ['card', 'cash', 'check', 'transfer'];
+
+function invoiceText(inv: Invoice): string {
+  const lines = [
+    `INVOICE ${inv.number}`,
+    `Client: ${inv.client || '-'}`,
+    `Project: ${inv.project || '-'}`,
+    inv.dueDate ? `Due: ${inv.dueDate}` : '',
+    '',
+    ...inv.lineItems.map((li) => `${li.description} (${li.quantity} ${li.unit} x $${li.unitCost.toFixed(2)})  $${li.lineTotal.toFixed(2)}`),
+    '',
+    `Subtotal: $${inv.subtotal.toFixed(2)}`,
+    inv.overhead ? `Overhead: $${inv.overhead.toFixed(2)}` : '',
+    inv.margin ? `Margin: $${inv.margin.toFixed(2)}` : '',
+    inv.tax ? `Tax: $${inv.tax.toFixed(2)}` : '',
+    `Total: $${inv.total.toFixed(2)}`,
+    inv.amountPaid ? `Paid: $${inv.amountPaid.toFixed(2)}  Balance due: $${(inv.total - inv.amountPaid).toFixed(2)}` : '',
+  ];
+  return lines.filter((l, i, a) => l !== '' || (a[i - 1] ?? '') !== '').join('\n');
+}
 
 function InvoiceTracker() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -1418,6 +1437,15 @@ function InvoiceTracker() {
   } | null>(null);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyInvoice = async (inv: Invoice) => {
+    try {
+      await navigator.clipboard.writeText(invoiceText(inv));
+      setCopiedId(inv.id);
+    } catch {
+      setErr('Clipboard unavailable. Select and copy the invoice manually.');
+    }
+  };
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('card');
   const [busy, setBusy] = useState(false);
@@ -1559,12 +1587,16 @@ function InvoiceTracker() {
 
                   {/* status-machine actions */}
                   <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => copyInvoice(inv)} className={btnCls} title="Copy a plain-text invoice to paste into your email">
+                      <ClipboardCheck className="h-3.5 w-3.5" /> {copiedId === inv.id ? 'Copied' : 'Copy invoice'}
+                    </button>
                     {inv.status === 'draft' && (
                       <button
                         onClick={() => transition('invoice-send', inv.id)}
                         className={btnCls}
+                        title="Concord does not email clients. Send the invoice yourself, then mark it sent."
                       >
-                        <Send className="h-3.5 w-3.5" /> Send to client
+                        <Send className="h-3.5 w-3.5" /> Mark sent
                       </button>
                     )}
                     {inv.status === 'sent' && (

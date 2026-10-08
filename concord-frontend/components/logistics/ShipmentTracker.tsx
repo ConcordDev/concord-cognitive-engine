@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 
 export interface Shipment {
   id: string;
-  trackingNumber: string;
+  trackingNumber: string | null;
+  reference?: string;
   carrier: 'UPS' | 'FedEx' | 'USPS' | 'DHL' | 'Other';
   from: string;
   to: string;
@@ -80,7 +81,7 @@ export function ShipmentTracker() {
                     {s.status === 'delivered' ? <CheckCircle2 className="w-4 h-4 text-green-400" /> :
                      s.status === 'exception' ? <AlertTriangle className="w-4 h-4 text-red-400" /> :
                      <Package className="w-4 h-4 text-cyan-400" />}
-                    <span className="text-sm text-white font-mono">{s.trackingNumber}</span>
+                    <span className="text-sm text-white font-mono">{s.trackingNumber || s.reference || 'No tracking #'}</span>
                     <span className="text-[10px] text-gray-400">{s.carrier}</span>
                     <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold', st.color)}>{st.label}</span>
                   </div>
