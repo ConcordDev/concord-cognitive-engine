@@ -52,17 +52,8 @@ export default function registerJobsMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
-    // Best-effort wallet integration. We try a few common signatures
-    // from the codebase; if none available, the shift counter still
-    // advances (audit-only mode).
-    const mintFn = async (db2, uid, sparks, opts) => {
-      try {
-        const w = await import("../lib/world-events.js");
-        if (typeof w.mintCoins === "function") return w.mintCoins(db2, uid, sparks, opts);
-      } catch { /* not present */ }
-      return { ok: false, reason: "no_wallet_module" };
-    };
-    return completeShift(db, userId, String(input?.worldId || DEFAULT_WORLD), { mintFn });
+    // Wages are paid on the sparks ledger (completeShift's default payer).
+    return completeShift(db, userId, String(input?.worldId || DEFAULT_WORLD));
   });
 
   register("jobs", "set_demographic", async (ctx, input = {}) => {

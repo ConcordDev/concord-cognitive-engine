@@ -34,8 +34,19 @@ import { up as up179 } from "../migrations/179_tunyan_jobs.js";
 function setupDb() {
   const db = new Database(":memory:");
   up179(db);
+  db.exec(`
+    CREATE TABLE users (id TEXT PRIMARY KEY, sparks INTEGER NOT NULL DEFAULT 0, concordia_credits REAL NOT NULL DEFAULT 0);
+    CREATE TABLE sparks_ledger (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, delta INTEGER NOT NULL,
+      reason TEXT NOT NULL, world_id TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+  `);
+  for (const id of ["user_1", "user_unemployed", "user_pregnant", "user_employed"]) {
+    db.prepare("INSERT INTO users (id) VALUES (?)").run(id);
+  }
   return db;
 }
+const sparksOf = (db, id) => db.prepare("SELECT sparks FROM users WHERE id = ?").get(id)?.sparks ?? 0;
 
 describe("Phase 10 / tunyan-jobs — catalog", () => {
   it("seeds 7 named jobs", () => {
@@ -94,6 +105,18 @@ describe("Phase 10 / tunyan-jobs — completeShift", () => {
     assert.equal(r.action, "shift_paid");
     assert.equal(r.paid_sparks, 18); // seeded fisherman wage
     assert.equal(r.shifts_completed, 1);
+    assert.equal(sparksOf(db, "user_1"), 18, "the wage really reached the sparks wallet");
+  });
+
+  it("never reports a payment the wallet did not receive", async () => {
+    const db = setupDb();
+    applyForJob(db, "user_1", "concordia-hub", "job_fisherman");
+    const r = await completeShift(db, "user_1", "concordia-hub", { mintFn: async () => ({ ok: false, reason: "down" }) });
+    assert.equal(r.ok, true);
+    assert.equal(r.action, "shift_logged_unpaid");
+    assert.equal(r.paid_sparks, 0);
+    assert.equal(r.wage_sparks, 18);
+    assert.equal(sparksOf(db, "user_1"), 0);
   });
 
   it("enforces cooldown", async () => {
@@ -148,5 +171,16 @@ describe("Phase 10 / tunyan-jobs — mintRationsForEligible", () => {
     const r2 = await mintRationsForEligible(db, { mintFn });
     assert.equal(r2.minted, 0);
     assert.equal(r2.skipped, 2);
+  });
+
+  it("pays rations on the sparks ledger by default and retries ones that failed", async () => {
+    const db = setupDb();
+    setDemographicKind(db, "user_unemployed", "concordia-hub", "unemployed");
+    const failed = await mintRationsForEligible(db, { mintFn: async () => ({ ok: false }) });
+    assert.equal(failed.minted, 0);
+    assert.equal(failed.failed, 1);
+    const paid = await mintRationsForEligible(db);
+    assert.equal(paid.minted, 1, "an unpaid ration is retried, not marked delivered");
+    assert.ok(sparksOf(db, "user_unemployed") > 0);
   });
 });

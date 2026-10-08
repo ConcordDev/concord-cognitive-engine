@@ -111,15 +111,8 @@ export const runRationFloorCycle = safeRun("ration-floor-cycle", async (state) =
   const db = state?.db;
   if (!db) return { reason: "no_db" };
   const { mintRationsForEligible } = await import("../lib/tunyan-jobs.js");
-  // Best-effort wallet mint.
-  const mintFn = async (db2, uid, sparks, opts) => {
-    try {
-      const w = await import("../lib/world-events.js");
-      if (typeof w.mintCoins === "function") return w.mintCoins(db2, uid, sparks, opts);
-    } catch { /* not present */ }
-    return { ok: false, reason: "no_wallet_module" };
-  };
-  return mintRationsForEligible(db, { mintFn });
+  // Rations are paid on the sparks ledger (mintRationsForEligible's default payer).
+  return mintRationsForEligible(db);
 });
 
 // ─── council-session-cycle ──────────────────────────────────────────────
