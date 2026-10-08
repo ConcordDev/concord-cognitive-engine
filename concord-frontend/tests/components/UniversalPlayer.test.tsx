@@ -260,8 +260,14 @@ describe('UniversalPlayer', () => {
       artifactHash: 'abc123-doc',
       fileSize: 1000000,
     };
+    // A PDF renders the real file inline from the media stream route.
     const { container } = render(<UniversalPlayer mediaDTU={docDTU} />);
-    expect(container.querySelector('[data-testid="icon-FileText"]')).not.toBeNull();
+    const frame = container.querySelector('iframe');
+    expect(frame).not.toBeNull();
+    expect(frame!.getAttribute('src')).toBe('/api/media/dtu-doc-1/stream');
+    // A format the browser can't preview falls back to the file card.
+    const { container: c2 } = render(<UniversalPlayer mediaDTU={{ ...docDTU, id: 'dtu-doc-2', mimeType: 'application/zip' }} />);
+    expect(c2.querySelector('[data-testid="icon-FileText"]')).not.toBeNull();
   });
 
   it('clicking play toggles to pause state', () => {

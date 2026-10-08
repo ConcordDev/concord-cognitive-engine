@@ -24,8 +24,6 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   Wifi,
   WifiOff,
@@ -52,6 +50,8 @@ interface MediaEngagement {
   comments: number;
   shares: number;
 }
+
+const FLAT_WAVEFORM: number[] = Array.from({ length: 64 }, () => 30);
 
 interface MediaDTU {
   id: string;
@@ -123,15 +123,9 @@ function AudioPlayer({
   const progressRef = useRef<HTMLDivElement>(null);
 
   const duration = audioDuration || mediaDTU.duration || 0;
-  // Fallback waveform only used when the DTU carries no real one — memoized
-  // per-track so it doesn't reshuffle on every `timeupdate` re-render during
-  // playback (was regenerating fresh Math.random() bars several times a
-  // second, making the fallback waveform flicker instead of just standing
-  // in as a static placeholder shape).
-  const fallbackWaveform = useMemo(
-    () => Array.from({ length: 64 }, () => Math.random() * 80 + 20),
-    [mediaDTU.id],
-  );
+  // No real waveform on this DTU: draw a flat, uniform bar rather than
+  // invented peaks that would read as the track's actual audio.
+  const fallbackWaveform = FLAT_WAVEFORM;
   const waveform = mediaDTU.waveform || fallbackWaveform;
   const audioSrc = useMemo(
     () => `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`,
@@ -703,50 +697,40 @@ function ImageViewer({
 function DocumentViewer({
   mediaDTU,
 }: Pick<UniversalPlayerProps, 'mediaDTU'>) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 1; // Simulated
+  const src = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`;
+  const mime = mediaDTU.mimeType || '';
+  const inline = /pdf|^text\/|html|^image\//.test(mime);
 
   return (
     <div className="rounded-xl bg-lattice-deep border border-lattice-border overflow-hidden">
-      {/* Document display */}
-      <div className="relative min-h-[400px] bg-white/5 flex items-center justify-center">
-        <div className="text-center p-8">
-          <FileText className="w-16 h-16 text-neon-cyan/40 mx-auto mb-4" />
-          <h3 className="text-white font-medium mb-2">{mediaDTU.title}</h3>
-          <p className="text-sm text-gray-400">{mediaDTU.mimeType || 'Document'}</p>
-          {mediaDTU.description && (
-            <p className="text-sm text-gray-400 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
-          )}
+      {inline ? (
+        <iframe src={src} title={mediaDTU.title} className="h-[70vh] min-h-[400px] w-full bg-white" />
+      ) : (
+        <div className="relative min-h-[300px] bg-white/5 flex items-center justify-center">
+          <div className="text-center p-8">
+            <FileText className="w-16 h-16 text-neon-cyan/40 mx-auto mb-4" />
+            <h3 className="text-white font-medium mb-2">{mediaDTU.title}</h3>
+            <p className="text-sm text-gray-400">{mime || 'Document'} · this format can&apos;t be previewed in the browser; download it to open.</p>
+            {mediaDTU.description && (
+              <p className="text-sm text-gray-400 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Page navigation */}
+      )}
       <div className="flex items-center justify-between p-3 border-t border-lattice-border">
-        <button
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          disabled={currentPage <= 1}
-          className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        aria-label="Previous">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <span className="text-xs text-gray-400 tabular-nums">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          disabled={currentPage >= totalPages}
-          className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        aria-label="Next">
-          <ChevronRight className="w-4 h-4" />
-        </button>
-        <div className="w-px h-5 bg-lattice-border mx-1" />
-        <button
-          onClick={() => { const a = document.createElement('a'); a.href = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; a.download = mediaDTU.title || 'download'; a.click(); }}
-          aria-label="Download"
-          className="p-2 text-gray-400 hover:text-white hover:bg-lattice-surface rounded-lg transition-colors"
-        >
-          <Download className="w-4 h-4" />
-        </button>
+        <span className="truncate text-xs text-gray-400">{mediaDTU.title}</span>
+        <div className="flex items-center gap-1">
+          <a href={src} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-xs text-gray-300 hover:bg-lattice-surface hover:text-white">
+            Open in new tab
+          </a>
+          <button
+            onClick={() => { const a = document.createElement('a'); a.href = src; a.download = mediaDTU.title || 'download'; a.click(); }}
+            aria-label="Download"
+            className="p-2 text-gray-400 hover:text-white hover:bg-lattice-surface rounded-lg transition-colors"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -758,6 +742,7 @@ function StreamViewer({
   mediaDTU,
 }: Pick<UniversalPlayerProps, 'mediaDTU'>) {
   const [showTipping, setShowTipping] = useState(false);
+  const [pendingTip, setPendingTip] = useState<number | null>(null);
   const isLive = mediaDTU.stream?.isLive ?? false;
 
   return (
@@ -832,18 +817,31 @@ function StreamViewer({
                 exit={{ opacity: 0, y: 10 }}
                 className="absolute bottom-16 right-4 bg-lattice-surface border border-lattice-border rounded-xl p-4 z-50 shadow-xl"
               >
-                <div className="text-sm text-white mb-3">Send a tip</div>
+                <div className="text-sm text-white mb-3">Send a tip (Concord Coin)</div>
                 <div className="flex gap-2">
                   {[5, 10, 25, 50, 100].map(amount => (
                     <button
                       key={amount}
-                      onClick={() => { window.dispatchEvent(new CustomEvent('media:tip', { detail: { dtuId: mediaDTU.id, amount } })); }}
-                      className="px-3 py-1.5 rounded-lg bg-lattice-deep text-neon-cyan text-sm hover:bg-neon-cyan/20 transition-colors"
+                      onClick={() => setPendingTip(amount)}
+                      aria-pressed={pendingTip === amount}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${pendingTip === amount ? 'bg-neon-cyan/30 text-white' : 'bg-lattice-deep text-neon-cyan hover:bg-neon-cyan/20'}`}
                     >
                       {amount}
                     </button>
                   ))}
                 </div>
+                {pendingTip !== null && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('media:tip', { detail: { dtuId: mediaDTU.id, amount: pendingTip, creatorId: mediaDTU.author } }));
+                      setPendingTip(null);
+                      setShowTipping(false);
+                    }}
+                    className="mt-3 w-full rounded-lg bg-neon-pink/20 px-3 py-1.5 text-sm text-neon-pink hover:bg-neon-pink/30"
+                  >
+                    Send {pendingTip} CC{mediaDTU.authorName ? ` to ${mediaDTU.authorName}` : ''}
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
