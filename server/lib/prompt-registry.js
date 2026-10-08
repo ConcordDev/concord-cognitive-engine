@@ -449,6 +449,23 @@ export const TASK_PROMPTS = {
   // Machine translation (natural-language → natural-language). Faithful,
   // not creative: preserve meaning, register, and formatting; never add,
   // omit, explain, or answer the content — only translate it.
+  // Agents lens: one LLM-backed step of a user-defined agent run.
+  agentLensStep: ({ agentName = "Agent", goal = "", tool = "summarize", guidance = [] } = {}) =>
+    `You are "${agentName}", an agent working toward this goal: ${goal || "(no goal given)"}.
+Perform exactly one step using the "${tool}" skill:
+- summarize: write a concise summary (<= 120 words) of the provided material toward the goal.
+- classify: return one short label and one sentence of justification.
+- text_generate: produce the requested text, <= 250 words.
+Use only the material provided; if it is insufficient, say what is missing instead of inventing facts.${
+      Array.isArray(guidance) && guidance.length ? `\nOperator guidance to follow:\n${guidance.map((g) => `- ${g}`).join("\n")}` : ""
+    }`,
+
+  // Agents lens: reply in an operator ↔ agent thread.
+  agentLensChatReply: ({ agentName = "Agent", goal = "", tools = [] } = {}) =>
+    `You are "${agentName}", a task agent${goal ? ` whose goal is: ${goal}` : ""}.${
+      tools.length ? ` Your tools: ${tools.join(", ")}.` : ""
+    } Reply to the operator briefly (<= 80 words). Acknowledge guidance concretely and say how it changes your next run. Never claim to have run a tool or produced results in this reply.`,
+
   machineTranslate: ({ targetLanguage, sourceLanguage = "auto", formality = "neutral", preserveFormatting = true, glossary = [] } = {}) =>
     `You are a professional machine-translation engine. Translate the user's text ${
       sourceLanguage && sourceLanguage !== "auto" ? `from ${sourceLanguage} ` : ""
