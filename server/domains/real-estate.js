@@ -96,13 +96,13 @@ async function loadWallet() {
 // (server/emergent/heartbeat-registry.js#_runOne) — belt-and-suspenders
 // so a thrown error from `tickRentals`, `loadWallet`, or a malformed `db`
 // never escapes this handler.
-export async function runRealEstateRentCollectionSweep({ db } = {}) {
+export async function runRealEstateRentCollectionSweep({ db, wallet: injectedWallet } = {}) {
   try {
     if (process.env.CONCORD_REALESTATE_RENT_SWEEP === "0") {
       return { ok: true, skipped: "disabled" };
     }
     if (!db) return { ok: true, skipped: "no_db" };
-    const wallet = await loadWallet();
+    const wallet = injectedWallet || await loadWallet();
     const result = tickRentals(db, wallet);
     return { ok: true, ...result };
   } catch (err) {
@@ -142,7 +142,7 @@ export default function registerRealEstateMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
-    const wallet = await loadWallet();
+    const wallet = ctx?.realEstateWallet || await loadWallet();
     return purchaseBuilding(db, { buyerUserId: userId, listingId: input?.listingId }, wallet);
   });
 
@@ -188,7 +188,7 @@ export default function registerRealEstateMacros(register) {
   register("real_estate", "tick_rentals", async (ctx) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const wallet = await loadWallet();
+    const wallet = ctx?.realEstateWallet || await loadWallet();
     return tickRentals(db, wallet);
   });
 
