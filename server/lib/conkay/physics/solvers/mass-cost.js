@@ -15,6 +15,7 @@ function volumeM3(g) {
     case "cylinder":
     case "rod":
     case "bolt": return (PI * g.diameter * g.diameter / 4) * g.length;
+    case "shell": return g.area * g.thickness;
     case "i-beam": return (2 * g.flangeWidth * g.flangeThickness + (g.height - 2 * g.flangeThickness) * g.webThickness) * g.length;
     default: return null;
   }
@@ -41,8 +42,8 @@ export const massPart = registerSolver({
     return {
       inputs: {
         shape: { value: geometry.shape },
-        ...Object.fromEntries(Object.entries(geometry).filter(([k]) => k !== "shape").map(([k, v]) => [k, { value: v, unit: "m" }])),
-        material: { value: mat.id, source: mat.source },
+        ...Object.fromEntries(Object.entries(geometry).filter(([k]) => k !== "shape").map(([k, v]) => [k, { value: v, unit: k === "area" ? "m2" : "m" }])),
+        material: { value: mat.id, source: mat.source, basis: mat.basis },
         density: { value: rho, unit: "kg/m3", source: mat.source },
       },
       outputs: { volume: { value: V, unit: "m3" }, mass: { value: V * rho, unit: "kg" } },

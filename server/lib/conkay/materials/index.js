@@ -25,6 +25,7 @@ function fromGeneral(id, m) {
     yieldPa: m.yield != null ? m.yield * MPA : null,
     ultimatePa: m.ultimate != null ? m.ultimate * MPA : null,
     costPerKgUsd: m.costPerKg ?? null,
+    basis: "library",
     source: "engineering material library (lib/asset-gen/mass-properties.js)",
   };
 }
@@ -63,9 +64,64 @@ const FASTENERS = {
   },
 };
 
+// Handbook typical values for materials the engineering table lacks (the
+// plan's list: composites, rubber, glass, polycarbonate, foam, gear steel,
+// cast iron, copper). These are typical, not specified minimums, and are
+// labelled so; use them for screening. Composites are entered as
+// quasi-isotropic laminates: ply-level (anisotropic) analysis is not done,
+// and they have no yield point.
+const TYPICAL = {
+  "cfrp-quasi-iso": {
+    label: "CFRP laminate, quasi-isotropic (T300-class carbon/epoxy, Vf ≈ 0.6)", category: "composite",
+    densityKgM3: 1550, youngsModulusPa: 50e9, poisson: 0.3, yieldPa: null, ultimatePa: 600 * MPA, costPerKgUsd: null,
+    source: "typical quasi-isotropic carbon/epoxy laminate (CMH-17 class values), screening only",
+  },
+  "gfrp-quasi-iso": {
+    label: "GFRP laminate, quasi-isotropic (E-glass/epoxy)", category: "composite",
+    densityKgM3: 1900, youngsModulusPa: 20e9, poisson: 0.3, yieldPa: null, ultimatePa: 250 * MPA, costPerKgUsd: null,
+    source: "typical quasi-isotropic E-glass/epoxy laminate, screening only",
+  },
+  "rubber-natural": {
+    label: "Natural rubber (about 60 Shore A)", category: "elastomer",
+    densityKgM3: 920, youngsModulusPa: 3 * MPA, poisson: 0.49, yieldPa: null, ultimatePa: 20 * MPA, costPerKgUsd: null,
+    source: "typical natural rubber compound; small-strain modulus",
+  },
+  "glass-soda-lime": {
+    label: "Soda-lime glass, annealed", category: "glass",
+    densityKgM3: 2500, youngsModulusPa: 70e9, poisson: 0.22, yieldPa: null, ultimatePa: 40 * MPA, costPerKgUsd: null,
+    source: "typical annealed float glass; strength is a design-level tensile value, brittle",
+  },
+  "polycarbonate": {
+    label: "Polycarbonate", category: "polymer",
+    densityKgM3: 1200, youngsModulusPa: 2.3e9, poisson: 0.37, yieldPa: 62 * MPA, ultimatePa: 65 * MPA, costPerKgUsd: null,
+    source: "typical general-purpose polycarbonate",
+  },
+  "foam-eps-30": {
+    label: "Expanded polystyrene foam, 30 kg/m³", category: "foam",
+    densityKgM3: 30, youngsModulusPa: 10 * MPA, poisson: 0.1, yieldPa: null, ultimatePa: 0.2 * MPA, costPerKgUsd: null,
+    source: "typical EPS 30 kg/m³; modulus and strength are compressive",
+  },
+  "steel-8620": {
+    label: "AISI 8620 gear steel, annealed", category: "metal",
+    densityKgM3: 7850, youngsModulusPa: 205e9, poisson: 0.29, yieldPa: 385 * MPA, ultimatePa: 536 * MPA, costPerKgUsd: null,
+    source: "typical AISI 8620 annealed; carburized case properties not modelled",
+  },
+  "cast-iron-gray-30": {
+    label: "Gray cast iron, ASTM A48 Class 30", category: "metal",
+    densityKgM3: 7150, youngsModulusPa: 100e9, poisson: 0.26, yieldPa: null, ultimatePa: 207 * MPA, costPerKgUsd: null,
+    source: "ASTM A48 Class 30: 30 ksi tensile min; E varies with section (typical value), brittle",
+  },
+  "copper-c11000": {
+    label: "Copper C11000 (ETP), annealed", category: "metal",
+    densityKgM3: 8890, youngsModulusPa: 117e9, poisson: 0.34, yieldPa: 69 * MPA, ultimatePa: 220 * MPA, costPerKgUsd: null,
+    source: "typical C11000 annealed",
+  },
+};
+
 export const MATERIALS = Object.freeze({
   ...Object.fromEntries(Object.entries(GENERAL).map(([id, m]) => [id, Object.freeze(fromGeneral(id, m))])),
-  ...Object.fromEntries(Object.entries(FASTENERS).map(([id, m]) => [id, Object.freeze({ id, ...m })])),
+  ...Object.fromEntries(Object.entries(FASTENERS).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
+  ...Object.fromEntries(Object.entries(TYPICAL).map(([id, m]) => [id, Object.freeze({ id, basis: "typical", ...m })])),
 });
 
 // Plain-language names. "stainless" is ambiguous on its own; it resolves by
@@ -77,6 +133,10 @@ const ALIASES = {
   "304": "stainless-304", "a36": "steel-a36", "a992": "steel-a992", "4140": "steel-4140",
   "6061": "aluminum-6061-t6", "aluminium": "aluminum-6061-t6", "aluminum": "aluminum-6061-t6",
   "titanium": "titanium-ti6al4v",
+  "cfrp": "cfrp-quasi-iso", "carbon fibre": "cfrp-quasi-iso", "carbon fiber": "cfrp-quasi-iso", "carbon": "cfrp-quasi-iso",
+  "gfrp": "gfrp-quasi-iso", "fiberglass": "gfrp-quasi-iso", "fibreglass": "gfrp-quasi-iso",
+  "rubber": "rubber-natural", "glass": "glass-soda-lime", "pc": "polycarbonate", "polycarbonate": "polycarbonate",
+  "foam": "foam-eps-30", "eps": "foam-eps-30", "8620": "steel-8620", "cast iron": "cast-iron-gray-30", "copper": "copper-c11000",
 };
 
 export function getMaterial(id) {

@@ -76,19 +76,19 @@ function occBboxVolumeM3(meta) {
 
 export function estimatePartMassProps(part) {
   const matId = part.material || part.meta?.intent?.material || part.meta?.materialLib?.id || 'unspecified';
-  const mat = resolveMaterial(matId) || {
-    id: String(matId).toLowerCase(),
-    name: String(matId),
-    densityKgM3: 1000,
-  };
-  const density = Number(mat.densityKgM3 || part.meta?.materialLib?.densityKgM3 || 1000);
+  // No stand-in density: a part whose material isn't known has no mass, and
+  // the BOM says why, instead of weighing it as 1000 kg/m³.
+  const mat = resolveMaterial(matId) || { id: String(matId).toLowerCase(), name: String(matId), densityKgM3: null };
+  const rawDensity = Number(mat.densityKgM3 || part.meta?.materialLib?.densityKgM3);
+  const density = Number.isFinite(rawDensity) && rawDensity > 0 ? rawDensity : null;
   const fromOcc = occBboxVolumeM3(part.meta);
   const fromMesh = meshAabbVolumeM3(part.mesh, part.transform);
   const fromIntent = intentVolumeM3(part.meta?.intent);
   const vol = fromOcc || fromMesh || fromIntent || { volumeM3: null, source: 'unavailable' };
   const volumeM3 = vol.volumeM3 == null ? null : Number(vol.volumeM3);
-  const massKg = volumeM3 == null ? null : volumeM3 * density;
+  const massKg = volumeM3 == null || density == null ? null : volumeM3 * density;
   return {
+    ...(density == null ? { massUnavailable: `no density for material "${matId}"` } : {}),
     materialId: mat.id,
     materialName: mat.name || mat.id,
     densityKgM3: density,

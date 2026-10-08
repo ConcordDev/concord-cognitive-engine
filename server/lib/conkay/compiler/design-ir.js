@@ -39,7 +39,13 @@ export const SHAPES = {
   rod: ["diameter", "length"],
   bolt: ["diameter", "length"],
   "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
+  // A panel or laminate: mass from area × thickness (no AABB, no solid block).
+  shell: ["area", "thickness"],
 };
+
+// Shape parameters are lengths unless listed here.
+export const PARAM_DIM = { area: "area" };
+export const paramDim = (key) => PARAM_DIM[key] || "length";
 
 // shear/tension act on joints; pointLoad (midspan, or the tip of a
 // cantilever) and compression (axial) act on beams.
@@ -110,7 +116,7 @@ export function compileDesignIR(ir) {
       else {
         const geometry = { shape };
         for (const key of SHAPES[shape]) {
-          const q = parseQuantity(n.geometry[key], "length");
+          const q = parseQuantity(n.geometry[key], paramDim(key));
           if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
           else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
           else geometry[key] = q.si;

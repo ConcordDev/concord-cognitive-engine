@@ -11,7 +11,7 @@
 
 import { parseQuantity } from "./units.js";
 import { resolveMaterialName } from "../materials/index.js";
-import { SHAPES } from "./design-ir.js";
+import { SHAPES, paramDim } from "./design-ir.js";
 
 const KIND_WORDS = {
   bolt: "Bolt", bolts: "Bolt", plate: "Plate", plates: "Plate", joint: "Joint", joints: "Joint",
@@ -44,9 +44,20 @@ function resolveNodes(ref, graph) {
 
 export function parseEdit(text, graph) {
   const t = String(text || "").trim().replace(/[.!]$/, "");
-  const m = t.match(/^(?:make|change|switch|set|swap)\s+(.+?)\s+(?:to|into|in)\s+(.+)$/i) || t.match(/^(?:make)\s+(.+?)\s+(\S+)$/i);
+  let m = t.match(/^(?:make|change|switch|set|swap)\s+(.+?)\s+(?:to|into|in)\s+(.+)$/i);
+  if (!m) {
+    // "make <part> <material>": take the first split where the left names a
+    // part and the right names a material.
+    const words = (t.match(/^make\s+(.+)$/i)?.[1] || "").split(/\s+/).filter(Boolean);
+    for (let i = 1; i < words.length && !m; i++) {
+      const ref = words.slice(0, i).join(" ");
+      const mat = words.slice(i).join(" ");
+      const nodes = resolveNodes(ref, graph).nodes;
+      if (nodes && resolveMaterialName(mat, { kind: nodes[0].kind })) m = [t, ref, mat];
+    }
+  }
   if (!m) return { ok: false, error: 'I can read edits like "make bolt B1 stainless" or "set plate P1 thickness to 12 mm".' };
-  let [, lhs, rhs] = m;
+  const [, lhs, rhs] = m;
 
   // "<ref> power|drag coefficient|frontal area to <value>"
   for (const [word, [propPath, dim]] of Object.entries(PROP_WORDS)) {
@@ -73,7 +84,7 @@ export function parseEdit(text, graph) {
   if (PARAMS.has(param)) {
     const target = resolveNodes(lw.slice(0, -1).join(" "), graph);
     if (target.error) return { ok: false, error: target.error };
-    const q = parseQuantity(rhs.trim(), "length");
+    const q = parseQuantity(rhs.trim(), paramDim(param));
     if (!q.ok) return { ok: false, error: `${param}: ${q.error}` };
     const ops = [];
     for (const n of target.nodes) {

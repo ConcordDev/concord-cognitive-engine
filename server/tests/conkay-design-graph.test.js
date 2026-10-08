@@ -355,3 +355,37 @@ describe("Vehicle top speed", () => {
     assert.equal(s.result("requirement.check@VMAX").status, "NOT_COMPUTED");
   });
 });
+
+describe("Shells and the added materials", () => {
+  const panel = (material) => ({
+    design: { id: "panel" },
+    nodes: [{ id: "S1", kind: "Part", name: "Roof panel", material, geometry: { shape: "shell", area: "2.4 m2", thickness: "2 mm" } }],
+  });
+
+  it("shell mass is area × thickness × density", () => {
+    const s = open(panel("cfrp-quasi-iso"));
+    const e = s.result("mass.part@S1");
+    assert.ok(Math.abs(e.outputs.mass.value - 2.4 * 0.002 * 1550) < 1e-9);
+    assert.equal(e.inputs.material.basis, "typical");
+  });
+
+  it("'make S1 carbon fibre' then 'set S1 thickness to 3 mm' recompute the panel mass", () => {
+    const s = open(panel("aluminum-6061-t6"));
+    assert.equal(s.editText("make S1 carbon fibre").ok, true);
+    assert.equal(s.graph.node("S1").material, "cfrp-quasi-iso");
+    assert.equal(s.editText("set S1 thickness to 3 mm").ok, true);
+    assert.ok(Math.abs(s.result("mass.part@S1").outputs.mass.value - 2.4 * 0.003 * 1550) < 1e-9);
+  });
+
+  it("an area given as a length is refused", () => {
+    const c = compileDesignIR({ nodes: [{ id: "S1", kind: "Part", material: "glass-soda-lime", geometry: { shape: "shell", area: "2 m", thickness: "4 mm" } }] });
+    assert.equal(c.ok, false);
+    assert.match(c.errors[0], /expected a area/);
+  });
+
+  it("composites and brittle materials have no yield, so nothing pretends they do", async () => {
+    const { getMaterial } = await import("../lib/conkay/materials/index.js");
+    for (const id of ["cfrp-quasi-iso", "glass-soda-lime", "cast-iron-gray-30"]) assert.equal(getMaterial(id).yieldPa, null, id);
+    assert.equal(getMaterial("astm-a325").basis, "specified minimum");
+  });
+});
