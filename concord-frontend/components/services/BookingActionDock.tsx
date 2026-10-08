@@ -466,7 +466,7 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
       const r = closeDtuPublic ? await api.delete(path) : await api.post(path);
       if (r.data?.ok !== false) {
         setCloseDtuPublic(!closeDtuPublic);
-        ok(closeDtuPublic ? 'Unpublished.' : 'Published to federation peers.');
+        ok(closeDtuPublic ? 'Unpublished.' : 'Published to the public lattice (readable by anyone with the link).');
       } else err(r.data?.error ?? 'publish failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -588,8 +588,8 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
                 onClick={mintClose}
               />
               <ActionRow
-                label={closeDtuPublic ? 'Unpublish close DTU' : 'Publish to federation'}
-                desc={closeDtuPublic ? 'Federation peers will stop syncing this close' : 'Anonymized day stats visible to federation peers'}
+                label={closeDtuPublic ? 'Unpublish close DTU' : 'Publish close DTU'}
+                desc={closeDtuPublic ? 'Removes it from the public lattice' : 'Makes the day stats publicly readable on the lattice'}
                 icon={Globe}
                 accent={closeDtuPublic ? '#15803d' : '#22c55e'}
                 done={false}
