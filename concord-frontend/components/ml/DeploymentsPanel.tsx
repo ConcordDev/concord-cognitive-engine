@@ -1,27 +1,29 @@
 'use client';
 
 /**
- * DeploymentsPanel — publish a model as a callable endpoint, scale and
- * stop replicas. Wires ml.deploy-{create,list,scale,stop}.
+ * DeploymentsPanel — named, versioned handles on hosted Hugging Face models.
+ * Invoking one calls the hosted inference API (ml.deploy-invoke) and the
+ * stats shown are the real counts from those calls. Concord runs no model
+ * servers, so there are no replicas or public URLs.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
-  Rocket, Plus, Loader2, Square, TrendingUp, CheckCircle, X, Copy,
+  Rocket, Plus, Loader2, Square, Play, CheckCircle, X, Copy, Send,
 } from 'lucide-react';
 
 interface Deployment {
   id: string; modelId: string; modelName: string; version: string;
-  status: 'active' | 'inactive' | 'scaling';
-  endpoint: string; replicas: number; requestsPerSec: number;
-  avgLatency: number; errorRate: number; createdAt: string;
+  status: 'active' | 'inactive';
+  invoke?: { domain: string; name: string; input: Record<string, unknown> };
+  totalRequests?: number; errorCount?: number; avgLatency: number | null;
+  lastInvokedAt?: string | null; createdAt: string;
 }
 
 const STATUS: Record<string, string> = {
   active: 'text-neon-green bg-neon-green/10',
   inactive: 'text-gray-400 bg-gray-400/10',
-  scaling: 'text-yellow-400 bg-yellow-400/10',
 };
 
 export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: string }) {
@@ -41,15 +43,25 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
 
   useEffect(() => { load(); }, [load]);
 
-  const scale = async (id: string) => {
-    setBusy(id);
-    await lensRun('ml', 'deploy-scale', { deploymentId: id });
+  const [tryInput, setTryInput] = useState<Record<string, string>>({});
+  const [tryOut, setTryOut] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const toggle = async (dep: Deployment) => {
+    setBusy(dep.id);
+    await lensRun('ml', 'deploy-stop', { deploymentId: dep.id, resume: dep.status === 'inactive' });
     await load();
     setBusy(null);
   };
-  const stop = async (id: string) => {
+  const invoke = async (id: string) => {
+    const input = (tryInput[id] || '').trim();
+    if (!input) return;
     setBusy(id);
-    await lensRun('ml', 'deploy-stop', { deploymentId: id });
+    const r = await lensRun('ml', 'deploy-invoke', { deploymentId: id, input });
+    setTryOut(prev => ({
+      ...prev,
+      [id]: r.data?.ok
+        ? { ok: true, text: JSON.stringify((r.data.result as { output: unknown }).output, null, 2) }
+        : { ok: false, text: r.data?.error || 'Invocation failed' },
+    }));
     await load();
     setBusy(null);
   };
@@ -72,7 +84,7 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
         <div className="panel p-12 text-center text-gray-400">
           <Rocket className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p>No deployments yet</p>
-          <p className="text-sm mt-1">Deploy a model to expose a callable endpoint</p>
+          <p className="text-sm mt-1">Pin a Hugging Face model under a name and call it from here or via the lens API</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -87,35 +99,45 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
                   <CheckCircle className="w-3 h-3" />{dep.status}
                 </span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div className="md:col-span-2">
-                  <p className="text-xs text-gray-400">Endpoint</p>
-                  <button onClick={() => navigator.clipboard.writeText(dep.endpoint)}
+                  <p className="text-xs text-gray-400">Call via lens API</p>
+                  <button onClick={() => navigator.clipboard.writeText(JSON.stringify({ domain: 'ml', name: 'deploy-invoke', input: { deploymentId: dep.id, input: '...' } }))}
+                    title="Copy the POST /api/lens/run body for this deployment"
                     className="text-xs text-neon-cyan font-mono flex items-center gap-1 hover:text-neon-cyan/80">
-                    {dep.endpoint}<Copy className="w-3 h-3" />
+                    ml.deploy-invoke · {dep.id}<Copy className="w-3 h-3" />
                   </button>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Replicas</p>
-                  <p className="font-mono">{dep.replicas}</p>
+                  <p className="text-xs text-gray-400">Requests (errors)</p>
+                  <p className="font-mono">{dep.totalRequests ?? 0} <span className="text-red-400">({dep.errorCount ?? 0})</span></p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Req/sec</p>
-                  <p className="font-mono text-neon-green">{dep.requestsPerSec}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Avg Latency</p>
-                  <p className="font-mono">{dep.avgLatency}ms</p>
+                  <p className="text-xs text-gray-400">Avg latency</p>
+                  <p className="font-mono">{dep.avgLatency != null ? `${dep.avgLatency}ms` : '—'}</p>
                 </div>
               </div>
+              {dep.status === 'active' && (
+                <div className="mb-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={tryInput[dep.id] || ''} onChange={(e) => setTryInput(p => ({ ...p, [dep.id]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') invoke(dep.id); }}
+                      placeholder="Test input" aria-label={`Test input for ${dep.modelName}`} className="input-lattice flex-1 text-sm" />
+                    <button className="btn-neon small" disabled={busy === dep.id || !(tryInput[dep.id] || '').trim()} onClick={() => invoke(dep.id)}>
+                      {busy === dep.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <Send className="w-3 h-3 inline" />} Invoke
+                    </button>
+                  </div>
+                  {tryOut[dep.id] && (
+                    <pre role={tryOut[dep.id].ok ? undefined : 'alert'} className={`text-xs p-2 rounded bg-black/40 overflow-x-auto max-h-48 ${tryOut[dep.id].ok ? 'text-gray-200' : 'text-red-400'}`}>{tryOut[dep.id].text}</pre>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
-                <button className="btn-neon small" disabled={busy === dep.id || dep.status === 'inactive'}
-                  onClick={() => scale(dep.id)}>
-                  <TrendingUp className="w-3 h-3 mr-1 inline" /> Scale
-                </button>
-                <button className="btn-neon small pink" disabled={busy === dep.id || dep.status === 'inactive'}
-                  onClick={() => stop(dep.id)}>
-                  <Square className="w-3 h-3 mr-1 inline" /> Stop
+                <button className={`btn-neon small ${dep.status === 'active' ? 'pink' : ''}`} disabled={busy === dep.id}
+                  onClick={() => toggle(dep)}>
+                  {dep.status === 'active'
+                    ? <><Square className="w-3 h-3 mr-1 inline" /> Stop</>
+                    : <><Play className="w-3 h-3 mr-1 inline" /> Resume</>}
                 </button>
               </div>
             </div>
@@ -134,7 +156,7 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
 function DeployModal({ defaultModelId, onClose, onDone }: {
   defaultModelId: string; onClose: () => void; onDone: () => void;
 }) {
-  const [cfg, setCfg] = useState({ modelId: defaultModelId, name: '', version: '1.0.0', replicas: 1 });
+  const [cfg, setCfg] = useState({ modelId: defaultModelId, name: '', version: '1.0.0' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,22 +182,18 @@ function DeployModal({ defaultModelId, onClose, onDone }: {
         <input value={cfg.name} onChange={(e) => setCfg({ ...cfg, name: e.target.value })}
           placeholder="Display name (optional)"
           className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm outline-none focus:border-neon-purple" />
-        <div className="grid grid-cols-2 gap-3">
+        <div>
           <label className="text-xs text-gray-400">Version
             <input value={cfg.version} onChange={(e) => setCfg({ ...cfg, version: e.target.value })}
               className="w-full mt-1 px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm font-mono outline-none focus:border-neon-purple" />
           </label>
-          <label className="text-xs text-gray-400">Replicas
-            <input type="number" min={1} max={16} value={cfg.replicas}
-              onChange={(e) => setCfg({ ...cfg, replicas: parseInt(e.target.value) || 1 })}
-              className="w-full mt-1 px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm font-mono outline-none focus:border-neon-purple" />
-          </label>
         </div>
+        <p className="text-xs text-gray-500">Calls go to the hosted Hugging Face inference API; the model must be available there.</p>
         {error && <p className="text-sm text-red-400">{error}</p>}
         <div className="flex justify-end gap-2 pt-2 border-t border-lattice-border">
           <button onClick={onClose} className="px-4 py-2 hover:bg-white/10 rounded text-sm">Cancel</button>
           <button onClick={submit} disabled={busy || !cfg.modelId.trim()} className="btn-neon purple disabled:opacity-50">
-            {busy ? 'Deploying...' : 'Deploy'}
+            {busy ? 'Creating...' : 'Create deployment'}
           </button>
         </div>
       </div>

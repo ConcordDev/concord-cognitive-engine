@@ -270,20 +270,40 @@ describe("ml.automl-templates", () => {
 
 // ─── deployments ─────────────────────────────────────────────────────────
 describe("ml deployments", () => {
-  it("creates, scales, stops and lists deployments", () => {
+  it("creates a deployment with no fabricated endpoint, invokes it for real, records real stats, stops it", async () => {
     const create = call("deploy-create", ctxA, {}, { modelId: "gpt2", name: "GPT-2" });
     assert.equal(create.ok, true);
-    const id = create.result.deployment.id;
-    assert.ok(create.result.deployment.endpoint.startsWith("/api/ml/serve/"));
+    const dep = create.result.deployment;
+    assert.equal(dep.endpoint, undefined);
+    assert.deepEqual(dep.invoke, { domain: "ml", name: "deploy-invoke", input: { deploymentId: dep.id } });
+    assert.equal(dep.totalRequests, 0);
+    assert.equal(dep.avgLatency, null);
 
-    const scale = call("deploy-scale", ctxA, {}, { deploymentId: id, replicas: 4 });
-    assert.equal(scale.result.deployment.replicas, 4);
+    assert.equal(call("deploy-scale", ctxA, {}, { deploymentId: dep.id, replicas: 4 }).ok, false);
 
-    const stop = call("deploy-stop", ctxA, {}, { deploymentId: id });
+    let calledUrl = null;
+    const okCtx = { ...ctxA, mlFetch: async (url) => { calledUrl = url; return { ok: true, status: 200, json: async () => [{ generated_text: "hi there" }] }; } };
+    const inv = await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id, input: "hi" });
+    assert.equal(inv.ok, true);
+    assert.match(calledUrl, /models\/gpt2$/);
+    assert.deepEqual(inv.result.output, [{ generated_text: "hi there" }]);
+
+    const badCtx = { ...ctxA, mlFetch: async () => ({ ok: false, status: 503, json: async () => ({ error: "loading" }) }) };
+    const fail = await call("deploy-invoke", badCtx, {}, { deploymentId: dep.id, input: "hi" });
+    assert.equal(fail.ok, false);
+
+    let listed = call("deploy-list", ctxA, {}, {}).result.deployments[0];
+    assert.equal(listed.totalRequests, 2);
+    assert.equal(listed.errorCount, 1);
+    assert.equal(typeof listed.avgLatency, "number");
+
+    assert.equal((await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id })).ok, false);
+    const stop = call("deploy-stop", ctxA, {}, { deploymentId: dep.id });
     assert.equal(stop.result.deployment.status, "inactive");
-
-    const list = call("deploy-list", ctxA, {}, {});
-    assert.equal(list.result.count, 1);
+    assert.equal((await call("deploy-invoke", okCtx, {}, { deploymentId: dep.id, input: "hi" })).ok, false);
+    assert.equal(call("deploy-stop", ctxA, {}, { deploymentId: dep.id, resume: true }).result.deployment.status, "active");
+    listed = call("deploy-list", ctxA, {}, {});
+    assert.equal(listed.result.count, 1);
   });
 
   it("rejects a missing modelId", () => {
