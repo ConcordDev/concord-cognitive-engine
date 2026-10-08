@@ -39,7 +39,7 @@ describe("consulting.invoice-* (invoicing from logged time)", () => {
     assert.equal(r.result.invoice.subtotal, 1600);
     assert.equal(r.result.invoice.tax, 160);
     assert.equal(r.result.invoice.total, 1760);
-    assert.equal(r.result.invoice.status, "sent");
+    assert.equal(r.result.invoice.status, "issued");
     assert.equal(r.result.invoice.lineItems.length, 2);
   });
 

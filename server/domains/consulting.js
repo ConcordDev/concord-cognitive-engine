@@ -166,7 +166,7 @@ export default function registerConsultingActions(registerLensAction) {
     const invoice = {
       id: csId("inv"), number, engagementId: eng.id, engagementName: eng.name,
       client: eng.client, lineItems, subtotal, taxRate, tax, total: csRound2(subtotal + tax),
-      status: "sent", issuedAt: issued.toISOString().slice(0, 10),
+      status: "issued", issuedAt: issued.toISOString().slice(0, 10),
       dueDate: due.toISOString().slice(0, 10), paidAt: null, createdAt: issued.toISOString(),
     };
     for (const t of unbilled) t.invoiceId = invoice.id;
@@ -180,7 +180,7 @@ export default function registerConsultingActions(registerLensAction) {
     const today = new Date().toISOString().slice(0, 10);
     const invoices = csColl(s, "invoices", csActor(ctx)).map((inv) => ({
       ...inv,
-      status: inv.status === "sent" && inv.dueDate < today ? "overdue" : inv.status,
+      status: inv.status === "issued" && inv.dueDate < today ? "overdue" : inv.status,
     }));
     const outstanding = csRound2(invoices.filter((i) => i.status !== "paid").reduce((n, i) => n + i.total, 0));
     const overdue = csRound2(invoices.filter((i) => i.status === "overdue").reduce((n, i) => n + i.total, 0));
