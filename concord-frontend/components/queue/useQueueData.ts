@@ -70,8 +70,8 @@ export function useQueueActions() {
 
   const handleEnqueue = (input: EnqueueInput) =>
     runAction('enqueue', input as unknown as Record<string, unknown>, `Enqueued ${input.name}`);
-  const handleProcess = (id: string) => runAction('process', { jobId: id }, 'Job processed', id);
-  const handleProcessNext = () => runAction('process', queueFilter ? { queue: queueFilter } : {}, 'Picked next job');
+  const handleProcess = (id: string) => runAction('process', { jobId: id }, 'Job marked processed (no worker ran it)', id);
+  const handleProcessNext = () => runAction('process', queueFilter ? { queue: queueFilter } : {}, 'Next job marked processed (no worker ran it)');
   const handleRetry = (id: string) => runAction('retry', { jobId: id }, 'Job requeued', id);
   const handleRemove = async (id: string) => {
     await runAction('remove', { jobId: id }, 'Job removed', id);

@@ -138,10 +138,10 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Metric label="Distributed" value={`${econ.totalDistributed} CC`} accent="text-emerald-300" />
-              <Metric label="Pending" value={`${econ.totalPending} CC`} accent="text-sky-300" />
-              <Metric label="30d Burn" value={`${econ.monthlyBurnRate} CC`} accent="text-amber-300" />
-              <Metric label="Annual Proj." value={`${econ.projectedAnnualBurn} CC`} accent="text-fuchsia-300" />
+              <Metric label="Distributed" value={`${econ.totalDistributed} QC`} accent="text-emerald-300" />
+              <Metric label="Pending" value={`${econ.totalPending} QC`} accent="text-sky-300" />
+              <Metric label="30d Burn" value={`${econ.monthlyBurnRate} QC`} accent="text-amber-300" />
+              <Metric label="Annual Proj." value={`${econ.projectedAnnualBurn} QC`} accent="text-fuchsia-300" />
             </div>
 
             {chartData.length > 0 && (
@@ -169,7 +169,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
                   <span className="capitalize text-white">{d}</span>
                   <span className="flex items-center gap-3 text-zinc-400">
                     <span>{v.count} quests</span>
-                    <span className="text-amber-300">{v.avgReward} CC avg</span>
+                    <span className="text-amber-300">{v.avgReward} QC avg</span>
                     <span>{v.completionRate}% done</span>
                   </span>
                 </div>
@@ -211,7 +211,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-zinc-400">Reward (CC)</label>
+            <label className="text-[10px] text-zinc-400">Reward (QC)</label>
             <input type="number" value={bReward} onChange={(e) => setBReward(e.target.value)}
               className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
           </div>
@@ -241,7 +241,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
                 completion: {balance.completionBalance}
               </span>
               <span className="rounded bg-zinc-800 px-2 py-0.5 text-zinc-300">
-                suggested: {balance.suggestedReward} CC / {balance.suggestedXP} XP
+                suggested: {balance.suggestedReward} QC / {balance.suggestedXP} XP
               </span>
             </div>
             {balance.adjustments.length > 0 ? (

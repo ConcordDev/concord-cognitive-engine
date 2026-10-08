@@ -611,7 +611,8 @@ export default function registerQueueActions(registerLensAction) {
 
   /**
    * process — pick and run the next eligible job (or a specific one).
-   * Real processing: simulates work outcome deterministically from payload.
+   * Manual state transition: no worker runs the job's work; the outcome comes from
+   * the fail flag / payload.shouldFail, and a success is recorded as manual.
    * params: { jobId? , queue?, fail? }
    */
   registerLensAction("queue", "process", (ctx, _artifact, params = {}) => {
@@ -666,7 +667,7 @@ export default function registerQueueActions(registerLensAction) {
       } else {
         job.status = "completed";
         job.error = null;
-        job.result = { ok: true, output: `processed ${job.name}`, at: job.finishedAt };
+        job.result = { ok: true, manual: true, output: `marked completed manually — no worker executed ${job.name}`, at: job.finishedAt };
         logEvent(s, userId, "completed", `${job.name} completed in ${job.durationMs}ms`, job.id);
       }
       // Record throughput sample.

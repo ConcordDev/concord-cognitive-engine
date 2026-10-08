@@ -36,7 +36,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   function qmDay() { return new Date().toISOString().slice(0, 10); }
 
   // Starting wallet grant so users can post bounties without an external
-  // ledger dependency — this is the lens-local CC pool, not the global wallet.
+  // ledger dependency — this is the lens-local quest-credit (QC) pool, NOT Concord Coin: never converted, not withdrawable.
   const STARTING_BALANCE = 1000;
   function qmWallet(s, userId) {
     if (!s.wallets.has(userId)) {
@@ -391,7 +391,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   //  Transactional lifecycle layer (real per-user persistent data)
   // ────────────────────────────────────────────────────────────
 
-  // ── Wallet (lens-local CC pool) ──
+  // ── Wallet (lens-local QC pool) ──
 
   registerLensAction("questmarket", "walletGet", (ctx, _artifact, _params = {}) => {
     const s = qmState();
