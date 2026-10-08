@@ -721,7 +721,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
 
   const triggerRun = async () => {
     setBusy(true); setErr(null);
-    const r = await runX('workflow-run', { repoId, workflow: 'CI' });
+    const r = await runX('workflow-run', { repoId, workflow: 'Static checks' });
     setBusy(false);
     if (r.ok) await load(); else setErr(r.error);
   };
@@ -736,11 +736,11 @@ function ActionsTab({ repoId }: { repoId: string }) {
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white">Workflow runs</h3>
         <button onClick={triggerRun} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Run CI
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Run checks
         </button>
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {runs.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-400">No runs. Trigger CI above.</p>}
+        {runs.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-400">No runs yet. Run checks above — JSON, syntax and security rules run on the stored files; tests and builds are skipped (no runner attached).</p>}
         {runs.map((r) => (
           <button key={r.id} onClick={() => openLogs(r.id)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
             {r.conclusion === 'success'
