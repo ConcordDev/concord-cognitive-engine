@@ -1484,11 +1484,17 @@ export default function registerRetailActions(registerLensAction) {
     const cart = s.carts.get(userId)?.get(cartId);
     if (!cart) return { ok: false, error: "cart not found" };
     const recoveries = ensureRetailBucket(s, "recoveries", userId);
+    // There is no hosted cart-recovery page and no buyer contact on a cart,
+    // so Concord drafts the reminder for the merchant to send; it sends nothing.
+    const subtotal = Math.round(cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0) * 100) / 100;
+    const itemsText = cart.lines.map((l) => `- ${l.qty} × ${l.name || l.sku} ($${Number(l.unitPrice).toFixed(2)})`).join("\n");
     const recovery = {
       id: nextRetailId("rec"), cartId, discountCode,
-      sentAt: nowIsoRet(),
+      recordedAt: nowIsoRet(),
+      delivered: false,
       kind: discountCode ? "discounted_recovery" : "reminder",
-      shareableLink: `/cart/recover/${cartId}${discountCode ? `?discount=${discountCode}` : ""}`,
+      shareableLink: null,
+      message: `You left these in your cart:\n${itemsText}\nTotal: $${subtotal.toFixed(2)}${discountCode ? `\nUse code ${discountCode} at checkout.` : ""}`,
     };
     recoveries.push(recovery);
     saveRetailState();
@@ -2174,7 +2180,9 @@ export default function registerRetailActions(registerLensAction) {
         message: target === "shipped"
           ? `Your order ${order.number} has shipped${order.trackingNumber ? ` — tracking ${order.trackingNumber}` : ""}.`
           : `Your order ${order.number} was delivered.`,
-        sentAt: nowIsoRet(),
+        // Drafted for the buyer; Concord does not email it.
+        recordedAt: nowIsoRet(),
+        delivered: false,
       };
       notes.unshift(notification);
     }

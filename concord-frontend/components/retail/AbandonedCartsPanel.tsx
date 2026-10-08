@@ -16,6 +16,7 @@ export function AbandonedCartsPanel() {
   const [totalLost, setTotalLost] = useState(0);
   const [thresholdHours, setThresholdHours] = useState('1');
   const [recoveryCode, setRecoveryCode] = useState('');
+  const [draft, setDraft] = useState<{ cartId: string; message: string; copied: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -39,10 +40,11 @@ export function AbandonedCartsPanel() {
         domain: 'retail', action: 'abandoned-cart-recover',
         input: { cartId, discountCode: recoveryCode.trim().toUpperCase() || undefined },
       });
-      const link = res.data?.result?.recovery?.shareableLink;
-      if (link) {
-        navigator.clipboard?.writeText(window.location.origin + link).catch(() => {});
-        alert(`Recovery link copied:\n${link}`);
+      const message = res.data?.result?.recovery?.message as string | undefined;
+      if (message) {
+        let copied = false;
+        try { await navigator.clipboard?.writeText(message); copied = true; } catch { copied = false; }
+        setDraft({ cartId, message, copied });
       }
     } catch (e) { console.error('[Abandoned] recover failed', e); }
   }
@@ -59,6 +61,14 @@ export function AbandonedCartsPanel() {
         <label className="col-span-2 space-y-1"><span className="text-gray-400">Recovery discount code (optional)</span><input value={recoveryCode} onChange={e => setRecoveryCode(e.target.value.toUpperCase())} placeholder="WIN10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
         <button onClick={refresh} className="self-end px-3 py-1 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Refresh</button>
       </div>
+      {draft && (
+        <div className="px-3 py-2 border-b border-white/10 text-xs space-y-1" role="status">
+          <p className="text-gray-400">
+            Reminder drafted for cart {draft.cartId}{draft.copied ? ' and copied' : ''}. Concord doesn&apos;t send it; paste it into your own message to the buyer.
+          </p>
+          <pre className="whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] text-gray-200">{draft.message}</pre>
+        </div>
+      )}
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <SkeletonTableRows rows={4} columns={3} />
@@ -74,7 +84,7 @@ export function AbandonedCartsPanel() {
                     <div className="text-[10px] text-gray-400">{c.ageHours}h ago · {c.itemCount} items</div>
                   </div>
                   <span className="font-mono text-sm text-amber-300 tabular-nums">${c.subtotal.toFixed(2)}</span>
-                  <button onClick={() => recover(c.id)} className="px-2 py-1 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Send className="w-3 h-3" />Recover</button>
+                  <button onClick={() => recover(c.id)} className="px-2 py-1 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Send className="w-3 h-3" />Draft reminder</button>
                 </div>
                 <div className="mt-1 text-[10px] text-gray-400 truncate">{c.lines.map(l => `${l.qty}× ${l.name}`).join(' · ')}</div>
               </li>

@@ -12,7 +12,7 @@ interface QueueOrder {
   trackingNumber: string | null; completedAt: string;
 }
 interface FulfillmentNotification {
-  id: string; orderNumber: string; to: string; kind: string; message: string; sentAt: string;
+  id: string; orderNumber: string; to: string; kind: string; message: string; recordedAt?: string; sentAt?: string;
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -115,7 +115,7 @@ export function FulfillmentBoard() {
       {/* Notifications */}
       {notifications.length > 0 && (
         <div className="border-t border-white/10 px-3 py-2">
-          <p className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1"><Bell className="w-3 h-3" /> Buyer notifications</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1"><Bell className="w-3 h-3" /> Buyer notices (drafted, not emailed)</p>
           <ul className="space-y-1 max-h-28 overflow-y-auto">
             {notifications.slice(0, 8).map(n => (
               <li key={n.id} className="text-[11px] text-gray-400">
