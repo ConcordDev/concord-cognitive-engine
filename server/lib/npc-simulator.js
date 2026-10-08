@@ -1293,6 +1293,25 @@ export function resetNpcQuestTickCounter() { NPC_QUEST_TICK_CALLS = 0; }
 // NPCSimulator
 // ──────────────────────────────────────────────────────────────────────────────
 
+// The world tick runs every agent on the main thread. Agents are ticked in
+// batches with a macrotask yield between batches, so HTTP and socket work
+// gets the loop back every few dozen agents instead of after the whole
+// world. A live CPU profile (2026-10-08, ~8,200 NPCs over 15+ worlds) showed
+// whole-world ticks holding the loop for 1-3s at a stretch.
+export const NPC_TICK_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_TICK_BATCH) || 25);
+export const NPC_FLUSH_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_FLUSH_BATCH) || 200);
+
+export function yieldToEventLoop() {
+  return new Promise((resolve) => { setImmediate(resolve); });
+}
+
+export async function settleInBatches(items, fn, size = NPC_TICK_BATCH) {
+  for (let i = 0; i < items.length; i += size) {
+    if (i > 0) await yieldToEventLoop();
+    await Promise.allSettled(items.slice(i, i + size).map(fn));
+  }
+}
+
 export class NPCSimulator {
   constructor(worldId, db, selectBrain) {
     this.worldId      = worldId;
@@ -1383,7 +1402,20 @@ export class NPCSimulator {
     this._spawnNpc({ ...archetype, npc_type: archetype.archetype, level: targetLevel });
   }
 
+  // A world's tick is skipped, not stacked, while the previous one is still
+  // running: setInterval keeps firing on schedule, and a tick slower than the
+  // interval used to start a second copy over the same agents.
   async tick() {
+    if (this._ticking) { this._skippedTicks = (this._skippedTicks || 0) + 1; return; }
+    this._ticking = true;
+    try {
+      await this._tickWorld();
+    } finally {
+      this._ticking = false;
+    }
+  }
+
+  async _tickWorld() {
     // Separate conscious (emergent-backed) from autonomous agents
     const autonomousAgents = this._agents.filter(a => !a.isConscious);
     const consciousAgents  = this._agents.filter(a =>  a.isConscious);
@@ -1402,14 +1434,14 @@ export class NPCSimulator {
     const cachedPlayers = _getPlayerPositions(this._db, this.worldId);
 
     // Autonomous NPCs: needs-based tick + faction coordination
-    await Promise.allSettled(autonomousAgents.map(a => a.tick(3000, cachedPlayers)));
-    await Promise.allSettled(autonomousAgents.map(a => a._maybeGenerateQuests()));
+    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers));
+    await settleInBatches(autonomousAgents, (a) => a._maybeGenerateQuests());
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement
     await this._tickFactionCoordination(autonomousAgents);
 
     // Conscious emergents: emergent-AI tick (lighter — just goal updates)
-    await Promise.allSettled(consciousAgents.map(a => a.tickConscious()));
+    await settleInBatches(consciousAgents, (a) => a.tickConscious());
 
     // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
     if (Math.random() < 0.05) {
@@ -1495,7 +1527,9 @@ export class NPCSimulator {
     // can queue a write via NPCAgent#_persistState() (the main per-agent
     // tick() above, tickConscious(), and the conversation partner inside
     // _tickNPCConversations() above) — see that method's own comment.
-    this._flushPendingPersists();
+    // Flushed in slices, each its own transaction, with a yield between, so
+    // one big commit doesn't hold the event loop.
+    while (this._flushPendingPersists(NPC_FLUSH_BATCH) > 0) await yieldToEventLoop();
   }
 
   // Batches every agent's state/current_location/wealth_sparks write queued
@@ -1531,9 +1565,13 @@ export class NPCSimulator {
   // is 1-4 sparks, and the transfer logic already operates on a coarse,
   // periodic cadence — a one-tick-stale read changes a wealth-transfer
   // decision by at most one tick's income, not a correctness break.
-  _flushPendingPersists() {
-    const pending = this._agents.filter((a) => a._pendingPersist);
-    if (pending.length === 0) return;
+  //
+  // maxRows caps one call to a slice of the queue; the return value is how
+  // many writes are still queued after it (0 when the queue is empty).
+  _flushPendingPersists(maxRows = Infinity) {
+    const queued = this._agents.filter((a) => a._pendingPersist);
+    if (queued.length === 0) return 0;
+    const pending = queued.length > maxRows ? queued.slice(0, maxRows) : queued;
     try {
       const stmt = this._db.prepare(
         "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
@@ -1546,7 +1584,12 @@ export class NPCSimulator {
         }
       });
       flush(pending);
-    } catch (_e) { /* non-fatal — matches this file's existing try/catch convention */ }
+    } catch (_e) {
+      // non-fatal — matches this file's existing try/catch convention. Drop
+      // the failed slice so a persistent error can't spin the caller's loop.
+      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; }
+    }
+    return queued.length - pending.length;
   }
 
   _tickCrossbreeding() {
