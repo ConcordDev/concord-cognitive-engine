@@ -566,12 +566,16 @@ describe("events — seating move/remove/unassign + budget-line + agenda edits +
     await lensRun("events", "register-attendee", { params: { eventId, tierId: tid, name: "Out Ott", email: "ott@x.io", quantity: 1 } }, d);
     await lensRun("events", "check-in", { params: { eventId, registrationId: r1.result.registration.id } }, d);
     const blast = await lensRun("events", "blast-send", { params: { eventId, subject: "See you soon", body: "Welcome aboard", segment: "checked-in" } }, d);
-    assert.equal(blast.result.delivered, 1);              // only Ian is checked in
+    // Only Ian is checked in. No Gmail is linked in the harness, so nothing is
+    // emailed: delivered is 0 and the blast says so instead of claiming a send.
+    assert.equal(blast.result.delivered, 0);
+    assert.equal(blast.result.status, "not_sent");
+    assert.deepEqual(blast.result.pendingEmails, ["ian@x.io"]);
     assert.equal(blast.result.blast.recipientCount, 1);
     assert.ok(blast.result.blast.recipients.some((p) => p.email === "ian@x.io"));
     const list = await lensRun("events", "blast-list", { params: { eventId } }, d);
     assert.ok(list.result.blasts.some((b) => b.id === blast.result.blast.id));
-    assert.ok(list.result.totalDelivered >= 1);
+    assert.equal(list.result.totalDelivered, 0);
   });
 
   it("blast-send: a missing subject is rejected", async () => {

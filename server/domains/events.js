@@ -1,3 +1,9 @@
+import { writeGmailMessage } from "../lib/connector-client.js";
+
+// Test-only mail transport seam (never set in production).
+let testMailer = null;
+export function _setEventsMailerForTest(fn) { testMailer = typeof fn === "function" ? fn : null; }
+
 export default function registerEventsActions(registerLensAction) {
   registerLensAction("events", "budgetReconcile", (ctx, artifact, _params) => {
     const projectedBudget = artifact.data?.budget || 0;
@@ -829,7 +835,11 @@ export default function registerEventsActions(registerLensAction) {
 
   // ═══ Feature 7 — Email / notification blasts to registrants ══════════════
 
-  registerLensAction("events", "blast-send", (ctx, _a, params = {}) => {
+  // Emails each recipient from the organiser's own linked Gmail. Nothing is
+  // reported as delivered unless Gmail accepted that message: with no Gmail
+  // linked the blast is recorded as "not_sent" and the recipient list is
+  // returned so the organiser can send it themselves.
+  registerLensAction("events", "blast-send", async (ctx, _a, params = {}) => {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -842,20 +852,39 @@ export default function registerEventsActions(registerLensAction) {
     let recipients = event.registrations;
     if (segment === "checked-in") recipients = recipients.filter((r) => r.checkedIn);
     if (segment === "not-checked-in") recipients = recipients.filter((r) => !r.checkedIn);
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const results = [];
+    for (const r of recipients) {
+      if (!r.email) { results.push({ name: r.name, email: r.email || "", sent: false, reason: "no_email" }); continue; }
+      try {
+        const mail = { to: r.name ? `${r.name} <${r.email}>` : r.email, subject, body };
+        const sent = testMailer ? await testMailer(mail) : (ctx?.db ? await writeGmailMessage(ctx.db, userId, mail) : { ok: false, reason: "no_gmail_linked" });
+        results.push(sent?.ok
+          ? { name: r.name, email: r.email, sent: true }
+          : { name: r.name, email: r.email, sent: false, reason: sent?.reason || "send_failed" });
+      } catch (e) {
+        results.push({ name: r.name, email: r.email, sent: false, reason: String(e?.message || e) });
+      }
+    }
+    const delivered = results.filter((x) => x.sent).length;
+    const status = recipients.length === 0 ? "no_recipients" : delivered === 0 ? "not_sent" : delivered === recipients.length ? "sent" : "partial";
     const blast = {
       id: evId("bl"),
       subject,
       body,
       segment,
       recipientCount: recipients.length,
-      recipients: recipients.map((r) => ({ name: r.name, email: r.email })),
+      delivered,
+      status,
+      notSentReason: status === "not_sent" ? (results.find((x) => x.reason)?.reason || null) : null,
+      recipients: results.map((x) => ({ name: x.name, email: x.email, sent: x.sent, ...(x.reason ? { reason: x.reason } : {}) })),
       sentAt: evNow(),
     };
     event.blasts.push(blast);
     saveEvents();
     return {
       ok: true,
-      result: { blast, delivered: recipients.length },
+      result: { blast, delivered, status, pendingEmails: results.filter((x) => !x.sent && x.email).map((x) => x.email) },
     };
   });
 
@@ -869,7 +898,7 @@ export default function registerEventsActions(registerLensAction) {
       result: {
         blasts: [...event.blasts].reverse(),
         count: event.blasts.length,
-        totalDelivered: event.blasts.reduce((n, b) => n + b.recipientCount, 0),
+        totalDelivered: event.blasts.reduce((n, b) => n + (b.delivered || 0), 0),
       },
     };
   });

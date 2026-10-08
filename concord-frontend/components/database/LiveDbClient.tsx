@@ -167,9 +167,9 @@ export function LiveDbClient() {
 
   const testConn = useCallback(async (id: string) => {
     setBusy(true);
-    const r = await lensRun<{ connected: boolean; datasets: number }>('database', 'connection-test', { id });
+    const r = await lensRun<{ connected: boolean; datasets: number; remoteContacted?: boolean }>('database', 'connection-test', { id });
     setBusy(false);
-    if (r.data.ok && r.data.result) flash('ok', `Connected — ${r.data.result.datasets} dataset(s)`);
+    if (r.data.ok && r.data.result) flash('ok', `Workspace copy readable — ${r.data.result.datasets} dataset(s). No remote server was contacted.`);
     else flash('err', r.data.error || 'Test failed');
   }, [flash]);
 

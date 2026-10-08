@@ -334,7 +334,9 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     c.lastUsedAt = new Date().toISOString();
     saveDatabase();
-    return { ok: true, result: { connected: true, engine: c.engine, datasets: c.datasets.length, latencyMs: 0 } };
+    // Datasets live in Concord's workspace store; host/database/username are labels.
+    // This confirms the workspace copy is readable — it never contacts a remote server.
+    return { ok: true, result: { connected: true, scope: "workspace", remoteContacted: false, engine: c.engine, datasets: c.datasets.length } };
   });
 
   // ── Datasets (tables) — typed columns + real rows ─────────────────────
