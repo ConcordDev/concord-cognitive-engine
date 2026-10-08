@@ -489,3 +489,46 @@ describe("Brief → requirements", () => {
     assert.match(r.note, /no numeric targets/);
   });
 });
+
+describe("Feasibility before geometry", () => {
+  const run = async (brief, bounds) => {
+    const { parseBrief } = await import("../lib/conkay/compiler/requirement-parser.js");
+    const { checkFeasibility } = await import("../lib/conkay/compiler/feasibility.js");
+    return checkFeasibility(parseBrief(brief), bounds);
+  };
+
+  it("acceptance: a 500 kg, 2-person, 800-mile electric aircraft fails, with why and what would work", async () => {
+    const r = await run("500 kg electric aircraft, 2 people, 800 miles");
+    assert.equal(r.status, "FAIL");
+    const s = r.results[0];
+    // Hand calc: K = 300·3600·0.85/9.80665·30; battery share = 1 − 0.35 − 154/500.
+    const K = (300 * 3600 * 0.85 / 9.80665) * 30;
+    const share = 1 - 0.35 - 154 / 500;
+    assert.ok(Math.abs(s.outputs.maxRange.value - K * share) < 1e-6);
+    assert.match(s.reason, /597 mi, short of 800 mi/);
+    const alt = Object.fromEntries(s.alternatives.map((a) => [a.change, a]));
+    assert.ok(Math.abs(alt["raise battery specific energy"].value - (800 * 1609.344 * 9.80665) / (0.85 * 30 * share) / 3600) < 1e-6);
+    assert.ok(Math.abs(alt["raise total mass"].value - 154 / (0.65 - (800 * 1609.344) / K)) < 1e-6);
+    assert.equal(alt["carry fewer people"].value, 1);
+    assert.match(s.inputs.liftToDrag.basis, /optimistic/);
+  });
+
+  it("the same aircraft with a 1,000 kg budget passes the screen (and says a design still has to show it)", async () => {
+    const r = await run("1000 kg electric aircraft, 2 people, 800 miles");
+    assert.equal(r.status, "PASS");
+    assert.match(r.results[0].reason, /still has to show it/);
+  });
+
+  it("bounds can be overridden, and a heavier payload than the mass allows is explained", async () => {
+    const r = await run("300 kg electric aircraft, 4 people, 50 miles");
+    assert.equal(r.status, "FAIL");
+    assert.match(r.results[0].reason, /no mass left for a battery/);
+    const lower = await run("500 kg electric aircraft, 2 people, 800 miles", { liftToDrag: 15 });
+    assert.equal(lower.results[0].inputs.liftToDrag.basis, "given");
+  });
+
+  it("a kind of design with no screen is not called feasible", async () => {
+    const r = await run("a car that weighs 2,500 lb, does 180 mph, seats 4");
+    assert.equal(r.status, "NO_SCREEN");
+  });
+});

@@ -12,10 +12,12 @@
 //   conkay_design.list      {}                      → your designs
 //   conkay_design.solvers   {}                      → the solver registry
 //   conkay_design.parse-brief { brief }             → numeric targets + unparsed intent
+//   conkay_design.feasibility { brief, bounds? }    → physics bound on whether any design could meet it
 
 import crypto from "node:crypto";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
+import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
 
 const SESSION_CACHE_MAX = 64;
 const sessions = new Map(); // designId -> session (LRU by insertion order)
@@ -73,6 +75,14 @@ export default function registerConkayDesignActions(registerLensAction) {
     const brief = String(params?.brief || "").slice(0, 4000);
     if (!brief.trim()) return { ok: false, error: "send a brief" };
     return { ok: true, result: parseBrief(brief) };
+  });
+
+  registerLensAction("conkay_design", "feasibility", (_ctx, _artifact, params) => {
+    const brief = String(params?.brief || "").slice(0, 4000);
+    if (!brief.trim()) return { ok: false, error: "send a brief" };
+    const parsed = parseBrief(brief);
+    const bounds = params?.bounds && typeof params.bounds === "object" ? params.bounds : {};
+    return { ok: true, result: { parsed, feasibility: checkFeasibility(parsed, bounds) } };
   });
 
   registerLensAction("conkay_design", "open", (ctx, _artifact, params) => {

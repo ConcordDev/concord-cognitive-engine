@@ -27,8 +27,8 @@ const RULES = [
   { metric: "range", re: new RegExp(String.raw`${NUM}\s*(miles?|mi|km)\s+(?:of\s+)?range`, "i"), bound: "min" },
   { metric: "range", re: new RegExp(String.raw`${NUM}\s*(miles?|mi|km)\b`, "i"), bound: "min", note: "a bare distance, read as range" },
   { metric: "seats", re: new RegExp(String.raw`seats?\s+${NUM}\b`, "i"), bound: "min", unitless: true },
-  { metric: "seats", re: new RegExp(String.raw`(?:for|carries|carrying)\s+${NUM}\s*(?:people|persons|passengers|adults|occupants)\b`, "i"), bound: "min", unitless: true },
-  { metric: "seats", re: new RegExp(String.raw`${NUM}\s*(?:people|persons|passengers|seats|seater|occupants)\b`, "i"), bound: "min", unitless: true },
+  { metric: "seats", re: new RegExp(String.raw`(?:for|carries|carrying)\s+${NUM}\s*(?:people|persons?|passengers?|adults?|occupants?)\b`, "i"), bound: "min", unitless: true },
+  { metric: "seats", re: new RegExp(String.raw`${NUM}\s*(?:people|persons?|passengers?|seats|seater|occupants?)\b`, "i"), bound: "min", unitless: true },
   { metric: "budget", re: new RegExp(String.raw`(?:under|below|less than|budget(?:\s+of)?|at most)\s+\$\s?${NUM}\s*(k|m)?\b`, "i"), bound: "max", money: true },
 ];
 
