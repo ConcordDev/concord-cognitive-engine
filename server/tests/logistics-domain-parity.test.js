@@ -124,7 +124,8 @@ describe("logistics.shipments-create/get/delete/set-status", () => {
   it("create / get / set-status / delete cycle, per-user scoped", () => {
     const a = call("shipments-create", ctxA, { origin: "Austin, TX", destination: "Boston, MA", carrierId: "c1", mode: "parcel", weightLbs: 12 });
     assert.equal(a.ok, true);
-    assert.match(a.result.shipment.trackingNumber, /^1Z/);
+    assert.equal(a.result.shipment.trackingNumber, null);
+    assert.match(a.result.shipment.reference, /^SHP-/);
     const id = a.result.shipment.id;
     const got = call("shipments-get", ctxA, { id });
     assert.equal(got.result.shipment.origin, "Austin, TX");
@@ -194,7 +195,7 @@ describe("logistics.pickups-* (carrier pickup)", () => {
     const c = call("carriers-add", ctxA, { name: "FedEx", code: "FDX" });
     const p = call("pickups-schedule", ctxA, { carrierId: c.result.carrier.id, address: "123 Main", date: "2026-06-01", packageCount: 5 });
     assert.equal(p.ok, true);
-    assert.match(p.result.pickup.confirmationNumber, /^PKP/);
+    assert.equal(p.result.pickup.confirmationNumber, null);
     const cancel = call("pickups-cancel", ctxA, { id: p.result.pickup.id });
     assert.equal(cancel.result.pickup.status, "cancelled");
   });

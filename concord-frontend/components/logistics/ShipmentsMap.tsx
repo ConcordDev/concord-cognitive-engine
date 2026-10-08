@@ -9,7 +9,8 @@ import { OSM_STYLE, toLngLat, esc } from '@/lib/maplibre/osm';
 
 interface ShipmentRoute {
   id: string;
-  trackingNumber: string;
+  trackingNumber: string | null;
+  reference?: string;
   origin: string;
   destination: string;
   originCoords?: [number, number];
@@ -66,7 +67,7 @@ const STATUS_COLOUR: Record<string, string> = {
   returned: '#fbbf24',
 };
 
-export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: string; trackingNumber: string; origin: string; destination: string; status: string; mode: string }>; className?: string }) {
+export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: string; trackingNumber: string | null; reference?: string; origin: string; destination: string; status: string; mode: string }>; className?: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -125,12 +126,12 @@ export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: 
       markersRef.current = [];
       for (const r of routes) {
         const oPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
-          `<div style="font-weight:600">${esc(r.trackingNumber)}</div>` +
+          `<div style="font-weight:600">${esc(r.trackingNumber || r.reference || 'No tracking #')}</div>` +
             `<div style="font-size:11px">From: ${esc(r.origin)}</div>` +
             `<div style="font-size:10px;color:#666">Status: ${esc(r.status.replace(/_/g, ' '))}</div>`,
         );
         const dPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
-          `<div style="font-weight:600">${esc(r.trackingNumber)}</div>` +
+          `<div style="font-weight:600">${esc(r.trackingNumber || r.reference || 'No tracking #')}</div>` +
             `<div style="font-size:11px">To: ${esc(r.destination)}</div>` +
             `<div style="font-size:10px;color:#666">Mode: ${esc(r.mode)}</div>`,
         );

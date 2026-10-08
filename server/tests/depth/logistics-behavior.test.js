@@ -274,7 +274,8 @@ describe("logistics — CRUD round-trips + workflows (wave 11 top-up)", () => {
     const sched = await lensRun("logistics", "pickups-schedule", { params: { carrierId, address: "1 Main St", date: "2026-07-01", packageCount: 4 } }, ctx);
     assert.equal(sched.result.pickup.status, "scheduled");
     assert.equal(sched.result.pickup.packageCount, 4);
-    assert.match(sched.result.pickup.confirmationNumber, /^PKP\d+$/);
+    assert.equal(sched.result.pickup.confirmationNumber, null);
+    assert.equal(sched.result.pickup.carrierNotified, false);
     const pid = sched.result.pickup.id;
     const list = await lensRun("logistics", "pickups-list", {}, ctx);
     assert.ok(list.result.pickups.some((p) => p.id === pid));

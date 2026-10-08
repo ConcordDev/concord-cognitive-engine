@@ -770,9 +770,13 @@ export default function registerLogisticsActions(registerLensAction) {
     const carrierId = String(params.carrierId || "");
     const mode = ["parcel", "ltl", "ftl", "ocean", "air", "intermodal", "drayage"].includes(params.mode) ? params.mode : "parcel";
     const weightLbs = Math.max(0, Number(params.weightLbs) || 0);
+    // Concord does not buy labels from carriers, so it never invents a carrier
+    // tracking number: the user records the one their carrier issued.
+    const id = uidLog("shp");
     const shipment = {
-      id: uidLog("shp"),
-      trackingNumber: `1Z${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      id,
+      trackingNumber: String(params.trackingNumber || "").trim().slice(0, 40) || null,
+      reference: `SHP-${id.slice(-6).toUpperCase()}`,
       origin, destination, carrierId, mode, weightLbs,
       dimensions: params.dimensions || null,
       serviceLevel: String(params.serviceLevel || "standard"),
@@ -928,7 +932,9 @@ export default function registerLogisticsActions(registerLensAction) {
       timeWindow: String(params.timeWindow || "9am-5pm"),
       packageCount: Math.max(1, Number(params.packageCount) || 1),
       status: "scheduled",
-      confirmationNumber: `PKP${Math.floor(Math.random() * 9_000_000) + 1_000_000}`,
+      // Concord does not contact the carrier; only a confirmation the user got from them is stored.
+      confirmationNumber: String(params.confirmationNumber || "").trim().slice(0, 40) || null,
+      carrierNotified: false,
       createdAt: new Date().toISOString(),
     };
     ensureLogBucket(s, "pickups", userId).push(pickup);
