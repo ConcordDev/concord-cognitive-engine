@@ -105,11 +105,20 @@ export function listMyPhotos(db, userId, limit = 50) {
   if (!db || !userId) return [];
   try {
     return db.prepare(`
-      SELECT id, world_id, caption, taken_at, dtu_id, visibility
+      SELECT id, world_id, caption, taken_at, dtu_id, visibility, favorite
       FROM user_photos WHERE user_id = ?
       ORDER BY taken_at DESC LIMIT ?
     `).all(userId, Math.max(1, Math.min(500, limit)));
-  } catch { return []; }
+  } catch {
+    // favorite column absent (pre-468 DB) — fall back to the base shape.
+    try {
+      return db.prepare(`
+        SELECT id, world_id, caption, taken_at, dtu_id, visibility
+        FROM user_photos WHERE user_id = ?
+        ORDER BY taken_at DESC LIMIT ?
+      `).all(userId, Math.max(1, Math.min(500, limit)));
+    } catch { return []; }
+  }
 }
 
 export function listPublicPhotosInWorld(db, worldId, limit = 50) {
@@ -131,6 +140,7 @@ export function deletePhoto(db, userId, photoId) {
     if (!p) return { ok: false, error: "no_photo" };
     if (p.user_id !== userId) return { ok: false, error: "not_owner" };
     db.prepare(`DELETE FROM user_photos WHERE id = ?`).run(photoId);
+    try { db.prepare(`DELETE FROM photo_album_items WHERE photo_id = ?`).run(photoId); } catch { /* pre-468 */ }
     try { fs.unlinkSync(p.blob_path); } catch { /* may be gone */ }
     return { ok: true };
   } catch (err) {
@@ -139,3 +149,110 @@ export function deletePhoto(db, userId, photoId) {
 }
 
 export { PHOTO_DIR, MAX_BLOB_BYTES };
+
+function _ownedPhoto(db, userId, photoId) {
+  const p = db.prepare(`SELECT user_id FROM user_photos WHERE id = ?`).get(photoId);
+  if (!p) return { ok: false, error: "no_photo" };
+  if (p.user_id !== userId) return { ok: false, error: "not_owner" };
+  return { ok: true };
+}
+
+function _ownedAlbum(db, userId, albumId) {
+  const a = db.prepare(`SELECT id, user_id, name FROM photo_albums WHERE id = ?`).get(albumId);
+  if (!a || a.user_id !== userId) return { ok: false, error: "no_album" };
+  return { ok: true, album: a };
+}
+
+/** Edit an owned photo's caption and/or favorite flag. */
+export function updatePhoto(db, userId, photoId, patch = {}) {
+  if (!db || !userId || !photoId) return { ok: false, error: "missing_inputs" };
+  try {
+    const own = _ownedPhoto(db, userId, photoId);
+    if (!own.ok) return own;
+    if (patch.caption !== undefined) {
+      const caption = String(patch.caption ?? "").trim().slice(0, 280);
+      db.prepare(`UPDATE user_photos SET caption = ? WHERE id = ?`).run(caption || null, photoId);
+    }
+    if (patch.favorite !== undefined) {
+      db.prepare(`UPDATE user_photos SET favorite = ? WHERE id = ?`).run(patch.favorite ? 1 : 0, photoId);
+    }
+    const photo = db.prepare(`SELECT id, world_id, caption, taken_at, dtu_id, visibility, favorite FROM user_photos WHERE id = ?`).get(photoId);
+    return { ok: true, photo };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function listAlbums(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    return db.prepare(`
+      SELECT a.id, a.name, a.created_at,
+        (SELECT COUNT(*) FROM photo_album_items i JOIN user_photos p ON p.id = i.photo_id WHERE i.album_id = a.id) AS count,
+        (SELECT i.photo_id FROM photo_album_items i JOIN user_photos p ON p.id = i.photo_id WHERE i.album_id = a.id ORDER BY p.taken_at DESC LIMIT 1) AS cover_photo_id
+      FROM photo_albums a WHERE a.user_id = ?
+      ORDER BY a.created_at DESC
+    `).all(userId);
+  } catch { return []; }
+}
+
+export function createAlbum(db, userId, name) {
+  if (!db || !userId) return { ok: false, error: "missing_inputs" };
+  const n = String(name || "").trim().slice(0, 80);
+  if (!n) return { ok: false, error: "missing_name" };
+  try {
+    const id = `alb_${crypto.randomBytes(8).toString("hex")}`;
+    db.prepare(`INSERT INTO photo_albums (id, user_id, name) VALUES (?, ?, ?)`).run(id, userId, n);
+    return { ok: true, album: { id, name: n, count: 0, cover_photo_id: null } };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function deleteAlbum(db, userId, albumId) {
+  if (!db || !userId || !albumId) return { ok: false, error: "missing_inputs" };
+  try {
+    const own = _ownedAlbum(db, userId, albumId);
+    if (!own.ok) return own;
+    db.transaction(() => {
+      db.prepare(`DELETE FROM photo_album_items WHERE album_id = ?`).run(albumId);
+      db.prepare(`DELETE FROM photo_albums WHERE id = ?`).run(albumId);
+    })();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/** Add (add=true) or remove an owned photo from an owned album. Idempotent. */
+export function setAlbumMembership(db, userId, albumId, photoId, add = true) {
+  if (!db || !userId || !albumId || !photoId) return { ok: false, error: "missing_inputs" };
+  try {
+    const a = _ownedAlbum(db, userId, albumId);
+    if (!a.ok) return a;
+    const p = _ownedPhoto(db, userId, photoId);
+    if (!p.ok) return p;
+    if (add) db.prepare(`INSERT OR IGNORE INTO photo_album_items (album_id, photo_id) VALUES (?, ?)`).run(albumId, photoId);
+    else db.prepare(`DELETE FROM photo_album_items WHERE album_id = ? AND photo_id = ?`).run(albumId, photoId);
+    return { ok: true, albumId, photoId, member: !!add };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function listAlbumPhotos(db, userId, albumId) {
+  if (!db || !userId || !albumId) return { ok: false, error: "missing_inputs" };
+  try {
+    const a = _ownedAlbum(db, userId, albumId);
+    if (!a.ok) return a;
+    const photos = db.prepare(`
+      SELECT p.id, p.world_id, p.caption, p.taken_at, p.dtu_id, p.visibility, p.favorite
+      FROM photo_album_items i JOIN user_photos p ON p.id = i.photo_id
+      WHERE i.album_id = ? AND p.user_id = ?
+      ORDER BY p.taken_at DESC
+    `).all(albumId, userId);
+    return { ok: true, album: { id: a.album.id, name: a.album.name }, photos };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
