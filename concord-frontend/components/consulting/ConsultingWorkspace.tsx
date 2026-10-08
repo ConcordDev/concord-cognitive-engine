@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Users,
   WalletCards,
+  Plus,
 } from 'lucide-react';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -33,6 +34,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { lensRun } from '@/lib/api/client';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { useUIStore } from '@/store/ui';
+import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { cn } from '@/lib/utils';
 import { ClientPortal } from './ClientPortal';
 import { ConsultingCalculators, type ConsultingCalculatorTool } from './ConsultingCalculators';
@@ -231,31 +233,29 @@ export function ConsultingWorkspace({ who }: { who: string }) {
   else panel = null;
 
   return (
-    <div data-lens-theme="consulting" className="min-h-full bg-[#0b0b0c] px-4 pb-24 pt-5 sm:px-7">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-amber-100/10 pb-5">
-        <div className="min-w-0 max-w-full">
-          <p className="text-sm text-amber-200/35">Consulting practice</p>
-          <h1 className="mt-1 break-words text-3xl font-semibold leading-tight tracking-[-0.04em] text-stone-100 sm:text-5xl">
-            Run the client work{who ? `, ${who}` : ''}
-          </h1>
-          <p className="mt-2 text-sm text-stone-500">{active.description}</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <NorthStarFrame
+      lensId="consulting"
+      crumb="Consulting"
+      title={`The engagement${who ? `, ${who}` : ''}`}
+      subtitle={active.description}
+      actions={(
+        <>
           <button
             type="button"
             onClick={() => void refresh()}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-lg border border-amber-100/10 bg-amber-50/[0.04] px-3 py-2 text-sm text-stone-300 hover:bg-amber-50/[0.08] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-60"
           >
             {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Refresh
             <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
           </button>
           <DTUExportButton domain="consulting" data={latestData || {}} compact />
-        </div>
-      </header>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
+        </>
+      )}
+      cta={{ label: 'New', icon: Plus, onClick: () => selectTool('engagements'), title: 'Start or open an engagement (1)' }}
+    >
+      <div className="grid gap-6 rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <nav aria-label="Consulting tools" className="flex gap-2 overflow-x-auto border-b border-amber-100/10 pb-3 lg:block lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
           {GROUPS.map((group) => (
             <div key={group} className="flex shrink-0 gap-1 lg:mb-5 lg:block">
@@ -302,6 +302,6 @@ export function ConsultingWorkspace({ who }: { who: string }) {
           ) : panel}
         </motion.main>
       </div>
-    </div>
+    </NorthStarFrame>
   );
 }
