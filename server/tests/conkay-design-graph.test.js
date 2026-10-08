@@ -532,3 +532,54 @@ describe("Feasibility before geometry", () => {
     assert.equal(r.status, "NO_SCREEN");
   });
 });
+
+describe("Gearing and tyre speed rating", () => {
+  const car = (over = {}) => ({
+    design: { id: "car" },
+    nodes: [
+      { id: "CAR1", kind: "Assembly", props: { vehicle: {
+        dragCoefficient: 0.30, frontalArea: "2.0 m2", rollingResistance: 0.012, drivelineEfficiency: 0.9,
+        tireRadius: "0.33 m", gearRatios: over.gearRatios || [3.2, 2.1, 1.5, 1.15, 0.92, 0.75], finalDrive: 3.4,
+      } } },
+      { id: "CH1", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "4 m", width: "1.8 m", height: "0.0177 m" } },
+      { id: "E1", kind: "Actuator", material: "aluminum-6061-t6", props: { maxPower: "300 kW", peakPowerRpm: 6500, redlineRpm: 7000 }, geometry: { shape: "box", length: "0.6 m", width: "0.6 m", height: "0.5 m" } },
+      { id: "T1", kind: "Tire", props: { speedRating: over.rating || "Y" } },
+    ],
+    edges: ["CH1", "E1", "T1"].map((to) => ({ type: "CONTAINS", from: "CAR1", to })),
+  });
+
+  it("speed at redline per gear is ω·r/(ratio·final drive)", () => {
+    const s = open(car());
+    const e = s.result("vehicle.gearing@CAR1");
+    assert.equal(e.status === "PASS" || e.status === "WARN", true, e.reason);
+    const w = 7000 * 2 * Math.PI / 60;
+    assert.ok(Math.abs(e.outputs.redlineSpeedTopGear.value - (w * 0.33) / (0.75 * 3.4)) < 1e-12);
+    assert.equal(e.outputs.speedsAtRedline.value.length, 6);
+    const pl = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
+    assert.ok(Math.abs(e.outputs.topGearOverallForPeakPower.value - (6500 * 2 * Math.PI / 60 * 0.33) / pl) < 1e-12);
+    assert.equal(e.outputs.effectiveTopSpeed.value, Math.min(pl, e.outputs.redlineSpeedTopGear.value));
+  });
+
+  it("short gearing makes the car rev-limited and says so", () => {
+    const s = open(car({ gearRatios: [3.2, 2.1, 1.5, 1.15, 1.0] }));
+    const e = s.result("vehicle.gearing@CAR1");
+    assert.equal(e.outputs.limitedBy.value, "redline in top gear");
+    assert.equal(e.status, "WARN");
+  });
+
+  it("a V-rated tyre fails a car faster than 240 km/h; Y passes", () => {
+    const fast = open(car({ rating: "V" }));
+    const vmax = fast.result("vehicle.gearing@CAR1").outputs.effectiveTopSpeed.value;
+    assert.ok(vmax > 240 / 3.6, `car does ${vmax * 3.6} km/h`);
+    assert.equal(fast.result("tire.speed-rating@CAR1").status, "FAIL");
+    const r = fast.editText("set tire T1 speed rating to Y");
+    assert.equal(r.ok, true, r.error);
+    assert.deepEqual(r.rerun, ["tire.speed-rating@CAR1"]);
+    assert.equal(fast.result("tire.speed-rating@CAR1").status, vmax <= 300 / 3.6 ? "PASS" : "FAIL");
+  });
+
+  it("an unknown speed symbol is not computed", () => {
+    const s = open(car({ rating: "X" }));
+    assert.equal(s.result("tire.speed-rating@CAR1").status, "NOT_COMPUTED");
+  });
+});

@@ -13,6 +13,7 @@ export const KIND_DOMAINS = {
   Joint: ["structural.shear", "structural.bearing", "structural.tearout", "structural.slip", "corrosion.galvanic"],
   Assembly: ["mass", "mass.cg", "cost"],
   Actuator: ["mass", "cost", "thermal", "fatigue"],
+  Tire: ["mass", "cost", "safety.tire-speed", "structural.load-index"],
   Part: ["mass", "cost"],
   Beam: ["mass", "cost", "structural.bending", "structural.buckling", "structural.deflection"],
 };

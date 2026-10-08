@@ -24,7 +24,7 @@ export const NODE_KINDS = new Set([
   "Field", "Material", "Fluid", "Circuit", "Actuator", "Sensor", "HeatSource", "HeatSink", "Boundary",
   "Interface", "Process",
   // Common specializations of Part.
-  "Bolt", "Plate",
+  "Bolt", "Plate", "Tire",
 ]);
 
 export const EDGE_TYPES = new Set([
@@ -55,7 +55,7 @@ const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compre
 // Node props that carry a unit; converted to SI like geometry. Other props
 // are passed through as plain values.
 export const TYPED_PROPS = { maxPower: "power" };
-const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length" };
+const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length", tireRadius: "length" };
 
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 

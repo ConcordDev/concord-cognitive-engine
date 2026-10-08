@@ -18,6 +18,7 @@ const KIND_WORDS = {
   part: "Part", parts: "Part", beam: "Beam", beams: "Beam",
   engine: "Actuator", engines: "Actuator", motor: "Actuator", motors: "Actuator",
   vehicle: "Assembly", car: "Assembly", assembly: "Assembly",
+  tire: "Tire", tires: "Tire", tyre: "Tire", tyres: "Tire",
 };
 
 // Non-geometry properties an edit can set: word(s) → [path, unit dimension | null].
@@ -26,6 +27,8 @@ const PROP_WORDS = {
   "drag coefficient": ["props.vehicle.dragCoefficient", null],
   cd: ["props.vehicle.dragCoefficient", null],
   "frontal area": ["props.vehicle.frontalArea", "area"],
+  "final drive": ["props.vehicle.finalDrive", null],
+  redline: ["props.redlineRpm", null],
   "x position": ["position.x", "length"], "y position": ["position.y", "length"], "z position": ["position.z", "length"],
 };
 const PARAMS = new Set(Object.values(SHAPES).flat());
@@ -59,6 +62,16 @@ export function parseEdit(text, graph) {
   }
   if (!m) return { ok: false, error: 'I can read edits like "make bolt B1 stainless" or "set plate P1 thickness to 12 mm".' };
   const [, lhs, rhs] = m;
+
+  // "<ref> speed rating to Y": a tyre speed symbol (one letter).
+  const sr = lhs.trim().match(/^(.+?)\s+speed rating$/i);
+  if (sr) {
+    const target = resolveNodes(sr[1], graph);
+    if (target.error) return { ok: false, error: target.error };
+    const sym = rhs.trim().toUpperCase();
+    if (!/^[A-Z]$/.test(sym)) return { ok: false, error: "a speed rating is one letter, e.g. V, W or Y" };
+    return { ok: true, ops: target.nodes.map((n) => ({ node: n.id, path: "props.speedRating", value: sym })), notes: [] };
+  }
 
   // "<ref> power|drag coefficient|frontal area to <value>"
   for (const [word, [propPath, dim]] of Object.entries(PROP_WORDS)) {
