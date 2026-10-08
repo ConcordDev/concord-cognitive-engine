@@ -247,7 +247,7 @@ export function IncidentConsole() {
       { incidentId, target, channel, message });
     setBusy(null);
     if (r?.notification) {
-      flash('ok', r.deduped ? 'Notification deduped (already queued)' : `Paged ${target} via ${channel}`);
+      flash('ok', r.deduped ? 'Notification deduped (already queued)' : `Page to ${target} queued (${channel}) — no delivery gateway is connected, so nothing was sent`);
       await loadNotifications(); if (incidentId) await loadIncidents();
     } else flash('err', 'Notification dispatch failed');
   }
@@ -499,7 +499,7 @@ function IncidentsTab({
 
             {notifications.filter((n) => n.incidentId === sel.id).length > 0 && (
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Pages dispatched</p>
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Pages queued (not delivered)</p>
                 <ul className="space-y-0.5">
                   {notifications.filter((n) => n.incidentId === sel.id).map((n) => (
                     <li key={n.id} className="text-[10px] text-zinc-400">

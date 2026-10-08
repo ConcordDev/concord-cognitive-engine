@@ -627,7 +627,7 @@ export default function registerOpsActions(register) {
       // link into the incident timeline if present
       if (params.incidentId) {
         const inc = ensureList(s.incidents, userId).find((i) => i.id === params.incidentId);
-        if (inc) inc.timeline.push({ at: nowIso(), event: "notified", by: "notify-dispatch", note: `${channel} → ${target}` });
+        if (inc) inc.timeline.push({ at: nowIso(), event: "notified", by: "notify-dispatch", note: `${channel} → ${target} (queued; no delivery gateway connected)` });
       }
       saveOpsState();
       return { ok: true, result: { notification, deduped: false } };
