@@ -640,7 +640,7 @@ function OnCallTab() {
     setBusy(true);
     const d = await run('pageOnCall', { severity: pageSeverity, summary: pageSummary.trim() || 'Manual page' });
     setBusy(false);
-    if (d.ok) { setNotice({ kind: 'ok', text: `Paged ${d.result?.page?.pagedPerson} · ${d.result?.routesNotified} routes notified.` }); setPageSummary(''); refresh(); }
+    if (d.ok) { setNotice({ kind: 'ok', text: `Paged ${d.result?.page?.pagedPerson} · ${d.result?.routesDelivered ?? 0} of ${d.result?.routesMatched ?? 0} routes delivered (webhooks only; contact email/SMS/DM routes directly).` }); setPageSummary(''); refresh(); }
     else setNotice({ kind: 'err', text: d.error || 'page failed' });
   };
   const ack = async (id: string) => { const d = await run('acknowledgePage', { id }); if (d.ok) refresh(); };

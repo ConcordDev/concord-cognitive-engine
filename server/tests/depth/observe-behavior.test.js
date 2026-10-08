@@ -422,13 +422,13 @@ describe("observe — on-call paging + notification routing (shared ctx)", () =>
     // sev1 page (rank 1) is <= every route floor → all 4 routes fire
     const p1 = await lensRun("observe", "pageOnCall", { params: { severity: "sev1", summary: "all hands" } }, ctx);
     assert.equal(p1.ok, true);
-    assert.equal(p1.result.routesNotified, 4);          // ops-dm + exec-page + low-floor + bad-channel
+    assert.equal(p1.result.routesMatched, 4);          // ops-dm + exec-page + low-floor + bad-channel
     assert.equal(p1.result.page.pagedPerson, "Ada");
     assert.equal(p1.result.page.severity, "sev1");
 
     // sev4 page (rank 4) only fires the sev4-floor route (rank 4); sev3/sev1 floors excluded
     const p4 = await lensRun("observe", "pageOnCall", { params: { severity: "sev4", summary: "minor" } }, ctx);
-    assert.equal(p4.result.routesNotified, 1);          // low-floor (sev4) only
+    assert.equal(p4.result.routesMatched, 1);          // low-floor (sev4) only
     assert.ok(p4.result.page.routesFired.some((r) => r.route === "low-floor"));
     assert.ok(!p4.result.page.routesFired.some((r) => r.route === "exec-page"));
 
