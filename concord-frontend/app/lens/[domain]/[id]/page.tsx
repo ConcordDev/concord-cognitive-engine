@@ -212,7 +212,7 @@ export default async function PublicLensArtifactPage({
 
         {/* Branding */}
         <p className="text-[10px] text-zinc-700 pt-4">
-          Shared via Concord OS — Sovereign Cognitive Engine
+          Shared via Concord OS — AI that shows its receipts
         </p>
       </article>
     </main>

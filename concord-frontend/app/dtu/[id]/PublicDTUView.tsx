@@ -345,7 +345,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
             <Link href="/" className="text-neon-cyan hover:underline">
               Concord OS
             </Link>{' '}
-            &mdash; Sovereign Cognitive Engine
+            &mdash; AI that shows its receipts
           </p>
         </footer>
       </main>

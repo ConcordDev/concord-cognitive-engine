@@ -234,7 +234,7 @@ export default function OnboardingPage() {
             Welcome to <span className="bg-gradient-to-r from-neon-cyan to-neon-blue bg-clip-text text-transparent">Concordos</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Your sovereign cognitive engine awaits. Choose how to initialize your personal universe.
+            Choose how to start: an empty universe, or one with a starter pack.
           </p>
         </div>
 
