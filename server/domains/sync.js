@@ -161,9 +161,11 @@ export default function registerSyncActions(registerLensAction) {
   });
 
   /**
-   * sync_now — [M] Trigger a sync for one device. Simulates a sync pass:
-   * advances dtusSynced, updates quota usage, writes a per-device log
-   * entry, and returns progress + a status summary.
+   * sync_now — [M] Prepare a device's sync set: count the owned DTUs its
+   * selective-sync scopes cover, estimate bytes against its quota, and log
+   * it. Nothing is transferred to the device here (Concord has no push
+   * channel to it), so this never marks the device synced or online; the
+   * data actually moves when a portable pack is exported (export_pack).
    */
   registerLensAction("sync", "sync_now", (ctx, artifact, params) => {
     try {
@@ -223,26 +225,24 @@ export default function registerSyncActions(registerLensAction) {
         return sum + 4096 + artBytes;
       }, 0);
 
-      dev.lastSyncAt = Date.now();
-      dev.lastSeenAt = Date.now();
-      dev.online = true;
-      dev.lastSyncStatus = "ok";
-      dev.dtusSynced = dtuCount;
+      dev.lastPreparedAt = Date.now();
+      dev.lastSyncStatus = "prepared";
+      dev.preparedDtus = dtuCount;
       dev.usedBytes = bytes;
 
       const overQuota = dev.quotaBytes > 0 && bytes > dev.quotaBytes;
       if (overQuota) dev.lastSyncStatus = "quota_exceeded";
 
       const log = pushLog(userId, {
-        kind: "sync",
+        kind: "sync_prepared",
         deviceId,
         label: dev.label,
         dtuCount,
         bytes,
         status: dev.lastSyncStatus,
         message: overQuota
-          ? `Sync partial — ${dtuCount} DTUs exceed device quota`
-          : `Synced ${dtuCount} DTUs (${(bytes / 1048576).toFixed(1)} MB) to "${dev.label}"`,
+          ? `${dtuCount} DTUs in scope for "${dev.label}" exceed its quota`
+          : `Prepared ${dtuCount} DTUs (~${(bytes / 1048576).toFixed(1)} MB) for "${dev.label}" — export a pack to move them to the device`,
       });
 
       return {
@@ -255,7 +255,8 @@ export default function registerSyncActions(registerLensAction) {
           quotaBytes: dev.quotaBytes,
           quotaPct: dev.quotaBytes ? Math.min(100, Math.round((bytes / dev.quotaBytes) * 100)) : 0,
           scopes: dev.scopes,
-          syncedAt: dev.lastSyncAt,
+          preparedAt: dev.lastPreparedAt,
+          transferred: false,
           logEntry: log,
         },
       };
@@ -335,9 +336,10 @@ export default function registerSyncActions(registerLensAction) {
       });
       if (!r.ok) return { ok: false, error: r.error || r.reason || "export_failed" };
 
+      // A pack was produced for this device and downloaded by the caller's
+      // browser; that says nothing about the device being online.
       dev.lastSyncAt = Date.now();
-      dev.lastSeenAt = Date.now();
-      dev.online = true;
+      dev.dtusSynced = r.envelope.counts.dtus;
 
       const log = pushLog(userId, {
         kind: "pack_exported",
@@ -616,7 +618,7 @@ export default function registerSyncActions(registerLensAction) {
               : devs.length === 0
                 ? "no_devices"
                 : online.length > 0
-                  ? "synced"
+                  ? "online"
                   : "all_offline",
         },
       };

@@ -104,14 +104,14 @@ describe("sync.export_pack — real portable-pack export wired into the sync len
     assert.ok(entry.message.includes("Exported portable pack"));
   });
 
-  it("stamps device presence (lastSyncAt/online) the same way sync_now does", async () => {
+  it("stamps the last-pack time and count but does not claim the device is online", async () => {
     const before2 = Date.now();
     const r = await lensRun("sync", "export_pack", { params: { deviceId } }, ctx);
     assert.equal(r.ok, true);
     const list = await lensRun("sync", "list_devices", {}, ctx);
     const dev = list.result.devices.find((d) => d.id === deviceId);
     assert.ok(dev.lastSyncAt >= before2);
-    assert.equal(dev.online, true);
+    assert.equal(dev.dtusSynced, r.result.counts.dtus);
   });
 
   it("labels the response honestly as a FULL, unscoped export (not a fabricated device-scoped pack)", async () => {
