@@ -16,7 +16,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = path.join(__dirname, "migrations");
+// Overridable only so tests can drive the runner against an isolated directory.
+const MIGRATIONS_DIR = process.env.CONCORD_MIGRATIONS_DIR || path.join(__dirname, "migrations");
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, "concord.db");
 
@@ -101,9 +102,11 @@ export async function runMigrations(existingDb = null) {
       );
     `);
 
-    // Get current version
-    const row = db.prepare("SELECT MAX(version) as v FROM schema_version").get();
-    const currentVersion = row?.v || 0;
+    // Apply every migration whose version is not recorded yet, in numeric
+    // order. Comparing against MAX(version) would silently skip a lower-
+    // numbered file that lands after higher ones have run (two branches each
+    // adding a migration), so the check is per version.
+    const applied = new Set(db.prepare("SELECT version FROM schema_version").all().map((r) => r.version));
 
     // Read migration files (format: 001_name.js — see listMigrationFiles
     // for why this must NOT be a fixed-3-digit regex + lexicographic sort).
@@ -112,7 +115,7 @@ export async function runMigrations(existingDb = null) {
     let appliedCount = 0;
 
     for (const { file, version } of migrationFiles) {
-      if (version <= currentVersion) continue;
+      if (applied.has(version)) continue;
 
       const migrationPath = path.join(MIGRATIONS_DIR, file);
       const migration = await import(`file://${migrationPath}`);
