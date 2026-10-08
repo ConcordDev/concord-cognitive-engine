@@ -113,7 +113,20 @@ describe("careers domain macros", () => {
     assert.equal(getSparks(db, "player1"), r.wage);
   });
 
+  it("a second paid shift inside the cooldown is refused and pays nothing", async () => {
+    seedUser(db, "farmer", 0);
+    const first = await macros.get("work")(ctxFor(db, "farmer"), { trackId: "chef", skillInput: 1 });
+    assert.equal(first.ok, true);
+    const paid = getSparks(db, "farmer");
+    const second = await macros.get("work")(ctxFor(db, "farmer"), { trackId: "smith", skillInput: 1 });
+    assert.equal(second.ok, false);
+    assert.equal(second.reason, "shift_cooldown");
+    assert.ok(second.retryAt > Date.now());
+    assert.equal(getSparks(db, "farmer"), paid, "no extra sparks during the cooldown, on any track");
+  });
+
   it("work persists XP and promotes per the engine gate (tier × 100 XP, performance ≥ 0.6)", async () => {
+    process.env.CONCORD_CAREER_SHIFT_COOLDOWN_S = "0"; // exercise many shifts back to back
     seedUser(db, "climber", 0);
     const ctx = ctxFor(db, "climber");
     let last;
@@ -132,6 +145,7 @@ describe("careers domain macros", () => {
     for (let i = 0; i < 8; i++) await macros.get("work")(ctxFor(db, "weak"), { trackId: "chef", skillInput: 0 });
     const weak = await macros.get("progress")(ctxFor(db, "weak"), { trackId: "chef" });
     assert.ok(weak.progress.xp > 0);
+    delete process.env.CONCORD_CAREER_SHIFT_COOLDOWN_S;
   });
 
   it("work requires auth and rejects an unknown track", async () => {

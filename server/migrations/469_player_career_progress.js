@@ -10,9 +10,11 @@ export function up(db) {
       highest_tier     INTEGER NOT NULL DEFAULT 1,
       shifts           INTEGER NOT NULL DEFAULT 0,
       last_shift_day   TEXT,
+      last_shift_at    INTEGER,
       updated_at       INTEGER NOT NULL DEFAULT (unixepoch()),
       PRIMARY KEY (user_id, track_id)
     );
+    CREATE INDEX IF NOT EXISTS idx_player_career_progress_user ON player_career_progress (user_id, last_shift_at);
   `);
 }
 

@@ -51,24 +51,35 @@ function badNumericField(input, keys) {
 // taken from the client. skillLevel = cumulative promotion XP / 10, so the
 // engine's skill gate (tier × 10) means tier × 100 XP.
 const BASE_ATTRIBUTE = 0.5;
+// The shift input comes from a browser-side timing check the server can't
+// verify, so pay is rate-limited server-side: one paid shift per player per
+// cooldown across all tracks.
+const shiftCooldownS = () => Math.max(0, Number(process.env.CONCORD_CAREER_SHIFT_COOLDOWN_S ?? 1800) || 0);
+
+function lastShiftAt(db, uid) {
+  try {
+    return db.prepare(`SELECT MAX(last_shift_at) AS t FROM player_career_progress WHERE user_id = ?`).get(uid)?.t || null;
+  } catch { return null; }
+}
 
 function readProgress(db, uid, trackId) {
   try {
-    const row = db.prepare(`SELECT tier, xp, highest_tier, shifts, last_shift_day FROM player_career_progress WHERE user_id = ? AND track_id = ?`).get(uid, trackId);
-    if (row) return { tier: row.tier, xp: row.xp, highestTier: row.highest_tier, shifts: row.shifts, lastShiftDay: row.last_shift_day, persisted: true };
+    const row = db.prepare(`SELECT tier, xp, highest_tier, shifts, last_shift_day, last_shift_at FROM player_career_progress WHERE user_id = ? AND track_id = ?`).get(uid, trackId);
+    if (row) return { tier: row.tier, xp: row.xp, highestTier: row.highest_tier, shifts: row.shifts, lastShiftDay: row.last_shift_day, lastShiftAt: row.last_shift_at ?? null, persisted: true };
   } catch { /* table absent → fresh progress, not persisted */ }
-  return { tier: 1, xp: 0, highestTier: 1, shifts: 0, lastShiftDay: null, persisted: false };
+  return { tier: 1, xp: 0, highestTier: 1, shifts: 0, lastShiftDay: null, lastShiftAt: null, persisted: false };
 }
 
 function writeProgress(db, uid, trackId, p) {
   try {
     db.prepare(`
-      INSERT INTO player_career_progress (user_id, track_id, tier, xp, highest_tier, shifts, last_shift_day, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+      INSERT INTO player_career_progress (user_id, track_id, tier, xp, highest_tier, shifts, last_shift_day, last_shift_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
       ON CONFLICT(user_id, track_id) DO UPDATE SET
         tier = excluded.tier, xp = excluded.xp, highest_tier = excluded.highest_tier,
-        shifts = excluded.shifts, last_shift_day = excluded.last_shift_day, updated_at = unixepoch()
-    `).run(uid, trackId, p.tier, p.xp, p.highestTier, p.shifts, p.lastShiftDay);
+        shifts = excluded.shifts, last_shift_day = excluded.last_shift_day,
+        last_shift_at = excluded.last_shift_at, updated_at = unixepoch()
+    `).run(uid, trackId, p.tier, p.xp, p.highestTier, p.shifts, p.lastShiftDay, p.lastShiftAt ?? null);
     return true;
   } catch { return false; }
 }
@@ -98,6 +109,12 @@ export default function registerCareerMacros(register) {
     if (!isTrack(trackId)) return { ok: false, reason: "unknown_track" };
     // Tier, mastery and attribute are server-owned; a client-sent tier or
     // attribute is ignored so a request can't claim a higher wage.
+    const nowS = Math.floor(Date.now() / 1000);
+    const last = lastShiftAt(ctx.db, uid);
+    const cooldown = shiftCooldownS();
+    if (cooldown > 0 && last && nowS - last < cooldown) {
+      return { ok: false, reason: "shift_cooldown", retryAt: (last + cooldown) * 1000 };
+    }
     const progress = readProgress(ctx.db, uid, trackId);
     const tier = progress.tier;
     const attribute = BASE_ATTRIBUTE;
@@ -112,7 +129,7 @@ export default function registerCareerMacros(register) {
     const wage = Math.round(shiftPay(performanceScore, trackId, tier, { masteryTierReached: progress.highestTier }) * fidelityPayMultiplier("play"));
     const xp = Math.round(promotionXp(performanceScore) * fidelityXpMultiplier("play"));
     const today = new Date().toISOString().slice(0, 10);
-    const next = { ...progress, xp: progress.xp + xp, shifts: progress.shifts + 1, lastShiftDay: today };
+    const next = { ...progress, xp: progress.xp + xp, shifts: progress.shifts + 1, lastShiftDay: today, lastShiftAt: nowS };
     const promo = promotionReady({
       skillLevel: Math.floor(next.xp / 10),
       dailyTaskDone: true,

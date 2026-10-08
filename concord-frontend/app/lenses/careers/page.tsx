@@ -59,6 +59,7 @@ interface CareerProgress { tier: number; xp: number; highestTier: number; shifts
 interface WorkResult {
   ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string;
   progress?: CareerProgress; promotion?: { tier: number; title: string } | null; nextTierXp?: number | null;
+  retryAt?: number;
 }
 // server/lib/professions.js#tierInfo — one rung of a track's 10-tier ladder.
 interface TierInfo {
@@ -170,6 +171,10 @@ export default function CareersLens() {
           const c = (await lensRun<{ contracts?: Contract[] }>('careers', 'contracts', {})).data.result;
           setContracts(c?.contracts || []);
         } catch { /* non-fatal */ }
+      } else if (r?.reason === 'shift_cooldown' && r.retryAt) {
+        const at = new Date(r.retryAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        setNote(`You've already worked a paid shift. Next one opens at ${at}.`);
+        addToast({ type: 'info', message: `Next paid shift opens at ${at}.` });
       } else {
         setNote(`Couldn't work: ${r?.reason || 'failed'}`);
         addToast({ type: 'error', message: `Shift could not be worked: ${r?.reason || 'failed'}.` });
