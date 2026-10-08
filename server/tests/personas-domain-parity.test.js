@@ -159,47 +159,65 @@ describe("personas.chat_open / chat_send / chat_history", () => {
     assert.equal(r.result.turns[0].text, "State your objective.");
   });
 
-  it("chat_send returns a reply composed from persona data", () => {
+  it("chat_send returns a model-generated in-character reply", async () => {
     const p = makePersona();
     const open = call("chat_open", ctxA, { personaId: p.id });
-    const r = call("chat_send", ctxA, { chatId: open.result.chatId, message: "what is your edge" });
+    let seen = null;
+    const llmCtx = { ...ctxA, llm: { chat: async (req) => { seen = req; return { text: "Speed is my edge." }; } } };
+    const r = await call("chat_send", llmCtx, { chatId: open.result.chatId, message: "what is your edge" });
     assert.equal(r.ok, true);
     assert.equal(r.result.reply.role, "persona");
-    assert.ok(r.result.reply.text.length > 0);
-    assert.ok(["composed_from_persona", "example_dialogue"].includes(r.result.reply.basis));
+    assert.equal(r.result.reply.text, "Speed is my edge.");
+    assert.equal(r.result.reply.basis, "model");
+    assert.match(seen.messages[0].content, /Aria the Strategist/);
+    assert.equal(seen.messages.at(-1).content, "what is your edge");
   });
 
-  it("chat_send surfaces an exact authored example response on echo", () => {
+  it("chat_send fails honestly (no echo, no stored turns) when no model is reachable", async () => {
     const p = makePersona();
     const open = call("chat_open", ctxA, { personaId: p.id });
-    const r = call("chat_send", ctxA, { chatId: open.result.chatId, message: "help me plan a raid" });
+    const r = await call("chat_send", ctxA, { chatId: open.result.chatId, message: "what is your edge" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "model_unavailable");
+    const h = call("chat_history", ctxA, { chatId: open.result.chatId });
+    assert.equal(h.result.turns.length, 1);
+    const bad = await call("chat_send", { ...ctxA, llm: { chat: async () => { throw new Error("boom"); } } }, { chatId: open.result.chatId, message: "hi there" });
+    assert.equal(bad.ok, false);
+    const empty = await call("chat_send", { ...ctxA, llm: { chat: async () => ({ text: "  " }) } }, { chatId: open.result.chatId, message: "hi there" });
+    assert.equal(empty.error, "model_returned_nothing");
+  });
+
+  it("chat_send surfaces an exact authored example response on echo", async () => {
+    const p = makePersona();
+    const open = call("chat_open", ctxA, { personaId: p.id });
+    const r = await call("chat_send", ctxA, { chatId: open.result.chatId, message: "help me plan a raid" });
     assert.equal(r.ok, true);
     assert.equal(r.result.reply.basis, "example_dialogue");
     assert.equal(r.result.reply.text, "First, define the win condition.");
   });
 
-  it("chat_send rejects an empty message", () => {
+  it("chat_send rejects an empty message", async () => {
     const p = makePersona();
     const open = call("chat_open", ctxA, { personaId: p.id });
-    const r = call("chat_send", ctxA, { chatId: open.result.chatId, message: "  " });
+    const r = await call("chat_send", ctxA, { chatId: open.result.chatId, message: "  " });
     assert.equal(r.ok, false);
     assert.equal(r.error, "empty_message");
   });
 
-  it("chat_history returns the full transcript", () => {
+  it("chat_history returns the full transcript", async () => {
     const p = makePersona();
     const open = call("chat_open", ctxA, { personaId: p.id });
-    call("chat_send", ctxA, { chatId: open.result.chatId, message: "hello" });
+    await call("chat_send", { ...ctxA, llm: { chat: async () => ({ text: "Hello." }) } }, { chatId: open.result.chatId, message: "hello" });
     const r = call("chat_history", ctxA, { chatId: open.result.chatId });
     assert.equal(r.ok, true);
     assert.equal(r.result.turns.length, 3);
   });
 
-  it("chat_send rejects a non-owner", () => {
+  it("chat_send rejects a non-owner", async () => {
     const p = makePersona(ctxA);
     call("publish", ctxA, { personaId: p.id });
     const open = call("chat_open", ctxA, { personaId: p.id });
-    const r = call("chat_send", ctxB, { chatId: open.result.chatId, message: "x" });
+    const r = await call("chat_send", ctxB, { chatId: open.result.chatId, message: "x" });
     assert.equal(r.ok, false);
     assert.equal(r.error, "not_chat_owner");
   });

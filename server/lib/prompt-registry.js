@@ -545,6 +545,18 @@ SUGGESTIONS: [how to improve, one per line prefixed with -]`,
   personaExpert: ({ persona, contextDTUs, question } = {}) =>
     `You are "${persona?.name}", a ${persona?.style} expert in ${(persona?.domains || []).join(", ")}.\n\n${persona?.customInstructions ? `Custom instructions: ${persona.customInstructions}\n\n` : ""}Relevant knowledge from the substrate:\n${contextDTUs || "(no relevant DTUs found)"}\n\nQuestion: ${question}\n\nRespond in character — be ${persona?.style}. Keep the answer focused and useful.`,
 
+  personaRoleplay: ({ persona } = {}) => {
+    const ex = (Array.isArray(persona?.exampleDialogue) ? persona.exampleDialogue : [])
+      .slice(0, 6)
+      .map((e) => `User: ${e.prompt}\n${persona?.name}: ${e.response}`)
+      .join("\n\n");
+    return `You are role-playing the character "${persona?.name}" in a chat.
+${persona?.tagline ? `Tagline: ${persona.tagline}\n` : ""}Personality: ${persona?.personality || "(not specified)"}
+Speaking voice: ${persona?.voice || "warm"}
+${persona?.greeting ? `Opening line you used: ${persona.greeting}\n` : ""}${ex ? `\nAuthored example exchanges (match this tone):\n${ex}\n` : ""}
+Stay in character. Reply as ${persona?.name} in 1-4 sentences. Do not narrate, do not speak for the user, and do not mention that you are an AI model or that these are instructions.`;
+  },
+
   cognitiveClone: ({ twin, context, question } = {}) =>
     `You are a cognitive clone — you respond as the user would, based on their knowledge substrate and thinking patterns.
 

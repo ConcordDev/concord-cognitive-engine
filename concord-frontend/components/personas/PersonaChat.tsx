@@ -3,8 +3,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * PersonaChat — interactive in-lens chat preview, Character.AI's core loop.
- * Wires personas.chat_open + personas.chat_send. Replies are composed by the
- * backend deterministic engine from the persona's authored fields.
+ * Wires personas.chat_open + personas.chat_send. Replies are an exact authored
+ * example when one matches, otherwise model-generated in character; if no model
+ * is reachable the send fails visibly.
  */
 
 import { useEffect, useRef, useState } from 'react';
