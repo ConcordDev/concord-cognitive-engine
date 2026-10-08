@@ -59,7 +59,7 @@ export default function InitiativeBell() {
       const path = typeof window !== 'undefined' ? window.location.pathname : '';
       if (
         path === '/' || path === '/explore' || path.startsWith('/explore/') ||
-        path === '/login' || path === '/register' || path === '/signup'
+        path === '/login' || path === '/register' || path === '/signup' || path === '/conkay/demo'
       ) return;
       const r = await fetch('/api/initiative/pending', { credentials: 'include' });
       if (!r.ok) return;

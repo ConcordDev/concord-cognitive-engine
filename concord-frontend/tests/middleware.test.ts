@@ -159,6 +159,31 @@ describe('Auth Middleware', () => {
     });
   });
 
+  describe('no-login ConKay demo', () => {
+    it('allows /conkay/demo without auth', () => {
+      middleware(makeRequest('/conkay/demo'));
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it('sends a logged-out /lenses/conkay visit to the demo, not to /login', () => {
+      middleware(makeRequest('/lenses/conkay'));
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      expect(mockRedirect.mock.calls[0][0].toString()).toBe('http://localhost:3000/conkay/demo');
+    });
+
+    it('lets a signed-in /lenses/conkay visit through to the full workspace', () => {
+      middleware(makeRequest('/lenses/conkay', { concord_auth: 'tok' }));
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it('other lenses still go to /login when logged out', () => {
+      middleware(makeRequest('/lenses/conkay-extra'));
+      expect(mockRedirect.mock.calls[0][0].toString()).toContain('/login?from=%2Flenses%2Fconkay-extra');
+    });
+  });
+
   describe('CSP nonce (security audit 2026-07-30, flipped to enforced same day)', () => {
     it('sets a fully-enforced Content-Security-Policy header on every response', () => {
       const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };

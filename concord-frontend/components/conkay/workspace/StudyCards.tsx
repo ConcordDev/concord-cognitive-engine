@@ -18,6 +18,8 @@ interface Props {
   onRun: () => void;
   onKeep: () => void;
   keeping: boolean;
+  /** Link text under "Not kept". The no-login demo uses it to say keeping needs an account. */
+  keepLabel?: string;
 }
 
 const card = 'flex min-w-0 items-center gap-2.5 rounded-xl border border-sky-400/15 bg-[#081423]/80 px-3 py-2.5';
@@ -32,7 +34,7 @@ function ago(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-export function StudyCards({ result, stale, status, onRun, onKeep, keeping }: Props) {
+export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keepLabel = 'Keep as DTU' }: Props) {
   const solving = status === 'solving';
   if (!result || stale) {
     return (
@@ -85,7 +87,7 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping }: Pr
             <>
               <p className="text-sm font-medium text-slate-300">Not kept</p>
               <button type="button" onClick={onKeep} disabled={keeping} className="text-[11px] text-sky-300 hover:underline disabled:opacity-60">
-                {keeping ? 'Keeping…' : 'Keep as DTU'}
+                {keeping ? 'Keeping…' : keepLabel}
               </button>
             </>
           )}
