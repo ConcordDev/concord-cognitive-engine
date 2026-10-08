@@ -198,17 +198,36 @@ describe("integrations scheduled / polling triggers", () => {
 });
 
 describe("integrations webhook test / activate / retry / signature", () => {
-  it("test-fires a webhook and records a signed delivery", () => {
-    const r = call("webhookTest", ctxA, { webhookId: "wh_1", url: "https://example.com/hook" });
+  const sent = [];
+  const okFetch = async (url, init) => { sent.push({ url, init }); return { ok: true, status: 204 }; };
+  const failFetch = async () => ({ ok: false, status: 500 });
+  const ctxOk = { ...ctxA, integrationsFetch: okFetch };
+  const ctxFail = { ...ctxA, integrationsFetch: failFetch };
+
+  it("test-fire really POSTs a signed payload and records the real response", async () => {
+    sent.length = 0;
+    const r = await call("webhookTest", ctxOk, { webhookId: "wh_1", url: "https://example.com/hook" });
     assert.equal(r.ok, true);
     assert.equal(r.result.delivered, true);
-    assert.match(r.result.signature, /^sha=/);
+    assert.equal(r.result.delivery.statusCode, 204);
+    assert.match(r.result.signature, /^sha256=[0-9a-f]{64}$/);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, "https://example.com/hook");
+    assert.equal(sent[0].init.headers["X-Concord-Signature"], r.result.signature);
     const deliveries = call("webhookDeliveries", ctxA, { webhookId: "wh_1" });
     assert.equal(deliveries.result.total, 1);
   });
 
-  it("fails a test-fire with no target URL", () => {
-    const r = call("webhookTest", ctxA, { webhookId: "wh_2" });
+  it("a non-2xx response is recorded as failed, not delivered", async () => {
+    const r = await call("webhookTest", ctxFail, { webhookId: "wh_1b", url: "https://example.com/hook" });
+    assert.equal(r.ok, false);
+    assert.equal(r.result.delivered, false);
+    assert.equal(r.result.delivery.status, "failed");
+    assert.equal(r.result.delivery.statusCode, 500);
+  });
+
+  it("fails a test-fire with no target URL", async () => {
+    const r = await call("webhookTest", ctxA, { webhookId: "wh_2" });
     assert.equal(r.ok, false);
   });
 
@@ -221,16 +240,18 @@ describe("integrations webhook test / activate / retry / signature", () => {
     assert.equal(call("webhookActivate", ctxA, {}).ok, false);
   });
 
-  it("retries a delivery with backoff and verifies signatures", () => {
-    const test = call("webhookTest", ctxA, { webhookId: "wh_4", url: "https://x.dev/h" });
-    const retry = call("webhookRetry", ctxA, { webhookId: "wh_4", deliveryId: test.result.delivery.id });
+  it("retries a delivery for real with backoff and verifies HMAC signatures", async () => {
+    const test = await call("webhookTest", ctxFail, { webhookId: "wh_4", url: "https://x.dev/h" });
+    sent.length = 0;
+    const retry = await call("webhookRetry", ctxOk, { webhookId: "wh_4", deliveryId: test.result.delivery.id });
     assert.equal(retry.ok, true);
     assert.equal(retry.result.attempt, 2);
+    assert.equal(retry.result.retry.status, "delivered");
+    assert.equal(sent[0].url, "https://x.dev/h");
     assert.ok(retry.result.nextBackoffSeconds > 0);
 
     const body = JSON.stringify({ event: "ping" });
-    // verifyWebhookSignature only knows the secret after the webhook has meta.
-    const bad = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: "sha=deadbeef" });
+    const bad = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: "sha256=deadbeef" });
     assert.equal(bad.ok, true);
     assert.equal(bad.result.valid, false);
     const good = call("verifyWebhookSignature", ctxA, { webhookId: "wh_4", body, signature: bad.result.expected });

@@ -346,20 +346,24 @@ describe("integrations — primitive evaluators (condition / formatter / code / 
 
 describe("integrations — webhook test, signature verify, and retry backoff (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("integrations-webhook"); });
+  // Webhook delivery goes through the SSRF-guarded fetch; tests inject a
+  // transport so the real request/response handling runs offline.
+  before(async () => {
+    ctx = await depthCtx("integrations-webhook");
+    ctx.integrationsFetch = async () => ({ ok: true, status: 200 });
+  });
 
   it("webhookTest with a url delivers and signs; without a url it refuses", async () => {
     const ok = await lensRun("integrations", "webhookTest", { params: { webhookId: "wh1", url: "https://hooks.example/x" } }, ctx);
     assert.equal(ok.ok, true);
     assert.equal(ok.result.delivered, true);
     assert.equal(ok.result.delivery.statusCode, 200);
-    assert.ok(ok.result.signature.startsWith("sha="));
+    assert.match(ok.result.signature, /^sha256=[0-9a-f]{64}$/);
 
     const noUrl = await lensRun("integrations", "webhookTest", { params: { webhookId: "wh2" } }, ctx);
     // handler returns { ok:false, result, error } — result IS present so it unwraps;
-    // delivered is false and status is no_url.
+    // nothing was sent, so delivered is false.
     assert.equal(noUrl.result.delivered, false);
-    assert.equal(noUrl.result.delivery.status, "no_url");
   });
 
   it("verifyWebhookSignature validates a correct signature and rejects a tampered one", async () => {
@@ -367,7 +371,7 @@ describe("integrations — webhook test, signature verify, and retry backoff (sh
     // Fire a test to ensure the webhook meta (and its secret) exists, then read deliveries.
     await lensRun("integrations", "webhookTest", { params: { webhookId: "wh3", url: "https://x", payload: JSON.parse(body) } }, ctx);
     // We don't know the secret, but verify can compute the expected sig itself.
-    const wrong = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: "sha=deadbeefdeadbeef" } }, ctx);
+    const wrong = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: "sha256=deadbeefdeadbeef" } }, ctx);
     assert.equal(wrong.result.valid, false);
     // Now feed back the expected signature it just told us → must validate.
     const good = await lensRun("integrations", "verifyWebhookSignature", { params: { webhookId: "wh3", body, signature: wrong.result.expected } }, ctx);

@@ -2,6 +2,9 @@
 // Domain actions for system integrations: API health checking, data flow
 // mapping, and version compatibility analysis.
 
+import crypto from "node:crypto";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+
 export default function registerIntegrationsActions(registerLensAction) {
   /**
    * apiHealthCheck
@@ -1032,26 +1035,41 @@ export default function registerIntegrationsActions(registerLensAction) {
       meta = {
         deliveries: [],
         retryPolicy: { maxAttempts: 3, backoffSeconds: [2, 8, 30] },
-        secret: `whsec_${Math.random().toString(36).slice(2, 18)}`,
+        secret: `whsec_${crypto.randomBytes(24).toString("hex")}`,
       };
       s.webhookMeta.set(webhookId, meta);
     }
     return meta;
   }
-  // Deterministic non-crypto signature (no node:crypto import needed here):
-  // a stable hash of the secret + body, hex-encoded.
+  // HMAC-SHA256 over the raw body with the webhook's secret, sent as
+  // X-Concord-Signature: sha256=<hex>.
   function signPayload(secret, body) {
-    const str = `${secret}.${body}`;
-    let h1 = 0x811c9dc5, h2 = 0xc2b2ae35;
-    for (let i = 0; i < str.length; i++) {
-      const c = str.charCodeAt(i);
-      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
-      h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;
-    }
-    return `sha=${h1.toString(16).padStart(8, "0")}${h2.toString(16).padStart(8, "0")}`;
+    return `sha256=${crypto.createHmac("sha256", String(secret)).update(String(body)).digest("hex")}`;
   }
 
-  registerLensAction("integrations", "webhookTest", (ctx, _artifact, params = {}) => {
+  // POST a signed payload to the webhook URL (SSRF-guarded) and measure it.
+  async function deliver(ctx, url, body, signature) {
+    const fetchImpl = typeof ctx?.integrationsFetch === "function" ? ctx.integrationsFetch : undefined;
+    const t0 = Date.now();
+    let timer;
+    try {
+      const res = await Promise.race([
+        fetchPublicUrl(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Concord-Signature": signature },
+          body,
+        }, fetchImpl ? { fetchImpl } : {}),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timed out after 10s")), 10000); }),
+      ]);
+      const statusCode = Number(res?.status) || 0;
+      return { delivered: statusCode >= 200 && statusCode < 300, statusCode, durationMs: Date.now() - t0, error: statusCode >= 300 || !statusCode ? `HTTP ${statusCode}` : null };
+    } catch (e) {
+      const error = e?.code === "SSRF_BLOCKED" ? "URL blocked (private or invalid address)" : String(e?.message || e);
+      return { delivered: false, statusCode: 0, durationMs: Date.now() - t0, error };
+    } finally { clearTimeout(timer); }
+  }
+
+  registerLensAction("integrations", "webhookTest", async (ctx, _artifact, params = {}) => {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const webhookId = params.webhookId;
@@ -1060,33 +1078,39 @@ export default function registerIntegrationsActions(registerLensAction) {
     const payload = params.payload || { event: "test.ping", timestamp: nowIso(), data: { message: "Test payload from Concord" } };
     const body = JSON.stringify(payload);
     const signature = signPayload(meta.secret, body);
-    // Test-fire delivery record. Status is success unless the URL is absent.
-    const hasUrl = !!params.url;
+    const url = typeof params.url === "string" ? params.url.trim() : "";
+    if (!url) {
+      return { ok: false, error: "Webhook has no target URL", result: { delivered: false, signature } };
+    }
+    const r = await deliver(ctx, url, body, signature);
     const delivery = {
       id: nextIntId("dlv"),
       event: payload.event || "test.ping",
       type: "test",
-      statusCode: hasUrl ? 200 : 0,
-      status: hasUrl ? "delivered" : "no_url",
+      url,
+      statusCode: r.statusCode,
+      status: r.delivered ? "delivered" : "failed",
+      ...(r.error ? { error: r.error } : {}),
       signature,
       attempt: 1,
-      durationMs: 40 + Math.floor(Math.random() * 120),
+      durationMs: r.durationMs,
       timestamp: nowIso(),
       payloadBytes: body.length,
+      body,
     };
     meta.deliveries.unshift(delivery);
     if (meta.deliveries.length > 100) meta.deliveries.length = 100;
     saveIntegrationsState();
     return {
-      ok: hasUrl,
+      ok: r.delivered,
+      ...(r.delivered ? {} : { error: `Delivery failed: ${r.error}` }),
       result: {
-        delivered: hasUrl,
+        delivered: r.delivered,
         delivery,
         signatureHeader: "X-Concord-Signature",
         signature,
-        message: hasUrl ? "Test payload delivered" : "Webhook has no target URL",
+        message: r.delivered ? `Delivered (HTTP ${r.statusCode}, ${r.durationMs} ms)` : `Delivery failed: ${r.error}`,
       },
-      error: hasUrl ? undefined : "Webhook has no target URL",
     };
   });
 
@@ -1128,7 +1152,7 @@ export default function registerIntegrationsActions(registerLensAction) {
 });
 
   // Webhook delivery retry with exponential backoff. Records each attempt.
-  registerLensAction("integrations", "webhookRetry", (ctx, _artifact, params = {}) => {
+  registerLensAction("integrations", "webhookRetry", async (ctx, _artifact, params = {}) => {
   try {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1141,21 +1165,26 @@ export default function registerIntegrationsActions(registerLensAction) {
       return { ok: false, error: `max retry attempts (${meta.retryPolicy.maxAttempts}) exhausted` };
     }
     const backoff = meta.retryPolicy.backoffSeconds[Math.min(attempt - 2, meta.retryPolicy.backoffSeconds.length - 1)];
-    const succeeds = params.simulateSuccess !== false;
-    const body = JSON.stringify({ event: original.event, retryOf: original.id });
+    if (!original.url) return { ok: false, error: "Original delivery has no URL to retry" };
+    const body = original.body || JSON.stringify({ event: original.event, retryOf: original.id });
+    const signature = signPayload(meta.secret, body);
+    const r = await deliver(ctx, original.url, body, signature);
     const retry = {
       id: nextIntId("dlv"),
       event: original.event,
       type: "retry",
       retryOf: original.id,
-      statusCode: succeeds ? 200 : 503,
-      status: succeeds ? "delivered" : "failed",
-      signature: signPayload(meta.secret, body),
+      url: original.url,
+      statusCode: r.statusCode,
+      status: r.delivered ? "delivered" : "failed",
+      ...(r.error ? { error: r.error } : {}),
+      signature,
       attempt,
       backoffSeconds: backoff,
-      durationMs: 40 + Math.floor(Math.random() * 120),
+      durationMs: r.durationMs,
       timestamp: nowIso(),
       payloadBytes: body.length,
+      body,
     };
     meta.deliveries.unshift(retry);
     if (meta.deliveries.length > 100) meta.deliveries.length = 100;
