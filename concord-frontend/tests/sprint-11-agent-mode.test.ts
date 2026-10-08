@@ -35,7 +35,7 @@ describe('Sprint 11B — Agent Mode panel', () => {
 
   test('renders artifact links inline when create_dtu fires', () => {
     expect(AGENT_SRC).toMatch(/artifact/i);
-    expect(AGENT_SRC).toContain('/lenses/dtu');
+    expect(AGENT_SRC).toContain('/dtu/');
   });
 
   test('shows tool call success/failure with check/x icons', () => {

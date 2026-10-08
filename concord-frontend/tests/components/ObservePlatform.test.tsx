@@ -213,7 +213,7 @@ function defaultHandler(action: string, params: Record<string, unknown>) {
     case 'oncallSetup':
       return envelope({ ok: true });
     case 'pageOnCall':
-      return envelope({ page: { pagedPerson: 'alice' }, routesNotified: 1 });
+      return envelope({ page: { pagedPerson: 'alice' }, routesMatched: 1, routesDelivered: 1 });
     case 'acknowledgePage':
       return envelope({ ok: true });
 
@@ -495,7 +495,7 @@ describe('ObservePlatform', () => {
 
     typeInto(screen.getByPlaceholderText('page summary'), 'on fire');
     fireEvent.click(screen.getByRole('button', { name: /Page now/i }));
-    await waitFor(() => expect(screen.getByText(/Paged alice · 1 routes notified/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/Paged alice · 1 of 1 routes delivered/)).toBeDefined());
 
     // add a person
     typeInto(screen.getByPlaceholderText('add person'), 'carol');
