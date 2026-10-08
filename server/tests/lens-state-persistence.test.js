@@ -10,6 +10,9 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   LENS_STATE_KEYS,
   serializeLensState,
@@ -66,7 +69,8 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     // audience snapshots, revenue entries, goals, demographics, membership
     // tiers, subscriptions, payouts, publish queue, and comments survive a
     // restart.
-    assert.equal(LENS_STATE_KEYS.length, 52);
+    assert.ok(LENS_STATE_KEYS.length >= 54);
+    assert.equal(new Set(LENS_STATE_KEYS).size, LENS_STATE_KEYS.length, "no duplicate keys");
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
@@ -93,9 +97,11 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("energyLens"));
     assert.ok(LENS_STATE_KEYS.includes("emergencyServicesLens"));
     assert.ok(LENS_STATE_KEYS.includes("electricalLens"));
+    assert.ok(LENS_STATE_KEYS.includes("answersLens"));
     assert.ok(LENS_STATE_KEYS.includes("defenseLens"));
     assert.ok(LENS_STATE_KEYS.includes("debugLens"));
     assert.ok(LENS_STATE_KEYS.includes("consultingLens"));
+    assert.ok(LENS_STATE_KEYS.includes("conLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -783,6 +789,40 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.defenseLens.comms.get("user_a").get("msg_1").acknowledged, true);
   });
 
+  it("roundtrips STATE.answersLens (questions, reputation, voteLog, notifications, watchedTags, subscriptions)", () => {
+    // The Answers domain stores per-user data under 6 Maps/Sets. Without
+    // answersLens in LENS_STATE_KEYS a restart wiped every question while
+    // the AnswersQA panel still showed it.
+    STATE.answersLens = {
+      questions: new Map([["user_a", [{ id: "q_1", title: "How does X work?", body: "Explain X.", tags: ["x"], authorId: "user_a", answers: [], comments: [], votes: 3, views: 10, acceptedAnswerId: null, bounty: 0, closed: false, closeReason: null, closeVotes: [], flags: [], duplicateOf: null, revisions: [], createdAt: "2026-10-05T00:00:00Z", updatedAt: "2026-10-05T00:00:00Z" }]]]),
+      reputation: new Map([["user_a", 42]]),
+      voteLog: new Map([["user_a", new Set(["question:q_1", "answer:a_1"])]]),
+      notifications: new Map([["user_a", [{ id: "n_1", kind: "answer", questionId: "q_1", message: "New answer", at: "2026-10-05T00:00:00Z" }]]]),
+      watchedTags: new Map([["user_a", new Set(["x", "y"])]]),
+      subscriptions: new Map([["user_a", new Set(["q_1"])]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.ok(STATE.answersLens.questions instanceof Map);
+    const q = STATE.answersLens.questions.get("user_a")[0];
+    assert.equal(q.title, "How does X work?");
+    assert.equal(q.votes, 3);
+    assert.ok(STATE.answersLens.reputation instanceof Map);
+    assert.equal(STATE.answersLens.reputation.get("user_a"), 42);
+    assert.ok(STATE.answersLens.voteLog instanceof Map);
+    assert.ok(STATE.answersLens.voteLog.get("user_a") instanceof Set);
+    assert.ok(STATE.answersLens.voteLog.get("user_a").has("question:q_1"));
+    assert.ok(STATE.answersLens.notifications instanceof Map);
+    assert.equal(STATE.answersLens.notifications.get("user_a")[0].kind, "answer");
+    assert.ok(STATE.answersLens.watchedTags instanceof Map);
+    assert.ok(STATE.answersLens.watchedTags.get("user_a") instanceof Set);
+    assert.ok(STATE.answersLens.watchedTags.get("user_a").has("x"));
+    assert.ok(STATE.answersLens.subscriptions instanceof Map);
+    assert.ok(STATE.answersLens.subscriptions.get("user_a") instanceof Set);
+    assert.ok(STATE.answersLens.subscriptions.get("user_a").has("q_1"));
+  });
+
   it("roundtrips STATE.debugLens (issues, traces, alerts, metrics, and releases)", () => {
     STATE.debugLens = {
       issues: new Map([["user_a", [{ id: "issue_1", message: "Cannot read property", status: "open", count: 2 }]]]),
@@ -836,6 +876,29 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.equal(STATE.consultingLens.allocations.get("user_a")[0].week, "2026-W41");
     assert.equal(STATE.consultingLens.timers.get("user_a").startedAt, 1234);
     assert.equal(STATE.consultingLens.shares.get("user_a")[0].approvalStatus, "approved");
+  });
+
+  it("roundtrips STATE.conLens (field records and project controls)", () => {
+    STATE.conLens = {
+      rfis: new Map([["user_a", [{ id: "rfi_1", number: "RFI-001", status: "answered", response: "Lower beam 6in" }]]]),
+      submittals: new Map([["user_a", [{ id: "sub_1", number: "SUB-001", status: "revise", reviewCycles: [{ action: "revise_resubmit" }] }]]]),
+      dailyLogs: new Map([["user_a", [{ id: "log_1", date: "2026-10-07", totalManHours: 44 }]]]),
+      punchItems: new Map([["user_a", [{ id: "punch_1", description: "Touch up paint", status: "closed" }]]]),
+      changeOrders: new Map([["user_a", [{ id: "co_1", jobId: "job_1", amount: 5000, status: "approved" }]]]),
+      drawings: new Map([["user_a", [{ id: "dwg_1", sheetNumber: "A-101", currentRevision: "B", revisions: [{ revision: "A" }, { revision: "B" }] }]]]),
+      budgets: new Map([["user_a", [{ id: "budget_1", costCode: "03-300", budgetAmount: 50000, actual: 30000 }]]]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+    for (const key of ["rfis", "submittals", "dailyLogs", "punchItems", "changeOrders", "drawings", "budgets"]) {
+      assert.ok(STATE.conLens[key] instanceof Map);
+    }
+    assert.equal(STATE.conLens.rfis.get("user_a")[0].response, "Lower beam 6in");
+    assert.equal(STATE.conLens.submittals.get("user_a")[0].reviewCycles[0].action, "revise_resubmit");
+    assert.equal(STATE.conLens.dailyLogs.get("user_a")[0].totalManHours, 44);
+    assert.equal(STATE.conLens.drawings.get("user_a")[0].revisions[1].revision, "B");
+    assert.equal(STATE.conLens.budgets.get("user_a")[0].budgetAmount, 50000);
   });
 
   it("roundtrips STATE.marketplaceLens.orders (a settled shop order)", () => {
@@ -1065,5 +1128,17 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
 
     assert.equal(STATE.chatLens.projects.get("user_a").get("proj_1").emoji, "🚀");
     assert.ok(STATE.worldLens.pinnedQuests.get("user_a").has("q1"));
+  });
+
+  it("every STATE.<x>Lens store a domain file assigns is in LENS_STATE_KEYS", () => {
+    const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "domains");
+    const re = /\bSTATE\.([a-zA-Z]+Lens)\s*(?:\|\||\?\?)?=[^=]/g;
+    const missing = new Set();
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith(".js")) continue;
+      const src = fs.readFileSync(path.join(dir, f), "utf8");
+      for (const m of src.matchAll(re)) if (!LENS_STATE_KEYS.includes(m[1])) missing.add(m[1]);
+    }
+    assert.deepEqual([...missing], [], "these lens stores would be wiped on restart: add them to LENS_STATE_KEYS");
   });
 });

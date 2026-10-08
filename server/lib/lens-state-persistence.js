@@ -115,17 +115,54 @@ export const LENS_STATE_KEYS = Object.freeze([
   // inspection checklists, one-lines, and material prices survive a restart.
   // The Electrical domain stores per-user arrays inside Maps here.
   "electricalLens",
-  // 49 -> 50: "defenseLens" so the common operating picture, mission
+  // 46 -> 47: "answersLens" so a user's questions, answers, comments,
+  // votes, reputation, notifications, watched tags, and subscriptions
+  // survive a restart. The Answers domain stores per-user Maps/Sets here;
+  // without this key a hard restart wiped every question while the
+  // AnswersQA panel still showed it.
+  "answersLens",
+  // 50 -> 51: "defenseLens" so the common operating picture, mission
   // tasks, assets, threats, personnel, supply requests, and comms log
   // survive a restart. The Defense domain stores nested per-user Maps here.
   "defenseLens",
-  // 50 -> 51: "debugLens" so issue records, measured traces, metric
+  // 51 -> 52: "debugLens" so issue records, measured traces, metric
   // samples, alert rules, and release records survive a restart.
   "debugLens",
-  // 51 -> 52: "consultingLens" so engagements, time entries, invoices,
+  // 52 -> 53: "consultingLens" so engagements, time entries, invoices,
   // proposals, staffing, expenses, timers, retainers, and portal approvals
   // survive a restart.
   "consultingLens",
+  // 53 -> 54: "conLens" so RFIs, submittals, daily logs, punch items,
+  // change orders, drawings, and budgets survive a hard backend restart.
+  "conLens",
+  // Persistence audit (2026-10): every STATE.<x>Lens store a domain file
+  // assigns but that was missing above, so its per-user data survives a restart.
+  "adminLens", "agentsLens", "allianceLens", "allLens", "animationLens", "anonLens",
+  "appMakerLens", "arLens", "artistryLens", "artLens", "attentionLens", "auditLens",
+  "automotiveLens", "billingLens", "blackMarketLens", "bountiesLens", "bridgeLens", "carpentryLens",
+  "classroomLens", "cognitionLens", "collabLens", "commandCenterLens", "commonsenseLens", "cookingLens",
+  "councilLens", "creativeLens", "criLens", "customLens", "dailyLens", "databaseLens",
+  "debateLens", "deitiesLens", "desertLens", "disputesLens", "diyLens", "docsLens",
+  "dtusLens", "dxPlatformLens", "environmentLens", "ethicsLens", "eventsLens", "expeditionJournalLens",
+  "experienceLens", "exportLens", "fashionLens", "feedLens", "filmLens", "forestryLens",
+  "forgeLens", "forkLens", "forumLens", "fractalLens", "galleryLens", "gameDesignLens",
+  "geologyLens", "goalsLens", "goddessLens", "governmentLens", "groundingLens", "historyLens",
+  "homeImprovementLens", "householdLens", "hrLens", "importLens", "inferenceLens", "ingestLens",
+  "integrationsLens", "invariantLens", "kingdomsLens", "labLens", "landscapingLens", "lawLens",
+  "legacyLens", "linguisticsLens", "lockLens", "logisticsLens", "manufacturingLens", "marketingLens",
+  "marketLens", "masonryLens", "materialsLens", "meditationLens", "mentalHealthLens", "mentorshipLens",
+  "metacognitionLens", "metalearningLens", "metaLens", "miningLens", "mlLens", "musicLens",
+  "neuroLens", "newsLens", "nonprofitLens", "observeLens", "oceanLens", "offlineLens",
+  "opsLens", "organLens", "paperLens", "parentingLens", "pharmacyLens", "philosophyLens",
+  "photographyLens", "platformLens", "plumbingLens", "podcastLens", "poetryLens", "productivityLens",
+  "psyopsLens", "quantumLens", "questmarketLens", "queueLens", "reasoningLens", "reflectionLens",
+  "reposLens", "resonanceLens", "roboticsLens", "rootLens", "sandboxLens", "savedLens",
+  "schemaLens", "securityLens", "selfLens", "sensorLens", "servicesLens", "simLens",
+  "socialLens", "spaceLens", "sponsorshipLens", "sportsLens", "subWorldsLens", "sufferingLens",
+  "supplychainLens", "systemLens", "temporalLens", "tickLens", "timelineLens", "toolsLens",
+  "tournamentsLens", "transferLens", "understandingLens", "urbanPlanningLens", "veterinaryLens", "voiceLens",
+  "voteLens", "walletLens", "weldingLens", "wellnessLens", "worldCreatorLens", "worldmodelLens",
+  "writingLens",
 ]);
 
 function serializeValue(v) {
