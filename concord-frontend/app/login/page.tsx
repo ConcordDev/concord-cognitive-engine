@@ -68,7 +68,7 @@ function LoginForm() {
             </div>
             <span className="text-3xl font-bold text-white">Concordos</span>
           </Link>
-          <p className="text-gray-300 mt-3">Sign in to your sovereign cognitive engine</p>
+          <p className="text-gray-300 mt-3">Sign in to Concord</p>
         </div>
 
         {/* Form card */}

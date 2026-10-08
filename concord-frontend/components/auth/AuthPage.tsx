@@ -156,7 +156,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
           <p className="text-sm text-gray-400">
             {mode === 'signin'
               ? 'Welcome back. Sign in to continue.'
-              : 'Get started with Concord Cognitive Engine.'}
+              : 'Get started with Concord.'}
           </p>
         </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Brain, Shield, Network, Sparkles,
-  ChevronRight, Lock, Eye, Zap,
+  ChevronRight, Zap, Cpu, Receipt, Sigma,
   Database, GitBranch, Layers, Activity
 } from 'lucide-react';
 
@@ -39,7 +39,7 @@ export function LandingPage(_props: LandingPageProps) {
         </div>
         <nav className="hidden md:flex items-center gap-6">
           <a href="#features" className="text-gray-400 hover:text-white transition-colors">Features</a>
-          <a href="#sovereignty" className="text-gray-400 hover:text-white transition-colors">Sovereignty</a>
+          <a href="#receipts" className="text-gray-400 hover:text-white transition-colors">Receipts</a>
           <a href="#architecture" className="text-gray-400 hover:text-white transition-colors">Architecture</a>
           <a
             href="/login"
@@ -74,8 +74,13 @@ export function LandingPage(_props: LandingPageProps) {
         <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-4">
           Every answer comes with its working: the formula, the inputs, the check, and a record you can re-run, starting with engineering, where ConKay checks a beam against the textbook hand calculation.
         </p>
-        <p className="text-base text-gray-400 max-w-2xl mx-auto mb-8">
+        <p className="text-base text-gray-400 max-w-2xl mx-auto mb-4">
           The same engine also powers music, art, games and a creator marketplace.
+        </p>
+        <p className="mb-8">
+          <a href="/conkay/demo" className="text-sm text-neon-cyan hover:underline">
+            Try the beam check now, no account needed →
+          </a>
         </p>
 
         {/* Trust Signal — above the fold, before CTA */}
@@ -86,7 +91,6 @@ export function LandingPage(_props: LandingPageProps) {
             <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-center">No data extraction.</span>
             <span className="px-4 py-2 rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green text-center">Free for all services.</span>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -109,7 +113,7 @@ export function LandingPage(_props: LandingPageProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20">
           <Hook title="One substrate" sub="Every lens, every domain, one shared memory." />
           <Hook title="Local-first AI" sub="Your models, your machine, your keys." />
-          <Hook title="Sovereign by design" sub="Data never leaves without your consent." />
+          <Hook title="Shows its work" sub="Formula, inputs, check and a record you can re-run." />
           <Hook title="Grows with you" sub="Ideas compound as you build." />
         </div>
       </section>
@@ -118,11 +122,11 @@ export function LandingPage(_props: LandingPageProps) {
       <section id="features" className="relative z-10 px-8 py-24 bg-lattice-deep/50">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-white">
-            A Complete Cognitive Architecture
+            One engine, many workspaces
           </h2>
           <p className="text-gray-400 text-center max-w-2xl mx-auto mb-16">
-            Concordos combines knowledge management, AI reasoning, and personal sovereignty
-            into one unified system.
+            Concordos puts knowledge, AI and real computation in one system, and shows
+            the working behind what it computes.
           </p>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -158,71 +162,60 @@ export function LandingPage(_props: LandingPageProps) {
             />
             <FeatureCard
               icon={<Layers className="w-6 h-6" />}
-              title="Sovereign by Design"
-              description="70% sovereignty lock with immutable ethical invariants. No telemetry, no ads, no secret monitoring. You own every byte."
+              title="Checked Answers"
+              description="Engineering numbers come from real solvers and are checked against the textbook hand calculation, with a receipt you can re-run."
               color="orange"
             />
           </div>
         </div>
       </section>
 
-      {/* Sovereignty Section */}
-      <section id="sovereignty" className="relative z-10 px-8 py-24">
+      {/* Receipts Section */}
+      <section id="receipts" className="relative z-10 px-8 py-24">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-sovereignty-locked/20 border border-sovereignty-locked/30 rounded-full text-sm text-sovereignty-locked mb-6">
-                <Shield className="w-4 h-4" />
-                <span>Immutable Guarantees</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-neon-cyan/10 border border-neon-cyan/30 rounded-full text-sm text-neon-cyan mb-6">
+                <Receipt className="w-4 h-4" />
+                <span>Show your work</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
-                The 70% Sovereignty Lock
+                Every number comes with a receipt
               </h2>
               <p className="text-gray-400 mb-8">
-                Core ethical invariants are hard-coded and immutable. Not even the system
-                can modify these protections. Your data sovereignty is not a feature -
-                it&apos;s a constitutional guarantee.
+                When Concord computes something, it keeps the working, so you can see how an
+                answer was reached and run it again yourself.
               </p>
 
               <div className="space-y-4">
-                <LockItem icon={<Eye className="w-5 h-5" />} label="NO_TELEMETRY" description="Zero data leaves without explicit consent" />
-                <LockItem icon={<Shield className="w-5 h-5" />} label="NO_ADS" description="No advertising, ever. Period." />
-                <LockItem icon={<Lock className="w-5 h-5" />} label="NO_EXTRACTION" description="Your thoughts can't be used for training" />
-                <LockItem icon={<Zap className="w-5 h-5" />} label="NO_NEGATIVE_VALENCE" description="System only creates constructive DTUs" />
+                <ReceiptItem icon={<Sigma className="w-5 h-5" />} label="FORMULA" description="The method and the equations used" />
+                <ReceiptItem icon={<Database className="w-5 h-5" />} label="INPUTS" description="Exactly what went in, with units" />
+                <ReceiptItem icon={<Shield className="w-5 h-5" />} label="CHECK" description="An independent check, such as the hand calculation" />
+                <ReceiptItem icon={<GitBranch className="w-5 h-5" />} label="RECORD" description="A record you can re-run to get the same answer" />
               </div>
             </div>
 
             <div className="relative">
-              <div className="bg-lattice-surface border border-lattice-border rounded-2xl p-8">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-sovereignty-locked/20 border-2 border-sovereignty-locked mb-4">
-                    <Lock className="w-10 h-10 text-sovereignty-locked" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">Sovereignty Status</h3>
+              <div className="bg-lattice-surface border border-lattice-border rounded-2xl p-8 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-neon-cyan/10 border-2 border-neon-cyan/60 mb-4">
+                  <Cpu className="w-10 h-10 text-neon-cyan" />
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-lattice-deep rounded-lg">
-                    <span className="text-gray-400">Core Lock</span>
-                    <span className="text-sovereignty-locked font-mono">70% IMMUTABLE</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-lattice-deep rounded-lg">
-                    <span className="text-gray-400">Data Location</span>
-                    <span className="text-sovereignty-locked font-mono">LOCAL ONLY</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-lattice-deep rounded-lg">
-                    <span className="text-gray-400">External Calls</span>
-                    <span className="text-sovereignty-locked font-mono">OPT-IN ONLY</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-lattice-deep rounded-lg">
-                    <span className="text-gray-400">Chicken2 Guard</span>
-                    <span className="text-sovereignty-locked font-mono">ACTIVE</span>
-                  </div>
-                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Try it on a steel beam</h3>
+                <p className="text-gray-400 mb-6">
+                  Size an I-beam, run the finite-element solver, and see stress, deflection and
+                  the hand check side by side. No account needed.
+                </p>
+                <a
+                  href="/conkay/demo"
+                  className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-blue text-white font-semibold hover:shadow-lg hover:shadow-neon-cyan/25 transition-all"
+                >
+                  Open the beam check
+                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </a>
               </div>
 
               {/* Decorative glow */}
-              <div className="absolute -inset-4 bg-sovereignty-locked/10 rounded-3xl blur-2xl -z-10" />
+              <div className="absolute -inset-4 bg-neon-cyan/5 rounded-3xl blur-2xl -z-10" />
             </div>
           </div>
         </div>
@@ -260,11 +253,11 @@ export function LandingPage(_props: LandingPageProps) {
       <section className="relative z-10 px-8 py-24">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
-            Ready to Own Your Mind?
+            See the working for yourself
           </h2>
           <p className="text-gray-400 text-lg mb-8">
-            Start building your sovereign knowledge empire today.
-            No data collected. Just pure cognitive power.
+            Create a free account to save your work, keep results as citable DTUs
+            and talk to ConKay about your designs.
           </p>
           <a
             href="/register"
@@ -284,10 +277,10 @@ export function LandingPage(_props: LandingPageProps) {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-blue flex items-center justify-center">
               <Brain className="w-4 h-4 text-white" />
             </div>
-            <span className="text-gray-400">Concordos Cognitive Engine</span>
+            <span className="text-gray-400">Concordos</span>
           </div>
           <p className="text-gray-400 text-sm">
-            Sovereign by design. Open by philosophy. Yours forever.
+            AI that shows its receipts.
           </p>
         </div>
       </footer>
@@ -341,12 +334,12 @@ function FeatureCard({
   );
 }
 
-function LockItem({ icon, label, description }: { icon: React.ReactNode; label: string; description: string }) {
+function ReceiptItem({ icon, label, description }: { icon: React.ReactNode; label: string; description: string }) {
   return (
     <div className="flex items-start gap-4 p-4 bg-lattice-surface border border-lattice-border rounded-lg">
-      <div className="text-sovereignty-locked mt-0.5">{icon}</div>
+      <div className="text-neon-cyan mt-0.5">{icon}</div>
       <div>
-        <div className="font-mono text-sovereignty-locked font-semibold">{label}</div>
+        <div className="font-mono text-neon-cyan font-semibold">{label}</div>
         <div className="text-gray-400 text-sm">{description}</div>
       </div>
     </div>
