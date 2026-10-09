@@ -2,8 +2,9 @@
 //
 // Occupant package. package.seat-count counts the Seat nodes a vehicle (or
 // any assembly) contains, so a "seats 4" requirement is judged on the design,
-// not on the brief. Seat geometry and occupant envelopes (hip point,
-// headroom, legroom) are not checked yet: coverage reports that gap.
+// not on the brief. Seat geometry and occupant envelopes (H-point,
+// headroom, legroom, clearances) are checked by package.occupant-fit and
+// package.interference (packaging.js) when the design has a package layout.
 
 import { registerSolver } from "../registry.js";
 

@@ -503,8 +503,10 @@ describe("Car brief from the component library (acceptance)", () => {
     assert.ok(!engine.props.massExcludes.some((x) => /M-6017-M50HM/.test(x)));
   });
 
-  it("every critical component is real now: the gate lists only the remaining issue, the tyre against the model's top speed", () => {
-    const r = carAcceptance(BRIEF);
+  it("every critical component is real now; without the package layout (packaging: false) nothing fails and the pass rests on caveats", () => {
+    // The occupant-fit and interference checks are in conkay-packaging.test.js; here the
+    // mass, top speed, limiter and tyre are judged on their own.
+    const r = carAcceptance(BRIEF, { packaging: false });
     assert.equal(r.ok, true, r.error);
     const rep = r.report;
     for (const c of rep.criticalComponents) assert.equal(c.status, "real", c.category);
@@ -569,11 +571,12 @@ describe("Car brief from the component library (acceptance)", () => {
     assert.ok(rep.caveats.some((c) => /speed limiter that is a design choice/.test(c) && /355\.\d km\/h/.test(c)));
     assert.ok(rep.caveats.some((c) => /Cd 0\.28 is unvalidated/.test(c)));
     assert.ok(rep.caveats.some((c) => /item\(s\) the parts' published masses exclude/.test(c)));
+    assert.ok(rep.caveats.some((c) => /Occupant fit and packaging are not checked/.test(c)), "no layout is a caveat, not a silent pass");
     for (const c of rep.components) assert.match(c.source, /^https:\/\//, c.node);
   });
 
   it("without the speed limiter the same car fails on the tyre against the unlimited model output (the physics is unchanged)", () => {
-    const rep = carAcceptance(BRIEF, { speedLimiter: false }).report;
+    const rep = carAcceptance(BRIEF, { speedLimiter: false, packaging: false }).report;
     assert.equal(rep.verdict, "not_physically_credible");
     assert.equal(rep.failures.length, 4);
     for (const f of rep.failures) assert.match(f, /TIRE_(FL|FR|RL|RR) established speed ≥ model top speed .* fails \(300 km\/h established vs \d+ km\/h model output\)/);
@@ -592,7 +595,7 @@ describe("Car brief from the component library (acceptance)", () => {
   });
 
   it("the Realization Package carries the mass breakdown and the acceptance result", () => {
-    const pkg = carAcceptance(BRIEF).session.realizationPackage().files;
+    const pkg = carAcceptance(BRIEF, { packaging: false }).session.realizationPackage().files;
     assert.ok(pkg["engineering/mass-breakdown.json"]);
     assert.ok(pkg["engineering/acceptance.json"]);
     assert.match(pkg["README.md"], /## Mass by state/);

@@ -1,0 +1,224 @@
+{
+ "version": "1.1.0",
+ "saeJ1100": {
+  "source": {
+   "title": "SAE J1100 Motor Vehicle Dimensions (Feb 2001), as incorporated by reference and posted by Public.Resource.Org",
+   "url": "https://archive.org/download/gov.law.sae.j1100.2001/sae.j1100.2001.html",
+   "retrieved": "2026-10-09"
+  },
+  "note": "SAE documents are sold by SAE; the 2001 revision is publicly posted because it is incorporated by reference in law. Definitions below are quoted or closely paraphrased from that copy; ConKay computes each dimension from its own geometry following the definition, and says where its geometry is a screening approximation.",
+  "definitions": {
+   "SgRP": {
+    "section": "3.11.2",
+    "text": "Seating Reference Point: the manufacturer's design reference point, a unique Design H-Point (the H-Point is the pivot center of the torso and thigh on the SAE J826 devices, section 3.11)."
+   },
+   "AHP": {
+    "section": "3.16.1",
+    "text": "Accelerator Heel Point: the lowest point at the intersection of the manikin heel and the depressed floor covering with the shoe on the undepressed accelerator pedal."
+   },
+   "BOF": {
+    "section": "3.16.2",
+    "text": "Ball of Foot: a point on a straight line tangent to the bottom of the manikin's shoe in side view, 203 mm from the Accelerator Heel Point.",
+    "valueMm": 203
+   },
+   "TorsoLine": {
+    "section": "3.18",
+    "text": "The line connecting the shoulder reference point and the H-Point (corresponds to the centerline of the head room probe in full back position of the H-Point machine)."
+   },
+   "H5": {
+    "section": "6.1.2",
+    "text": "SgRP-front to ground: measured vertically from the SgRP to ground."
+   },
+   "H30": {
+    "section": "6.1.5",
+    "text": "SgRP-front to heel: measured vertically from the SgRP-front to the Accelerator Heel Point."
+   },
+   "H31": {
+    "section": "6.2.5",
+    "text": "SgRP-second to heel: measured vertically from the SgRP-second to the heel point on the depressed floor covering."
+   },
+   "H61": {
+    "section": "6.1.12",
+    "text": "Effective head room-front: measured along a line 8 degrees rear of vertical from the SgRP-front to the headlining, plus 102 mm (4 in).",
+    "angleDeg": 8,
+    "addMm": 102
+   },
+   "H63": {
+    "section": "6.2.12",
+    "text": "Effective head room-second: measured along a line 8 degrees rear of vertical from the SgRP to the headlining, plus 102 mm (4 in).",
+    "angleDeg": 8,
+    "addMm": 102
+   },
+   "L34": {
+    "section": "6.1.23",
+    "text": "Effective SgRP leg room-accelerator: measured along a line from the Ankle Pivot Center to the SgRP-front plus 254 mm (10 in), right foot on the undepressed accelerator pedal.",
+    "addMm": 254
+   },
+   "L51": {
+    "section": "6.2.29",
+    "text": "Effective SgRP leg room-second: measured along a line from the Ankle Pivot Center to the SgRP-second plus 254 mm (10 in).",
+    "addMm": 254
+   },
+   "L40": {
+    "section": "6.1.25",
+    "text": "Torso (back) angle-front: the angle between a vertical line through the SgRP-front and the Torso Line."
+   },
+   "L48": {
+    "section": "6.2.27",
+    "text": "Minimum knee clearance-second: from the Knee Pivot Center to the back of the front seatback, minus 51 mm (2 in).",
+    "subtractMm": 51
+   },
+   "L50": {
+    "section": "6.2.28",
+    "text": "SgRP couple distance: measured horizontally from the driver SgRP-front to the SgRP-second."
+   },
+   "L53": {
+    "section": "6.1.29",
+    "text": "SgRP-front to heel: measured horizontally from the SgRP-front to the Accelerator Heel Point."
+   },
+   "L62": {
+    "section": "6.1.30",
+    "text": "Knee clearance-front: the minimum dimension in side view from the Knee Pivot Center to the nearest interference minus 51 mm (2 in).",
+    "subtractMm": 51
+   },
+   "L7": {
+    "section": "6.6.16",
+    "text": "Steering wheel torso clearance: the minimum dimension in side view from the rearmost edge of the steering wheel (front wheels straight ahead) to the Torso Line."
+   },
+   "W3": {
+    "section": "6.1.33",
+    "text": "Shoulder room-front: the minimum dimension measured laterally between the trimmed door or quarter trim surfaces on the X plane through the SgRP-front at the height between the belt line and 254 mm (10 in) above the SgRP-front.",
+    "aboveSgRPMm": 254
+   },
+   "W4": {
+    "section": "6.2.30",
+    "text": "Shoulder room-second: the minimum lateral dimension between trim surfaces on the X plane through the SgRP-second at a height between 254 and 406 mm (10 to 16 in) above the SgRP-second.",
+    "aboveSgRPMm": [
+     254,
+     406
+    ]
+   },
+   "W5": {
+    "section": "6.1.34",
+    "text": "Hip room-front: the minimum lateral dimension between the trimmed surfaces on the X plane through the SgRP-front within 25 mm below and 76 mm above the SgRP-front.",
+    "bandMm": [
+     -25,
+     76
+    ]
+   },
+   "H11": {
+    "section": "6.5.1",
+    "text": "Entrance height-front: measured vertically from the SgRP-front X plane to the upper trimmed body opening at the SgRP station."
+   },
+   "H17": {
+    "section": "6.6.4",
+    "text": "Accelerator heel point to steering wheel center (vertical)."
+   },
+   "L11": {
+    "section": "6.6.17",
+    "text": "Accelerator heel point to steering wheel center (horizontal)."
+   },
+   "classA": {
+    "section": "3.1.4.1",
+    "text": "Class A vehicles: H30 127 to 405 mm; H59 vertical H-point rise 0 to 50 mm; L23 seat track travel greater than 100 mm; W9 steering wheel diameter less than 450 mm; L40 torso angle-front 5 to 40 degrees.",
+    "H30Mm": [
+     127,
+     405
+    ],
+    "L23MinMm": 100,
+    "W9MaxMm": 450,
+    "L40Deg": [
+     5,
+     40
+    ]
+   }
+  }
+ },
+ "hybridIII50": {
+  "source": {
+   "title": "Humanetics, Hybrid III 50th Male technical product specification (hybiii50-tps)",
+   "url": "https://www.humaneticsgroup.com/sites/default/files/2020-11/hybiii50-tps.pdf",
+   "retrieved": "2026-10-09"
+  },
+  "inches": {
+   "totalSittingHeight": 34.8,
+   "hPointHeight": 3.4,
+   "hPointFromSeatBack": 5.4
+  },
+  "use": "H-point above the sitting surface and forward of the seat back, scaled to each occupant by sitting height (estimated: the dummy is one size; the ratio is assumed to hold across sizes)."
+ },
+ "airbagDistance": {
+  "source": {
+   "title": "Federal Register Vol. 65 No. 93 (May 12, 2000), 49 CFR Parts 552, 571, 585 and 595, Federal Motor Vehicle Safety Standards; Occupant Crash Protection (advanced air bag final rule), footnote 6",
+   "url": "https://www.govinfo.gov/content/pkg/FR-2000-05-12/html/00-11577.htm",
+   "retrieved": "2026-10-09"
+  },
+  "text": "a driver can avoid any serious air bag risks by sitting at least 10 inches away from the air bag (measured from the breastbone to the center of the air bag cover)",
+  "minMm": 254
+ },
+ "tkxClearance": {
+  "source": {
+   "title": "Silver Sport Transmissions, TKX 5-Speed Transmission Conversion Installation Manual MAG-00802E (GM X-body 1968-1974), Rev 0, 05/10/2022",
+   "url": "https://www.shiftsst.com/product_images/shiftsst/installation_instruction-instruction_file-139-v2.pdf",
+   "retrieved": "2026-10-09"
+  },
+  "text": "A minimum of 1/4 inch clearance around the entire transmission is required.",
+  "minMm": 6.35
+ },
+ "referenceVehicle": {
+  "label": "2023 Ford Mustang EcoBoost Fastback (S550, the platform the running gear comes from)",
+  "source": {
+   "title": "Car and Driver, 2023 Ford Mustang EcoBoost Fastback Features and Specs",
+   "url": "https://www.caranddriver.com/ford/mustang/specs/2023/ford_mustang_ford-mustang_2023",
+   "retrieved": "2026-10-09"
+  },
+  "inches": {
+   "wheelbase": 107.1,
+   "length": 188.3,
+   "width": 75.4,
+   "height": 54.4,
+   "frontTrack": 62.3,
+   "rearTrack": 64.9,
+   "frontHeadRoom": 37.6,
+   "frontLegRoom": 44.5,
+   "frontShoulderRoom": 56.3,
+   "frontHipRoom": 54.9,
+   "rearHeadRoom": 34.8,
+   "rearLegRoom": 30.6,
+   "rearShoulderRoom": 52.2,
+   "rearHipRoom": 47.4
+  },
+  "feet": {
+   "turningDiameterCurbToCurb": 36.5
+  },
+  "use": "published values of a production 2+2 for comparison only, not thresholds"
+ },
+ "umtriSeatPosition": {
+  "source": {
+   "title": "IIHS, Guidelines for Using the UMTRI ATD Positioning Procedure for ATD and Seat Positioning, Version VI (December 2022), Appendix: UMTRI calculations",
+   "url": "https://www.iihs.org/media/c69f048f-eb91-4269-ac63-0c0906f8abbe/lvxQLQ/Ratings/Protocols/current/UMTRI%20ATD%20positioning%20procedure_FINAL.pdf",
+   "retrieved": "2026-10-09"
+  },
+  "equation": "HPtX (mm aft of PRP) = -15.0 + 0.433 S + 0.41 W - 0.24/(1 - 0.3943 r) x (HPtRZ + r (HPtRX - 1054))",
+  "coefficients": {
+   "intercept": -15.0,
+   "stature": 0.433,
+   "wheel": 0.41,
+   "height": 0.24,
+   "riseTerm": 0.3943,
+   "riseRefMm": 1054
+  },
+  "terms": {
+   "S": "stature (the procedure uses 1511 mm for the 5th percentile female, 1753 mm for the 50th and 1870 mm for the 95th percentile male ATD)",
+   "W": "fore-aft distance between the PRP and the steering wheel centre",
+   "HPtRZ": "height of the H-point travel path above the heel rest surface (with r = 0, the H-point height above the heel)",
+   "r": "seat track rise dZ/dX (0 for a horizontal track)"
+  },
+  "prp": "The pedal reference point lies on the accelerator pedal surface at its lateral midline, 200 mm from the heel rest surface (section 1).",
+  "use": "The fore-aft H-point an occupant of stature S chooses in a given package (UMTRI's driver seat-position model), applied here with each ANSUR II stature. A population model of where drivers sit, not a hard limit."
+ },
+ "steeringLock": {
+  "method": "estimated: inner front-wheel lock angle from the reference S550's published curb-to-curb turning diameter, wheelbase and front track by Ackermann (bicycle-model) geometry: outer wheel sin(delta_o) = wheelbase / (turning diameter / 2), inner tan(delta_i) = wheelbase / (wheelbase / tan(delta_o) - front track). Treats the curb-to-curb circle as the outer front tyre's path and ignores scrub radius and tyre width.",
+  "inputs": "referenceVehicle: wheelbase 107.1 in, front track 62.3 in, turning diameter curb-to-curb 36.5 ft"
+ }
+}
