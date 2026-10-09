@@ -22,7 +22,7 @@ import { openDesign, listSolvers } from "../lib/conkay/index.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
 import { compileBrief } from "../lib/conkay/compiler/architectures.js";
-import { carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
+import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 
 const SESSION_CACHE_MAX = 64;
 const sessions = new Map(); // designId -> session (LRU by insertion order)
@@ -92,7 +92,7 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     return { ok: true, result: { parsed, feasibility: checkFeasibility(parsed, bounds) } };
   });
 
-  registerLensAction("conkay_design", "open", (ctx, _artifact, params) => {
+  registerLensAction("conkay_design", "open", async (ctx, _artifact, params) => {
     const userId = actor(ctx);
     if (!userId || userId === "anon") return { ok: false, error: "sign in to save a design" };
     const db = ctx?.db;
@@ -106,37 +106,39 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     db.prepare("INSERT INTO conkay_designs (id, owner_id, name, ir_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
       .run(id, userId, name, JSON.stringify(ir), ts, ts);
     cache(id, opened.session);
+    await opened.session.settle(); // external kernels (CAD body, drawing) run off the request path
     return { ok: true, result: view(id, { name }, opened.session) };
   });
 
-  registerLensAction("conkay_design", "from-brief", (ctx, artifact, params) => {
+  registerLensAction("conkay_design", "from-brief", async (ctx, artifact, params) => {
     const brief = String(params?.brief || "").slice(0, 4000);
     if (!brief.trim()) return { ok: false, error: "send a brief" };
     const c = compileBrief(brief);
     if (c.error) return { ok: false, error: c.error, parsed: c.parsed };
-    const opened = actions.open(ctx, artifact, { ir: c.ir });
+    const opened = await actions.open(ctx, artifact, { ir: c.ir });
     if (!opened.ok) return opened;
     return { ok: true, result: { ...opened.result, architecture: c.architecture, parsed: c.parsed, unmapped: c.unmapped } };
   });
 
-  registerLensAction("conkay_design", "car-acceptance", (_ctx, _artifact, params) => {
+  registerLensAction("conkay_design", "car-acceptance", async (_ctx, _artifact, params) => {
     const brief = String(params?.brief || "").slice(0, 4000);
     if (!brief.trim()) return { ok: false, error: "send a brief" };
-    const r = carAcceptance(brief);
+    const r = await carAcceptanceAsync(brief);
     if (!r.ok) return { ok: false, error: r.error, ...(r.errors ? { errors: r.errors } : {}) };
     return { ok: true, result: r.report };
   });
 
-  registerLensAction("conkay_design", "get", (ctx, _artifact, params) => {
+  registerLensAction("conkay_design", "get", async (ctx, _artifact, params) => {
     const db = ctx?.db;
     const row = db && loadRow(db, params?.designId, actor(ctx));
     if (!row) return { ok: false, error: "design not found" };
     const s = sessionFor(db, row);
     if (!s.ok) return { ok: false, error: s.error };
+    await s.session.settle();
     return { ok: true, result: view(row.id, row, s.session) };
   });
 
-  registerLensAction("conkay_design", "edit", (ctx, _artifact, params) => {
+  registerLensAction("conkay_design", "edit", async (ctx, _artifact, params) => {
     const db = ctx?.db;
     const row = db && loadRow(db, params?.designId, actor(ctx));
     if (!row) return { ok: false, error: "design not found" };
@@ -155,15 +157,17 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
         .run(row.id, entry.revision, entry.source, entry.text, JSON.stringify(entry.ops.map((o) => o.replay)), ts);
       db.prepare("UPDATE conkay_designs SET updated_at = ? WHERE id = ?").run(ts, row.id);
     })();
-    return { ok: true, result: { designId: row.id, ...report, summary: session.summary() } };
+    const settled = await session.settle();
+    return { ok: true, result: { designId: row.id, ...report, ...(settled.kernels ? { kernelRerun: settled.rerun } : {}), summary: session.summary() } };
   });
 
-  registerLensAction("conkay_design", "export", (ctx, _artifact, params) => {
+  registerLensAction("conkay_design", "export", async (ctx, _artifact, params) => {
     const db = ctx?.db;
     const row = db && loadRow(db, params?.designId, actor(ctx));
     if (!row) return { ok: false, error: "design not found" };
     const s = sessionFor(db, row);
     if (!s.ok) return { ok: false, error: s.error };
+    await s.session.settle();
     return { ok: true, result: { designId: row.id, revision: s.session.graph.revision, ...s.session.realizationPackage() } };
   });
 

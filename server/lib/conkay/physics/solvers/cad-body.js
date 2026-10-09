@@ -64,7 +64,7 @@ export const cadBody = registerSolver({
     const q = cadBodyRequest(ctx, id);
     if (q.notComputed) return q;
     const r = runBodyKernel(q.request);
-    if (!r.ok) return { notComputed: r.unavailable || r.error };
+    if (!r.ok) return { notComputed: r.pending ? r.reason : r.unavailable || r.error };
     const g = q.geometry;
     const skin = g.skinOffset;
     const failures = [];

@@ -6,9 +6,8 @@
 // that don't exist yet (STEP geometry, drawings, toolpaths) are listed as
 // missing in the README rather than left out silently.
 
-import fs from "node:fs";
-import path from "node:path";
 import { getMaterial } from "../materials/index.js";
+import { drawingContent } from "../physics/solvers/ga-drawing.js";
 
 const csvCell = (v) => {
   const s = v == null ? "" : String(v);
@@ -115,9 +114,10 @@ export function buildRealizationPackage(session) {
     const f = e.outputs.files.value;
     const rev = e.outputs.revision.value;
     for (const k of ["sheet1Svg", "sheet2Svg"]) {
-      try { drawingFiles[`manufacturing/drawings/${path.basename(f[k].path)}`] = fs.readFileSync(f[k].path, "utf8"); } catch { /* listed below as not copied */ }
+      const data = drawingContent(f[k].sha256);
+      if (data != null) drawingFiles[`manufacturing/drawings/${f[k].name}`] = data;
     }
-    drawingLines.push(`- ${e.target}: general arrangement CK-GA-${e.target} revision ${rev} (model hash ${e.outputs.modelHash.value}); sheets in manufacturing/drawings/, PDF ${f.pdf.path}; screening drawing, not for manufacture`);
+    drawingLines.push(`- ${e.target}: general arrangement CK-GA-${e.target} revision ${rev} (model hash ${e.outputs.modelHash.value}); sheets in manufacturing/drawings/, PDF ${f.pdf.name} (sha256 ${f.pdf.sha256}) via writeDrawingFiles; screening drawing, not for manufacture`);
   }
   for (const e of results.filter((x) => x?.solver?.id === "drawing.ga" && (x.status === "NOT_COMPUTED" || x.status === "ERROR"))) drawingLines.push(`- ${e.target}: drawing not computed (${e.reason || e.error})`);
   const coverage = session.coverage();

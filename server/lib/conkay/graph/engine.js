@@ -186,6 +186,23 @@ export class DesignEngine {
     };
   }
 
+  /** Recompute the given runs and everything that read their results (e.g. after an external kernel finished). */
+  rerun(ids) {
+    const stale = new Set(ids.filter((id) => this.runs.has(id)));
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const [id, run] of this.runs) {
+        if (stale.has(id)) continue;
+        if ([...run.reads].some((r) => r.startsWith("result:") && stale.has(r.slice(7)))) { stale.add(id); grew = true; }
+      }
+    }
+    for (const id of stale) this.runs.get(id).stale = true;
+    this.computedThisPass = [];
+    for (const id of stale) this.ensure(id);
+    return [...this.computedThisPass];
+  }
+
   results() {
     return [...this.runs.values()].map((r) => r.envelope);
   }
