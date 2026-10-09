@@ -11,8 +11,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-export { ENTITY_SCHEMA, CLAIM_SCHEMA, SCHEMA_VERSION, STATUS_FLAGS, SUPPORT_STATES, ENTITY_KINDS, validateEntityShape, validateClaimShape } from "./schema.js";
-export { validateClaim, makeClaim } from "./claims.js";
+export { ENTITY_SCHEMA, CLAIM_SCHEMA, SCHEMA_VERSION, STATUS_FLAGS, SUPPORT_STATES, ENTITY_KINDS, CLAIM_BINS, EXCLUSIVE_STATUSES, validateEntityShape, validateClaimShape } from "./schema.js";
+export { validateClaim, makeClaim, promotionGate } from "./claims.js";
+export { parseSpecMarkdown, summarizeSpec } from "./spec-parser.js";
 export { validateEntity } from "./validate.js";
 export { registerExtension, listExtensions, validateExtensions } from "./extensions/index.js";
 export { parseFormulationText, sourceFormulation, checkComposition, proposeVersion, processVersion, uniformRangePosition } from "./formulation.js";
@@ -29,6 +30,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Built-in fixtures (verbatim source texts). */
 export const FIXTURES = {
   "usb-blend-d": { file: "usb-blend-d.txt", author: "Dutch (Ramaj)", date: "2026-09-05", document: "~/.zuko/usb-formulas/blend-d-viscoelastic.md (as relayed 2026-10-09)" },
+  "sentinel-ram-spec-r1": { file: "sentinel-ram-spec-rev1.0.md", author: "Dutch (Ramaj)", date: "2026-10-09", document: "SENTINEL / RAM — Physics-Grounded Engineering Specification rev 1.0 (~/.zuko/remaining-work/SENTINEL-RAM-SPEC-2026-10-09.md), sha256 986817b3c27d840974f0969d2f1a5686f99ba0aa3065159822acfc5bca35419a" },
 };
 
 export function loadFixture(id) {

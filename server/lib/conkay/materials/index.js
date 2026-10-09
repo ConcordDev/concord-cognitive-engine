@@ -64,6 +64,18 @@ const FASTENERS = {
   },
 };
 
+// Structural alloys at their specification minimums (strength), for
+// allowable-stress screening. Density and modulus are handbook typical
+// values (specifications do not set them), cited separately.
+const SPECIFIED = {
+  "aluminum-6061-t6-b221": {
+    label: "Aluminum 6061-T6 extruded (ASTM B221 minimums)", category: "metal",
+    densityKgM3: 2700, youngsModulusPa: 68.9e9, poisson: 0.33,
+    yieldPa: 35 * KSI, ultimatePa: 38 * KSI, costPerKgUsd: null,
+    source: "ASTM B221 6061-T6: Ftu 38 ksi, Fty 35 ksi min (https://store.astm.org/b0221-21.html); density 2.70 g/cc and E 68.9 GPa typical per ASM/MatWeb 6061-T6 (https://www.aerospacemetals.com/wp-content/uploads/2023/06/Aluminum-6061-T6-6061-T651.pdf). Unwelded: a welded 6061-T6 heat-affected zone is much weaker and is not covered.",
+  },
+};
+
 // Handbook typical values for materials the engineering table lacks (the
 // plan's list: composites, rubber, glass, polycarbonate, foam, gear steel,
 // cast iron, copper). These are typical, not specified minimums, and are
@@ -131,6 +143,7 @@ const DATASHEET = {
 export const MATERIALS = Object.freeze({
   ...Object.fromEntries(Object.entries(GENERAL).map(([id, m]) => [id, Object.freeze(fromGeneral(id, m))])),
   ...Object.fromEntries(Object.entries(FASTENERS).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
+  ...Object.fromEntries(Object.entries(SPECIFIED).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
   ...Object.fromEntries(Object.entries(TYPICAL).map(([id, m]) => [id, Object.freeze({ id, basis: "typical", ...m })])),
   ...Object.fromEntries(Object.entries(DATASHEET).map(([id, m]) => [id, Object.freeze({ id, basis: "datasheet (nominal)", ...m })])),
 });

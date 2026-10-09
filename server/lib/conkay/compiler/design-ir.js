@@ -51,6 +51,9 @@ export const SHAPES = {
   "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
   // A panel or laminate: mass from area × thickness (no AABB, no solid block).
   shell: ["area", "thickness"],
+  // Rectangular hollow section (square/rect tube): outside width × height,
+  // uniform wall, sharp corners (corner radii not modelled).
+  "rect-tube": ["length", "width", "height", "wall"],
   // A closed body skin approximated as an ellipsoid of the given overall
   // length × width × height: area, mass and frontal area come from these.
   "ellipsoid-shell": ["length", "width", "height", "thickness"],
