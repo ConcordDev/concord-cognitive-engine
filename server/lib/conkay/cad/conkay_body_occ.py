@@ -25,7 +25,7 @@
 import sys, json, math, os, struct, hashlib, time
 
 from OCP.BRepTools import BRepTools
-from OCP.gp import gp_Pnt, gp_Vec, gp_Ax2, gp_Ax1, gp_Dir, gp_Trsf, gp_Lin, gp_GTrsf
+from OCP.gp import gp_Pnt, gp_Vec, gp_Ax2, gp_Ax1, gp_Dir, gp_Trsf, gp_Lin, gp_GTrsf, gp_Pln
 try:
     from OCP.TColgp import TColgp_HArray1OfPnt as HArrPnt
     from OCP.TColStd import TColStd_HArray1OfReal as HArrReal
@@ -1315,6 +1315,31 @@ def clearances_for(kind, boxes, solid, shell, surf):
     return [res[first[k]] for k in keys]
 
 
+def exact_extents(shape, axes=(0, 1, 2)):
+    """Exact extents along the given axes: BRepExtrema distance from the B-rep to a plane 1 m outside the
+    AddOptimal box on each side. AddOptimal alone is not tight on a large B-spline face (it was measured
+    0.5-12.6 mm outside the surface), so it only places the planes. Returns (min[3], max[3]); axes not
+    asked for keep the AddOptimal value."""
+    b0 = bbox(shape)
+    lo, hi = list(b0[:3]), list(b0[3:])
+    span = 4 * max(hi[i] - lo[i] for i in range(3)) + 10
+    out_lo, out_hi = list(lo), list(hi)
+    for ax in axes:
+        for sgn in (-1, 1):
+            o = [0.0, 0.0, 0.0]; o[ax] = (lo[ax] if sgn < 0 else hi[ax]) + sgn
+            n = [0.0, 0.0, 0.0]; n[ax] = 1.0
+            face = BRepBuilderAPI_MakeFace(gp_Pln(gp_Pnt(*o), gp_Dir(*n)), -span, span, -span, span).Face()
+            d = BRepExtrema_DistShapeShape(shape, face)
+            d.Perform()
+            if not d.IsDone():
+                raise RuntimeError("extents: BRepExtrema did not converge")
+            if sgn < 0:
+                out_lo[ax] = o[ax] + d.Value()
+            else:
+                out_hi[ax] = o[ax] - d.Value()
+    return out_lo, out_hi
+
+
 def bbox(shape):
     bx = Bnd_Box()
     _st(BRepBndLib, 'AddOptimal')(shape, bx, False, False)
@@ -1326,7 +1351,7 @@ def measure(solid, slices, lin=0.002, ang=0.1):
     vol = g.Mass(); cg = g.CentreOfMass()
     g2 = GProp_GProps(); _st(BRepGProp, 'SurfaceProperties')(solid, g2)
     area = g2.Mass(); scg = g2.CentreOfMass()
-    x0, y0, z0, x1, y1, z1 = bbox(solid)
+    (x0, y0, z0), (x1, y1, z1) = exact_extents(solid)
     # projected frontal area (onto the y-z plane), from the kernel's tessellation of the solid: at each
     # height the silhouette width is the measure of the union of the y-intervals where the plane cuts the
     # triangles (a connected section region projects onto the interval its boundary spans); midpoint rule
@@ -1534,7 +1559,7 @@ def build(req):
             raw, surf = loft(sections, P, span["floorMin"] if P["fairSigmaX"] > 0 else None)
             if P["fairSigmaX"] <= 0:
                 break
-            x0_, y0_, z0_, x1_, y1_, z1_ = bbox(raw)
+            (x0_, y0_, z0_), (x1_, y1_, z1_) = exact_extents(raw, axes=(1,))
             over = (y1_ - y0_) - P["maxWidth"] if P.get("maxWidth") else 0.0
             if over <= 1e-5:
                 break

@@ -311,7 +311,8 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     // the floor: the v2.0 loft dipped below its own solved floor; the faired one does not
     const floor = Math.min(...a.sections.filter((s) => s.zb != null).map((s) => s.zb));
     assert.ok(a.metrics.groundClearanceM >= floor - 1e-6, `${a.metrics.groundClearanceM} < ${floor}`);
-    assert.ok(v20.metrics.groundClearanceM < floor - 0.005, "regression evidence: the v2.0 loft sagged below the floor");
+    // regression evidence (exact extents): the v2.0 loft dips about 3.5 mm below its solved floor here
+    assert.ok(v20.metrics.groundClearanceM < floor - 0.002, `v2.0 lowest point ${v20.metrics.groundClearanceM} vs floor ${floor}`);
   });
 
   it("maxWidth: the fairing never cuts into the solved sections; a bound they exceed is reported, not met by cheating", () => {
