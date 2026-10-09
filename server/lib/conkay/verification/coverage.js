@@ -16,7 +16,7 @@ export const KIND_DOMAINS = {
   Tire: ["mass", "cost", "safety.tire-speed", "structural.load-index"],
   Seat: ["mass", "cost", "package.ergonomics", "safety.restraint"],
   Part: ["mass", "cost"],
-  Beam: ["mass", "cost", "structural.bending", "structural.buckling", "structural.deflection"],
+  Beam: ["mass", "cost", "structural.bending", "structural.buckling", "structural.deflection", "structural.chassis"],
 };
 
 export function coverage(graph, envelopes) {
