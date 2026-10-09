@@ -336,7 +336,8 @@ describe("Vehicle top speed", () => {
     const before = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
     const r = s.editText("set engine E1 power to 400 hp");
     assert.equal(r.ok, true, r.error);
-    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.top-speed@CAR1"]);
+    // required-power reruns too: its margin compares installed power with the need.
+    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.required-power@CAR1", "vehicle.top-speed@CAR1"]);
     const after = s.result("vehicle.top-speed@CAR1").outputs.topSpeed.value;
     assert.ok(after < before, "400 hp (298 kW) is a little less than 300 kW");
     assert.ok(Math.abs(s.graph.node("E1").props.maxPower - 400 * 745.6998715822702) < 1e-6);
@@ -346,7 +347,7 @@ describe("Vehicle top speed", () => {
     const s = open(car());
     const r = s.editText("set car CAR1 drag coefficient to 0.25");
     assert.equal(r.ok, true, r.error);
-    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.top-speed@CAR1"]);
+    assert.deepEqual([...r.rerun].sort(), ["requirement.check@VMAX", "vehicle.required-power@CAR1", "vehicle.top-speed@CAR1"]);
     assert.equal(s.graph.node("CAR1").props.vehicle.dragCoefficient, 0.25);
   });
 
@@ -623,5 +624,113 @@ describe("Brief → system tree", () => {
   it("a brief with no architecture yet says so", async () => {
     const { compileBrief } = await import("../lib/conkay/compiler/architectures.js");
     assert.match(compileBrief("greenhouse for 500 plants, under $40k").error, /no architecture/);
+  });
+});
+
+describe("Car brief, end to end (mechanism: illustrative parts, not a finished car)", () => {
+  const BRIEF = "a car that weighs 2,500 lb, does 180 mph, seats 4, with a futuristic aerodynamic look";
+  const part = (id, kind, material, geometry, x, z = 0.4) => ({ op: "add", node: { id, kind, material, geometry, position: { x: `${x} m`, y: "0 m", z: `${z} m` } } });
+  const shell = (area, t) => ({ shape: "shell", area, thickness: t });
+
+  async function buildCar() {
+    const { compileBrief } = await import("../lib/conkay/compiler/architectures.js");
+    const s = open(compileBrief(BRIEF).ir);
+    const adds = [
+      ["BODY", part("BODY_SHELL", "Part", "cfrp-quasi-iso", shell("12 m2", "3 mm"), 2.3, 0.7)],
+      ["BODY", part("GLAZING", "Part", "glass-soda-lime", shell("2.2 m2", "4 mm"), 2.0, 1.0)],
+      ["CHASSIS", part("RAIL_L", "Beam", "aluminum-6061-t6", { shape: "i-beam", length: "3.6 m", height: "120 mm", flangeWidth: "80 mm", flangeThickness: "6 mm", webThickness: "4 mm" }, 2.3, 0.25)],
+      ["CHASSIS", part("RAIL_R", "Beam", "aluminum-6061-t6", { shape: "i-beam", length: "3.6 m", height: "120 mm", flangeWidth: "80 mm", flangeThickness: "6 mm", webThickness: "4 mm" }, 2.3, 0.25)],
+      ["CHASSIS", part("TUB", "Part", "cfrp-quasi-iso", shell("6 m2", "5 mm"), 2.2, 0.35)],
+      ["POWERTRAIN", part("BLOCK", "Part", "aluminum-6061-t6", shell("3 m2", "8 mm"), 3.3, 0.45)],
+      ["DRIVELINE", part("GEARBOX", "Part", "aluminum-6061-t6", shell("1.4 m2", "6 mm"), 3.7, 0.35)],
+      ["SUSPENSION", part("ARMS", "Part", "steel-4140", shell("0.8 m2", "4 mm"), 2.3, 0.3)],
+      ["BRAKES", part("ROTORS", "Part", "cast-iron-gray-30", shell("0.4 m2", "28 mm"), 2.3, 0.33)],
+      ["ELECTRICAL", part("HARNESS", "Part", "copper-c11000", shell("0.5 m2", "2 mm"), 2.0, 0.4)],
+    ];
+    // Shape for the engine itself, the tyres and seats (already in the tree).
+    const r1 = s.edit(adds.map(([parent, op]) => ({ ...op, parent })));
+    assert.equal(r1.ok, true, r1.error);
+    const set = (node, path, value) => ({ node, path, value });
+    const r2 = s.edit([
+      set("VEH", "props.vehicle.dragCoefficient", 0.28), set("VEH", "props.vehicle.frontalArea", 1.9),
+      set("VEH", "props.vehicle.rollingResistance", 0.011), set("VEH", "props.vehicle.drivelineEfficiency", 0.9),
+      set("VEH", "props.vehicle.tireRadius", 0.33), set("VEH", "props.vehicle.gearRatios", [3.2, 2.1, 1.5, 1.15, 0.92, 0.72]),
+      set("VEH", "props.vehicle.finalDrive", 3.4), set("VEH", "props.vehicle.frontAxleX", 1.0), set("VEH", "props.vehicle.rearAxleX", 3.7),
+      set("ENGINE", "props.maxPower", 330e3), set("ENGINE", "props.redlineRpm", 7500), set("ENGINE", "props.peakPowerRpm", 7000),
+    ]);
+    assert.equal(r2.ok, true, r2.error);
+    return s;
+  }
+
+  it("parts without geometry are what still blocks the mass: engine, tyres, seats", async () => {
+    const s = await buildCar();
+    const e = s.result("mass.assembly@VEH");
+    assert.equal(e.status, "NOT_COMPUTED");
+    for (const id of ["ENGINE", "TIRE_FL", "SEAT_1"]) assert.match(e.reason + s.result("mass.assembly@WHEELS").reason + s.result("mass.assembly@INTERIOR").reason + s.result("mass.assembly@POWERTRAIN").reason, new RegExp(id));
+  });
+
+  it("with every part shaped, all targets are judged, three what-ifs rerun selectively, and the package exports", async () => {
+    const s = await buildCar();
+    // Give the engine, tyres and seats their geometry by replacing them with shaped nodes.
+    const ops = [];
+    for (const [id, parent, material, geometry, x, z] of [
+      ["ENGINE", "POWERTRAIN", "aluminum-6061-t6", shell("2.5 m2", "10 mm"), 3.3, 0.5],
+      ["TIRE_FL", "WHEELS", "rubber-natural", shell("1.2 m2", "10 mm"), 1.0, 0.33],
+      ["TIRE_FR", "WHEELS", "rubber-natural", shell("1.2 m2", "10 mm"), 1.0, 0.33],
+      ["TIRE_RL", "WHEELS", "rubber-natural", shell("1.3 m2", "10 mm"), 3.7, 0.33],
+      ["TIRE_RR", "WHEELS", "rubber-natural", shell("1.3 m2", "10 mm"), 3.7, 0.33],
+      ...[1, 2, 3, 4].map((i) => [`SEAT_${i}`, "INTERIOR", "cfrp-quasi-iso", shell("1.4 m2", "4 mm"), i <= 2 ? 2.0 : 2.9, 0.45]),
+    ]) {
+      const kind = s.graph.node(id).kind;
+      // Props go back in with their units, as a design would state them.
+      const props = kind === "Tire" ? { speedRating: "Y" } : kind === "Actuator" ? { maxPower: "330 kW", redlineRpm: 7500, peakPowerRpm: 7000 } : {};
+      ops.push({ op: "remove", node: id });
+      ops.push({ op: "add", parent, node: { id, kind, material, geometry, props, position: { x: `${x} m`, y: "0 m", z: `${z} m` } } });
+    }
+    const r = s.edit(ops);
+    assert.equal(r.ok, true, r.error);
+
+    const status = (id) => s.result(id).status;
+    const mass = s.result("mass.assembly@VEH").outputs.mass.value;
+    assert.ok(mass > 500 && mass < 1500, `mass ${mass}`);
+    assert.notEqual(status("requirement.check@REQ_mass"), "NOT_COMPUTED");
+    assert.notEqual(status("requirement.check@REQ_topSpeed"), "NOT_COMPUTED");
+    assert.equal(status("requirement.check@REQ_seats"), "PASS");
+    assert.notEqual(status("vehicle.gearing@VEH"), "NOT_COMPUTED");
+    assert.notEqual(status("tire.speed-rating@VEH"), "NOT_COMPUTED");
+    assert.notEqual(status("vehicle.axle-loads@VEH"), "NOT_COMPUTED");
+    const req = s.result("vehicle.required-power@VEH");
+    const v = 180 * 0.44704;
+    const expected = (0.5 * 1.225 * 0.28 * 1.9 * v ** 3 + 0.011 * mass * 9.80665 * v) / 0.9;
+    assert.ok(Math.abs(req.outputs.requiredPower.value - expected) / expected < 1e-9);
+
+    // What-if 1: more power reruns the speed checks, not the masses.
+    const w1 = s.editText("set engine ENGINE power to 450 hp");
+    assert.equal(w1.ok, true, w1.error);
+    assert.ok(w1.rerun.includes("vehicle.top-speed@VEH") && !w1.rerun.some((id) => id.startsWith("mass.")));
+    // What-if 2: a lighter body panel reruns mass and everything downstream of it.
+    const w2 = s.editText("set BODY_SHELL thickness to 2 mm");
+    assert.equal(w2.ok, true, w2.error);
+    for (const id of ["mass.part@BODY_SHELL", "mass.assembly@VEH", "vehicle.top-speed@VEH", "vehicle.required-power@VEH", "mass.cg@VEH"]) assert.ok(w2.rerun.includes(id), id);
+    assert.ok(!w2.rerun.includes("mass.part@RAIL_L"));
+    // What-if 3: slipperier body.
+    const w3 = s.editText("set car VEH drag coefficient to 0.25");
+    assert.equal(w3.ok, true, w3.error);
+    assert.ok(w3.rerun.includes("vehicle.required-power@VEH") && !w3.rerun.includes("mass.assembly@VEH"));
+
+    const pkg = s.realizationPackage().files;
+    for (const f of ["README.md", "engineering/requirements.json", "engineering/simulation-results.json", "engineering/verification.json", "manufacturing/bom.csv"]) assert.ok(pkg[f], f);
+    assert.match(pkg["manufacturing/bom.csv"], /BODY_SHELL,.*cfrp-quasi-iso/);
+    assert.match(pkg["README.md"], /Not in this package yet/);
+    assert.match(pkg["README.md"], /master\.step/);
+  });
+
+  it("a failed structural batch leaves the design as it was", async () => {
+    const s = await buildCar();
+    const n = s.graph.nodes.size;
+    const r = s.edit([{ op: "add", parent: "BODY", node: { id: "X1", kind: "Part" } }, { op: "add", parent: "NOPE", node: { id: "X2", kind: "Part" } }]);
+    assert.equal(r.ok, false);
+    assert.equal(s.graph.nodes.size, n);
+    assert.equal(s.graph.node("X1"), null);
   });
 });

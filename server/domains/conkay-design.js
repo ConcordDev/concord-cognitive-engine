@@ -14,6 +14,7 @@
 //   conkay_design.parse-brief { brief }             → numeric targets + unparsed intent
 //   conkay_design.feasibility { brief, bounds? }    → physics bound on whether any design could meet it
 //   conkay_design.from-brief  { brief }             → open a design: system tree + wired requirements
+//   conkay_design.export      { designId }          → the Realization Package (files as text)
 
 import crypto from "node:crypto";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
@@ -141,10 +142,19 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     const ts = nowIso();
     db.transaction(() => {
       db.prepare("INSERT INTO conkay_design_edits (design_id, revision, source, text, ops_json, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(row.id, entry.revision, entry.source, entry.text, JSON.stringify(entry.ops.map(({ node, path, after }) => ({ node, path, value: after }))), ts);
+        .run(row.id, entry.revision, entry.source, entry.text, JSON.stringify(entry.ops.map((o) => o.replay)), ts);
       db.prepare("UPDATE conkay_designs SET updated_at = ? WHERE id = ?").run(ts, row.id);
     })();
     return { ok: true, result: { designId: row.id, ...report, summary: session.summary() } };
+  });
+
+  registerLensAction("conkay_design", "export", (ctx, _artifact, params) => {
+    const db = ctx?.db;
+    const row = db && loadRow(db, params?.designId, actor(ctx));
+    if (!row) return { ok: false, error: "design not found" };
+    const s = sessionFor(db, row);
+    if (!s.ok) return { ok: false, error: s.error };
+    return { ok: true, result: { designId: row.id, revision: s.session.graph.revision, ...s.session.realizationPackage() } };
   });
 
   registerLensAction("conkay_design", "list", (ctx) => {

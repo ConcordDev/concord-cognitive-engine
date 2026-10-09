@@ -88,3 +88,57 @@ export const vehicleTopSpeed = registerSolver({
     };
   },
 });
+
+// Power the engine must deliver to hold the speed a requirement asks for:
+//   P = (½ρ·Cd·A·v³ + Crr·m·g·v) / η
+// The target speed comes from the design's own top-speed requirement, so
+// changing the requirement, the mass or the aero reruns this.
+export const vehicleRequiredPower = registerSolver({
+  id: "vehicle.required-power",
+  version: "1.0.0",
+  domain: "performance.power-sizing",
+  fidelity: 1,
+  method: "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
+  targets: (g) => g.nodesOfKind("Assembly")
+    .filter((n) => n.props?.vehicle && g.requirements.some((r) => r.of.solver === "vehicle.top-speed" && r.of.target === n.id && r.min))
+    .map((n) => n.id),
+  run(ctx, id) {
+    const req = ctx.graph.requirements.find((r) => r.of.solver === "vehicle.top-speed" && r.of.target === id && r.min);
+    const vReq = ctx.requirement(req.id)?.min?.si;
+    if (!Number.isFinite(vReq)) return { notComputed: "no top-speed requirement" };
+    const v = Object.fromEntries(["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency", "airDensity"]
+      .map((k) => [k, ctx.get(id, `props.vehicle.${k}`)]));
+    const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
+    if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
+    const massEnv = ctx.result("mass.assembly", id);
+    const m = massEnv?.outputs?.mass?.value;
+    if (!Number.isFinite(m)) return { notComputed: `no mass for ${id} (${massEnv?.reason || "mass roll-up missing"})` };
+    const rho = Number.isFinite(v.airDensity) ? v.airDensity : ISA_SEA_LEVEL_RHO;
+    const aero = 0.5 * rho * v.dragCoefficient * v.frontalArea * vReq ** 3;
+    const rolling = v.rollingResistance * m * G * vReq;
+    const required = (aero + rolling) / v.drivelineEfficiency;
+    const engines = contained(ctx, id, "Actuator");
+    const installed = engines.map((e) => ctx.get(e.id, "props.maxPower")).filter((w) => Number.isFinite(w) && w > 0);
+    const margins = installed.length === engines.length && engines.length
+      ? [{ check: "installed power ≥ power to reach the required top speed", demand: required, capacity: installed.reduce((s, w) => s + w, 0), unit: "W" }]
+      : [];
+    return {
+      inputs: {
+        requiredTopSpeed: { value: vReq, unit: "m/s", source: req.id },
+        mass: { value: m, unit: "kg", source: massEnv.runId },
+        dragCoefficient: { value: v.dragCoefficient, source: "given in the design (not computed from geometry)" },
+        frontalArea: { value: v.frontalArea, unit: "m2" },
+        rollingResistance: { value: v.rollingResistance },
+        drivelineEfficiency: { value: v.drivelineEfficiency },
+        airDensity: { value: rho, unit: "kg/m3", source: Number.isFinite(v.airDensity) ? "given in the design" : "ISA sea level, 15 °C" },
+      },
+      outputs: {
+        requiredPower: { value: required, unit: "W" },
+        aeroPower: { value: aero, unit: "W" },
+        rollingPower: { value: rolling, unit: "W" },
+      },
+      margins,
+      assumptions: ["Steady, level road, no wind.", engines.length ? "" : "No engine yet: this is the power to size one."].filter(Boolean),
+    };
+  },
+});

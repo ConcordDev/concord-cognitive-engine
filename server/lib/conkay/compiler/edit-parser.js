@@ -39,10 +39,14 @@ function resolveNodes(ref, graph) {
     const nodes = graph.nodesOfKind(KIND_WORDS[words[1]]);
     return nodes.length ? { nodes } : { error: `there are no ${words[1]} in this design` };
   }
-  const name = words.filter((w) => !KIND_WORDS[w]).join(" ");
-  const hits = [...graph.nodes.values()].filter((n) => n.id.toLowerCase() === name || n.name.toLowerCase() === name);
-  if (hits.length === 1) return { nodes: hits };
-  if (hits.length > 1) return { error: `"${ref}" matches ${hits.map((n) => n.id).join(", ")}` };
+  // Try the whole phrase, then without kind words ("bolt B1" → "b1"), then
+  // each word: a part can be named like a kind ("engine ENGINE").
+  const candidates = [words.join(" "), words.filter((w) => !KIND_WORDS[w]).join(" "), ...words].filter(Boolean);
+  for (const name of [...new Set(candidates)]) {
+    const hits = [...graph.nodes.values()].filter((n) => n.id.toLowerCase() === name || n.name.toLowerCase() === name);
+    if (hits.length === 1) return { nodes: hits };
+    if (hits.length > 1) return { error: `"${ref}" matches ${hits.map((n) => n.id).join(", ")}` };
+  }
   return { error: `no part called "${ref}"` };
 }
 
