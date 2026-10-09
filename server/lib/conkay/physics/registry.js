@@ -10,7 +10,10 @@
 // the one envelope every result uses, which is the receipt:
 //
 //   { runId, status: PASS|FAIL|WARN|NOT_COMPUTED|ERROR, solver, target,
-//     inputs, outputs, margins, warnings, assumptions, covers, provenance, runtimeMs }
+//     inputs, outputs, margins, failures, warnings, assumptions, covers, provenance, runtimeMs }
+//
+// A FAIL comes from a margin over 1, or from a named failure (a gate, such
+// as an acceptance check, whose reasons are not a demand/capacity ratio).
 //
 // No solver estimates a value it was not given the inputs for.
 //

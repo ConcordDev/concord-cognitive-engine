@@ -106,6 +106,42 @@ export class DesignGraph {
     return { ok: true, key: nodeKey(id, path), before, after: getPath(n, path) };
   }
 
+  /**
+   * Add a node (Design IR node spec, validated like the IR) under a parent
+   * with a CONTAINS edge. Returns { ok, node } or { ok:false, error }.
+   */
+  addNode(spec, parentId) {
+    if (spec?.id && this.nodes.has(spec.id)) return { ok: false, error: `a node "${spec.id}" already exists` };
+    if (parentId != null && !this.nodes.has(parentId)) return { ok: false, error: `no parent "${parentId}"` };
+    const c = compileDesignIR({ nodes: [spec] });
+    if (!c.ok) return { ok: false, error: c.errors.join("; ") };
+    const node = c.design.nodes[0];
+    this.nodes.set(node.id, node);
+    if (parentId != null) this.edgeList.push({ type: "CONTAINS", from: parentId, to: node.id, props: {} });
+    return { ok: true, node };
+  }
+
+  /**
+   * Remove a node and every edge touching it. Refused while loads or
+   * requirements still point at it. Returns what was removed, for undo.
+   */
+  removeNode(id) {
+    if (!this.nodes.has(id)) return { ok: false, error: `no node "${id}"` };
+    if (this.loadCases.some((lc) => lc.loads.some((l) => l.target === id))) return { ok: false, error: `${id} still carries loads` };
+    if (this.requirements.some((r) => r.of.target === id)) return { ok: false, error: `a requirement still points at ${id}` };
+    const node = this.nodes.get(id);
+    const edges = this.edgeList.filter((e) => e.from === id || e.to === id);
+    this.nodes.delete(id);
+    this.edgeList = this.edgeList.filter((e) => e.from !== id && e.to !== id);
+    return { ok: true, node, edges };
+  }
+
+  /** Put back what removeNode took out. */
+  restoreNode(node, edges) {
+    this.nodes.set(node.id, node);
+    this.edgeList.push(...edges);
+  }
+
   /** Effective material for a node: library properties plus user overrides. */
   materialOf(id) {
     const n = this.node(id);
