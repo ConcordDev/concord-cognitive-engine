@@ -21,6 +21,7 @@ import "./physics/solvers/geometry-stability.js";
 import "./physics/solvers/tube-actuation.js";
 import "./physics/solvers/electrical.js";
 import "./physics/solvers/energy-balance.js";
+import "./safety-case/solvers.js";
 
 export { listSolvers };
 

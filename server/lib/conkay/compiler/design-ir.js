@@ -25,6 +25,8 @@ export const NODE_KINDS = new Set([
   "Interface", "Process",
   // Common specializations of Part.
   "Bolt", "Plate",
+  // Safety case (lib/conkay/safety-case): functions → trains → components → supports.
+  "SafetyCase", "SafetyFunction", "SafetyTrain", "SafetyComponent", "SupportItem",
 ]);
 
 export const EDGE_TYPES = new Set([
