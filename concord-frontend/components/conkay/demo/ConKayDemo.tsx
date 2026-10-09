@@ -50,6 +50,9 @@ export function ConKayDemo() {
   const [result, setResult] = useState<BeamStudyResult | null>(null);
   const [status, setStatus] = useState<SolveStatus>('idle');
   const [error, setError] = useState('');
+  // One flag per kind of call, so one finishing can't hide another's notice.
+  const [warming, setWarming] = useState({ materials: false, solve: false, sweep: false });
+  const warm = (k: 'materials' | 'solve' | 'sweep', v: boolean) => setWarming((w) => ({ ...w, [k]: v }));
   const [view, setView] = useState<ViewPreset>('isometric');
   const [display, setDisplay] = useState<DisplayMode>('wire-stress');
   const [sweep, setSweep] = useState<DemoSweep | null>(null);
@@ -58,7 +61,8 @@ export function ConKayDemo() {
 
   useEffect(() => {
     let live = true;
-    void fetchDemoMaterials().then((r) => {
+    void fetchDemoMaterials({ onWarming: () => { if (live) warm('materials', true); } }).then((r) => {
+      if (live) warm('materials', false);
       if (!live) return;
       if (Array.isArray(r)) setMaterials(r);
       else setError(r.error);
@@ -75,7 +79,8 @@ export function ConKayDemo() {
   const run = useCallback(async () => {
     setStatus('solving');
     setError('');
-    const r = await solveDemoBeam(inputs);
+    const r = await solveDemoBeam(inputs, { onWarming: () => warm('solve', true) });
+    warm('solve', false);
     if ('error' in r) {
       setStatus('error');
       setError(r.error);
@@ -88,7 +93,8 @@ export function ConKayDemo() {
   const runSweep = useCallback(async () => {
     setSweeping(true);
     setSweepError('');
-    const r = await sweepDemoBeam(inputs, 'height', depthSweepValues(inputs.dims.height));
+    const r = await sweepDemoBeam(inputs, 'height', depthSweepValues(inputs.dims.height), { onWarming: () => warm('sweep', true) });
+    warm('sweep', false);
     setSweeping(false);
     if ('error' in r) { setSweep(null); setSweepError(r.error); return; }
     setSweep(r);
@@ -147,6 +153,7 @@ export function ConKayDemo() {
               </label>
             </div>
           </div>
+          {(warming.materials || warming.solve || warming.sweep) && <p role="status" className="px-1 text-xs text-amber-200">The server is warming up. Retrying…</p>}
           {error && <p role="alert" className="px-1 text-xs text-rose-300">{error}</p>}
           <StudyCards
             result={result}
