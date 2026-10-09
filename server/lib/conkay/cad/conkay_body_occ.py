@@ -25,7 +25,7 @@
 import sys, json, math, os, struct, hashlib, time
 
 from OCP.BRepTools import BRepTools
-from OCP.gp import gp_Pnt, gp_Ax2, gp_Ax1, gp_Dir, gp_Trsf, gp_Lin, gp_GTrsf
+from OCP.gp import gp_Pnt, gp_Vec, gp_Ax2, gp_Ax1, gp_Dir, gp_Trsf, gp_Lin, gp_GTrsf
 try:
     from OCP.TColgp import TColgp_HArray1OfPnt as HArrPnt
     from OCP.TColStd import TColStd_HArray1OfReal as HArrReal
@@ -61,7 +61,7 @@ from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
 from OCP.TopoDS import TopoDS_Compound
 from OCP.BRep import BRep_Builder
 
-KERNEL_VERSION = "2.0.0"
+KERNEL_VERSION = "2.1.0"
 
 
 def _st(cls, name):
@@ -501,7 +501,7 @@ def pod_feature(w, x, dx, zb, W_body, top_body, P):
             "tuck": P["podTuck"], "n": P["podExponent"], "wheel": w["id"], "t": t, "crown": top, "uOut": u_out}
 
 
-def solve_sections(req, extra):
+def solve_sections(req, extra, adj=None):
     P = req["params"]
     o = P["skinOffset"]
     boxes = [e for e in req["envelopes"] if e.get("enclose", True)]
@@ -616,8 +616,12 @@ def solve_sections(req, extra):
         secs.append({"x": x, "pts": pts,
                      "info": {"x": x, "zb": zb[i], "deck": bases[i], "W": W[i], "lowerTop": topL[i], "Wg": Wg[i], "zt": zt[i],
                               "pods": [{"wheel": f["wheel"], "t": f["t"], "crown": f["crown"], "uOut": f["uOut"]} for f in pods]}})
-    smooth_rows(secs, xs, P["rowSigma"], [zb[i] for i in range(n)])
-    return end_sections(secs, xs, P) , {"xmin": xmin, "xmax": xmax, "dx": dx}
+    floor_min = min(zb)
+    if P["fairSigmaX"] > 0:
+        fair_sections(secs, xs, zb, P, adj)
+    else:
+        smooth_rows(secs, xs, P["rowSigma"], [zb[i] for i in range(n)])
+    return end_sections(secs, xs, P) , {"xmin": xmin, "xmax": xmax, "dx": dx, "floorMin": floor_min}
 
 
 def smooth_rows(secs, xs, sigma, zb, iters=4, max_shift=0.015):
@@ -654,6 +658,215 @@ def smooth_rows(secs, xs, sigma, zb, iters=4, max_shift=0.015):
                 else:
                     new.append((y, z))
             s["pts"] = new
+
+
+# ------------------------------------------------------------ fairing (v2.1)
+#
+# The solved sections hold every requirement but vary from station to station (pods fading in and out,
+# per-station belt and width fits), and the loft interpolates them exactly, so the skin drapes between
+# them: a C2 surface whose curvature still wobbles. fair_sections replaces every section by a faired one:
+#   1. each section is written as a radius r(theta) about a centre (0, zc) on a smoothed centre line;
+#      R_req = the farthest crossing of the section outline along each ray (its radial hull: it contains
+#      the section, so every requirement point; the centre is inside every section);
+#   2. an upper bound U: the flat floor (z >= zb, so the ground clearance is not given away) and the
+#      widest half width of the solved sections (|y| <= ymax, so the overall width does not grow);
+#   3. F = a smooth field with R_req <= F <= U: a separable Gaussian (fairSigmaX metres along the car,
+#      fairSigmaTheta radians around the section) of R_req plus a correction grown only where the
+#      smoothed field falls short of R_req, clamped to U after every pass (projection onto the band);
+#   4. each faired section is resampled at equal arc-length fractions, like the solved ones.
+# F >= R_req at every station, so the clearances at the stations can only grow; between stations the
+# loft is checked by the exact clearance pass as before.
+
+def _ray_hit_max(poly, cy, cz, sy, cz_dir):
+    """Largest t >= 0 with (cy, cz) + t (sy, cz_dir) on the closed polygon (None if none)."""
+    best = None
+    n = len(poly)
+    for i in range(n):
+        (y0, z0), (y1, z1) = poly[i], poly[(i + 1) % n]
+        ey, ez = y1 - y0, z1 - z0
+        den = sy * ez - cz_dir * ey
+        if abs(den) < 1e-15:
+            continue
+        qy, qz = y0 - cy, z0 - cz
+        t = (qy * ez - qz * ey) / den
+        u = (qy * cz_dir - qz * sy) / den
+        if t >= 0 and -1e-12 <= u <= 1 + 1e-12 and (best is None or t > best):
+            best = t
+    return best
+
+
+def _taps_x(xs, sigma):
+    """Gaussian along the stations (sigma in metres, truncated at 3 sigma, renormalised at the ends), as
+    per-output tap lists [(source index, weight)]."""
+    n = len(xs)
+    out = []
+    for i in range(n):
+        row = [(j, math.exp(-0.5 * ((xs[i] - xs[j]) / sigma) ** 2)) for j in range(n) if abs(xs[i] - xs[j]) <= 3 * sigma] if sigma > 0 else [(i, 1.0)]
+        tot = sum(w for _, w in row)
+        out.append([(j, w / tot) for j, w in row])
+    return out
+
+
+def _taps_theta(m, dth, sigma):
+    """Gaussian around the half section (sigma in radians), mirrored at theta = 0 and pi (the section is
+    symmetric), as per-output tap lists [(source index, weight)] (mirrored taps merged)."""
+    if sigma <= 0:
+        return [[(k, 1.0)] for k in range(m)]
+    h = int(3 * sigma / dth) + 1
+    w = [math.exp(-0.5 * (j * dth / sigma) ** 2) for j in range(-h, h + 1)]
+    ws = sum(w)
+    out = []
+    for k in range(m):
+        acc = {}
+        for j, wj in zip(range(-h, h + 1), w):
+            q = k + j
+            while q < 0 or q > m - 1:
+                q = -q if q < 0 else 2 * (m - 1) - q
+            acc[q] = acc.get(q, 0.0) + wj / ws
+        out.append(sorted(acc.items()))
+    return out
+
+
+def _transpose(taps, n_src):
+    t = [[] for _ in range(n_src)]
+    for o, row in enumerate(taps):
+        for src, w in row:
+            t[src].append((o, w))
+    return t
+
+
+def fair_sections(secs, xs, zb, P, adj=None, iters=2000, tol=1e-5):
+    m = (len(secs[0]["pts"]) - 0) // 2  # points per half outline minus one (roof centre .. floor centre)
+    na = int(P["fairAngles"]) * m  # rays per half section
+    ths = [math.pi * k / na for k in range(na + 1)]  # 0 = straight up, pi = straight down (the +y half)
+    dth = math.pi / na
+    adj = adj or {}
+    ymax = max(abs(y) for s in secs for y, _ in s["pts"])
+    if P.get("maxWidth"):
+        ymax = min(ymax, 0.5 * P["maxWidth"])
+    ymax -= adj.get("widthTrim", 0.0)  # the loft overshoots the sections slightly: build() trims the cap
+    zlo = [min(z for _, z in s["pts"]) for s in secs]
+    zhi = [max(z for _, z in s["pts"]) for s in secs]
+    zc = gauss(xs, [0.5 * (a + b) for a, b in zip(zlo, zhi)], max(P["fairSigmaX"], 0.3))
+    zc = [min(max(c, a + 0.05), b - 0.05) for c, a, b in zip(zc, zlo, zhi)]  # well inside every section
+    req, up = [], []
+    for s, c, f in zip(secs, zc, zb):
+        rr, uu = [], []
+        for th in ths:
+            sy, sz = math.sin(th), math.cos(th)
+            t = _ray_hit_max(s["pts"], 0.0, c, sy, sz)
+            if t is None:
+                raise RuntimeError(f"fairing: the centre at x {s['x']:.3f} is outside its section")
+            u = 1e9
+            if sz < -1e-12:
+                u = min(u, (c - f) / -sz)  # floor
+            if sy > 1e-12:
+                u = min(u, ymax / sy)  # width
+            rr.append(t); uu.append(max(u, t))
+        req.append(rr); up.append(uu)
+    sx, st = P["fairSigmaX"], P["fairSigmaTheta"]
+    tx, tt = _taps_x(xs, sx), _taps_theta(len(ths), dth, st)
+    srcx, srct = _transpose(tx, len(xs)), _transpose(tt, len(ths))
+    nx, nt = len(xs), len(ths)
+    # G (R_req + c), G the separable Gaussian; c grows only where the clamped field min(G(.), U) is short of
+    # R_req. G is linear, so after the first full pass the field is updated from the changed c only.
+    tmp = [[sum(w * req[j][k] for j, w in tx[i]) for k in range(nt)] for i in range(nx)]
+    Fu = [[sum(w * tmp[i][q] for q, w in tt[k]) for k in range(nt)] for i in range(nx)]
+    corr = [[0.0] * nt for _ in xs]
+    worst = 0.0
+    for it in range(iters):
+        worst = 0.0
+        delta = []
+        for i in range(nx):
+            fi, ri, ui = Fu[i], req[i], up[i]
+            for k in range(nt):
+                d = ri[k] - min(fi[k], ui[k])
+                if d > 0:
+                    delta.append((i, k, d))
+                    if d > worst:
+                        worst = d
+        if worst <= tol:
+            break
+        for j, q, d in delta:
+            corr[j][q] += d
+            for i, wi in srcx[j]:
+                row = Fu[i]
+                for k, wk in srct[q]:
+                    row[k] += d * wi * wk
+    F = [[min(v, u) for v, u in zip(fr, ur)] for fr, ur in zip(Fu, up)]
+    _FAIR_STATS.update(iterations=it + 1, residualM=worst, sigmaXM=sx, sigmaThetaRad=st, rays=na + 1, widthCapM=2 * ymax,
+                       widthTrimM=adj.get("widthTrim", 0.0), centreLine=[r6(v) for v in zc])
+    for s, c, fr, rr, ur in zip(secs, zc, F, req, up):
+        dense = [(max(v, q) if v < q else min(v, u)) for v, q, u in zip(fr, rr, ur)]  # residual (<= tol) clamped
+        half = [(r_ * math.sin(th), c + r_ * math.cos(th)) for r_, th in zip(dense, ths)]
+        half[0] = (0.0, half[0][1]); half[-1] = (0.0, half[-1][1])
+        h = resample_half(half, m)
+        h[0] = (0.0, half[0][1]); h[-1] = (0.0, half[-1][1])
+        s["pts"] = h + [(-y, z) for (y, z) in reversed(h[1:-1])]
+        s["info"]["fairCentreZ"] = c
+
+
+_FAIR_STATS = {}
+
+
+def fairness(surf, body_x=None, nu=120, nv=320, kmin=0.05):
+    """Fairness of the lofted side surface (untrimmed), sampled on an nu x nv grid of its parameters:
+    along the car (v rows) and around the sections (u rows), the normal curvature k in that direction,
+    the number of sign changes of k where |k| > kmin (inflections; 1/kmin = 20 m radius), and the RMS of
+    dk/ds over the arc length (1/m^2). A fair surface has few inflections and a small dk/ds."""
+    u1, u2, v1, v2 = surf.Bounds()
+    P = gp_Pnt(); du = gp_Vec(); dv = gp_Vec(); duu = gp_Vec(); dvv = gp_Vec(); duv = gp_Vec()
+    us = [u1 + (u2 - u1) * (j + 0.5) / nu for j in range(nu)]
+    vs = [v1 + (v2 - v1) * i / (nv - 1) for i in range(nv)]
+    kv = [[0.0] * nv for _ in us]; sv = [[0.0] * nv for _ in us]
+    ku = [[0.0] * nu for _ in vs]; su = [[0.0] * nu for _ in vs]
+    for j, u in enumerate(us):
+        for i, v in enumerate(vs):
+            surf.D2(u, v, P, du, dv, duu, dvv, duv)
+            n = du.Crossed(dv)
+            ln = n.Magnitude()
+            if ln < 1e-14:
+                continue
+            n.Divide(ln)
+            kv[j][i] = dvv.Dot(n) / max(dv.Dot(dv), 1e-18)
+            ku[i][j] = duu.Dot(n) / max(du.Dot(du), 1e-18)
+            sv[j][i] = dv.Magnitude()
+            su[i][j] = du.Magnitude()
+    def stats(rows, speeds, step, periodic, keep=None):
+        flips = 0; e = 0.0; L = 0.0; peak = 0.0
+        for k_, s_ in zip(rows, speeds):
+            last = 0
+            idx = [i for i in range(len(k_)) if keep is None or keep(i)] + ([0] if periodic else [])
+            for a, b in zip(idx, idx[1:]):
+                if b != a + 1 and not (periodic and b == 0):
+                    continue
+                ds = 0.5 * (s_[a] + s_[b]) * step
+                if ds <= 0:
+                    continue
+                g = (k_[b] - k_[a]) / ds
+                e += g * g * ds; L += ds; peak = max(peak, abs(g))
+            for i_ in idx[:len(idx) - (1 if periodic else 0)]:
+                v_ = k_[i_]
+                sg = 1 if v_ > kmin else (-1 if v_ < -kmin else 0)
+                if sg and last and sg != last:
+                    flips += 1
+                if sg:
+                    last = sg
+        return {"inflections": flips, "rmsDkDs": r6(math.sqrt(e / L)) if L else None, "maxDkDs": r6(peak)}
+    out = {"alongCar": stats(kv, sv, (v2 - v1) / (nv - 1), False),
+           "aroundSection": stats(ku, su, (u2 - u1) / nu, True),
+           "grid": [nu, nv], "kminPerM": kmin}
+    if body_x:
+        a, b = body_x
+        region = {"nose": lambda i: vs[i] < a, "body": lambda i: a <= vs[i] <= b, "tail": lambda i: vs[i] > b}
+        out["regions"] = {"bodyX": [r6(a), r6(b)]}
+        for name, inside_ in region.items():
+            rows_u = [row for i, row in enumerate(ku) if inside_(i)]
+            sp_u = [row for i, row in enumerate(su) if inside_(i)]
+            out["regions"][name] = {"alongCar": stats(kv, sv, (v2 - v1) / (nv - 1), False, inside_),
+                                    "aroundSection": stats(rows_u, sp_u, (u2 - u1) / nu, True) if rows_u else None}
+    return {**out,
+            "method": "normal curvature of the B-spline side surface (OCP D2) along each parameter direction on a uniform parameter grid; inflections = sign changes of k beyond +/-kmin; rmsDkDs = sqrt(integral (dk/ds)^2 ds / integral ds), finite differences"}
 
 
 def poly_area(pts):
@@ -700,6 +913,59 @@ def round_section(pts, n):
 
 
 def end_sections(secs, xs, P):
+    """Nose: the first section drawn forward to a low tip (noseTipHeight above the ground) with a
+    pointed side and plan profile (exponent noseShapeExponent < 2 is sharper than an ellipse).
+    Tail: a Kamm tail, the last section tapered so that the truncated end face has kammAreaRatio of the
+    largest section's area (roof drawn down more than the floor is raised), then cut off flat.
+    With fairEnds (v2.1) the end sections are spaced at the station pitch and every scale and blend is a
+    C1 function of the distance from the body (zero slope where it meets the first and last stations), so
+    the loft does not ripple where the body turns into the nose and the tail; without it, the v2.0 ends."""
+    if not P.get("fairEnds"):
+        return end_sections_v20(secs, xs, P)
+    first, last = secs[0], secs[-1]
+    Ln, Lt = P["noseExtension"], P["tailExtension"]
+    p = P["noseShapeExponent"]
+    tip, tipw = P["endTipFraction"], P["endTipWidthFraction"]
+    ztip = P["noseTipHeight"]
+    dx = (xs[-1] - xs[0]) / max(len(xs) - 1, 1)
+    smooth = lambda f: f * f * (3.0 - 2.0 * f)  # smoothstep: 0 -> 1 with zero slope at both ends
+    taper = lambda f: (1.0 - f ** p) ** (1.0 / p)  # 1 -> 0, zero slope at f = 0 (p > 1)
+    nose = []
+    rounded = round_section(first["pts"], P["noseRoundExponent"])
+    kn = max(3, int(math.ceil(Ln / dx)))
+    for k in range(kn, 0, -1):  # tip first (the loft runs from the nose to the tail)
+        f = k / kn
+        s = tip + (1.0 - tip) * taper(f)
+        sw = tipw + (1.0 - tipw) * taper(f)
+        w = smooth(f)  # the fender pods fade into a rounded nose section toward the tip
+        x = xs[0] - f * Ln
+        base = [((1 - w) * y + w * yr, (1 - w) * z + w * zr) for (y, z), (yr, zr) in zip(first["pts"], rounded)]
+        pts = [(y * sw, ztip + (z - ztip) * s) for y, z in base]
+        nose.append({"x": x, "pts": pts, "info": {"x": x, "nose": f, "scaleH": s, "scaleW": sw}})
+    amax = max(poly_area(q["pts"]) for q in secs)
+    a0 = poly_area(last["pts"])
+    target = min(1.0, P["kammAreaRatio"] * amax / a0) if a0 > 0 else 1.0
+    zs_ = [z for _, z in last["pts"]]
+    zlo, zhi = min(zs_), max(zs_)
+    anchor = zlo + 0.25 * (zhi - zlo)  # the roof comes down more than the floor goes up
+    kw = target ** 0.35
+    kh = target / kw
+    tail = []
+    rounded_t = round_section(last["pts"], P["noseRoundExponent"])
+    kt = max(2, int(math.ceil(Lt / dx)))
+    for k in range(1, kt + 1):
+        f = k / kt
+        sw = 1.0 - (1.0 - kw) * f ** 1.5
+        sh = 1.0 - (1.0 - kh) * f ** 1.3
+        x = xs[-1] + f * Lt
+        w = P["tailRound"] * smooth(f)  # the pods may fade partly into a rounded tail section toward the cut
+        base = [((1 - w) * y + w * yr, (1 - w) * z + w * zr) for (y, z), (yr, zr) in zip(last["pts"], rounded_t)]
+        pts = [(y * sw, anchor + (z - anchor) * sh) for y, z in base]
+        tail.append({"x": x, "pts": pts, "info": {"x": x, "tail": f, "scaleH": sh, "scaleW": sw}})
+    return nose + secs + tail
+
+
+def end_sections_v20(secs, xs, P):
     """Nose: the first section drawn forward to a low tip (noseTipHeight above the ground) with a
     pointed side and plan profile (exponent noseShapeExponent < 2 is sharper than an ellipse).
     Tail: a Kamm tail, the last section tapered so that the truncated end face has kammAreaRatio of the
@@ -755,7 +1021,7 @@ def section_curve(s):
     return it.Curve()
 
 
-def loft(sections, P):
+def loft(sections, P, floor_min=None):
     """Skin the sections: a periodic cubic B-spline per section (identical knots), then each pole row
     interpolated along x by a cubic B-spline (parameter = station x). The surface passes exactly through
     every section; the ends are closed with planar caps and the faces sewn into one solid."""
@@ -763,28 +1029,55 @@ def loft(sections, P):
     c0 = curves[0]
     npu = c0.NbPoles()
     xs = [s["x"] for s in sections]
-    rows = []
-    for j in range(1, npu + 1):
-        arr = HArrPnt(1, len(curves)); par = HArrReal(1, len(curves))
-        for i, c in enumerate(curves):
-            arr.SetValue(i + 1, c.Pole(j)); par.SetValue(i + 1, xs[i])
-        it = GeomAPI_Interpolate(arr, par, False, 1e-9)
-        it.Perform()
-        rows.append(it.Curve())
-    r0 = rows[0]
-    npv = r0.NbPoles()
-    poles = Arr2Pnt(1, npu, 1, npv)
-    for j, r in enumerate(rows):
-        for k in range(1, npv + 1):
-            poles.SetValue(j + 1, k, r.Pole(k))
     def kv(c):
         kn = Arr1Real(1, c.NbKnots()); mu = Arr1Int(1, c.NbKnots())
         for i in range(1, c.NbKnots() + 1):
             kn.SetValue(i, c.Knot(i)); mu.SetValue(i, c.Multiplicity(i))
         return kn, mu
     uk, um = kv(c0)
-    vk, vm = kv(r0)
-    surf = Geom_BSplineSurface(poles, uk, vk, um, vm, c0.Degree(), r0.Degree(), True, False)
+    K = int(P.get("fairPolesX") or 0)
+    if not K and P.get("fairPoleSpacing"):
+        K = int(round((xs[-1] - xs[0]) / P["fairPoleSpacing"])) + 3
+    if K >= 4 and K < len(curves):
+        # v2.1: each pole row is a least-squares cubic B-spline over K control points on uniform knots in x
+        # (fewer, smoother control sections), not an interpolant through every section: the surface no
+        # longer passes exactly through the sections, so the clearance loop in build() checks it.
+        _FAIR_STATS["controlPointsX"] = K
+        vkn, vmu, prow = lsq_rows([[c.Pole(j) for c in curves] for j in range(1, npu + 1)], xs, K, P["fairLambda"])
+        if floor_min is not None:
+            # a B-spline surface lies in the convex hull of its control points: with every control point at
+            # or above the solved floor, the fitted surface cannot dip below it (the fit overshoots slightly
+            # where the flat floor turns into the end ramps)
+            low = min(q[2] for row in prow for q in row)
+            _FAIR_STATS["floorPoleClampM"] = r6(max(0.0, floor_min - low))
+            prow = [[(q[0], q[1], max(q[2], floor_min)) for q in row] for row in prow]
+        npv = K
+        poles = Arr2Pnt(1, npu, 1, npv)
+        for j, row in enumerate(prow):
+            for k, q in enumerate(row):
+                poles.SetValue(j + 1, k + 1, gp_Pnt(*q))
+        vk = Arr1Real(1, len(vkn)); vm = Arr1Int(1, len(vkn))
+        for i, (a, b) in enumerate(zip(vkn, vmu)):
+            vk.SetValue(i + 1, a); vm.SetValue(i + 1, b)
+        vdeg = 3
+    else:
+        rows = []
+        for j in range(1, npu + 1):
+            arr = HArrPnt(1, len(curves)); par = HArrReal(1, len(curves))
+            for i, c in enumerate(curves):
+                arr.SetValue(i + 1, c.Pole(j)); par.SetValue(i + 1, xs[i])
+            it = GeomAPI_Interpolate(arr, par, False, 1e-9)
+            it.Perform()
+            rows.append(it.Curve())
+        r0 = rows[0]
+        npv = r0.NbPoles()
+        poles = Arr2Pnt(1, npu, 1, npv)
+        for j, r in enumerate(rows):
+            for k in range(1, npv + 1):
+                poles.SetValue(j + 1, k, r.Pole(k))
+        vk, vm = kv(r0)
+        vdeg = r0.Degree()
+    surf = Geom_BSplineSurface(poles, uk, vk, um, vm, c0.Degree(), vdeg, True, False)
     side = BRepBuilderAPI_MakeFace(surf, 1e-7).Face()
     sew = BRepBuilderAPI_Sewing(1e-5)
     sew.Add(side)
@@ -805,6 +1098,74 @@ def loft(sections, P):
     if g.Mass() < 0:
         solid.Reverse()
     return solid, surf
+
+
+def _bspline_basis(knots, deg, t):
+    """Values of all B-spline basis functions of the (full, expanded) knot vector at t (Cox-de Boor)."""
+    n = len(knots) - deg - 1
+    if t >= knots[-1]:
+        out = [0.0] * n; out[-1] = 1.0
+        return out
+    N = [1.0 if knots[i] <= t < knots[i + 1] else 0.0 for i in range(len(knots) - 1)]
+    for d in range(1, deg + 1):
+        for i in range(len(knots) - 1 - d):
+            a = (t - knots[i]) / (knots[i + d] - knots[i]) * N[i] if knots[i + d] > knots[i] else 0.0
+            b = (knots[i + d + 1] - t) / (knots[i + d + 1] - knots[i + 1]) * N[i + 1] if knots[i + d + 1] > knots[i + 1] else 0.0
+            N[i] = a + b
+    return N[:n]
+
+
+def _cholesky_solve(A, bs):
+    n = len(A)
+    L = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1):
+            s_ = A[i][j] - sum(L[i][k] * L[j][k] for k in range(j))
+            if i == j:
+                if s_ <= 0:
+                    raise RuntimeError("lsq_rows: normal matrix not positive definite")
+                L[i][i] = math.sqrt(s_)
+            else:
+                L[i][j] = s_ / L[j][j]
+    outs = []
+    for b in bs:
+        y = [0.0] * n
+        for i in range(n):
+            y[i] = (b[i] - sum(L[i][k] * y[k] for k in range(i))) / L[i][i]
+        x = [0.0] * n
+        for i in reversed(range(n)):
+            x[i] = (y[i] - sum(L[k][i] * x[k] for k in range(i + 1, n))) / L[i][i]
+        outs.append(x)
+    return outs
+
+
+def lsq_rows(rows, xs, K, lam):
+    """Least-squares cubic B-spline (K control points, clamped, uniform knots on [xs[0], xs[-1]]) through
+    each row of points (one per section, parameter = section x), with a second-difference penalty lam on
+    the control points (lam = 0: plain least squares). One normal matrix for every row (same parameters).
+    Cubic B-splines reproduce linear functions, so x(v) = v exactly: every v-iso curve is planar.
+    Returns (distinct knots, multiplicities, rows of K control points as (x, y, z))."""
+    deg = 3
+    a, b = xs[0], xs[-1]
+    inner = K - deg - 1
+    knots = [a] * (deg + 1) + [a + (b - a) * (i + 1) / (inner + 1) for i in range(inner)] + [b] * (deg + 1)
+    B = [_bspline_basis(knots, deg, t) for t in xs]
+    A = [[sum(Bi[p] * Bi[q] for Bi in B) for q in range(K)] for p in range(K)]
+    if lam > 0:
+        for i in range(K - 2):
+            d = [0.0] * K; d[i], d[i + 1], d[i + 2] = 1.0, -2.0, 1.0
+            for p in range(i, i + 3):
+                for q in range(i, i + 3):
+                    A[p][q] += lam * d[p] * d[q]
+    out = []
+    for row in rows:
+        pts = [(q.X(), q.Y(), q.Z()) for q in row]
+        rhs = [[sum(Bi[p] * pt[c] for Bi, pt in zip(B, pts)) for p in range(K)] for c in range(3)]
+        sol = _cholesky_solve(A, rhs)
+        out.append([(sol[0][k], sol[1][k], sol[2][k]) for k in range(K)])
+    distinct = [a] + [a + (b - a) * (i + 1) / (inner + 1) for i in range(inner)] + [b]
+    mults = [deg + 1] + [1] * inner + [deg + 1]
+    return distinct, mults, out
 
 
 def wheel_tools(req):
@@ -1137,6 +1498,7 @@ DEFAULTS = {
     "noseExtension": 0.36, "tailExtension": 0.22, "endTipFraction": 0.06,
     "archClearance": 0.04, "fenderSkin": 0.03, "fenderCover": 0.02,
     "podExponent": 2.5, "podShoulder": 0.10, "podShoulderDrop": 0.08, "podBlend": 0.8, "podMinHalfWidth": 0.30, "blendRadius": 0.08, "sectionSmoothing": 0.5, "rowSigma": 0.07, "podTuck": 0.10,
+    "fairSigmaX": 0.25, "fairSigmaTheta": 0.10, "fairAngles": 4, "fairEnds": True, "endTipWidthFraction": 0.24, "fairPolesX": 0, "fairPoleSpacing": 0.24, "fairLambda": 0.0, "maxWidth": None,
     "noseTipHeight": 0.22, "noseShapeExponent": 1.6, "noseRoundExponent": 3.0, "kammAreaRatio": 0.5, "tailRound": 0.0,
     "floorCornerAllowance": 0.015, "maxIterations": 4, "frontalSlices": 240, "meshLinear": 0.004, "meshAngular": 0.25,
 }
@@ -1160,11 +1522,25 @@ def build(req):
     # Iterate on a fast screening clearance (side surface near each box only); then the exact pass
     # (BRepExtrema to the whole outer shell, wheel wells and caps included) gives the reported values,
     # and a shortfall found only there still triggers another iteration.
+    adj = {"widthTrim": 0.0}
+    adj_log = []
     for it in range(int(P["maxIterations"]) + 1):
-        sections, span = solve_sections(req, extra)
-        tick(f"iteration {it}: sections solved ({len(sections)})")
-        raw, surf = loft(sections, P)
-        tick("lofted")
+        # The approximating loft (fairPolesX / fairPoleSpacing) may pass slightly outside the faired sections:
+        # where it is wider than maxWidth, tighten the fairing's width cap by the excess and loft again. The
+        # cap never cuts into a requirement, so when the requirements alone are wider the width stays over
+        # and the solver reports it.
+        for _ in range(6):
+            sections, span = solve_sections(req, extra, adj)
+            raw, surf = loft(sections, P, span["floorMin"] if P["fairSigmaX"] > 0 else None)
+            if P["fairSigmaX"] <= 0:
+                break
+            x0_, y0_, z0_, x1_, y1_, z1_ = bbox(raw)
+            over = (y1_ - y0_) - P["maxWidth"] if P.get("maxWidth") else 0.0
+            if over <= 1e-5:
+                break
+            adj["widthTrim"] += 0.5 * over + 2e-4
+            adj_log.append({"iteration": it, "widthOverM": r6(over), "widthTrimM": r6(adj["widthTrim"])})
+        tick(f"iteration {it}: sections solved and lofted ({len(sections)})")
         body = cut_all(raw, wheel_tools(req))
         tick("wheel wells cut")
         solid = first_solid(body)
@@ -1199,6 +1575,8 @@ def build(req):
             extra[k] = extra.get(k, 0.0) + v
     val = validity(body)
     tick("validity")
+    fair = fairness(surf, (span["xmin"], span["xmax"]))
+    tick("fairness")
     m = measure(solid, int(P["frontalSlices"]))
     tick("measured")
     # wheels: the tyre (static, and the front ones swept over the lock) to the body
@@ -1236,6 +1614,7 @@ def build(req):
             "groundClearanceM": r6(bb["min"][2]), "bbox": {k: [r6(v) for v in vv] for k, vv in bb.items()},
         },
         "clearances": cl, "wheels": wheel_out, "rays": rays, "iterations": history,
+        "fairness": fair, "fairing": rinfo({**_FAIR_STATS, "adjustments": adj_log}) if P["fairSigmaX"] > 0 else None,
         "localInflationM": {k: r6(v) for k, v in sorted(extra.items())},
         "files": files,
     }

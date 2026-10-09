@@ -10,7 +10,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { buildCarFromLibrary, carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
-import { LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES } from "../lib/conkay/compiler/car-layout.js";
+import { LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, deriveGroundClearance } from "../lib/conkay/compiler/car-layout.js";
+import { DesignGraph } from "../lib/conkay/graph/design-graph.js";
+import { cadBodyRequest } from "../lib/conkay/physics/solvers/cad-body.js";
 import { compileDesignIR } from "../lib/conkay/compiler/design-ir.js";
 import { openDesign } from "../lib/conkay/index.js";
 import { runBodyKernel, bodyKernelPython } from "../lib/conkay/cad/body-kernel.js";
@@ -33,7 +35,7 @@ describe("Layout revision: the rear package derived from the envelopes", () => {
   const ck = (id) => fit.outputs.checks.value.find((c) => c.id === id);
 
   it("records every changed parameter old -> new with its reason and basis", () => {
-    assert.equal(rev.version, "2.0.0");
+    assert.equal(rev.version, "2.1.0"); // 2.0 rear package + 2.1 ground clearance
     for (const c of rev.changes) {
       assert.ok(c.parameter && c.reason && c.basis, JSON.stringify(c));
       assert.ok("old" in c && "new" in c);
@@ -82,6 +84,82 @@ describe("Layout revision: the rear package derived from the envelopes", () => {
     assert.equal(p.packaging.layoutRevision, undefined);
     assert.equal(parseFloat(p.rearAxleX), 3.7);
     assert.equal(p.packaging.designChoices.rearSgRPX.value, LAYOUT_DESIGN_CHOICES.rearSgRPX.value);
+  });
+});
+
+describe("Layout revision 2.1: ground clearance toward >= 100 mm", () => {
+  const b = buildCarFromLibrary(BRIEF);
+  const veh = () => b.ir.nodes.find((n) => n.id === "VEH").props.vehicle;
+  const rev = veh().packaging.layoutRevision;
+  const row = (p) => rev.changes.find((c) => c.parameter === p);
+  const corners = (e) => [-1, 1].flatMap((sx) => [-1, 1].flatMap((sy) => [-1, 1].map((sz) => [0, 1, 2].map((i) => e.center[i] + sx * e.half[0] * e.axes[0][i] + sy * e.half[1] * e.axes[1][i] + sz * e.half[2] * e.axes[2][i]))));
+  const envelopes = (ir) => {
+    const g = DesignGraph.fromIR(ir).graph;
+    return cadBodyRequest({ get: (id, path) => g.get(id, path) }, "BODY_SHELL").request.envelopes.filter((e) => e.enclose !== false);
+  };
+
+  it("derives the bottom height from the target, the skin offset and the floor-corner allowance", () => {
+    const gc = rev.groundClearance;
+    assert.equal(gc.targetM, 0.1);
+    assert.ok(close(gc.requiredBottomZ, 0.1 + CAD_BODY_DEFAULTS.skinOffsetM + CAD_BODY_DEFAULTS.floorCornerAllowanceM, 1e-9));
+    assert.equal(gc.hold, "hPoint");
+    assert.deepEqual([row("floorZ").old, row("floorZ").new], [0.12, 0.155]);
+    assert.deepEqual([row("engineBottomZ").old, row("engineBottomZ").new], [0.15, 0.155]);
+    // differential: centre at the tyre radius, envelope = Ford's shipping box (0.4318 m high); bottom 0.1105 m -> 0.155
+    assert.deepEqual([row("diffRiseM").old, row("diffRiseM").new], [0, 0.045]);
+    for (const c of ["floorZ", "engineBottomZ", "diffRiseM", "h30", "rearH31", "steeringWheelH17"]) assert.equal(row(c).revision, "2.1.0", c);
+  });
+
+  it("every enclosed envelope's bottom is at or above the required bottom height", () => {
+    const req = rev.groundClearance.requiredBottomZ;
+    const env = envelopes(b.ir);
+    assert.ok(env.length > 20);
+    for (const e of env) {
+      const z = Math.min(...corners(e).map((p) => p[2]));
+      assert.ok(z >= req - 1e-6, `${e.id}: bottom ${z}`);
+    }
+    // without the change the differential (0.1105 m) and the cabin floor (0.12 m) were below it
+    const old = envelopes(buildCarFromLibrary(BRIEF, { groundClearance: null }).ir);
+    const low = old.filter((e) => Math.min(...corners(e).map((p) => p[2])) < req - 1e-6).map((e) => e.id.split(":")[0]);
+    assert.ok(low.includes("DIFFERENTIAL") && low.includes("SEAT_1") && low.includes("ENGINE"), low.join(","));
+  });
+
+  it("hold = hPoint: the H-points and steering wheel stay put, H30 stays inside J1100 Class A", () => {
+    const old = buildCarFromLibrary(BRIEF, { groundClearance: null, cadBody: false });
+    const now = buildCarFromLibrary(BRIEF, { cadBody: false });
+    const z = (ir, id) => parseFloat(ir.nodes.find((n) => n.id === id).position.z);
+    for (const id of ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"]) assert.ok(close(z(now.ir, id), z(old.ir, id), 1e-9), id);
+    assert.deepEqual([row("h30").old, row("h30").new], [0.22, 0.185]);
+    const fit = openDesign(now.ir).session.result("package.occupant-fit@VEH");
+    const h30 = fit.outputs.checks.value.find((c) => c.id === "classA.H30");
+    assert.equal(h30.value, 185);
+    assert.equal(h30.pass, true);
+  });
+
+  it("hold = posture: H30 unchanged, so the occupants rise with the floor", () => {
+    const p = buildCarFromLibrary(BRIEF, { cadBody: false, groundClearance: { hold: "posture" } });
+    const old = buildCarFromLibrary(BRIEF, { cadBody: false, groundClearance: null });
+    const pv = p.ir.nodes.find((n) => n.id === "VEH").props.vehicle;
+    assert.equal(pv.packaging.designChoices.h30.value, 0.22);
+    const z = (ir) => parseFloat(ir.nodes.find((n) => n.id === "SEAT_1").position.z);
+    assert.ok(close(z(p.ir) - z(old.ir), 0.035, 1e-9));
+  });
+
+  it("reports the halfshaft angle the differential rise costs (computed, not checked: no CV limits in the library)", () => {
+    const t = rev.groundClearance.tradeoffs.find((x) => x.item === "rear halfshaft angle");
+    const expected = Math.round((Math.atan2(0.045, 0.8 - 0.5334 / 2) * 180) / Math.PI * 100) / 100;
+    assert.equal(t.value, expected);
+    assert.equal(t.value, 4.82);
+    assert.match(t.note, /not checked/);
+  });
+
+  it("is a pure derivation (no change when nothing is below the required bottom) and can be switched off", () => {
+    const none = deriveGroundClearance({ choices: { ...LAYOUT_DESIGN_CHOICES, floorZ: { value: 0.2 }, engineBottomZ: { value: 0.2 } }, targetM: 0.1, skinOffsetM: 0.04, floorCornerAllowanceM: 0.015, tyreR: 0.3264, diffDims: { heightM: 0.2, widthM: 0.5 }, track: 1.6 });
+    assert.deepEqual(none.rows, []);
+    assert.deepEqual(none.overrides, {});
+    const off = buildCarFromLibrary(BRIEF, { groundClearance: null }).ir.nodes.find((n) => n.id === "VEH").props.vehicle.packaging;
+    assert.equal(off.layoutRevision.version, "2.0.0");
+    assert.equal(off.designChoices.floorZ.value, 0.12);
   });
 });
 
@@ -218,6 +296,33 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     for (const x of c.clearances) assert.ok(x.clearanceM >= 0.05 - 5e-4, x.id);
   });
 
+  it("fairing: fairer than the v2.0 loft, with the floor, envelopes and tyres all still held", () => {
+    const v20 = runBodyKernel({ ...SCENE, params: { ...SCENE.params, fairSigmaX: 0, fairEnds: false, fairPoleSpacing: 0 } }, { noCache: true });
+    assert.equal(v20.ok, true, v20.error);
+    assert.equal(v20.fairing, null);
+    const fa = a.fairness.regions, fb = v20.fairness.regions;
+    assert.ok(fa.body.alongCar.rmsDkDs < 0.8 * fb.body.alongCar.rmsDkDs, `body ${fa.body.alongCar.rmsDkDs} vs ${fb.body.alongCar.rmsDkDs}`);
+    assert.ok(fa.body.alongCar.inflections < fb.body.alongCar.inflections);
+    assert.ok(fa.tail.alongCar.rmsDkDs < fb.tail.alongCar.rmsDkDs);
+    assert.equal(fa.nose.alongCar.inflections, 0);
+    // the fairing converged: the faired field is inside the solved sections by at most 0.01 mm
+    assert.ok(a.fairing.residualM <= 1e-5, `${a.fairing.residualM}`);
+    assert.equal(a.fairing.controlPointsX, Math.round((a.sections.at(-1).x - a.sections[0].x) / 0.24) + 3);
+    // the floor: the v2.0 loft dipped below its own solved floor; the faired one does not
+    const floor = Math.min(...a.sections.filter((s) => s.zb != null).map((s) => s.zb));
+    assert.ok(a.metrics.groundClearanceM >= floor - 1e-6, `${a.metrics.groundClearanceM} < ${floor}`);
+    assert.ok(v20.metrics.groundClearanceM < floor - 0.005, "regression evidence: the v2.0 loft sagged below the floor");
+  });
+
+  it("maxWidth: the fairing never cuts into the solved sections; a bound they exceed is reported, not met by cheating", () => {
+    const w = runBodyKernel({ ...SCENE, params: { ...SCENE.params, maxWidth: 1.93 } }, { noCache: true });
+    assert.equal(w.ok, true, w.error);
+    assert.ok(w.metrics.widthM > 1.93, "the pods (tyre outer face + cover + blend) need more than 1.93 m");
+    assert.ok(w.fairing.adjustments.length > 0);
+    for (const c of w.clearances) assert.ok(c.clearanceM >= SCENE.params.skinOffset - 5e-4, c.id);
+    for (const x of w.wheels) assert.ok(x.minClearanceM >= 0, x.id);
+  });
+
   it("frontal area and volume match an analytic ellipsoid", () => {
     const e = runBodyKernel({ command: "ellipsoid", semi: [2.2, 0.95, 0.6], slices: 400 }, { noCache: true });
     assert.equal(e.ok, true, e.error);
@@ -263,6 +368,14 @@ describe("CAD body on the library car (full kernel run)", { skip: !FULL && "set 
     const m = s.result("cad.body@BODY_SHELL").outputs;
     const w = m.width?.value ?? m.dimensions?.value?.widthM;
     assert.ok(Number.isFinite(w) && w <= 1.95, `width ${w}`);
+  });
+
+  it("ground clearance >= 100 mm (layout revision 2.1) on the faired body", () => {
+    const m = s.result("cad.body@BODY_SHELL").outputs;
+    assert.ok(m.dimensions.value.groundClearanceM >= 0.1 - 1e-4, `${m.dimensions.value.groundClearanceM}`);
+    const f = m.fairness.value.regions;
+    assert.ok(f.body.alongCar.rmsDkDs < 10, `${f.body.alongCar.rmsDkDs}`);
+    assert.ok(m.fairing.value.residualM <= 1e-5);
   });
 
   it("the README reports the body", () => {

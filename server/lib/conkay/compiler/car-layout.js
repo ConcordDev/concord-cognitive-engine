@@ -46,6 +46,7 @@ export const LAYOUT_DESIGN_CHOICES = Object.freeze({
   rearSeatY: { value: 0.33, basis: "design choice: rear seat centreline from the car centreline" },
   rearTorsoDeg: { value: 25, basis: "design choice: rear torso angle" },
   fuelCellCenter: { value: [3.99, 0, 0.685], basis: "design choice: fuel cell above and behind the differential, behind the rear seat backs" },
+  diffRiseM: { value: 0, basis: "design choice: differential centre above the rear axle line (0: centred on the axle)" },
 });
 
 /** Inner front-wheel lock (deg) from the reference S550 turning circle (estimated; see references.json steeringLock). */
@@ -106,7 +107,8 @@ export function layoutCar({ entries, frontAxleX, rearAxleX, track, choices = LAY
   const df = entries.diff;
   if (df?.dimensions?.lengthM && tyreR) {
     const d = df.dimensions;
-    place("DIFFERENTIAL", df, [d.lengthM / 2, d.widthM / 2, d.heightM / 2], [rearAxleX, 0, tyreR], { lengthM: d.lengthM, widthM: d.widthM, heightM: d.heightM, ...dimSrc(df) }, "centred on the rear axle at axle height (tyre radius)");
+    const rise = c.diffRiseM || 0;
+    place("DIFFERENTIAL", df, [d.lengthM / 2, d.widthM / 2, d.heightM / 2], [rearAxleX, 0, tyreR + rise], { lengthM: d.lengthM, widthM: d.widthM, heightM: d.heightM, ...dimSrc(df) }, rise ? `on the rear axle x, centre ${r4(rise * 1000)} mm above axle height (diffRiseM, design choice)` : "centred on the rear axle at axle height (tyre radius)");
   }
   // Fuel cell: the internal container the cell fits (published), 450 fore-aft, 630 across, 250 high (orientation design choice).
   const fu = entries.fuel;
@@ -181,7 +183,8 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   const kneeAhead = Math.max(...rearOccAt(0, c.rearSeatY).map((o) => -o.landmarks.knee[0]));
   const rearSgRPX = mmUp(seatRearX + J.L48.subtractMm / 1000 + c.rearKneeMarginM + kneeAhead);
   const d = diffDims;
-  const diffAt = (x) => aabb({ id: "DIFFERENTIAL", min: [x - d.lengthM / 2, -d.widthM / 2, tyreR - d.heightM / 2], max: [x + d.lengthM / 2, d.widthM / 2, tyreR + d.heightM / 2] });
+  const dz = tyreR + (c.diffRiseM || 0);
+  const diffAt = (x) => aabb({ id: "DIFFERENTIAL", min: [x - d.lengthM / 2, -d.widthM / 2, dz - d.heightM / 2], max: [x + d.lengthM / 2, d.widthM / 2, dz + d.heightM / 2] });
   const minSepTo = (boxes, b) => Math.min(...boxes.map((o) => separation(o, b).separation));
   const axleFor = (y) => {
     const boxes = rearOccAt(rearSgRPX, y).flatMap((o) => o.boxes);
@@ -227,7 +230,7 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   let fuelCellCenter = null;
   if (fuelDimsM) {
     const [a, b, h] = fuelDimsM;
-    const zc = tyreR + d.heightM / 2 + c.fuelClearanceM + h / 2;
+    const zc = dz + d.heightM / 2 + c.fuelClearanceM + h / 2;
     const fuelAt = (x) => aabb({ id: "FUEL_CELL", min: [x - a / 2, -b / 2, zc - h / 2], max: [x + a / 2, b / 2, zc + h / 2] });
     const fx = smallestX((x) => minSep(fuelAt(x)) - c.fuelClearanceM, rearSgRPX, rearSgRPX + 2);
     if (fx != null) fuelCellCenter = [mmUp(fx), 0, Math.round(zc * 1e4) / 1e4];
@@ -237,9 +240,67 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
     inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys },
     method: [
       `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
-      "rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (centred on the axle at tyre-radius height) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)",
+      `rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (on the axle, centre at tyre-radius height${c.diffRiseM ? ` + diffRiseM ${r4(c.diffRiseM)} m` : ""}) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)`,
       "fuelCellCenter: bottom fuelClearanceM above the differential envelope's top; the smallest x at which it is fuelClearanceM clear of every rear occupant box",
       wellNote || "rearSeatY: the design's (no rear wheel-well constraint given)",
     ],
   };
+}
+
+/**
+ * Ground clearance (layout revision 2.1): the lowest enclosed envelopes set the body's floor (the CAD body
+ * puts its floor the skin offset plus the floor-corner allowance below the lowest enclosed point), so a
+ * ground-clearance target is met by raising every envelope bottom to
+ *   requiredBottomZ = target + skinOffset + floorCornerAllowance.
+ * The binding envelopes on this car are the cabin floor (occupant feet and seat cushions sit on floorZ),
+ * the engine (engineBottomZ) and the differential (centred on the rear axle; raised by diffRiseM).
+ * hold = "posture": H30 / H31 / H17 unchanged, so the occupants (and the roof over them) rise with the floor.
+ * hold = "hPoint": H30 / H31 / H17 reduced by the floor rise, so the H-points and steering wheel stay where
+ *   they were and the heel points rise (a more legs-forward posture; H30 is checked against J1100 Class A).
+ * Returns { overrides, rows, tradeoffs, requiredBottomZ } (overrides: choice entries with their basis).
+ */
+export const GROUND_CLEARANCE_CHOICES = Object.freeze({
+  groundClearanceTargetM: { value: 0.1, basis: "design choice (brief 2026-10-09: raise the ground clearance toward >= 100 mm)" },
+});
+
+export function deriveGroundClearance({ choices, targetM = GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.value, skinOffsetM, floorCornerAllowanceM, tyreR, diffDims, track, hold = "hPoint" }) {
+  const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
+  const req = r4(targetM + skinOffsetM + floorCornerAllowanceM);
+  const how = `requiredBottomZ = target ${r4(targetM)} + skin offset ${r4(skinOffsetM)} + floor-corner allowance ${r4(floorCornerAllowanceM)} = ${req} m`;
+  const overrides = {};
+  const rows = [];
+  const tradeoffs = [];
+  const dFloor = Math.max(0, r4(req - c.floorZ));
+  if (dFloor > 0) {
+    overrides.floorZ = { value: req, basis: `derived: ${how}; the cabin floor (heel rest surface, under the occupant feet and seat cushions) raised to it` };
+    rows.push({ parameter: "floorZ", old: c.floorZ, new: req, unit: "m", change: dFloor, reason: `ground clearance: the occupant feet and seat cushions sit on the cabin floor (${c.floorZ} m), which put the CAD body floor ${r4(c.floorZ - skinOffsetM - floorCornerAllowanceM)} m above the ground`, basis: "derived" });
+    if (hold === "hPoint") {
+      for (const k of ["h30", "rearH31", "steeringWheelH17"]) {
+        overrides[k] = { value: r4(c[k] - dFloor), basis: `derived: ${choices[k].basis.replace(/^design choice:\s*/, "")} reduced by the floor rise (${dFloor} m) so the H-points and steering wheel stay where they were` };
+        rows.push({ parameter: k, old: c[k], new: r4(c[k] - dFloor), unit: "m", change: -dFloor, reason: "holds the H-point (and the steering wheel) at its height while the floor rises: the heel point comes up instead", basis: "derived" });
+      }
+      tradeoffs.push({ item: "seating posture", note: `H30 ${Math.round(c.h30 * 1000)} -> ${Math.round((c.h30 - dFloor) * 1000)} mm (J1100 Class A 127-405 mm, checked by package.occupant-fit); knees rise relative to the hips; roof and frontal area unchanged by the floor` });
+    } else {
+      tradeoffs.push({ item: "occupant and roof height", note: `the H-points, steering wheel and heads rise ${Math.round(dFloor * 1000)} mm with the floor; the CAD body's roof and frontal area grow (computed by cad.body)` });
+    }
+  }
+  if (c.engineBottomZ < req) {
+    overrides.engineBottomZ = { value: req, basis: `derived: ${how}` };
+    rows.push({ parameter: "engineBottomZ", old: c.engineBottomZ, new: req, unit: "m", change: r4(req - c.engineBottomZ), reason: "ground clearance: the engine envelope's bottom", basis: "derived" });
+    tradeoffs.push({ item: "engine and crank height", note: `crank axis (and the transmission on it) ${Math.round((req - c.engineBottomZ) * 1000)} mm higher: the vehicle CG rises (computed by the mass solvers)` });
+  }
+  if (diffDims?.heightM && tyreR) {
+    const bottom = tyreR + (c.diffRiseM || 0) - diffDims.heightM / 2;
+    if (bottom < req) {
+      const rise = Math.ceil((req - tyreR + diffDims.heightM / 2) * 1000 - 1e-9) / 1000;
+      overrides.diffRiseM = { value: rise, basis: `derived: ${how}; the differential envelope's bottom (centre at tyre radius ${r4(tyreR)} m, envelope height ${r4(diffDims.heightM)} m: the published shipping box, an upper bound) raised to it, rounded up to 1 mm` };
+      rows.push({ parameter: "diffRiseM", old: c.diffRiseM || 0, new: rise, unit: "m", change: rise, reason: `ground clearance: the differential envelope's bottom was ${r4(bottom)} m (the lowest enclosed point of the car)`, basis: "derived" });
+      if (track && diffDims.widthM) {
+        const run = track / 2 - diffDims.widthM / 2;
+        const deg = Math.round((Math.atan2(rise, run) * 180) / Math.PI * 100) / 100;
+        tradeoffs.push({ item: "rear halfshaft angle", value: deg, unit: "deg", note: `computed screening value: static halfshaft angle = atan(diffRiseM ${rise} m / (half track ${r4(track / 2)} m - half differential envelope width ${r4(diffDims.widthM / 2)} m)); the CV joints' angle limits are not in the library, so it is not checked; the envelope is the shipping box, so the real housing's bottom (and the rise it needs) is likely smaller` });
+      }
+    }
+  }
+  return { requiredBottomZ: req, overrides, rows, tradeoffs, method: how, hold };
 }
