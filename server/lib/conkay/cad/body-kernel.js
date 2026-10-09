@@ -42,8 +42,32 @@ export async function resolveKernelPython() {
 
 export const UNAVAILABLE = `no Python with OCP: set CONKAY_OCC_PYTHON or install cadquery-ocp in ${DEFAULT_VENV_PYTHON.replace(/\/bin\/python$/, "")}`;
 
+// Cached kernel results are trusted when read back, so the cache must not be a
+// shared, predictable directory another local user could pre-create or write
+// into (a world-writable tmpdir path was exactly that). Default: the user's
+// own cache directory; created 0700, files 0600, and refused unless it is a
+// real directory owned by this process's user.
 export function bodyCacheDir() {
-  return process.env.CONKAY_CAD_BODY_CACHE || path.join(os.tmpdir(), "conkay-cad-body");
+  if (process.env.CONKAY_CAD_BODY_CACHE) return process.env.CONKAY_CAD_BODY_CACHE;
+  return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "conkay-cad-body");
+}
+
+/** mkdir -p with mode 0700, then confirm `dir` is a directory (not a link) owned by this user. Returns true or false. */
+export async function ensurePrivateDir(dir) {
+  try {
+    await fsp.mkdir(dir, { recursive: true, mode: 0o700 });
+    const st = await fsp.lstat(dir);
+    if (!st.isDirectory()) return false;
+    if (typeof process.getuid === "function" && st.uid !== process.getuid()) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Write a cache file readable only by this user. */
+export async function writePrivateFile(file, text) {
+  await fsp.writeFile(file, text, { mode: 0o600 });
 }
 
 function canonical(v) {
@@ -68,9 +92,11 @@ export async function runBodyKernelAsync(request, { timeoutMs = 1800000, noCache
   const python = await resolveKernelPython();
   if (!python) return { ok: false, unavailable: UNAVAILABLE };
   const hash = requestHash(request);
-  const dir = noCache ? await fsp.mkdtemp(path.join(os.tmpdir(), `conkay-cad-body-${hash}-`)) : path.join(bodyCacheDir(), hash);
+  // An unusable cache (not ours, not creatable) means run uncached, never trust it.
+  const useCache = !noCache && await ensurePrivateDir(bodyCacheDir());
+  const dir = useCache ? path.join(bodyCacheDir(), hash) : await fsp.mkdtemp(path.join(os.tmpdir(), `conkay-cad-body-${hash}-`));
   const cached = path.join(dir, "result.json");
-  if (!noCache) {
+  if (useCache) {
     try { const r = JSON.parse(await fsp.readFile(cached, "utf8")); rememberKernel(keyOf(hash), r); return r; } catch { /* not cached: run */ }
   }
   const full = request.command === "body" ? { ...request, outDir: dir } : request;
@@ -78,9 +104,10 @@ export async function runBodyKernelAsync(request, { timeoutMs = 1800000, noCache
   out.requestHash = hash;
   if (noCache) return out;
   if (out.ok) {
-    await fsp.mkdir(dir, { recursive: true });
-    await fsp.writeFile(cached, JSON.stringify(out));
-    await fsp.writeFile(path.join(dir, "request.json"), JSON.stringify(full)); // the receipt: what the kernel was given
+    if (useCache && await ensurePrivateDir(dir)) {
+      await writePrivateFile(cached, JSON.stringify(out));
+      await writePrivateFile(path.join(dir, "request.json"), JSON.stringify(full)); // the receipt: what the kernel was given
+    }
     rememberKernel(keyOf(hash), out);
   }
   return out;

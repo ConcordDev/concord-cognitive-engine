@@ -12,7 +12,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveKernelPython, kernelPythonPath, bodyCacheDir, EXTENTS_SCRIPT, UNAVAILABLE } from "./body-kernel.js";
+import { resolveKernelPython, kernelPythonPath, bodyCacheDir, ensurePrivateDir, writePrivateFile, EXTENTS_SCRIPT, UNAVAILABLE } from "./body-kernel.js";
 import { requestKernel, rememberKernel, runPythonKernel } from "./kernel-queue.js";
 
 export const DRAWING_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "conkay_drawing_occ.py");
@@ -32,12 +32,14 @@ export async function runDrawingKernelAsync(request, { timeoutMs = 600000 } = {}
   const hash = drawingRequestHash(request);
   const dir = path.join(bodyCacheDir(), `drawing-${hash}`);
   const cached = path.join(dir, "result.json");
-  try { const r = JSON.parse(await fsp.readFile(cached, "utf8")); rememberKernel(keyOf(hash), r); return r; } catch { /* not cached: run */ }
+  const useCache = await ensurePrivateDir(bodyCacheDir()); // not ours / not creatable: run uncached, never trust it
+  if (useCache) {
+    try { const r = JSON.parse(await fsp.readFile(cached, "utf8")); rememberKernel(keyOf(hash), r); return r; } catch { /* not cached: run */ }
+  }
   const out = await runPythonKernel({ python, script: DRAWING_SCRIPT, input: request, timeoutMs });
   out.requestHash = hash;
   if (out.ok) {
-    await fsp.mkdir(dir, { recursive: true });
-    await fsp.writeFile(cached, JSON.stringify(out));
+    if (useCache && await ensurePrivateDir(dir)) await writePrivateFile(cached, JSON.stringify(out));
     rememberKernel(keyOf(hash), out);
   }
   return out;
