@@ -87,19 +87,31 @@ import { TrendingDomains } from '@/components/social/TrendingDomains';
 
 const ENTERED_KEY = 'concord_entered';
 
-function HomeClient() {
+interface HomeClientProps {
+  /**
+   * What a first-time (not-entered, not-signed-in) visitor sees.
+   * - 'marketing' (default): the client LandingPage replaces the SSR block.
+   * - 'ssr': the server-rendered #ssr-landing block (the splash on `/`)
+   *   stays on screen; it is only hidden once the visitor has entered.
+   */
+  landing?: 'marketing' | 'ssr';
+}
+
+function HomeClient({ landing = 'marketing' }: HomeClientProps) {
   const [hasEntered, setHasEntered] = useState<boolean | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const setFullPageMode = useUIStore((state) => state.setFullPageMode);
   const authCheckRef = useRef(false);
 
   useEffect(() => {
-    // Hide SSR landing content once client takes over
-    const ssrEl = document.getElementById('ssr-landing');
-    if (ssrEl) ssrEl.style.display = 'none';
-
     const entered = localStorage.getItem(ENTERED_KEY);
     const isEntered = entered === 'true';
+
+    // Hide SSR landing content once client takes over. In 'ssr' mode the
+    // SSR block IS the first-time visitor's landing, so it stays until the
+    // visitor is known to have entered (see the hasEntered effect below).
+    const ssrEl = document.getElementById('ssr-landing');
+    if (ssrEl && (landing === 'marketing' || isEntered)) ssrEl.style.display = 'none';
     setHasEntered(isEntered);
     setFullPageMode(!isEntered);
 
@@ -212,6 +224,14 @@ function HomeClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 'ssr' mode: once a visitor counts as entered (e.g. the session probe
+  // succeeded), drop the SSR splash so it never sits above the dashboard.
+  useEffect(() => {
+    if (landing !== 'ssr' || !hasEntered) return;
+    const ssrEl = document.getElementById('ssr-landing');
+    if (ssrEl) ssrEl.style.display = 'none';
+  }, [landing, hasEntered]);
+
   const handleEnter = () => {
     localStorage.setItem('concord_entered', 'true');
     setHasEntered(true);
@@ -224,6 +244,7 @@ function HomeClient() {
 
   // Show landing page for new visitors
   if (!hasEntered) {
+    if (landing === 'ssr') return null; // the SSR splash is the landing
     return <LandingPage onEnter={handleEnter} />;
   }
 

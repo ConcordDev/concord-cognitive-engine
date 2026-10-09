@@ -124,6 +124,7 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
 
 const PUBLIC_PATHS = new Set([
   '/',
+  '/about',          // previous marketing homepage, kept public after `/` became the splash
   '/explore',        // public "look around first" showcase — no account needed
   // No-login ConKay demo: runs the real beam FEA through the GET-only
   // /api/conkay/demo/* routes and saves nothing. Logged-out visits to
