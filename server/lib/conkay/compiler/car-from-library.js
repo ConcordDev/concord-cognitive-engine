@@ -132,7 +132,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {} } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package" } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -295,7 +295,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     },
   };
   // Package layout: component positions from library dimensions and the seating design (car-layout.js).
-  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) }, groundClearance });
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) }, groundClearance, diffEnvelope });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -315,8 +315,45 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
 // and the 95th female (the widest hips in the ANSUR II tables).
 export const PACKAGING_OCCUPANTS = ["F5", "F95", "M95"];
 
-function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null }) {
-  const entry = (k) => { const id = selection[k]?.chosen; return id ? getComponent(id) : null; };
+/**
+ * The differential envelope the layout uses. Its housing dimensions are not published (library dimensions.bounds):
+ *   "package"        the published package (shipping box), an upper bound (default);
+ *   "ringGearHeight" height and length at their lower bound (the 8.8 in ring gear the housing encloses), width at
+ *                    the package (no lower bound is established for it): the most the real housing could save.
+ */
+export function differentialEnvelope(entry, mode = "package") {
+  const d = entry?.dimensions;
+  if (!d || mode === "package") return entry;
+  if (mode !== "ringGearHeight") throw new Error(`unknown diffEnvelope "${mode}" (package | ringGearHeight)`);
+  const b = d.bounds;
+  if (!Number.isFinite(b?.heightM?.low) || !Number.isFinite(b?.lengthM?.low)) return entry;
+  return { ...entry, dimensions: { ...d, heightM: b.heightM.low, lengthM: b.lengthM.low, envelope: "ringGearHeight", method: `lower bound for height and length (${b.heightM.lowBasis}); width ${d.widthM} m is the package (${b.widthM.lowBasis})` } };
+}
+
+/**
+ * The ground-clearance derivation at both differential envelopes (package / ring-gear lower bound): the
+ * differential rise each needs and the static halfshaft angle it costs. The real housing lies between them.
+ */
+function diffSensitivity({ choices, targetM, body, tyreR, diffEntry, track, hold }) {
+  const row = (mode) => {
+    const e = differentialEnvelope(diffEntry, mode);
+    const g = deriveGroundClearance({ choices, targetM, skinOffsetM: body.skinOffsetM, floorCornerAllowanceM: body.floorCornerAllowanceM, tyreR, diffDims: e.dimensions, track, hold });
+    const rise = g.overrides.diffRiseM?.value ?? 0;
+    const angle = g.tradeoffs.find((t) => t.item === "rear halfshaft angle")?.value ?? 0;
+    return { envelope: mode, heightM: e.dimensions.heightM, bottomZBeforeRiseM: Math.round((tyreR - e.dimensions.heightM / 2) * 1e4) / 1e4, requiredBottomZ: g.requiredBottomZ, diffRiseM: rise, halfshaftAngleDeg: angle, binding: rise > 0 };
+  };
+  return {
+    rows: [row("package"), row("ringGearHeight")],
+    note: "the housing's height is not published: the package (upper bound) and the enclosed ring gear (lower bound) bracket it, so the real rise and halfshaft angle lie between these rows",
+  };
+}
+
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package" }) {
+  const entry = (k) => {
+    const id = selection[k]?.chosen;
+    if (!id) return null;
+    return k === "differential" ? differentialEnvelope(getComponent(id), diffEnvelope) : getComponent(id);
+  };
   const v = veh.props.vehicle;
   const frontAxleX = parseFloat(v.frontAxleX);
   let rearAxleX = parseFloat(v.rearAxleX);
@@ -357,7 +394,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
       revision = {
         version: gc ? "2.1.0" : "2.0.0",
         inputs: der.inputs,
-        ...(gc ? { groundClearance: { targetM: base.groundClearanceTargetM.value, requiredBottomZ: gc.requiredBottomZ, hold: gc.hold, method: gc.method, tradeoffs: gc.tradeoffs } } : {}),
+        ...(gc ? { groundClearance: { targetM: base.groundClearanceTargetM.value, requiredBottomZ: gc.requiredBottomZ, hold: gc.hold, method: gc.method, tradeoffs: gc.tradeoffs, diffEnvelope, diffEnvelopeSensitivity: diffSensitivity({ choices: { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES }, targetM: base.groundClearanceTargetM.value, body, tyreR: tyreE.dimensions.overallDiameterM / 2, diffEntry: getComponent(selection.differential.chosen), track, hold: gc.hold }) } } : {}),
         changes: [
           { parameter: "front seat", old: "RECARO Pole Position N.G. (FIA): max cushion width 385 mm, 8.8 kg", new: `${seatF?.manufacturer} ${seatF?.model}: max cushion width ${Math.round((seatF?.dimensions?.maxCushionWidthM || 0) * 1000)} mm, ${seatF?.mass?.kg} kg`, reason: "#1039: the 95th female (456 mm) and 95th male (431 mm) sitting hip breadths exceed the Pole Position's 385 mm cushion; the seat must take the widest checked occupant (applicability maxCushionWidthM >= seatHipBreadthM)", basis: "sourced (RECARO hotsheet)" },
           { parameter: "frontSeatBackThicknessM", old: 0, new: base.frontSeatBackThicknessM.value, unit: "m", reason: "the seat envelope was a plane on the occupant's back (a lower bound); the rear knee room needs the back of the seatback", basis: "design" },
