@@ -11,13 +11,13 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bodyKernelPython, bodyCacheDir } from "./body-kernel.js";
+import { bodyKernelPython, bodyCacheDir, EXTENTS_SCRIPT } from "./body-kernel.js";
 
 export const DRAWING_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "conkay_drawing_occ.py");
 const memo = new Map();
 
 export function drawingRequestHash(request) {
-  const script = createHash("sha256").update(fs.readFileSync(DRAWING_SCRIPT)).digest("hex");
+  const script = createHash("sha256").update(fs.readFileSync(DRAWING_SCRIPT)).update(fs.readFileSync(EXTENTS_SCRIPT)).digest("hex");
   return createHash("sha256").update(script).update(JSON.stringify(request)).digest("hex").slice(0, 24);
 }
 

@@ -94,7 +94,7 @@ export const cadBody = registerSolver({
         volume: { value: m.volumeM3, unit: "m3", basis: "computed (kernel GProp, enclosed volume)" },
         frontalArea: { value: m.frontalAreaM2, unit: "m2", basis: `computed: projection onto the y-z plane, ${m.frontalSlices} horizontal slices of the kernel tessellation (chordal deviation ${m.frontalMeshLinearM != null ? `${mm(m.frontalMeshLinearM)} mm` : "n/a"}: inscribed, so low by at most ${m.frontalMaxUnderestimateM2 ?? "n/a"} m2 plus the slicing error; body only: tyres, mirrors and underbody parts outside it are not in it)` },
         surfaceCentroid: { value: m.surfaceCentroid, unit: "m" },
-        dimensions: { value: { lengthM: m.lengthM, widthM: m.widthM, heightM: m.heightM, groundClearanceM: m.groundClearanceM, bbox: m.bbox } },
+        dimensions: { value: { lengthM: m.lengthM, widthM: m.widthM, heightM: m.heightM, groundClearanceM: m.groundClearanceM, bbox: m.bbox, extentBrackets: m.extentBrackets ?? null }, basis: "computed: bracketed extents of the solid (cad/extents_occ.py): each a point on the surface, with an outer bound; BRepBndLib's box alone can sit outside the surface" },
         solid: { value: r.solid },
         sections: { value: r.sections, note: "per station x: floor zb, belt (greenhouse base) deck, lower-body half width W and top lowerTop, greenhouse half width Wg and roof zt, and each fender pod's blend t, crown height and outer half width uOut (m); nose and tail sections carry their scale factors" },
         clearances: { value: Object.fromEntries(r.clearances.map((c) => [c.id, c.clearanceM])), unit: "m" },

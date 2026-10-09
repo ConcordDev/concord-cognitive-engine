@@ -92,9 +92,9 @@ export const gaDrawing = registerSolver({
     if (!proj.ok) return { notComputed: proj.unavailable || proj.error };
 
     const dimsOut = body.outputs.dimensions.value;
-    // The extents drawn and dimensioned are the drawing kernel's exact ones (BRepExtrema on the B-rep);
-    // cad.body's reported bounding box (BRepBndLib AddOptimal) can sit outside the surface, so the
-    // difference is reported, not hidden.
+    // The extents drawn and dimensioned are the drawing kernel's bracketed ones (cad/extents_occ.py), measured on
+    // the same STEP the views come from; cad.body measures its solid the same way, so a difference between the
+    // two is reported (it would mean the exported STEP and the solved body disagree).
     const bb = { min: proj.extents.min, max: proj.extents.max };
     const bboxCheck = ["x", "y", "z"].flatMap((a, i) => [
       { side: `min ${a}`, reportedM: dimsOut.bbox.min[i], exactM: bb.min[i], outsideMm: Math.round((bb.min[i] - dimsOut.bbox.min[i]) * 1e4) / 10 },
@@ -169,8 +169,8 @@ export const gaDrawing = registerSolver({
     const dir = path.join(bodyCacheDir(), "drawings", modelHash.slice(0, 24));
     fs.mkdirSync(dir, { recursive: true });
     const write = (name, data) => { const p = path.join(dir, name); fs.writeFileSync(p, data); return { path: p, bytes: Buffer.byteLength(data), sha256: sha(data) }; };
-    const bboxOff = Math.max(...bboxCheck.map((b) => b.outsideMm));
-    const warnings = bboxOff > 0.5 ? [`cad.body's reported bounding box sits up to ${bboxOff} mm outside the exact extents of its solid (AddOptimal is not tight on its B-spline face); the drawing dimensions use the exact extents`] : [];
+    const bboxDiff = Math.max(...bboxCheck.map((b) => Math.abs(b.outsideMm)));
+    const warnings = bboxDiff > 0.5 ? [`cad.body's extents and the drawing kernel's differ by up to ${bboxDiff} mm on one side (the exported STEP and the solved body disagree); the drawing dimensions use the drawing kernel's`] : [];
     const out = {
       sheet1Svg: write(`CK-GA-${veh}-${revision}-sheet1.svg`, toSvg(sheets[0], { ...meta, sheet: 1 })),
       sheet2Svg: write(`CK-GA-${veh}-${revision}-sheet2.svg`, toSvg(sheets[1], { ...meta, sheet: 2 })),
@@ -190,8 +190,8 @@ export const gaDrawing = registerSolver({
         bom: { value: bom },
         views: { value: Object.fromEntries(Object.entries(proj.views).map(([k, v]) => [k, { visible: v.visible.length, hidden: v.hidden.length, visibleLengthM: v.visibleLengthM, hiddenLengthM: v.hiddenLengthM }])), note: "polylines per view from the projection kernel" },
         projection: { value: { ...proj.method, kernel: proj.kernel, requestHash: proj.requestHash } },
-        extents: { value: bb, unit: "m", basis: `computed: ${proj.extents.method}` },
-        bboxCheck: { value: bboxCheck, note: "how far cad.body's reported bounding box (BRepBndLib AddOptimal) sits outside the exact extents, per side (mm); the drawing uses the exact extents" },
+        extents: { value: { ...bb, minBracket: proj.extents.minBracket ?? null, maxBracket: proj.extents.maxBracket ?? null }, unit: "m", basis: `computed: ${proj.extents.method}` },
+        bboxCheck: { value: bboxCheck, note: "per side (mm): cad.body's reported extent minus the drawing kernel's, both bracketed measurements; a non-zero value means the exported STEP and the solved body disagree" },
         files: { value: out },
       },
       warnings,

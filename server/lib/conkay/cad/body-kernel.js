@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const BODY_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "conkay_body_occ.py");
+export const EXTENTS_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "extents_occ.py");
 const DEFAULT_VENV_PYTHON = path.join(os.homedir(), ".zuko", "venvs", "cad-occ", "bin", "python");
 const memo = new Map();
 let scriptHash = null;
@@ -39,7 +40,8 @@ function canonical(v) {
 }
 
 export function requestHash(request) {
-  if (!scriptHash) scriptHash = createHash("sha256").update(fs.readFileSync(BODY_SCRIPT)).digest("hex");
+  // the kernel imports extents_occ.py: a change to either script is a different kernel
+  if (!scriptHash) scriptHash = createHash("sha256").update(fs.readFileSync(BODY_SCRIPT)).update(fs.readFileSync(EXTENTS_SCRIPT)).digest("hex");
   return createHash("sha256").update(scriptHash).update(JSON.stringify(canonical(request))).digest("hex").slice(0, 24);
 }
 

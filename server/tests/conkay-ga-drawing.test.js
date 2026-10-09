@@ -155,7 +155,12 @@ describe("Drawing projection kernel (OpenCascade HLR)", { skip: !HAVE_KERNEL && 
     const bb = p.extents;
     const tol = 0.004; // tessellation deflection 2 mm + 0.1 mm grid
     for (let i = 0; i < 3; i++) {
-      assert.ok(p.extents.min[i] >= body.metrics.bbox.min[i] - 1e-6 && p.extents.max[i] <= body.metrics.bbox.max[i] + 1e-6, "exact extents lie inside the bounding box");
+      // bracketed: attained value within [bound, attained] / [attained, bound], inside the outer (AddOptimal) box
+      const [lo, hi] = p.extents.maxBracket[i], [mlo, mhi] = p.extents.minBracket[i];
+      assert.ok(lo === p.extents.max[i] && hi >= lo && hi <= p.extents.addOptimalBox.max[i] + 1e-9, `max ${i}`);
+      assert.ok(mhi === p.extents.min[i] && mlo <= mhi && mlo >= p.extents.addOptimalBox.min[i] - 1e-9, `min ${i}`);
+      // the body kernel measures its solid the same way: the exported STEP gives the same extents
+      assert.ok(Math.abs(p.extents.max[i] - body.metrics.bbox.max[i]) < 1e-4 && Math.abs(p.extents.min[i] - body.metrics.bbox.min[i]) < 1e-4, `axis ${i}`);
     }
     const near = (a, b) => Math.abs(a - b) <= tol;
     const side = p.views.side.bbox, plan = p.views.plan.bbox, front = p.views.front.bbox;
@@ -183,14 +188,14 @@ describe("GA drawing of the library car (full kernel run)", { skip: !FULL && "se
   it("drawing.ga runs from the CAD body; its dimensions are the body's and the layout's", () => {
     const d = s.result("drawing.ga@VEH");
     assert.ok(["PASS", "WARN"].includes(d.status), d.reason || d.error);
-    if (d.status === "WARN") assert.ok(d.warnings.every((w) => /bounding box sits up to [\d.]+ mm outside the exact extents/.test(w)), d.warnings.join("; "));
+    assert.equal(d.status, "PASS", (d.warnings || []).join("; "));
     const dim = d.outputs.dimensions.value;
     const b = s.result("cad.body@BODY_SHELL").outputs.dimensions.value;
     const ext = d.outputs.extents.value;
     assert.equal(dim.overallLength.mm, Math.round((ext.max[0] - ext.min[0]) * 1000));
     assert.equal(dim.groundClearance.mm, Math.round(ext.min[2] * 1000));
-    // the exact extents are inside cad.body's reported box and within a few mm of it on this car
-    for (const c of d.outputs.bboxCheck.value) assert.ok(c.outsideMm >= -0.01 && c.outsideMm < 10, JSON.stringify(c));
+    // cad.body and the drawing kernel measure the same solid the same way (bracketed extents)
+    for (const c of d.outputs.bboxCheck.value) assert.ok(Math.abs(c.outsideMm) <= 0.1, JSON.stringify(c));
     assert.ok(Math.abs(dim.overallWidth.mm - b.widthM * 1000) < 10);
     assert.equal(dim.wheelbase.basis, "D");
     assert.equal(dim.tyreDiameter.basis, "S");

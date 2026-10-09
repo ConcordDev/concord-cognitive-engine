@@ -311,7 +311,10 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     // the floor: the v2.0 loft dipped below its own solved floor; the faired one does not
     const floor = Math.min(...a.sections.filter((s) => s.zb != null).map((s) => s.zb));
     assert.ok(a.metrics.groundClearanceM >= floor - 1e-6, `${a.metrics.groundClearanceM} < ${floor}`);
-    assert.ok(v20.metrics.groundClearanceM < floor - 0.005, "regression evidence: the v2.0 loft sagged below the floor");
+    // regression evidence: a point ON the v2.0 loft's surface lies 4.66 mm below its solved floor (bracketed
+    // extents; the 16.5 mm once reported here was BRepBndLib's loose box, not the surface)
+    assert.ok(v20.metrics.groundClearanceM < floor - 0.004, `v2.0 lowest surface point ${v20.metrics.groundClearanceM} vs floor ${floor}`);
+    assert.ok(v20.metrics.extentBrackets.addOptimalBox.min[2] < v20.metrics.groundClearanceM - 0.01, "the box alone is >10 mm outside this surface");
   });
 
   it("maxWidth: the fairing never cuts into the solved sections; a bound they exceed is reported, not met by cheating", () => {
@@ -321,6 +324,17 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     assert.ok(w.fairing.adjustments.length > 0);
     for (const c of w.clearances) assert.ok(c.clearanceM >= SCENE.params.skinOffset - 5e-4, c.id);
     for (const x of w.wheels) assert.ok(x.minClearanceM >= 0, x.id);
+  });
+
+  it("bracketed extents: an analytic ellipsoid's semi-axes, attained on the surface and inside the outer box", () => {
+    const sem = [2.2, 0.95, 0.6];
+    const e = runBodyKernel({ command: "ellipsoid", semi: sem, slices: 60 }, { noCache: true });
+    assert.equal(e.ok, true, e.error);
+    for (let i = 0; i < 3; i++) {
+      assert.ok(Math.abs(e.extents.max[i] - sem[i]) < 1e-6 && Math.abs(e.extents.min[i] + sem[i]) < 1e-6, `axis ${i}: ${e.extents.min[i]} .. ${e.extents.max[i]}`);
+      const [lo, hi] = e.extents.brackets.max[i];
+      assert.ok(lo <= sem[i] + 1e-9 && sem[i] <= hi + 1e-9, `bracket ${i}`);
+    }
   });
 
   it("frontal area and volume match an analytic ellipsoid", () => {
