@@ -17,20 +17,40 @@
 
 import { validateAgainst } from "./json-schema-lite.js";
 
-export const SCHEMA_VERSION = "1.0.0";
+export const SCHEMA_VERSION = "1.1.0";
+/** 1.1.0 is additive (hypothesis/contradicted statuses, bin, "law" evidence): 1.0.0 records stay valid. */
+export const SUPPORTED_SCHEMA_VERSIONS = ["1.0.0", "1.1.0"];
 
 export const ENTITY_KINDS = [
   "material", "formulation", "substance", "mixture", "fluid", "recipe", "component", "assembly",
   "formula", "algorithm", "biological_system", "software", "process",
 ];
 
-/** Status flags. Not mutually exclusive except "unknown", which stands alone. */
-export const STATUS_FLAGS = ["sourced", "measured", "computed", "estimated", "simulated", "validated", "unknown"];
+/**
+ * Status flags. Not mutually exclusive except "unknown", "hypothesis" and
+ * "contradicted", which each stand alone (1.1.0 adds the last two):
+ *   hypothesis   proposed, not established; may carry the asserted value.
+ *   contradicted conflicts with a conservation law, geometry or a sourced
+ *                value; needs that law/source AND the calculation showing it.
+ */
+export const STATUS_FLAGS = ["sourced", "measured", "computed", "estimated", "simulated", "validated", "unknown", "hypothesis", "contradicted"];
+
+/** Statuses that stand alone. */
+export const EXCLUSIVE_STATUSES = ["unknown", "hypothesis", "contradicted"];
+
+/**
+ * Disposition bins (Sentinel/RAM spec rev 1.0, section 0). A claim in
+ * "unsupported-as-stated" is never promoted into a fabrication or acceptance
+ * step because an internal calculation is self-consistent.
+ */
+export const CLAIM_BINS = ["buildable", "research-stage", "unsupported-as-stated"];
 
 /** Whether the evidence supports what the claim asserts (independent of how a value was obtained). */
 export const SUPPORT_STATES = ["unsupported", "supported", "partially_supported", "contradicted", "not_applicable"];
 
-export const EVIDENCE_KINDS = ["document", "url", "dataset", "standard", "test_record", "calculation", "user_statement"];
+// "law" (1.1.0): a conservation law or geometric identity, cited by name
+// (sourceId "law:<id>"), the basis a "contradicted" claim can rest on.
+export const EVIDENCE_KINDS = ["document", "url", "dataset", "standard", "test_record", "calculation", "user_statement", "law"];
 
 export const RELATIONSHIP_TYPES = [
   "made_from", "reacts_with", "contains", "depends_on", "fits_into", "derived_from",
@@ -49,7 +69,7 @@ export const ENTITY_SCHEMA = {
   required: ["schemaVersion", "id", "kind", "identity"],
   additionalProperties: false,
   properties: {
-    schemaVersion: { const: SCHEMA_VERSION },
+    schemaVersion: { enum: SUPPORTED_SCHEMA_VERSIONS },
     id: { $ref: "#/$defs/Id" },
     kind: { enum: ENTITY_KINDS },
     identity: { $ref: "#/$defs/Identity" },
@@ -217,6 +237,7 @@ export const ENTITY_SCHEMA = {
         method: { $ref: "#/$defs/Method" },
         status: { type: "array", minItems: 1, uniqueItems: true, items: { enum: STATUS_FLAGS } },
         support: { enum: SUPPORT_STATES },
+        bin: { enum: [...CLAIM_BINS, null] },
         evidence: { type: "array", items: { $ref: "#/$defs/EvidenceRef" } },
         requiredEvidence: { type: "array", items: { $ref: "#/$defs/RequiredEvidence" } },
         assertedBy: { anyOf: [{ type: "object", required: ["source"], additionalProperties: false, properties: { source: str, locator: strOrNull, quote: strOrNull } }, { type: "null" }] },

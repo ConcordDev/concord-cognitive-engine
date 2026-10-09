@@ -16,12 +16,14 @@ function volumeM3(g) {
     case "rod":
     case "bolt": return (PI * g.diameter * g.diameter / 4) * g.length;
     case "shell": return g.area * g.thickness;
+    case "rect-tube": return (g.width * g.height - Math.max(0, g.width - 2 * g.wall) * Math.max(0, g.height - 2 * g.wall)) * g.length;
     case "i-beam": return (2 * g.flangeWidth * g.flangeThickness + (g.height - 2 * g.flangeThickness) * g.webThickness) * g.length;
     default: return null;
   }
 }
 
 const SHAPE_NOTE = {
+  "rect-tube": "Tube modelled with sharp corners: corner radii are not included.",
   bolt: "Bolt modelled as its shank (π·d²/4·L): head, nut, washers and thread loss are not included, so mass is understated.",
 };
 
