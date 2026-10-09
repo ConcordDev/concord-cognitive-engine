@@ -54,7 +54,8 @@ export const vehicleTopSpeed = registerSolver({
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     if (v.drivelineEfficiency > 1) return { notComputed: "drivelineEfficiency must be at most 1" };
     const massEnv = ctx.result("mass.assembly", id);
-    const m = massEnv?.outputs?.mass?.value;
+    // Gross mass: the vehicle plus its payload (occupants, cargo).
+    const m = massEnv?.outputs?.grossMass?.value ?? massEnv?.outputs?.mass?.value;
     if (!Number.isFinite(m)) return { notComputed: `no mass for ${id} (${massEnv?.reason || "mass roll-up missing"})` };
     const engines = contained(ctx, id, "Actuator");
     const powers = engines.map((e) => ({ id: e.id, w: ctx.get(e.id, "props.maxPower") }));
@@ -68,7 +69,7 @@ export const vehicleTopSpeed = registerSolver({
     const vmax = solveTopSpeed(P * v.drivelineEfficiency, a, b);
     return {
       inputs: {
-        mass: { value: m, unit: "kg", source: massEnv.runId },
+        mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
         power: { value: P, unit: "W", source: powers.map((p) => p.id).join(" + ") },
         dragCoefficient: { value: v.dragCoefficient, source: v.dragCoefficientSource || "given in the design (not computed from geometry)" },
         frontalArea: { value: v.frontalArea, unit: "m2", source: v.frontalAreaSource || "given in the design" },
@@ -111,7 +112,8 @@ export const vehicleRequiredPower = registerSolver({
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     const massEnv = ctx.result("mass.assembly", id);
-    const m = massEnv?.outputs?.mass?.value;
+    // Gross mass: the vehicle plus its payload (occupants, cargo).
+    const m = massEnv?.outputs?.grossMass?.value ?? massEnv?.outputs?.mass?.value;
     if (!Number.isFinite(m)) return { notComputed: `no mass for ${id} (${massEnv?.reason || "mass roll-up missing"})` };
     const rho = Number.isFinite(v.airDensity) ? v.airDensity : ISA_SEA_LEVEL_RHO;
     const aero = 0.5 * rho * v.dragCoefficient * v.frontalArea * vReq ** 3;
@@ -125,7 +127,7 @@ export const vehicleRequiredPower = registerSolver({
     return {
       inputs: {
         requiredTopSpeed: { value: vReq, unit: "m/s", source: req.id },
-        mass: { value: m, unit: "kg", source: massEnv.runId },
+        mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
         dragCoefficient: { value: v.dragCoefficient, source: "given in the design (not computed from geometry)" },
         frontalArea: { value: v.frontalArea, unit: "m2" },
         rollingResistance: { value: v.rollingResistance },

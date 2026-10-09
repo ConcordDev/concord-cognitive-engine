@@ -23,13 +23,19 @@ function roadVehicle(req) {
     ...["FL", "FR", "RL", "RR"].map((p) => ({ id: `TIRE_${p}`, kind: "Tire", name: `Tyre ${p}` })),
     { id: "INTERIOR", kind: "Assembly", name: "Interior and occupant package" },
     ...Array.from({ length: seats || 0 }, (_, i) => ({ id: `SEAT_${i + 1}`, kind: "Seat", name: `Seat ${i + 1}` })),
+    // One occupant per seat for performance (gross mass) and CG; not in the
+    // kerb mass the mass target is judged on.
+    ...Array.from({ length: seats || 0 }, (_, i) => ({
+      id: `OCCUPANT_${i + 1}`, kind: "Payload", name: `Occupant ${i + 1}`,
+      props: { mass: "77 kg", massSource: "standard adult occupant (assumption)" },
+    })),
     { id: "ELECTRICAL", kind: "Assembly", name: "Electrical" },
   ];
   const contains = {
     VEH: ["BODY", "CHASSIS", "POWERTRAIN", "DRIVELINE", "SUSPENSION", "BRAKES", "WHEELS", "INTERIOR", "ELECTRICAL"],
     POWERTRAIN: ["ENGINE"],
     WHEELS: ["TIRE_FL", "TIRE_FR", "TIRE_RL", "TIRE_RR"],
-    INTERIOR: nodes.filter((n) => n.kind === "Seat").map((n) => n.id),
+    INTERIOR: nodes.filter((n) => n.kind === "Seat" || n.kind === "Payload").map((n) => n.id),
   };
   const map = {
     mass: { solver: "mass.assembly", target: "VEH", output: "mass" },

@@ -687,6 +687,11 @@ describe("Car brief, end to end (mechanism: illustrative parts, not a finished c
       ops.push({ op: "remove", node: id });
       ops.push({ op: "add", parent, node: { id, kind, material, geometry, props, position: { x: `${x} m`, y: "0 m", z: `${z} m` } } });
     }
+    // Seat the occupants (stated 77 kg each) so the CG can include them.
+    for (const i of [1, 2, 3, 4]) {
+      ops.push({ op: "remove", node: `OCCUPANT_${i}` });
+      ops.push({ op: "add", parent: "INTERIOR", node: { id: `OCCUPANT_${i}`, kind: "Payload", props: { mass: "77 kg", massSource: "standard adult occupant (assumption)" }, position: { x: `${i <= 2 ? 2.0 : 2.9} m`, y: "0 m", z: "0.6 m" } } });
+    }
     const r = s.edit(ops);
     assert.equal(r.ok, true, r.error);
 
@@ -701,7 +706,9 @@ describe("Car brief, end to end (mechanism: illustrative parts, not a finished c
     assert.notEqual(status("vehicle.axle-loads@VEH"), "NOT_COMPUTED");
     const req = s.result("vehicle.required-power@VEH");
     const v = 180 * 0.44704;
-    const expected = (0.5 * 1.225 * 0.28 * 1.9 * v ** 3 + 0.011 * mass * 9.80665 * v) / 0.9;
+    const gross = s.result("mass.assembly@VEH").outputs.grossMass.value;
+    assert.ok(Math.abs(gross - mass - 4 * 77) < 1e-9, "gross = kerb + four occupants");
+    const expected = (0.5 * 1.225 * 0.28 * 1.9 * v ** 3 + 0.011 * gross * 9.80665 * v) / 0.9;
     assert.ok(Math.abs(req.outputs.requiredPower.value - expected) / expected < 1e-9);
 
     // What-if 1: more power reruns the speed checks, not the masses.
@@ -732,5 +739,30 @@ describe("Car brief, end to end (mechanism: illustrative parts, not a finished c
     assert.equal(r.ok, false);
     assert.equal(s.graph.nodes.size, n);
     assert.equal(s.graph.node("X1"), null);
+  });
+});
+
+describe("Stated (catalogue) values and payload", () => {
+  it("a stated mass needs a source, and is reported as stated, not computed", () => {
+    const bad = compileDesignIR({ nodes: [{ id: "E", kind: "Actuator", props: { mass: "180 kg" } }] });
+    assert.equal(bad.ok, false);
+    assert.match(bad.errors[0], /needs props.massSource/);
+    const s = open({ design: { id: "x" }, nodes: [{ id: "E", kind: "Actuator", props: { mass: "180 kg", massSource: "example datasheet" } }] });
+    const e = s.result("mass.part@E");
+    assert.equal(e.outputs.mass.value, 180);
+    assert.equal(e.outputs.mass.basis, "stated");
+    assert.match(e.assumptions[0], /not computed: example datasheet/);
+  });
+
+  it("payload is in the gross mass, not the kerb mass or the cost", () => {
+    const s = open({ design: { id: "x" }, materials: { "steel-a36": {} }, nodes: [
+      { id: "A", kind: "Assembly" },
+      { id: "P", kind: "Part", material: "steel-a36", geometry: { shape: "box", length: "1 m", width: "1 m", height: "0.01 m" } },
+      { id: "O", kind: "Payload", props: { mass: "77 kg", massSource: "assumption" } },
+    ], edges: [{ type: "CONTAINS", from: "A", to: "P" }, { type: "CONTAINS", from: "A", to: "O" }] });
+    const m = s.result("mass.assembly@A").outputs;
+    assert.ok(Math.abs(m.mass.value - 78.5) < 1e-9);
+    assert.ok(Math.abs(m.grossMass.value - 155.5) < 1e-9);
+    assert.equal(s.result("cost.part@O"), null, "payload is not costed");
   });
 });

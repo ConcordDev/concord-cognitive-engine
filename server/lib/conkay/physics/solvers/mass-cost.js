@@ -26,14 +26,25 @@ const SHAPE_NOTE = {
   bolt: "Bolt modelled as its shank (π·d²/4·L): head, nut, washers and thread loss are not included, so mass is understated.",
 };
 
+const hasStated = (n, k) => Number.isFinite(n.props?.[k]);
+
 export const massPart = registerSolver({
   id: "mass.part",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "mass",
   fidelity: 1,
-  method: "m = V·ρ, volume from the part's parametric geometry",
-  targets: (g) => [...g.nodes.values()].filter((n) => n.geometry).map((n) => n.id),
+  method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source",
+  targets: (g) => [...g.nodes.values()].filter((n) => n.geometry || hasStated(n, "mass")).map((n) => n.id),
   run(ctx, id) {
+    const stated = ctx.get(id, "props.mass");
+    if (Number.isFinite(stated)) {
+      const source = ctx.get(id, "props.massSource");
+      return {
+        inputs: { statedMass: { value: stated, unit: "kg", source } },
+        outputs: { mass: { value: stated, unit: "kg", basis: "stated" } },
+        assumptions: [`Stated mass, not computed: ${source}.`],
+      };
+    }
     const geometry = ctx.get(id, "geometry");
     const mat = ctx.material(id);
     if (!mat) return { notComputed: "no material assigned" };
@@ -53,18 +64,26 @@ export const massPart = registerSolver({
   },
 });
 
-function rollup(ctx, id, partSolver, asmSolver, output, unit) {
+// Sum an output over an assembly's contents. Payload (people, cargo) is
+// kept out of the product's own total and reported separately as gross.
+function rollup(ctx, id, partSolver, asmSolver, output, unit, { withGross = false } = {}) {
   const parts = [];
   const missing = [];
   let total = 0;
+  let payload = 0;
   const skipped = [];
   for (const child of ctx.children(id, "CONTAINS")) {
     // Joints, interfaces and other logical nodes have no body of their own.
     if (child.kind !== "Assembly" && LOGICAL_KINDS.has(child.kind)) { skipped.push(child.id); continue; }
+    if (child.kind === "Payload" && !withGross) continue;
     const env = child.kind === "Assembly" ? ctx.result(asmSolver, child.id) : ctx.result(partSolver, child.id);
     const v = env?.outputs?.[output]?.value;
     if (!Number.isFinite(v)) { missing.push(`${child.id} (${env ? env.reason || env.status : "no geometry"})`); continue; }
-    total += v;
+    if (child.kind === "Payload") payload += v;
+    else {
+      total += v;
+      if (child.kind === "Assembly" && withGross) payload += (env.outputs.grossMass?.value ?? v) - v;
+    }
     parts.push({ id: child.id, [output]: v });
   }
   if (missing.length) return { notComputed: `${output} missing for ${missing.join(", ")}`, inputs: { parts: { value: parts } } };
@@ -72,28 +91,36 @@ function rollup(ctx, id, partSolver, asmSolver, output, unit) {
   if (!parts.length) return { notComputed: `nothing with ${output} in this assembly yet` };
   return {
     inputs: { parts: { value: parts, unit }, ...(skipped.length ? { skipped: { value: skipped, note: "no geometry of their own" } } : {}) },
-    outputs: { [output]: { value: total, unit } },
+    outputs: {
+      [output]: { value: total, unit },
+      ...(withGross ? { payload: { value: payload, unit }, grossMass: { value: total + payload, unit } } : {}),
+    },
   };
 }
 
 export const massAssembly = registerSolver({
   id: "mass.assembly",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "mass",
   fidelity: 0,
-  method: "Σ mass of contained parts and sub-assemblies",
+  method: "Σ mass of contained parts and sub-assemblies; payload reported separately (grossMass)",
   targets: (g) => g.nodesOfKind("Assembly").map((n) => n.id),
-  run: (ctx, id) => rollup(ctx, id, "mass.part", "mass.assembly", "mass", "kg"),
+  run: (ctx, id) => rollup(ctx, id, "mass.part", "mass.assembly", "mass", "kg", { withGross: true }),
 });
 
 export const costPart = registerSolver({
   id: "cost.part",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "cost",
   fidelity: 0,
-  method: "material cost = mass × price per kg (raw material only)",
-  targets: (g) => [...g.nodes.values()].filter((n) => n.geometry).map((n) => n.id),
+  method: "material cost = mass × price per kg (raw material only); or a stated unit cost with its source",
+  targets: (g) => [...g.nodes.values()].filter((n) => n.kind !== "Payload" && (n.geometry || hasStated(n, "mass") || hasStated(n, "unitCost"))).map((n) => n.id),
   run(ctx, id) {
+    const unitCost = ctx.get(id, "props.unitCost");
+    if (Number.isFinite(unitCost)) {
+      const source = ctx.get(id, "props.unitCostSource");
+      return { inputs: { unitCost: { value: unitCost, unit: "USD", source } }, outputs: { cost: { value: unitCost, unit: "USD", basis: "stated" } }, assumptions: [`Stated unit cost: ${source}.`] };
+    }
     const m = ctx.result("mass.part", id);
     const mass = m?.outputs?.mass?.value;
     if (!Number.isFinite(mass)) return { notComputed: `no mass for ${id}` };
