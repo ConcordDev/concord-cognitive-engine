@@ -134,3 +134,81 @@ export const beamBuckling = registerSolver({
     };
   },
 });
+
+// Chassis screen: each Beam with props.role "rail" in a vehicle, simply
+// supported between the axles, carrying its share of the gross weight times
+// a vertical load factor as one point load at midspan. A point load at
+// midspan gives twice the peak moment of the same weight spread evenly, so
+// this is conservative for a ladder frame. Screening, not a frame FEA of the
+// whole structure.
+const DEFAULT_CHASSIS_LOAD_FACTOR = 2.0;
+
+function railsIn(ctx, id, seen = new Set()) {
+  const out = [];
+  for (const c of ctx.children(id, "CONTAINS")) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    if (c.kind === "Beam" && ctx.get(c.id, "props.role") === "rail") out.push(c);
+    if (c.kind === "Assembly") out.push(...railsIn(ctx, c.id, seen));
+  }
+  return out;
+}
+
+export const chassisScreen = registerSolver({
+  id: "vehicle.chassis-screen",
+  version: "1.0.0",
+  domain: "structural.chassis",
+  fidelity: 2,
+  method: "each rail: beam-frame FEA, simply supported over the wheelbase, point load (gross weight × load factor / rails) at midspan",
+  targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id)
+    .filter((id) => [...g.nodes.values()].some((n) => n.kind === "Beam" && n.props?.role === "rail")),
+  run(ctx, id) {
+    const rails = railsIn(ctx, id);
+    if (!rails.length) return { notComputed: "no Beam with props.role \"rail\" in this vehicle" };
+    const fx = ctx.get(id, "props.vehicle.frontAxleX");
+    const rx = ctx.get(id, "props.vehicle.rearAxleX");
+    if (!Number.isFinite(fx) || !Number.isFinite(rx) || !(rx > fx)) return { notComputed: "props.vehicle needs frontAxleX < rearAxleX" };
+    const massEnv = ctx.result("mass.assembly", id);
+    const m = massEnv?.outputs?.grossMass?.value ?? massEnv?.outputs?.mass?.value;
+    if (!Number.isFinite(m)) return { notComputed: `no mass for ${id} (${massEnv?.reason || "missing"})` };
+    const given = ctx.get(id, "props.vehicle.chassisLoadFactor");
+    const factor = Number.isFinite(given) && given > 0 ? given : DEFAULT_CHASSIS_LOAD_FACTOR;
+    const span = rx - fx;
+    const P = (m * 9.80665 * factor) / rails.length;
+    const margins = [];
+    const outputs = {};
+    const inputs = {
+      grossMass: { value: m, unit: "kg", source: massEnv.runId },
+      loadFactor: { value: factor, source: Number.isFinite(given) ? "props.vehicle.chassisLoadFactor" : "default 2 g vertical (assumption)" },
+      span: { value: span, unit: "m", source: "wheelbase" },
+      loadPerRail: { value: P, unit: "N" },
+    };
+    for (const r of rails) {
+      const g = ctx.get(r.id, "geometry");
+      const mat = ctx.material(r.id);
+      if (g?.shape !== "i-beam") return { notComputed: `${r.id}: only i-beam rails are screened` };
+      if (!mat || mat.youngsModulusPa == null || mat.yieldPa == null) return { notComputed: `${r.id}: material needs E and yield` };
+      const mm = (x) => x * 1000;
+      const study = buildBeamStudy({
+        dims: { length: mm(span), height: mm(g.height), flangeWidth: mm(g.flangeWidth), flangeThickness: mm(g.flangeThickness), webThickness: mm(g.webThickness) },
+        material: { E: mat.youngsModulusPa / MPA, yield: mat.yieldPa / MPA }, support: "simply-supported", loadN: P,
+      });
+      if (!study.ok) return { notComputed: `${r.id}: ${study.error}` };
+      const fea = runFEA(study.model);
+      if (!fea.ok) return { notComputed: `${r.id}: ${fea.error || "FEA failed"}` };
+      const sum = summarizeBeamStudy(study, fea, { E: mat.youngsModulusPa / MPA, yield: mat.yieldPa / MPA });
+      margins.push({ check: `${r.id} bending stress ≤ yield`, demand: sum.maxStressMPa * MPA, capacity: mat.yieldPa, unit: "Pa" });
+      outputs[`${r.id}.maxStress`] = { value: sum.maxStressMPa * MPA, unit: "Pa" };
+      outputs[`${r.id}.maxDeflection`] = { value: sum.maxDeflectionMm / 1000, unit: "m" };
+      inputs[`${r.id}.material`] = { value: mat.id, source: mat.source };
+    }
+    return {
+      inputs, outputs, margins,
+      assumptions: [
+        "Each rail simply supported at the axles with the whole share of weight at midspan (conservative for a distributed load).",
+        "Vertical bending only: torsion, crash loads and joints are not screened.",
+      ],
+      covers: [id, ...rails.map((r) => r.id)],
+    };
+  },
+});

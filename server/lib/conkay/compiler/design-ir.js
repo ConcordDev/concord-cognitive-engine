@@ -24,8 +24,15 @@ export const NODE_KINDS = new Set([
   "Field", "Material", "Fluid", "Circuit", "Actuator", "Sensor", "HeatSource", "HeatSink", "Boundary",
   "Interface", "Process",
   // Common specializations of Part.
-  "Bolt", "Plate",
+  "Bolt", "Plate", "Tire", "Seat",
+  // People and cargo: they have mass (gross mass, CG) but are not part of
+  // the product's own (kerb) mass or cost.
+  "Payload",
 ]);
+
+// Kinds with no body of their own. Every other kind is physical: it needs
+// geometry before it has a mass, and an assembly can't be weighed without it.
+export const LOGICAL_KINDS = new Set(["Assembly", "Joint", "Constraint", "Load", "Field", "Material", "Boundary", "Interface", "Process"]);
 
 export const EDGE_TYPES = new Set([
   "BOLTED_TO", "WELDED_TO", "MATED_TO", "CONSTRAINS", "LOADS", "SUPPORTS", "CONDUCTS", "CONTAINS",
@@ -42,6 +49,9 @@ export const SHAPES = {
   "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
   // A panel or laminate: mass from area × thickness (no AABB, no solid block).
   shell: ["area", "thickness"],
+  // A closed body skin approximated as an ellipsoid of the given overall
+  // length × width × height: area, mass and frontal area come from these.
+  "ellipsoid-shell": ["length", "width", "height", "thickness"],
 };
 
 // Shape parameters are lengths unless listed here.
@@ -54,8 +64,12 @@ const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compre
 
 // Node props that carry a unit; converted to SI like geometry. Other props
 // are passed through as plain values.
-export const TYPED_PROPS = { maxPower: "power" };
-const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length" };
+// mass and unitCost are stated values (a datasheet, a catalogue, an
+// assumption) and must say where they come from: massSource /
+// unitCostSource are required alongside them.
+export const TYPED_PROPS = { maxPower: "power", mass: "mass", unitCost: "money" };
+const SOURCED_PROPS = { mass: "massSource", unitCost: "unitCostSource" };
+const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length", tireRadius: "length" };
 
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 
@@ -105,6 +119,11 @@ export function compileDesignIR(ir) {
       if (!q.ok) errors.push(`${where}.props.${k}: ${q.error}`);
       else if (q.si <= 0) errors.push(`${where}.props.${k}: must be positive`);
       else node.props[k] = q.si;
+    }
+    for (const [k, srcKey] of Object.entries(SOURCED_PROPS)) {
+      if (n.props?.[k] != null && !(typeof n.props?.[srcKey] === "string" && n.props[srcKey].trim())) {
+        errors.push(`${where}.props.${k}: a stated ${k} needs props.${srcKey} (datasheet, catalogue or assumption)`);
+      }
     }
     if (node.props.vehicle && typeof node.props.vehicle === "object") {
       const veh = { ...node.props.vehicle };

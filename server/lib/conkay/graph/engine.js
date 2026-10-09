@@ -18,6 +18,7 @@ import { getSolver, listSolvers, envelope, runId } from "../physics/registry.js"
 import { nodeKey } from "./design-graph.js";
 
 function touches(readKey, changedKey) {
+  if (changedKey.endsWith("/")) return readKey.startsWith(changedKey); // every property of a node
   return readKey === changedKey || changedKey.startsWith(`${readKey}.`) || readKey.startsWith(`${changedKey}.`);
 }
 
@@ -126,23 +127,53 @@ export class DesignEngine {
    */
   applyEdits(ops, { source = "api", text = null } = {}) {
     const applied = [];
+    const undo = () => {
+      for (const a of applied.reverse()) {
+        if (a.op === "add") this.graph.removeNode(a.node);
+        else if (a.op === "remove") this.graph.restoreNode(a.removed.node, a.removed.edges);
+        else this.graph.set(a.node, a.path, a.before);
+      }
+    };
+    let structural = false;
     for (const op of ops) {
+      if (op.op === "add") {
+        const r = this.graph.addNode(op.node, op.parent);
+        if (!r.ok) { undo(); return { ok: false, error: r.error }; }
+        structural = true;
+        applied.push({ op: "add", node: r.node.id, parent: op.parent ?? null, keys: ["structure", `node:${r.node.id}/`], replay: { op: "add", node: op.node, parent: op.parent ?? null } });
+        continue;
+      }
+      if (op.op === "remove") {
+        const r = this.graph.removeNode(op.node);
+        if (!r.ok) { undo(); return { ok: false, error: r.error }; }
+        structural = true;
+        applied.push({ op: "remove", node: op.node, removed: r, keys: ["structure", `node:${op.node}/`], replay: { op: "remove", node: op.node } });
+        continue;
+      }
       const r = this.graph.set(op.node, op.path, op.value);
       if (!r.ok) {
         // Undo what this batch already changed, so a failed edit leaves no trace.
-        for (const a of applied.reverse()) this.graph.set(a.node, a.path, a.before);
+        undo();
         return { ok: false, error: r.error };
       }
-      applied.push({ node: op.node, path: op.path, before: r.before, after: r.after, key: r.key });
+      applied.push({ node: op.node, path: op.path, before: r.before, after: r.after, keys: [r.key], replay: { node: op.node, path: op.path, value: r.after } });
     }
     const before = new Map([...this.runs].map(([id, run]) => [id, run.envelope]));
     this.graph.revision += 1;
-    const changedKeys = applied.map((a) => a.key);
+    const changedKeys = applied.flatMap((a) => a.keys);
     const stale = this.invalidate(changedKeys);
+    if (structural) {
+      this.plan(); // new nodes may bring new runs; removed ones drop theirs
+      for (const [id, run] of this.runs) if (run.stale) stale.add(id);
+    }
     this.computedThisPass = [];
-    for (const id of stale) this.ensure(id);
+    for (const id of stale) if (this.runs.has(id)) this.ensure(id);
     const rerun = [...this.computedThisPass];
-    const entry = { revision: this.graph.revision, source, text, ops: applied.map(({ key, ...a }) => a), changedKeys, rerun, at: new Date().toISOString() };
+    const entry = {
+      revision: this.graph.revision, source, text,
+      ops: applied.map(({ keys, removed, ...a }) => a),
+      changedKeys, rerun, at: new Date().toISOString(),
+    };
     this.graph.history.push(entry);
     return {
       ok: true,
@@ -151,6 +182,7 @@ export class DesignEngine {
       rerun,
       reused: [...this.runs.keys()].filter((id) => !rerun.includes(id)),
       changes: rerun.map((id) => diffEnvelope(id, before.get(id), this.runs.get(id).envelope)),
+      ...(structural ? { removedRuns: [...before.keys()].filter((id) => !this.runs.has(id)) } : {}),
     };
   }
 
