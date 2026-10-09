@@ -42,7 +42,9 @@ export const CAD_BODY_DEFAULTS = Object.freeze({
   blendRadiusM: 0.08,
   inletAllowanceM: 0.06,
   fairSigmaXM: 0.25,
+  fairSigmaXSideM: 0.45,
   fairSigmaTheta: 0.1,
+  fairHoodCloseRadiusM: 6.0,
   fairPoleSpacingM: 0.24,
   maxWidthM: 1.95,
 });
@@ -82,6 +84,8 @@ export const CAD_BODY_BASIS = Object.freeze({
   inletAllowance: "design choice: depth of an air-inlet / duct allowance ahead of the radiator face, enclosed like a component",
   fairSigmaX: "design choice: fairing length along the car (Gaussian sigma) of the section radius field; the faired field never goes inside the solved sections (so every envelope keeps its skin offset at the stations), never below the floor and never wider than maxWidth",
   fairSigmaTheta: "design choice: fairing angle around each section (Gaussian sigma, radians); fills the concave creases between the fender pods, the lower body and the greenhouse with a fillet of roughly this angle",
+  fairSigmaXSide: "design choice (kernel 2.2): fairing length along the car on the side-facing rays (the door and flanks; the roof, hood and floor keep fairSigmaX, so the roof line does not lift); removed the 2.1 door bump (a 28-43 mm dip in the side behind the front occupants' shoulders)",
+  fairHoodCloseRadius: "design choice (kernel 2.2): rolling-disc radius closing the top outline of each front-pod station (weighted by the pod's blend) before the fairing; fills the valley where the hood dome meets the fender pods (the 2.1 S-bend). Outward only: every envelope keeps its skin offset",
   fairPoleSpacing: "design choice: control-point spacing of the surface along the car (a least-squares cubic B-spline, about one control point per this length, instead of interpolating every section); larger is smoother and follows the sections less closely, so the exact clearance pass re-checks the result",
   maxWidth: "design choice (requirement-like bound, from the brief's sports 2+2 band): overall body width; the fairing's width cap is tightened until the lofted body is within it, never below what the tyres and envelopes need (then the solver fails)",
 });
@@ -89,7 +93,7 @@ export const CAD_BODY_BASIS = Object.freeze({
 const mm = (m) => `${Math.round(m * 1e6) / 1e3} mm`;
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
-const LENGTHS = ["noseExtension", "noseTipHeight", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltMin", "beltMax", "beltSigma", "profileSigma", "lowerOverlap", "podBlend", "podMinHalfWidth", "podTuck", "blendRadius", "inletAllowance", "planClosingRadius", "roofClosingRadius", "floorClosingRadius", "fairSigmaX", "fairPoleSpacing", "maxWidth"];
+const LENGTHS = ["noseExtension", "noseTipHeight", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltMin", "beltMax", "beltSigma", "profileSigma", "lowerOverlap", "podBlend", "podMinHalfWidth", "podTuck", "blendRadius", "inletAllowance", "planClosingRadius", "roofClosingRadius", "floorClosingRadius", "fairSigmaX", "fairSigmaXSide", "fairHoodCloseRadius", "fairPoleSpacing", "maxWidth"];
 const NUMBERS = ["stationCount", "sectionPoints", "upperExponent", "lowerExponent", "fastbackDeg", "floorRiseDeg", "noseShapeExponent", "noseRoundExponent", "kammAreaRatio", "podExponent", "fairSigmaTheta"];
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
