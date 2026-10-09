@@ -1,0 +1,14 @@
+USB Blend D —(Viscoelastic/Impact Resistant):
+- HDPE base: 65-70% — higher polymer ratio than standard marine blend, gives viscoelastic behavior, bends not breaks on impact
+- HDPE/HC co-polymer: 10-15% — pressure resistance retained from marine spec
+- Basalt fiber: 5-8% — tensile reinforcement without adding brittleness
+- CaCO3: 3-5% — surface hardness, chemical resistance to hydrogen and saltwater
+- Graphene: 2-3% — structural integrity, thermal conductivity for heat dissipation during splitting cycles
+- Silica: 1-2% — weather and UV stability
+Total: 100%
+Cure temperature: 200°C —
+Key property difference from marine blend:
+Higher HDPE ratio means more polymer, less aggregate. Aggregate makes materials rigid and strong until fracture. Polymer absorbs energy through deformation. At 65-70% HDPE this blend deforms under impact and returns to shape rather than cracking.
+A viscoelastic chamber deforms, maintains seal integrity, springs back. Hydrogen stays contained through the crash.
+Chemical resistance:
+HDPE is inherently resistant to both saltwater and hydrogen gas. No degradation from fuel contact.
