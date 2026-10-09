@@ -30,6 +30,8 @@ export const NODE_KINDS = new Set([
   // People and cargo: they have mass (gross mass, CG) but are not part of
   // the product's own (kerb) mass or cost.
   "Payload",
+  // Safety case (lib/conkay/safety-case): functions → trains → components → supports.
+  "SafetyCase", "SafetyFunction", "SafetyTrain", "SafetyComponent", "SupportItem",
 ]);
 
 // Kinds with no body of their own. Every other kind is physical: it needs

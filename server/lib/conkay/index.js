@@ -27,6 +27,7 @@ import "./physics/solvers/package.js";
 import "./physics/solvers/cad-body.js";
 import "./physics/solvers/packaging.js";
 import "./physics/solvers/vehicle-acceptance.js";
+import "./safety-case/solvers.js";
 
 export { listSolvers };
 

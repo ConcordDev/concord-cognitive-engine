@@ -150,6 +150,7 @@ import engineering from './engineering.js';
 import conkayDesign from './conkay-design.js';
 import conkayKnowledge from './conkay-knowledge.js';
 import conkayNorthstar from './conkay-northstar.js';
+import conkaySafety from './conkay-safety.js';
 import experience from './experience.js';
 import exportdomain from './exportdomain.js';
 import fashion from './fashion.js';
@@ -470,6 +471,7 @@ export default [
   conkayDesign,
   conkayKnowledge,
   conkayNorthstar,
+  conkaySafety,
   experience,
   exportdomain,
   fashion,
