@@ -5,6 +5,11 @@
 // requirement to the solver output that judges it. It invents no geometry,
 // materials or numbers, so a fresh design is mostly NOT_COMPUTED, and the
 // reasons say exactly what has to be supplied next.
+//
+// Nodes that stand for a critical vehicle component carry props.critical
+// (see CRITICAL_VEHICLE_COMPONENTS): the acceptance gate fails while any of
+// them is a placeholder, and a critical category with no node at all
+// (differential, steering, cooling, ...) counts as missing.
 
 import { parseBrief } from "./requirement-parser.js";
 
@@ -15,21 +20,21 @@ function roadVehicle(req) {
     { id: "BODY", kind: "Assembly", name: "Body and aero" },
     { id: "CHASSIS", kind: "Assembly", name: "Chassis and crash structure" },
     { id: "POWERTRAIN", kind: "Assembly", name: "Powertrain" },
-    { id: "ENGINE", kind: "Actuator", name: "Engine or motor" },
+    { id: "ENGINE", kind: "Actuator", name: "Engine or motor", props: { critical: "engine_or_motor" } },
     { id: "DRIVELINE", kind: "Assembly", name: "Transmission and driveline" },
-    { id: "SUSPENSION", kind: "Assembly", name: "Suspension and steering" },
-    { id: "BRAKES", kind: "Assembly", name: "Brakes" },
+    { id: "SUSPENSION", kind: "Assembly", name: "Suspension and steering", props: { critical: "suspension" } },
+    { id: "BRAKES", kind: "Assembly", name: "Brakes", props: { critical: "brakes" } },
     { id: "WHEELS", kind: "Assembly", name: "Wheels and tyres" },
-    ...["FL", "FR", "RL", "RR"].map((p) => ({ id: `TIRE_${p}`, kind: "Tire", name: `Tyre ${p}` })),
+    ...["FL", "FR", "RL", "RR"].map((p) => ({ id: `TIRE_${p}`, kind: "Tire", name: `Tyre ${p}`, props: { critical: "tyres" } })),
     { id: "INTERIOR", kind: "Assembly", name: "Interior and occupant package" },
-    ...Array.from({ length: seats || 0 }, (_, i) => ({ id: `SEAT_${i + 1}`, kind: "Seat", name: `Seat ${i + 1}` })),
+    ...Array.from({ length: seats || 0 }, (_, i) => ({ id: `SEAT_${i + 1}`, kind: "Seat", name: `Seat ${i + 1}`, props: { critical: "interior_seats" } })),
     // One occupant per seat for performance (gross mass) and CG; not in the
     // kerb mass the mass target is judged on.
     ...Array.from({ length: seats || 0 }, (_, i) => ({
       id: `OCCUPANT_${i + 1}`, kind: "Payload", name: `Occupant ${i + 1}`,
       props: { mass: "77 kg", massSource: "standard adult occupant (assumption)" },
     })),
-    { id: "ELECTRICAL", kind: "Assembly", name: "Electrical" },
+    { id: "ELECTRICAL", kind: "Assembly", name: "Electrical", props: { critical: "wiring" } },
   ];
   const contains = {
     VEH: ["BODY", "CHASSIS", "POWERTRAIN", "DRIVELINE", "SUSPENSION", "BRAKES", "WHEELS", "INTERIOR", "ELECTRICAL"],

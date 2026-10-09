@@ -10,7 +10,10 @@
 // the one envelope every result uses, which is the receipt:
 //
 //   { runId, status: PASS|FAIL|WARN|NOT_COMPUTED|ERROR, solver, target,
-//     inputs, outputs, margins, warnings, assumptions, covers, provenance, runtimeMs }
+//     inputs, outputs, margins, failures, warnings, assumptions, covers, provenance, runtimeMs }
+//
+// A FAIL comes from a margin over 1, or from a named failure (a gate, such
+// as an acceptance check, whose reasons are not a demand/capacity ratio).
 //
 // No solver estimates a value it was not given the inputs for.
 
@@ -63,8 +66,9 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     marginPct: (m.capacity / m.demand - 1) * 100,
   }));
   const warnings = raw.warnings || [];
+  const failures = raw.failures || [];
   let status = "PASS";
-  if (margins.some((m) => !(m.utilization <= 1))) status = "FAIL";
+  if (failures.length || margins.some((m) => !(m.utilization <= 1))) status = "FAIL";
   else if (warnings.length) status = "WARN";
   return {
     ...base,
@@ -72,6 +76,7 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     inputs,
     outputs: raw.outputs || {},
     margins,
+    ...(failures.length ? { failures } : {}),
     warnings,
     assumptions: raw.assumptions || [],
     covers: raw.covers || [target],

@@ -43,6 +43,19 @@ function frontalArea(ctx, id) {
   return { error: null };
 }
 
+// A top speed from this model is a model output, not a validated claim:
+// it holds only as far as each of these is shown to hold. The acceptance
+// check reports which of them the design has evidence for.
+export const TOP_SPEED_CLAIM_STATUS = "model_output_unvalidated";
+export const TOP_SPEED_UNVERIFIED_DEPENDENCIES = [
+  { id: "drag_model", what: "Cd and frontal area: Cd is an input (no CFD or wind-tunnel value); frontal area is given or from an ellipsoid body (screening)" },
+  { id: "drivetrain_losses", what: "driveline efficiency is an input, not measured or computed from the gearbox and differential" },
+  { id: "gearing", what: "the speed is power-limited only; whether top gear reaches it before redline is the gearing check (vehicle.gearing)" },
+  { id: "tyre_limits", what: "tyre speed rating and load index against this speed and the axle loads (tire.speed-rating, tire.load-index)" },
+  { id: "stability", what: "high-speed stability and aero lift: no solver yet" },
+  { id: "thermal", what: "cooling capacity for sustained full power: no solver yet" },
+];
+
 /** v where P·η = a·v³ + b·v; the left side is fixed, the right is increasing in v. */
 export function solveTopSpeed(wheelPowerW, a, b) {
   let lo = 0;
@@ -57,7 +70,7 @@ export function solveTopSpeed(wheelPowerW, a, b) {
 
 export const vehicleTopSpeed = registerSolver({
   id: "vehicle.top-speed",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "performance.top-speed",
   fidelity: 1,
   method: "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection",
@@ -98,13 +111,15 @@ export const vehicleTopSpeed = registerSolver({
         airDensity: { value: rho, unit: "kg/m3", source: Number.isFinite(v.airDensity) ? "given in the design" : "ISA sea level, 15 °C" },
       },
       outputs: {
-        topSpeed: { value: vmax, unit: "m/s" },
+        topSpeed: { value: vmax, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => d.id) },
+        claimStatus: { value: TOP_SPEED_CLAIM_STATUS, note: "a model output, not a validated top speed", unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES },
         aeroPowerAtTopSpeed: { value: a * vmax ** 3, unit: "W" },
         rollingPowerAtTopSpeed: { value: b * vmax, unit: "W" },
       },
       assumptions: [
         "Steady, level road, no wind; power-limited, not gearing- or rev-limited.",
         "Cd and frontal area are inputs; aero is screening until a CFD or wind-tunnel value replaces them.",
+        `Model output (${TOP_SPEED_CLAIM_STATUS}): depends on ${TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => d.id).join(", ")}.`,
       ],
     };
   },

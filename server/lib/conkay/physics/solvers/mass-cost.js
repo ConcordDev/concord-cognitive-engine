@@ -37,20 +37,36 @@ const SHAPE_NOTE = {
 
 const hasStated = (n, k) => Number.isFinite(n.props?.[k]);
 
+// Where a stated mass comes from, in words, for the receipt.
+export function describeMassState(ms) {
+  if (!ms) return null;
+  if (ms.state === "sourced") return `sourced: ${ms.source?.title || ms.source?.url || ms.source?.document} (${ms.variant})`;
+  if (ms.state === "estimated") {
+    const u = ms.uncertainty || {};
+    return `estimated: ${ms.method} (range ${u.pct != null ? `±${u.pct}%` : `${u.lowKg}–${u.highKg} kg`})`;
+  }
+  if (ms.state === "placeholder") return `placeholder: ${ms.note}`;
+  return `${ms.state}`;
+}
+
 export const massPart = registerSolver({
   id: "mass.part",
-  version: "1.1.0",
+  version: "1.2.0",
   domain: "mass",
   fidelity: 1,
-  method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source",
+  method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source. Every mass carries a mass state (sourced / estimated / computed / placeholder).",
   targets: (g) => [...g.nodes.values()].filter((n) => n.geometry || hasStated(n, "mass")).map((n) => n.id),
   run(ctx, id) {
     const stated = ctx.get(id, "props.mass");
+    const declared = ctx.get(id, "props.massState");
     if (Number.isFinite(stated)) {
-      const source = ctx.get(id, "props.massSource");
+      const source = ctx.get(id, "props.massSource") || describeMassState(declared);
+      // A stated mass with only a free-text source has no mass state: it is
+      // not shown to be sourced, estimated or computed, so it is a placeholder.
+      const massState = declared || { state: "placeholder", note: `stated mass with no mass state (source given: ${source})` };
       return {
         inputs: { statedMass: { value: stated, unit: "kg", source } },
-        outputs: { mass: { value: stated, unit: "kg", basis: "stated" } },
+        outputs: { mass: { value: stated, unit: "kg", basis: "stated" }, massState: { value: massState.state, detail: massState } },
         assumptions: [`Stated mass, not computed: ${source}.`],
       };
     }
@@ -60,6 +76,9 @@ export const massPart = registerSolver({
     const rho = mat.densityKgM3;
     if (rho == null) return { notComputed: `${mat.label} has no density` };
     const V = volumeM3(geometry);
+    const computed = { state: "computed", geometryRef: `${id}.geometry (${geometry.shape})`, materialRef: `${mat.id} (density: ${mat.source})` };
+    // Stand-in geometry (not a designed part) stays a placeholder even though its mass is V·ρ.
+    const massState = declared?.state === "placeholder" ? { ...declared, computedFrom: computed } : computed;
     return {
       inputs: {
         shape: { value: geometry.shape },
@@ -67,8 +86,11 @@ export const massPart = registerSolver({
         material: { value: mat.id, source: mat.source, basis: mat.basis },
         density: { value: rho, unit: "kg/m3", source: mat.source },
       },
-      outputs: { volume: { value: V, unit: "m3" }, mass: { value: V * rho, unit: "kg" } },
-      assumptions: SHAPE_NOTE[geometry.shape] ? [SHAPE_NOTE[geometry.shape]] : [],
+      outputs: { volume: { value: V, unit: "m3" }, mass: { value: V * rho, unit: "kg" }, massState: { value: massState.state, detail: massState } },
+      assumptions: [
+        ...(SHAPE_NOTE[geometry.shape] ? [SHAPE_NOTE[geometry.shape]] : []),
+        ...(massState.state === "placeholder" ? [`Placeholder: ${declared.note}`] : []),
+      ],
     };
   },
 });

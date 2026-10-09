@@ -15,12 +15,14 @@
 //   conkay_design.feasibility { brief, bounds? }    → physics bound on whether any design could meet it
 //   conkay_design.from-brief  { brief }             → open a design: system tree + wired requirements
 //   conkay_design.export      { designId }          → the Realization Package (files as text)
+//   conkay_design.car-acceptance { brief }          → the brief built from the component library: mass by state, critical-placeholder gate, tyre and top-speed status (computed, not saved)
 
 import crypto from "node:crypto";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
 import { compileBrief } from "../lib/conkay/compiler/architectures.js";
+import { carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
 
 const SESSION_CACHE_MAX = 64;
 const sessions = new Map(); // designId -> session (LRU by insertion order)
@@ -115,6 +117,14 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     const opened = actions.open(ctx, artifact, { ir: c.ir });
     if (!opened.ok) return opened;
     return { ok: true, result: { ...opened.result, architecture: c.architecture, parsed: c.parsed, unmapped: c.unmapped } };
+  });
+
+  registerLensAction("conkay_design", "car-acceptance", (_ctx, _artifact, params) => {
+    const brief = String(params?.brief || "").slice(0, 4000);
+    if (!brief.trim()) return { ok: false, error: "send a brief" };
+    const r = carAcceptance(brief);
+    if (!r.ok) return { ok: false, error: r.error, ...(r.errors ? { errors: r.errors } : {}) };
+    return { ok: true, result: r.report };
   });
 
   registerLensAction("conkay_design", "get", (ctx, _artifact, params) => {

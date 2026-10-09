@@ -1,0 +1,237 @@
+// server/lib/conkay/physics/solvers/vehicle-acceptance.js
+//
+// mass.breakdown: a vehicle's kerb mass by mass state. Every physical part
+// it contains (payload excluded) is sourced, estimated, computed or a
+// placeholder; the receipt gives kg and % for each, the uncertainty band
+// (estimated ranges summed) and which parts have no mass at all, which makes
+// the total a lower bound.
+//
+// vehicle.acceptance: the gate that says whether a vehicle design is
+// physically credible at screening level. It FAILS ("not physically
+// credible") when any critical component (engine or motor, transmission,
+// differential, wheels, tyres, brakes, suspension, steering, cooling, fuel or
+// battery, exhaust for a combustion engine, wiring, interior and seats) is
+// still a placeholder or missing, even when every other check passes. It also
+// fails on a hard tyre speed or load failure, a failed requirement, or a
+// critical part whose published variant doesn't fit the configuration. The
+// top speed is reported as a model output with its unverified dependencies,
+// never as a validated claim.
+
+import { registerSolver } from "../registry.js";
+import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
+import { summarizeMassStates } from "../../verification/mass-state.js";
+import { TOP_SPEED_CLAIM_STATUS, TOP_SPEED_UNVERIFIED_DEPENDENCIES } from "./vehicle.js";
+
+export const CRITICAL_VEHICLE_COMPONENTS = [
+  { id: "engine_or_motor", label: "engine or motor" },
+  { id: "transmission", label: "transmission" },
+  { id: "differential", label: "differential" },
+  { id: "wheels", label: "wheels" },
+  { id: "tyres", label: "tyres" },
+  { id: "brakes", label: "brakes" },
+  { id: "suspension", label: "suspension" },
+  { id: "steering", label: "steering" },
+  { id: "cooling", label: "cooling" },
+  { id: "fuel_or_battery", label: "fuel or battery system" },
+  { id: "exhaust", label: "exhaust", appliesWhen: "combustion engine (fuelType is not electric)" },
+  { id: "wiring", label: "wiring" },
+  { id: "interior_seats", label: "interior and seats" },
+];
+
+// Categories whose parts may cover one axle only (props.axle: front | rear | both).
+const AXLE_CATEGORIES = new Set(["brakes"]);
+
+const vehicles = (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id);
+
+/** Physical parts under an assembly (payload and logical nodes excluded). */
+function physicalLeaves(ctx, id, seen = new Set()) {
+  const out = [];
+  for (const c of ctx.children(id, "CONTAINS")) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    if (c.kind === "Assembly") out.push(...physicalLeaves(ctx, c.id, seen));
+    else if (!LOGICAL_KINDS.has(c.kind) && c.kind !== "Payload") out.push(c);
+  }
+  return out;
+}
+
+function allContained(ctx, id, seen = new Set()) {
+  const out = [];
+  for (const c of ctx.children(id, "CONTAINS")) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    out.push(c);
+    if (c.kind === "Assembly") out.push(...allContained(ctx, c.id, seen));
+  }
+  return out;
+}
+
+export const massBreakdown = registerSolver({
+  id: "mass.breakdown",
+  version: "1.0.0",
+  domain: "mass.states",
+  fidelity: 0,
+  method: "kerb mass by mass state (sourced / estimated / computed / placeholder); uncertainty band = Σ estimated ranges",
+  targets: vehicles,
+  run(ctx, id) {
+    const parts = physicalLeaves(ctx, id);
+    if (!parts.length) return { notComputed: "no physical parts in this vehicle yet" };
+    const items = [];
+    const mismatched = [];
+    for (const p of parts) {
+      const env = ctx.result("mass.part", p.id);
+      const m = env?.outputs?.mass?.value;
+      const declared = ctx.get(p.id, "props.massState");
+      const app = ctx.get(p.id, "props.applicability");
+      if (app && app.ok === false) mismatched.push({ id: p.id, componentId: declared?.componentId || null, mismatches: app.mismatches });
+      if (!Number.isFinite(m)) {
+        items.push({ id: p.id, massKg: null, massState: declared?.state === "placeholder" ? declared : { state: "placeholder", note: `no mass yet (${env?.reason || "no geometry and no stated mass"})` } });
+        continue;
+      }
+      items.push({ id: p.id, massKg: m, massState: env.outputs.massState?.detail || { state: "placeholder", note: "mass with no state" } });
+    }
+    const sum = summarizeMassStates(items);
+    const pct = (s) => sum.byState[s].pct;
+    const warnings = [];
+    if (sum.byState.placeholder.count) warnings.push(`${sum.byState.placeholder.count} placeholder part(s): ${sum.byState.placeholder.kg.toFixed(1)} kg (${pct("placeholder").toFixed(1)}% of the known mass) has no real source or computation.`);
+    if (sum.unmassed.length) warnings.push(`No mass at all for ${sum.unmassed.join(", ")}: the kerb mass is a lower bound.`);
+    for (const x of mismatched) warnings.push(`${x.id}${x.componentId ? ` (${x.componentId})` : ""}: the published variant does not fit this configuration (${x.mismatches.map((mm) => `${mm.field}: needs ${JSON.stringify(mm.required)}, is ${JSON.stringify(mm.actual)}`).join("; ")}).`);
+    return {
+      inputs: { parts: { value: items.map((i) => ({ id: i.id, massKg: i.massKg, state: i.massState.state, ...(i.massState.componentId ? { componentId: i.massState.componentId } : {}) })), unit: "kg" } },
+      outputs: {
+        totalMass: { value: sum.totalKg, unit: "kg", note: sum.unmassed.length ? "lower bound: some parts have no mass" : "kerb mass, payload excluded" },
+        sourcedPct: { value: pct("sourced"), unit: "%" },
+        estimatedPct: { value: pct("estimated"), unit: "%" },
+        computedPct: { value: pct("computed"), unit: "%" },
+        placeholderPct: { value: pct("placeholder"), unit: "%" },
+        byState: { value: sum.byState },
+        uncertaintyLow: { value: sum.uncertainty.lowKg, unit: "kg" },
+        uncertaintyHigh: { value: sum.uncertainty.highKg, unit: "kg" },
+        uncertainty: { value: sum.uncertainty },
+        unmassed: { value: sum.unmassed },
+        applicabilityMismatches: { value: mismatched },
+      },
+      warnings,
+      assumptions: ["Percentages are of the known (massed) total. Placeholders are counted at face value and have no uncertainty band."],
+    };
+  },
+});
+
+const criticalOf = (ctx, n) => {
+  const v = ctx.get(n.id, "props.critical");
+  return v == null ? [] : Array.isArray(v) ? v : [v];
+};
+
+export const vehicleAcceptance = registerSolver({
+  id: "vehicle.acceptance",
+  version: "1.0.0",
+  domain: "verification.acceptance",
+  fidelity: 0,
+  method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part",
+  targets: (g) => vehicles(g).filter((id) => g.node(id).props.vehicle.acceptance === true || [...g.nodes.values()].some((n) => n.props?.critical != null)),
+  run(ctx, id) {
+    const fuelType = ctx.get(id, "props.vehicle.fuelType");
+    const nodes = allContained(ctx, id);
+    const bd = ctx.result("mass.breakdown", id);
+    const stateOf = new Map((bd?.inputs?.parts?.value || []).map((p) => [p.id, p]));
+    const failures = [];
+    const critical = [];
+    for (const cat of CRITICAL_VEHICLE_COMPONENTS) {
+      if (cat.id === "exhaust" && fuelType === "electric") { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: "electric: no exhaust" }); continue; }
+      const tagged = nodes.filter((n) => criticalOf(ctx, n).includes(cat.id));
+      if (!tagged.length) { critical.push({ category: cat.id, label: cat.label, status: "missing", reason: "not in the design yet (placeholder)", parts: [] }); continue; }
+      const parts = [];
+      for (const n of tagged) {
+        const leaves = n.kind === "Assembly" ? physicalLeaves(ctx, n.id) : [n];
+        if (!leaves.length) parts.push({ id: n.id, state: "placeholder", note: "empty assembly" });
+        for (const l of leaves) {
+          const p = stateOf.get(l.id);
+          const app = ctx.get(l.id, "props.applicability");
+          parts.push({ id: l.id, state: p?.state || "placeholder", massKg: p?.massKg ?? null, componentId: p?.componentId || null, ...(app ? { applicability: { ok: app.ok, mismatches: app.mismatches, unchecked: (app.unchecked || []).map((u) => u.field) } } : {}) });
+        }
+      }
+      // Axle-specific parts (a front brake kit) must cover both axles.
+      if (AXLE_CATEGORIES.has(cat.id)) {
+        const axles = tagged.map((n) => ctx.get(n.id, "props.axle")).filter(Boolean);
+        if (axles.length && !axles.includes("both")) {
+          for (const axle of ["front", "rear"]) if (!axles.includes(axle)) parts.push({ id: `${axle} axle`, state: "placeholder", note: `no ${cat.label} on the ${axle} axle` });
+        }
+      }
+      const placeholders = parts.filter((p) => p.state === "placeholder").map((p) => p.id);
+      const mismatched = parts.filter((p) => p.applicability && p.applicability.ok === false);
+      const status = placeholders.length ? "placeholder" : mismatched.length ? "applicability_mismatch" : "real";
+      critical.push({ category: cat.id, label: cat.label, status, parts, ...(placeholders.length ? { placeholders } : {}) });
+      for (const p of mismatched) failures.push(`${cat.label}: ${p.id} (${p.componentId}) does not fit the configuration: ${p.applicability.mismatches.map((m) => `${m.field} needs ${JSON.stringify(m.required)}, is ${JSON.stringify(m.actual)}`).join("; ")}`);
+    }
+    const notReal = critical.filter((c) => c.status === "placeholder" || c.status === "missing");
+    if (notReal.length) {
+      failures.unshift(`not physically credible: critical component(s) still placeholder or missing: ${notReal.map((c) => `${c.label}${c.status === "missing" ? " (missing)" : ` (${c.placeholders.join(", ")})`}`).join("; ")}`);
+    }
+
+    const tyre = ctx.result("tire.speed-rating", id);
+    if (!tyre) failures.push("tyre speed rating not checked: no tyre with a speed rating");
+    else if (tyre.status === "FAIL") {
+      for (const f of tyre.failures || []) failures.push(`tyre speed rating (hard): ${f}`);
+      for (const m of tyre.margins.filter((x) => !x.hard && !(x.utilization <= 1))) failures.push(`tyre speed rating: ${m.check} fails (${(m.capacity * 3.6).toFixed(0)} km/h established vs ${(m.demand * 3.6).toFixed(0)} km/h model output)`);
+    } else if (tyre.status === "NOT_COMPUTED") failures.push(`tyre speed rating not computed: ${tyre.reason}`);
+    const load = ctx.result("tire.load-index", id);
+    if (load?.status === "FAIL") for (const m of load.margins.filter((x) => !(x.utilization <= 1))) failures.push(`tyre load index: ${m.check} fails`);
+
+    for (const r of ctx.graph.requirements.filter((x) => x.of.target === id)) {
+      const e = ctx.result("requirement.check", r.id);
+      if (e?.status === "FAIL") failures.push(`requirement ${r.id} (${r.label}) fails`);
+    }
+
+    const ts = ctx.result("vehicle.top-speed", id);
+    const gear = ctx.result("vehicle.gearing", id);
+    const evidence = {
+      drag_model: `Cd ${ts?.inputs?.dragCoefficient?.value ?? "?"} (${ts?.inputs?.dragCoefficient?.source ?? "not given"}); frontal area ${ts?.inputs?.frontalArea?.source ?? "not given"}`,
+      drivetrain_losses: `driveline efficiency ${ts?.inputs?.drivelineEfficiency?.value ?? "?"} (${ts?.inputs?.drivelineEfficiency?.source ?? "not given"})`,
+      gearing: !gear ? "no gearing in the design (vehicle.gearing did not run)" : gear.status === "NOT_COMPUTED" ? `not computed: ${gear.reason}` : `computed: limited by ${gear.outputs?.limitedBy?.value ?? "?"}`,
+      tyre_limits: `speed rating ${tyre?.status ?? "not run"}; load index ${load?.status ?? "not run"}`,
+      stability: "no solver yet",
+      thermal: "no solver yet",
+    };
+    const performanceClaims = [{
+      claim: "topSpeed",
+      value: ts?.outputs?.topSpeed?.value ?? null,
+      unit: "m/s",
+      mph: Number.isFinite(ts?.outputs?.topSpeed?.value) ? ts.outputs.topSpeed.value / 0.44704 : null,
+      status: Number.isFinite(ts?.outputs?.topSpeed?.value) ? TOP_SPEED_CLAIM_STATUS : "not_computed",
+      source: ts?.runId ?? null,
+      unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => ({ ...d, evidence: evidence[d.id] })),
+    }];
+
+    // What a passing requirement does and doesn't show.
+    const missingCats = critical.filter((c) => c.status === "missing").map((c) => c.label);
+    const caveats = [];
+    if (missingCats.length) caveats.push(`The kerb mass is a lower bound: ${missingCats.join(", ")} ${missingCats.length === 1 ? "is" : "are"} not in the design and carry no mass.`);
+    for (const r of ctx.graph.requirements.filter((x) => x.of.target === id)) {
+      const e = ctx.result("requirement.check", r.id);
+      if (e?.status !== "PASS") continue;
+      if (r.of.solver === "mass.assembly" && missingCats.length) caveats.push(`${r.id} passes on a lower-bound mass.`);
+      if (r.of.solver === "vehicle.top-speed") caveats.push(`${r.id} passes on a model output (${TOP_SPEED_CLAIM_STATUS}), not a validated top speed.`);
+    }
+    const breakdown = bd?.status === "NOT_COMPUTED" || !bd ? null : {
+      totalMassKg: bd.outputs.totalMass.value,
+      pct: { sourced: bd.outputs.sourcedPct.value, estimated: bd.outputs.estimatedPct.value, computed: bd.outputs.computedPct.value, placeholder: bd.outputs.placeholderPct.value },
+      kg: Object.fromEntries(Object.entries(bd.outputs.byState.value).map(([k, v]) => [k, v.kg])),
+      uncertaintyKg: [bd.outputs.uncertaintyLow.value, bd.outputs.uncertaintyHigh.value],
+      unmassed: bd.outputs.unmassed.value,
+      lowerBound: missingCats.length > 0 || bd.outputs.unmassed.value.length > 0,
+    };
+    return {
+      inputs: { fuelType: { value: fuelType ?? null, source: "props.vehicle.fuelType" }, massBreakdown: { value: bd?.runId ?? null } },
+      outputs: {
+        verdict: { value: failures.length ? "not_physically_credible" : "screening_pass_claims_unvalidated" },
+        criticalComponents: { value: critical },
+        placeholders: { value: notReal.map((c) => c.category) },
+        massBreakdown: { value: breakdown },
+        performanceClaims: { value: performanceClaims },
+        caveats: { value: caveats },
+      },
+      failures,
+      assumptions: ["Screening-level acceptance, not a certification. A pass would still leave the top speed a model output until its dependencies are verified."],
+    };
+  },
+});

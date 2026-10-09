@@ -45,6 +45,23 @@ export function buildRealizationPackage(session) {
       notes.join("; ")]);
   }
 
+  // Mass by state and the acceptance gate, for every vehicle that has them.
+  const massBreakdowns = results.filter((e) => e?.solver?.id === "mass.breakdown");
+  const acceptances = results.filter((e) => e?.solver?.id === "vehicle.acceptance");
+  const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "not computed");
+  const massLines = massBreakdowns.flatMap((e) => (e.status === "NOT_COMPUTED"
+    ? [`- ${e.target}: not computed (${e.reason})`]
+    : [
+      `- ${e.target}: ${fmt(e.outputs.totalMass.value)} kg (${e.outputs.totalMass.note}); uncertainty ${fmt(e.outputs.uncertaintyLow.value)}–${fmt(e.outputs.uncertaintyHigh.value)} kg`,
+      ...["sourced", "estimated", "computed", "placeholder"].map((st) => `  - ${st}: ${fmt(e.outputs.byState.value[st].kg)} kg (${fmt(e.outputs.byState.value[st].pct)}%), ${e.outputs.byState.value[st].count} part(s)`),
+    ]));
+  const acceptanceLines = acceptances.flatMap((e) => [
+    `- ${e.target}: ${e.status === "FAIL" ? "FAIL" : e.status} (${e.outputs?.verdict?.value ?? e.reason})`,
+    ...(e.failures || []).map((f) => `  - ${f}`),
+    ...(e.outputs?.caveats?.value || []).map((c) => `  - caveat: ${c}`),
+    ...(e.outputs?.performanceClaims?.value || []).filter((c) => Number.isFinite(c.mph)).map((c) => `  - ${c.claim}: ${c.mph.toFixed(1)} mph, ${c.status}; unverified: ${c.unverifiedDependencies.map((d) => d.id).join(", ")}`),
+  ]);
+
   const coverage = session.coverage();
   const summary = session.summary();
   const gaps = coverage.flatMap((c) => c.domains.filter((d) => d.status === "not computed" || d.status === "NOT_COMPUTED").map((d) => `${c.node}: ${d.domain} (${d.reason})`));
@@ -58,6 +75,8 @@ export function buildRealizationPackage(session) {
     "## Requirements",
     ...requirements.map((r) => `- ${r.label}: ${r.status}${r.reason ? ` (${r.reason})` : ""}`),
     "",
+    ...(massLines.length ? ["## Mass by state (sourced / estimated / computed / placeholder)", ...massLines, ""] : []),
+    ...(acceptanceLines.length ? ["## Acceptance", ...acceptanceLines, ""] : []),
     "## Not computed",
     ...(gaps.length ? gaps.map((x) => `- ${x}`) : ["- nothing"]),
     "",
@@ -75,6 +94,8 @@ export function buildRealizationPackage(session) {
       "engineering/materials.json": JSON.stringify(materials, null, 2),
       "engineering/simulation-results.json": JSON.stringify(results, null, 2),
       "engineering/verification.json": JSON.stringify({ summary, coverage }, null, 2),
+      ...(massBreakdowns.length ? { "engineering/mass-breakdown.json": JSON.stringify(massBreakdowns, null, 2) } : {}),
+      ...(acceptances.length ? { "engineering/acceptance.json": JSON.stringify(acceptances, null, 2) } : {}),
       "manufacturing/bom.csv": bomRows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n",
     },
   };

@@ -19,6 +19,7 @@ import "./physics/solvers/vehicle.js";
 import "./physics/solvers/mass-properties.js";
 import "./physics/solvers/powertrain.js";
 import "./physics/solvers/package.js";
+import "./physics/solvers/vehicle-acceptance.js";
 
 export { listSolvers };
 

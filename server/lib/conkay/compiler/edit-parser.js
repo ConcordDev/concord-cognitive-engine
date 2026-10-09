@@ -67,13 +67,13 @@ export function parseEdit(text, graph) {
   if (!m) return { ok: false, error: 'I can read edits like "make bolt B1 stainless" or "set plate P1 thickness to 12 mm".' };
   const [, lhs, rhs] = m;
 
-  // "<ref> speed rating to Y": a tyre speed symbol (one letter).
+  // "<ref> speed rating to Y": a tyre speed symbol (one letter, or "(Y)").
   const sr = lhs.trim().match(/^(.+?)\s+speed rating$/i);
   if (sr) {
     const target = resolveNodes(sr[1], graph);
     if (target.error) return { ok: false, error: target.error };
     const sym = rhs.trim().toUpperCase();
-    if (!/^[A-Z]$/.test(sym)) return { ok: false, error: "a speed rating is one letter, e.g. V, W or Y" };
+    if (!/^(?:[A-Z]|\(Y\))$/.test(sym)) return { ok: false, error: "a speed rating is one letter, e.g. V, W or Y, or (Y)" };
     return { ok: true, ops: target.nodes.map((n) => ({ node: n.id, path: "props.speedRating", value: sym })), notes: [] };
   }
 
