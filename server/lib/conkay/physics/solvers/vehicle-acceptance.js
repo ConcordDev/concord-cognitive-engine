@@ -16,7 +16,9 @@
 // critical part whose published variant doesn't fit the configuration. The
 // top speed is reported as a model output with its unverified dependencies,
 // never as a validated claim; with an electronic speed limiter (a design
-// choice) the limited and the unlimited speeds are both reported.
+// choice) the limited and the unlimited speeds are both reported. When the
+// design has a package layout, an occupant-fit failure or an interference
+// (package.occupant-fit, package.interference) fails the car too.
 //
 // Verdicts: "not_physically_credible" (any failure); otherwise
 // "credible_with_caveats" (status WARN) when anything the pass rests on is
@@ -148,10 +150,10 @@ const criticalOf = (ctx, n) => {
 
 export const vehicleAcceptance = registerSolver({
   id: "vehicle.acceptance",
-  version: "1.2.0",
+  version: "1.3.0",
   domain: "verification.acceptance",
   fidelity: 0,
-  method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part",
+  method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part, no occupant-fit failure or interference",
   targets: (g) => vehicles(g).filter((id) => g.node(id).props.vehicle.acceptance === true || [...g.nodes.values()].some((n) => n.props?.critical != null)),
   run(ctx, id) {
     const fuelType = ctx.get(id, "props.vehicle.fuelType");
@@ -205,6 +207,34 @@ export const vehicleAcceptance = registerSolver({
       const e = ctx.result("requirement.check", r.id);
       if (e?.status === "FAIL") failures.push(`requirement ${r.id} (${r.label}) fails`);
     }
+
+    // Occupant fit and packaging: a fit failure or an interference fails the car.
+    const fit = ctx.result("package.occupant-fit", id);
+    const itf = ctx.result("package.interference", id);
+    const groupFails = (checks) => {
+      const by = new Map();
+      for (const c of checks.filter((x) => !x.pass)) {
+        const k = c.group;
+        if (!by.has(k)) by.set(k, []);
+        by.get(k).push(`${c.id} ${c.value} vs ${Array.isArray(c.threshold) ? c.threshold.join("-") : c.threshold} ${c.unit}${c.thresholdBasis.state === "estimated" ? " (estimated threshold)" : ""}`);
+      }
+      return [...by.entries()];
+    };
+    for (const [env, label] of [[fit, "occupant fit"], [itf, "interference"]]) {
+      if (!env) continue;
+      if (env.status === "NOT_COMPUTED") failures.push(`${label} not computed: ${env.reason}`);
+      else if (env.status === "ERROR") failures.push(`${label} errored: ${env.error}`);
+    }
+    if (fit?.status === "FAIL") for (const [g, items] of groupFails(fit.outputs.checks.value)) failures.push(`occupant fit (${g}) fails: ${items.join("; ")}`);
+    if (itf?.status === "FAIL") {
+      const items = itf.outputs.interferences.value;
+      failures.push(`interference: ${items.length} pair(s) closer than their minimum clearance: ${items.map((p) => `${p.a} / ${p.b} ${p.separationMm < 0 ? `overlap ${Math.round(-p.separationMm * 10) / 10} mm` : `gap ${p.separationMm} mm`} (min ${p.minClearanceMm} mm)`).join("; ")}`);
+    }
+    const packaging = fit || itf ? {
+      occupantFit: fit ? { status: fit.status, pass: fit.outputs?.passCount?.value ?? null, fail: fit.outputs?.failCount?.value ?? null, source: fit.runId } : null,
+      interference: itf ? { status: itf.status, pairsChecked: itf.outputs?.pairsChecked?.value ?? null, interferences: itf.outputs?.interferences?.value?.length ?? null, source: itf.runId } : null,
+      notChecked: (fit || itf).outputs?.notChecked?.value || [],
+    } : null;
 
     const ts = ctx.result("vehicle.top-speed", id);
     const gear = ctx.result("vehicle.gearing", id);
@@ -269,6 +299,8 @@ export const vehicleAcceptance = registerSolver({
       if (r.of.solver === "mass.assembly" && (missingCats.length || excluded.length)) caveats.push(`${r.id} passes on a lower-bound mass.`);
       if (r.of.solver === "vehicle.top-speed") caveats.push(`${r.id} passes on a model output (${TOP_SPEED_CLAIM_STATUS}), not a validated top speed${lim?.binding ? `: the limited speed (the ${lim.setKmh} km/h set point) is reachable only if the unlimited model output holds` : ""}.`);
     }
+    if (!packaging) caveats.push("Occupant fit and packaging are not checked: the design has no package layout.");
+    else if (packaging.notChecked.length) caveats.push(`Packaging is screening level: not checked for want of dimensions or design: ${packaging.notChecked.map((n) => n.item).join(", ")}.`);
     const breakdown = bd?.status === "NOT_COMPUTED" || !bd ? null : {
       totalMassKg: bd.outputs.totalMass.value,
       pct: { sourced: bd.outputs.sourcedPct.value, estimated: bd.outputs.estimatedPct.value, computed: bd.outputs.computedPct.value, placeholder: bd.outputs.placeholderPct.value },
@@ -288,6 +320,7 @@ export const vehicleAcceptance = registerSolver({
         massBreakdown: { value: breakdown },
         performanceClaims: { value: performanceClaims },
         caveats: { value: caveats },
+        packaging: { value: packaging },
       },
       failures,
       // A pass that rests on unverified things is a WARN, its caveats the warnings.

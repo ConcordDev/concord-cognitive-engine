@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "note": "ConKay component library. Every number carries its source. Masses are SI (kg) with the published figure kept verbatim. Nothing here is estimated unless massState.state says 'estimated', and then the method and range say how.",
   "references": {
     "speedSymbols": {
@@ -152,8 +152,18 @@
         ]
       },
       "dimensions": {
-        "state": "missing",
-        "note": "engine dimensions are not published on the product page; the 42 x 45 x 45 in package dimensions are the shipping crate"
+        "state": "estimated",
+        "lengthM": 0.6604,
+        "heightM": 0.6858,
+        "widthM": 0.7112,
+        "published": "Measuring at its widest and longest points (ignoring exhaust manifolds), the Coyote is 26 inches front to back, 27 inches top to bottom, and 28 inches wide.",
+        "method": "Holley's published overall size for the Coyote family applied to this variant (Ford publishes no dimensions for it); the Gen 4 dual-throttle intake and the exhaust manifolds are outside it",
+        "source": {
+          "url": "https://www.holley.com/blog/post/the_ultimate_guide_to_ford_coyote_v8_-_swaps_performance_parts_history_and_tech/",
+          "title": "The Ultimate Guide to Ford Coyote V8 (Holley Motor Life, J. Kiser, 03/05/2025)",
+          "retrieved": "2026-10-09"
+        },
+        "previous": "engine dimensions are not published on the product page; the 42 x 45 x 45 in package dimensions are the shipping crate"
       },
       "ratings": {
         "peakPowerW": {
@@ -241,8 +251,18 @@
         ]
       },
       "dimensions": {
-        "state": "missing",
-        "note": "not published on the product page"
+        "state": "estimated",
+        "lengthM": 0.6604,
+        "heightM": 0.6858,
+        "widthM": 0.7112,
+        "published": "Measuring at its widest and longest points (ignoring exhaust manifolds), the Coyote is 26 inches front to back, 27 inches top to bottom, and 28 inches wide.",
+        "method": "Holley's published overall size for the Coyote family applied to this variant (Ford publishes no dimensions for it); the Gen 4 dual-throttle intake and the exhaust manifolds are outside it",
+        "source": {
+          "url": "https://www.holley.com/blog/post/the_ultimate_guide_to_ford_coyote_v8_-_swaps_performance_parts_history_and_tech/",
+          "title": "The Ultimate Guide to Ford Coyote V8 (Holley Motor Life, J. Kiser, 03/05/2025)",
+          "retrieved": "2026-10-09"
+        },
+        "previous": "not published on the product page"
       },
       "ratings": {
         "peakPowerW": {
@@ -390,8 +410,27 @@
         }
       },
       "dimensions": {
-        "state": "missing",
-        "note": "overall dimensions not in the quick specs"
+        "state": "sourced",
+        "overallLengthM": 0.7932,
+        "inputShaftLengthM": 0.1831,
+        "faceHeightM": 0.2413,
+        "faceWidthM": 0.2667,
+        "published": "[A] Input Shaft Length: Ford - 7.21\" ... [E] Height of transmission face: 9.5\" [F] Width of transmission face: 10.5\" ... [I] Transmission Length: Ford - 31.23\"",
+        "variant": "Ford input",
+        "source": {
+          "url": "https://www.shiftsst.com/blog/tremec-tkx-features-and-dimensions/307",
+          "title": "TREMEC TKX 5-Speed Specs: Gear Ratios, Dimensions & Fitment (Silver Sport Transmissions)",
+          "retrieved": "2026-10-09"
+        },
+        "crossCheck": {
+          "text": "measures approximately 32 inches long by 10.5 inches wide",
+          "source": {
+            "url": "https://www.rcnmag.com/news/sema-2020-inside-tremecs-new-tkx-five-speed",
+            "title": "TREMEC unveils compact TKX five-speed (Rare Car Network)",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "note": "The TREMEC service manual names the same dimensions (A-I) on a figure without printed values."
       },
       "ratings": {
         "torqueCapacityNm": {
@@ -889,8 +928,17 @@
         ]
       },
       "dimensions": {
-        "state": "missing",
-        "note": "only the 21 x 13 x 17 in package dimensions are published"
+        "state": "estimated",
+        "lengthM": 0.3302,
+        "widthM": 0.5334,
+        "heightM": 0.4318,
+        "method": "upper bound: Ford's published package (shipping box) dimensions, 21 x 13 x 17 in; the loaded housing is smaller. Orientation assumed: 21 in across the car, 13 in fore-aft",
+        "source": {
+          "url": "https://performanceparts.ford.com/part/M-4001-88355B",
+          "title": "Ford Performance M-4001-88355B product page (package dimensions)",
+          "retrieved": "2026-10-09"
+        },
+        "previous": "only the 21 x 13 x 17 in package dimensions are published"
       },
       "ratings": {
         "ringGearIn": 8.8,
@@ -1502,8 +1550,26 @@
         ]
       },
       "dimensions": {
-        "state": "missing",
-        "note": "the dimension table on the product page is an image; values not transcribed"
+        "state": "sourced",
+        "maxHeightM": 0.85,
+        "maxCushionDepthM": 0.81,
+        "maxCushionWidthM": 0.385,
+        "maxWidthM": 0.58,
+        "published": "Max height: 33.5 inches / 850 mm; Max seat cushion depth: 31.8 inches / 810 mm; Max seat cushion width: 15.2 inches / 385 mm; drawing: 22.8 in / 580mm overall width; dimensions do not include mounting hardware",
+        "drawingOtherMm": [
+          122,
+          873,
+          535,
+          565,
+          406,
+          500
+        ],
+        "source": {
+          "url": "https://www.recaro-automotive.com/fileadmin/01-products/documents/hotsheets/recaro-hotsheet-pole-position-ng-fia.pdf",
+          "title": "RECARO hotsheet: Pole Position N.G. (FIA)",
+          "retrieved": "2026-10-09"
+        },
+        "note": "The hotsheet is the steel side-mount version; the drawing's other dimensions are unlabelled."
       },
       "ratings": {
         "homologation": "FIA 8855-1999 (5-year approval)",

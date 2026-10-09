@@ -14,11 +14,16 @@
 // acceptance result. An electronic speed limiter is a design choice
 // (designSpeedLimiter): it caps the top speed between the required speed and
 // the tyre's established speed, and the unlimited model output is still
-// reported.
+// reported. The package layout (car-layout.js) places the components from
+// their library dimensions and sets the seating design; occupant fit and
+// interference are checked on it (packaging: false leaves it out).
 
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent } from "../components/index.js";
+import { layoutCar, steeringLockDeg, LAYOUT_DESIGN_CHOICES } from "./car-layout.js";
+import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
+import { umtriHPointX } from "../packaging/checks.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
 
@@ -124,7 +129,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -280,6 +285,8 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
       } : {}),
     },
   };
+  // Package layout: component positions from library dimensions and the seating design (car-layout.js).
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, seatF, sources });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -293,6 +300,58 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
   }
   sources.speedLimiter = !limiter ? "none (no speed limiter in this design)" : limiter.error ? `not applied: ${limiter.error}` : limiter.basis;
   return { ir, configuration: { config, sources }, selection, parsed: c.parsed, speedLimiter: limiter };
+}
+
+// Occupants checked by default: the smallest (5th female stature) and largest (95th male) occupant,
+// and the 95th female (the widest hips in the ANSUR II tables).
+export const PACKAGING_OCCUPANTS = ["F5", "F95", "M95"];
+
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, seatF, sources }) {
+  const entry = (k) => { const id = selection[k]?.chosen; return id ? getComponent(id) : null; };
+  const v = veh.props.vehicle;
+  const frontAxleX = parseFloat(v.frontAxleX), rearAxleX = parseFloat(v.rearAxleX);
+  const tyreY = byId.get("TIRE_FL")?.position?.y;
+  const track = tyreY ? 2 * Math.abs(parseFloat(tyreY)) : null; // design choice in this build
+  if (!Number.isFinite(track)) return;
+  const choices = layoutChoices || LAYOUT_DESIGN_CHOICES;
+  const lay = layoutCar({ entries: { engine: entry("engine_or_motor"), gearbox: entry("transmission"), diff: entry("differential"), cooling: entry("cooling"), fuel: entry("fuel_or_battery"), tyre: entry("tyres") }, frontAxleX, rearAxleX, track, choices });
+  for (const [id, p] of Object.entries(lay.positions)) { const n = byId.get(id); if (n) n.position = at(p.x, p.z, p.y); }
+  // Seats and occupant payload at the design H-points: front at the 50th male's UMTRI H-point (mid-track),
+  // rear at the rear SgRP (payload CG taken at the H-point: an assumption).
+  const c = Object.fromEntries(Object.entries(choices).map(([k, x]) => [k, x.value]));
+  const prpX = c.ahpX - (PACKAGING_REFERENCES.saeJ1100.definitions.BOF.valueMm / 1000) * Math.cos((c.footAngleDeg * Math.PI) / 180);
+  const hMid = prpX + umtriHPointX(occupantDims("M50").stature, c.steeringWheelL6, c.h30);
+  const seatPos = (i) => (i <= 2 ? { x: hMid, y: (i === 1 ? -1 : 1) * c.frontSeatY, z: c.floorZ + c.h30 } : { x: c.rearSgRPX, y: (i === 3 ? -1 : 1) * c.rearSeatY, z: c.floorZ + c.rearH31 });
+  const seats = [];
+  for (let i = 1; byId.has(`SEAT_${i}`); i++) { const p = seatPos(i); byId.get(`SEAT_${i}`).position = at(+p.x.toFixed(4), p.z, p.y); seats.push(`SEAT_${i}`); }
+  for (let i = 1; byId.has(`OCCUPANT_${i}`); i++) { const p = seatPos(i); byId.get(`OCCUPANT_${i}`).position = at(+p.x.toFixed(4), p.z, p.y); }
+  const notChecked = [
+    ...lay.notChecked,
+    ...["SUSPENSION_FRONT", "SUSPENSION_REAR", "STEERING_RACK", "EXHAUST", "CONTROL_PACK"].filter((id) => byId.has(id)).map((id) => ({ item: id, reason: `no published dimensions in the library (${getComponent(byId.get(id).props.component)?.dimensions?.note || "none"})` })),
+    ...["SEAT_3", "SEAT_4"].filter((id) => byId.has(id)).map((id) => ({ item: id, reason: "rear seat: no published dimensions (occupants are placed at the rear SgRP; the seat itself is not checked)" })),
+    { item: "BRAKES_FRONT, BRAKES_REAR", reason: "inside the wheels (14 in rotors on 18 in wheels, fitment per the library); not checked separately" },
+    { item: "RAIL_L, RAIL_R, TUB", reason: "designed chassis members with placeholder positions (both rails at y = 0), not a frame layout" },
+    { item: "pedal box, dash, steering column, driveshaft, door and sill", reason: "not in the design" },
+    { item: "suspension travel", reason: "S550 wheel travel is not published: tyres are checked static (front ones over the steering lock)" },
+  ];
+  const ref = PACKAGING_REFERENCES.referenceVehicle;
+  const lock = steeringLockDeg(ref);
+  const seat = seatF ? { id: seatF.id, dims: seatF.dimensions, source: seatF.dimensions.source?.url } : null;
+  v.packaging = {
+    version: "1.0.0",
+    bodyShell: "BODY_SHELL",
+    occupantKeys,
+    seats,
+    designChoices: choices,
+    components: lay.components,
+    tyres: lay.tyres,
+    firewallX: lay.firewallX,
+    seatFront: seat,
+    steeringLock: { innerDeg: Math.round(lock.innerDeg * 10) / 10, outerDeg: Math.round(lock.outerDeg * 10) / 10, state: "estimated", method: PACKAGING_REFERENCES.steeringLock.method, inputs: PACKAGING_REFERENCES.steeringLock.inputs, source: ref.source.url },
+    referenceVehicle: { label: ref.label, source: ref.source.url, inches: ref.inches, feet: ref.feet, use: ref.use },
+    notChecked,
+  };
+  sources.packaging = "compiler/car-layout.js: positions from library dimensions and labelled design choices; occupants from ANSUR II";
 }
 
 const kgOf = (m) => (typeof m === "number" ? m : parseFloat(String(m)));

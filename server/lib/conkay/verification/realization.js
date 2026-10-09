@@ -62,6 +62,28 @@ export function buildRealizationPackage(session) {
     ...(e.outputs?.performanceClaims?.value || []).filter((c) => Number.isFinite(c.mph)).map((c) => `  - ${c.claim}: ${c.mph.toFixed(1)} mph, ${c.status}${c.speedLimiter?.binding ? ` (limited by a speed limiter at ${c.speedLimiter.setKmh} km/h, a design choice; unlimited model output ${Number.isFinite(c.unlimitedMph) ? c.unlimitedMph.toFixed(1) : "not computed"} mph)` : ""}; unverified: ${c.unverifiedDependencies.map((d) => d.id).join(", ")}`),
   ]);
 
+  // Occupant fit and packaging, for every vehicle with a package layout.
+  const fits = results.filter((e) => e?.solver?.id === "package.occupant-fit");
+  const itfs = results.filter((e) => e?.solver?.id === "package.interference");
+  const thr = (c) => (Array.isArray(c.threshold) ? `${c.threshold[0]}-${c.threshold[1]}` : `${c.comparator} ${c.threshold}`);
+  const packagingLines = fits.flatMap((e) => {
+    if (e.status === "NOT_COMPUTED" || e.status === "ERROR") return [`- ${e.target}: occupant fit ${e.status} (${e.reason || e.error})`];
+    const v = e.outputs.vehicleDimensions.value;
+    const checks = e.outputs.checks.value;
+    const itf = itfs.find((x) => x.target === e.target);
+    return [
+      `- ${e.target}: occupant fit ${e.status} (${checks.filter((c) => c.pass).length} pass, ${checks.filter((c) => !c.pass).length} fail; occupants ${e.inputs.occupants.value.join(", ")}, ANSUR II)`,
+      `  - vehicle: wheelbase ${fmt(v.wheelbase.m, 3)} m, track ${fmt(v.frontTrack.m, 3)}/${fmt(v.rearTrack.m, 3)} m, length ${fmt(v.overallLength.m, 2)} m, width ${fmt(v.overallWidth.m, 2)} m, height ${fmt(v.overallHeight.m, 2)} m`,
+      ...checks.map((c) => `  - ${c.pass ? "PASS" : "FAIL"} ${c.id}: ${c.value} ${c.unit} vs ${thr(c)} ${c.unit} (${c.thresholdBasis.state} threshold)`),
+      ...(itf && itf.outputs?.interferences ? [
+        `  - interference ${itf.status}: ${itf.outputs.pairsChecked.value} pairs checked, ${itf.outputs.interferences.value.length} closer than their minimum clearance`,
+        ...itf.outputs.interferences.value.map((p) => `    - ${p.a} / ${p.b}: ${p.separationMm < 0 ? `overlap ${fmt(-p.separationMm)} mm` : `gap ${p.separationMm} mm`} (min ${p.minClearanceMm} mm, ${p.thresholdBasis.state})`),
+      ] : []),
+      ...(e.outputs.notChecked.value.length ? [`  - not checked: ${e.outputs.notChecked.value.map((n) => n.item).join(", ")}`] : []),
+      ...e.warnings.map((w) => `  - warning: ${w}`),
+    ];
+  });
+
   const coverage = session.coverage();
   const summary = session.summary();
   const gaps = coverage.flatMap((c) => c.domains.filter((d) => d.status === "not computed" || d.status === "NOT_COMPUTED").map((d) => `${c.node}: ${d.domain} (${d.reason})`));
@@ -77,6 +99,7 @@ export function buildRealizationPackage(session) {
     "",
     ...(massLines.length ? ["## Mass by state (sourced / estimated / computed / placeholder)", ...massLines, ""] : []),
     ...(acceptanceLines.length ? ["## Acceptance", ...acceptanceLines, ""] : []),
+    ...(packagingLines.length ? ["## Packaging (occupant fit and interference)", "Thresholds: sourced (cited), geometric (0 mm, no published margin), estimated (method in the receipt) or design (a layout choice). Receipts: engineering/packaging.json.", ...packagingLines, ""] : []),
     "## Not computed",
     ...(gaps.length ? gaps.map((x) => `- ${x}`) : ["- nothing"]),
     "",
@@ -96,6 +119,7 @@ export function buildRealizationPackage(session) {
       "engineering/verification.json": JSON.stringify({ summary, coverage }, null, 2),
       ...(massBreakdowns.length ? { "engineering/mass-breakdown.json": JSON.stringify(massBreakdowns, null, 2) } : {}),
       ...(acceptances.length ? { "engineering/acceptance.json": JSON.stringify(acceptances, null, 2) } : {}),
+      ...(fits.length || itfs.length ? { "engineering/packaging.json": JSON.stringify([...fits, ...itfs], null, 2) } : {}),
       "manufacturing/bom.csv": bomRows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n",
     },
   };
