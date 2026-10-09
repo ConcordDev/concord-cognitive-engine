@@ -159,6 +159,10 @@ describe("NIST WebBook connector (recorded excerpts)", () => {
     assert.equal(r.reviews.length, 0);
   });
 
+  it("page text decodes entities once (an escaped entity stays literal)", () => {
+    assert.equal(pageText("<body><p>a &amp;quot; b &quot;c&quot; &amp; d</p></body>").trim(), 'a &quot; b "c" & d');
+  });
+
   it("every uncertainty statement the connector applies is verbatim on the recorded page (drift check)", () => {
     for (const [id, rules] of Object.entries(NIST_UNCERTAINTY)) {
       const page = Object.entries(REC.recordings).find(([u]) => u.includes(`Action=Load&ID=${id}&`))[1];

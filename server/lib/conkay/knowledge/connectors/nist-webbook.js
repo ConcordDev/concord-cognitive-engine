@@ -65,7 +65,8 @@ export const NIST_UNCERTAINTY = Object.freeze({
 /** Plain text of an HTML page (for the uncertainty statements). */
 export function pageText(html) {
   const body = html.includes("<body") ? html.slice(html.indexOf("<body")) : html;
-  return body.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ");
+  // &amp; is decoded last, so an escaped entity ("&amp;quot;") stays the literal text it encodes
+  return body.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 }
 
 /**
