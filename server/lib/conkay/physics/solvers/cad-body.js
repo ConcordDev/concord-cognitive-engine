@@ -15,11 +15,11 @@
 import { registerSolver } from "../registry.js";
 import { packageScene, packageEnvelopes, packageRays } from "../../packaging/checks.js";
 import { runBodyKernel } from "../../cad/body-kernel.js";
-import { CAD_BODY_BASIS } from "../../cad/body-params.js";
+import { CAD_BODY_BASIS, CAD_BODY_OPTIONAL } from "../../cad/body-params.js";
 
 const bodies = (g) => [...g.nodes.values()].filter((n) => n.geometry?.shape === "cad-body").map((n) => n.id);
 const mm = (m) => Math.round(m * 1e4) / 10;
-const KERNEL_PARAMS = ["skinOffset", "thickness", "stationCount", "sectionPoints", "upperExponent", "lowerExponent", "planClosingRadius", "roofClosingRadius", "floorClosingRadius", "noseExtension", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltSmoothing"];
+const KERNEL_PARAMS = ["skinOffset", "thickness", ...CAD_BODY_OPTIONAL.lengths.filter((k) => k !== "inletAllowance"), ...CAD_BODY_OPTIONAL.numbers];
 // Entry header points sit this far inside the outer surface beyond the skin thickness (loft tolerance between sections).
 const HEADER_TOLERANCE_M = 0.002;
 
@@ -34,6 +34,12 @@ export function cadBodyRequest(ctx, id) {
   for (const n of [...pkg.components.map((c) => c.node), ...pkg.tyres.map((t) => t.node)]) centers[n] = ctx.get(n, "position");
   const scene = packageScene({ pkg, centers });
   const envelopes = packageEnvelopes(scene).map((e) => ({ ...e, center: e.center.map(Number), half: e.half.map(Number) }));
+  // air-inlet / duct allowance: a slab of the radiator's face, inletAllowance deep, ahead of it (forward = -x)
+  const rad = envelopes.find((e) => e.id === "RADIATOR");
+  if (rad && g.inletAllowance > 0) {
+    const d = g.inletAllowance / 2;
+    envelopes.push({ ...rad, id: "INLET_ALLOWANCE", kind: "allowance", center: [rad.center[0] - rad.half[0] - d, rad.center[1], rad.center[2]], half: [d, rad.half[1], rad.half[2]] });
+  }
   const points = [];
   for (const [key, occ] of Object.entries(scene.scenarios)) {
     for (const o of occ) {
@@ -51,7 +57,7 @@ export const cadBody = registerSolver({
   domain: "cad.body",
   domains: ["cad.body", "package.body"],
   fidelity: 2,
-  method: "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (per-station minimum-area section, then rolling-disc smoothing of plan, roof and floor lines), wheel wells cut for the tyres' steering sweep; area/volume by GProp, frontal area by slicing the kernel's tessellation, clearances by BRepExtrema + solid classification",
+  method: "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and Gaussian smoothing of belt, plan, roof and floor lines, a fastback limit on the roof, a pointed nose and a Kamm tail), wheel wells cut for the tyres' steering sweep; area/volume by GProp, frontal area by slicing the kernel's tessellation, clearances by BRepExtrema + solid classification",
   reference: "server/lib/conkay/cad/conkay_body_occ.py",
   targets: bodies,
   run(ctx, id) {
@@ -89,7 +95,7 @@ export const cadBody = registerSolver({
         surfaceCentroid: { value: m.surfaceCentroid, unit: "m" },
         dimensions: { value: { lengthM: m.lengthM, widthM: m.widthM, heightM: m.heightM, groundClearanceM: m.groundClearanceM, bbox: m.bbox } },
         solid: { value: r.solid },
-        sections: { value: r.sections, note: "x, half width W, belt zs, top zt, bottom zb (m); exponents in the parameters" },
+        sections: { value: r.sections, note: "per station x: floor zb, belt (greenhouse base) deck, lower-body half width W and top lowerTop, greenhouse half width Wg and roof zt, and each fender pod's blend t, crown height and outer half width uOut (m); nose and tail sections carry their scale factors" },
         clearances: { value: Object.fromEntries(r.clearances.map((c) => [c.id, c.clearanceM])), unit: "m" },
         minClearance: { value: worst ? { id: worst.id, m: worst.clearanceM } : null },
         wheels: { value: r.wheels },

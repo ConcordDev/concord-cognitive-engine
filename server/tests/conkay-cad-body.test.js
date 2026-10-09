@@ -127,15 +127,20 @@ describe("CAD body: design-graph parameters, material and the no-kernel path", (
 // A small synthetic scene: a cabin box, an engine box, a pitched (occupant-like) box and four wheels.
 const SCENE = {
   command: "body",
-  params: { skinOffset: 0.035, stationCount: 18, sectionPoints: 10, frontalSlices: 160, maxIterations: 3, upperExponent: 2.4, lowerExponent: 8, noseExtension: 0.15, tailExtension: 0.1 },
+  params: { skinOffset: 0.035, stationCount: 36, sectionPoints: 24, frontalSlices: 160, maxIterations: 3, upperExponent: 2.4, lowerExponent: 8, noseExtension: 0.15, tailExtension: 0.1 },
   envelopes: [
     aabb({ id: "CABIN", min: [1.5, -0.6, 0.2], max: [3.0, 0.6, 1.0] }),
     aabb({ id: "ENGINE", min: [0.7, -0.3, 0.2], max: [1.4, 0.3, 0.75] }),
+    aabb({ id: "BOOT", min: [3.0, -0.5, 0.2], max: [3.9, 0.5, 0.7] }),
     obb({ id: "TORSO", center: [2.6, 0.3, 0.75], half: [0.12, 0.25, 0.3], pitchDeg: 25 }),
   ].map((b) => ({ id: b.id, kind: "test", center: b.center, half: b.half, axes: b.axes, enclose: true })),
   points: [],
   wheels: [[1.0, -0.8, 35], [1.0, 0.8, 35], [3.45, -0.8, 0], [3.45, 0.8, 0]].map(([x, y, st], i) => ({ id: `W${i}`, center: [x, y, 0.33], radius: 0.33, halfWidth: 0.12, steerDeg: st })),
-  rays: [{ id: "up", origin: [2.2, 0, 0.5], dir: [0, 0, 1] }],
+  rays: [
+    { id: "up", origin: [2.2, 0, 0.5], dir: [0, 0, 1] },
+    // straight up from each tyre's tread centre line: the fender over it must be hit
+    ...[[1.0, 0.8], [3.45, 0.8]].map(([x, y], i) => ({ id: `tread${i}`, origin: [x, y, 0.33], dir: [0, 0, 1] })),
+  ],
   exports: ["stl", "glb"],
 };
 
@@ -159,6 +164,39 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     }
     for (const w of a.wheels) assert.ok(w.minClearanceM >= 0, `${w.id}: ${w.minClearanceM}`);
     assert.ok(a.rays[0].distanceM > 0.5 - 0.035);
+  });
+
+  it("fender pods enclose the tyre sweep: a crown over every tyre and the body side beyond its outer face", () => {
+    const P = { archClearance: 0.04, fenderSkin: 0.03, fenderCover: 0.02, ...SCENE.params };
+    for (const w of SCENE.wheels) {
+      const atWheel = a.sections.filter((s) => s.pods && Math.abs(s.x - w.center[0]) <= w.radius);
+      assert.ok(atWheel.length > 0, w.id);
+      for (const s of atWheel) {
+        const pod = s.pods.find((p) => p.wheel === w.id);
+        assert.ok(pod && pod.t === 1, `${w.id} @ ${s.x}`);
+        assert.ok(pod.crown >= w.center[2] + w.radius + P.archClearance + P.fenderSkin - 1e-9, `${w.id} crown ${pod.crown}`);
+        assert.ok(pod.uOut >= Math.abs(w.center[1]) + w.halfWidth + P.fenderCover - 1e-9, `${w.id} side ${pod.uOut}`);
+      }
+    }
+    for (const r of a.rays.filter((q) => q.id.startsWith("tread"))) {
+      assert.ok(Number.isFinite(r.distanceM) && r.distanceM >= 0.33 + P.archClearance - 1e-3, `${r.id}: ${r.distanceM}`);
+      assert.ok(r.distanceM < 0.33 + 0.2, `${r.id}: the fender sits right over the tyre (${r.distanceM})`);
+    }
+  });
+
+  it("the width is set by the fender pods, not by the fender tops: within the tyre's outer face + cover + blend", () => {
+    const blend = SCENE.params.blendRadius ?? 0.08, cover = SCENE.params.fenderCover ?? 0.02;
+    const podOut = 0.8 + 0.12 + cover;
+    // the section model: no feature reaches beyond the tyre's outer face + cover
+    for (const s of a.sections.filter((q) => q.pods)) {
+      for (const p of s.pods) assert.ok(p.uOut <= podOut + 1e-9, `${s.x} ${p.wheel} ${p.uOut}`);
+      assert.ok(s.W <= podOut && s.Wg <= podOut, `${s.x}`);
+    }
+    // the solid: + the smooth-max blend + 25 mm a side for the B-spline loft between stations (it overshoots
+    // slightly where the pods fade in and out; measured 20 mm a side at 36 stations)
+    const bound = 2 * (podOut + blend / 4 + 0.025);
+    assert.ok(a.metrics.widthM <= bound, `${a.metrics.widthM} > ${bound}`);
+    assert.ok(a.metrics.widthM >= 2 * (0.8 + 0.12), "the body covers the tyres' outer faces");
   });
 
   it("is deterministic: the same parameters give the same sections, measurements and mesh bytes", () => {
@@ -219,6 +257,12 @@ describe("CAD body on the library car (full kernel run)", { skip: !FULL && "set 
     const fit = s.result("package.occupant-fit@VEH");
     assert.ok(fit.outputs.vehicleDimensions.value.overallLength.source.includes("CAD body"));
     assert.ok(fit.outputs.checks.value.some((c) => /CAD body/.test(c.note || "")));
+  });
+
+  it("overall width is within the sports 2+2 band (<= 1.95 m) with the track unchanged", () => {
+    const m = s.result("cad.body@BODY_SHELL").outputs;
+    const w = m.width?.value ?? m.dimensions?.value?.widthM;
+    assert.ok(Number.isFinite(w) && w <= 1.95, `width ${w}`);
   });
 
   it("the README reports the body", () => {
