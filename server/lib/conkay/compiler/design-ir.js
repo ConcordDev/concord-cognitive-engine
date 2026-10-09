@@ -18,6 +18,7 @@
 
 import { parseQuantity } from "./units.js";
 import { getMaterial } from "../materials/index.js";
+import { validateMassState } from "../verification/mass-state.js";
 
 export const NODE_KINDS = new Set([
   "Part", "Assembly", "Volume", "Surface", "Beam", "Shell", "Solid", "Joint", "Constraint", "Load",
@@ -121,9 +122,21 @@ export function compileDesignIR(ir) {
       else node.props[k] = q.si;
     }
     for (const [k, srcKey] of Object.entries(SOURCED_PROPS)) {
+      // A stated mass can say where it comes from with a massState instead.
+      if (k === "mass" && n.props?.massState != null) continue;
       if (n.props?.[k] != null && !(typeof n.props?.[srcKey] === "string" && n.props[srcKey].trim())) {
         errors.push(`${where}.props.${k}: a stated ${k} needs props.${srcKey} (datasheet, catalogue or assumption)`);
       }
+    }
+    // massState: where a mass comes from (sourced / estimated / computed / placeholder),
+    // with the fields each state requires. A computed state belongs to a part
+    // whose mass comes from its geometry; a stated mass is never "computed".
+    if (n.props?.massState != null) {
+      const ms = n.props.massState;
+      const massKg = typeof node.props.mass === "number" ? node.props.mass : undefined;
+      for (const e of validateMassState(ms, { massKg })) errors.push(`${where}.props.massState: ${e}`);
+      if (ms?.state === "computed" && n.props?.mass != null) errors.push(`${where}.props.massState: a stated mass cannot be "computed"; give geometry and a material instead`);
+      if (ms && ms.state !== "placeholder" && ms.state !== "computed" && n.props?.mass == null) errors.push(`${where}.props.massState: a ${ms.state} mass needs props.mass`);
     }
     if (node.props.vehicle && typeof node.props.vehicle === "object") {
       const veh = { ...node.props.vehicle };
