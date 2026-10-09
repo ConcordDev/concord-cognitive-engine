@@ -29,12 +29,19 @@ function evaluate(ctx, id) {
   const shellId = pkg.bodyShell;
   const geom = ctx.get(shellId, "geometry");
   const pos = ctx.get(shellId, "position");
-  if (!geom || geom.shape !== "ellipsoid-shell" || !pos) return { notComputed: `the cabin needs an ellipsoid-shell body (${shellId}) with a position` };
   const frontAxleX = ctx.get(id, "props.vehicle.frontAxleX");
   const rearAxleX = ctx.get(id, "props.vehicle.rearAxleX");
   if (!Number.isFinite(frontAxleX) || !Number.isFinite(rearAxleX)) return { notComputed: "needs frontAxleX and rearAxleX" };
   const centers = {};
   for (const n of [...pkg.components.map((c) => c.node), ...pkg.tyres.map((t) => t.node)]) centers[n] = ctx.get(n, "position");
+  if (geom?.shape === "cad-body") {
+    // Measured against the real CAD surface (cad.body).
+    const env = ctx.result("cad.body", shellId);
+    const o = env?.outputs;
+    if (!o?.clearances) return { notComputed: `the CAD body ${shellId} is not computed (cad.body: ${env?.reason || env?.status || "not run"})` };
+    return evaluatePackaging({ pkg, centers, body: { clearances: o.clearances.value, rays: o.rays.value, thickness: o.thickness.value, metrics: o.dimensions.value, skinOffset: o.skinOffset.value }, frontAxleX, rearAxleX });
+  }
+  if (!geom || geom.shape !== "ellipsoid-shell" || !pos) return { notComputed: `the cabin needs a cad-body or ellipsoid-shell body (${shellId}) with a position` };
   return evaluatePackaging({ pkg, centers, shell: { center: pos, size: [geom.length, geom.width, geom.height], thickness: geom.thickness }, frontAxleX, rearAxleX });
 }
 
@@ -43,11 +50,11 @@ const describe = (c) => `${c.id}: ${c.value}${Array.isArray(c.threshold) ? "" : 
 
 export const occupantFit = registerSolver({
   id: "package.occupant-fit",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "package.ergonomics",
   domains: ["package.ergonomics", "package.occupant-fit"],
   fidelity: 1,
-  method: "ANSUR II percentile occupants as seated boxes (torso line through the H-point, two-link legs), UMTRI seat-position model, body shell inner ellipsoid; SAE J1100 dimensions by definition",
+  method: "ANSUR II percentile occupants as seated boxes (torso line through the H-point, two-link legs), UMTRI seat-position model; cabin surface = the CAD body (cad.body, kernel clearances and rays) or the screening ellipsoid; SAE J1100 dimensions by definition",
   reference: "ANSUR II (NATICK/TR-15/007); SAE J1100 (2001); IIHS/UMTRI ATD positioning procedure v VI (2022)",
   targets: vehiclesWithPackage,
   run(ctx, id) {
@@ -88,7 +95,7 @@ export const occupantFit = registerSolver({
 
 export const interference = registerSolver({
   id: "package.interference",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "package.interference",
   fidelity: 1,
   method: "oriented-box separating-axis gaps between component, seat and occupant envelopes (a lower bound on the true distance); front tyres swept over the steering lock",

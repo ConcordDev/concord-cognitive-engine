@@ -168,6 +168,7 @@ export function checkApplicability(entry, config = {}) {
   if (a.frontSuspension) need("frontSuspension", config.frontSuspension, (v) => a.frontSuspension.includes(v), a.frontSuspension);
   if (a.rearSuspension) need("rearSuspension", config.rearSuspension, (v) => a.rearSuspension.includes(v), a.rearSuspension);
   if (a.engineIds) need("engineId", config.engineId, (v) => a.engineIds.includes(v), a.engineIds);
+  if (a.maxCushionWidthM != null) need("seatHipBreadthM", config.seatHipBreadthM, (v) => v <= a.maxCushionWidthM, `hip breadth ≤ ${a.maxCushionWidthM} m (max cushion width)`);
   if (a.transmissionType) need("transmissionType", config.transmissionType, (v) => v === a.transmissionType, a.transmissionType);
   // What the maker publishes no rating for is listed, never assumed to fit.
   for (const u of a.unrated || []) unchecked.push({ field: u.field, reason: `not rated: ${u.reason}` });
