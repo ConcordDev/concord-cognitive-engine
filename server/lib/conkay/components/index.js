@@ -136,9 +136,10 @@ export function tyreSpeedCapability(symbol, { explicitMaxKmh = null, explicitSou
 
 /**
  * Compare an entry's applicability constraints with a configuration:
- *   { fuelType, drivetrain, enginePattern, engineTorqueNm, engineMaxRpm,
- *     boltPattern, wheelDiameterIn, wheelWidthIn, loadPerTyreKg,
- *     requiredTopSpeedKmh, spindle, vehicleMassKg, provides: [] }
+ *   { fuelType, drivetrain, enginePattern, engineId, engineTorqueNm, engineMaxRpm,
+ *     transmissionType, boltPattern, wheelDiameterIn, wheelWidthIn, loadPerTyreKg,
+ *     requiredTopSpeedKmh, spindle, frontSuspension, rearSuspension,
+ *     vehicleMassKg, provides: [] }
  * Returns { ok, mismatches: [{ field, required, actual }], unchecked: [{ field, reason }], needs: [] }.
  * ok means no mismatch; what could not be checked is listed, never assumed.
  */
@@ -164,6 +165,12 @@ export function checkApplicability(entry, config = {}) {
   if (a.maxLoadKg != null) need("loadPerTyreKg", config.loadPerTyreKg, (v) => v <= a.maxLoadKg, `≤ ${a.maxLoadKg} kg`);
   if (a.establishedMaxSpeedKmh != null) need("requiredTopSpeedKmh", config.requiredTopSpeedKmh, (v) => v <= a.establishedMaxSpeedKmh, `≤ ${a.establishedMaxSpeedKmh} km/h`);
   if (a.spindle) need("spindle", config.spindle, (v) => v === a.spindle, a.spindle);
+  if (a.frontSuspension) need("frontSuspension", config.frontSuspension, (v) => a.frontSuspension.includes(v), a.frontSuspension);
+  if (a.rearSuspension) need("rearSuspension", config.rearSuspension, (v) => a.rearSuspension.includes(v), a.rearSuspension);
+  if (a.engineIds) need("engineId", config.engineId, (v) => a.engineIds.includes(v), a.engineIds);
+  if (a.transmissionType) need("transmissionType", config.transmissionType, (v) => v === a.transmissionType, a.transmissionType);
+  // What the maker publishes no rating for is listed, never assumed to fit.
+  for (const u of a.unrated || []) unchecked.push({ field: u.field, reason: `not rated: ${u.reason}` });
   if (a.vehicleMassKg) need("vehicleMassKg", config.vehicleMassKg, (v) => (a.vehicleMassKg.min == null || v >= a.vehicleMassKg.min) && (a.vehicleMassKg.max == null || v <= a.vehicleMassKg.max), a.vehicleMassKg);
   const provides = new Set(config.provides || []);
   const needs = (a.requires || []).filter((r) => !provides.has(r));
@@ -172,10 +179,11 @@ export function checkApplicability(entry, config = {}) {
 
 /**
  * The lightest entry in a category with no applicability mismatch (and any
- * extra test). Returns { chosen, candidates: [{ id, massKg, ok, mismatches, unchecked, needs, rejected? }] }.
+ * extra test). `where` narrows the category first (e.g. the front axle's
+ * brakes). Returns { chosen, candidates: [{ id, massKg, ok, mismatches, unchecked, needs, rejected? }] }.
  */
-export function selectComponent(category, config, { extra } = {}) {
-  const candidates = listComponents(category).map((c) => {
+export function selectComponent(category, config, { extra, where } = {}) {
+  const candidates = listComponents(category).filter((c) => !where || where(c)).map((c) => {
     const app = checkApplicability(c, config);
     const extraReason = app.ok && extra ? extra(c) : null;
     return { id: c.id, massKg: c.mass.kg, ...app, ...(extraReason ? { ok: false, rejected: extraReason } : {}) };

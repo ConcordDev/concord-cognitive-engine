@@ -13,6 +13,7 @@ import {
 } from "../lib/conkay/components/index.js";
 import { CRITICAL_VEHICLE_COMPONENTS } from "../lib/conkay/physics/solvers/vehicle-acceptance.js";
 import { buildCarFromLibrary, carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
+import { GEAR_LIMIT_STATUS } from "../lib/conkay/physics/solvers/powertrain.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 
 const open = (ir) => {
@@ -255,6 +256,56 @@ describe("Top speed is a model output", () => {
     assert.deepEqual(o.topSpeed.unverifiedDependencies, ["drag_model", "drivetrain_losses", "gearing", "tyre_limits", "stability", "thermal"]);
     assert.equal(o.claimStatus.value, "model_output_unvalidated");
   });
+
+  // Gearing on the 230 kW car (drag-limited ≈ 295 km/h): one tall gear, a
+  // 0.33 m tyre and a redline that runs out first or doesn't.
+  const geared = ({ redline, finalDrive = 3.0, box = null, range = null }) => {
+    const ir = fullVehicle({ kw: 230 });
+    Object.assign(ir.nodes[0].props.vehicle, { gearRatios: [2.0, 1.0], finalDrive, tireRadius: "0.33 m" });
+    const eng = ir.nodes.find((n) => n.id === "ENGINE_OR_MOTOR");
+    Object.assign(eng.props, { redlineRpm: redline, redlineBasis: "estimated: test", ...(range ? { redlineRange: range } : {}) });
+    if (box) ir.nodes.find((n) => n.id === "TRANSMISSION").props.maxInputRpm = box;
+    return open(ir);
+  };
+  const atRpm = (rpm, fd = 3.0) => (rpm * (2 * Math.PI / 60) * 0.33) / (1.0 * fd);
+
+  it("gear-limited below the drag limit: the model's top speed is the gear limit, labelled", () => {
+    const s = geared({ redline: 6000 });
+    const ts = s.result("vehicle.top-speed@V").outputs;
+    assert.ok(close(ts.gearLimitedTopSpeed.value, atRpm(6000)));
+    assert.ok(ts.gearLimitedTopSpeed.value < ts.dragLimitedTopSpeed.value);
+    assert.ok(close(ts.topSpeed.value, ts.gearLimitedTopSpeed.value));
+    assert.equal(ts.limitedBy.value, "gear (rev limit in top gear)");
+    assert.equal(ts.topSpeed.status, "model_output_unvalidated");
+    const g = s.result("vehicle.gearing@V").outputs;
+    assert.equal(g.gearLimitStatus.value, GEAR_LIMIT_STATUS.GEAR_LIMITED);
+    assert.ok(close(g.effectiveTopSpeed.value, atRpm(6000)));
+    // The requirement is judged on the lower value: 69 m/s is under 180 mph.
+    assert.equal(s.result("requirement.check@VMAX").status, "FAIL");
+    const claim = s.result("vehicle.acceptance@V").outputs.performanceClaims.value[0];
+    assert.equal(claim.gearLimitStatus, "gear_limited");
+    assert.ok(close(claim.value, atRpm(6000)));
+  });
+
+  it("a redline above the drag limit leaves the drag-limited speed; the transmission's rated rpm caps the redline", () => {
+    const free = geared({ redline: 9000 });
+    const ts = free.result("vehicle.top-speed@V").outputs;
+    assert.ok(close(ts.topSpeed.value, ts.dragLimitedTopSpeed.value));
+    assert.equal(ts.limitedBy.value, "drag (power-limited)");
+    assert.equal(free.result("vehicle.gearing@V").outputs.gearLimitStatus.value, GEAR_LIMIT_STATUS.NOT_GEAR_LIMITED);
+    const capped = geared({ redline: 9000, box: 6000 }).result("vehicle.gearing@V").outputs;
+    assert.equal(capped.revLimitRpm.value, 6000);
+    assert.match(capped.revLimitRpm.source, /TRANSMISSION max input speed/);
+    assert.equal(capped.gearLimitStatus.value, GEAR_LIMIT_STATUS.GEAR_LIMITED);
+  });
+
+  it("an estimated redline range gives the gear limit across the range and says when the verdict depends on it", () => {
+    const s = geared({ redline: 9000, range: { low: 6000, high: 9000 } });
+    const g = s.result("vehicle.gearing@V");
+    assert.ok(close(g.outputs.gearLimitedTopSpeedRange.value.low, atRpm(6000)));
+    assert.match(g.warnings.join(), /depends on the estimated redline/);
+    assert.ok(s.result("vehicle.acceptance@V").outputs.caveats.value.some((c) => /estimated redline/.test(c)));
+  });
 });
 
 describe("Component library", () => {
@@ -272,10 +323,34 @@ describe("Component library", () => {
     }
   });
 
-  it("covers the car brief's first critical parts", () => {
+  it("covers every critical vehicle category", () => {
     const cats = new Set(loadLibrary().components.map((c) => c.category));
-    for (const c of ["engine_or_motor", "transmission", "tyres", "wheels", "brakes", "fuel_or_battery"]) assert.ok(cats.has(c), c);
+    for (const c of CRITICAL_VEHICLE_COMPONENTS.map((x) => x.id)) assert.ok(cats.has(c), c);
     assert.ok(loadLibrary().components.filter((c) => c.category === "engine_or_motor").length >= 2);
+    const brakes = loadLibrary().components.filter((c) => c.category === "brakes");
+    assert.ok(brakes.some((c) => c.applicability.axle === "front") && brakes.some((c) => c.applicability.axle === "rear"));
+  });
+
+  it("a package (shipping) weight is never a sourced mass: estimated, nominal at the package weight, with the allowance stated", () => {
+    const pkg = loadLibrary().components.filter((c) => /package weight/i.test(c.mass.published) || (/package/i.test(c.mass.massState.method || "") && /upper bound/i.test(c.mass.massState.method || "")));
+    assert.ok(pkg.length >= 3, pkg.map((c) => c.id).join());
+    for (const c of pkg) {
+      const ms = c.mass.massState;
+      assert.equal(ms.state, "estimated", c.id);
+      assert.match(ms.method, /package|shipping/i, c.id);
+      assert.ok(close(ms.uncertainty.highKg, c.mass.kg, 1e-6), `${c.id}: nominal is the upper bound`);
+    }
+  });
+
+  it("a third-party measurement says so (sourceKind), and every differential carries its final-drive options with a source", () => {
+    const measured = loadLibrary().components.filter((c) => /mustang6g\.com/.test(c.mass.massState.source.url));
+    assert.ok(measured.length >= 5);
+    for (const c of measured) assert.match(c.mass.massState.sourceKind, /third-party scale measurement/, c.id);
+    for (const d of loadLibrary().components.filter((c) => c.category === "differential")) {
+      assert.ok(Number.isFinite(d.ratings.finalDrive.value), d.id);
+      assert.ok(d.ratings.finalDriveOptions.values.includes(d.ratings.finalDrive.value), d.id);
+      assert.ok(d.ratings.finalDriveOptions.sources.every((x) => /^https:\/\//.test(x.url) && x.retrieved), d.id);
+    }
   });
 
   it("an entry without a source, or with an invented placeholder, is refused", () => {
@@ -309,6 +384,20 @@ describe("Applicability: a sourced part is right only for the configuration it f
     assert.ok(silent.unchecked.some((u) => u.field === "engineTorqueNm"));
   });
 
+  it("parts are checked against each other: spindle, engine, rear suspension; an unrated capacity is listed, not assumed", () => {
+    const dropSpindleKit = getComponent("brakes.wilwood.fnsl6r.140-14277");
+    const s550 = { spindle: "Ford S550 Mustang front spindle (2015-2023)", boltPattern: "5x114.3", wheelDiameterIn: 18 };
+    assert.deepEqual(checkApplicability(dropSpindleKit, s550).mismatches.map((m) => m.field), ["spindle"]);
+    assert.equal(checkApplicability(getComponent("brakes.wilwood.aero6.140-13886"), s550).ok, true);
+    const pack = getComponent("wiring.ford.control-pack.m-6017-m50d");
+    assert.deepEqual(checkApplicability(pack, { engineId: "engine.ford.coyote-gen4x.m-6007-m50h", transmissionType: "manual" }).mismatches.map((m) => m.field), ["engineId"]);
+    const diff = getComponent("differential.ford.super-8.8-irs.m-4001-88355b");
+    assert.equal(checkApplicability(diff, { drivetrain: "RWD", rearSuspension: "solid axle" }).ok, false);
+    const ok = checkApplicability(diff, { drivetrain: "RWD", rearSuspension: "Ford S550 IRS (2015-2023 Mustang)" });
+    assert.equal(ok.ok, true);
+    assert.ok(ok.unchecked.some((u) => u.field === "engineTorqueNm" && /not rated/.test(u.reason)));
+  });
+
   it("selection skips a mismatched part; a mismatched part in a design is flagged in the breakdown and fails the gate", () => {
     const sel = selectComponent("engine_or_motor", { fuelType: "gasoline" });
     assert.notEqual(sel.chosen.id, "motor.ford.eluminator.m-9000-mache");
@@ -334,34 +423,85 @@ describe("Car brief from the component library (acceptance)", () => {
 
   it("real parts are picked by applicability and carry their sources", () => {
     const b = buildCarFromLibrary(BRIEF);
-    assert.equal(b.selection.engine_or_motor.chosen, "engine.ford.coyote-gen4x.m-6007-m50h");
-    assert.equal(b.selection.transmission.chosen, "transmission.tremec.tkx.tcet18085");
-    assert.equal(b.selection.tyres.chosen, "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl");
+    const chosen = Object.fromEntries(Object.entries(b.selection).map(([k, v]) => [k, v.chosen]));
+    assert.deepEqual(chosen, {
+      engine_or_motor: "engine.ford.coyote-gen4x.m-6007-m50h",
+      wiring: "wiring.ford.control-pack.m-6017-m50hm",
+      transmission: "transmission.tremec.tkx.tcet18085",
+      differential: "differential.ford.super-8.8-irs.m-4001-88355b",
+      suspension_front: "suspension.ford.s550-front.oem",
+      suspension_rear: "suspension.ford.s550-irs-rear.oem",
+      steering: "steering.ford.s550-epas",
+      wheels: "wheel.enkei.rpf1.3798906535sp",
+      tyres: "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl",
+      brakes_front: "brakes.wilwood.aero6.140-13886",
+      brakes_rear: "brakes.wilwood.aero4-mc4.140-13888",
+      cooling: "cooling.coldcase.lmm570-5k",
+      exhaust: "exhaust.s550-gt.oem-lh-manifold-midpipe.bassani-xpipe-catback",
+      fuel_or_battery: "fuel.atl.saver-cell.sa-aa-070",
+      seats_front: "seat.recaro.pole-position-ng-fia.aluminium-sidemount",
+      seats_rear: "seat.ford.s550-rear.oem",
+    });
+    // The drop-spindle front kit no longer fits once the S550 front suspension provides the spindle.
+    assert.deepEqual(b.selection.brakes_front.candidates.find((c) => c.id === "brakes.wilwood.fnsl6r.140-14277").mismatches.map((m) => m.field), ["spindle"]);
     const engine = b.ir.nodes.find((n) => n.id === "ENGINE");
     assert.equal(engine.props.massState.state, "sourced");
     assert.match(engine.props.massState.source.url, /ford\.com/);
+    assert.match(engine.props.redlineBasis, /^estimated/);
+    const veh = b.ir.nodes.find((n) => n.id === "VEH").props.vehicle;
+    assert.equal(veh.finalDrive, 3.55);
+    assert.match(veh.finalDriveSource, /M-4209-88355A/);
+    // Rear seats share the measured bench: half each.
+    const s3 = b.ir.nodes.find((n) => n.id === "SEAT_3");
+    assert.ok(close(parseFloat(s3.props.mass), getComponent("seat.ford.s550-rear.oem").mass.kg / 2, 1e-9));
+    // An exclusion another selected part supplies is not missing mass.
+    assert.ok(engine.props.massCoveredElsewhere.some((x) => /M-6017-M50HM/.test(x)));
+    assert.ok(!engine.props.massExcludes.some((x) => /M-6017-M50HM/.test(x)));
   });
 
-  it("fails honestly as not physically credible, naming the placeholders, with mass by state and the top speed as a model output", () => {
+  it("every critical component is real now: the gate lists only the remaining issue, the tyre against the model's top speed", () => {
     const r = carAcceptance(BRIEF);
     assert.equal(r.ok, true, r.error);
     const rep = r.report;
+    for (const c of rep.criticalComponents) assert.equal(c.status, "real", c.category);
     assert.equal(rep.verdict, "not_physically_credible");
-    assert.match(rep.failures[0], /not physically credible/);
-    for (const c of ["differential", "steering", "cooling", "exhaust", "suspension", "wiring", "interior and seats", "rear axle"]) assert.match(rep.failures[0], new RegExp(c), c);
-    for (const c of ["engine_or_motor", "transmission", "wheels", "tyres", "fuel_or_battery"]) assert.equal(rep.criticalComponents.find((x) => x.category === c).status, "real", c);
-    const pct = rep.massBreakdown.pct;
-    assert.ok(Math.abs(pct.sourced + pct.estimated + pct.computed + pct.placeholder - 100) < 0.2);
-    assert.ok(pct.sourced > 0 && pct.placeholder > 0);
-    assert.equal(rep.massBreakdown.lowerBound, true);
-    assert.equal(rep.topSpeed.status, "model_output_unvalidated");
-    assert.equal(rep.topSpeed.unverifiedDependencies.length, 6);
-    assert.match(rep.topSpeed.unverifiedDependencies.find((d) => d.id === "gearing").evidence, /finalDrive/);
+    assert.ok(!rep.failures.some((f) => /critical component/.test(f)), rep.failures.join("\n"));
+    assert.equal(rep.failures.length, 4);
+    for (const f of rep.failures) assert.match(f, /TIRE_(FL|FR|RL|RR) established speed ≥ model top speed .* fails \(300 km\/h established vs \d+ km\/h model output\)/);
+    // Mass by state: no placeholders left; a lower bound under the 2,500 lb target.
+    const mb = rep.massBreakdown;
+    assert.ok(Math.abs(mb.pct.sourced + mb.pct.estimated + mb.pct.computed + mb.pct.placeholder - 100) < 0.2);
+    assert.equal(mb.pct.placeholder, 0);
+    assert.equal(mb.kg.placeholder, 0);
+    assert.ok(mb.pct.sourced > 50 && mb.pct.estimated > 0 && mb.pct.computed > 0);
+    assert.ok(mb.uncertaintyKg[0] < mb.totalKg && mb.uncertaintyKg[1] >= mb.totalKg);
+    assert.equal(mb.lowerBound, true);
+    assert.ok(mb.notIncluded.some((x) => /rear knuckles/.test(x)));
+    assert.equal(mb.vsTarget.targetLb, 2500);
+    assert.ok(mb.vsTarget.totalKg < mb.vsTarget.targetKg);
+    assert.ok(mb.sourcedKgBySourceKind.thirdPartyMeasurement > 0 && mb.sourcedKgBySourceKind.manufacturerSpec > 0);
+    // Top speed: the lower of drag- and gear-limited, still a model output.
+    const t = rep.topSpeed;
+    assert.equal(t.status, "model_output_unvalidated");
+    assert.ok(close(t.mph, Math.min(t.dragLimitedMph, t.gearLimitedMph), 1e-3));
+    assert.equal(t.gearLimitStatus, t.gearLimitedMph < t.dragLimitedMph ? "gear_limited" : "not_gear_limited");
+    assert.equal(t.revLimit.rpm, 7500);
+    assert.equal(t.finalDrive.value, 3.55);
+    assert.deepEqual(t.gearLimitedMphRange.rpm, { low: 7000, high: 7500 });
+    assert.equal(t.unverifiedDependencies.length, 6);
+    assert.match(t.unverifiedDependencies.find((d) => d.id === "gearing").evidence, /final drive 3\.55/);
     // Y meets the 180 mph requirement but not the model's own top speed.
     assert.ok(rep.tyreSpeed.margins.filter((m) => /required/.test(m.check)).every((m) => m.pass));
     assert.ok(rep.tyreSpeed.margins.filter((m) => /model top speed/.test(m.check)).every((m) => !m.pass));
+    // Options, without changing the physics: no available final drive keeps the gear limit within 300 km/h.
+    const gearOpt = rep.tyreOptions.options.find((o) => /final drive/.test(o.option));
+    assert.deepEqual(gearOpt.perRatio.map((x) => x.finalDrive), [3.31, 3.55, 3.73, 4.09]);
+    assert.ok(gearOpt.perRatio.every((x) => !x.withinTyre));
+    assert.match(rep.tyreOptions.options[0].finding, /No published manufacturer rating above 300 km\/h/);
+    assert.equal(rep.tyreOptions.highSpeedLoad.loadCapacityPct, 90);
     assert.ok(rep.caveats.some((c) => /REQ_topSpeed passes on a model output/.test(c)));
     assert.ok(rep.caveats.some((c) => /REQ_mass passes on a lower-bound mass/.test(c)));
+    assert.ok(rep.caveats.some((c) => /estimated redline/.test(c)));
     for (const c of rep.components) assert.match(c.source, /^https:\/\//, c.node);
   });
 

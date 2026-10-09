@@ -117,6 +117,17 @@ export const massBreakdown = registerSolver({
   },
 });
 
+const mph = (v) => `${(v / 0.44704).toFixed(1)} mph`;
+function gearEvidence(gear) {
+  const o = gear.outputs || {};
+  const parts = [`computed: rev limit ${o.revLimitRpm?.value} rpm (${o.revLimitRpm?.source}), final drive ${gear.inputs?.finalDrive?.value} (${gear.inputs?.finalDrive?.source})`];
+  if (Number.isFinite(o.gearLimitedTopSpeed?.value)) parts.push(`gear-limited ${mph(o.gearLimitedTopSpeed.value)}`);
+  const b = o.gearLimitedTopSpeedRange?.value;
+  if (b) parts.push(`${mph(b.low)}–${mph(b.high)} across ${b.rpm.low}–${b.rpm.high} rpm`);
+  if (o.gearLimitStatus) parts.push(`${o.gearLimitStatus.value} (limited by ${o.limitedBy.value})`);
+  return parts.join("; ");
+}
+
 const criticalOf = (ctx, n) => {
   const v = ctx.get(n.id, "props.critical");
   return v == null ? [] : Array.isArray(v) ? v : [v];
@@ -124,7 +135,7 @@ const criticalOf = (ctx, n) => {
 
 export const vehicleAcceptance = registerSolver({
   id: "vehicle.acceptance",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "verification.acceptance",
   fidelity: 0,
   method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part",
@@ -187,29 +198,46 @@ export const vehicleAcceptance = registerSolver({
     const evidence = {
       drag_model: `Cd ${ts?.inputs?.dragCoefficient?.value ?? "?"} (${ts?.inputs?.dragCoefficient?.source ?? "not given"}); frontal area ${ts?.inputs?.frontalArea?.source ?? "not given"}`,
       drivetrain_losses: `driveline efficiency ${ts?.inputs?.drivelineEfficiency?.value ?? "?"} (${ts?.inputs?.drivelineEfficiency?.source ?? "not given"})`,
-      gearing: !gear ? "no gearing in the design (vehicle.gearing did not run)" : gear.status === "NOT_COMPUTED" ? `not computed: ${gear.reason}` : `computed: limited by ${gear.outputs?.limitedBy?.value ?? "?"}`,
+      gearing: !gear ? "no gearing in the design (vehicle.gearing did not run)" : gear.status === "NOT_COMPUTED" ? `not computed: ${gear.reason}` : gearEvidence(gear),
       tyre_limits: `speed rating ${tyre?.status ?? "not run"}; load index ${load?.status ?? "not run"}`,
       stability: "no solver yet",
       thermal: "no solver yet",
     };
+    // The top speed: the lower of drag-limited and gear-limited when the
+    // gearing is known, else the drag-limited model output alone.
+    const dragV = ts?.outputs?.dragLimitedTopSpeed?.value ?? ts?.outputs?.topSpeed?.value;
+    const effV = gear?.outputs?.effectiveTopSpeed?.value;
+    const v = ts?.outputs?.topSpeed?.value ?? null;
+    const gl = gear?.outputs?.gearLimitedTopSpeedRange?.value;
     const performanceClaims = [{
       claim: "topSpeed",
-      value: ts?.outputs?.topSpeed?.value ?? null,
+      value: v ?? null,
       unit: "m/s",
-      mph: Number.isFinite(ts?.outputs?.topSpeed?.value) ? ts.outputs.topSpeed.value / 0.44704 : null,
-      status: Number.isFinite(ts?.outputs?.topSpeed?.value) ? TOP_SPEED_CLAIM_STATUS : "not_computed",
+      mph: Number.isFinite(v) ? v / 0.44704 : null,
+      status: Number.isFinite(v) ? TOP_SPEED_CLAIM_STATUS : "not_computed",
+      basis: Number.isFinite(effV) ? "lower of the drag-limited and gear-limited top speeds" : "drag-limited only (gearing not computed)",
+      dragLimitedMph: Number.isFinite(dragV) ? dragV / 0.44704 : null,
+      gearLimitedMph: Number.isFinite(gear?.outputs?.gearLimitedTopSpeed?.value) ? gear.outputs.gearLimitedTopSpeed.value / 0.44704 : null,
+      ...(gl ? { gearLimitedMphRange: { low: gl.low / 0.44704, high: gl.high / 0.44704, rpm: gl.rpm } } : {}),
+      gearLimitStatus: gear?.outputs?.gearLimitStatus?.value ?? "not_computed",
+      revLimit: gear?.outputs?.revLimitRpm ? { rpm: gear.outputs.revLimitRpm.value, source: gear.outputs.revLimitRpm.source } : null,
+      limitedBy: ts?.outputs?.limitedBy?.value ?? null,
       source: ts?.runId ?? null,
       unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => ({ ...d, evidence: evidence[d.id] })),
     }];
 
     // What a passing requirement does and doesn't show.
     const missingCats = critical.filter((c) => c.status === "missing").map((c) => c.label);
+    const excluded = nodes.flatMap((n) => (ctx.get(n.id, "props.massExcludes") || []).map((x) => `${n.id}: ${x}`));
     const caveats = [];
     if (missingCats.length) caveats.push(`The kerb mass is a lower bound: ${missingCats.join(", ")} ${missingCats.length === 1 ? "is" : "are"} not in the design and carry no mass.`);
+    if (excluded.length) caveats.push(`The kerb mass is a lower bound: ${excluded.length} item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).`);
+    const redlineBasis = gear?.inputs?.redlineRpm?.basis;
+    if (redlineBasis && /estimat/i.test(redlineBasis)) caveats.push(`The gear limit rests on an estimated redline (${gear.inputs.redlineRpm.value} rpm): ${redlineBasis}`);
     for (const r of ctx.graph.requirements.filter((x) => x.of.target === id)) {
       const e = ctx.result("requirement.check", r.id);
       if (e?.status !== "PASS") continue;
-      if (r.of.solver === "mass.assembly" && missingCats.length) caveats.push(`${r.id} passes on a lower-bound mass.`);
+      if (r.of.solver === "mass.assembly" && (missingCats.length || excluded.length)) caveats.push(`${r.id} passes on a lower-bound mass.`);
       if (r.of.solver === "vehicle.top-speed") caveats.push(`${r.id} passes on a model output (${TOP_SPEED_CLAIM_STATUS}), not a validated top speed.`);
     }
     const breakdown = bd?.status === "NOT_COMPUTED" || !bd ? null : {
@@ -218,7 +246,8 @@ export const vehicleAcceptance = registerSolver({
       kg: Object.fromEntries(Object.entries(bd.outputs.byState.value).map(([k, v]) => [k, v.kg])),
       uncertaintyKg: [bd.outputs.uncertaintyLow.value, bd.outputs.uncertaintyHigh.value],
       unmassed: bd.outputs.unmassed.value,
-      lowerBound: missingCats.length > 0 || bd.outputs.unmassed.value.length > 0,
+      excluded,
+      lowerBound: missingCats.length > 0 || bd.outputs.unmassed.value.length > 0 || excluded.length > 0,
     };
     return {
       inputs: { fuelType: { value: fuelType ?? null, source: "props.vehicle.fuelType" }, massBreakdown: { value: bd?.runId ?? null } },

@@ -2,12 +2,17 @@
 //
 // Gearing and tyres for a vehicle (an Assembly with props.vehicle).
 //
-// vehicle.gearing: road speed in each gear at the engine's redline,
-//   v = ω_redline · r_tyre / (gear ratio · final drive)
-// The effective top speed is the lower of the power-limited speed
-// (vehicle.top-speed) and the speed at redline in top gear, and the receipt
-// says which one limits. It also gives the overall top-gear ratio that would
-// put peak power exactly at the power-limited top speed.
+// vehicle.gearing: road speed in each gear at the rev limit,
+//   v = ω_limit · r_tyre / (gear ratio · final drive)
+// The rev limit is the lower of the engine's redline and the transmission's
+// maximum rated input speed (when the design states one). The gear-limited
+// top speed is the fastest speed any gear reaches at the rev limit; the
+// drag-limited (power-limited) speed comes from vehicle.top-speed. The
+// effective top speed is the lower of the two, labelled with which one
+// limits it, and it is still a model output. When the redline is an
+// estimate with a range, the gear limit is given across the range too. It
+// also gives the overall top-gear ratio that would put peak power exactly at
+// the power-limited top speed.
 //
 // tire.speed-rating: each tyre's established speed (ISO 4000-1 / ETRTO
 // speed symbol, from the cited table in the component library) against the
@@ -21,6 +26,7 @@
 
 import { registerSolver } from "../registry.js";
 import { speedSymbolTable, tyreSpeedCapability, loadIndexKg, loadLibrary } from "../../components/index.js";
+import { TOP_SPEED_CLAIM_STATUS as TOP_SPEED_STATUS, gearLimitedSpeed } from "./vehicle.js";
 
 const RPM = (2 * Math.PI) / 60; // rad/s per rpm
 const KMH = 1 / 3.6;
@@ -42,53 +48,54 @@ function contained(ctx, id, test, seen = new Set()) {
 
 const vehicles = (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id);
 
+export const GEAR_LIMIT_STATUS = Object.freeze({ GEAR_LIMITED: "gear_limited", NOT_GEAR_LIMITED: "not_gear_limited" });
+
 export const gearing = registerSolver({
   id: "vehicle.gearing",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "performance.gearing",
   fidelity: 0,
-  method: "v = ω_redline·r / (ratio·final drive) per gear; effective top speed = min(power-limited, redline in top gear)",
+  method: "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
   targets: (g) => vehicles(g).filter((id) => Array.isArray(g.node(id).props.vehicle.gearRatios)),
   run(ctx, id) {
-    const ratios = ctx.get(id, "props.vehicle.gearRatios");
-    const finalDrive = ctx.get(id, "props.vehicle.finalDrive");
-    const r = ctx.get(id, "props.vehicle.tireRadius");
-    if (!Array.isArray(ratios) || !ratios.length || !ratios.every((x) => Number.isFinite(x) && x > 0)) return { notComputed: "gearRatios must be positive numbers" };
-    if (!(Number.isFinite(finalDrive) && finalDrive > 0)) return { notComputed: "props.vehicle.finalDrive required" };
-    if (!(Number.isFinite(r) && r > 0)) return { notComputed: "props.vehicle.tireRadius required" };
-    const engines = contained(ctx, id, (c) => c.kind === "Actuator");
-    if (engines.length !== 1) return { notComputed: `gearing needs exactly one engine or motor (found ${engines.length})` };
-    const e = engines[0].id;
-    const redline = ctx.get(e, "props.redlineRpm");
-    const peak = ctx.get(e, "props.peakPowerRpm");
-    if (!(Number.isFinite(redline) && redline > 0)) return { notComputed: `${e} needs props.redlineRpm` };
-    const perGear = ratios.map((g, i) => ({ gear: i + 1, ratio: g, speedAtRedline: (redline * RPM * r) / (g * finalDrive) }));
-    const top = perGear.at(-1).speedAtRedline;
+    const gl = gearLimitedSpeed(ctx, id);
+    if (gl.missing) return { notComputed: gl.missing };
+    const peak = ctx.get(gl.engine, "props.peakPowerRpm");
     const ts = ctx.result("vehicle.top-speed", id);
-    const powerLimited = ts?.outputs?.topSpeed?.value;
+    const powerLimited = ts?.outputs?.dragLimitedTopSpeed?.value ?? ts?.outputs?.topSpeed?.value;
     const outputs = {
-      redlineSpeedTopGear: { value: top, unit: "m/s" },
-      speedsAtRedline: { value: perGear },
+      revLimitRpm: { value: gl.revLimitRpm, source: gl.limitSource },
+      redlineSpeedTopGear: { value: gl.perGear.at(-1).speedAtRedline, unit: "m/s" },
+      gearLimitedTopSpeed: { value: gl.value, unit: "m/s", note: `fastest speed any gear reaches at ${gl.revLimitRpm} rpm` },
+      speedsAtRedline: { value: gl.perGear },
+      ...(gl.range ? { gearLimitedTopSpeedRange: { value: gl.range, unit: "m/s", note: "gear limit across the redline's estimated range" } } : {}),
     };
     const warnings = [];
     if (Number.isFinite(powerLimited)) {
-      const limitedBy = top < powerLimited ? "redline in top gear" : "power";
-      outputs.effectiveTopSpeed = { value: Math.min(top, powerLimited), unit: "m/s" };
-      outputs.limitedBy = { value: limitedBy };
-      if (limitedBy !== "power") warnings.push(`Top gear runs out of revs at ${(top / 0.44704).toFixed(0)} mph, below the ${(powerLimited / 0.44704).toFixed(0)} mph the power allows.`);
+      const geared = gl.value < powerLimited;
+      outputs.dragLimitedTopSpeed = { value: powerLimited, unit: "m/s", status: TOP_SPEED_STATUS };
+      outputs.effectiveTopSpeed = { value: Math.min(gl.value, powerLimited), unit: "m/s", status: TOP_SPEED_STATUS, note: "the lower of the drag-limited and gear-limited top speeds" };
+      outputs.limitedBy = { value: geared ? "redline in top gear" : "power" };
+      outputs.gearLimitStatus = { value: geared ? GEAR_LIMIT_STATUS.GEAR_LIMITED : GEAR_LIMIT_STATUS.NOT_GEAR_LIMITED };
+      if (geared) warnings.push(`Top gear runs out of revs at ${(gl.value / 0.44704).toFixed(0)} mph, below the ${(powerLimited / 0.44704).toFixed(0)} mph the power allows: the top speed is gear-limited.`);
+      if (gl.range && (gl.range.low < powerLimited) !== geared) warnings.push(`Whether the top speed is gear-limited depends on the estimated redline: ${gl.range.rpm.low} rpm gives ${(gl.range.low / 0.44704).toFixed(0)} mph, ${gl.range.rpm.high} rpm gives ${(gl.range.high / 0.44704).toFixed(0)} mph, against ${(powerLimited / 0.44704).toFixed(0)} mph drag-limited.`);
       if (Number.isFinite(peak) && peak > 0) {
-        outputs.topGearOverallForPeakPower = { value: (peak * RPM * r) / powerLimited, unit: "1", note: "ratio × final drive that puts peak power at the power-limited top speed" };
+        outputs.topGearOverallForPeakPower = { value: (peak * RPM * gl.r) / powerLimited, unit: "1", note: "ratio × final drive that puts peak power at the power-limited top speed" };
       }
     }
     return {
       inputs: {
-        gearRatios: { value: ratios }, finalDrive: { value: finalDrive }, tireRadius: { value: r, unit: "m" },
-        redlineRpm: { value: redline, source: e }, ...(Number.isFinite(peak) ? { peakPowerRpm: { value: peak, source: e } } : {}),
+        gearRatios: { value: gl.ratios }, finalDrive: { value: gl.finalDrive, source: ctx.get(id, "props.vehicle.finalDriveSource") || "given in the design" }, tireRadius: { value: gl.r, unit: "m" },
+        redlineRpm: { value: gl.redline, source: gl.engine, basis: gl.redlineBasis }, ...(gl.box ? { transmissionMaxInputRpm: { value: gl.box.rpm, source: gl.box.id } } : {}),
+        ...(Number.isFinite(peak) ? { peakPowerRpm: { value: peak, source: gl.engine } } : {}),
         ...(Number.isFinite(powerLimited) ? { powerLimitedTopSpeed: { value: powerLimited, unit: "m/s", source: ts.runId } } : {}),
       },
       outputs,
       warnings,
-      assumptions: ["No tyre growth or slip at speed; r is the dynamic rolling radius."],
+      assumptions: [
+        "No tyre growth or slip at speed; r is the dynamic rolling radius.",
+        "The drag-limited speed assumes peak power is available at that speed; the engine speed it implies in the chosen gear is not checked against the power curve.",
+      ],
     };
   },
 });

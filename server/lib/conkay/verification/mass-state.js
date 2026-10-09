@@ -2,8 +2,10 @@
 //
 // Mass states. Every mass in a design says where it came from:
 //
-//   sourced     a published manufacturer or supplier spec. Needs the source
-//               (URL or document) and the exact variant it applies to.
+//   sourced     a published manufacturer or supplier spec, or a published
+//               measurement of the exact part (massState.sourceKind says
+//               which). Needs the source (URL or document) and the exact
+//               variant it applies to.
 //   estimated   a documented engineering estimate. Needs the method and an
 //               uncertainty range: { lowKg, highKg } or { pct }.
 //   computed    geometry × density from material properties. Needs a

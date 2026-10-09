@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "note": "ConKay component library. Every number carries its source. Masses are SI (kg) with the published figure kept verbatim. Nothing here is estimated unless massState.state says 'estimated', and then the method and range say how.",
   "references": {
     "speedSymbols": {
@@ -167,8 +167,30 @@
           "rpm": 4900
         },
         "redlineRpm": {
-          "value": null,
-          "note": "not published on the product page"
+          "value": 7500,
+          "state": "estimated",
+          "method": "Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
+          "range": {
+            "low": 7000,
+            "high": 7500
+          },
+          "sources": [
+            {
+              "url": "https://www.motorauthority.com/news/1111704_2018-ford-mustang-gt-does-0-60-mph-in-under-4-seconds-has-460-horsepower",
+              "title": "Motor Authority: 2018 Ford Mustang GT ... has 460 horsepower ('an image shows the new Mustang GT should rev to a lovely 7,500 rpm')",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.autoweek.com/news/a1824006/quick-look-2018-mustang-gt-new-7500-rpm-redline-spied/",
+              "title": "Autoweek: 2018 Mustang GT: New 7,500-rpm redline spied? ('Last year's 5.0-liter Mustang redlined at 7,000 rpm')",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.mustang6g.com/forums/attachments/2020-mustang-tech_specs-pdf.526263/",
+              "title": "Ford 2020 Mustang Technical Specifications (PDF): Mustang GT redline 'N/A'",
+              "retrieved": "2026-10-09"
+            }
+          ]
         },
         "compressionRatio": {
           "value": 12.0
@@ -183,6 +205,9 @@
         "notes": [
           "Needs the M-6017-M50D control pack (PCM, wiring) to run.",
           "Driver-side exhaust flange uses the 5.2L pattern."
+        ],
+        "requires": [
+          "control pack M-6017-M50D (manual)"
         ]
       }
     },
@@ -231,8 +256,30 @@
           "rpm": null
         },
         "redlineRpm": {
-          "value": null,
-          "note": "not published on the product page"
+          "value": 7500,
+          "state": "estimated",
+          "method": "Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
+          "range": {
+            "low": 7000,
+            "high": 7500
+          },
+          "sources": [
+            {
+              "url": "https://www.motorauthority.com/news/1111704_2018-ford-mustang-gt-does-0-60-mph-in-under-4-seconds-has-460-horsepower",
+              "title": "Motor Authority: 2018 Ford Mustang GT ... has 460 horsepower ('an image shows the new Mustang GT should rev to a lovely 7,500 rpm')",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.autoweek.com/news/a1824006/quick-look-2018-mustang-gt-new-7500-rpm-redline-spied/",
+              "title": "Autoweek: 2018 Mustang GT: New 7,500-rpm redline spied? ('Last year's 5.0-liter Mustang redlined at 7,000 rpm')",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.mustang6g.com/forums/attachments/2020-mustang-tech_specs-pdf.526263/",
+              "title": "Ford 2020 Mustang Technical Specifications (PDF): Mustang GT redline 'N/A'",
+              "retrieved": "2026-10-09"
+            }
+          ]
         },
         "compressionRatio": {
           "value": 12.0
@@ -246,6 +293,9 @@
         "transmissionPattern": "Ford 5.0L modular",
         "notes": [
           "A manual transmission needs flywheel M-6375-M50, whose mass is not included."
+        ],
+        "requires": [
+          "control pack M-6017-M50HM (manual) or M-6017-M50HA (automatic)"
         ]
       }
     },
@@ -516,7 +566,78 @@
             "title": "Michelin Pilot Sport 4S | 245/40ZR18 (97Y) XL | Big O Tires",
             "retrieved": "2026-10-09"
           }
-        ]
+        ],
+        "highSpeedLoadDerating": {
+          "table": [
+            {
+              "mph": 118,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 124,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 130,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 136,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 143,
+              "psi": 1.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 149,
+              "psi": 3,
+              "loadPct": 100
+            },
+            {
+              "mph": 155,
+              "psi": 4.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 161,
+              "psi": 6,
+              "loadPct": 100
+            },
+            {
+              "mph": 168,
+              "psi": 7.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 174,
+              "psi": 7.5,
+              "loadPct": 95
+            },
+            {
+              "mph": 180,
+              "psi": 7.5,
+              "loadPct": 90
+            },
+            {
+              "mph": 186,
+              "psi": 7.5,
+              "loadPct": 85
+            }
+          ],
+          "source": {
+            "url": "https://www.michelinman.com/auto/tires/michelin-pilot-sport-4-s",
+            "title": "Michelin USA: MICHELIN Pilot Sport 4 S (Y-speed-rated sizes: load and inflation table; 'For speeds above 186 mph (300 kph), consult your vehicle manufacturer and tire dealer.')",
+            "retrieved": "2026-10-09"
+          },
+          "note": "Michelin: for speeds over 100 mph, load and inflation must be adjusted per this table (Y-speed-rated sizes)."
+        },
+        "highSpeedNote": "No published manufacturer rating above 300 km/h was found: Michelin's guidance for Y-rated Pilot Sport 4 S sizes stops at 186 mph (300 km/h) ('For speeds above 186 mph (300 kph), consult your vehicle manufacturer and tire dealer'), and the EU product information sheet for the range states '(Y) > 300 km/h' with no maximum (EPREL 412132, https://eprel.ec.europa.eu/fiches/tyres/Fiche_412132_EN.pdf, a 325/30ZR19 size, retrieved 2026-10-09)."
       },
       "applicability": {
         "rimDiameterIn": 18,
@@ -717,6 +838,721 @@
         ],
         "requires": [
           "metal container"
+        ]
+      }
+    },
+    {
+      "id": "differential.ford.super-8.8-irs.m-4001-88355b",
+      "category": "differential",
+      "manufacturer": "Ford Performance",
+      "model": "Mustang Super 8.8-inch IRS loaded differential housing, with S550 IRS halfshafts",
+      "variant": "M-4001-88355B: iron housing, aluminium cover, 3.55:1 gear set M-4209-88355A, Traction-Lok differential M-4204-M, 34-spline (OE on 2019 Mustang GT); plus 2 OEM S550 IRS halfshafts and inner/outer stubs",
+      "mass": {
+        "kg": 71.8944,
+        "published": "158.5 lb: 'OEM Iron Diff Loaded, Halfshafts, Inner/Outer Stubs - NO Fluid' (BMR scale measurement)",
+        "massState": {
+          "state": "estimated",
+          "method": "BMR's scale measurement of a 2015 Mustang GT OEM iron Super 8.8 housing, loaded, with both halfshafts and stubs, no fluid (158.5 lb). Ford's M-4001-88355B is the same Super 8.8 iron housing (OE on the 2019 GT) but with an aluminium cover, and Ford publishes only its package weight (105 lb, housing alone), 6 lb above BMR's 99 lb for the loaded housing alone. The range is the measurement ± that 6 lb difference.",
+          "uncertainty": {
+            "lowKg": 69.1728,
+            "highKg": 74.6159
+          },
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)",
+          "componentSources": [
+            {
+              "url": "https://performanceparts.ford.com/part/M-4001-88355B",
+              "title": "Ford Performance M-4001-88355B Mustang Super 8.8\" IRS Loaded Differential Housing 3.55: package weight 105 lb, iron housing with aluminum cover",
+              "retrieved": "2026-10-09"
+            }
+          ]
+        },
+        "crossChecks": [
+          {
+            "field": "loaded housing alone",
+            "value": "99 lb (BMR, 2015 OEM iron, no fluid); 105 lb package weight (Ford, M-4001-88355B); 'about 100#' iron case unit (22RPD)",
+            "source": {
+              "url": "https://22rpd.com/blog/what-is-the-supercase-diff-and-why-is-it-a-good-choice",
+              "title": "22RPD blog: What is the 'Supercase' Diff and Why is it a good choice?",
+              "retrieved": "2026-10-09"
+            }
+          }
+        ],
+        "excludes": [
+          "gear oil (fluid)",
+          "IRS cradle and diff mount bushings",
+          "driveshaft"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "only the 21 x 13 x 17 in package dimensions are published"
+      },
+      "ratings": {
+        "ringGearIn": 8.8,
+        "axleSplines": 34,
+        "differentialType": "Traction-Lok clutch-type limited slip (M-4204-M)",
+        "finalDrive": {
+          "value": 3.55,
+          "published": "Includes 3.55:1 ratio gear set M-4209-88355A",
+          "source": {
+            "url": "https://performanceparts.ford.com/part/M-4001-88355B",
+            "title": "Ford Performance M-4001-88355B",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "finalDriveOptions": {
+          "values": [
+            3.31,
+            3.55,
+            3.73,
+            4.09
+          ],
+          "published": "Traction-Lok M-4204-M 'Fits 2015-2025 Mustang GT, V6 and I4 with 3.31, 3.55, 3.73, and 4.09 ratio gears only'; Super 8.8 gear sets M-4209-88355A, M-4209-88373A, M-4209-88409A. A 3.15 ratio needs a different differential.",
+          "sources": [
+            {
+              "url": "https://performanceparts.ford.com/part/M-4204-M",
+              "title": "Ford Performance M-4204-M Mustang Super 8.8-inch Traction-Lok Differential",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://performanceparts.ford.com/part/M-4209-88355A",
+              "title": "Ford Performance M-4209-88355A Mustang IRS Super 8.8-inch ring and pinion set 3.55 ('3.15 ratio differential not compatible with 3.31, 3.55, 3.73 and 4.09 ratio gears')",
+              "retrieved": "2026-10-09"
+            }
+          ]
+        },
+        "torqueCapacityNm": {
+          "value": null,
+          "note": "Ford publishes no torque rating. 22RPD reports the aluminium Super 8.8 housing 'reported to handle 800wtq' and no limit for the iron housing; not a manufacturer rating."
+        }
+      },
+      "applicability": {
+        "drivetrain": [
+          "RWD"
+        ],
+        "rearSuspension": [
+          "Ford S550 IRS (2015-2023 Mustang)"
+        ],
+        "unrated": [
+          {
+            "field": "engineTorqueNm",
+            "reason": "Ford publishes no torque rating for the Super 8.8 IRS"
+          }
+        ],
+        "requires": [
+          "pinion flange to suit the driveshaft (93 mm bolt circle / 110 mm pilot installed)",
+          "speedometer and shift calibration for the axle ratio"
+        ],
+        "notes": [
+          "Iron housing with aluminum cover; fits 2018-2026 Mustang (2015-2017 may need a pinion flange change)."
+        ]
+      }
+    },
+    {
+      "id": "brakes.wilwood.aero6.140-13886",
+      "category": "brakes",
+      "manufacturer": "Wilwood",
+      "model": "AERO6 Big Brake front brake kit",
+      "variant": "140-13886, black calipers, 14.00 in x 1.25 in GT slotted rotors (one axle: front)",
+      "mass": {
+        "kg": 23.859,
+        "published": "52.6 lb = sum of published component weights",
+        "massState": {
+          "state": "sourced",
+          "variant": "140-13886 components: 2 x rotor 160-8398/8399-GTB (17.50 lb), 2 x caliper 120-13293/13294-BK (6.8 lb), 2 x hat 170-13926 (2.000 lb)",
+          "source": {
+            "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdFront?itemno=140-13886",
+            "title": "Wilwood Disc Brakes - Front Brake Kit Part No: 140-13886 (kit contents)",
+            "retrieved": "2026-10-09"
+          },
+          "componentSources": [
+            {
+              "url": "https://www.wilwood.com/Rotors/RotorProd?itemno=160-8398-GTB",
+              "title": "Wilwood Rotor 160-8398-GTB: Weight 17.50 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Rotors/RotorProd?itemno=160-8399-GTB",
+              "title": "Wilwood Rotor 160-8399-GTB: Weight 17.50 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Calipers/CaliperProd?itemno=120-13293-BK",
+              "title": "Wilwood Caliper 120-13293-BK: Weight 6.8 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Calipers/CaliperProd?itemno=120-13294-BK",
+              "title": "Wilwood Caliper 120-13294-BK: Weight 6.8 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Hats/HatProd?itemno=170-13926",
+              "title": "Wilwood Hat 170-13926: Weight 2.000 lbs",
+              "retrieved": "2026-10-09"
+            }
+          ]
+        },
+        "excludes": [
+          "bolt kit 230-8008",
+          "brake lines 220-13912",
+          "fluid",
+          "the OE hub (the kit has none; counted with the front suspension)"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "rotorDiameterIn": 14.0,
+        "rotorWidthIn": 1.25,
+        "minWheelDiameterIn": 18,
+        "source": {
+          "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdFront?itemno=140-13886",
+          "title": "Wilwood Front Brake Kit 140-13886",
+          "retrieved": "2026-10-09"
+        }
+      },
+      "ratings": {
+        "pistonCount": 6,
+        "pistonAreaIn2": 5.4,
+        "padAreaIn2": 11.1,
+        "rotor": "GT 72 curved vane, Spec-37 iron",
+        "torqueCapacityNm": {
+          "value": null,
+          "note": "Wilwood does not publish a brake torque or thermal rating for the kit"
+        }
+      },
+      "applicability": {
+        "axle": "front",
+        "boltPatterns": [
+          "5x114.3"
+        ],
+        "minWheelDiameterIn": 18,
+        "spindle": "Ford S550 Mustang front spindle (2015-2023)",
+        "notes": [
+          "Hat bolt circle 5 x 4.50 in (5x114.3).",
+          "Fitment 2015-2023 Mustang: https://www.steeda.com/wilwood-140-13886-s550-14-inch-brake-kit (retrieved 2026-10-09).",
+          "Check the wheel clearance diagram for the specific wheel."
+        ]
+      }
+    },
+    {
+      "id": "brakes.wilwood.aero4-mc4.140-13888",
+      "category": "brakes",
+      "manufacturer": "Wilwood",
+      "model": "AERO4-MC4 Big Brake rear parking brake kit",
+      "variant": "140-13888, black calipers, 14.00 in x 0.81 in GT slotted rotors, MC4 parking brake (one axle: rear)",
+      "mass": {
+        "kg": 20.3209,
+        "published": "44.8 lb = sum of published component weights (calipers, rotors, hats)",
+        "massState": {
+          "state": "sourced",
+          "variant": "140-13888 components: 2 x rotor 160-12884-GTB (13.40 lb), 2 x caliper 120-14004-BK (6.9 lb), 2 x hat 170-13927 (2.100 lb)",
+          "source": {
+            "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdRear?itemno=140-13888",
+            "title": "Wilwood Disc Brakes - Rear Brake Kit Part No: 140-13888 (kit contents)",
+            "retrieved": "2026-10-09"
+          },
+          "componentSources": [
+            {
+              "url": "https://www.wilwood.com/Rotors/RotorProd?itemno=160-12884-GTB",
+              "title": "Wilwood Rotor 160-12884-GTB: Weight 13.40 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Calipers/CaliperProd?itemno=120-14004-BK",
+              "title": "Wilwood Caliper 120-14004-BK: Weight 6.9 lbs",
+              "retrieved": "2026-10-09"
+            },
+            {
+              "url": "https://www.wilwood.com/Hats/HatProd?itemno=170-13927",
+              "title": "Wilwood Hat 170-13927: Weight 2.100 lbs",
+              "retrieved": "2026-10-09"
+            }
+          ]
+        },
+        "excludes": [
+          "MC4 parking brake assemblies and mounting brackets 249-14009/10 (no published weight)",
+          "brake lines 220-13913",
+          "parking brake cables 330-15137",
+          "bolt kits",
+          "fluid"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "rotorDiameterIn": 14.0,
+        "rotorWidthIn": 0.81,
+        "minWheelDiameterIn": 18,
+        "source": {
+          "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdRear?itemno=140-13888",
+          "title": "Wilwood Rear Brake Kit 140-13888",
+          "retrieved": "2026-10-09"
+        }
+      },
+      "ratings": {
+        "pistonCount": 4,
+        "pistonAreaIn2": 1.98,
+        "padAreaIn2": 11.1,
+        "parkingBrake": "MC4 mechanical (retains DOT parking brake)",
+        "torqueCapacityNm": {
+          "value": null,
+          "note": "Wilwood does not publish a brake torque or thermal rating for the kit"
+        }
+      },
+      "applicability": {
+        "axle": "rear",
+        "boltPatterns": [
+          "5x114.3"
+        ],
+        "minWheelDiameterIn": 18,
+        "rearSuspension": [
+          "Ford S550 IRS (2015-2023 Mustang)"
+        ],
+        "notes": [
+          "'This kit is designed for direct bolt-on installation to 2015 through 2023 model year Ford Mustang axle hubs': https://www.wilwood.com/PDF/DataSheets/ds1078.pdf (retrieved 2026-10-09).",
+          "Hat bolt circle 5 x 4.50 in (5x114.3)."
+        ]
+      }
+    },
+    {
+      "id": "suspension.ford.s550-front.oem",
+      "category": "suspension",
+      "manufacturer": "Ford (OEM)",
+      "model": "S550 Mustang front suspension",
+      "variant": "2015 Mustang GT (non-Performance Pack) OEM front: 2 x complete strut assembly (strut, spring, mount), 2 x front control arm, 2 x radius arm, 2 x spindle/hub assembly, front subframe (K-member), base front sway bar, sway bar end links (pair)",
+      "mass": {
+        "kg": 78.0632,
+        "published": "172.1 lb = 2 x 19.40 + 2 x 4.3 + 2 x 6.8 + 2 x 19.3 + 58.2 + 12.7 + 1.6 lb (BMR scale measurements)",
+        "massState": {
+          "state": "sourced",
+          "variant": "2015 Mustang GT OEM front suspension items as listed",
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)"
+        },
+        "excludes": [
+          "fasteners",
+          "jounce bumpers",
+          "alignment hardware"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "no published dimensions"
+      },
+      "ratings": {
+        "type": "MacPherson strut, double-ball-joint lower arms (control arm + radius arm)",
+        "springRateNPerMm": {
+          "value": null,
+          "note": "not published"
+        }
+      },
+      "applicability": {
+        "axle": "front",
+        "frontSuspension": [
+          "Ford S550 Mustang front (2015-2023)"
+        ],
+        "provides": {
+          "spindle": "Ford S550 Mustang front spindle (2015-2023)"
+        },
+        "requires": [
+          "chassis pickup points for the S550 K-member and strut towers"
+        ],
+        "notes": [
+          "A non-Mustang chassis has to provide the S550 K-member mounts and strut-tower geometry."
+        ]
+      }
+    },
+    {
+      "id": "suspension.ford.s550-irs-rear.oem",
+      "category": "suspension",
+      "manufacturer": "Ford (OEM)",
+      "model": "S550 Mustang independent rear suspension",
+      "variant": "2015 Mustang GT OEM IRS: rear subframe (empty), 2 x rear lower control arm, 2 x upper camber link, vertical links (pair), 2 x toe link, 2 x rear shock, 2 x base rear coil spring, base rear sway bar",
+      "mass": {
+        "kg": 61.8337,
+        "published": "136.32 lb = 55 + 2 x 15.24 + 2 x 5.0 + 3.2 + 2 x 2.42 + 2 x 4.5 + 2 x 9.7 + 4.4 lb (BMR scale measurements)",
+        "massState": {
+          "state": "sourced",
+          "variant": "2015 Mustang GT OEM IRS items as listed",
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)"
+        },
+        "excludes": [
+          "rear knuckles and hubs (not in the source; no published weight)",
+          "IRS cradle mount bushings (1.05 lb each, count not stated)",
+          "diff mount bushings",
+          "halfshafts (counted with the differential)",
+          "fasteners"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "no published dimensions"
+      },
+      "ratings": {
+        "type": "multi-link IRS",
+        "springRateNPerMm": {
+          "value": null,
+          "note": "not published"
+        }
+      },
+      "applicability": {
+        "axle": "rear",
+        "rearSuspension": [
+          "Ford S550 IRS (2015-2023 Mustang)"
+        ],
+        "requires": [
+          "chassis pickup points for the S550 IRS subframe"
+        ],
+        "notes": [
+          "Rear knuckles/hubs are needed and are not in this mass."
+        ]
+      }
+    },
+    {
+      "id": "steering.ford.s550-epas",
+      "category": "steering",
+      "manufacturer": "Ford (OEM)",
+      "model": "S550 Mustang electric power-assisted steering (EPAS) rack",
+      "variant": "2015 Mustang OEM EPAS rack-and-pinion with 2 x front (outer) tie rods",
+      "mass": {
+        "kg": 18.3523,
+        "published": "40.46 lb = 36.46 lb rack + 2 x 2 lb tie rods (BMR scale measurements)",
+        "massState": {
+          "state": "sourced",
+          "variant": "2015 Mustang OEM EPAS rack (36.46 lb) and 2 x OEM front tie rod (2 lb each)",
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)"
+        },
+        "excludes": [
+          "steering column and intermediate shaft",
+          "steering wheel",
+          "EPAS control/network integration"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "no published dimensions"
+      },
+      "ratings": {
+        "type": "column-free rack-mounted EPAS",
+        "ratio": {
+          "value": null,
+          "note": "the 2015 ratio is not in the cited sources"
+        }
+      },
+      "applicability": {
+        "frontSuspension": [
+          "Ford S550 Mustang front (2015-2023)"
+        ],
+        "requires": [
+          "steering column and intermediate shaft",
+          "EPAS power and CAN integration"
+        ]
+      }
+    },
+    {
+      "id": "cooling.coldcase.lmm570-5k",
+      "category": "cooling",
+      "manufacturer": "Cold Case Radiators",
+      "model": "Coyote swap aluminium radiator kit with fans and shroud",
+      "variant": "LMM570-5K (79-93 Mustang Coyote swap): 2-row, 1.25 in tubes, dual 12 in fans, shroud",
+      "mass": {
+        "kg": 16.7829,
+        "published": "Weight 37 lbs (retailer listing, given with the 36 x 24 x 15 in shipping-box dimensions)",
+        "massState": {
+          "state": "estimated",
+          "method": "Cold Case publishes no spec weight; the 37 lb retailer figure sits with shipping-box dimensions, so it is treated as a package weight: an upper bound. Nominal = 37 lb (conservative); low = 80% of it (an assumed packaging allowance of up to 20%; not published).",
+          "uncertainty": {
+            "lowKg": 13.4263,
+            "highKg": 16.7829
+          },
+          "source": {
+            "url": "https://wheelfront.com/shop/product/cold-case-radiators-79-93-mustang-coyote-swap-radiator-w-fan-lmm570-5k/",
+            "title": "Wheelfront: COLD CASE RADIATORS 79-93 Mustang Coyote Swap Radiator w/Fan LMM570-5K (Weight 37 lbs; Dimensions 36 x 24 x 15 in)",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "excludes": [
+          "coolant",
+          "hoses (radiator hoses come with the control pack)"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "coreWidthIn": 24.5,
+        "coreHeightIn": 16.85,
+        "overallWidthIn": 30.175,
+        "overallHeightIn": 19.7,
+        "overallThicknessIn": 6.75,
+        "source": {
+          "url": "https://www.cspracing.com/products/cold-case-radiators-lmm570-5k-79-93-mustang-coyote-swap-aluminum-radiator-kit",
+          "title": "Complete Street Performance: Cold Case Radiators LMM570-5K 79-93 Mustang Coyote Swap Aluminum Radiator Kit (radiator specs)",
+          "retrieved": "2026-10-09"
+        }
+      },
+      "ratings": {
+        "rows": 2,
+        "tubeIn": 1.25,
+        "fanAirflowCfm": {
+          "value": 2800,
+          "published": "Dual 12 inch fan kit pushing 2800CFM"
+        },
+        "coolantCapacityL": {
+          "value": null,
+          "note": "not published"
+        },
+        "heatRejectionKw": {
+          "value": null,
+          "note": "not published, so cooling capacity at sustained full power is not checked"
+        }
+      },
+      "applicability": {
+        "enginePattern": [
+          "Ford 5.0L modular"
+        ],
+        "transmissionCooling": "standard transmission or automatic with separate cooler",
+        "requires": [
+          "radiator mounting in the front structure (designed for a 1979-1993 Mustang core support)"
+        ]
+      }
+    },
+    {
+      "id": "exhaust.s550-gt.oem-lh-manifold-midpipe.bassani-xpipe-catback",
+      "category": "exhaust",
+      "manufacturer": "Ford (OEM) / Bassani",
+      "model": "Exhaust after the crate engine's right-hand manifold",
+      "variant": "2015 Mustang GT OEM driver's-side exhaust manifold + OEM mid pipes with catalysts + Bassani X-pipe cat-back",
+      "mass": {
+        "kg": 36.0152,
+        "published": "79.4 lb = 19 + 22 + 38.4 lb (BMR scale measurements)",
+        "massState": {
+          "state": "sourced",
+          "variant": "OEM GT/V8 driver's side header (19 lb), OEM 'mid pipes' with cats (22 lb), Bassani X-pipe cat-back (38.4 lb)",
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)"
+        },
+        "excludes": [
+          "hangers, gaskets and clamps",
+          "oxygen sensors (HEGO sensors come with the control pack)",
+          "the right-hand manifold (included with the Gen 4X crate engine)"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "no published dimensions"
+      },
+      "ratings": {
+        "catalysts": "OEM mid pipes with catalysts",
+        "backPressure": {
+          "value": null,
+          "note": "not published"
+        }
+      },
+      "applicability": {
+        "fuelType": [
+          "gasoline"
+        ],
+        "enginePattern": [
+          "Ford 5.0L modular"
+        ],
+        "unrated": [
+          {
+            "field": "exhaust flange",
+            "reason": "the measured manifold is a 2015 (Gen 2) part; its fit to the Gen 4 / Gen 4X head is not published (Ford notes the Gen 4 M-6007-M50D driver-side flange uses the 5.2L pattern)"
+          }
+        ],
+        "requires": [
+          "routing through the floor of the actual body (S550 floor-pan routing)"
+        ]
+      }
+    },
+    {
+      "id": "wiring.ford.control-pack.m-6017-m50hm",
+      "category": "wiring",
+      "manufacturer": "Ford Performance",
+      "model": "Gen 4X Coyote control pack, manual transmission",
+      "variant": "M-6017-M50HM: PCM with Ford Performance calibration, control pack harness, electronic throttle pedal, OBD-II port, power distribution module, air box, inlet tube, radiator hoses, HEGO sensors",
+      "mass": {
+        "kg": 14.0614,
+        "published": "Package Weight 31 lb(s)",
+        "massState": {
+          "state": "estimated",
+          "method": "The manufacturer publishes only the package (shipping) weight, which is an upper bound on the part's mass. Nominal = package weight (conservative); low = 80% of it (an assumed packaging allowance of up to 20%; not published).",
+          "uncertainty": {
+            "lowKg": 11.2491,
+            "highKg": 14.0614
+          },
+          "source": {
+            "url": "https://performanceparts.ford.com/part/M-6017-M50HM",
+            "title": "Ford Performance M-6017-M50HM Gen 4X Coyote Control Pack w/ Manual Trans (Package Weight 31 lb)",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "excludes": [
+          "body/chassis harness for lights, gauges and accessories (the control pack runs the engine only)",
+          "battery and battery cables",
+          "alternator (M-8600 alternator kits)"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "only the 20 x 14 x 26 in package dimensions are published"
+      },
+      "ratings": {
+        "fuelSystem": "requires a return-type fuel system"
+      },
+      "applicability": {
+        "engineIds": [
+          "engine.ford.coyote-gen4x.m-6007-m50h"
+        ],
+        "transmissionType": "manual",
+        "requires": [
+          "return-type fuel system"
+        ]
+      }
+    },
+    {
+      "id": "wiring.ford.control-pack.m-6017-m50d",
+      "category": "wiring",
+      "manufacturer": "Ford Performance",
+      "model": "2024 Coyote 5.0L control pack, manual transmission",
+      "variant": "M-6017-M50D: PCM with Ford Performance calibration, control pack harness, electronic throttle pedal, OBD-II port, power distribution module, Mustang GT air boxes and inlet tubes, MAF sensors, radiator hoses, HEGO sensors",
+      "mass": {
+        "kg": 13.1542,
+        "published": "Package Weight 29 lb(s)",
+        "massState": {
+          "state": "estimated",
+          "method": "The manufacturer publishes only the package (shipping) weight, which is an upper bound on the part's mass. Nominal = package weight (conservative); low = 80% of it (an assumed packaging allowance of up to 20%; not published).",
+          "uncertainty": {
+            "lowKg": 10.5233,
+            "highKg": 13.1542
+          },
+          "source": {
+            "url": "https://performanceparts.ford.com/part/M-6017-M50D",
+            "title": "Ford Performance M-6017-M50D 2024 Coyote 5.0L Control Pack Manual Trans (Package Weight 29 lb)",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "excludes": [
+          "body/chassis harness for lights, gauges and accessories",
+          "battery and battery cables",
+          "alternator"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "only the 20 x 14.5 x 30 in package dimensions are published"
+      },
+      "ratings": {
+        "fuelSystem": "requires a return-type fuel system"
+      },
+      "applicability": {
+        "engineIds": [
+          "engine.ford.coyote-gen4.m-6007-m50d"
+        ],
+        "transmissionType": "manual",
+        "requires": [
+          "return-type fuel system"
+        ]
+      }
+    },
+    {
+      "id": "seat.recaro.pole-position-ng-fia.aluminium-sidemount",
+      "category": "interior_seats",
+      "manufacturer": "RECARO",
+      "model": "Pole Position N.G. (FIA)",
+      "variant": "velour black, GFRP shell, FIA 8855-1999, with the aluminium sidemount (one seat)",
+      "mass": {
+        "kg": 8.8,
+        "published": "Weight approx. 7.7 kg (total shell weight without mounted parts) + aluminium sidemount 1.1 kg",
+        "massState": {
+          "state": "sourced",
+          "variant": "Pole Position N.G. (FIA) shell approx. 7.7 kg + aluminium sidemount 1.1 kg",
+          "source": {
+            "url": "https://www.recaro-automotive.com/en/race/recaro-pole-position-ng-fia",
+            "title": "RECARO Pole Position N.G. (FIA): 'Weight* approx. 7.7 kg ... total shell weight (without mounted parts)'; 'Aluminum sidemount Weight: 1.1 kg'",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "excludes": [
+          "seat base/slider and floor brackets",
+          "harness or belts"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "the dimension table on the product page is an image; values not transcribed"
+      },
+      "ratings": {
+        "homologation": "FIA 8855-1999 (5-year approval)",
+        "belts": "4-, 5- or 6-point (racing use)"
+      },
+      "applicability": {
+        "seatPosition": "front",
+        "positions": 1,
+        "notes": [
+          "RECARO: FIA-homologated racing seats have no German road approval (ABE); the Pole Position ABE is the road-licensed version. Road legality is not checked here."
+        ]
+      }
+    },
+    {
+      "id": "seat.ford.s550-rear.oem",
+      "category": "interior_seats",
+      "manufacturer": "Ford (OEM)",
+      "model": "S550 Mustang rear seat",
+      "variant": "2015 Mustang OEM rear seat backs + rear lower seat cushion (two seating positions)",
+      "mass": {
+        "kg": 18.9602,
+        "published": "41.8 lb = rear seats 30.8 lb + rear lower seat cushion 11 lb (BMR scale measurements); two positions",
+        "massState": {
+          "state": "sourced",
+          "variant": "2015 Mustang OEM rear seats (30.8 lb) + rear lower seat cushion (11 lb)",
+          "source": {
+            "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+            "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+            "retrieved": "2026-10-09"
+          },
+          "sourceKind": "third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification)"
+        },
+        "excludes": [
+          "rear seat belts",
+          "trim and carpet"
+        ]
+      },
+      "dimensions": {
+        "state": "missing",
+        "note": "no published dimensions"
+      },
+      "ratings": {
+        "positions": 2
+      },
+      "applicability": {
+        "seatPosition": "rear",
+        "positions": 2,
+        "requires": [
+          "S550-style rear seat mounting in the tub"
         ]
       }
     }
