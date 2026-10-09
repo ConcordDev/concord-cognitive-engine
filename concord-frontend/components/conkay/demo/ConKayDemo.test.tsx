@@ -63,3 +63,56 @@ describe('ConKayDemo', () => {
     expect(screen.queryByText(/FEA util\./)).toBeNull();
   });
 });
+
+describe('ConKayDemo — server overload', () => {
+  it('retries a 503 and says it is warming up, then shows the real result', async () => {
+    let beamCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/materials')) return { status: 200, json: async () => ({ ok: true, materials: MATERIALS }) };
+      beamCalls++;
+      if (beamCalls === 1) {
+        return { status: 503, json: async () => ({ ok: false, error: 'service_overloaded', code: 'service_warming', retryAfterS: 0, warming: true }) };
+      }
+      return { status: 200, json: async () => ({ ok: true, saved: false, result: RESULT }) };
+    }));
+    render(<ConKayDemo />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Run FEA/ })[0]);
+    await waitFor(() => expect(screen.getByText('FEA util. 29.3%')).toBeTruthy());
+    expect(beamCalls).toBe(2);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByText(/service_overloaded/)).toBeNull();
+  });
+
+  it('shows the warming-up notice while the retry is pending', async () => {
+    let release: () => void = () => {};
+    let beamCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/materials')) return { status: 200, json: async () => ({ ok: true, materials: MATERIALS }) };
+      beamCalls++;
+      if (beamCalls === 1) return { status: 503, json: async () => ({ ok: false, code: 'service_warming', retryAfterS: 0 }) };
+      await new Promise<void>((r) => { release = r; });
+      return { status: 200, json: async () => ({ ok: true, saved: false, result: RESULT }) };
+    }));
+    render(<ConKayDemo />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Run FEA/ })[0]);
+
+    expect(await screen.findByText(/ConKay is warming up after a restart\. Retrying \(2 of 4\)/)).toBeTruthy();
+    release();
+    await waitFor(() => expect(screen.getByText('FEA util. 29.3%')).toBeTruthy());
+    expect(screen.queryByText(/warming up/)).toBeNull();
+  });
+
+  it('gives up after four attempts with a plain message, never a fake result', async () => {
+    let beamCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/materials')) return { status: 200, json: async () => ({ ok: true, materials: MATERIALS }) };
+      beamCalls++;
+      return { status: 503, json: async () => ({ ok: false, error: 'service_overloaded', code: 'service_overloaded', retryAfterS: 0 }) };
+    }));
+    render(<ConKayDemo />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Run FEA/ })[0]);
+    expect(await screen.findByText('ConKay is busy right now. Try again in a few seconds.')).toBeTruthy();
+    expect(beamCalls).toBe(4);
+    expect(screen.queryByText(/FEA util\./)).toBeNull();
+  });
+});

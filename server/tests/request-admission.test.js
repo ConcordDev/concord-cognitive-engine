@@ -56,6 +56,28 @@ describe("request-admission — classifyRequest", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/auth/csrf-token", authed: false })), PRIORITY.PROTECTED);
   });
 
+  it("the public ConKay demo solve is PROTECTED with no session (first-solve 503, 2026-10-09)", () => {
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/beam" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/sweep" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/materials" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest({ url: "/api/conkay/demo/beam?length=1000&loadN=5" }), PRIORITY.PROTECTED);
+  });
+
+  it("the demo lane is narrow: other /api/conkay paths and look-alikes stay SHEDDABLE", () => {
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/design" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/export" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/beamx" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/x/api/conkay/demo/beam" })), PRIORITY.SHEDDABLE);
+  });
+
+  it("a demo solve is admitted at lag that sheds anonymous traffic, and still sheds past the protected bar", () => {
+    const p = classifyRequest(makeReq({ path: "/api/conkay/demo/beam" }));
+    const opts = { enabled: true, shedLagMs: 300, shedLagMsProtected: 900 };
+    assert.equal(decideAdmission(PRIORITY.SHEDDABLE, 500, opts).admit, false);
+    assert.equal(decideAdmission(p, 500, opts).admit, true);
+    assert.equal(decideAdmission(p, 1200, opts).admit, false);
+  });
+
   it("other /api/auth/* paths (e.g. logout, password-reset) are NOT swept into the auth-critical carve-out", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/auth/logout", authed: false })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/api/auth/forgot-password", authed: false })), PRIORITY.SHEDDABLE);

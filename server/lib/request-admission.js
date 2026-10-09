@@ -44,7 +44,14 @@
 //               a new user, not as a polite ask to retry, even with a
 //               correct Retry-After header. Real production symptom fixed
 //               2026-08-23: live login/register 503s traced to exactly
-//               this misclassification. This is the in-flight-session
+//               this misclassification. The no-login ConKay demo
+//               (/api/conkay/demo/*) gets the same reserved lane: it is the
+//               public front door, and its first solve was 503ing
+//               (2026-10-09) because anonymous GETs shed at 300ms, a bar
+//               post-restart lag routinely clears. It is GET-only,
+//               compute-only (one beam-frame FEA, milliseconds) and per-IP
+//               rate-limited (read.conkay-demo), so it is not bulk-shaped.
+//               This is the in-flight-session
 //               traffic (plus its on-ramp) the whole exercise exists to
 //               protect. Only sheds once lag is well past the point where
 //               shedding SHEDDABLE traffic alone hasn't been enough.
@@ -88,6 +95,10 @@ const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 // it blocks the flow just as effectively as shedding login itself.
 const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
+// The public ConKay demo (routes/conkay-demo.js): materials, beam, sweep.
+// Reserved lane, not an exemption: it still sheds at the PROTECTED bar.
+const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep)(\?|$|\/)/;
+
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;
   return process.env.CONCORD_LOAD_SHED_ENABLED === "0";
@@ -124,6 +135,7 @@ export function classifyRequest(req) {
   const path = req?.path || req?.url || "";
   if (_CRITICAL_PATH_RE.test(path)) return PRIORITY.CRITICAL;
   if (_AUTH_CRITICAL_PATH_RE.test(path)) return PRIORITY.PROTECTED;
+  if (_PUBLIC_DEMO_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   const authed = !!(req?.user?.id);
   if (authed && !_BULK_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   return PRIORITY.SHEDDABLE;
