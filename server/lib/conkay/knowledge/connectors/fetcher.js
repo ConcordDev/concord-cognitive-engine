@@ -19,7 +19,7 @@
 //     (CONKAY_EVIDENCE_DIR, or an in-memory store).
 
 import { createHash } from "node:crypto";
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -35,25 +35,28 @@ export class EvidenceStore {
     return new EvidenceStore(process.env.CONKAY_EVIDENCE_DIR || path.join(os.tmpdir(), "conkay-evidence"));
   }
 
-  /** Store a document's body under its SHA-256; returns the stored record. */
-  put(doc) {
+  /** Store a document's body under its SHA-256 (async file I/O); returns the stored record. */
+  async put(doc) {
     const rec = { url: doc.url, status: doc.status, sha256: doc.sha256, retrieved: doc.retrieved, contentType: doc.contentType || null, bytes: Buffer.byteLength(doc.body) };
     if (this.dir) {
-      fs.mkdirSync(this.dir, { recursive: true });
-      fs.writeFileSync(path.join(this.dir, `${doc.sha256}.body`), doc.body);
-      fs.writeFileSync(path.join(this.dir, `${doc.sha256}.json`), JSON.stringify(rec, null, 2));
+      await fsp.mkdir(this.dir, { recursive: true });
+      await fsp.writeFile(path.join(this.dir, `${doc.sha256}.body`), doc.body);
+      await fsp.writeFile(path.join(this.dir, `${doc.sha256}.json`), JSON.stringify(rec, null, 2));
     } else {
       this.mem.set(doc.sha256, { ...rec, body: doc.body });
     }
     return rec;
   }
 
-  get(hash) {
+  async get(hash) {
     if (this.mem.has(hash)) return this.mem.get(hash);
     if (!this.dir) return null;
-    const meta = path.join(this.dir, `${hash}.json`);
-    if (!fs.existsSync(meta)) return null;
-    return { ...JSON.parse(fs.readFileSync(meta, "utf8")), body: fs.readFileSync(path.join(this.dir, `${hash}.body`), "utf8") };
+    try {
+      const meta = JSON.parse(await fsp.readFile(path.join(this.dir, `${hash}.json`), "utf8"));
+      return { ...meta, body: await fsp.readFile(path.join(this.dir, `${hash}.body`), "utf8") };
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -88,7 +91,7 @@ export function liveGetter({ fetch = globalThis.fetch, sleep = (ms) => new Promi
       const doc = { ok: true, url, status: res.status, body, sha256: sha256(body), retrieved: now(), contentType: res.headers?.get?.("content-type") || null, attempts: attempt };
       if (res.status === 404 || NOT_FOUND.test(body.slice(0, 400))) return { ...doc, notFound: true };
       if (res.status !== 200) return { ok: false, url, status: res.status, error: `HTTP ${res.status}`, attempts: attempt };
-      if (store) store.put(doc);
+      if (store) await store.put(doc);
       return doc;
     }
   };

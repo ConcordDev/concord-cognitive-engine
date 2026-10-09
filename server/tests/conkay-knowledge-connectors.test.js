@@ -18,7 +18,7 @@ import { mixtureReport, renderMixtureMarkdown, DEMO2, parseFormula } from "../li
 import { validateClaim, makeClaim } from "../lib/conkay/knowledge/claims.js";
 import { loadConnectorRecordings, SOURCES, STANDARDS } from "../lib/conkay/knowledge/index.js";
 
-const REC = loadConnectorRecordings();
+const REC = await loadConnectorRecordings();
 const get = replayGetter(REC.recordings);
 const near = (a, b, rel = 1e-9) => Math.abs(a - b) <= rel * Math.max(Math.abs(a), Math.abs(b));
 
@@ -46,7 +46,8 @@ describe("fetcher: retry only what is temporary, keep the original", () => {
     assert.equal(d.attempts, 3);
     assert.equal(d.sha256, sha256(ok));
     assert.deepEqual(slept.filter((x) => x >= 10), [10, 20], "linear backoff on the two busy answers");
-    assert.equal(store.get(d.sha256).body, ok);
+    assert.equal((await store.get(d.sha256)).body, ok);
+    assert.equal(await store.get("0".repeat(64)), null);
   });
 
   it("a 404 / NotFound is a real answer (no data), never retried and never a value; exhausted retries say so", async () => {

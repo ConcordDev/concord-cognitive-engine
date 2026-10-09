@@ -55,7 +55,7 @@ export default function registerConkayKnowledgeActions(registerLensAction) {
   });
 
   registerLensAction("conkay_knowledge", "mixture-report", async () => {
-    const rec = loadConnectorRecordings();
+    const rec = await loadConnectorRecordings();
     const report = await mixtureReport(replayGetter(rec.recordings));
     if (!report.ok) return { ok: false, error: report.reason };
     return { ok: true, result: { recordedOn: rec.captured, report, markdown: renderMixtureMarkdown(report) } };

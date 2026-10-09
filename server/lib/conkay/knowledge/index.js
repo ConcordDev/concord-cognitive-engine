@@ -47,6 +47,7 @@ export function loadFixture(id) {
 }
 
 /** Recorded connector responses (excerpts + full-response hashes) for the offline demo and tests. */
-export function loadConnectorRecordings() {
-  return JSON.parse(readFileSync(path.join(HERE, "fixtures", "connector-recordings.json"), "utf8"));
+export async function loadConnectorRecordings() {
+  const { readFile } = await import("node:fs/promises");
+  return JSON.parse(await readFile(path.join(HERE, "fixtures", "connector-recordings.json"), "utf8"));
 }
