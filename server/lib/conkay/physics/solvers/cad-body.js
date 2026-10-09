@@ -53,11 +53,11 @@ export function cadBodyRequest(ctx, id) {
 
 export const cadBody = registerSolver({
   id: "cad.body",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "cad.body",
   domains: ["cad.body", "package.body"],
   fidelity: 2,
-  method: "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and Gaussian smoothing of belt, plan, roof and floor lines, a fastback limit on the roof, a pointed nose and a Kamm tail), wheel wells cut for the tyres' steering sweep; area/volume by GProp, frontal area by slicing the kernel's tessellation, clearances by BRepExtrema + solid classification",
+  method: "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and Gaussian smoothing of belt, plan, roof and floor lines, a fastback limit on the roof, a pointed nose and a Kamm tail), then faired: each section's radius field smoothed along and around the car between the solved section (inside bound), the floor and the width bound, the nose and tail blended with C1 scale laws, and the surface fitted along the car by a least-squares cubic B-spline on fewer control points (control points clamped to the floor); wheel wells cut for the tyres' steering sweep; fairness measured as the normal-curvature inflections and RMS dk/ds of the surface; area/volume by GProp, frontal area by slicing the kernel's tessellation, clearances by BRepExtrema + solid classification",
   reference: "server/lib/conkay/cad/conkay_body_occ.py",
   targets: bodies,
   run(ctx, id) {
@@ -71,6 +71,7 @@ export const cadBody = registerSolver({
     const warnings = [];
     if (!r.solid.valid) failures.push("the body solid is not valid (BRepCheck_Analyzer)");
     if (!r.solid.closed) failures.push(`the body is not one closed solid (${r.solid.solids} solids, ${r.solid.freeEdges} free edges)`);
+    if (g.maxWidth != null && r.metrics.widthM > g.maxWidth + 1e-6) failures.push(`overall width ${mm(r.metrics.widthM)} mm exceeds the ${mm(g.maxWidth)} mm bound (design choice): the tyres and envelopes need it at this track${r.fairing?.adjustments?.length ? " (the fairing's width cap was tightened as far as the requirements allow)" : ""}`);
     const enc = r.clearances.filter((c) => c.enclose);
     const short = enc.filter((c) => c.clearanceM < skin - 1e-5);
     for (const c of short) failures.push(`${c.id}: ${mm(c.clearanceM)} mm to the outer surface vs >= ${mm(skin)} mm skin offset (design choice)${c.inside ? "" : " — outside the body"}`);
@@ -103,6 +104,8 @@ export const cadBody = registerSolver({
         thickness: { value: g.thickness, unit: "m" },
         skinOffset: { value: skin, unit: "m" },
         iterations: { value: r.iterations },
+        fairness: r.fairness ? { value: r.fairness, unit: "1/m (curvature), 1/m2 (dk/ds)", basis: "computed: normal curvature of the kernel's B-spline side surface on a parameter grid (nose / body / tail regions split at the first and last packaging stations); surface quality only, says nothing about aerodynamics" } : undefined,
+        fairing: r.fairing ? { value: r.fairing, note: "fairing receipt: passes, residual (m) of the inside bound, width cap, control points along the car, floor clamp of the fitted control points (m), width-cap adjustments" } : undefined,
         localInflation: { value: r.localInflationM },
         files: { value: r.files },
         kernel: { value: { ...r.kernel, requestHash: r.requestHash } },

@@ -41,6 +41,10 @@ export const CAD_BODY_DEFAULTS = Object.freeze({
   podTuckM: 0.1,
   blendRadiusM: 0.08,
   inletAllowanceM: 0.06,
+  fairSigmaXM: 0.25,
+  fairSigmaTheta: 0.1,
+  fairPoleSpacingM: 0.24,
+  maxWidthM: 1.95,
 });
 
 export const CAD_BODY_BASIS = Object.freeze({
@@ -76,13 +80,17 @@ export const CAD_BODY_BASIS = Object.freeze({
   podTuck: "design choice: how far the fender pod's side tucks in at the floor (a quarter circle from the wheel centre height down)",
   blendRadius: "design choice: smooth-maximum radius blending the pods, lower body and greenhouse",
   inletAllowance: "design choice: depth of an air-inlet / duct allowance ahead of the radiator face, enclosed like a component",
+  fairSigmaX: "design choice: fairing length along the car (Gaussian sigma) of the section radius field; the faired field never goes inside the solved sections (so every envelope keeps its skin offset at the stations), never below the floor and never wider than maxWidth",
+  fairSigmaTheta: "design choice: fairing angle around each section (Gaussian sigma, radians); fills the concave creases between the fender pods, the lower body and the greenhouse with a fillet of roughly this angle",
+  fairPoleSpacing: "design choice: control-point spacing of the surface along the car (a least-squares cubic B-spline, about one control point per this length, instead of interpolating every section); larger is smoother and follows the sections less closely, so the exact clearance pass re-checks the result",
+  maxWidth: "design choice (requirement-like bound, from the brief's sports 2+2 band): overall body width; the fairing's width cap is tightened until the lofted body is within it, never below what the tyres and envelopes need (then the solver fails)",
 });
 
 const mm = (m) => `${Math.round(m * 1e6) / 1e3} mm`;
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
-const LENGTHS = ["noseExtension", "noseTipHeight", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltMin", "beltMax", "beltSigma", "profileSigma", "lowerOverlap", "podBlend", "podMinHalfWidth", "podTuck", "blendRadius", "inletAllowance", "planClosingRadius", "roofClosingRadius", "floorClosingRadius"];
-const NUMBERS = ["stationCount", "sectionPoints", "upperExponent", "lowerExponent", "fastbackDeg", "floorRiseDeg", "noseShapeExponent", "noseRoundExponent", "kammAreaRatio", "podExponent"];
+const LENGTHS = ["noseExtension", "noseTipHeight", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltMin", "beltMax", "beltSigma", "profileSigma", "lowerOverlap", "podBlend", "podMinHalfWidth", "podTuck", "blendRadius", "inletAllowance", "planClosingRadius", "roofClosingRadius", "floorClosingRadius", "fairSigmaX", "fairPoleSpacing", "maxWidth"];
+const NUMBERS = ["stationCount", "sectionPoints", "upperExponent", "lowerExponent", "fastbackDeg", "floorRiseDeg", "noseShapeExponent", "noseRoundExponent", "kammAreaRatio", "podExponent", "fairSigmaTheta"];
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
 export function cadBodyGeometry(bp) {

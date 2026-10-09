@@ -21,7 +21,7 @@
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent } from "../components/index.js";
-import { layoutCar, steeringLockDeg, deriveRearPackage, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES } from "./car-layout.js";
+import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
@@ -132,7 +132,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {} } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -295,7 +295,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     },
   };
   // Package layout: component positions from library dimensions and the seating design (car-layout.js).
-  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) } });
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) }, groundClearance });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -315,7 +315,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
 // and the 95th female (the widest hips in the ANSUR II tables).
 export const PACKAGING_OCCUPANTS = ["F5", "F95", "M95"];
 
-function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null }) {
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null }) {
   const entry = (k) => { const id = selection[k]?.chosen; return id ? getComponent(id) : null; };
   const v = veh.props.vehicle;
   const frontAxleX = parseFloat(v.frontAxleX);
@@ -327,8 +327,16 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
   let revision = null;
   if (!layoutChoices && layout === "derived") {
     // Layout revision 2: the rear package derived from the envelopes (car-layout.js deriveRearPackage).
-    const base = { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES };
+    let base = { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES };
     const tyreE = entry("tyres"), diffE = entry("differential"), fuelE = entry("fuel_or_battery");
+    // Layout revision 2.1: ground clearance (car-layout.js deriveGroundClearance), before the rear package
+    // is derived (the rear H-point height and the differential height feed it).
+    let gc = null;
+    if (groundClearance && body && tyreE?.dimensions?.overallDiameterM) {
+      const targetM = groundClearance.targetM ?? GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.value;
+      gc = deriveGroundClearance({ choices: base, targetM, skinOffsetM: body.skinOffsetM, floorCornerAllowanceM: body.floorCornerAllowanceM, tyreR: tyreE.dimensions.overallDiameterM / 2, diffDims: diffE?.dimensions, track, hold: groundClearance.hold || "hPoint" });
+      base = { ...base, ...gc.overrides, groundClearanceTargetM: { value: targetM, basis: GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.basis } };
+    }
     const der = deriveRearPackage({
       choices: base, keys: [...new Set([...occupantKeys, "M95"])], seatDims: seatF?.dimensions,
       diffDims: diffE?.dimensions, fuelDimsM: fuelE?.dimensions?.fitsInternalContainerMm?.map((x) => x / 1000), tyreR: tyreE ? tyreE.dimensions.overallDiameterM / 2 : null,
@@ -347,8 +355,9 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
       }
       const r4 = (x) => Math.round(x * 1e4) / 1e4;
       revision = {
-        version: "2.0.0",
+        version: gc ? "2.1.0" : "2.0.0",
         inputs: der.inputs,
+        ...(gc ? { groundClearance: { targetM: base.groundClearanceTargetM.value, requiredBottomZ: gc.requiredBottomZ, hold: gc.hold, method: gc.method, tradeoffs: gc.tradeoffs } } : {}),
         changes: [
           { parameter: "front seat", old: "RECARO Pole Position N.G. (FIA): max cushion width 385 mm, 8.8 kg", new: `${seatF?.manufacturer} ${seatF?.model}: max cushion width ${Math.round((seatF?.dimensions?.maxCushionWidthM || 0) * 1000)} mm, ${seatF?.mass?.kg} kg`, reason: "#1039: the 95th female (456 mm) and 95th male (431 mm) sitting hip breadths exceed the Pole Position's 385 mm cushion; the seat must take the widest checked occupant (applicability maxCushionWidthM >= seatHipBreadthM)", basis: "sourced (RECARO hotsheet)" },
           { parameter: "frontSeatBackThicknessM", old: 0, new: base.frontSeatBackThicknessM.value, unit: "m", reason: "the seat envelope was a plane on the occupant's back (a lower bound); the rear knee room needs the back of the seatback", basis: "design" },
@@ -358,6 +367,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
           { parameter: "wheelbase", old: r4(oldRear - frontAxleX), new: r4(rearAxleX - frontAxleX), unit: "m", change: r4(rearAxleX - oldRear), reason: "follows the rear axle (front axle unchanged)", basis: "derived" },
           ...(der.fuelCellCenter ? [{ parameter: "fuelCellCenter", old: LAYOUT_DESIGN_CHOICES.fuelCellCenter.value, new: der.fuelCellCenter, unit: "m", reason: "re-placed above the moved differential and clear of the rear occupants (was 17.7 mm from the differential)", basis: "derived" }] : []),
           { parameter: "rearKneeMarginM / diffClearanceM / fuelClearanceM", old: null, new: [base.rearKneeMarginM.value, base.diffClearanceM.value, base.fuelClearanceM.value], unit: "m", reason: "the margins the derivation keeps", basis: "design" },
+          ...(gc ? gc.rows.map((row) => ({ ...row, revision: "2.1.0" })) : []),
           { parameter: "frontAxleX, track", old: [frontAxleX, track], new: [frontAxleX, track], unit: "m", reason: "unchanged: the front package (engine bay, footwell, front seats) had no failure tied to them", basis: "design (unchanged)" },
           { parameter: "body (overall L/W/H, roof and header height, ground clearance)", old: "ellipsoid 4.4 x 1.9 x 1.2 m centred at z 0.7", new: "the CAD body (cad.body): sections solved around the envelopes + skin offset; see its outputs", reason: "#1039: rear headroom, hip-to-shell and entry-height failures came from the ellipsoid", basis: "computed (kernel)" },
         ],
