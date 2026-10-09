@@ -23,6 +23,8 @@
 # section is convex: it contains a point set iff it contains its convex hull.
 
 import sys, json, math, os, struct, hashlib, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from extents_occ import bracketed_extents, outer_box
 
 from OCP.BRepTools import BRepTools
 from OCP.gp import gp_Pnt, gp_Vec, gp_Ax2, gp_Ax1, gp_Dir, gp_Trsf, gp_Lin, gp_GTrsf
@@ -61,7 +63,7 @@ from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
 from OCP.TopoDS import TopoDS_Compound
 from OCP.BRep import BRep_Builder
 
-KERNEL_VERSION = "2.1.0"
+KERNEL_VERSION = "2.1.1"
 
 
 def _st(cls, name):
@@ -1326,7 +1328,8 @@ def measure(solid, slices, lin=0.002, ang=0.1):
     vol = g.Mass(); cg = g.CentreOfMass()
     g2 = GProp_GProps(); _st(BRepGProp, 'SurfaceProperties')(solid, g2)
     area = g2.Mass(); scg = g2.CentreOfMass()
-    x0, y0, z0, x1, y1, z1 = bbox(solid)
+    ext = bracketed_extents(solid)  # bracketed: AddOptimal alone was 12.6 mm loose on a v2.0 body
+    (x0, y0, z0), (x1, y1, z1) = ext["min"], ext["max"]
     # projected frontal area (onto the y-z plane), from the kernel's tessellation of the solid: at each
     # height the silhouette width is the measure of the union of the y-intervals where the plane cuts the
     # triangles (a connected section region projects onto the interval its boundary spans); midpoint rule
@@ -1364,7 +1367,7 @@ def measure(solid, slices, lin=0.002, ang=0.1):
             w += cur[1] - cur[0]
         fa += w * dz
     return {"volumeM3": vol, "surfaceAreaM2": area, "frontalAreaM2": fa, "cg": [cg.X(), cg.Y(), cg.Z()], "scg": [scg.X(), scg.Y(), scg.Z()],
-            "bbox": {"min": [x0, y0, z0], "max": [x1, y1, z1]}, "frontalSlices": slices,
+            "bbox": {"min": [x0, y0, z0], "max": [x1, y1, z1]}, "extentBrackets": {"min": ext["minBracket"], "max": ext["maxBracket"], "addOptimalBox": ext["box"], "meshDeflectionM": ext["meshDeflection"], "method": ext["method"]}, "frontalSlices": slices,
             # the mesh is inscribed: each side of the silhouette is at most `lin` inside the surface, so the
             # area is under-estimated by at most 2 * lin * height (plus the midpoint rule's error)
             "frontalMeshLinearM": lin, "frontalMaxUnderestimateM2": 2 * lin * (z1 - z0)}
@@ -1534,8 +1537,12 @@ def build(req):
             raw, surf = loft(sections, P, span["floorMin"] if P["fairSigmaX"] > 0 else None)
             if P["fairSigmaX"] <= 0:
                 break
-            x0_, y0_, z0_, x1_, y1_, z1_ = bbox(raw)
-            over = (y1_ - y0_) - P["maxWidth"] if P.get("maxWidth") else 0.0
+            # AddOptimal is an outer bound: within maxWidth means within it; over it, measure (bracketed) before trimming
+            lo_, hi_ = outer_box(raw)
+            over = (hi_[1] - lo_[1]) - P["maxWidth"] if P.get("maxWidth") else 0.0
+            if over > 1e-5:
+                e_ = bracketed_extents(raw, axes=(1,))
+                over = (e_["max"][1] - e_["min"][1]) - P["maxWidth"]
             if over <= 1e-5:
                 break
             adj["widthTrim"] += 0.5 * over + 2e-4
@@ -1612,6 +1619,7 @@ def build(req):
             "frontalSlices": m["frontalSlices"], "frontalMeshLinearM": m["frontalMeshLinearM"], "frontalMaxUnderestimateM2": r6(m["frontalMaxUnderestimateM2"]), "centroid": [r6(v) for v in m["cg"]], "surfaceCentroid": [r6(v) for v in m["scg"]],
             "lengthM": r6(bb["max"][0] - bb["min"][0]), "widthM": r6(bb["max"][1] - bb["min"][1]), "heightM": r6(bb["max"][2]),
             "groundClearanceM": r6(bb["min"][2]), "bbox": {k: [r6(v) for v in vv] for k, vv in bb.items()},
+            "extentBrackets": rinfo(m["extentBrackets"]),
         },
         "clearances": cl, "wheels": wheel_out, "rays": rays, "iterations": history,
         "fairness": fair, "fairing": rinfo({**_FAIR_STATS, "adjustments": adj_log}) if P["fairSigmaX"] > 0 else None,
@@ -1636,6 +1644,7 @@ def ellipsoid(req):
     solid = first_solid(e)
     m = measure(solid, int(req.get("slices", 240)))
     return {"ok": True, "command": "ellipsoid", "semi": [a, b, c], "frontalAreaM2": r6(m["frontalAreaM2"]), "volumeM3": r6(m["volumeM3"]),
+            "extents": {"min": m["bbox"]["min"], "max": m["bbox"]["max"], "brackets": m["extentBrackets"]},
             "surfaceAreaM2": r6(m["surfaceAreaM2"]), "exactFrontalAreaM2": r6(math.pi * b * c), "exactVolumeM3": r6(4 / 3 * math.pi * a * b * c),
             "solid": validity(solid)}
 

@@ -485,7 +485,24 @@ export function carAcceptance(brief, opts = {}) {
   if (b.error) return { ok: false, error: b.error };
   const opened = openDesign(b.ir);
   if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
-  const s = opened.session;
+  return acceptanceReport(brief, b, opened.session);
+}
+
+/**
+ * carAcceptance with the external kernels (CAD body, drawing) run: the synchronous version reports them as
+ * pending (NOT_COMPUTED), never blocking on a kernel; this one runs them off the request path first.
+ */
+export async function carAcceptanceAsync(brief, opts = {}) {
+  const b = buildCarFromLibrary(brief, opts);
+  if (b.error) return { ok: false, error: b.error };
+  const opened = openDesign(b.ir);
+  if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
+  const settled = await opened.session.settle();
+  const r = acceptanceReport(brief, b, opened.session);
+  return r.ok ? { ...r, settled } : r;
+}
+
+function acceptanceReport(brief, b, s) {
   const acc = s.result("vehicle.acceptance@VEH");
   const bd = s.result("mass.breakdown@VEH");
   const tyre = s.result("tire.speed-rating@VEH");

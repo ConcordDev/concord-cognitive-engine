@@ -6,20 +6,22 @@
 // (cad.body + drawing, about 1 min of kernel time, cached afterwards) only with
 // CONKAY_CAD_BODY_FULL=1.
 
-import { describe, it } from "node:test";
+import { describe, it, before } from "node:test";
+import os from "node:os";
+import path from "node:path";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
 import { toSvg, toPdf, ascii, fitText } from "../lib/conkay/drawings/sheet.js";
 import { buildGaSheets, SHEET_A3 } from "../lib/conkay/drawings/ga-drawing.js";
-import { drawingStatus, GA_VIEWS } from "../lib/conkay/physics/solvers/ga-drawing.js";
-import { runDrawingKernel } from "../lib/conkay/cad/drawing-kernel.js";
-import { runBodyKernel, bodyKernelPython } from "../lib/conkay/cad/body-kernel.js";
-import { carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
+import { drawingStatus, GA_VIEWS, writeDrawingFiles } from "../lib/conkay/physics/solvers/ga-drawing.js";
+import { runDrawingKernelAsync } from "../lib/conkay/cad/drawing-kernel.js";
+import { runBodyKernelAsync, kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
+import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import { aabb } from "../lib/conkay/packaging/geometry.js";
 
 const BRIEF = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.";
-const HAVE_KERNEL = !!bodyKernelPython();
+const HAVE_KERNEL = fs.existsSync(kernelPythonPath());
 const FULL = HAVE_KERNEL && process.env.CONKAY_CAD_BODY_FULL === "1";
 
 // A synthetic GA input: rectangles for views, two axles, four tyres, every dimension.
@@ -121,11 +123,11 @@ describe("Drawing sheets: layout and writers (no kernel)", () => {
     assert.ok(fitText("x".repeat(200), 2.5, 20).endsWith("..."));
   });
 
-  it("without a kernel the drawing is NOT_COMPUTED, never drawn from a stand-in body", () => {
+  it("without a kernel the drawing is NOT_COMPUTED, never drawn from a stand-in body", async () => {
     const saved = process.env.CONKAY_OCC_PYTHON;
     process.env.CONKAY_OCC_PYTHON = "/nonexistent/python";
     try {
-      const s = carAcceptance(BRIEF).session;
+      const s = (await carAcceptanceAsync(BRIEF)).session;
       const d = s.result("drawing.ga@VEH");
       assert.equal(d.status, "NOT_COMPUTED");
       assert.match(d.reason, /no drawing without the CAD body/);
@@ -137,16 +139,19 @@ describe("Drawing sheets: layout and writers (no kernel)", () => {
 });
 
 describe("Drawing projection kernel (OpenCascade HLR)", { skip: !HAVE_KERNEL && "no Python with OCP" }, () => {
-  const body = HAVE_KERNEL ? runBodyKernel({
+  let body = null, req = null, p = null;
+  before(async () => {
+  body = await runBodyKernelAsync({
     command: "body",
     params: { skinOffset: 0.035, stationCount: 24, sectionPoints: 16, frontalSlices: 60, maxIterations: 2, noseExtension: 0.15, tailExtension: 0.1 },
     envelopes: [aabb({ id: "CABIN", min: [1.0, -0.6, 0.25], max: [3.0, 0.6, 1.0] })].map((b) => ({ id: b.id, kind: "test", center: b.center, half: b.half, axes: b.axes, enclose: true })),
     points: [], rays: [],
     wheels: [[1.2, -0.8], [1.2, 0.8], [2.9, -0.8], [2.9, 0.8]].map(([x, y], i) => ({ id: `W${i}`, center: [x, y, 0.3], radius: 0.3, halfWidth: 0.1, steerDeg: 0 })),
     exports: ["step", "stl"],
-  }) : null;
-  const req = HAVE_KERNEL ? { command: "project", step: body.files.step.path, geometryHash: body.files.stl.sha256, views: GA_VIEWS } : null;
-  const p = HAVE_KERNEL ? runDrawingKernel(req) : null;
+  });
+  req = { command: "project", step: body.files.step.path, geometryHash: body.files.stl.sha256, views: GA_VIEWS };
+  p = await runDrawingKernelAsync(req);
+  });
 
   it("projects the solid into side, plan and front views; the outline spans the body's bounding box", () => {
     assert.equal(body.ok, true, body.error);
@@ -155,7 +160,12 @@ describe("Drawing projection kernel (OpenCascade HLR)", { skip: !HAVE_KERNEL && 
     const bb = p.extents;
     const tol = 0.004; // tessellation deflection 2 mm + 0.1 mm grid
     for (let i = 0; i < 3; i++) {
-      assert.ok(p.extents.min[i] >= body.metrics.bbox.min[i] - 1e-6 && p.extents.max[i] <= body.metrics.bbox.max[i] + 1e-6, "exact extents lie inside the bounding box");
+      // bracketed: attained value within [bound, attained] / [attained, bound], inside the outer (AddOptimal) box
+      const [lo, hi] = p.extents.maxBracket[i], [mlo, mhi] = p.extents.minBracket[i];
+      assert.ok(lo === p.extents.max[i] && hi >= lo && hi <= p.extents.addOptimalBox.max[i] + 1e-9, `max ${i}`);
+      assert.ok(mhi === p.extents.min[i] && mlo <= mhi && mlo >= p.extents.addOptimalBox.min[i] - 1e-9, `min ${i}`);
+      // the body kernel measures its solid the same way: the exported STEP gives the same extents
+      assert.ok(Math.abs(p.extents.max[i] - body.metrics.bbox.max[i]) < 1e-4 && Math.abs(p.extents.min[i] - body.metrics.bbox.min[i]) < 1e-4, `axis ${i}`);
     }
     const near = (a, b) => Math.abs(a - b) <= tol;
     const side = p.views.side.bbox, plan = p.views.plan.bbox, front = p.views.front.bbox;
@@ -169,33 +179,41 @@ describe("Drawing projection kernel (OpenCascade HLR)", { skip: !HAVE_KERNEL && 
     assert.match(p.method.algorithm, /HLRBRep_PolyAlgo/);
   });
 
-  it("is deterministic (a fresh run of the script gives the same views)", () => {
-    const again = runDrawingKernel({ ...req, nonce: "rerun" }); // a different request hash: not served from the cache
+  it("is deterministic (a fresh run of the script gives the same views)", async () => {
+    const again = await runDrawingKernelAsync({ ...req, nonce: "rerun" }); // a different request hash: not served from the cache
     assert.equal(again.ok, true);
     assert.deepEqual(again.views, p.views);
   });
 });
 
 describe("GA drawing of the library car (full kernel run)", { skip: !FULL && "set CONKAY_CAD_BODY_FULL=1 with a kernel available" }, () => {
-  const r = FULL ? carAcceptance(BRIEF) : null;
-  const s = r?.session;
+  let r = null, s = null, files = null;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "conkay-ga-test-"));
+  before(async () => {
+    r = await carAcceptanceAsync(BRIEF);
+    s = r.session;
+    files = await writeDrawingFiles(s.result("drawing.ga@VEH"), dir);
+  });
 
   it("drawing.ga runs from the CAD body; its dimensions are the body's and the layout's", () => {
     const d = s.result("drawing.ga@VEH");
     assert.ok(["PASS", "WARN"].includes(d.status), d.reason || d.error);
-    if (d.status === "WARN") assert.ok(d.warnings.every((w) => /bounding box sits up to [\d.]+ mm outside the exact extents/.test(w)), d.warnings.join("; "));
+    assert.equal(d.status, "PASS", (d.warnings || []).join("; "));
     const dim = d.outputs.dimensions.value;
     const b = s.result("cad.body@BODY_SHELL").outputs.dimensions.value;
     const ext = d.outputs.extents.value;
     assert.equal(dim.overallLength.mm, Math.round((ext.max[0] - ext.min[0]) * 1000));
     assert.equal(dim.groundClearance.mm, Math.round(ext.min[2] * 1000));
-    // the exact extents are inside cad.body's reported box and within a few mm of it on this car
-    for (const c of d.outputs.bboxCheck.value) assert.ok(c.outsideMm >= -0.01 && c.outsideMm < 10, JSON.stringify(c));
+    // cad.body and the drawing kernel measure the same solid the same way (bracketed extents)
+    for (const c of d.outputs.bboxCheck.value) assert.ok(Math.abs(c.outsideMm) <= 0.1, JSON.stringify(c));
     assert.ok(Math.abs(dim.overallWidth.mm - b.widthM * 1000) < 10);
     assert.equal(dim.wheelbase.basis, "D");
     assert.equal(dim.tyreDiameter.basis, "S");
     assert.match(d.outputs.revision.value, /^R-[0-9A-F]{8}$/);
-    for (const k of ["sheet1Svg", "sheet2Svg", "pdf", "json"]) assert.ok(fs.existsSync(d.outputs.files.value[k].path), k);
+    for (const k of ["sheet1Svg", "sheet2Svg", "pdf", "json"]) {
+      assert.ok(fs.existsSync(files[k].path), k);
+      assert.equal(files[k].sha256, d.outputs.files.value[k].sha256);
+    }
   });
 
   it("the BOM covers every library component node, with mass.part masses and states", () => {
@@ -211,7 +229,7 @@ describe("GA drawing of the library car (full kernel run)", { skip: !FULL && "se
 
   it("the sheets carry the revision; the realization package includes them", () => {
     const d = s.result("drawing.ga@VEH").outputs;
-    const svg = fs.readFileSync(d.files.value.sheet1Svg.path, "utf8");
+    const svg = fs.readFileSync(files.sheet1Svg.path, "utf8");
     assert.ok(svg.includes(d.revision.value));
     assert.deepEqual(drawingStatus(svg, s), { current: true, revision: d.revision.value });
     const pkg = s.realizationPackage().files;
@@ -219,9 +237,9 @@ describe("GA drawing of the library car (full kernel run)", { skip: !FULL && "se
     assert.match(pkg["README.md"], /## Drawings \(drawing\.ga\)/);
   });
 
-  it("a model change re-runs the drawing and supersedes the old revision (BOM edit, then a body edit)", () => {
+  it("a model change re-runs the drawing and supersedes the old revision (BOM edit, then a body edit)", async () => {
     const before = s.result("drawing.ga@VEH").outputs;
-    const oldSvg = fs.readFileSync(before.files.value.sheet1Svg.path, "utf8");
+    const oldSvg = fs.readFileSync(files.sheet1Svg.path, "utf8");
     const e1 = s.edit([{ node: "SEAT_1", path: "props.mass", value: 16 }]);
     assert.ok(e1.ok !== false, JSON.stringify(e1).slice(0, 200));
     const mid = s.result("drawing.ga@VEH").outputs;
@@ -229,7 +247,13 @@ describe("GA drawing of the library car (full kernel run)", { skip: !FULL && "se
     const st = drawingStatus(oldSvg, s);
     assert.equal(st.current, false);
     assert.match(st.reason, /superseded/);
+    const t0 = Date.now();
     s.edit([{ node: "BODY_SHELL", path: "geometry.skinOffset", value: 0.045 }]);
+    assert.ok(Date.now() - t0 < 5000, "the edit does not run the kernel on the calling path");
+    assert.match(s.result("cad.body@BODY_SHELL").reason, /kernel run pending/);
+    assert.equal(s.result("drawing.ga@VEH").status, "NOT_COMPUTED", "the drawing waits for its body");
+    const settled = await s.settle();
+    assert.ok(settled.rounds >= 2 && !settled.pending, JSON.stringify(settled));
     const after = s.result("drawing.ga@VEH").outputs;
     assert.notEqual(after.revision.value, mid.revision.value, "a body change is a new revision");
     assert.notEqual(after.files.value.sheet1Svg.sha256, mid.files.value.sheet1Svg.sha256);

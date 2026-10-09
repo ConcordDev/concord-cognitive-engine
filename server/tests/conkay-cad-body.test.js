@@ -6,23 +6,24 @@
 // and are skipped otherwise; the full-car body (about 2-5 min of kernel time,
 // cached afterwards) runs only with CONKAY_CAD_BODY_FULL=1.
 
-import { describe, it } from "node:test";
+import { describe, it, before } from "node:test";
+import fs from "node:fs";
 import assert from "node:assert/strict";
 
-import { buildCarFromLibrary, carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
+import { buildCarFromLibrary, carAcceptance, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import { LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, deriveGroundClearance } from "../lib/conkay/compiler/car-layout.js";
 import { DesignGraph } from "../lib/conkay/graph/design-graph.js";
 import { cadBodyRequest } from "../lib/conkay/physics/solvers/cad-body.js";
 import { compileDesignIR } from "../lib/conkay/compiler/design-ir.js";
 import { openDesign } from "../lib/conkay/index.js";
-import { runBodyKernel, bodyKernelPython } from "../lib/conkay/cad/body-kernel.js";
+import { runBodyKernelAsync, kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_BASIS, CAD_BODY_MATERIAL } from "../lib/conkay/cad/body-params.js";
 import { getMaterial } from "../lib/conkay/materials/index.js";
 import { obb, aabb } from "../lib/conkay/packaging/geometry.js";
 
 const BRIEF = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.";
 const close = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
-const HAVE_KERNEL = !!bodyKernelPython();
+const HAVE_KERNEL = fs.existsSync(kernelPythonPath());
 const FULL = HAVE_KERNEL && process.env.CONKAY_CAD_BODY_FULL === "1";
 
 describe("Layout revision: the rear package derived from the envelopes", () => {
@@ -184,13 +185,14 @@ describe("CAD body: design-graph parameters, material and the no-kernel path", (
     assert.equal(compileDesignIR(bad).ok, false);
   });
 
-  it("without a kernel the body, its mass and the fit are NOT_COMPUTED and the car is not passed", () => {
+  it("without a kernel the body, its mass and the fit are NOT_COMPUTED and the car is not passed", async () => {
     const saved = process.env.CONKAY_OCC_PYTHON;
     process.env.CONKAY_OCC_PYTHON = "/nonexistent/python";
     try {
-      const r = carAcceptance(BRIEF);
+      const r = await carAcceptanceAsync(BRIEF);
       const s = r.session;
       assert.equal(s.result("cad.body@BODY_SHELL").status, "NOT_COMPUTED");
+      assert.match(s.result("cad.body@BODY_SHELL").reason, /no Python with OCP/);
       const m = s.result("mass.part@BODY_SHELL");
       assert.equal(m.status, "NOT_COMPUTED", "no stand-in skin mass");
       assert.equal(s.result("package.occupant-fit@VEH").status, "NOT_COMPUTED");
@@ -223,7 +225,8 @@ const SCENE = {
 };
 
 describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python with OCP (CONKAY_OCC_PYTHON / ~/.zuko/venvs/cad-occ)" }, () => {
-  const a = HAVE_KERNEL ? runBodyKernel(SCENE, { noCache: true }) : null;
+  let a = null;
+  before(async () => { a = await runBodyKernelAsync(SCENE, { noCache: true }); });
 
   it("builds one closed, valid solid with wheel wells", () => {
     assert.equal(a.ok, true, a.error);
@@ -277,12 +280,12 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     assert.ok(a.metrics.widthM >= 2 * (0.8 + 0.12), "the body covers the tyres' outer faces");
   });
 
-  it("is deterministic: the same parameters give the same sections, measurements and mesh bytes", () => {
+  it("is deterministic: the same parameters give the same sections, measurements and mesh bytes", async () => {
     // A second run in parallel clearance workers (forked processes): identical results.
     const prev = process.env.CONKAY_BODY_WORKERS;
     process.env.CONKAY_BODY_WORKERS = "2";
     let b;
-    try { b = runBodyKernel(SCENE, { noCache: true }); } finally { if (prev == null) delete process.env.CONKAY_BODY_WORKERS; else process.env.CONKAY_BODY_WORKERS = prev; }
+    try { b = await runBodyKernelAsync(SCENE, { noCache: true }); } finally { if (prev == null) delete process.env.CONKAY_BODY_WORKERS; else process.env.CONKAY_BODY_WORKERS = prev; }
     assert.deepEqual(b.sections, a.sections);
     assert.deepEqual(b.metrics, a.metrics);
     assert.deepEqual(b.clearances, a.clearances);
@@ -290,14 +293,14 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     assert.equal(b.files.glb.sha256, a.files.glb.sha256);
   });
 
-  it("a parameter edit changes the body (the skin offset grows the sections)", () => {
-    const c = runBodyKernel({ ...SCENE, params: { ...SCENE.params, skinOffset: 0.05 } }, { noCache: true });
+  it("a parameter edit changes the body (the skin offset grows the sections)", async () => {
+    const c = await runBodyKernelAsync({ ...SCENE, params: { ...SCENE.params, skinOffset: 0.05 } }, { noCache: true });
     assert.ok(c.metrics.volumeM3 > a.metrics.volumeM3);
     for (const x of c.clearances) assert.ok(x.clearanceM >= 0.05 - 5e-4, x.id);
   });
 
-  it("fairing: fairer than the v2.0 loft, with the floor, envelopes and tyres all still held", () => {
-    const v20 = runBodyKernel({ ...SCENE, params: { ...SCENE.params, fairSigmaX: 0, fairEnds: false, fairPoleSpacing: 0 } }, { noCache: true });
+  it("fairing: fairer than the v2.0 loft, with the floor, envelopes and tyres all still held", async () => {
+    const v20 = await runBodyKernelAsync({ ...SCENE, params: { ...SCENE.params, fairSigmaX: 0, fairEnds: false, fairPoleSpacing: 0 } }, { noCache: true });
     assert.equal(v20.ok, true, v20.error);
     assert.equal(v20.fairing, null);
     const fa = a.fairness.regions, fb = v20.fairness.regions;
@@ -311,11 +314,14 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     // the floor: the v2.0 loft dipped below its own solved floor; the faired one does not
     const floor = Math.min(...a.sections.filter((s) => s.zb != null).map((s) => s.zb));
     assert.ok(a.metrics.groundClearanceM >= floor - 1e-6, `${a.metrics.groundClearanceM} < ${floor}`);
-    assert.ok(v20.metrics.groundClearanceM < floor - 0.005, "regression evidence: the v2.0 loft sagged below the floor");
+    // regression evidence: a point ON the v2.0 loft's surface lies 4.66 mm below its solved floor (bracketed
+    // extents; the 16.5 mm once reported here was BRepBndLib's loose box, not the surface)
+    assert.ok(v20.metrics.groundClearanceM < floor - 0.004, `v2.0 lowest surface point ${v20.metrics.groundClearanceM} vs floor ${floor}`);
+    assert.ok(v20.metrics.extentBrackets.addOptimalBox.min[2] < v20.metrics.groundClearanceM - 0.01, "the box alone is >10 mm outside this surface");
   });
 
-  it("maxWidth: the fairing never cuts into the solved sections; a bound they exceed is reported, not met by cheating", () => {
-    const w = runBodyKernel({ ...SCENE, params: { ...SCENE.params, maxWidth: 1.93 } }, { noCache: true });
+  it("maxWidth: the fairing never cuts into the solved sections; a bound they exceed is reported, not met by cheating", async () => {
+    const w = await runBodyKernelAsync({ ...SCENE, params: { ...SCENE.params, maxWidth: 1.93 } }, { noCache: true });
     assert.equal(w.ok, true, w.error);
     assert.ok(w.metrics.widthM > 1.93, "the pods (tyre outer face + cover + blend) need more than 1.93 m");
     assert.ok(w.fairing.adjustments.length > 0);
@@ -323,8 +329,19 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     for (const x of w.wheels) assert.ok(x.minClearanceM >= 0, x.id);
   });
 
-  it("frontal area and volume match an analytic ellipsoid", () => {
-    const e = runBodyKernel({ command: "ellipsoid", semi: [2.2, 0.95, 0.6], slices: 400 }, { noCache: true });
+  it("bracketed extents: an analytic ellipsoid's semi-axes, attained on the surface and inside the outer box", async () => {
+    const sem = [2.2, 0.95, 0.6];
+    const e = await runBodyKernelAsync({ command: "ellipsoid", semi: sem, slices: 60 }, { noCache: true });
+    assert.equal(e.ok, true, e.error);
+    for (let i = 0; i < 3; i++) {
+      assert.ok(Math.abs(e.extents.max[i] - sem[i]) < 1e-6 && Math.abs(e.extents.min[i] + sem[i]) < 1e-6, `axis ${i}: ${e.extents.min[i]} .. ${e.extents.max[i]}`);
+      const [lo, hi] = e.extents.brackets.max[i];
+      assert.ok(lo <= sem[i] + 1e-9 && sem[i] <= hi + 1e-9, `bracket ${i}`);
+    }
+  });
+
+  it("frontal area and volume match an analytic ellipsoid", async () => {
+    const e = await runBodyKernelAsync({ command: "ellipsoid", semi: [2.2, 0.95, 0.6], slices: 400 }, { noCache: true });
     assert.equal(e.ok, true, e.error);
     assert.ok(Math.abs(e.frontalAreaM2 / (Math.PI * 0.95 * 0.6) - 1) < 0.003, `${e.frontalAreaM2}`);
     assert.ok(Math.abs(e.volumeM3 / ((4 / 3) * Math.PI * 2.2 * 0.95 * 0.6) - 1) < 0.002, `${e.volumeM3}`);
@@ -332,8 +349,8 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
 });
 
 describe("CAD body on the library car (full kernel run)", { skip: !FULL && "set CONKAY_CAD_BODY_FULL=1 with a kernel available" }, () => {
-  const r = FULL ? carAcceptance(BRIEF) : null;
-  const s = r?.session;
+  let r = null, s = null;
+  before(async () => { r = await carAcceptanceAsync(BRIEF); s = r.session; });
 
   it("cad.body runs with receipts; its parameters are the design graph's", () => {
     const e = s.result("cad.body@BODY_SHELL");
