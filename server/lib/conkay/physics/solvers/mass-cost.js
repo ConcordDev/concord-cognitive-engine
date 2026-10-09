@@ -32,6 +32,7 @@ function volumeM3(g) {
 
 const SHAPE_NOTE = {
   "ellipsoid-shell": "Thin skin on an ellipsoid of the overall dimensions: area by Thomsen's formula (≤1.061% error) × thickness. A real body is not an ellipsoid; screening only.",
+  "cad-body": "Thin uniform skin on the CAD body (cad.body): kernel surface area × skin thickness × laminate density. No doors, glazing openings or reinforcements: the skin is counted as closed CFRP.",
   bolt: "Bolt modelled as its shank (π·d²/4·L): head, nut, washers and thread loss are not included, so mass is understated.",
 };
 
@@ -51,7 +52,7 @@ export function describeMassState(ms) {
 
 export const massPart = registerSolver({
   id: "mass.part",
-  version: "1.2.0",
+  version: "1.3.0",
   domain: "mass",
   fidelity: 1,
   method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source. Every mass carries a mass state (sourced / estimated / computed / placeholder).",
@@ -75,8 +76,18 @@ export const massPart = registerSolver({
     if (!mat) return { notComputed: "no material assigned" };
     const rho = mat.densityKgM3;
     if (rho == null) return { notComputed: `${mat.label} has no density` };
-    const V = volumeM3(geometry);
-    const computed = { state: "computed", geometryRef: `${id}.geometry (${geometry.shape})`, materialRef: `${mat.id} (density: ${mat.source})` };
+    let V = volumeM3(geometry);
+    let body = null;
+    if (geometry?.shape === "cad-body") {
+      // The CAD body's skin: kernel surface area × skin thickness.
+      const env = ctx.result("cad.body", id);
+      const A = env?.outputs?.surfaceArea?.value;
+      if (!Number.isFinite(A)) return { notComputed: `the CAD body has no surface area (cad.body: ${env?.reason || env?.status || "not run"})` };
+      V = A * geometry.thickness;
+      const c = env.outputs.surfaceCentroid?.value;
+      body = { area: A, centroid: Array.isArray(c) ? { x: c[0], y: c[1], z: c[2] } : null, run: env.runId };
+    }
+    const computed = { state: "computed", geometryRef: `${id}.geometry (${geometry.shape}${body ? `: cad.body surface area ${Math.round(body.area * 1000) / 1000} m2 × ${Math.round(geometry.thickness * 1e6) / 1e3} mm` : ""})`, materialRef: `${mat.id} (density: ${mat.source})` };
     // Stand-in geometry (not a designed part) stays a placeholder even though its mass is V·ρ.
     const massState = declared?.state === "placeholder" ? { ...declared, computedFrom: computed } : computed;
     return {
@@ -86,7 +97,10 @@ export const massPart = registerSolver({
         material: { value: mat.id, source: mat.source, basis: mat.basis },
         density: { value: rho, unit: "kg/m3", source: mat.source },
       },
-      outputs: { volume: { value: V, unit: "m3" }, mass: { value: V * rho, unit: "kg" }, massState: { value: massState.state, detail: massState } },
+      outputs: {
+        volume: { value: V, unit: "m3" }, mass: { value: V * rho, unit: "kg" }, massState: { value: massState.state, detail: massState },
+        ...(body ? { skinArea: { value: body.area, unit: "m2", source: "cad.body" }, ...(body.centroid ? { centroid: { value: body.centroid, unit: "m", source: "cad.body surface centroid (thin uniform skin)" } } : {}) } : {}),
+      },
       assumptions: [
         ...(SHAPE_NOTE[geometry.shape] ? [SHAPE_NOTE[geometry.shape]] : []),
         ...(massState.state === "placeholder" ? [`Placeholder: ${declared.note}`] : []),

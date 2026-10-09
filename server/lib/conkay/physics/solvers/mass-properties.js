@@ -50,7 +50,7 @@ export const massCg = registerSolver({
       const mEnv = ctx.result("mass.part", child.id);
       const m = mEnv?.outputs?.mass?.value;
       if (!Number.isFinite(m)) { missing.push(`${child.id} (no mass)`); continue; }
-      const pos = ctx.get(child.id, "position");
+      const pos = mEnv.outputs.centroid?.value || ctx.get(child.id, "position");
       if (!pos) { missing.push(`${child.id} (no position)`); continue; }
       const own = ownInertia(ctx.get(child.id, "geometry"), m);
       if (!own) pointMasses.push(child.id);

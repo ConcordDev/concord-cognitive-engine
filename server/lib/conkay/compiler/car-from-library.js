@@ -21,9 +21,10 @@
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent } from "../components/index.js";
-import { layoutCar, steeringLockDeg, LAYOUT_DESIGN_CHOICES } from "./car-layout.js";
+import { layoutCar, steeringLockDeg, deriveRearPackage, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
+import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
 
@@ -76,6 +77,7 @@ export function vehicleConfiguration(parsed, overrides = {}) {
     vehicleMassKg: massMax,
     requiredTopSpeedKmh: Number.isFinite(vReq) ? vReq * 3.6 : null,
     loadPerTyreKg: Number.isFinite(massMax) && Number.isFinite(seats) ? (massMax + seats * OCCUPANT_KG) / 4 : null,
+    seatHipBreadthM: Math.max(...PACKAGING_OCCUPANTS.map((k) => occupantDims(k).hipBreadthSitting)),
     provides: [],
     ...overrides,
   };
@@ -90,6 +92,7 @@ export function vehicleConfiguration(parsed, overrides = {}) {
     vehicleMassKg: "brief: mass target (max)",
     requiredTopSpeedKmh: "brief: top-speed target (min)",
     loadPerTyreKg: `(mass target + ${seats ?? "?"} occupants × ${OCCUPANT_KG} kg) / 4, static, even split (screening)`,
+    seatHipBreadthM: `ANSUR II hip breadth, sitting: the widest of the checked occupants (${PACKAGING_OCCUPANTS.join(", ")}); a seat must take it (max cushion width)`,
   };
   return { config, sources };
 }
@@ -129,7 +132,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -222,7 +225,13 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
   // Designed geometry: mass computed from geometry × density.
   const part = (id, material, geometry, x, z) => ({ id, kind: "Part", material, geometry, position: at(x, z) });
   const shell = (area, thickness) => ({ shape: "shell", area, thickness });
-  add("BODY", part("BODY_SHELL", "cfrp-quasi-iso", { shape: "ellipsoid-shell", length: "4.4 m", width: "1.9 m", height: "1.2 m", thickness: "3 mm" }, 2.3, 0.7));
+  if (packaging && cadBody) {
+    // The CAD body (cad.body): a lofted B-spline skin around the occupant and component envelopes.
+    const bp = { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) };
+    add("BODY", { ...part("BODY_SHELL", CAD_BODY_MATERIAL, cadBodyGeometry(bp), 2.3, 0.7), props: { body: { vehicle: "VEH", plies: bp.plies, basis: CAD_BODY_BASIS } } });
+  } else {
+    add("BODY", part("BODY_SHELL", "cfrp-quasi-iso", { shape: "ellipsoid-shell", length: "4.4 m", width: "1.9 m", height: "1.2 m", thickness: "3 mm" }, 2.3, 0.7));
+  }
   add("BODY", part("GLAZING", "glass-soda-lime", shell("2.2 m2", "4 mm"), 2.0, 1.0));
   for (const side of ["L", "R"]) {
     add("CHASSIS", { ...part(`RAIL_${side}`, "aluminum-6061-t6", { shape: "i-beam", length: "3.6 m", height: "120 mm", flangeWidth: "80 mm", flangeThickness: "6 mm", webThickness: "4 mm" }, 2.3, 0.25), kind: "Beam", props: { role: "rail" } });
@@ -286,7 +295,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     },
   };
   // Package layout: component positions from library dimensions and the seating design (car-layout.js).
-  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, seatF, sources });
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) } });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -306,14 +315,55 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
 // and the 95th female (the widest hips in the ANSUR II tables).
 export const PACKAGING_OCCUPANTS = ["F5", "F95", "M95"];
 
-function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, seatF, sources }) {
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null }) {
   const entry = (k) => { const id = selection[k]?.chosen; return id ? getComponent(id) : null; };
   const v = veh.props.vehicle;
-  const frontAxleX = parseFloat(v.frontAxleX), rearAxleX = parseFloat(v.rearAxleX);
+  const frontAxleX = parseFloat(v.frontAxleX);
+  let rearAxleX = parseFloat(v.rearAxleX);
   const tyreY = byId.get("TIRE_FL")?.position?.y;
   const track = tyreY ? 2 * Math.abs(parseFloat(tyreY)) : null; // design choice in this build
   if (!Number.isFinite(track)) return;
-  const choices = layoutChoices || LAYOUT_DESIGN_CHOICES;
+  let choices = layoutChoices || LAYOUT_DESIGN_CHOICES;
+  let revision = null;
+  if (!layoutChoices && layout === "derived") {
+    // Layout revision 2: the rear package derived from the envelopes (car-layout.js deriveRearPackage).
+    const base = { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES };
+    const tyreE = entry("tyres"), diffE = entry("differential"), fuelE = entry("fuel_or_battery");
+    const der = deriveRearPackage({
+      choices: base, keys: [...new Set([...occupantKeys, "M95"])], seatDims: seatF?.dimensions,
+      diffDims: diffE?.dimensions, fuelDimsM: fuelE?.dimensions?.fitsInternalContainerMm?.map((x) => x / 1000), tyreR: tyreE ? tyreE.dimensions.overallDiameterM / 2 : null,
+        rearWell: body && tyreE?.dimensions?.sectionWidthM ? { track, tyreHalfWidthM: tyreE.dimensions.sectionWidthM / 2, archClearanceM: body.archClearanceM, clearanceM: body.skinOffsetM } : null,
+    });
+    // (a derivation error leaves the v1 layout in place; the checks then report its failures)
+    if (!der.error) {
+      const derived = (value, i) => ({ value, basis: `derived: ${der.method[i]}` });
+      choices = { ...base, rearSgRPX: derived(der.rearSgRPX, 0), ...(der.rearSeatY !== base.rearSeatY.value ? { rearSeatY: derived(der.rearSeatY, 3) } : {}), ...(der.fuelCellCenter ? { fuelCellCenter: derived(der.fuelCellCenter, 2) } : {}) };
+      const oldRear = rearAxleX;
+      rearAxleX = der.rearAxleX;
+      v.rearAxleX = `${rearAxleX} m`;
+      for (const id of ["SUSPENSION_REAR", "BRAKES_REAR", "DIFFERENTIAL", "WHEEL_RL", "WHEEL_RR", "TIRE_RL", "TIRE_RR"]) {
+        const n = byId.get(id);
+        if (n?.position) n.position = { ...n.position, x: `${rearAxleX} m` };
+      }
+      const r4 = (x) => Math.round(x * 1e4) / 1e4;
+      revision = {
+        version: "2.0.0",
+        inputs: der.inputs,
+        changes: [
+          { parameter: "front seat", old: "RECARO Pole Position N.G. (FIA): max cushion width 385 mm, 8.8 kg", new: `${seatF?.manufacturer} ${seatF?.model}: max cushion width ${Math.round((seatF?.dimensions?.maxCushionWidthM || 0) * 1000)} mm, ${seatF?.mass?.kg} kg`, reason: "#1039: the 95th female (456 mm) and 95th male (431 mm) sitting hip breadths exceed the Pole Position's 385 mm cushion; the seat must take the widest checked occupant (applicability maxCushionWidthM >= seatHipBreadthM)", basis: "sourced (RECARO hotsheet)" },
+          { parameter: "frontSeatBackThicknessM", old: 0, new: base.frontSeatBackThicknessM.value, unit: "m", reason: "the seat envelope was a plane on the occupant's back (a lower bound); the rear knee room needs the back of the seatback", basis: "design" },
+          { parameter: "rearSgRPX", old: LAYOUT_DESIGN_CHOICES.rearSgRPX.value, new: der.rearSgRPX, unit: "m", change: r4(der.rearSgRPX - LAYOUT_DESIGN_CHOICES.rearSgRPX.value), reason: "#1039: M95 rear knee L48 was -9.3 mm; derived so every percentile has L48 >= the knee margin", basis: "derived" },
+          ...(der.rearSeatY !== base.rearSeatY.value ? [{ parameter: "rearSeatY", old: base.rearSeatY.value, new: der.rearSeatY, unit: "m", change: r4(der.rearSeatY - base.rearSeatY.value), reason: "the CAD body's rear wheel wells: the M95 rear torso was 22 mm from the well's inner wall (under the 40 mm skin offset); the rear seats move inboard until every rear occupant clears the well by the skin offset", basis: "derived" }] : []),
+          { parameter: "rearAxleX", old: oldRear, new: rearAxleX, unit: "m", change: r4(rearAxleX - oldRear), reason: "#1039: rear torso/pelvis overlapped the differential envelope by 44.8-89.8 mm; derived so the differential clears every rear occupant by diffClearanceM", basis: "derived" },
+          { parameter: "wheelbase", old: r4(oldRear - frontAxleX), new: r4(rearAxleX - frontAxleX), unit: "m", change: r4(rearAxleX - oldRear), reason: "follows the rear axle (front axle unchanged)", basis: "derived" },
+          ...(der.fuelCellCenter ? [{ parameter: "fuelCellCenter", old: LAYOUT_DESIGN_CHOICES.fuelCellCenter.value, new: der.fuelCellCenter, unit: "m", reason: "re-placed above the moved differential and clear of the rear occupants (was 17.7 mm from the differential)", basis: "derived" }] : []),
+          { parameter: "rearKneeMarginM / diffClearanceM / fuelClearanceM", old: null, new: [base.rearKneeMarginM.value, base.diffClearanceM.value, base.fuelClearanceM.value], unit: "m", reason: "the margins the derivation keeps", basis: "design" },
+          { parameter: "frontAxleX, track", old: [frontAxleX, track], new: [frontAxleX, track], unit: "m", reason: "unchanged: the front package (engine bay, footwell, front seats) had no failure tied to them", basis: "design (unchanged)" },
+          { parameter: "body (overall L/W/H, roof and header height, ground clearance)", old: "ellipsoid 4.4 x 1.9 x 1.2 m centred at z 0.7", new: "the CAD body (cad.body): sections solved around the envelopes + skin offset; see its outputs", reason: "#1039: rear headroom, hip-to-shell and entry-height failures came from the ellipsoid", basis: "computed (kernel)" },
+        ],
+      };
+    }
+  }
   const lay = layoutCar({ entries: { engine: entry("engine_or_motor"), gearbox: entry("transmission"), diff: entry("differential"), cooling: entry("cooling"), fuel: entry("fuel_or_battery"), tyre: entry("tyres") }, frontAxleX, rearAxleX, track, choices });
   for (const [id, p] of Object.entries(lay.positions)) { const n = byId.get(id); if (n) n.position = at(p.x, p.z, p.y); }
   // Seats and occupant payload at the design H-points: front at the 50th male's UMTRI H-point (mid-track),
@@ -338,7 +388,8 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, se
   const lock = steeringLockDeg(ref);
   const seat = seatF ? { id: seatF.id, dims: seatF.dimensions, source: seatF.dimensions.source?.url } : null;
   v.packaging = {
-    version: "1.0.0",
+    version: revision ? "2.0.0" : "1.0.0",
+    ...(revision ? { layoutRevision: revision } : {}),
     bodyShell: "BODY_SHELL",
     occupantKeys,
     seats,

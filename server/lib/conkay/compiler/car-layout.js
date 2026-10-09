@@ -15,6 +15,10 @@
 // front seats behind the footwell, rear seats ahead of the Super 8.8 IRS at
 // the rear axle, fuel cell above and behind the differential.
 
+import { seatBoxes, umtriHPointX } from "../packaging/checks.js";
+import { seatOccupant, occupantDims, PACKAGING_REFERENCES } from "../packaging/occupant.js";
+import { aabb, separation } from "../packaging/geometry.js";
+
 const IN = 0.0254;
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
 
@@ -125,5 +129,117 @@ export function layoutCar({ entries, frontAxleX, rearAxleX, track, choices = LAY
   return {
     positions, components: comps, tyres, firewallX: firewallX != null ? r4(firewallX) : null, crankZ,
     designChoices: choices, notChecked,
+  };
+}
+
+/**
+ * Layout revision 2 (step 4, the CAD body): the #1039 failures resolved by
+ * deriving the rear package from the occupant and component envelopes
+ * instead of fixing it by hand. Each entry is a design choice (a margin) or
+ * a derivation with its method; v1 values are kept for the old/new table.
+ */
+export const LAYOUT_REVISION_CHOICES = Object.freeze({
+  rearKneeMarginM: { value: 0.025, basis: "design choice: rear knee clearance beyond the SAE J1100 L48 51 mm allowance (M95 every seat)" },
+  diffClearanceM: { value: 0.025, basis: "design choice: rear occupant envelopes to the differential envelope (the differential box is the shipping-box upper bound)" },
+  fuelClearanceM: { value: 0.025, basis: "design choice: fuel cell to the rear occupants and to the differential" },
+  frontSeatBackThicknessM: { value: 0.06, basis: "design choice: front seatback thickness behind the occupant's back surface (RECARO publishes no backrest thickness); counted in the seat envelope and in L48" },
+});
+
+const mmUp = (v) => Math.ceil(v * 1000 - 1e-9) / 1000;
+
+/** Smallest x in [lo, hi] with f(x) >= 0 for a non-decreasing f (bisection to 0.1 mm). */
+function smallestX(f, lo, hi) {
+  if (f(lo) >= 0) return lo;
+  if (f(hi) < 0) return null;
+  for (let i = 0; i < 60 && hi - lo > 1e-4; i++) { const m = (lo + hi) / 2; if (f(m) >= 0) hi = m; else lo = m; }
+  return hi;
+}
+
+/**
+ * Derive the rear package from the envelopes, every percentile in every seat:
+ *   rearSgRPX  the smallest rear H-point x giving every occupant L48 >= the knee margin
+ *              (front seat at the SgRP-front, J1100 L48 51 mm allowance);
+ *   rearAxleX  the smallest rear axle x putting the differential envelope the clearance behind
+ *              every rear occupant envelope (separating-axis gap);
+ *   fuelCellCenter  above the differential (clearance), the smallest x clearing the rear occupants.
+ * Returns { rearSgRPX, rearAxleX, fuelCellCenter, method } (m), or { error }.
+ */
+export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM, tyreR, rearWell = null }) {
+  const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
+  const J = PACKAGING_REFERENCES.saeJ1100.definitions;
+  if (!seatDims || !diffDims || !tyreR) return { error: "needs the front seat dimensions, the differential dimensions and the tyre radius" };
+  const fa = (c.footAngleDeg * Math.PI) / 180;
+  const prpX = c.ahpX - (J.BOF.valueMm / 1000) * Math.cos(fa);
+  const hx = (k) => prpX + umtriHPointX(occupantDims(k).stature, c.steeringWheelL6, c.h30);
+  const trackRear = hx("M50") + c.seatTrackTravel / 2;
+  const sgRPFrontX = Math.min(hx("M95"), trackRear);
+  const hz = c.floorZ + c.h30;
+  const seatRearX = seatBoxes("SgRP", seatDims, { x: sgRPFrontX, y: 0, z: hz }, c.torsoDeg, c.floorZ, c.frontSeatBackThicknessM || 0).rearX;
+  const rearZ = c.floorZ + c.rearH31;
+  const rearOccAt = (x, y, sides = [-1, 1]) => keys.flatMap((k) => sides.map((s) => seatOccupant(k, { id: s < 0 ? "SEAT_3" : "SEAT_4", hPoint: { x, y: s * y, z: rearZ }, torsoDeg: c.rearTorsoDeg, posture: "rear", floorZ: c.floorZ })));
+  // Knee pivot relative to the H-point does not depend on the H-point's x.
+  const kneeAhead = Math.max(...rearOccAt(0, c.rearSeatY).map((o) => -o.landmarks.knee[0]));
+  const rearSgRPX = mmUp(seatRearX + J.L48.subtractMm / 1000 + c.rearKneeMarginM + kneeAhead);
+  const d = diffDims;
+  const diffAt = (x) => aabb({ id: "DIFFERENTIAL", min: [x - d.lengthM / 2, -d.widthM / 2, tyreR - d.heightM / 2], max: [x + d.lengthM / 2, d.widthM / 2, tyreR + d.heightM / 2] });
+  const minSepTo = (boxes, b) => Math.min(...boxes.map((o) => separation(o, b).separation));
+  const axleFor = (y) => {
+    const boxes = rearOccAt(rearSgRPX, y).flatMap((o) => o.boxes);
+    const ax = smallestX((x) => minSepTo(boxes, diffAt(x)) - c.diffClearanceM, rearSgRPX, rearSgRPX + 2);
+    return ax == null ? null : mmUp(ax);
+  };
+  // The rear wheel well (the CAD body's cut: radius = tyre radius + arch clearance, inner wall at
+  // track/2 - tyre half-width - arch clearance), bounded by a box (so the gap to it is a lower bound
+  // on the gap to the cylinder): the rear seat centreline is the largest y (<= the design's
+  // rearSeatY, rounded down to 1 mm) at which every rear occupant box is the body's skin offset
+  // clear of it and the two rear occupants do not overlap. The axle depends on y and the well on the
+  // axle, so the two are solved alternately to a fixed point.
+  let rearSeatY = c.rearSeatY;
+  let rearAxleX = axleFor(rearSeatY);
+  if (rearAxleX == null) return { error: "no rear axle position within 2 m behind the rear H-point clears the rear occupants" };
+  let wellNote = null;
+  if (rearWell) {
+    const { track, tyreHalfWidthM, archClearanceM, clearanceM } = rearWell;
+    const R = tyreR + archClearanceM, yIn = track / 2 - tyreHalfWidthM - archClearanceM;
+    for (let pass = 0; pass < 8; pass++) {
+      const well = aabb({ id: "REAR_WELL", min: [rearAxleX - R, yIn, tyreR - R], max: [rearAxleX + R, yIn + 1, tyreR + R] });
+      const side = (y, sg) => rearOccAt(rearSgRPX, y, [sg]).flatMap((o) => o.boxes);
+      const wellGap = (y) => minSepTo([...side(y, -1), ...side(y, 1)], well) - clearanceM; // decreasing in y
+      const apart = (y) => { const r = side(y, 1); return Math.min(...side(y, -1).map((q) => minSepTo(r, q))); }; // increasing in y
+      let y = rearSeatY;
+      if (wellGap(y) < 0) {
+        const yMin = smallestX(apart, 0, y); // the two rear occupants just touch
+        if (yMin == null || wellGap(yMin) < 0) return { error: "no rear seat spacing keeps the two rear occupants apart and clears the rear wheel wells by the skin offset" };
+        let lo = yMin, hi = y;
+        for (let i = 0; i < 60 && hi - lo > 1e-4; i++) { const m = (lo + hi) / 2; if (wellGap(m) >= 0) lo = m; else hi = m; }
+        y = Math.floor(lo * 1000 + 1e-9) / 1000;
+      }
+      const ax = axleFor(y);
+      if (ax == null) return { error: "no rear axle position within 2 m behind the rear H-point clears the rear occupants" };
+      const done = y === rearSeatY && ax === rearAxleX;
+      rearSeatY = y; rearAxleX = ax;
+      if (done) break;
+    }
+    wellNote = `rearSeatY = the largest rear seat centreline y (<= the design's ${c.rearSeatY} m, bisection, rounded down to 1 mm) at which every rear occupant box is ${clearanceM} m (the body's skin offset) clear of a box bounding the rear wheel well (radius ${r4(R)} m, inner wall y ${r4(yIn)} m) and the two rear occupants do not overlap; solved alternately with rearAxleX to a fixed point`;
+  }
+  const boxes = rearOccAt(rearSgRPX, rearSeatY).flatMap((o) => o.boxes);
+  const minSep = (b) => minSepTo(boxes, b);
+  let fuelCellCenter = null;
+  if (fuelDimsM) {
+    const [a, b, h] = fuelDimsM;
+    const zc = tyreR + d.heightM / 2 + c.fuelClearanceM + h / 2;
+    const fuelAt = (x) => aabb({ id: "FUEL_CELL", min: [x - a / 2, -b / 2, zc - h / 2], max: [x + a / 2, b / 2, zc + h / 2] });
+    const fx = smallestX((x) => minSep(fuelAt(x)) - c.fuelClearanceM, rearSgRPX, rearSgRPX + 2);
+    if (fx != null) fuelCellCenter = [mmUp(fx), 0, Math.round(zc * 1e4) / 1e4];
+  }
+  return {
+    rearSgRPX, rearAxleX, rearSeatY, fuelCellCenter,
+    inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys },
+    method: [
+      `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
+      "rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (centred on the axle at tyre-radius height) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)",
+      "fuelCellCenter: bottom fuelClearanceM above the differential envelope's top; the smallest x at which it is fuelClearanceM clear of every rear occupant box",
+      wellNote || "rearSeatY: the design's (no rear wheel-well constraint given)",
+    ],
   };
 }

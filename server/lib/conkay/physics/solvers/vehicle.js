@@ -37,7 +37,13 @@ function frontalArea(ctx, id) {
   if (typeof from === "string" && from) {
     const g = ctx.get(from, "geometry");
     if (!g) return { error: `frontalAreaFrom: ${from} has no geometry` };
-    if (g.shape !== "ellipsoid-shell") return { error: `frontalAreaFrom: ${from} is a ${g.shape}; only an ellipsoid-shell body gives a frontal area` };
+    if (g.shape === "cad-body") {
+      const env = ctx.result("cad.body", from);
+      const a = env?.outputs?.frontalArea?.value;
+      if (!Number.isFinite(a)) return { error: `frontalAreaFrom: the CAD body ${from} has no frontal area (cad.body: ${env?.reason || env?.status || "not run"})` };
+      return { value: a, source: `computed from ${from} (cad.body: projected area of the kernel solid onto the y-z plane)` };
+    }
+    if (g.shape !== "ellipsoid-shell") return { error: `frontalAreaFrom: ${from} is a ${g.shape}; only an ellipsoid-shell or cad-body body gives a frontal area` };
     return { value: (Math.PI * g.width * g.height) / 4, source: `computed from ${from} (ellipsoid π·W·H/4; screening)` };
   }
   const a = ctx.get(id, "props.vehicle.frontalArea");
@@ -50,7 +56,7 @@ function frontalArea(ctx, id) {
 // check reports which of them the design has evidence for.
 export const TOP_SPEED_CLAIM_STATUS = "model_output_unvalidated";
 export const TOP_SPEED_UNVERIFIED_DEPENDENCIES = [
-  { id: "drag_model", what: "Cd and frontal area: Cd is an input (no CFD or wind-tunnel value); frontal area is given or from an ellipsoid body (screening)" },
+  { id: "drag_model", what: "Cd and frontal area: Cd is an input (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening)" },
   { id: "drivetrain_losses", what: "driveline efficiency is an input, not measured or computed from the gearbox and differential" },
   { id: "gearing", what: "the gear limit needs the gear ratios, final drive, tyre radius and a redline; the redline and the power available at that engine speed are inputs (vehicle.gearing)" },
   { id: "tyre_limits", what: "tyre speed rating and load index against this speed and the axle loads (tire.speed-rating, tire.load-index)" },

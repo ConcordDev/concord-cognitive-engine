@@ -19,6 +19,7 @@
 import { parseQuantity } from "./units.js";
 import { getMaterial } from "../materials/index.js";
 import { validateMassState } from "../verification/mass-state.js";
+import { CAD_BODY_OPTIONAL } from "../cad/body-params.js";
 
 export const NODE_KINDS = new Set([
   "Part", "Assembly", "Volume", "Surface", "Beam", "Shell", "Solid", "Joint", "Constraint", "Load",
@@ -53,7 +54,13 @@ export const SHAPES = {
   // A closed body skin approximated as an ellipsoid of the given overall
   // length × width × height: area, mass and frontal area come from these.
   "ellipsoid-shell": ["length", "width", "height", "thickness"],
+  // The CAD body (cad.body): a B-spline skin solved around the vehicle's
+  // packaging envelopes; area, volume, frontal area come from the kernel.
+  "cad-body": ["thickness", "skinOffset"],
 };
+
+// Optional shape parameters: lengths (with units) and plain numbers.
+export const SHAPE_OPTIONAL = { "cad-body": CAD_BODY_OPTIONAL };
 
 // Shape parameters are lengths unless listed here.
 export const PARAM_DIM = { area: "area" };
@@ -162,6 +169,20 @@ export function compileDesignIR(ir) {
           if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
           else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
           else geometry[key] = q.si;
+        }
+        const opt = SHAPE_OPTIONAL[shape];
+        for (const key of opt?.lengths || []) {
+          if (n.geometry[key] == null) continue;
+          const q = parseQuantity(n.geometry[key], "length");
+          if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
+          else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
+          else geometry[key] = q.si;
+        }
+        for (const key of opt?.numbers || []) {
+          if (n.geometry[key] == null) continue;
+          const v = Number(n.geometry[key]);
+          if (!Number.isFinite(v) || v <= 0) errors.push(`${where}.geometry.${key}: must be a positive number`);
+          else geometry[key] = v;
         }
         node.geometry = geometry;
       }

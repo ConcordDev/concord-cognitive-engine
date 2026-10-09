@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "note": "ConKay component library. Every number carries its source. Masses are SI (kg) with the published figure kept verbatim. Nothing here is estimated unless massState.state says 'estimated', and then the method and range say how.",
   "references": {
     "speedSymbols": {
@@ -1580,6 +1580,64 @@
         "positions": 1,
         "notes": [
           "RECARO: FIA-homologated racing seats have no German road approval (ABE); the Pole Position ABE is the road-licensed version. Road legality is not checked here."
+        ],
+        "maxCushionWidthM": 0.385
+      }
+    },
+    {
+      "id": "seat.recaro.sportster-gt",
+      "category": "interior_seats",
+      "manufacturer": "RECARO",
+      "model": "Sportster GT",
+      "variant": "reclining sport seat, metal seat base with reinforced polymer backrest (one seat)",
+      "mass": {
+        "kg": 15,
+        "published": "Weight: 33 lbs / 15 kg",
+        "massState": {
+          "state": "sourced",
+          "variant": "Sportster GT, published weight 33 lbs / 15 kg (mounting hardware sold separately)",
+          "source": {
+            "url": "https://www.recaro-automotive.com/fileadmin/01-products/documents/hotsheets/recaro-hotsheet-sportster-gt.pdf",
+            "title": "RECARO hotsheet: Sportster GT, SPECIFICATIONS 'Weight: 33 lbs / 15 kg'",
+            "retrieved": "2026-10-09"
+          }
+        },
+        "excludes": [
+          "mounting hardware (sold separately: slider track kit 7227671 and vehicle brackets)",
+          "harness or belts"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "maxHeightM": 0.918,
+        "maxCushionDepthM": 0.483,
+        "maxCushionWidthM": 0.539,
+        "maxWidthM": 0.539,
+        "published": "Max height: 36.2 inches / 918 mm; Max seat cushion depth: 19 inches / 483 mm; Max seat cushion width: 21.3 inches / 539 mm; drawing: 21.2 in / 539 mm (widest lateral dimension); dimensions do not include mounting hardware",
+        "drawingOtherMm": [
+          530,
+          502,
+          511,
+          530,
+          820
+        ],
+        "source": {
+          "url": "https://www.recaro-automotive.com/fileadmin/01-products/documents/hotsheets/recaro-hotsheet-sportster-gt.pdf",
+          "title": "RECARO hotsheet: Sportster GT",
+          "retrieved": "2026-10-09"
+        },
+        "note": "maxWidthM is the drawing's widest lateral dimension (539 mm, equal to the published max cushion width); the drawing's other dimensions are unlabelled and not used."
+      },
+      "ratings": {
+        "homologation": "not stated on the hotsheet",
+        "belts": "not stated on the hotsheet"
+      },
+      "applicability": {
+        "seatPosition": "front",
+        "positions": 1,
+        "maxCushionWidthM": 0.539,
+        "notes": [
+          "Road legality and belt compatibility are not checked here."
         ]
       }
     },

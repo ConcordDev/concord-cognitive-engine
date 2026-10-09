@@ -150,7 +150,7 @@ const criticalOf = (ctx, n) => {
 
 export const vehicleAcceptance = registerSolver({
   id: "vehicle.acceptance",
-  version: "1.3.0",
+  version: "1.4.0",
   domain: "verification.acceptance",
   fidelity: 0,
   method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part, no occupant-fit failure or interference",
@@ -230,7 +230,18 @@ export const vehicleAcceptance = registerSolver({
       const items = itf.outputs.interferences.value;
       failures.push(`interference: ${items.length} pair(s) closer than their minimum clearance: ${items.map((p) => `${p.a} / ${p.b} ${p.separationMm < 0 ? `overlap ${Math.round(-p.separationMm * 10) / 10} mm` : `gap ${p.separationMm} mm`} (min ${p.minClearanceMm} mm)`).join("; ")}`);
     }
+    // The CAD body (cad.body) the fit is measured against: its own failures (an envelope inside the skin
+    // offset, a tyre touching the body, an invalid solid) fail the car too.
+    const bodyId = ctx.get(id, "props.vehicle.packaging")?.bodyShell;
+    const bodyGeom = bodyId ? ctx.get(bodyId, "geometry") : null;
+    const body = bodyGeom?.shape === "cad-body" ? ctx.result("cad.body", bodyId) : null;
+    if (body) {
+      if (body.status === "NOT_COMPUTED") failures.push(`CAD body not computed: ${body.reason}`);
+      else if (body.status === "ERROR") failures.push(`CAD body errored: ${body.error}`);
+      else if (body.status === "FAIL") failures.push(`CAD body fails: ${(body.failures || []).join("; ")}`);
+    }
     const packaging = fit || itf ? {
+      ...(body ? { body: { status: body.status, ...(body.outputs?.dimensions ? { dimensions: body.outputs.dimensions.value, frontalAreaM2: body.outputs.frontalArea.value, surfaceAreaM2: body.outputs.surfaceArea.value, volumeM3: body.outputs.volume.value, minClearance: body.outputs.minClearance.value } : {}), source: body.runId } } : {}),
       occupantFit: fit ? { status: fit.status, pass: fit.outputs?.passCount?.value ?? null, fail: fit.outputs?.failCount?.value ?? null, source: fit.runId } : null,
       interference: itf ? { status: itf.status, pairsChecked: itf.outputs?.pairsChecked?.value ?? null, interferences: itf.outputs?.interferences?.value?.length ?? null, source: itf.runId } : null,
       notChecked: (fit || itf).outputs?.notChecked?.value || [],

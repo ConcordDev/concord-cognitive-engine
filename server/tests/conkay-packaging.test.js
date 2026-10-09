@@ -111,8 +111,10 @@ describe("Layout: components placed from library dimensions", () => {
   });
 });
 
-describe("Car brief: occupant fit, interference and the acceptance gate", () => {
-  const r = carAcceptance(BRIEF);
+// The #1039 layout (v1: hand-set rear package, RECARO Pole Position) against the screening ellipsoid, kept as a
+// regression of the failures the CAD-body step resolves (tests/conkay-cad-body.test.js covers the revised layout).
+describe("Car brief (v1 layout, ellipsoid shell): occupant fit, interference and the acceptance gate", () => {
+  const r = carAcceptance(BRIEF, { layout: "v1", cadBody: false, config: { seatHipBreadthM: null } });
   const s = r.session;
   const fit = s.result("package.occupant-fit@VEH");
   const itf = s.result("package.interference@VEH");
@@ -193,7 +195,7 @@ describe("Car brief: occupant fit, interference and the acceptance gate", () => 
 
   it("a design choice moves the result: a lower steering wheel hits the 95th male's knees", () => {
     const low = { ...LAYOUT_DESIGN_CHOICES, steeringWheelH17: { value: 0.5, basis: "design choice (test)" } };
-    const r2 = carAcceptance(BRIEF, { layoutChoices: low });
+    const r2 = carAcceptance(BRIEF, { layoutChoices: low, cadBody: false });
     const k = r2.session.result("package.occupant-fit@VEH").outputs.checks.value.find((c) => c.id === "steeringKnee.M95");
     assert.equal(k.pass, false);
   });

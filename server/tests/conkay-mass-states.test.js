@@ -466,7 +466,8 @@ describe("Car brief from the component library (acceptance)", () => {
   });
 
   it("real parts are picked by applicability and carry their sources", () => {
-    const b = buildCarFromLibrary(BRIEF);
+    // The front seat must take the widest checked occupant's hips (seatHipBreadthM), which rules the Pole Position out.
+    const b = buildCarFromLibrary(BRIEF, { cadBody: false });
     const chosen = Object.fromEntries(Object.entries(b.selection).map(([k, v]) => [k, v.chosen]));
     assert.deepEqual(chosen, {
       engine_or_motor: "engine.ford.coyote-gen4x.m-6007-m50h",
@@ -483,7 +484,7 @@ describe("Car brief from the component library (acceptance)", () => {
       cooling: "cooling.coldcase.lmm570-5k",
       exhaust: "exhaust.s550-gt.oem-lh-manifold-midpipe.bassani-xpipe-catback",
       fuel_or_battery: "fuel.atl.saver-cell.sa-aa-070",
-      seats_front: "seat.recaro.pole-position-ng-fia.aluminium-sidemount",
+      seats_front: "seat.recaro.sportster-gt",
       seats_rear: "seat.ford.s550-rear.oem",
     });
     // The drop-spindle front kit no longer fits once the S550 front suspension provides the spindle.
@@ -606,7 +607,7 @@ describe("Car brief from the component library (acceptance)", () => {
   });
 
   it("the tyres' static loads are within load index 97", () => {
-    const e = carAcceptance(BRIEF).session.result("tire.load-index@VEH");
+    const e = carAcceptance(BRIEF, { cadBody: false }).session.result("tire.load-index@VEH");
     assert.equal(e.status, "PASS", e.reason);
     assert.equal(e.margins.length, 4);
     assert.ok(e.margins.every((m) => close(m.capacity, 730 * 9.80665)));
