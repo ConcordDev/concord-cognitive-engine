@@ -118,6 +118,67 @@
           "note": "load-capacity index table LI 61-123"
         }
       ]
+    },
+    "cvJointArticulation": {
+      "standard": "GKN Driveline (Löbro) constant-velocity sideshaft joints: maximum articulation angle per joint type, as published",
+      "unit": "deg",
+      "meaning": "MAXIMUM articulation angle of the joint type (the published figure). It is not a continuous operating angle and carries no life, speed or torque derating; GKN publishes none in this document. A static angle under it is a screening pass, not a durability check.",
+      "table": {
+        "AC": {
+          "kind": "fixed ball",
+          "maxDeg": 47,
+          "use": "wheel side",
+          "quote": "Providing a maximum articulation angle of 47 degrees ... the most popular choice for the wheelside of a constant velocity sideshaft."
+        },
+        "UF": {
+          "kind": "fixed ball (undercut-free)",
+          "maxDeg": 50,
+          "use": "wheel side",
+          "quote": "the UF joint provides the maximum 50 degrees articulation angle"
+        },
+        "VL": {
+          "kind": "ball plunging",
+          "maxDeg": 22,
+          "plungeMm": 50,
+          "use": "inboard joint of rear-wheel-drive sideshafts",
+          "quote": "The VL ball plunging joint is a popular choice for the inboard joint of the rear-wheel drive CVJ sideshafts. With maximum 22 degrees articulation and a plunge of 50mm"
+        },
+        "DO": {
+          "kind": "ball plunging",
+          "maxDeg": 26,
+          "maxDegVersions": [
+            26,
+            31
+          ],
+          "plungeMm": 50,
+          "use": "inboard",
+          "quote": "available in two versions with 50mm plunge for a maximum articulation of 26 degrees or 31 degrees"
+        },
+        "GI": {
+          "kind": "tripod plunging",
+          "maxDeg": 23,
+          "plungeMm": 50,
+          "use": "inboard (gearbox) joint",
+          "quote": "It has a maximum articulation angle of 23 degrees and has a plunge length of 50mm."
+        },
+        "AAR": {
+          "kind": "tripod plunging",
+          "maxDeg": 26,
+          "plungeMm": 50,
+          "use": "inboard",
+          "quote": "It has a maximum articulation angle of 26 degrees and 50mm plunge."
+        }
+      },
+      "notListed": "The SC crosstrack plunging joint has no published angle in this document, and the propshaft joints (HSAC, PX, PXS, HSGI, PDO, HSVL) are not sideshaft joints, so neither is in the table.",
+      "sources": [
+        {
+          "url": "https://www.rowlandcompany.com/wp-content/uploads/2018/07/Driveshafts_Technology_LOEBRO_GB.pdf",
+          "title": "GKN Driveline (Löbro), 'Driveshafts Technology' brochure, English (PDF created 2009-09-17, modified 2010-12-02; hosted by The Rowland Company)",
+          "retrieved": "2026-10-09",
+          "sha256": "563db0d9815f408fd1e97294230b8e70a2a9e188d265342330f814c96ff6c885",
+          "note": "text extracted with pdftotext -layout; the quotes below are verbatim"
+        }
+      ]
     }
   },
   "components": [
@@ -977,6 +1038,21 @@
         "torqueCapacityNm": {
           "value": null,
           "note": "Ford publishes no torque rating. 22RPD reports the aluminium Super 8.8 housing 'reported to handle 800wtq' and no limit for the iron housing; not a manufacturer rating."
+        },
+        "halfshafts": {
+          "jointTypes": {
+            "state": "missing",
+            "note": "Ford publishes no joint type or angle rating for the OEM S550 IRS halfshafts. An aftermarket replacement says it 'uses a fixed CV much like the factory unit', which does not say which end or which type, so no joint type is assumed.",
+            "evidence": {
+              "url": "https://www.beefcakeracing.com/dss-ra8555x6/",
+              "title": "The Driveshaft Shop RA8555X6 2015-2024 Mustang 2000HP rear halfshaft, fixed CV (product page)",
+              "retrieved": "2026-10-09"
+            }
+          },
+          "maxArticulationDeg": {
+            "value": null,
+            "note": "not published for these joints; checks use the lowest sideshaft-joint maximum in references.cvJointArticulation (the governing case if the joints are of any catalogued sideshaft type)"
+          }
         }
       },
       "applicability": {

@@ -263,7 +263,40 @@ export const GROUND_CLEARANCE_CHOICES = Object.freeze({
   groundClearanceTargetM: { value: 0.1, basis: "design choice (brief 2026-10-09: raise the ground clearance toward >= 100 mm)" },
 });
 
-export function deriveGroundClearance({ choices, targetM = GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.value, skinOffsetM, floorCornerAllowanceM, tyreR, diffDims, track, hold = "hPoint" }) {
+/**
+ * Halfshaft angle against a CV-joint maximum articulation angle (screening, static).
+ * Model: the halfshaft is the straight line from the inboard joint (at the differential output, riseM above the
+ * hub) to the outboard joint (at the hub), runM apart laterally; the hub axis stays parallel to the differential
+ * output axis, so both joints articulate by the shaft angle. Wheel travel z (positive = bump, the hub rising toward
+ * the body) changes the angle to atan(|riseM - z| / runM).
+ * limit = { maxDeg, jointType, ... } (components/index.js governingCvJointLimit()).
+ * Returns { status: "pass" | "fail", angleDeg, limitDeg, marginDeg, travelToLimitM: { droop, bump }, limit, method, notChecked }.
+ */
+export function checkHalfshaftAngle({ riseM, runM, limit }) {
+  if (!(runM > 0) || !Number.isFinite(riseM) || !Number.isFinite(limit?.maxDeg)) return { status: "not checked", reason: "needs riseM, runM > 0 and limit.maxDeg" };
+  const rad = (d) => (d * Math.PI) / 180;
+  const deg = (r) => (r * 180) / Math.PI;
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const angleDeg = deg(Math.atan2(Math.abs(riseM), runM));
+  const reach = runM * Math.tan(rad(limit.maxDeg)); // |rise - z| at which a joint reaches the limit
+  const status = angleDeg < limit.maxDeg ? "pass" : "fail";
+  return {
+    status,
+    angleDeg: r2(angleDeg), limitDeg: limit.maxDeg, marginDeg: r2(limit.maxDeg - angleDeg),
+    // from static: droop moves the hub away from the raised output (angle grows sooner), bump toward it.
+    travelToLimitM: { droop: r4(Math.max(0, reach - riseM)), bump: r4(Math.max(0, reach + riseM)) },
+    limit: { jointType: limit.jointType, kind: limit.kind, maxDeg: limit.maxDeg, quote: limit.quote, source: limit.source },
+    method: `angle = atan(rise ${r4(riseM)} m / run ${r4(runM)} m); limit = the lowest maximum articulation angle among the catalogued sideshaft joint types (${limit.jointType}, ${limit.maxDeg} deg), used because the halfshafts' joint types are not published; travelToLimit = run * tan(limit) -/+ rise`,
+    notChecked: [
+      "the joints' real types and ratings (not published for the S550 halfshafts)",
+      "suspension travel (not published for the S550; travelToLimitM is what the joints allow, not what the suspension does)",
+      "camber and toe change with travel, and joint plunge",
+      "durability: the limit is a maximum articulation angle, not a continuous operating rating",
+    ],
+  };
+}
+
+export function deriveGroundClearance({ choices, targetM = GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.value, skinOffsetM, floorCornerAllowanceM, tyreR, diffDims, track, hold = "hPoint", cvJointLimit = null }) {
   const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
   const req = r4(targetM + skinOffsetM + floorCornerAllowanceM);
   const how = `requiredBottomZ = target ${r4(targetM)} + skin offset ${r4(skinOffsetM)} + floor-corner allowance ${r4(floorCornerAllowanceM)} = ${req} m`;
@@ -298,7 +331,12 @@ export function deriveGroundClearance({ choices, targetM = GROUND_CLEARANCE_CHOI
       if (track && diffDims.widthM) {
         const run = track / 2 - diffDims.widthM / 2;
         const deg = Math.round((Math.atan2(rise, run) * 180) / Math.PI * 100) / 100;
-        tradeoffs.push({ item: "rear halfshaft angle", value: deg, unit: "deg", note: `computed screening value: static halfshaft angle = atan(diffRiseM ${rise} m / (half track ${r4(track / 2)} m - half differential envelope width ${r4(diffDims.widthM / 2)} m)); the CV joints' angle limits are not in the library, so it is not checked; the envelope is the shipping box, so the real housing's bottom (and the rise it needs) is likely smaller` });
+        const check = cvJointLimit ? checkHalfshaftAngle({ riseM: rise, runM: run, limit: cvJointLimit }) : null;
+        tradeoffs.push({
+          item: "rear halfshaft angle", value: deg, unit: "deg",
+          note: `computed screening value: static halfshaft angle = atan(diffRiseM ${rise} m / (half track ${r4(track / 2)} m - half differential envelope width ${r4(diffDims.widthM / 2)} m)); the envelope is the shipping box, so the real housing's bottom (and the rise it needs) is likely smaller and its output further inboard: both make the real angle smaller${check ? `; checked against the CV-joint limit (${check.status})` : "; no CV-joint limit given, so it is not checked"}`,
+          ...(check ? { check } : {}),
+        });
       }
     }
   }
