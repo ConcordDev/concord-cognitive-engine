@@ -9,7 +9,9 @@
 // it contains (props.maxPower, W), so editing a part or swapping an engine
 // reruns this. Cd and A are inputs labelled with their source: there is no
 // Cd-from-geometry solver yet, so a drag coefficient is never presented as
-// computed.
+// computed. An electronic speed limiter (props.vehicle.speedLimiter, a
+// design choice) caps the result at its set point; the unlimited model
+// output is reported alongside it.
 
 import { registerSolver } from "../registry.js";
 
@@ -55,6 +57,23 @@ export const TOP_SPEED_UNVERIFIED_DEPENDENCIES = [
   { id: "stability", what: "high-speed stability and aero lift: no solver yet" },
   { id: "thermal", what: "cooling capacity for sustained full power: no solver yet" },
 ];
+
+// Present only when the design has an electronic speed limiter (a design
+// choice): the vehicle's top speed is then capped at its set point, which
+// holds only as far as the limiter is built and calibrated to that set point.
+export const SPEED_LIMITER_DEPENDENCY = Object.freeze({ id: "speed_limiter", what: "the electronic speed limiter is a design choice: its calibration, the accuracy of the road-speed signal it acts on and its overshoot are not verified" });
+
+/**
+ * The design's speed limiter, props.vehicle.speedLimiter = { setKmh,
+ * overshootAllowanceKmh, basis, sources }, or null. { error } when malformed.
+ */
+export function speedLimiterOf(ctx, id) {
+  const l = ctx.get(id, "props.vehicle.speedLimiter");
+  if (l == null) return null;
+  if (!(Number.isFinite(l.setKmh) && l.setKmh > 0)) return { error: "props.vehicle.speedLimiter.setKmh must be a positive number (km/h)" };
+  const allow = Number.isFinite(l.overshootAllowanceKmh) && l.overshootAllowanceKmh >= 0 ? l.overshootAllowanceKmh : null;
+  return { setKmh: l.setKmh, setMs: l.setKmh / 3.6, overshootAllowanceKmh: allow, basis: l.basis || "design choice", sources: l.sources || [] };
+}
 
 const RPM = (2 * Math.PI) / 60; // rad/s per rpm
 
@@ -122,10 +141,10 @@ export function solveTopSpeed(wheelPowerW, a, b) {
 
 export const vehicleTopSpeed = registerSolver({
   id: "vehicle.top-speed",
-  version: "1.2.0",
+  version: "1.3.0",
   domain: "performance.top-speed",
   fidelity: 1,
-  method: "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known",
+  method: "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
   targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id),
   run(ctx, id) {
     // Read only the keys used, so moving an axle doesn't rerun top speed.
@@ -156,8 +175,16 @@ export const vehicleTopSpeed = registerSolver({
     // when the gearing is known, the gear-limited speed.
     const gl = gearLimitedSpeed(ctx, id);
     const geared = Number.isFinite(gl.value) && gl.value < vDrag;
-    const vmax = geared ? gl.value : vDrag;
-    const limitedBy = !Number.isFinite(gl.value) ? `drag (power-limited); gear limit not computed: ${gl.missing}` : geared ? "gear (rev limit in top gear)" : "drag (power-limited)";
+    const vUnlimited = geared ? gl.value : vDrag;
+    const unlimitedBy = !Number.isFinite(gl.value) ? `drag (power-limited); gear limit not computed: ${gl.missing}` : geared ? "gear (rev limit in top gear)" : "drag (power-limited)";
+    // An electronic speed limiter (a design choice) caps the vehicle's top
+    // speed at its set point; the unlimited model output stays reported.
+    const lim = speedLimiterOf(ctx, id);
+    if (lim?.error) return { notComputed: lim.error };
+    const capped = lim != null && lim.setMs < vUnlimited;
+    const vmax = capped ? lim.setMs : vUnlimited;
+    const limitedBy = capped ? "speed limiter (design choice)" : unlimitedBy;
+    const deps = lim ? [...TOP_SPEED_UNVERIFIED_DEPENDENCIES, SPEED_LIMITER_DEPENDENCY] : TOP_SPEED_UNVERIFIED_DEPENDENCIES;
     return {
       inputs: {
         mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
@@ -169,18 +196,23 @@ export const vehicleTopSpeed = registerSolver({
         airDensity: { value: rho, unit: "kg/m3", source: Number.isFinite(v.airDensity) ? "given in the design" : "ISA sea level, 15 °C" },
       },
       outputs: {
-        topSpeed: { value: vmax, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, limitedBy, unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => d.id) },
+        topSpeed: {
+          value: vmax, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, limitedBy, unverifiedDependencies: deps.map((d) => d.id),
+          ...(capped ? { note: `capped at the speed limiter's ${lim.setKmh} km/h set point (design choice); that the car reaches it rests on the unlimited model output` } : {}),
+        },
+        unlimitedTopSpeed: { value: vUnlimited, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, limitedBy: unlimitedBy, note: "without the speed limiter: the lower of the drag-limited and gear-limited speeds" },
+        ...(lim ? { speedLimiter: { value: { setKmh: lim.setKmh, overshootAllowanceKmh: lim.overshootAllowanceKmh, binding: capped, basis: lim.basis, sources: lim.sources }, status: "design_choice_unverified" } } : {}),
         dragLimitedTopSpeed: { value: vDrag, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS },
         ...(Number.isFinite(gl.value) ? { gearLimitedTopSpeed: { value: gl.value, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, note: `fastest speed any gear reaches at ${gl.revLimitRpm} rpm (${gl.limitSource})` } } : {}),
         limitedBy: { value: limitedBy },
-        claimStatus: { value: TOP_SPEED_CLAIM_STATUS, note: "a model output, not a validated top speed", unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES },
+        claimStatus: { value: TOP_SPEED_CLAIM_STATUS, note: "a model output, not a validated top speed", unverifiedDependencies: deps },
         aeroPowerAtTopSpeed: { value: a * vmax ** 3, unit: "W" },
         rollingPowerAtTopSpeed: { value: b * vmax, unit: "W" },
       },
       assumptions: [
-        "Steady, level road, no wind; the lower of the power-limited speed and, when the gearing is known, the speed at the rev limit in the tallest gear.",
+        "Steady, level road, no wind; the lower of the power-limited speed and, when the gearing is known, the speed at the rev limit in the tallest gear; capped at the speed limiter's set point when the design has one.",
         "Cd and frontal area are inputs; aero is screening until a CFD or wind-tunnel value replaces them.",
-        `Model output (${TOP_SPEED_CLAIM_STATUS}): depends on ${TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => d.id).join(", ")}.`,
+        `Model output (${TOP_SPEED_CLAIM_STATUS}): depends on ${deps.map((d) => d.id).join(", ")}.`,
       ],
     };
   },

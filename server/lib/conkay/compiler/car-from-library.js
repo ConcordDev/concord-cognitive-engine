@@ -9,14 +9,49 @@
 // fitment (S550 Mustang suspension, steering, brakes and Super 8.8 IRS), so
 // one part's fit can be checked against the others. The body and chassis
 // keep their designed geometry (mass computed from geometry × density).
-// What the library can't settle (a tyre established below the model's top
-// speed, an unrated torque capacity) stays visible in the acceptance result.
+// What the library can't settle (an unrated torque capacity, the tyre's
+// 300 km/h against the model's unlimited top speed) stays visible in the
+// acceptance result. An electronic speed limiter is a design choice
+// (designSpeedLimiter): it caps the top speed between the required speed and
+// the tyre's established speed, and the unlimited model output is still
+// reported.
 
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent } from "../components/index.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
+
+// Speed limiter overshoot allowance (km/h): a design requirement on the
+// limiter, not a published capability. Directive 92/24/EEC (Annex III
+// 1.1.4.2) accepts a stabilised speed up to 5% of the set speed or 5 km/h
+// above it, whichever is greater, plus a 5% transient; at ~295 km/h 5% is
+// ~15 km/h, wider than the whole band between a 180 mph requirement and a
+// 300 km/h tyre. So the limiter here must hold the Directive's 5 km/h
+// absolute figure as its total overshoot, which is unverified.
+export const SPEED_LIMITER_OVERSHOOT_KMH = 5;
+const LIMITER_SOURCES = [
+  { title: "Council Directive 92/24/EEC relating to speed limitation devices or similar speed limitation on-board systems of certain categories of motor vehicles (consolidated 17.02.2004), Annex III 1.1.4.2", url: "https://www.legislation.gov.uk/eudr/1992/24/pdfs/eudr_19920024_2004-02-17_en.pdf", retrieved: "2026-10-09", note: "Vstab ≤ Vset + max(5% of Vset, 5 km/h); transient ≤ Vstab + 5%; stabilised variation ≤ max(4%, 2 km/h). Written for heavy vehicles (M2, M3, N2, N3); quoted for the size of a regulatory tolerance, not as a requirement on this car." },
+];
+
+/**
+ * The speed-limiter design choice: the highest set point whose set point +
+ * overshoot allowance stays within the tyre's established speed, provided it
+ * is at or above the required top speed. Returns the props.vehicle.speedLimiter
+ * object, or { error } when no set point fits.
+ */
+export function designSpeedLimiter({ requiredKmh, tyreEstablishedKmh, overshootAllowanceKmh = SPEED_LIMITER_OVERSHOOT_KMH, tyreBasis = "" }) {
+  if (!Number.isFinite(requiredKmh) || !Number.isFinite(tyreEstablishedKmh)) return { error: "needs the required top speed and the tyre's established speed" };
+  const setKmh = tyreEstablishedKmh - overshootAllowanceKmh;
+  if (setKmh < requiredKmh) return { error: `no set point fits: the tyre's ${tyreEstablishedKmh} km/h minus the ${overshootAllowanceKmh} km/h overshoot allowance is ${setKmh} km/h, below the required ${requiredKmh.toFixed(1)} km/h` };
+  const r = (x) => Math.round(x * 10) / 10;
+  return {
+    setKmh,
+    overshootAllowanceKmh,
+    basis: `design choice: set point = tyre established speed ${tyreEstablishedKmh} km/h${tyreBasis ? ` (${tyreBasis})` : ""} − overshoot allowance ${overshootAllowanceKmh} km/h = ${setKmh} km/h (${r(setKmh / 1.609344)} mph). Margins: ${r(setKmh - requiredKmh)} km/h (${r((setKmh / requiredKmh - 1) * 100)}%) above the required ${r(requiredKmh)} km/h (${r(requiredKmh / 1.609344)} mph); set point + allowance = ${setKmh + overshootAllowanceKmh} km/h, at the tyre's established speed. The allowance is a design requirement on the limiter (unverified), tighter than the Directive 92/24/EEC test tolerance.`,
+    sources: LIMITER_SOURCES,
+  };
+}
 const metres = (n) => `${n} m`;
 
 /** The configuration components are checked against, with where each value comes from. */
@@ -89,7 +124,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -245,7 +280,19 @@ export function buildCarFromLibrary(brief, { config: overrides } = {}) {
       } : {}),
     },
   };
-  return { ir, configuration: { config, sources }, selection, parsed: c.parsed };
+  // Electronic speed limiter: a design choice between the required top speed
+  // and the tyre's established speed (pass speedLimiter: false to leave it out).
+  let limiter = null;
+  if (speedLimiter && tyre) {
+    const est = tyre.applicability.establishedMaxSpeedKmh;
+    const d = speedLimiter === true
+      ? designSpeedLimiter({ requiredKmh: config.requiredTopSpeedKmh, tyreEstablishedKmh: est, tyreBasis: `${tyre.ratings.speedSymbol}, ${tyre.id}` })
+      : speedLimiter;
+    limiter = d;
+    if (!d.error) veh.props.vehicle.speedLimiter = d;
+  }
+  sources.speedLimiter = !limiter ? "none (no speed limiter in this design)" : limiter.error ? `not applied: ${limiter.error}` : limiter.basis;
+  return { ir, configuration: { config, sources }, selection, parsed: c.parsed, speedLimiter: limiter };
 }
 
 const kgOf = (m) => (typeof m === "number" ? m : parseFloat(String(m)));
@@ -282,19 +329,26 @@ function tyreOptions({ b, gear, tyreEntry, load, s }) {
       basis: `${diff.ratings.finalDriveOptions.published} Rev limit ${rpm} rpm (${gear.outputs.revLimitRpm.source}).`,
     });
   }
-  out.options.push({ option: "an electronic speed limit at or below the tyre's established speed", finding: "a design decision, not applied here; it would make the required top speed the limit to verify instead" });
+  const lim = b.ir.nodes.find((n) => n.id === "VEH")?.props?.vehicle?.speedLimiter;
+  out.options.push(lim
+    ? { option: "an electronic speed limit at or below the tyre's established speed", applied: true, finding: `applied as a design choice: set at ${lim.setKmh} km/h (${r1(lim.setKmh / 1.609344)} mph) with a ${lim.overshootAllowanceKmh} km/h overshoot allowance; the tyre is checked against the limited speed`, basis: lim.basis }
+    : { option: "an electronic speed limit at or below the tyre's established speed", applied: false, finding: "a design decision, not applied in this build" });
   out.options.push({ option: "more drag (a higher Cd or frontal area)", finding: "Cd 0.28 is a design target, not a measurement; a measured Cd would move the drag-limited speed either way" });
   const derate = tyreEntry.ratings.highSpeedLoadDerating;
   if (derate && load?.margins?.length) {
+    // The vehicle's top speed (the limiter's set point when it caps it), else
+    // the required speed; the first table row at or above it (conservative).
     const vReqKmh = b.configuration.config.requiredTopSpeedKmh;
-    const row = derate.table.filter((x) => x.mph * 1.609344 <= (vReqKmh ?? 0) + 1e-6).at(-1);
+    const lim = b.ir.nodes.find((n) => n.id === "VEH")?.props?.vehicle?.speedLimiter;
+    const atKmh = lim ? lim.setKmh : vReqKmh;
+    const row = Number.isFinite(atKmh) ? derate.table.find((x) => x.mph * 1.609344 >= atKmh - 1e-6) : null;
     if (row) {
       const capKg = (row.loadPct / 100) * tyreEntry.applicability.maxLoadKg;
       const worst = Math.max(...load.margins.map((m) => m.demand / 9.80665));
       out.highSpeedLoad = {
-        atMph: row.mph, inflationIncreasePsi: row.psi, loadCapacityPct: row.loadPct, capacityKg: r1(capKg), worstStaticLoadKg: r1(worst), pass: worst <= capKg,
+        forSpeedKmh: r1(atKmh), forSpeedBasis: lim ? "speed limiter set point" : "required top speed", atMph: row.mph, inflationIncreasePsi: row.psi, loadCapacityPct: row.loadPct, capacityKg: r1(capKg), worstStaticLoadKg: r1(worst), pass: worst <= capKg,
         source: derate.source.url,
-        note: "Michelin's Y-speed-rated load/inflation table at the required top speed; static loads, no downforce or load transfer",
+        note: "Michelin's Y-speed-rated load/inflation table, first row at or above the vehicle's top speed (conservative); static loads, no downforce or load transfer",
       };
     }
   }
@@ -306,8 +360,8 @@ function tyreOptions({ b, gear, tyreEntry, load, s }) {
  * mass breakdown, critical components, tyre and top-speed status, and the
  * components with their sources.
  */
-export function carAcceptance(brief) {
-  const b = buildCarFromLibrary(brief);
+export function carAcceptance(brief, opts = {}) {
+  const b = buildCarFromLibrary(brief, opts);
   if (b.error) return { ok: false, error: b.error };
   const opened = openDesign(b.ir);
   if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
@@ -358,9 +412,12 @@ export function carAcceptance(brief) {
       },
       caveats: acc.outputs.caveats.value,
       criticalComponents: acc.outputs.criticalComponents.value.map((c) => ({ category: c.category, status: c.status, parts: (c.parts || []).map((p) => `${p.id}:${p.state}`), ...(c.reason ? { reason: c.reason } : {}) })),
-      tyreSpeed: { status: tyre?.status ?? "not run", failures: tyre?.failures || [], margins: (tyre?.margins || []).map((m) => ({ check: m.check, demandKmh: r1(m.demand * 3.6), establishedKmh: r1(m.capacity * 3.6), pass: m.utilization <= 1 })) },
+      tyreSpeed: { status: tyre?.status ?? "not run", demandBasis: tyre?.outputs?.demandBasis?.value ?? null, failures: tyre?.failures || [], margins: (tyre?.margins || []).map((m) => ({ check: m.check, demandKmh: r1(m.demand * 3.6), establishedKmh: r1(m.capacity * 3.6), pass: m.utilization <= 1, ...(m.reason ? { reason: m.reason } : {}) })) },
       topSpeed: {
         mph: r1(claim.mph), kmh: r1(claim.value * 3.6), status: claim.status, basis: claim.basis,
+        limitedBy: claim.limitedBy,
+        unlimitedMph: r1(claim.unlimitedMph), unlimitedKmh: r1(claim.unlimitedMph * 1.609344), unlimitedStatus: claim.unlimitedStatus,
+        speedLimiter: claim.speedLimiter,
         dragLimitedMph: r1(claim.dragLimitedMph), gearLimitedMph: r1(claim.gearLimitedMph),
         ...(claim.gearLimitedMphRange ? { gearLimitedMphRange: { low: r1(claim.gearLimitedMphRange.low), high: r1(claim.gearLimitedMphRange.high), rpm: claim.gearLimitedMphRange.rpm } } : {}),
         gearLimitStatus: claim.gearLimitStatus, revLimit: claim.revLimit,

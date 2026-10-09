@@ -11,8 +11,8 @@ import {
   loadLibrary, validateLibrary, validateEntry, checkApplicability, selectComponent, getComponent,
   tyreSpeedCapability, loadIndexKg,
 } from "../lib/conkay/components/index.js";
-import { CRITICAL_VEHICLE_COMPONENTS } from "../lib/conkay/physics/solvers/vehicle-acceptance.js";
-import { buildCarFromLibrary, carAcceptance } from "../lib/conkay/compiler/car-from-library.js";
+import { CRITICAL_VEHICLE_COMPONENTS, ACCEPTANCE_VERDICT } from "../lib/conkay/physics/solvers/vehicle-acceptance.js";
+import { buildCarFromLibrary, carAcceptance, designSpeedLimiter, SPEED_LIMITER_OVERSHOOT_KMH } from "../lib/conkay/compiler/car-from-library.js";
 import { GEAR_LIMIT_STATUS } from "../lib/conkay/physics/solvers/powertrain.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 
@@ -164,14 +164,15 @@ function fullVehicle({ placeholder = null, rating = "Y", fuelType = "electric", 
 }
 
 describe("Acceptance gate: a critical placeholder means not physically credible", () => {
-  it("every critical component real, tyre and requirement fine: the gate passes (claims still unvalidated)", () => {
+  it("every critical component real, tyre and requirement fine: credible with caveats (WARN), never a bare pass", () => {
     const s = open(fullVehicle({ kw: 230 }));
     const ts = s.result("vehicle.top-speed@V").outputs.topSpeed.value;
     assert.ok(ts > 180 * 0.44704 && ts < 300 / 3.6, `top speed ${ts * 3.6} km/h should sit between the requirement and the Y rating`);
     const e = s.result("vehicle.acceptance@V");
-    assert.equal(e.status, "PASS", JSON.stringify(e.failures));
-    assert.equal(e.outputs.verdict.value, "screening_pass_claims_unvalidated");
+    assert.equal(e.status, "WARN", JSON.stringify(e.failures));
+    assert.equal(e.outputs.verdict.value, ACCEPTANCE_VERDICT.CREDIBLE_WITH_CAVEATS);
     assert.ok(e.outputs.caveats.value.some((c) => /model output/.test(c)));
+    assert.ok(e.warnings.some((w) => /^caveat: The top speed is a model output/.test(w)), "the caveats are the WARN's warnings");
     assert.equal(e.outputs.criticalComponents.value.find((c) => c.category === "exhaust").status, "not_applicable");
   });
 
@@ -305,6 +306,49 @@ describe("Top speed is a model output", () => {
     assert.ok(close(g.outputs.gearLimitedTopSpeedRange.value.low, atRpm(6000)));
     assert.match(g.warnings.join(), /depends on the estimated redline/);
     assert.ok(s.result("vehicle.acceptance@V").outputs.caveats.value.some((c) => /estimated redline/.test(c)));
+  });
+});
+
+describe("Speed limiter: a design choice that caps the top speed", () => {
+  const limited = (lim, kw = 300) => {
+    const ir = fullVehicle({ kw, rating: "Y" });
+    ir.nodes[0].props.vehicle.speedLimiter = lim;
+    return open(ir);
+  };
+  it("caps the top speed; the tyre is checked against the limited speed with the limiter as the reason; the unlimited output stays", () => {
+    const s = limited({ setKmh: 295, overshootAllowanceKmh: 5, basis: "test" });
+    const ts = s.result("vehicle.top-speed@V").outputs;
+    assert.ok(ts.unlimitedTopSpeed.value > 300 / 3.6);
+    assert.ok(close(ts.topSpeed.value, 295 / 3.6));
+    assert.equal(ts.limitedBy.value, "speed limiter (design choice)");
+    assert.equal(ts.speedLimiter.status, "design_choice_unverified");
+    assert.ok(ts.topSpeed.unverifiedDependencies.includes("speed_limiter"));
+    const tyre = s.result("tire.speed-rating@V");
+    assert.equal(tyre.status, "PASS");
+    assert.equal(tyre.outputs.demandBasis.value, "speed limiter (design choice)");
+    assert.ok(tyre.inputs.unlimitedModelTopSpeed.value > 300 / 3.6);
+    assert.ok(tyre.margins.filter((m) => !m.hard).every((m) => /speed limiter/.test(m.reason)));
+    assert.equal(s.result("requirement.check@VMAX").status, "PASS", "180 mph passes against the limited 295 km/h");
+    const acc = s.result("vehicle.acceptance@V");
+    assert.equal(acc.outputs.verdict.value, ACCEPTANCE_VERDICT.CREDIBLE_WITH_CAVEATS);
+    assert.ok(acc.outputs.caveats.value.some((c) => /speed limiter that is a design choice/.test(c)));
+    const claim = acc.outputs.performanceClaims.value[0];
+    assert.ok(claim.unlimitedMph > claim.mph);
+    assert.equal(claim.speedLimiter.binding, true);
+  });
+  it("a set point below the requirement fails the requirement; set point + allowance above the tyre fails the tyre", () => {
+    assert.equal(limited({ setKmh: 280, overshootAllowanceKmh: 5 }).result("requirement.check@VMAX").status, "FAIL");
+    const s = limited({ setKmh: 298, overshootAllowanceKmh: 5 });
+    assert.equal(s.result("tire.speed-rating@V").status, "FAIL");
+    assert.match(s.result("vehicle.acceptance@V").failures.join(), /overshoot allowance .* fails \(300 km\/h established vs 303 km\/h speed limiter set point \+ design overshoot allowance\)/);
+  });
+  it("a limiter set above the unlimited speed doesn't bind: the model output stays the demand", () => {
+    const s = limited({ setKmh: 400, overshootAllowanceKmh: 5 }, 230);
+    const ts = s.result("vehicle.top-speed@V").outputs;
+    assert.equal(ts.speedLimiter.value.binding, false);
+    assert.ok(close(ts.topSpeed.value, ts.unlimitedTopSpeed.value));
+    assert.equal(s.result("tire.speed-rating@V").outputs.demandBasis.value, "model top speed (model output, unvalidated)");
+    assert.match(limited({ setKmh: -1 }).result("vehicle.top-speed@V").reason, /setKmh must be a positive number/);
   });
 });
 
@@ -464,10 +508,10 @@ describe("Car brief from the component library (acceptance)", () => {
     assert.equal(r.ok, true, r.error);
     const rep = r.report;
     for (const c of rep.criticalComponents) assert.equal(c.status, "real", c.category);
-    assert.equal(rep.verdict, "not_physically_credible");
-    assert.ok(!rep.failures.some((f) => /critical component/.test(f)), rep.failures.join("\n"));
-    assert.equal(rep.failures.length, 4);
-    for (const f of rep.failures) assert.match(f, /TIRE_(FL|FR|RL|RR) established speed ≥ model top speed .* fails \(300 km\/h established vs \d+ km\/h model output\)/);
+    // With the speed limiter (a design choice) nothing fails; the pass rests on caveats.
+    assert.equal(rep.verdict, "credible_with_caveats");
+    assert.equal(rep.status, "WARN");
+    assert.deepEqual(rep.failures, []);
     // Mass by state: no placeholders left; a lower bound under the 2,500 lb target.
     const mb = rep.massBreakdown;
     assert.ok(Math.abs(mb.pct.sourced + mb.pct.estimated + mb.pct.computed + mb.pct.placeholder - 100) < 0.2);
@@ -480,29 +524,71 @@ describe("Car brief from the component library (acceptance)", () => {
     assert.equal(mb.vsTarget.targetLb, 2500);
     assert.ok(mb.vsTarget.totalKg < mb.vsTarget.targetKg);
     assert.ok(mb.sourcedKgBySourceKind.thirdPartyMeasurement > 0 && mb.sourcedKgBySourceKind.manufacturerSpec > 0);
-    // Top speed: the lower of drag- and gear-limited, still a model output.
+    // Top speed: capped by the limiter at 295 km/h; the unlimited speed is the
+    // lower of drag- and gear-limited, still a model output.
     const t = rep.topSpeed;
     assert.equal(t.status, "model_output_unvalidated");
-    assert.ok(close(t.mph, Math.min(t.dragLimitedMph, t.gearLimitedMph), 1e-3));
+    assert.equal(t.kmh, 295);
+    assert.equal(t.limitedBy, "speed limiter (design choice)");
+    assert.equal(t.speedLimiter.setKmh, 295);
+    assert.equal(t.speedLimiter.status, "design_choice_unverified");
+    assert.equal(t.unlimitedStatus, "model_output_unvalidated");
+    assert.ok(close(t.unlimitedMph, Math.min(t.dragLimitedMph, t.gearLimitedMph), 1e-3));
+    assert.ok(t.unlimitedKmh > 300, "unlimited, the model is above the tyre's 300 km/h");
     assert.equal(t.gearLimitStatus, t.gearLimitedMph < t.dragLimitedMph ? "gear_limited" : "not_gear_limited");
     assert.equal(t.revLimit.rpm, 7500);
     assert.equal(t.finalDrive.value, 3.55);
     assert.deepEqual(t.gearLimitedMphRange.rpm, { low: 7000, high: 7500 });
-    assert.equal(t.unverifiedDependencies.length, 6);
+    assert.equal(t.unverifiedDependencies.length, 7);
+    assert.ok(t.unverifiedDependencies.some((d) => d.id === "speed_limiter"));
     assert.match(t.unverifiedDependencies.find((d) => d.id === "gearing").evidence, /final drive 3\.55/);
-    // Y meets the 180 mph requirement but not the model's own top speed.
+    // Y meets the 180 mph requirement and the limited speed; the receipt names the limiter.
+    assert.equal(rep.tyreSpeed.status, "PASS");
+    assert.equal(rep.tyreSpeed.demandBasis, "speed limiter (design choice)");
     assert.ok(rep.tyreSpeed.margins.filter((m) => /required/.test(m.check)).every((m) => m.pass));
-    assert.ok(rep.tyreSpeed.margins.filter((m) => /model top speed/.test(m.check)).every((m) => !m.pass));
+    const limited = rep.tyreSpeed.margins.filter((m) => /limited top speed/.test(m.check));
+    assert.equal(limited.length, 4);
+    assert.ok(limited.every((m) => m.pass && m.demandKmh === 295 && /speed limiter/.test(m.reason)));
+    assert.ok(rep.tyreSpeed.margins.filter((m) => /overshoot allowance/.test(m.check)).every((m) => m.pass && m.demandKmh === 300));
+    assert.ok(!rep.tyreSpeed.margins.some((m) => /model top speed/.test(m.check)), "the unlimited model output is not the tyre's demand while the limiter caps it");
+    assert.ok(rep.requirements.every((r) => r.status === "PASS"));
     // Options, without changing the physics: no available final drive keeps the gear limit within 300 km/h.
     const gearOpt = rep.tyreOptions.options.find((o) => /final drive/.test(o.option));
     assert.deepEqual(gearOpt.perRatio.map((x) => x.finalDrive), [3.31, 3.55, 3.73, 4.09]);
     assert.ok(gearOpt.perRatio.every((x) => !x.withinTyre));
     assert.match(rep.tyreOptions.options[0].finding, /No published manufacturer rating above 300 km\/h/);
-    assert.equal(rep.tyreOptions.highSpeedLoad.loadCapacityPct, 90);
+    assert.equal(rep.tyreOptions.highSpeedLoad.forSpeedKmh, 295);
+    assert.equal(rep.tyreOptions.highSpeedLoad.atMph, 186, "the first Michelin row at or above 183.3 mph");
+    assert.equal(rep.tyreOptions.highSpeedLoad.loadCapacityPct, 85);
+    assert.equal(rep.tyreOptions.highSpeedLoad.pass, true);
+    assert.equal(rep.tyreOptions.options.find((o) => /speed limit/.test(o.option)).applied, true);
     assert.ok(rep.caveats.some((c) => /REQ_topSpeed passes on a model output/.test(c)));
     assert.ok(rep.caveats.some((c) => /REQ_mass passes on a lower-bound mass/.test(c)));
     assert.ok(rep.caveats.some((c) => /estimated redline/.test(c)));
+    // The caveats a pass rests on stay prominent.
+    assert.ok(rep.caveats.some((c) => /speed limiter that is a design choice/.test(c) && /355\.\d km\/h/.test(c)));
+    assert.ok(rep.caveats.some((c) => /Cd 0\.28 is unvalidated/.test(c)));
+    assert.ok(rep.caveats.some((c) => /item\(s\) the parts' published masses exclude/.test(c)));
     for (const c of rep.components) assert.match(c.source, /^https:\/\//, c.node);
+  });
+
+  it("without the speed limiter the same car fails on the tyre against the unlimited model output (the physics is unchanged)", () => {
+    const rep = carAcceptance(BRIEF, { speedLimiter: false }).report;
+    assert.equal(rep.verdict, "not_physically_credible");
+    assert.equal(rep.failures.length, 4);
+    for (const f of rep.failures) assert.match(f, /TIRE_(FL|FR|RL|RR) established speed ≥ model top speed .* fails \(300 km\/h established vs \d+ km\/h model output\)/);
+    assert.equal(rep.topSpeed.speedLimiter, null);
+    assert.ok(close(rep.topSpeed.mph, rep.topSpeed.unlimitedMph, 1e-9));
+    assert.equal(rep.tyreOptions.options.find((o) => /speed limit/.test(o.option)).applied, false);
+  });
+
+  it("the limiter set point is derived, not picked: tyre established speed − overshoot allowance, at or above the requirement", () => {
+    const d = designSpeedLimiter({ requiredKmh: 180 * 1.609344, tyreEstablishedKmh: 300 });
+    assert.equal(d.setKmh, 295);
+    assert.equal(d.overshootAllowanceKmh, SPEED_LIMITER_OVERSHOOT_KMH);
+    assert.match(d.basis, /5\.3 km\/h \(1\.8%\) above the required 289\.7 km\/h/);
+    assert.match(d.sources[0].url, /^https:\/\/www\.legislation\.gov\.uk\//);
+    assert.match(designSpeedLimiter({ requiredKmh: 180 * 1.609344, tyreEstablishedKmh: 290 }).error, /no set point fits/);
   });
 
   it("the Realization Package carries the mass breakdown and the acceptance result", () => {
@@ -510,7 +596,9 @@ describe("Car brief from the component library (acceptance)", () => {
     assert.ok(pkg["engineering/mass-breakdown.json"]);
     assert.ok(pkg["engineering/acceptance.json"]);
     assert.match(pkg["README.md"], /## Mass by state/);
-    assert.match(pkg["README.md"], /not_physically_credible/);
+    assert.match(pkg["README.md"], /credible_with_caveats/);
+    assert.match(pkg["README.md"], /caveat: The vehicle top speed/);
+    assert.match(pkg["README.md"], /limited by a speed limiter at 295 km\/h, a design choice; unlimited model output 220\.\d mph/);
     assert.match(pkg["README.md"], /model_output_unvalidated/);
   });
 

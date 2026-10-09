@@ -17,8 +17,12 @@
 // tire.speed-rating: each tyre's established speed (ISO 4000-1 / ETRTO
 // speed symbol, from the cited table in the component library) against the
 // REQUIRED top speed (a hard failure when below) and against the model's
-// top speed (a model output, unvalidated). "(Y)" and "ZR" count above 300 /
-// 240 km/h only with the manufacturer's explicit rating
+// top speed (a model output, unvalidated). When the design has an
+// electronic speed limiter (a design choice) that caps the top speed, the
+// second check is against the limited speed instead, and against the set
+// point plus the limiter's design overshoot allowance; the receipt names the
+// limiter as the reason and keeps the unlimited model output. "(Y)" and "ZR"
+// count above 300 / 240 km/h only with the manufacturer's explicit rating
 // (props.tireMaxSpeedKmh + props.tireMaxSpeedSource).
 //
 // tire.load-index: each tyre's static load (its axle's load shared by the
@@ -102,10 +106,10 @@ export const gearing = registerSolver({
 
 export const tireRating = registerSolver({
   id: "tire.speed-rating",
-  version: "2.0.0",
+  version: "2.1.0",
   domain: "safety.tire-speed",
   fidelity: 0,
-  method: "tyre established speed (ISO 4000-1 speed symbol) ≥ required top speed (hard) and ≥ model top speed",
+  method: "tyre established speed (ISO 4000-1 speed symbol) ≥ required top speed (hard) and ≥ the vehicle's top speed: the model output, or the speed limiter's set point (and set point + overshoot allowance) when a limiter caps it",
   reference: `Speed symbols (km/h): ${Object.entries(SPEED_SYMBOLS).map(([k, v]) => `${k} ${v}`).join(", ")}; (Y) over 300 only with the manufacturer's explicit rating. Sources: ${cite("speedSymbols")}`,
   targets: (g) => vehicles(g).filter((id) => [...g.nodes.values()].some((n) => n.props?.speedRating != null)),
   run(ctx, id) {
@@ -116,14 +120,23 @@ export const tireRating = registerSolver({
     const vReq = req ? ctx.requirement(req.id)?.min?.si : null;
     const gear = ctx.result("vehicle.gearing", id);
     const ts = ctx.result("vehicle.top-speed", id);
-    const vmax = gear?.outputs?.effectiveTopSpeed?.value ?? ts?.outputs?.topSpeed?.value;
-    const source = Number.isFinite(gear?.outputs?.effectiveTopSpeed?.value) ? gear.runId : ts?.runId;
+    // vehicle.top-speed already takes the lower of drag- and gear-limited,
+    // capped by the speed limiter when the design has one.
+    const vmax = ts?.outputs?.topSpeed?.value ?? gear?.outputs?.effectiveTopSpeed?.value;
+    const source = Number.isFinite(ts?.outputs?.topSpeed?.value) ? ts.runId : gear?.runId;
+    const lim = ts?.outputs?.speedLimiter?.value;
+    const limited = lim?.binding === true;
     if (!Number.isFinite(vmax) && !Number.isFinite(vReq)) return { notComputed: "neither a required top speed nor the vehicle's top speed is known", covers };
     const margins = [];
     const failures = [];
     const inputs = {};
     if (Number.isFinite(vReq)) inputs.requiredTopSpeed = { value: vReq, unit: "m/s", source: req.id };
-    if (Number.isFinite(vmax)) inputs.modelTopSpeed = { value: vmax, unit: "m/s", source, status: "model_output_unvalidated" };
+    if (Number.isFinite(vmax) && !limited) inputs.modelTopSpeed = { value: vmax, unit: "m/s", source, status: "model_output_unvalidated" };
+    if (limited) {
+      inputs.limitedTopSpeed = { value: vmax, unit: "m/s", source, basis: "speed limiter set point (design choice)" };
+      inputs.speedLimiter = { value: lim.setKmh, unit: "km/h", overshootAllowanceKmh: lim.overshootAllowanceKmh, basis: lim.basis, status: "design_choice_unverified", source };
+      inputs.unlimitedModelTopSpeed = { value: ts.outputs.unlimitedTopSpeed.value, unit: "m/s", source, status: "model_output_unvalidated", note: "not the tyre's demand while the limiter caps the speed" };
+    }
     const perTyre = {};
     for (const t of tires) {
       const cap = tyreSpeedCapability(ctx.get(t.id, "props.speedRating"), {
@@ -138,13 +151,23 @@ export const tireRating = registerSolver({
         margins.push({ check: `${t.id} established speed ≥ required top speed`, demand: vReq, capacity: capMs, unit: "m/s", hard: true });
         if (capMs < vReq) failures.push(`${t.id}: ${cap.symbol} is established for ${cap.kmh} km/h (${(cap.kmh / 1.609344).toFixed(0)} mph), below the required ${(vReq * 3.6).toFixed(0)} km/h (${(vReq / 0.44704).toFixed(0)} mph)`);
       }
-      if (Number.isFinite(vmax)) {
-        margins.push({ check: `${t.id} established speed ≥ model top speed (model output, unvalidated)`, demand: vmax, capacity: capMs, unit: "m/s" });
+      if (Number.isFinite(vmax) && !limited) {
+        margins.push({ check: `${t.id} established speed ≥ model top speed (model output, unvalidated)`, demand: vmax, capacity: capMs, unit: "m/s", basis: "model output" });
+      }
+      if (limited) {
+        margins.push({ check: `${t.id} established speed ≥ limited top speed (speed limiter set at ${lim.setKmh} km/h, design choice)`, demand: vmax, capacity: capMs, unit: "m/s", basis: "speed limiter set point", reason: "speed limiter (design choice) caps the top speed" });
+        if (Number.isFinite(lim.overshootAllowanceKmh)) {
+          margins.push({ check: `${t.id} established speed ≥ limiter set point + overshoot allowance (${lim.setKmh} + ${lim.overshootAllowanceKmh} km/h)`, demand: (lim.setKmh + lim.overshootAllowanceKmh) * KMH, capacity: cap.kmh * KMH, unit: "m/s", basis: "speed limiter set point + design overshoot allowance", reason: "speed limiter (design choice) caps the top speed" });
+        }
       }
     }
     return {
       inputs,
-      outputs: { tires: { value: tires.length }, establishedSpeeds: { value: perTyre } },
+      outputs: {
+        tires: { value: tires.length }, establishedSpeeds: { value: perTyre },
+        demandBasis: { value: limited ? "speed limiter (design choice)" : Number.isFinite(vmax) ? "model top speed (model output, unvalidated)" : "required top speed only" },
+      },
+      ...(limited ? { assumptions: [`The vehicle's top speed is the speed limiter's ${lim.setKmh} km/h set point, a design choice whose calibration and overshoot are not verified; without it the model gives ${(ts.outputs.unlimitedTopSpeed.value * 3.6).toFixed(0)} km/h.`] } : {}),
       margins,
       failures,
       covers,

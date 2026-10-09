@@ -15,12 +15,25 @@
 // fails on a hard tyre speed or load failure, a failed requirement, or a
 // critical part whose published variant doesn't fit the configuration. The
 // top speed is reported as a model output with its unverified dependencies,
-// never as a validated claim.
+// never as a validated claim; with an electronic speed limiter (a design
+// choice) the limited and the unlimited speeds are both reported.
+//
+// Verdicts: "not_physically_credible" (any failure); otherwise
+// "credible_with_caveats" (status WARN) when anything the pass rests on is
+// unverified (a lower-bound mass, a model-output top speed, an estimated
+// redline, a speed limiter not yet built), the caveats listed first; and
+// "screening_pass_claims_unvalidated" only when there is no caveat at all.
 
 import { registerSolver } from "../registry.js";
 import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 import { summarizeMassStates } from "../../verification/mass-state.js";
-import { TOP_SPEED_CLAIM_STATUS, TOP_SPEED_UNVERIFIED_DEPENDENCIES } from "./vehicle.js";
+import { TOP_SPEED_CLAIM_STATUS, TOP_SPEED_UNVERIFIED_DEPENDENCIES, SPEED_LIMITER_DEPENDENCY } from "./vehicle.js";
+
+export const ACCEPTANCE_VERDICT = Object.freeze({
+  NOT_CREDIBLE: "not_physically_credible",
+  CREDIBLE_WITH_CAVEATS: "credible_with_caveats",
+  SCREENING_PASS: "screening_pass_claims_unvalidated",
+});
 
 export const CRITICAL_VEHICLE_COMPONENTS = [
   { id: "engine_or_motor", label: "engine or motor" },
@@ -135,7 +148,7 @@ const criticalOf = (ctx, n) => {
 
 export const vehicleAcceptance = registerSolver({
   id: "vehicle.acceptance",
-  version: "1.1.0",
+  version: "1.2.0",
   domain: "verification.acceptance",
   fidelity: 0,
   method: "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part",
@@ -183,7 +196,7 @@ export const vehicleAcceptance = registerSolver({
     if (!tyre) failures.push("tyre speed rating not checked: no tyre with a speed rating");
     else if (tyre.status === "FAIL") {
       for (const f of tyre.failures || []) failures.push(`tyre speed rating (hard): ${f}`);
-      for (const m of tyre.margins.filter((x) => !x.hard && !(x.utilization <= 1))) failures.push(`tyre speed rating: ${m.check} fails (${(m.capacity * 3.6).toFixed(0)} km/h established vs ${(m.demand * 3.6).toFixed(0)} km/h model output)`);
+      for (const m of tyre.margins.filter((x) => !x.hard && !(x.utilization <= 1))) failures.push(`tyre speed rating: ${m.check} fails (${(m.capacity * 3.6).toFixed(0)} km/h established vs ${(m.demand * 3.6).toFixed(0)} km/h ${m.basis || "model output"})`);
     } else if (tyre.status === "NOT_COMPUTED") failures.push(`tyre speed rating not computed: ${tyre.reason}`);
     const load = ctx.result("tire.load-index", id);
     if (load?.status === "FAIL") for (const m of load.margins.filter((x) => !(x.utilization <= 1))) failures.push(`tyre load index: ${m.check} fails`);
@@ -199,10 +212,14 @@ export const vehicleAcceptance = registerSolver({
       drag_model: `Cd ${ts?.inputs?.dragCoefficient?.value ?? "?"} (${ts?.inputs?.dragCoefficient?.source ?? "not given"}); frontal area ${ts?.inputs?.frontalArea?.source ?? "not given"}`,
       drivetrain_losses: `driveline efficiency ${ts?.inputs?.drivelineEfficiency?.value ?? "?"} (${ts?.inputs?.drivelineEfficiency?.source ?? "not given"})`,
       gearing: !gear ? "no gearing in the design (vehicle.gearing did not run)" : gear.status === "NOT_COMPUTED" ? `not computed: ${gear.reason}` : gearEvidence(gear),
-      tyre_limits: `speed rating ${tyre?.status ?? "not run"}; load index ${load?.status ?? "not run"}`,
+      tyre_limits: `speed rating ${tyre?.status ?? "not run"}${tyre?.outputs?.demandBasis ? ` (against the ${tyre.outputs.demandBasis.value})` : ""}; load index ${load?.status ?? "not run"}`,
       stability: "no solver yet",
       thermal: "no solver yet",
+      speed_limiter: "design choice: no limiter calibration, road-speed signal accuracy or overshoot test in the design",
     };
+    const lim = ts?.outputs?.speedLimiter?.value || null;
+    const unlimitedV = ts?.outputs?.unlimitedTopSpeed?.value;
+    const deps = lim ? [...TOP_SPEED_UNVERIFIED_DEPENDENCIES, SPEED_LIMITER_DEPENDENCY] : TOP_SPEED_UNVERIFIED_DEPENDENCIES;
     // The top speed: the lower of drag-limited and gear-limited when the
     // gearing is known, else the drag-limited model output alone.
     const dragV = ts?.outputs?.dragLimitedTopSpeed?.value ?? ts?.outputs?.topSpeed?.value;
@@ -215,7 +232,12 @@ export const vehicleAcceptance = registerSolver({
       unit: "m/s",
       mph: Number.isFinite(v) ? v / 0.44704 : null,
       status: Number.isFinite(v) ? TOP_SPEED_CLAIM_STATUS : "not_computed",
-      basis: Number.isFinite(effV) ? "lower of the drag-limited and gear-limited top speeds" : "drag-limited only (gearing not computed)",
+      basis: lim?.binding
+        ? `speed limiter set point (design choice, ${lim.setKmh} km/h); without it, ${Number.isFinite(effV) ? "the lower of the drag-limited and gear-limited top speeds" : "drag-limited"}`
+        : Number.isFinite(effV) ? "lower of the drag-limited and gear-limited top speeds" : "drag-limited only (gearing not computed)",
+      unlimitedMph: Number.isFinite(unlimitedV) ? unlimitedV / 0.44704 : null,
+      unlimitedStatus: Number.isFinite(unlimitedV) ? TOP_SPEED_CLAIM_STATUS : "not_computed",
+      speedLimiter: lim ? { setKmh: lim.setKmh, setMph: lim.setKmh / 1.609344, overshootAllowanceKmh: lim.overshootAllowanceKmh, binding: lim.binding, status: "design_choice_unverified", basis: lim.basis, sources: lim.sources } : null,
       dragLimitedMph: Number.isFinite(dragV) ? dragV / 0.44704 : null,
       gearLimitedMph: Number.isFinite(gear?.outputs?.gearLimitedTopSpeed?.value) ? gear.outputs.gearLimitedTopSpeed.value / 0.44704 : null,
       ...(gl ? { gearLimitedMphRange: { low: gl.low / 0.44704, high: gl.high / 0.44704, rpm: gl.rpm } } : {}),
@@ -223,7 +245,7 @@ export const vehicleAcceptance = registerSolver({
       revLimit: gear?.outputs?.revLimitRpm ? { rpm: gear.outputs.revLimitRpm.value, source: gear.outputs.revLimitRpm.source } : null,
       limitedBy: ts?.outputs?.limitedBy?.value ?? null,
       source: ts?.runId ?? null,
-      unverifiedDependencies: TOP_SPEED_UNVERIFIED_DEPENDENCIES.map((d) => ({ ...d, evidence: evidence[d.id] })),
+      unverifiedDependencies: deps.map((d) => ({ ...d, evidence: evidence[d.id] })),
     }];
 
     // What a passing requirement does and doesn't show.
@@ -232,13 +254,20 @@ export const vehicleAcceptance = registerSolver({
     const caveats = [];
     if (missingCats.length) caveats.push(`The kerb mass is a lower bound: ${missingCats.join(", ")} ${missingCats.length === 1 ? "is" : "are"} not in the design and carry no mass.`);
     if (excluded.length) caveats.push(`The kerb mass is a lower bound: ${excluded.length} item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).`);
+    if (Number.isFinite(v)) {
+      const dragSrc = ts.inputs?.dragCoefficient?.source || "";
+      caveats.push(`The top speed is a model output (${TOP_SPEED_CLAIM_STATUS}), not a measurement: Cd ${ts.inputs?.dragCoefficient?.value} is ${/not computed|target|given/i.test(dragSrc) ? `unvalidated (${dragSrc})` : dragSrc}, frontal area ${ts.inputs?.frontalArea?.source}, driveline efficiency ${ts.inputs?.drivelineEfficiency?.value} given.`);
+    }
+    if (lim?.binding) {
+      caveats.push(`The vehicle top speed (${(v * 3.6).toFixed(1)} km/h, ${(v / 0.44704).toFixed(1)} mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated${Number.isFinite(lim.overshootAllowanceKmh) ? `; the tyre check relies on its overshoot staying within the ${lim.overshootAllowanceKmh} km/h design allowance` : ""}. Without it the model gives ${(unlimitedV * 3.6).toFixed(1)} km/h (${(unlimitedV / 0.44704).toFixed(1)} mph, ${TOP_SPEED_CLAIM_STATUS}).`);
+    }
     const redlineBasis = gear?.inputs?.redlineRpm?.basis;
     if (redlineBasis && /estimat/i.test(redlineBasis)) caveats.push(`The gear limit rests on an estimated redline (${gear.inputs.redlineRpm.value} rpm): ${redlineBasis}`);
     for (const r of ctx.graph.requirements.filter((x) => x.of.target === id)) {
       const e = ctx.result("requirement.check", r.id);
       if (e?.status !== "PASS") continue;
       if (r.of.solver === "mass.assembly" && (missingCats.length || excluded.length)) caveats.push(`${r.id} passes on a lower-bound mass.`);
-      if (r.of.solver === "vehicle.top-speed") caveats.push(`${r.id} passes on a model output (${TOP_SPEED_CLAIM_STATUS}), not a validated top speed.`);
+      if (r.of.solver === "vehicle.top-speed") caveats.push(`${r.id} passes on a model output (${TOP_SPEED_CLAIM_STATUS}), not a validated top speed${lim?.binding ? `: the limited speed (the ${lim.setKmh} km/h set point) is reachable only if the unlimited model output holds` : ""}.`);
     }
     const breakdown = bd?.status === "NOT_COMPUTED" || !bd ? null : {
       totalMassKg: bd.outputs.totalMass.value,
@@ -249,10 +278,11 @@ export const vehicleAcceptance = registerSolver({
       excluded,
       lowerBound: missingCats.length > 0 || bd.outputs.unmassed.value.length > 0 || excluded.length > 0,
     };
+    const verdict = failures.length ? ACCEPTANCE_VERDICT.NOT_CREDIBLE : caveats.length ? ACCEPTANCE_VERDICT.CREDIBLE_WITH_CAVEATS : ACCEPTANCE_VERDICT.SCREENING_PASS;
     return {
       inputs: { fuelType: { value: fuelType ?? null, source: "props.vehicle.fuelType" }, massBreakdown: { value: bd?.runId ?? null } },
       outputs: {
-        verdict: { value: failures.length ? "not_physically_credible" : "screening_pass_claims_unvalidated" },
+        verdict: { value: verdict },
         criticalComponents: { value: critical },
         placeholders: { value: notReal.map((c) => c.category) },
         massBreakdown: { value: breakdown },
@@ -260,6 +290,8 @@ export const vehicleAcceptance = registerSolver({
         caveats: { value: caveats },
       },
       failures,
+      // A pass that rests on unverified things is a WARN, its caveats the warnings.
+      warnings: verdict === ACCEPTANCE_VERDICT.CREDIBLE_WITH_CAVEATS ? caveats.map((c) => `caveat: ${c}`) : [],
       assumptions: ["Screening-level acceptance, not a certification. A pass would still leave the top speed a model output until its dependencies are verified."],
     };
   },

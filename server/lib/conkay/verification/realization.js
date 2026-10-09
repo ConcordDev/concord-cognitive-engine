@@ -59,7 +59,7 @@ export function buildRealizationPackage(session) {
     `- ${e.target}: ${e.status === "FAIL" ? "FAIL" : e.status} (${e.outputs?.verdict?.value ?? e.reason})`,
     ...(e.failures || []).map((f) => `  - ${f}`),
     ...(e.outputs?.caveats?.value || []).map((c) => `  - caveat: ${c}`),
-    ...(e.outputs?.performanceClaims?.value || []).filter((c) => Number.isFinite(c.mph)).map((c) => `  - ${c.claim}: ${c.mph.toFixed(1)} mph, ${c.status}; unverified: ${c.unverifiedDependencies.map((d) => d.id).join(", ")}`),
+    ...(e.outputs?.performanceClaims?.value || []).filter((c) => Number.isFinite(c.mph)).map((c) => `  - ${c.claim}: ${c.mph.toFixed(1)} mph, ${c.status}${c.speedLimiter?.binding ? ` (limited by a speed limiter at ${c.speedLimiter.setKmh} km/h, a design choice; unlimited model output ${Number.isFinite(c.unlimitedMph) ? c.unlimitedMph.toFixed(1) : "not computed"} mph)` : ""}; unverified: ${c.unverifiedDependencies.map((d) => d.id).join(", ")}`),
   ]);
 
   const coverage = session.coverage();
