@@ -97,6 +97,18 @@ describe("generateValidatedAsset — end-to-end chain", () => {
     assert.ok(result.feaResult.maxUtilization < 1);
   });
 
+  it("a generated sword carries its per-part mass breakdown and balance check", async () => {
+    const { ARMING_SWORD_PARAMS } = await import("../lib/asset-gen/sword-mass.js");
+    const outDir = fs.mkdtempSync(path.join(tmpDir, "arming-"));
+    const result = await generateValidatedAsset({ archetype: "sword", params: { ...ARMING_SWORD_PARAMS }, outDir });
+    assert.equal(result.ok, true, JSON.stringify({ reason: result.reason, error: result.error }));
+    const b = result.massBreakdown;
+    assert.deepEqual(b.parts.map((q) => q.part), ["pommel", "grip", "tang", "guard", "blade"]);
+    assert.equal(b.parts.find((q) => q.part === "grip").material, "douglas-fir");
+    assert.ok(b.mass_kg < result.massProps.mass_kg, "a wooden grip makes it lighter than the all-steel figure");
+    assert.equal(typeof b.referenceCheck.realistic, "boolean");
+  });
+
   it("defaults material to the archetype default (steel-a36) when unspecified", async () => {
     const outDir = fs.mkdtempSync(path.join(tmpDir, "defmat-"));
     const result = await generateValidatedAsset({
