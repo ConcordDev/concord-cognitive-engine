@@ -11,7 +11,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 
 import { buildCarFromLibrary, carAcceptance, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
-import { LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, deriveGroundClearance } from "../lib/conkay/compiler/car-layout.js";
+import { LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, deriveGroundClearance, checkHalfshaftAngle } from "../lib/conkay/compiler/car-layout.js";
 import { DesignGraph } from "../lib/conkay/graph/design-graph.js";
 import { cadBodyRequest } from "../lib/conkay/physics/solvers/cad-body.js";
 import { compileDesignIR } from "../lib/conkay/compiler/design-ir.js";
@@ -20,6 +20,7 @@ import { runBodyKernelAsync, kernelPythonPath } from "../lib/conkay/cad/body-ker
 import { CAD_BODY_DEFAULTS, CAD_BODY_BASIS, CAD_BODY_MATERIAL } from "../lib/conkay/cad/body-params.js";
 import { getMaterial } from "../lib/conkay/materials/index.js";
 import { obb, aabb } from "../lib/conkay/packaging/geometry.js";
+import { loadLibrary, governingCvJointLimit } from "../lib/conkay/components/index.js";
 
 const BRIEF = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.";
 const close = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
@@ -146,12 +147,45 @@ describe("Layout revision 2.1: ground clearance toward >= 100 mm", () => {
     assert.ok(close(z(p.ir) - z(old.ir), 0.035, 1e-9));
   });
 
-  it("reports the halfshaft angle the differential rise costs (computed, not checked: no CV limits in the library)", () => {
+  it("checks the halfshaft angle the differential rise costs against the cited CV-joint limit", () => {
     const t = rev.groundClearance.tradeoffs.find((x) => x.item === "rear halfshaft angle");
-    const expected = Math.round((Math.atan2(0.045, 0.8 - 0.5334 / 2) * 180) / Math.PI * 100) / 100;
+    const run = 0.8 - 0.5334 / 2;
+    const expected = Math.round((Math.atan2(0.045, run) * 180) / Math.PI * 100) / 100;
     assert.equal(t.value, expected);
     assert.equal(t.value, 4.82);
-    assert.match(t.note, /not checked/);
+    // governing limit: GKN's VL ball plunging joint, maximum 22 deg (lowest catalogued sideshaft joint)
+    assert.equal(t.check.status, "pass");
+    assert.equal(t.check.limitDeg, 22);
+    assert.equal(t.check.limit.jointType, "VL");
+    assert.equal(t.check.marginDeg, 17.18);
+    const reach = run * Math.tan((22 * Math.PI) / 180);
+    assert.equal(t.check.travelToLimitM.droop, Math.round((reach - 0.045) * 1e4) / 1e4);
+    assert.equal(t.check.travelToLimitM.bump, Math.round((reach + 0.045) * 1e4) / 1e4);
+    assert.match(t.check.limit.source.url, /Driveshafts_Technology_LOEBRO_GB\.pdf$/);
+    assert.ok(t.check.notChecked.some((x) => /suspension travel/.test(x)));
+  });
+
+  it("the halfshaft check fails at or past the limit, and is not run without one", () => {
+    const limit = governingCvJointLimit();
+    const at = checkHalfshaftAngle({ riseM: 0.5 * Math.tan((22 * Math.PI) / 180) + 1e-9, runM: 0.5, limit });
+    assert.equal(at.status, "fail");
+    const past = checkHalfshaftAngle({ riseM: 0.3, runM: 0.3, limit });
+    assert.equal(past.status, "fail");
+    assert.equal(past.angleDeg, 45);
+    assert.equal(past.marginDeg, -23);
+    assert.deepEqual(past.travelToLimitM.droop, 0);
+    assert.equal(checkHalfshaftAngle({ riseM: 0.01, runM: 0.5, limit: null }).status, "not checked");
+  });
+
+  it("the CV-joint table is the library's cited GKN data; the S550 halfshaft joint type stays unknown", () => {
+    const lib = loadLibrary();
+    const r = lib.references.cvJointArticulation;
+    assert.equal(r.sources[0].sha256, "563db0d9815f408fd1e97294230b8e70a2a9e188d265342330f814c96ff6c885");
+    assert.deepEqual(Object.fromEntries(Object.entries(r.table).map(([k, v]) => [k, v.maxDeg])), { AC: 47, UF: 50, VL: 22, DO: 26, GI: 23, AAR: 26 });
+    for (const v of Object.values(r.table)) assert.ok(v.quote.includes(String(v.maxDeg)));
+    const hs = lib.components.find((c) => c.id === "differential.ford.super-8.8-irs.m-4001-88355b").ratings.halfshafts;
+    assert.equal(hs.jointTypes.state, "missing");
+    assert.equal(hs.maxArticulationDeg.value, null);
   });
 
   it("is a pure derivation (no change when nothing is below the required bottom) and can be switched off", () => {

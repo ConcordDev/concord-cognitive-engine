@@ -79,7 +79,7 @@ export function validateLibrary(lib) {
     ids.add(c?.id);
     errors.push(...validateEntry(c));
   }
-  for (const key of ["speedSymbols", "loadIndex"]) {
+  for (const key of ["speedSymbols", "loadIndex", "cvJointArticulation"]) {
     const r = lib.references?.[key];
     if (!r?.table || !Array.isArray(r.sources) || !r.sources.length) errors.push(`references.${key}: table and sources required`);
     else r.sources.forEach((s, i) => validateSource(s, `references.${key}.sources[${i}]`, errors));
@@ -94,6 +94,19 @@ export function getComponent(id) {
 export function listComponents(category) {
   const all = loadLibrary().components;
   return category ? all.filter((c) => c.category === category) : all;
+}
+
+// ── CV joint reference table ─────────────────────────────────────────────
+
+/**
+ * The governing CV-joint angle limit when a halfshaft's joint types are not published: the lowest maximum
+ * articulation angle among the catalogued sideshaft joint types (references.cvJointArticulation).
+ * Returns { maxDeg, jointType, kind, quote, meaning, source } — a maximum articulation angle, not an operating rating.
+ */
+export function governingCvJointLimit() {
+  const r = loadLibrary().references.cvJointArticulation;
+  const [jointType, row] = Object.entries(r.table).sort((a, b) => a[1].maxDeg - b[1].maxDeg)[0];
+  return { maxDeg: row.maxDeg, jointType, kind: row.kind, quote: row.quote, meaning: r.meaning, source: r.sources[0] };
 }
 
 // ── Tyre reference tables ────────────────────────────────────────────────

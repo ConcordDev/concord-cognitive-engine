@@ -20,7 +20,7 @@
 
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
-import { selectComponent, massStateOf, checkApplicability, getComponent } from "../components/index.js";
+import { selectComponent, massStateOf, checkApplicability, getComponent, governingCvJointLimit } from "../components/index.js";
 import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
@@ -334,7 +334,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     let gc = null;
     if (groundClearance && body && tyreE?.dimensions?.overallDiameterM) {
       const targetM = groundClearance.targetM ?? GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.value;
-      gc = deriveGroundClearance({ choices: base, targetM, skinOffsetM: body.skinOffsetM, floorCornerAllowanceM: body.floorCornerAllowanceM, tyreR: tyreE.dimensions.overallDiameterM / 2, diffDims: diffE?.dimensions, track, hold: groundClearance.hold || "hPoint" });
+      gc = deriveGroundClearance({ choices: base, targetM, skinOffsetM: body.skinOffsetM, floorCornerAllowanceM: body.floorCornerAllowanceM, tyreR: tyreE.dimensions.overallDiameterM / 2, diffDims: diffE?.dimensions, track, hold: groundClearance.hold || "hPoint", cvJointLimit: governingCvJointLimit() });
       base = { ...base, ...gc.overrides, groundClearanceTargetM: { value: targetM, basis: GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.basis } };
     }
     const der = deriveRearPackage({
