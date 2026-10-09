@@ -157,6 +157,46 @@ describe('HomeClient', () => {
     await waitFor(() => expect(localStorage.getItem(ENTERED_KEY)).toBe('true'));
   });
 
+  it('in landing="ssr" mode keeps the server-rendered splash for a first-time visitor', async () => {
+    apiGet.mockImplementation((url: string) =>
+      url === '/api/auth/me' ? Promise.reject(new Error('401')) : defaultApiGet(url),
+    );
+    const ssr = document.createElement('div');
+    ssr.id = 'ssr-landing';
+    document.body.appendChild(ssr);
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(
+        <QueryClientProvider client={qc}>
+          <HomeClient landing="ssr" />
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/auth/me'));
+      expect(screen.queryByText('Enter Concord')).not.toBeInTheDocument();
+      expect(ssr.style.display).not.toBe('none');
+    } finally {
+      ssr.remove();
+    }
+  });
+
+  it('in landing="ssr" mode hides the splash for a returning visitor', async () => {
+    enterAsClassicUser();
+    const ssr = document.createElement('div');
+    ssr.id = 'ssr-landing';
+    document.body.appendChild(ssr);
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(
+        <QueryClientProvider client={qc}>
+          <HomeClient landing="ssr" />
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(ssr.style.display).toBe('none'));
+    } finally {
+      ssr.remove();
+    }
+  });
+
   it('shows a loading skeleton then the dashboard for a returning, authenticated user', async () => {
     enterAsClassicUser();
     renderHome();
