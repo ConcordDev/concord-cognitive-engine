@@ -999,7 +999,40 @@
           "title": "Ford Performance M-4001-88355B product page (package dimensions)",
           "retrieved": "2026-10-09"
         },
-        "previous": "only the 21 x 13 x 17 in package dimensions are published"
+        "previous": "only the 21 x 13 x 17 in package dimensions are published",
+        "bounds": {
+          "heightM": {
+            "low": 0.22352,
+            "high": 0.4318,
+            "lowBasis": "the housing encloses the 8.8 in (0.2235 m) ring gear, which turns about the lateral (axle) axis, so it spans 8.8 in vertically and fore-aft; the housing is at least that (walls, bearings and cover add to it, by an amount not published)",
+            "highBasis": "the 17 in package dimension, with the assumed orientation"
+          },
+          "lengthM": {
+            "low": 0.22352,
+            "high": 0.3302,
+            "lowBasis": "as heightM: the ring gear spans 8.8 in fore-aft",
+            "highBasis": "the 13 in package dimension, with the assumed orientation"
+          },
+          "widthM": {
+            "low": null,
+            "high": 0.5334,
+            "lowBasis": "not established: nothing published bounds the housing across the car from below",
+            "highBasis": "the 21 in package dimension, with the assumed orientation"
+          }
+        },
+        "boundsSources": [
+          {
+            "url": "https://performanceparts.ford.com/part/M-4001-88355B",
+            "title": "Ford Performance M-4001-88355B: Package Dimensions 21\" x 13\" x 17\", Package Weight 105 lb; no housing dimensions published",
+            "retrieved": "2026-10-09"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Ford_8.8_axle",
+            "title": "Wikipedia, 'Ford 8.8 axle': 'Ring gear measures 8.8\"' (the designation is the ring gear diameter in inches)",
+            "retrieved": "2026-10-09"
+          }
+        ],
+        "searched": "2026-10-09: no published housing dimensions found (Ford Performance product page, dealer listings, Mustang6G and Corral forums); a dealer listing gives a larger box (22.5 x 22.3 x 17.3 in), which adds nothing to the bound. Values stay estimated: the upper bound is the package, the lower bound the ring gear."
       },
       "ratings": {
         "ringGearIn": 8.8,
