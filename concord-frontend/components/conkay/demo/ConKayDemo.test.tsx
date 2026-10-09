@@ -62,4 +62,22 @@ describe('ConKayDemo', () => {
     expect(await screen.findByText('the web is wider than the flanges')).toBeTruthy();
     expect(screen.queryByText(/FEA util\./)).toBeNull();
   });
+
+  it('shows "warming up" and then the result when the first solve gets a 503', async () => {
+    let calls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('/api/conkay/demo/materials')) return { status: 200, json: async () => ({ ok: true, materials: MATERIALS }) };
+      calls += 1;
+      return calls === 1
+        ? { status: 503, json: async () => ({ ok: false, error: 'service_overloaded' }), headers: { get: () => '1' } }
+        : { status: 200, json: async () => ({ ok: true, saved: false, result: RESULT }) };
+    }));
+    render(<ConKayDemo />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Run FEA/ })[0]);
+    expect(await screen.findByText(/warming up. Retrying/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('FEA util. 29.3%')).toBeTruthy(), { timeout: 3000 });
+    expect(screen.queryByText(/warming up/)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
+

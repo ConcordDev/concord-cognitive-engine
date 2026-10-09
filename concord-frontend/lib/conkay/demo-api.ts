@@ -19,27 +19,46 @@ export function beamQuery(inputs: StudyInputs): URLSearchParams {
   return q;
 }
 
-async function getJson(path: string): Promise<{ status: number; body: Record<string, unknown> | null }> {
+export interface DemoCallOptions {
+  /** Called when the server answered 503 and the call is about to retry. */
+  onWarming?: () => void;
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
+
+async function getOnce(path: string): Promise<{ status: number; retryAfterS: number; body: Record<string, unknown> | null }> {
   const res = await fetch(path, { credentials: 'omit', headers: { accept: 'application/json' } });
   let body: Record<string, unknown> | null = null;
   try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
+  const ra = Number(res.headers?.get?.('retry-after'));
+  return { status: res.status, retryAfterS: Number.isFinite(ra) && ra > 0 ? ra : 1, body };
+}
+
+// A 503 means the server shed the request while busy (e.g. right after a
+// restart). Wait for its Retry-After (at most 3 s) and try once more.
+async function getJson(path: string, opts: DemoCallOptions = {}): Promise<{ status: number; body: Record<string, unknown> | null }> {
+  const first = await getOnce(path);
+  if (first.status !== 503) return first;
+  opts.onWarming?.();
+  await sleep(Math.min(first.retryAfterS, 3) * 1000);
+  return getOnce(path);
 }
 
 function failure(status: number, body: Record<string, unknown> | null, fallback: string): { error: string } {
   if (status === 429) return { error: 'Too many solves from this connection. Wait a minute and try again.' };
+  if (status === 503) return { error: 'The server is busy warming up. Try again in a moment.' };
   const msg = body && typeof body.error === 'string' ? body.error : '';
   return { error: msg || fallback };
 }
 
-export async function fetchDemoMaterials(): Promise<Material[] | { error: string }> {
-  const { status, body } = await getJson('/api/conkay/demo/materials');
+export async function fetchDemoMaterials(opts: DemoCallOptions = {}): Promise<Material[] | { error: string }> {
+  const { status, body } = await getJson('/api/conkay/demo/materials', opts);
   if (status !== 200 || !body?.ok || !Array.isArray(body.materials)) return failure(status, body, 'Could not load materials.');
   return body.materials as Material[];
 }
 
-export async function solveDemoBeam(inputs: StudyInputs): Promise<BeamStudyResult | { error: string }> {
-  const { status, body } = await getJson(`/api/conkay/demo/beam?${beamQuery(inputs)}`);
+export async function solveDemoBeam(inputs: StudyInputs, opts: DemoCallOptions = {}): Promise<BeamStudyResult | { error: string }> {
+  const { status, body } = await getJson(`/api/conkay/demo/beam?${beamQuery(inputs)}`, opts);
   const r = body?.result as Record<string, unknown> | undefined;
   if (status !== 200 || !body?.ok || !r || !Number.isFinite(r.maxStressMPa)) return failure(status, body, 'The solver returned no result.');
   return {
@@ -62,11 +81,12 @@ export async function sweepDemoBeam(
   inputs: StudyInputs,
   param: string,
   values: number[],
+  opts: DemoCallOptions = {},
 ): Promise<DemoSweep | { error: string }> {
   const q = beamQuery(inputs);
   q.set('param', param);
   q.set('values', values.join(','));
-  const { status, body } = await getJson(`/api/conkay/demo/sweep?${q}`);
+  const { status, body } = await getJson(`/api/conkay/demo/sweep?${q}`, opts);
   const r = body?.result as DemoSweep | undefined;
   if (status !== 200 || !body?.ok || !r || !Array.isArray(r.rows)) return failure(status, body, 'The sweep returned nothing.');
   return r;

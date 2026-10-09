@@ -88,6 +88,14 @@ const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 // it blocks the flow just as effectively as shedding login itself.
 const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
+// The no-login ConKay demo (routes/conkay-demo.js): three GET routes, each a
+// ~17 ms compute-only beam solve that reads and writes nothing, already
+// rate-limited per IP (read.conkay-demo, 120/min). Shedding them saved no
+// meaningful work and showed visitors a 503 on their first "Run FEA" while
+// the box was under memory pressure, so they are never shed. GET only and
+// exactly these paths: nothing else under /api/conkay/ is affected.
+const _DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep)$/;
+
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;
   return process.env.CONCORD_LOAD_SHED_ENABLED === "0";
@@ -123,6 +131,7 @@ export function getRetryAfterSeconds() {
 export function classifyRequest(req) {
   const path = req?.path || req?.url || "";
   if (_CRITICAL_PATH_RE.test(path)) return PRIORITY.CRITICAL;
+  if (String(req?.method || "GET").toUpperCase() === "GET" && _DEMO_PATH_RE.test(path.split("?")[0])) return PRIORITY.CRITICAL;
   if (_AUTH_CRITICAL_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   const authed = !!(req?.user?.id);
   if (authed && !_BULK_PATH_RE.test(path)) return PRIORITY.PROTECTED;

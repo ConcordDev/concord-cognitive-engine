@@ -16,8 +16,8 @@ import {
 } from "../lib/request-admission.js";
 import { _setLagMsForTest, stopEventLoopPressureMonitor } from "../lib/event-loop-pressure.js";
 
-function makeReq({ path, authed = false }) {
-  return { path, user: authed ? { id: "user-1" } : undefined };
+function makeReq({ path, authed = false, method = "GET" }) {
+  return { path, method, user: authed ? { id: "user-1" } : undefined };
 }
 
 function makeRes() {
@@ -189,5 +189,36 @@ describe("request-admission — createLoadSheddingMiddleware (integration, real 
     middleware(makeReq({ path: "/api/lens/run", authed: false }), res, () => { nextCalled = true; });
     assert.equal(nextCalled, true);
     assert.equal(res.statusCode, null);
+  });
+});
+
+describe("request-admission — the no-login ConKay demo is never shed", () => {
+  afterEach(() => {
+    _setLagMsForTest(0);
+    stopEventLoopPressureMonitor();
+  });
+
+  it("classifies exactly the three demo GET routes as critical", () => {
+    for (const p of ["/api/conkay/demo/materials", "/api/conkay/demo/beam", "/api/conkay/demo/sweep"]) {
+      assert.equal(classifyRequest(makeReq({ path: p })), PRIORITY.CRITICAL, p);
+    }
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/beam", method: "POST" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/other" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/design" })), PRIORITY.SHEDDABLE);
+  });
+
+  it("a demo solve is admitted at 5 s of lag while other anonymous traffic is shed", () => {
+    _setLagMsForTest(5000);
+    const middleware = createLoadSheddingMiddleware();
+    let admitted = false;
+    const res = makeRes();
+    middleware(makeReq({ path: "/api/conkay/demo/beam" }), res, () => { admitted = true; });
+    assert.equal(admitted, true);
+    assert.equal(res.statusCode, null);
+    let other = false;
+    const res2 = makeRes();
+    middleware(makeReq({ path: "/api/lens/run" }), res2, () => { other = true; });
+    assert.equal(other, false);
+    assert.equal(res2.statusCode, 503);
   });
 });
