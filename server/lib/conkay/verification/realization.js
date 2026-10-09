@@ -6,6 +6,8 @@
 // that don't exist yet (STEP geometry, drawings, toolpaths) are listed as
 // missing in the README rather than left out silently.
 
+import fs from "node:fs";
+import path from "node:path";
 import { getMaterial } from "../materials/index.js";
 
 const csvCell = (v) => {
@@ -105,6 +107,19 @@ export function buildRealizationPackage(session) {
     ];
   });
 
+  // GA drawings (drawing.ga): the sheets themselves go in the package (SVG text); the PDF stays at its path.
+  const drawings = results.filter((e) => e?.solver?.id === "drawing.ga" && e.status !== "NOT_COMPUTED" && e.status !== "ERROR" && e.outputs?.files);
+  const drawingFiles = {};
+  const drawingLines = [];
+  for (const e of drawings) {
+    const f = e.outputs.files.value;
+    const rev = e.outputs.revision.value;
+    for (const k of ["sheet1Svg", "sheet2Svg"]) {
+      try { drawingFiles[`manufacturing/drawings/${path.basename(f[k].path)}`] = fs.readFileSync(f[k].path, "utf8"); } catch { /* listed below as not copied */ }
+    }
+    drawingLines.push(`- ${e.target}: general arrangement CK-GA-${e.target} revision ${rev} (model hash ${e.outputs.modelHash.value}); sheets in manufacturing/drawings/, PDF ${f.pdf.path}; screening drawing, not for manufacture`);
+  }
+  for (const e of results.filter((x) => x?.solver?.id === "drawing.ga" && (x.status === "NOT_COMPUTED" || x.status === "ERROR"))) drawingLines.push(`- ${e.target}: drawing not computed (${e.reason || e.error})`);
   const coverage = session.coverage();
   const summary = session.summary();
   const gaps = coverage.flatMap((c) => c.domains.filter((d) => d.status === "not computed" || d.status === "NOT_COMPUTED").map((d) => `${c.node}: ${d.domain} (${d.reason})`));
@@ -121,13 +136,14 @@ export function buildRealizationPackage(session) {
     ...(massLines.length ? ["## Mass by state (sourced / estimated / computed / placeholder)", ...massLines, ""] : []),
     ...(acceptanceLines.length ? ["## Acceptance", ...acceptanceLines, ""] : []),
     ...(bodyLines.length ? ["## CAD body (cad.body)", "A closed B-spline solid lofted through cross-sections solved around the packaging envelopes plus the skin offset (OpenCascade). Parameters are design choices on the body node; receipts: engineering/cad-body.json.", ...bodyLines, ""] : []),
+    ...(drawingLines.length ? ["## Drawings (drawing.ga)", "Generated from the same model the solvers ran on; the revision is the model hash, so any change to the body, layout or BOM gives a new revision.", ...drawingLines, ""] : []),
     ...(packagingLines.length ? ["## Packaging (occupant fit and interference)", "Thresholds: sourced (cited), geometric (0 mm, no published margin), estimated (method in the receipt) or design (a layout choice). Receipts: engineering/packaging.json.", ...packagingLines, ""] : []),
     "## Not computed",
     ...(gaps.length ? gaps.map((x) => `- ${x}`) : ["- nothing"]),
     "",
     "## Not in this package yet",
     ...(bodies.some((e) => e.outputs?.files) ? ["- the CAD body is exported by the kernel (STEP, STL, GLB: paths in engineering/cad-body.json); it is not copied into this package"] : ["- geometry/master.step, visualization.glb, mesh.stl (no B-rep body for this design yet)"]),
-    "- manufacturing drawings, tolerances, toolpaths, assembly order",
+    drawings.length ? "- part drawings, tolerances, toolpaths, assembly order (the general-arrangement drawing is in manufacturing/drawings/)" : "- manufacturing drawings, tolerances, toolpaths, assembly order",
     "- procurement suppliers and quotes",
     "",
   ].join("\n");
@@ -143,6 +159,8 @@ export function buildRealizationPackage(session) {
       ...(acceptances.length ? { "engineering/acceptance.json": JSON.stringify(acceptances, null, 2) } : {}),
       ...(fits.length || itfs.length ? { "engineering/packaging.json": JSON.stringify([...fits, ...itfs], null, 2) } : {}),
       ...(bodies.length ? { "engineering/cad-body.json": JSON.stringify(bodies, null, 2) } : {}),
+      ...drawingFiles,
+      ...(drawings.length ? { "manufacturing/drawings/drawings.json": JSON.stringify(drawings.map((e) => ({ target: e.target, revision: e.outputs.revision.value, modelHash: e.outputs.modelHash.value, files: e.outputs.files.value, dimensions: e.outputs.dimensions.value, bom: e.outputs.bom.value })), null, 2) } : {}),
       "manufacturing/bom.csv": bomRows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n",
     },
   };

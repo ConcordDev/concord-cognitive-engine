@@ -25,6 +25,7 @@ import "./physics/solvers/energy-balance.js";
 import "./physics/solvers/powertrain.js";
 import "./physics/solvers/package.js";
 import "./physics/solvers/cad-body.js";
+import "./physics/solvers/ga-drawing.js";
 import "./physics/solvers/packaging.js";
 import "./physics/solvers/vehicle-acceptance.js";
 import "./safety-case/solvers.js";
