@@ -18,6 +18,7 @@ const KIND_WORDS = {
   part: "Part", parts: "Part", beam: "Beam", beams: "Beam",
   engine: "Actuator", engines: "Actuator", motor: "Actuator", motors: "Actuator",
   vehicle: "Assembly", car: "Assembly", assembly: "Assembly",
+  tire: "Tire", tires: "Tire", tyre: "Tire", tyres: "Tire",
 };
 
 // Non-geometry properties an edit can set: word(s) → [path, unit dimension | null].
@@ -26,6 +27,8 @@ const PROP_WORDS = {
   "drag coefficient": ["props.vehicle.dragCoefficient", null],
   cd: ["props.vehicle.dragCoefficient", null],
   "frontal area": ["props.vehicle.frontalArea", "area"],
+  "final drive": ["props.vehicle.finalDrive", null],
+  redline: ["props.redlineRpm", null],
   "x position": ["position.x", "length"], "y position": ["position.y", "length"], "z position": ["position.z", "length"],
 };
 const PARAMS = new Set(Object.values(SHAPES).flat());
@@ -36,10 +39,14 @@ function resolveNodes(ref, graph) {
     const nodes = graph.nodesOfKind(KIND_WORDS[words[1]]);
     return nodes.length ? { nodes } : { error: `there are no ${words[1]} in this design` };
   }
-  const name = words.filter((w) => !KIND_WORDS[w]).join(" ");
-  const hits = [...graph.nodes.values()].filter((n) => n.id.toLowerCase() === name || n.name.toLowerCase() === name);
-  if (hits.length === 1) return { nodes: hits };
-  if (hits.length > 1) return { error: `"${ref}" matches ${hits.map((n) => n.id).join(", ")}` };
+  // Try the whole phrase, then without kind words ("bolt B1" → "b1"), then
+  // each word: a part can be named like a kind ("engine ENGINE").
+  const candidates = [words.join(" "), words.filter((w) => !KIND_WORDS[w]).join(" "), ...words].filter(Boolean);
+  for (const name of [...new Set(candidates)]) {
+    const hits = [...graph.nodes.values()].filter((n) => n.id.toLowerCase() === name || n.name.toLowerCase() === name);
+    if (hits.length === 1) return { nodes: hits };
+    if (hits.length > 1) return { error: `"${ref}" matches ${hits.map((n) => n.id).join(", ")}` };
+  }
   return { error: `no part called "${ref}"` };
 }
 
@@ -59,6 +66,16 @@ export function parseEdit(text, graph) {
   }
   if (!m) return { ok: false, error: 'I can read edits like "make bolt B1 stainless" or "set plate P1 thickness to 12 mm".' };
   const [, lhs, rhs] = m;
+
+  // "<ref> speed rating to Y": a tyre speed symbol (one letter, or "(Y)").
+  const sr = lhs.trim().match(/^(.+?)\s+speed rating$/i);
+  if (sr) {
+    const target = resolveNodes(sr[1], graph);
+    if (target.error) return { ok: false, error: target.error };
+    const sym = rhs.trim().toUpperCase();
+    if (!/^(?:[A-Z]|\(Y\))$/.test(sym)) return { ok: false, error: "a speed rating is one letter, e.g. V, W or Y, or (Y)" };
+    return { ok: true, ops: target.nodes.map((n) => ({ node: n.id, path: "props.speedRating", value: sym })), notes: [] };
+  }
 
   // "<ref> power|drag coefficient|frontal area to <value>"
   for (const [word, [propPath, dim]] of Object.entries(PROP_WORDS)) {

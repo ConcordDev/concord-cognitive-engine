@@ -20,7 +20,7 @@ const RULES = [
   { metric: "mass", re: new RegExp(String.raw`(?:weigh(?:s|ing)?|mass(?:\s+of)?|weight(?:\s+of)?)\s+(?:under\s+|at most\s+|about\s+|around\s+)?${NUM}\s*(lb|lbs|kg|t|tonnes?)\b`, "i"), bound: "max" },
   { metric: "mass", re: new RegExp(String.raw`${NUM}\s*(lb|lbs|kg)\s+(?:[a-z-]+\s+){0,2}(?:car|vehicle|drone|aircraft|plane|boat|frame|robot|bike)\b`, "i"), bound: "max", keepTail: true },
   { metric: "designWindSpeed", re: new RegExp(String.raw`${NUM}\s*(mph|km/h|kph|m/s)\s+winds?\b`, "i"), bound: "min" },
-  { metric: "topSpeed", re: new RegExp(String.raw`(?:does|top speed(?:\s+of)?|reach(?:es)?|goes?|hits?|at least)\s+${NUM}\s*(mph|km/h|kph|m/s)\b`, "i"), bound: "min" },
+  { metric: "topSpeed", re: new RegExp(String.raw`(?:does|top speed(?:\s+of)?|reach(?:es)?|go(?:es)?|hits?|at least)\s+${NUM}\s*(mph|km/h|kph|m/s)\b`, "i"), bound: "min" },
   { metric: "topSpeed", re: new RegExp(String.raw`${NUM}\s*(mph|km/h|kph)\s+top speed`, "i"), bound: "min" },
   { metric: "power", re: new RegExp(String.raw`${NUM}\s*(hp|kw|mw)\b`, "i"), bound: "min" },
   { metric: "range", re: new RegExp(String.raw`(?:range(?:\s+of)?|travels?|flies|fly|goes)\s+${NUM}\s*(miles?|mi|km)\b`, "i"), bound: "min" },

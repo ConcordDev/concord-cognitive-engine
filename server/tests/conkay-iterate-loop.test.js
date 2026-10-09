@@ -130,9 +130,10 @@ describe("iterate-to-physical loop: Sentinel Milestone 1", () => {
   it("never changes a requirement or locked input", () => {
     const ir = buildSentinelM1IR();
     const payload = R.finalDesign.nodes.find((n) => n.id === "payload");
-    assert.deepEqual(payload.props.mass, ir.nodes.find((n) => n.id === "payload").props.mass);
+    assert.equal(ir.nodes.find((n) => n.id === "payload").props.mass, "20 kg");
+    assert.equal(payload.props.mass, 20); // compiled to SI (kg), unchanged by the loop
     assert.equal(R.finalDesign.requirements.length, ir.requirements.length);
-    const bad = iterateToPhysical(ir, { designVariables: [{ id: "cheat", node: "payload", options: [{ label: "20", set: { "props.mass.value": 20 } }, { label: "5", set: { "props.mass.value": 5 } }] }] });
+    const bad = iterateToPhysical(ir, { designVariables: [{ id: "cheat", node: "payload", options: [{ label: "20", set: { "props.mass": 20 } }, { label: "5", set: { "props.mass": 5 } }] }] });
     assert.equal(bad.ok, false);
     assert.match(bad.errors[0], /locked input/);
   });
@@ -148,6 +149,17 @@ describe("iterate-to-physical loop: Sentinel Milestone 1", () => {
     assert.equal(R.score, undefined);
     const unknown = at(R.checks, "mass.budget@sentinel").outputs.unknownItems.value.map((u) => u.id);
     assert.ok(unknown.includes("compute") && unknown.includes("armor"));
+    // #1037 mass states: unknown masses are placeholders with no mass value (never zero),
+    // datasheet masses are sourced with a URL and variant, and the payload stays a requirement.
+    const ir = buildSentinelM1IR();
+    for (const n of ir.nodes.filter((x) => x.props?.massState?.state === "placeholder")) {
+      assert.equal(n.props.mass, undefined, n.id);
+      assert.ok(unknown.includes(n.id), n.id);
+    }
+    for (const n of ir.nodes.filter((x) => x.props?.massState?.state === "sourced")) assert.ok(/^https:\/\//.test(n.props.massState.source.url) && n.props.massState.variant, n.id);
+    const byState = at(R.checks, "mass.budget@sentinel").outputs.massByState.value;
+    assert.equal(byState.requirement, 20);
+    assert.equal(byState.sourced, 6 * 0.85 + 0.83 + 6.4);
     for (const s of listSolvers().filter((x) => ["mass.budget", "electrical.budget", "stability.static"].includes(x.id))) assert.ok(s.regime && s.units && s.tolerance && s.screening != null, s.id);
   });
   it("is deterministic, and its receipt is invalidated by an input or solver-version change", () => {
@@ -155,10 +167,10 @@ describe("iterate-to-physical loop: Sentinel Milestone 1", () => {
     const ir = buildSentinelM1IR();
     assert.deepEqual(verifyReceipt(R.receipt, ir), { valid: true, reasons: [] });
     const heavier = buildSentinelM1IR();
-    heavier.nodes.find((n) => n.id === "payload").props.mass.value = 25;
+    heavier.nodes.find((n) => n.id === "payload").props.mass = "25 kg";
     assert.match(verifyReceipt(R.receipt, heavier).reasons[0], /input design IR changed/);
     const old = { ...R.receipt, solvers: { ...R.receipt.solvers, "mass.budget": "0.9.0" } };
-    assert.ok(verifyReceipt(old, ir).reasons.some((x) => /mass.budget is now 1.0.0/.test(x)));
+    assert.ok(verifyReceipt(old, ir).reasons.some((x) => /mass.budget is now 1.1.0/.test(x)));
   });
 });
 

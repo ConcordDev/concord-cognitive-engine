@@ -6,15 +6,18 @@
 // Unlike mass.cg (which needs every part to have geometry), a body here can
 // get its mass three ways, and the receipt says which:
 //   - geometry + material → the mass.part solver (computed),
-//   - props.mass { value (kg), state, source } from a datasheet (sourced), an
-//     explicit estimate (estimated) or a user requirement (requirement),
+//   - a stated props.mass (kg) with its #1037 props.massState: "sourced"
+//     (datasheet URL + variant) or "estimated" (method + range); or with
+//     props.massRequirement (a user requirement, stated with massSource),
 //   - props.battery { series, parallel, cell: { massKg, ... } } → cells × cell
 //     mass (computed from a sourced cell mass).
-// props.mass.state "unknown" (or no mass at all) puts the item on the
-// unknown list; it is never counted as zero mass silently: the CG is the CG
-// of the KNOWN mass, labelled so, with every unknown named.
+// A "placeholder" mass state, a stated mass with no mass state, or no mass
+// at all puts the item on the unknown list; it is never counted as zero mass
+// silently: the CG is the CG of the KNOWN mass, labelled so, with every
+// unknown named.
 
 import { registerSolver } from "../registry.js";
+import { describeMassState } from "./mass-cost.js";
 
 const STATES = ["sourced", "computed", "estimated", "requirement"];
 
@@ -36,10 +39,12 @@ export function bodyMass(ctx, n) {
     return { mass: cells * bat.cell.massKg, state: "computed", source: `${cells} cells × ${bat.cell.massKg} kg (${bat.cell.source})`, note: "cells only" };
   }
   const pm = ctx.get(n.id, "props.mass");
-  if (pm) {
-    if (pm.state === "unknown" || !Number.isFinite(pm.value)) return { unknown: pm.reason || "mass not stated in any source" };
-    if (!STATES.includes(pm.state)) return { unknown: `mass state "${pm.state}" is not one of ${STATES.join(", ")}` };
-    return { mass: pm.value, state: pm.state, source: pm.source || null };
+  const ms = ctx.get(n.id, "props.massState");
+  if (ms?.state === "placeholder") return { unknown: ms.note || "placeholder mass" };
+  if (Number.isFinite(pm)) {
+    if (ms?.state === "sourced" || ms?.state === "estimated") return { mass: pm, state: ms.state, source: describeMassState(ms) };
+    if (!ms && ctx.get(n.id, "props.massRequirement") === true) return { mass: pm, state: "requirement", source: ctx.get(n.id, "props.massSource") || null };
+    return { unknown: `stated mass ${pm} kg has no mass state (${ctx.get(n.id, "props.massSource") || "no source"}): a placeholder, not counted` };
   }
   if (n.geometry) {
     const env = ctx.result("mass.part", n.id);
@@ -52,7 +57,7 @@ export function bodyMass(ctx, n) {
 
 export const massBudget = registerSolver({
   id: "mass.budget",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "mass.budget",
   domains: ["mass", "mass.cg", "mass.budget"],
   fidelity: 1,

@@ -130,11 +130,22 @@ const TYPICAL = {
   },
 };
 
+// Materials from a manufacturer's product data sheet (nominal values, cited).
+const DATASHEET = {
+  "cfrp-hexply-8552-agp193pw": {
+    label: "CFRP laminate, Hexcel HexPly 8552 / AS4 3K plain weave (AGP193-PW), 37% resin", category: "composite",
+    densityKgM3: 1570, youngsModulusPa: 68e9, poisson: null, yieldPa: null, ultimatePa: 828 * MPA, costPerKgUsd: null,
+    plyThicknessM: 0.000195,
+    source: "Hexcel HexPly 8552 product data sheet (EU), woven AS4 3K AGP193-PW: nominal laminate density 1.57 g/cm3, nominal cured ply thickness 0.195 mm @ 37% resin, 0° tensile strength 828 MPa and modulus 68 GPa (25 °C dry): https://www.hexcel.com/wp-content/uploads/2025/12/HexPly_8552_eu_DataSheet1.pdf",
+  },
+};
+
 export const MATERIALS = Object.freeze({
   ...Object.fromEntries(Object.entries(GENERAL).map(([id, m]) => [id, Object.freeze(fromGeneral(id, m))])),
   ...Object.fromEntries(Object.entries(FASTENERS).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
   ...Object.fromEntries(Object.entries(SPECIFIED).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
   ...Object.fromEntries(Object.entries(TYPICAL).map(([id, m]) => [id, Object.freeze({ id, basis: "typical", ...m })])),
+  ...Object.fromEntries(Object.entries(DATASHEET).map(([id, m]) => [id, Object.freeze({ id, basis: "datasheet (nominal)", ...m })])),
 });
 
 // Plain-language names. "stainless" is ambiguous on its own; it resolves by
@@ -146,7 +157,7 @@ const ALIASES = {
   "304": "stainless-304", "a36": "steel-a36", "a992": "steel-a992", "4140": "steel-4140",
   "6061": "aluminum-6061-t6", "aluminium": "aluminum-6061-t6", "aluminum": "aluminum-6061-t6",
   "titanium": "titanium-ti6al4v",
-  "cfrp": "cfrp-quasi-iso", "carbon fibre": "cfrp-quasi-iso", "carbon fiber": "cfrp-quasi-iso", "carbon": "cfrp-quasi-iso",
+  "cfrp": "cfrp-quasi-iso", "hexply 8552": "cfrp-hexply-8552-agp193pw", "8552": "cfrp-hexply-8552-agp193pw", "carbon fibre": "cfrp-quasi-iso", "carbon fiber": "cfrp-quasi-iso", "carbon": "cfrp-quasi-iso",
   "gfrp": "gfrp-quasi-iso", "fiberglass": "gfrp-quasi-iso", "fibreglass": "gfrp-quasi-iso",
   "rubber": "rubber-natural", "glass": "glass-soda-lime", "pc": "polycarbonate", "polycarbonate": "polycarbonate",
   "foam": "foam-eps-30", "eps": "foam-eps-30", "8620": "steel-8620", "cast iron": "cast-iron-gray-30", "copper": "copper-c11000",

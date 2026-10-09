@@ -9,6 +9,7 @@ import { DesignGraph } from "./graph/design-graph.js";
 import { DesignEngine } from "./graph/engine.js";
 import { parseEdit } from "./compiler/edit-parser.js";
 import { coverage } from "./verification/coverage.js";
+import { buildRealizationPackage } from "./verification/realization.js";
 import { listSolvers } from "./physics/registry.js";
 import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/bolted-joint.js";
@@ -21,6 +22,11 @@ import "./physics/solvers/geometry-stability.js";
 import "./physics/solvers/tube-actuation.js";
 import "./physics/solvers/electrical.js";
 import "./physics/solvers/energy-balance.js";
+import "./physics/solvers/powertrain.js";
+import "./physics/solvers/package.js";
+import "./physics/solvers/cad-body.js";
+import "./physics/solvers/packaging.js";
+import "./physics/solvers/vehicle-acceptance.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
@@ -62,6 +68,11 @@ export class DesignSession {
     if (!p.ok) return { ok: false, error: p.error };
     const r = this.engine.applyEdits(p.ops, { source: "text", text });
     return r.ok ? { ...r, parsed: { ops: p.ops, notes: p.notes } } : r;
+  }
+
+  /** The Realization Package: { files: { path: text } }. */
+  realizationPackage() {
+    return buildRealizationPackage(this);
   }
 
   summary() {

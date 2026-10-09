@@ -16,6 +16,7 @@
 // actuator's datasheet rated (continuous) torque, and peak torque reported.
 
 import { registerSolver } from "../registry.js";
+import { describeMassState } from "./mass-cost.js";
 
 const G = 9.80665;
 
@@ -28,7 +29,7 @@ export function rectTubeSection({ width: b, height: h, wall: t }) {
 
 export const tubeBending = registerSolver({
   id: "structural.tube-bending",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "structural.bending",
   fidelity: 1,
   method: "σ = M/S, M = DF·(m_tip·g·a + w·L²/2), S from sharp-corner rectangular tube; allowable = Fy/FS",
@@ -44,7 +45,7 @@ export const tubeBending = registerSolver({
     const mat = ctx.material(id);
     if (!mat || mat.yieldPa == null) return { notComputed: "material needs a yield strength" };
     const tip = b.tipMassFrom;
-    const tipMass = ctx.get(tip, "props.mass.value");
+    const tipMass = ctx.get(tip, "props.mass");
     const tipPos = ctx.get(tip, "position");
     if (!Number.isFinite(tipMass) || !tipPos) return { notComputed: `tip mass/position of ${tip} unknown` };
     const axis = ctx.get(id, "props.axis") || "x";
@@ -65,7 +66,7 @@ export const tubeBending = registerSolver({
     return {
       inputs: {
         width: { value: g.width, unit: "m" }, height: { value: g.height, unit: "m" }, wall: { value: g.wall, unit: "m" }, length: { value: g.length, unit: "m" },
-        tipMass: { value: tipMass, unit: "kg", source: `${tip} props.mass (${ctx.get(tip, "props.mass.state")})` },
+        tipMass: { value: tipMass, unit: "kg", source: `${tip} props.mass (${ctx.get(tip, "props.massRequirement") === true ? "requirement" : ctx.get(tip, "props.massState")?.state || "no mass state"}: ${ctx.get(tip, "props.massSource") || describeMassState(ctx.get(tip, "props.massState")) || "no source"})` },
         lever: { value: lever, unit: "m" },
         dynamicFactor: { value: DF, status: b.dynamicFactor?.state || "stated" },
         factorOfSafety: { value: FS, status: b.factorOfSafety?.state || "design rule" },

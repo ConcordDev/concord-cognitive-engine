@@ -58,6 +58,16 @@ export const PANEL = { model: "Renogy RNG-100D-SS", nameplateW: 100, efficiency:
 export const COMPUTE = { model: "NVIDIA Jetson AGX Orin 64GB module", modeW: 30, maxW: 60, envelope: { x: 0.016, y: 0.1, z: 0.087 }, massKg: null, source: "nvidia-jetson-agx-orin" };
 export const LIDAR = { model: "Velodyne VLP-16 Puck", typicalW: 8, massKg: 0.83, diameterM: 0.103, heightM: 0.072, source: "velodyne-vlp16" };
 
+// Mass records in the #1037 mass-state schema (verification/mass-state.js).
+// A datasheet mass is "sourced" with the datasheet URL and the exact variant;
+// a mass no source states is a "placeholder" with NO mass value, so it stays
+// on the unknown list and is never counted as zero.
+const sourcedMass = (kg, sourceId, variant) => ({
+  mass: `${kg} kg`,
+  massState: { state: "sourced", sourceKind: "manufacturer published spec", source: { url: SOURCES[sourceId].url, title: SOURCES[sourceId].title, sourceId }, variant },
+});
+const unknownMass = (note) => ({ massState: { state: "placeholder", note } });
+
 const PVW = JSON.parse(readFileSync(fileURLToPath(new URL("../northstar/fixtures/pvwatts-nyc-tilt90-south.json", import.meta.url)), "utf8"));
 
 const FRAME = "aluminum-6061-t6-b221";
@@ -92,7 +102,7 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
   for (const [s, y] of [["l", 0.2], ["r", -0.2]]) {
     add({ id: `foot-${s}`, kind: "Plate", name: `foot ${s}`, material: FRAME, geometry: { shape: "plate", length: "0.36 m", width: "0.18 m", thickness: "0.012 m" }, position: pos(0, y, 0.006) });
     const act = (j, z) => add({ id: `${j}-${s}`, kind: "Actuator", name: `${j} ${s} (${ACTUATOR.model})`, position: pos(0, y, z),
-      props: { envelope: ACTUATOR.envelope, mass: { value: ACTUATOR.massKg, state: "sourced", source: ACTUATOR.source }, actuator: ACTUATOR,
+      props: { envelope: ACTUATOR.envelope, ...sourcedMass(ACTUATOR.massKg, ACTUATOR.source, ACTUATOR.model), actuator: ACTUATOR,
         load: { rail: "actuators", voltageV: ACTUATOR.voltageV, ratedCurrentA: ACTUATOR.ratedCurrentA, peakCurrentA: ACTUATOR.peakCurrentA, source: ACTUATOR.source } } });
     act("ankle", 0.061);
     add({ id: `shin-${s}`, kind: "Beam", name: `shin ${s}`, material: FRAME, geometry: { ...tube(BIG), length: "0.78 m" }, position: pos(0, y, 0.5), props: { axis: "z", section: BIG } });
@@ -109,19 +119,19 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
   add({ id: "shoulder", kind: "Beam", name: "shoulder beam", material: FRAME, geometry: { ...tube(BIG), length: "0.56 m" }, position: pos(0, 0, 2.7422), props: { axis: "y", section: BIG } });
   add({ id: "mast", kind: "Beam", name: "sensor mast", material: FRAME, geometry: { ...tube("sq-1x0.065"), length: "0.2104 m" }, position: pos(0, 0, 2.8728), props: { axis: "z", section: "sq-1x0.065" } });
   add({ id: "lidar", kind: "Sensor", name: LIDAR.model, position: pos(0, 0, 3.014),
-    props: { envelope: { x: LIDAR.diameterM, y: LIDAR.diameterM, z: LIDAR.heightM }, mass: { value: LIDAR.massKg, state: "sourced", source: LIDAR.source }, load: { rail: "sensors", typicalW: { value: LIDAR.typicalW, state: "sourced", source: LIDAR.source } } } });
+    props: { envelope: { x: LIDAR.diameterM, y: LIDAR.diameterM, z: LIDAR.heightM }, ...sourcedMass(LIDAR.massKg, LIDAR.source, LIDAR.model), load: { rail: "sensors", typicalW: { value: LIDAR.typicalW, state: "sourced", source: LIDAR.source } } } });
   mate("shoulder", "mast"); mate("mast", "lidar");
   add({ id: "compute", kind: "Part", name: COMPUTE.model, position: pos(0, 0, 2.4),
-    props: { envelope: COMPUTE.envelope, mass: { state: "unknown", reason: "module mass not stated in the NVIDIA data sheet read", source: COMPUTE.source }, serviceAccess: { face: "+x", depth: 0.05 },
+    props: { envelope: COMPUTE.envelope, ...unknownMass(`module mass not stated in the NVIDIA data sheet read (${COMPUTE.source})`), serviceAccess: { face: "+x", depth: 0.05 },
       load: { rail: "compute", typicalW: { value: COMPUTE.modeW, state: "sourced", source: COMPUTE.source }, peakW: { value: COMPUTE.maxW, state: "sourced", source: COMPUTE.source } } } });
-  add({ id: "sensors-misc", kind: "Sensor", name: "IMU + cameras (not selected)", props: { mass: { state: "unknown", reason: "no part selected" }, load: { rail: "sensors", typicalW: { value: 10, state: "estimated", range: [5, 20], basis: "placeholder until parts are chosen" } } } });
-  add({ id: "fans", kind: "Part", name: "controller/driver cooling fans (not selected)", props: { mass: { state: "unknown", reason: "no part selected" }, load: { rail: "thermal", typicalW: { value: 12, state: "estimated", range: [5, 25], basis: "placeholder until thermal design" } } } });
+  add({ id: "sensors-misc", kind: "Sensor", name: "IMU + cameras (not selected)", props: { ...unknownMass("no part selected"), load: { rail: "sensors", typicalW: { value: 10, state: "estimated", range: [5, 20], basis: "placeholder until parts are chosen" } } } });
+  add({ id: "fans", kind: "Part", name: "controller/driver cooling fans (not selected)", props: { ...unknownMass("no part selected"), load: { rail: "thermal", typicalW: { value: 12, state: "estimated", range: [5, 25], basis: "placeholder until thermal design" } } } });
   add({ id: "battery", kind: "Part", name: `battery 13S${batteryParallel}P ${CELL.model}`, position: pos(-0.1, 0, 2.05),
     props: { battery: { series: 13, parallel: batteryParallel, cell: CELL, usableFraction: { value: 0.8, state: "estimated", range: [0.7, 0.9], basis: "usable window not in the cell datasheet; to be measured by rundown (spec 3.2)" }, reserveFraction: { value: 0.15, state: "requirement", basis: "reserve held back for safe-stop (not available to the mission)" } },
       serviceAccess: { face: "+z", depth: 0.05 } } });
   mate("battery", "torso-l"); mate("battery", "torso-r");
   add({ id: "solar", kind: "Part", name: `${PANEL.model} (back-mounted, vertical, facing south when parked)`, position: pos(-0.2, 0, 2.3),
-    props: { envelope: { x: PANEL.depthM, y: PANEL.widthM, z: PANEL.lengthM }, mass: { value: PANEL.massKg, state: "sourced", source: PANEL.source },
+    props: { envelope: { x: PANEL.depthM, y: PANEL.widthM, z: PANEL.lengthM }, ...sourcedMass(PANEL.massKg, PANEL.source, PANEL.model),
       solar: {
         panel: PANEL,
         irradianceDaily: { value: +PVW.outputs.solrad_annual.toFixed(3), state: "estimated", basis: "NREL/NLR PVWatts v8 TMY annual mean, tilt 90° south, NYC (lat 40.71, lon −74.01); not a site measurement", source: "pvwatts-v8-nyc", monthlyMin: Math.min(...PVW.outputs.solrad_monthly) },
@@ -130,12 +140,15 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
       } } });
   add({ id: "bracket", kind: "Beam", name: "payload hard-point bracket (cantilever)", material: FRAME, geometry: { ...tube(bracket), length: "0.40 m" }, position: pos(0.0254 + 0.2, 0, 2.2),
     props: { axis: "x", section: bracket, bending: { tipMassFrom: "payload", rootAt: 0.0254, dynamicFactor: { value: 2, state: "estimated", basis: "walking/stop-start load amplification; no measured load spectrum" }, factorOfSafety: { value: 2, state: "design rule", basis: "screening factor on specified-minimum yield; not a code check" } } } });
-  add({ id: "payload", kind: "Part", name: "payload (user requirement)", position: pos(0.3, 0, 2.0496), props: { envelope: { x: 0.25, y: 0.3, z: 0.25 }, mass: { value: 20, state: "requirement", source: "Milestone 1 demo requirement: carry a stated 20 kg payload" } } });
+  add({ id: "payload", kind: "Part", name: "payload (user requirement)", position: pos(0.3, 0, 2.0496), props: { envelope: { x: 0.25, y: 0.3, z: 0.25 }, mass: "20 kg", massSource: "Milestone 1 demo requirement: carry a stated 20 kg payload",
+    // A required mass is not a mass state (#1037: not sourced, estimated or computed); mass.budget
+    // counts it as "requirement" and the loop may not change it (locked below).
+    massRequirement: true } });
   mate("torso-l", "bracket"); mate("torso-r", "bracket"); mate("bracket", "payload");
   for (const [id, name] of [
     ["wiring", "wiring harness"], ["fasteners", "fasteners, joint brackets, actuator mounts"], ["bms", "battery BMS, enclosure, interconnects"],
     ["compute-carrier", "Jetson carrier board and thermal solution"], ["panel-mount", "solar panel mount"], ["armor", "armor cage (spec 4.2: unknown, a component line)"],
-  ]) add({ id, kind: "Part", name, props: { mass: { state: "unknown", reason: "not designed / not in any datasheet" } } });
+  ]) add({ id, kind: "Part", name, props: unknownMass("not designed / not in any datasheet") });
   // Single-support holding torques, left leg in stance (right is symmetric).
   const below = { ankle: ["foot-l"], knee: ["foot-l", "ankle-l", "shin-l"], hip: ["foot-l", "ankle-l", "shin-l", "knee-l", "thigh-l"] };
   for (const j of ["ankle", "knee", "hip"]) {
@@ -160,12 +173,14 @@ export const DESIGN_VARIABLES = [
     options: [2, 3, 4, 5, 6, 7, 8].map((p) => ({ label: `13S${p}P`, set: { "props.battery.parallel": p } })) },
 ];
 
-// Solvers that don't apply to a component-list design: mass.cg and the
-// mass/cost roll-ups count only bodies with geometry, so on this assembly
-// they would silently omit every bought part. mass.budget replaces them.
+// Solvers that don't apply to a component-list design with unknown masses:
+// mass.cg and mass.assembly stop (NOT_COMPUTED) while any body has no mass
+// (the battery's mass is cells × cell mass, and nine parts are placeholders).
+// mass.budget replaces them: the known mass and its CG, labelled so, with
+// every unknown named.
 export const EXCLUDED_SOLVERS = [
-  { id: "mass.cg", reason: "counts only bodies with geometry; would omit actuators, battery, sensors (mass.budget lists them instead)" },
-  { id: "mass.assembly", reason: "same omission as mass.cg" },
+  { id: "mass.cg", reason: "not computed while any body lacks a mass (battery from cells, nine placeholder parts); mass.budget gives the known-mass CG and lists the unknowns" },
+  { id: "mass.assembly", reason: "as mass.cg: no total while masses are unknown (mass.budget lists them)" },
   { id: "cost.part", reason: "no prices sourced; cost is a BOM output (spec 4.2), not computed here" },
   { id: "cost.assembly", reason: "as cost.part" },
 ];
