@@ -12,10 +12,14 @@
 //                                           flags, discipline extensions
 //   conkay_knowledge.validate { record }  → schema + claim-rule + extension check
 //   conkay_knowledge.fixtures {}          → built-in source texts
+//   conkay_knowledge.mixture-report {}    → demo 2: methanol-water resolved through the PubChem and NIST
+//                                           WebBook connectors (recorded excerpts, no network), computed
+//                                           as far as the evidence goes; unknowns, test plan, review queue
 
 import {
   buildFormulationReport, renderFormulationMarkdown, loadFixture, FIXTURES,
   ENTITY_SCHEMA, STATUS_FLAGS, SUPPORT_STATES, listExtensions, validateEntity, STANDARDS,
+  mixtureReport, renderMixtureMarkdown, replayGetter, loadConnectorRecordings,
 } from "../lib/conkay/knowledge/index.js";
 
 const MAX_TEXT = 20000;
@@ -48,6 +52,13 @@ export default function registerConkayKnowledgeActions(registerLensAction) {
   registerLensAction("conkay_knowledge", "validate", (_ctx, _artifact, params) => {
     if (!params?.record || typeof params.record !== "object") return { ok: false, error: "send { record }" };
     return { ok: true, result: validateEntity(params.record) };
+  });
+
+  registerLensAction("conkay_knowledge", "mixture-report", async () => {
+    const rec = await loadConnectorRecordings();
+    const report = await mixtureReport(replayGetter(rec.recordings));
+    if (!report.ok) return { ok: false, error: report.reason };
+    return { ok: true, result: { recordedOn: rec.captured, report, markdown: renderMixtureMarkdown(report) } };
   });
 
   registerLensAction("conkay_knowledge", "fixtures", () => ({ ok: true, result: { fixtures: Object.keys(FIXTURES) } }));
