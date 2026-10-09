@@ -1,49 +1,52 @@
 // server/lib/conkay/cad/drawing-kernel.js
 //
-// Runs the drawing projection kernel (conkay_drawing_occ.py, OpenCascade via
-// OCP) with the same Python as the CAD body kernel (body-kernel.js). Results
-// are cached in memory and on disk by a hash of the script and the request;
-// the request carries the content hash of the geometry it projects (the
-// body's mesh SHA-256), so a changed body is a different request.
+// The drawing projection kernel (conkay_drawing_occ.py, OpenCascade via OCP),
+// same Python and same off-the-solver-path pattern as the body kernel
+// (kernel-queue.js). Results are cached in memory and on disk by a hash of the
+// scripts and the request; the request carries the content hash of the
+// geometry it projects (the body's mesh SHA-256), so a changed body is a
+// different request.
 
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bodyKernelPython, bodyCacheDir } from "./body-kernel.js";
+import { resolveKernelPython, kernelPythonPath, bodyCacheDir, ensurePrivateDir, writePrivateFile, EXTENTS_SCRIPT, UNAVAILABLE } from "./body-kernel.js";
+import { requestKernel, rememberKernel, runPythonKernel } from "./kernel-queue.js";
 
 export const DRAWING_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "conkay_drawing_occ.py");
-const memo = new Map();
+// read once when the module loads
+const SCRIPT_HASH = createHash("sha256").update(fs.readFileSync(DRAWING_SCRIPT)).update(fs.readFileSync(EXTENTS_SCRIPT)).digest("hex");
 
 export function drawingRequestHash(request) {
-  const script = createHash("sha256").update(fs.readFileSync(DRAWING_SCRIPT)).digest("hex");
-  return createHash("sha256").update(script).update(JSON.stringify(request)).digest("hex").slice(0, 24);
+  return createHash("sha256").update(SCRIPT_HASH).update(JSON.stringify(request)).digest("hex").slice(0, 24);
 }
 
-/** request = { command: "project", step, geometryHash, views, ... }. Returns the kernel JSON or { ok: false, unavailable | error }. */
-export function runDrawingKernel(request, { timeoutMs = 600000 } = {}) {
-  const python = bodyKernelPython();
-  if (!python) return { ok: false, unavailable: "no Python with OCP: set CONKAY_OCC_PYTHON or install cadquery-ocp in the ConKay OCC venv" };
+const keyOf = (hash) => `drawing:${hash}:${kernelPythonPath()}`;
+
+/** request = { command: "project", step, geometryHash, views, ... }. Async; returns the kernel JSON or { ok: false, unavailable | error }. */
+export async function runDrawingKernelAsync(request, { timeoutMs = 600000 } = {}) {
+  const python = await resolveKernelPython();
+  if (!python) return { ok: false, unavailable: UNAVAILABLE };
   const hash = drawingRequestHash(request);
-  if (memo.has(hash)) return memo.get(hash);
   const dir = path.join(bodyCacheDir(), `drawing-${hash}`);
   const cached = path.join(dir, "result.json");
-  if (fs.existsSync(cached)) {
-    try { const r = JSON.parse(fs.readFileSync(cached, "utf8")); memo.set(hash, r); return r; } catch { /* re-run */ }
+  const useCache = await ensurePrivateDir(bodyCacheDir()); // not ours / not creatable: run uncached, never trust it
+  if (useCache) {
+    try { const r = JSON.parse(await fsp.readFile(cached, "utf8")); rememberKernel(keyOf(hash), r); return r; } catch { /* not cached: run */ }
   }
-  let out;
-  try {
-    const stdout = execFileSync(python, [DRAWING_SCRIPT], { input: JSON.stringify(request), maxBuffer: 256 * 1024 * 1024, timeout: timeoutMs, stdio: ["pipe", "pipe", "pipe"] });
-    out = JSON.parse(stdout.toString("utf8"));
-  } catch (e) {
-    return { ok: false, error: `drawing kernel run failed: ${(e.stderr?.toString() || e.message || "").split("\n").filter(Boolean).slice(-1)[0] || "unknown"}` };
-  }
+  const out = await runPythonKernel({ python, script: DRAWING_SCRIPT, input: request, timeoutMs });
   out.requestHash = hash;
   if (out.ok) {
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(cached, JSON.stringify(out));
+    if (useCache && await ensurePrivateDir(dir)) await writePrivateFile(cached, JSON.stringify(out));
+    rememberKernel(keyOf(hash), out);
   }
-  memo.set(hash, out);
   return out;
+}
+
+/** For the (synchronous) solver: the result if this process has it, else queued and reported pending. */
+export function runDrawingKernel(request) {
+  const hash = drawingRequestHash(request);
+  return requestKernel(keyOf(hash), () => runDrawingKernelAsync(request), `drawing projection ${hash}`);
 }

@@ -21,7 +21,9 @@
 # surface can be misclassified hidden over short lengths (a property of the
 # polygonal algorithm), which the result reports as such, never corrects.
 
-import sys, json, math
+import sys, json, math, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from extents_occ import bracketed_extents
 
 from OCP.STEPControl import STEPControl_Reader
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
@@ -43,7 +45,7 @@ from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 from OCP.gp import gp_Pln
 
-SCRIPT_VERSION = "1.1.0"
+SCRIPT_VERSION = "1.2.0"
 Q = 1e-4  # output grid: 0.1 mm
 
 
@@ -170,30 +172,13 @@ def outer_outline(verts, tris, xdir, ydir, step):
 
 
 def exact_extents(shape):
-    """Exact extents of the solid along x, y, z: the distance (BRepExtrema, on the B-rep) from the solid to
-    a plane placed 1 m outside a bounding box on each of the six sides. BRepBndLib's AddOptimal box is
-    not tight on large B-spline faces (it can sit outside the surface by millimetres to centimetres), so
-    it only places the planes; the extents are the distances."""
-    b = Bnd_Box()
-    _st(BRepBndLib, "AddOptimal")(shape, b, False, False)
-    lo, hi = b.CornerMin(), b.CornerMax()
-    box = {"min": [lo.X(), lo.Y(), lo.Z()], "max": [hi.X(), hi.Y(), hi.Z()]}
-    ext = {"min": [0.0] * 3, "max": [0.0] * 3}
-    span = 4 * max(hi.X() - lo.X(), hi.Y() - lo.Y(), hi.Z() - lo.Z()) + 10
-    for ax in range(3):
-        for side, sgn in (("min", -1), ("max", 1)):
-            o = [0.0, 0.0, 0.0]; o[ax] = box[side][ax] + sgn * 1.0
-            n = [0.0, 0.0, 0.0]; n[ax] = 1.0
-            face = BRepBuilderAPI_MakeFace(gp_Pln(gp_Pnt(*o), gp_Dir(*n)), -span, span, -span, span).Face()
-            d = BRepExtrema_DistShapeShape(shape, face)
-            d.Perform()
-            if not d.IsDone():
-                raise RuntimeError("extents: BRepExtrema did not converge")
-            ext[side][ax] = o[ax] - sgn * d.Value()
-    return {"min": [round(v, 6) for v in ext["min"]], "max": [round(v, 6) for v in ext["max"]],
-            "addOptimalBox": {k: [round(v, 6) for v in vv] for k, vv in box.items()},
-            "method": "BRepExtrema distance from the B-rep to six planes outside the AddOptimal box (exact to the kernel's tolerance)"}
-
+    """Bracketed extents (extents_occ.py). The earlier BRepExtrema plane-distance method converged to local
+    solutions on ConKay bodies (up to 9.6 mm inside the surface) and is not used."""
+    r = bracketed_extents(shape)
+    return {"min": [round(v, 6) for v in r["min"]], "max": [round(v, 6) for v in r["max"]],
+            "minBracket": [[round(a, 6), round(b, 6)] for a, b in r["minBracket"]], "maxBracket": [[round(a, 6), round(b, 6)] for a, b in r["maxBracket"]],
+            "addOptimalBox": {k: [round(v, 6) for v in vv] for k, vv in r["box"].items()}, "meshDeflectionM": r["meshDeflection"],
+            "method": r["method"], "version": r["version"]}
 
 def length(lines):
     return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for l in lines for a, b in zip(l, l[1:]))

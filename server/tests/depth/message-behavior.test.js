@@ -55,7 +55,14 @@ describe("message — channel + message CRUD round-trips (shared ctx)", () => {
     assert.equal(sent.result.mentionsFanout, 1);
     assert.deepEqual(sent.result.message.mentions, [handle]);
 
-    const feed = await lensRun("message", "activity-feed", { params: { handle } }, ctx);
+    // The sender cannot read the mentioned user's feed …
+    const denied = await lensRun("message", "activity-feed", { params: { handle } }, ctx);
+    assert.equal(denied.result.ok, false);
+    assert.equal(denied.result.error, "forbidden");
+    // … the mentioned user reads it as their own.
+    const owner = await depthCtx(handle);
+    const feed = await lensRun("message", "activity-feed", {}, owner);
+    assert.equal(feed.result.handle, handle);
     assert.ok(feed.result.mentions.some((m) => m.body.includes(`@${handle}`)));
   });
 

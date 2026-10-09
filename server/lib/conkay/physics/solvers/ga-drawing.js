@@ -14,13 +14,12 @@
 // follows the model; drawingStatus() says whether a sheet in hand is the
 // current revision or superseded.
 
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { registerSolver } from "../registry.js";
 import { getComponent } from "../../components/index.js";
 import { runDrawingKernel } from "../../cad/drawing-kernel.js";
-import { bodyCacheDir } from "../../cad/body-kernel.js";
 import { buildGaSheets } from "../../drawings/ga-drawing.js";
 import { toSvg, toPdf } from "../../drawings/sheet.js";
 
@@ -85,16 +84,16 @@ export const gaDrawing = registerSolver({
     const body = bodyId ? ctx.result("cad.body", bodyId) : null;
     if (!body || body.status === "NOT_COMPUTED" || body.status === "ERROR") return { notComputed: `no drawing without the CAD body: cad.body@${bodyId} ${body?.status ?? "missing"}${body?.reason ? ` (${body.reason})` : ""}` };
     const files = body.outputs.files?.value || {};
-    if (!files.step?.path || !fs.existsSync(files.step.path)) return { notComputed: "the CAD body has no STEP file to project" };
+    if (!files.step?.path) return { notComputed: "the CAD body has no STEP file to project" };
     const geometryHash = files.stl?.sha256 || files.glb?.sha256;
     if (!geometryHash) return { notComputed: "the CAD body has no mesh hash (STL/GLB) to tie the drawing revision to" };
     const proj = runDrawingKernel({ command: "project", step: files.step.path, geometryHash, views: GA_VIEWS });
-    if (!proj.ok) return { notComputed: proj.unavailable || proj.error };
+    if (!proj.ok) return { notComputed: proj.pending ? proj.reason : proj.unavailable || proj.error };
 
     const dimsOut = body.outputs.dimensions.value;
-    // The extents drawn and dimensioned are the drawing kernel's exact ones (BRepExtrema on the B-rep);
-    // cad.body's reported bounding box (BRepBndLib AddOptimal) can sit outside the surface, so the
-    // difference is reported, not hidden.
+    // The extents drawn and dimensioned are the drawing kernel's bracketed ones (cad/extents_occ.py), measured on
+    // the same STEP the views come from; cad.body measures its solid the same way, so a difference between the
+    // two is reported (it would mean the exported STEP and the solved body disagree).
     const bb = { min: proj.extents.min, max: proj.extents.max };
     const bboxCheck = ["x", "y", "z"].flatMap((a, i) => [
       { side: `min ${a}`, reportedM: dimsOut.bbox.min[i], exactM: bb.min[i], outsideMm: Math.round((bb.min[i] - dimsOut.bbox.min[i]) * 1e4) / 10 },
@@ -166,11 +165,10 @@ export const gaDrawing = registerSolver({
       notes,
     });
     const meta = { drawing: `CK-GA-${veh}`, revision, modelHash, solver: `drawing.ga@${GA_SOLVER_VERSION}`, body: model.body };
-    const dir = path.join(bodyCacheDir(), "drawings", modelHash.slice(0, 24));
-    fs.mkdirSync(dir, { recursive: true });
-    const write = (name, data) => { const p = path.join(dir, name); fs.writeFileSync(p, data); return { path: p, bytes: Buffer.byteLength(data), sha256: sha(data) }; };
-    const bboxOff = Math.max(...bboxCheck.map((b) => b.outsideMm));
-    const warnings = bboxOff > 0.5 ? [`cad.body's reported bounding box sits up to ${bboxOff} mm outside the exact extents of its solid (AddOptimal is not tight on its B-spline face); the drawing dimensions use the exact extents`] : [];
+    // the sheets are kept in memory by content hash; writeDrawingFiles() writes them (async) when asked
+    const write = (name, data) => keepContent(name, data);
+    const bboxDiff = Math.max(...bboxCheck.map((b) => Math.abs(b.outsideMm)));
+    const warnings = bboxDiff > 0.5 ? [`cad.body's extents and the drawing kernel's differ by up to ${bboxDiff} mm on one side (the exported STEP and the solved body disagree); the drawing dimensions use the drawing kernel's`] : [];
     const out = {
       sheet1Svg: write(`CK-GA-${veh}-${revision}-sheet1.svg`, toSvg(sheets[0], { ...meta, sheet: 1 })),
       sheet2Svg: write(`CK-GA-${veh}-${revision}-sheet2.svg`, toSvg(sheets[1], { ...meta, sheet: 2 })),
@@ -190,9 +188,9 @@ export const gaDrawing = registerSolver({
         bom: { value: bom },
         views: { value: Object.fromEntries(Object.entries(proj.views).map(([k, v]) => [k, { visible: v.visible.length, hidden: v.hidden.length, visibleLengthM: v.visibleLengthM, hiddenLengthM: v.hiddenLengthM }])), note: "polylines per view from the projection kernel" },
         projection: { value: { ...proj.method, kernel: proj.kernel, requestHash: proj.requestHash } },
-        extents: { value: bb, unit: "m", basis: `computed: ${proj.extents.method}` },
-        bboxCheck: { value: bboxCheck, note: "how far cad.body's reported bounding box (BRepBndLib AddOptimal) sits outside the exact extents, per side (mm); the drawing uses the exact extents" },
-        files: { value: out },
+        extents: { value: { ...bb, minBracket: proj.extents.minBracket ?? null, maxBracket: proj.extents.maxBracket ?? null }, unit: "m", basis: `computed: ${proj.extents.method}` },
+        bboxCheck: { value: bboxCheck, note: "per side (mm): cad.body's reported extent minus the drawing kernel's, both bracketed measurements; a non-zero value means the exported STEP and the solved body disagree" },
+        files: { value: out, note: "content-addressed (sha256); write them with writeDrawingFiles(envelope, dir)" },
       },
       warnings,
       covers: [veh, bodyId],
@@ -204,6 +202,38 @@ export const gaDrawing = registerSolver({
     };
   },
 });
+
+// ── sheet content (memory, by SHA-256) and the async writer ──────────────────
+const CONTENT = new Map();
+const CONTENT_MAX = 64;
+function keepContent(name, data) {
+  const h = sha(data);
+  CONTENT.delete(h);
+  CONTENT.set(h, { name, data });
+  while (CONTENT.size > CONTENT_MAX) CONTENT.delete(CONTENT.keys().next().value);
+  return { name, bytes: Buffer.byteLength(data), sha256: h };
+}
+
+/** A drawing file's content by its SHA-256 (null when no longer in memory: re-run the solver). */
+export function drawingContent(hash) {
+  return CONTENT.get(hash)?.data ?? null;
+}
+
+/** Write a drawing.ga envelope's files into `dir` (async). Returns { kind: { path, bytes, sha256 } }. */
+export async function writeDrawingFiles(envelope, dir) {
+  const files = envelope?.outputs?.files?.value;
+  if (!files) throw new Error("not a computed drawing.ga envelope");
+  await fsp.mkdir(dir, { recursive: true });
+  const out = {};
+  for (const [k, f] of Object.entries(files)) {
+    const data = drawingContent(f.sha256);
+    if (data == null) throw new Error(`drawing file ${f.name} is no longer in memory: re-run the drawing`);
+    const p = path.join(dir, f.name);
+    await fsp.writeFile(p, data);
+    out[k] = { path: p, bytes: f.bytes, sha256: f.sha256 };
+  }
+  return out;
+}
 
 /** Is a drawing in hand (its embedded meta, or the SVG / JSON text) the current revision of the session's model? */
 export function drawingStatus(drawing, session, veh = "VEH") {
