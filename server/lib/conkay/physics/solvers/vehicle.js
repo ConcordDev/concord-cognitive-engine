@@ -27,6 +27,22 @@ function contained(ctx, id, kind, seen = new Set()) {
   return out;
 }
 
+// Frontal area: given in the design, or computed from the body named by
+// props.vehicle.frontalAreaFrom when that body is an ellipsoid shell
+// (exact for an ellipsoid: π·W·H/4; a real body differs, so screening).
+function frontalArea(ctx, id) {
+  const from = ctx.get(id, "props.vehicle.frontalAreaFrom");
+  if (typeof from === "string" && from) {
+    const g = ctx.get(from, "geometry");
+    if (!g) return { error: `frontalAreaFrom: ${from} has no geometry` };
+    if (g.shape !== "ellipsoid-shell") return { error: `frontalAreaFrom: ${from} is a ${g.shape}; only an ellipsoid-shell body gives a frontal area` };
+    return { value: (Math.PI * g.width * g.height) / 4, source: `computed from ${from} (ellipsoid π·W·H/4; screening)` };
+  }
+  const a = ctx.get(id, "props.vehicle.frontalArea");
+  if (Number.isFinite(a) && a > 0) return { value: a, source: ctx.get(id, "props.vehicle.frontalAreaSource") || "given in the design" };
+  return { error: null };
+}
+
 /** v where P·η = a·v³ + b·v; the left side is fixed, the right is increasing in v. */
 export function solveTopSpeed(wheelPowerW, a, b) {
   let lo = 0;
@@ -48,8 +64,12 @@ export const vehicleTopSpeed = registerSolver({
   targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id),
   run(ctx, id) {
     // Read only the keys used, so moving an axle doesn't rerun top speed.
-    const v = Object.fromEntries(["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency", "airDensity", "dragCoefficientSource", "frontalAreaSource"]
+    const v = Object.fromEntries(["dragCoefficient", "rollingResistance", "drivelineEfficiency", "airDensity", "dragCoefficientSource"]
       .map((k) => [k, ctx.get(id, `props.vehicle.${k}`)]));
+    const fa = frontalArea(ctx, id);
+    if (fa.error) return { notComputed: fa.error };
+    v.frontalArea = fa.value;
+    v.frontalAreaSource = fa.source;
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     if (v.drivelineEfficiency > 1) return { notComputed: "drivelineEfficiency must be at most 1" };
@@ -72,7 +92,7 @@ export const vehicleTopSpeed = registerSolver({
         mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
         power: { value: P, unit: "W", source: powers.map((p) => p.id).join(" + ") },
         dragCoefficient: { value: v.dragCoefficient, source: v.dragCoefficientSource || "given in the design (not computed from geometry)" },
-        frontalArea: { value: v.frontalArea, unit: "m2", source: v.frontalAreaSource || "given in the design" },
+        frontalArea: { value: v.frontalArea, unit: "m2", source: v.frontalAreaSource },
         rollingResistance: { value: v.rollingResistance, source: "given in the design" },
         drivelineEfficiency: { value: v.drivelineEfficiency, source: "given in the design" },
         airDensity: { value: rho, unit: "kg/m3", source: Number.isFinite(v.airDensity) ? "given in the design" : "ISA sea level, 15 °C" },
@@ -107,8 +127,11 @@ export const vehicleRequiredPower = registerSolver({
     const req = ctx.graph.requirements.find((r) => r.of.solver === "vehicle.top-speed" && r.of.target === id && r.min);
     const vReq = ctx.requirement(req.id)?.min?.si;
     if (!Number.isFinite(vReq)) return { notComputed: "no top-speed requirement" };
-    const v = Object.fromEntries(["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency", "airDensity"]
+    const v = Object.fromEntries(["dragCoefficient", "rollingResistance", "drivelineEfficiency", "airDensity"]
       .map((k) => [k, ctx.get(id, `props.vehicle.${k}`)]));
+    const fa = frontalArea(ctx, id);
+    if (fa.error) return { notComputed: fa.error };
+    v.frontalArea = fa.value;
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     const massEnv = ctx.result("mass.assembly", id);
@@ -129,7 +152,7 @@ export const vehicleRequiredPower = registerSolver({
         requiredTopSpeed: { value: vReq, unit: "m/s", source: req.id },
         mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
         dragCoefficient: { value: v.dragCoefficient, source: "given in the design (not computed from geometry)" },
-        frontalArea: { value: v.frontalArea, unit: "m2" },
+        frontalArea: { value: v.frontalArea, unit: "m2", source: fa.source },
         rollingResistance: { value: v.rollingResistance },
         drivelineEfficiency: { value: v.drivelineEfficiency },
         airDensity: { value: rho, unit: "kg/m3", source: Number.isFinite(v.airDensity) ? "given in the design" : "ISA sea level, 15 °C" },

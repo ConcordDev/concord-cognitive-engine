@@ -49,6 +49,9 @@ export const SHAPES = {
   "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
   // A panel or laminate: mass from area × thickness (no AABB, no solid block).
   shell: ["area", "thickness"],
+  // A closed body skin approximated as an ellipsoid of the given overall
+  // length × width × height: area, mass and frontal area come from these.
+  "ellipsoid-shell": ["length", "width", "height", "thickness"],
 };
 
 // Shape parameters are lengths unless listed here.

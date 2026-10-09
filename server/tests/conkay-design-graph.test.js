@@ -766,3 +766,45 @@ describe("Stated (catalogue) values and payload", () => {
     assert.equal(s.result("cost.part@O"), null, "payload is not costed");
   });
 });
+
+describe("Body from geometry (ellipsoid shell)", () => {
+  const car = () => ({
+    design: { id: "c" },
+    nodes: [
+      { id: "V", kind: "Assembly", props: { vehicle: { dragCoefficient: 0.3, rollingResistance: 0.012, drivelineEfficiency: 0.9, frontalAreaFrom: "SKIN" } } },
+      { id: "SKIN", kind: "Part", material: "cfrp-quasi-iso", geometry: { shape: "ellipsoid-shell", length: "4.4 m", width: "1.9 m", height: "1.2 m", thickness: "3 mm" } },
+      { id: "E", kind: "Actuator", props: { maxPower: "300 kW", mass: "180 kg", massSource: "example datasheet" } },
+    ],
+    edges: [{ type: "CONTAINS", from: "V", to: "SKIN" }, { type: "CONTAINS", from: "V", to: "E" }],
+  });
+
+  it("a sphere's area is exactly 4πr²", async () => {
+    const { ellipsoidArea } = await import("../lib/conkay/physics/solvers/mass-cost.js");
+    assert.ok(Math.abs(ellipsoidArea(1, 1, 1) - 4 * Math.PI) < 1e-12);
+  });
+
+  it("skin mass and frontal area come from the body's dimensions", async () => {
+    const { ellipsoidArea } = await import("../lib/conkay/physics/solvers/mass-cost.js");
+    const s = open(car());
+    const m = s.result("mass.part@SKIN").outputs.mass.value;
+    assert.ok(Math.abs(m - ellipsoidArea(2.2, 0.95, 0.6) * 0.003 * 1550) < 1e-9);
+    const ts = s.result("vehicle.top-speed@V");
+    assert.ok(Math.abs(ts.inputs.frontalArea.value - Math.PI * 1.9 * 1.2 / 4) < 1e-12);
+    assert.match(ts.inputs.frontalArea.source, /computed from SKIN.*screening/);
+  });
+
+  it("widening the body reruns its mass and the top speed", () => {
+    const s = open(car());
+    const r = s.editText("set SKIN width to 2.0 m");
+    assert.equal(r.ok, true, r.error);
+    for (const id of ["mass.part@SKIN", "mass.assembly@V", "vehicle.top-speed@V"]) assert.ok(r.rerun.includes(id), id);
+  });
+
+  it("frontalAreaFrom a non-ellipsoid body is refused, not guessed", () => {
+    const ir = car();
+    ir.nodes[1].geometry = { shape: "shell", area: "12 m2", thickness: "3 mm" };
+    const s = open(ir);
+    assert.equal(s.result("vehicle.top-speed@V").status, "NOT_COMPUTED");
+    assert.match(s.result("vehicle.top-speed@V").reason, /only an ellipsoid-shell/);
+  });
+});

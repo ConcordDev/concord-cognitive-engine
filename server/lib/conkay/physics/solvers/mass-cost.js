@@ -9,6 +9,13 @@ import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 
 const PI = Math.PI;
 
+// Surface area of an ellipsoid with semi-axes a, b, c: Knud Thomsen's
+// formula, p = 1.6075, relative error at most 1.061%.
+export function ellipsoidArea(a, b, c) {
+  const p = 1.6075;
+  return 4 * PI * (((a * b) ** p + (a * c) ** p + (b * c) ** p) / 3) ** (1 / p);
+}
+
 function volumeM3(g) {
   switch (g.shape) {
     case "box": return g.length * g.width * g.height;
@@ -17,12 +24,14 @@ function volumeM3(g) {
     case "rod":
     case "bolt": return (PI * g.diameter * g.diameter / 4) * g.length;
     case "shell": return g.area * g.thickness;
+    case "ellipsoid-shell": return ellipsoidArea(g.length / 2, g.width / 2, g.height / 2) * g.thickness;
     case "i-beam": return (2 * g.flangeWidth * g.flangeThickness + (g.height - 2 * g.flangeThickness) * g.webThickness) * g.length;
     default: return null;
   }
 }
 
 const SHAPE_NOTE = {
+  "ellipsoid-shell": "Thin skin on an ellipsoid of the overall dimensions: area by Thomsen's formula (≤1.061% error) × thickness. A real body is not an ellipsoid; screening only.",
   bolt: "Bolt modelled as its shank (π·d²/4·L): head, nut, washers and thread loss are not included, so mass is understated.",
 };
 
