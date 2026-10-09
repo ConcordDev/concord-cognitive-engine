@@ -5,7 +5,9 @@
 // Plan: ~/.zuko/remaining-work/CONKAY-UNIVERSAL-KNOWLEDGE-LAYER-2026-10-09.md
 //
 // North star: deterministic computation only, and an absent value is never
-// turned into a fact. Nothing in here calls a model or the network.
+// turned into a fact. Nothing in here calls a model; the connectors reach the
+// network only through a getter they are given (the server and the tests use
+// recorded excerpts; scripts/conkay-capture-knowledge.mjs captures them live).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -24,6 +26,11 @@ export { SOURCES, DOCUMENTS, CONNECTOR_DUTIES } from "./sources.js";
 export { STANDARDS } from "./standards.js";
 export { PROPERTIES } from "./properties.js";
 export * as units from "./units.js";
+export { liveGetter, replayGetter, EvidenceStore, documentEvidence } from "./connectors/fetcher.js";
+export { identify as pubchemIdentify, experimental as pubchemExperimental, resolveName as pubchemResolveName, pubchemUrls } from "./connectors/pubchem.js";
+export { isobar as nistIsobar, NIST_FLUIDS, NIST_UNCERTAINTY, nistUrls } from "./connectors/nist-webbook.js";
+export { checkClaims, crossCheckDensities, selectReference, REVIEW_DECISION } from "./connectors/review.js";
+export { mixtureReport, renderMixtureMarkdown, DEMO2 } from "./connectors/mixture.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,4 +44,9 @@ export function loadFixture(id) {
   const f = FIXTURES[id];
   if (!f) return null;
   return { text: readFileSync(path.join(HERE, "fixtures", f.file), "utf8"), meta: { fixture: id, slug: id, author: f.author, date: f.date, document: f.document } };
+}
+
+/** Recorded connector responses (excerpts + full-response hashes) for the offline demo and tests. */
+export function loadConnectorRecordings() {
+  return JSON.parse(readFileSync(path.join(HERE, "fixtures", "connector-recordings.json"), "utf8"));
 }

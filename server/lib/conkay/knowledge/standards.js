@@ -35,6 +35,13 @@ export const STANDARDS = {
   "ASTM E1461": { title: "Standard Test Method for Thermal Diffusivity by the Flash Method", url: "https://store.astm.org/e1461-13r22.html", verified: V },
   "ASTM E1131": { title: "Standard Test Method for Compositional Analysis by Thermogravimetry", url: "https://store.astm.org/e1131-20.html", verified: V },
   "ASTM D5630": { title: "Standard Test Method for Ash Content in Plastics", url: "https://webstore.ansi.org/standards/astm/astmd563022", verified: V },
+  "ASTM D4052": { title: "Standard Test Method for Density, Relative Density, and API Gravity of Liquids by Digital Density Meter", url: "https://store.astm.org/d4052-22.html", verified: V },
+  "ASTM D445": { title: "Standard Test Method for Kinematic Viscosity of Transparent and Opaque Liquids (and Calculation of Dynamic Viscosity)", url: "https://store.astm.org/d0445-24.html", verified: V },
+  "ASTM D56": { title: "Standard Test Method for Flash Point by Tag Closed Cup Tester", url: "https://store.astm.org/d0056-22.html", verified: V },
+  "ASTM E1269": { title: "Standard Test Method for Determining Specific Heat Capacity by Differential Scanning Calorimetry", url: "https://store.astm.org/e1269-24.html", verified: V },
+  "ASTM D7896": { title: "Standard Test Method for Thermal Conductivity, Thermal Diffusivity, and Volumetric Heat Capacity of Engine Coolants and Related Fluids by Transient Hot Wire Liquid Thermal Conductivity Method", url: "https://store.astm.org/d7896-19.html", verified: V, note: "scope is engine coolants and related fluids: its fit for another liquid is for the laboratory to confirm" },
+  "ASTM D1078": { title: "Standard Test Method for Distillation Range of Volatile Organic Liquids", url: "https://store.astm.org/d1078-11r19.html", verified: V, note: "a distillation range, not an equilibrium bubble point" },
+  "ASTM E324": { title: "Standard Test Method for Relative Initial and Final Melting Points and the Melting Range of Organic Chemicals", url: "https://store.astm.org/e0324-23.html", verified: V },
 };
 
 export function standard(designation) {

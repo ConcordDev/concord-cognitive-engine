@@ -370,8 +370,8 @@ describe("conkay_knowledge lens actions", () => {
   const actions = {};
   registerConkayKnowledgeActions((domain, name, fn) => { actions[`${domain}.${name}`] = fn; });
 
-  it("registers formulation-report, schema, validate, fixtures", () => {
-    assert.deepEqual(Object.keys(actions).sort(), ["conkay_knowledge.fixtures", "conkay_knowledge.formulation-report", "conkay_knowledge.schema", "conkay_knowledge.validate"]);
+  it("registers formulation-report, schema, validate, fixtures, mixture-report", () => {
+    assert.deepEqual(Object.keys(actions).sort(), ["conkay_knowledge.fixtures", "conkay_knowledge.formulation-report", "conkay_knowledge.mixture-report", "conkay_knowledge.schema", "conkay_knowledge.validate"]);
   });
 
   it("formulation-report runs the Blend D fixture and free text; refuses empty input", () => {

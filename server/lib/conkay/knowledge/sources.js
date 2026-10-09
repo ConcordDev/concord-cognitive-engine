@@ -8,9 +8,9 @@
 // exact variant; extract candidate values and units; preserve the original
 // document and the claim's location; normalise units and identifiers; check
 // contradictions and missing conditions; attach provenance and confidence;
-// and route uncertain or conflicting records to review. No connector is live
-// in this slice (status "planned"); the documents below were read by hand on
-// the `retrieved` date and their values typed in with their locators.
+// and route uncertain or conflicting records to review. PubChem and the NIST
+// WebBook connectors are built (connectors/); the documents below were read by
+// hand on the `retrieved` date and their values typed in with their locators.
 //
 // DOCUMENTS are cited by id from claims. For PDFs, sha256 is the hash of the
 // file as retrieved, so the exact document can be re-identified later. The
@@ -28,8 +28,8 @@ export const CONNECTOR_DUTIES = [
 ];
 
 export const SOURCES = {
-  pubchem: { name: "PubChem (NCBI)", url: "https://pubchem.ncbi.nlm.nih.gov/", kind: "database", connector: "planned", license: "NCBI data are public domain, but individual contributed records (e.g. HSDB, CAMEO, ICSC) carry their own terms; record the contributing source per value." },
-  nist_webbook: { name: "NIST Chemistry WebBook (SRD 69)", url: "https://webbook.nist.gov/chemistry/", kind: "database", connector: "planned", license: "NIST Standard Reference Data; cite NIST SRD 69 and the version." },
+  pubchem: { name: "PubChem (NCBI)", url: "https://pubchem.ncbi.nlm.nih.gov/", kind: "database", connector: "built (connectors/pubchem.js: identity + experimental Density / Boiling / Melting / Flash point; recorded-excerpt replay in the server, live capture by scripts/conkay-capture-knowledge.mjs)", license: "NCBI data are public domain, but individual contributed records (e.g. HSDB, CAMEO, ICSC) carry their own terms; record the contributing source per value." },
+  nist_webbook: { name: "NIST Chemistry WebBook (SRD 69)", url: "https://webbook.nist.gov/chemistry/", kind: "database", connector: "built (connectors/nist-webbook.js: fluid-service isobars with the stated equation uncertainties; recorded-excerpt replay in the server, live capture by scripts/conkay-capture-knowledge.mjs)", license: "NIST Standard Reference Data; cite NIST SRD 69 and the version." },
   nist_refprop: { name: "NIST REFPROP (SRD 23)", url: "https://www.nist.gov/srd/refprop", kind: "software", connector: "planned", license: "Licensed software; values computed with it must cite the version; redistribution of the program is not allowed." },
   materials_project: { name: "Materials Project", url: "https://materialsproject.org/", kind: "database", connector: "planned", license: "CC BY 4.0 data; results are DFT-computed, so their claims are status computed/simulated, not measured." },
   manufacturer_datasheet: { name: "Manufacturer / supplier datasheets", kind: "document", connector: "planned", license: "Typical values for the named grade only; usually 'not for specification'. Copyrighted: store excerpt + locator + hash, not the document." },

@@ -115,6 +115,48 @@ export const PROPERTIES = {
       { standards: ["ASTM D5630"], what: "ash content: total inorganic loading (basalt + CaCO3 + silica) against the formulation version" },
     ],
   }),
+  // Fluids and pure substances (knowledge connectors, demo 2). A property with no verified standard has
+  // an empty test list: the plan then says no verified standard is on file, never invents one.
+  liquid_density: P({
+    label: "Liquid density", unit: "kg/m3",
+    requiredConditions: ["temperature", "pressure"],
+    tests: [{ standards: ["ASTM D4052"], what: "density of the liquid by digital density meter at the stated temperature" }],
+  }),
+  relative_density: P({
+    label: "Relative density (specific gravity)", unit: "1",
+    requiredConditions: ["temperature", "reference_temperature"],
+    tests: [{ standards: ["ASTM D4052"], what: "relative density by digital density meter, stating the sample and the water reference temperature" }],
+  }),
+  dynamic_viscosity: P({
+    label: "Dynamic viscosity", unit: "Pa.s",
+    requiredConditions: ["temperature", "pressure"],
+    tests: [{ standards: ["ASTM D445"], what: "kinematic viscosity at the stated temperature, times the measured density for dynamic viscosity" }],
+  }),
+  specific_heat_capacity: P({
+    label: "Isobaric specific heat capacity", unit: "J/(kg.K)",
+    requiredConditions: ["temperature", "pressure"],
+    tests: [{ standards: ["ASTM E1269"], what: "specific heat capacity by DSC over the stated temperature range (sealed pans for a volatile liquid)" }],
+  }),
+  liquid_thermal_conductivity: P({
+    label: "Thermal conductivity of a liquid", unit: "W/(m.K)",
+    requiredConditions: ["temperature", "pressure"],
+    tests: [{ standards: ["ASTM D7896"], what: "transient hot wire; the standard's scope is engine coolants and related fluids, so the laboratory confirms it applies" }],
+  }),
+  flash_point: P({
+    label: "Flash point", unit: "K",
+    requiredConditions: ["method"],
+    tests: [{ standards: ["ASTM D56"], what: "closed-cup flash point (Tag) of the exact liquid" }],
+  }),
+  normal_boiling_point: P({
+    label: "Boiling point", unit: "K",
+    requiredConditions: ["pressure"],
+    tests: [{ standards: ["ASTM D1078"], what: "distillation range at the stated pressure (initial boiling point and range; not an equilibrium bubble point)" }],
+  }),
+  melting_point: P({
+    label: "Melting point", unit: "K",
+    requiredConditions: ["pressure"],
+    tests: [{ standards: ["ASTM E324"], what: "initial and final melting points and the melting range" }],
+  }),
 };
 
 /** Expand a property's test entries with the verified standard records. */
