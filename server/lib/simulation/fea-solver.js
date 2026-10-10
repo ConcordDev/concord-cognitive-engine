@@ -62,7 +62,10 @@ function memberProps(m, L) {
   const Iy = m.Iy || m.momentIy || m.momentI || 1;
   const J = m.J || m.torsionJ || (Iy + Iz);
   const G = m.shearModulus || E / 2.6;
-  return { E, A, Iz, Iy, J, G, L };
+  // Optional shear areas (Timoshenko beam): shear along local y (bending about z) and along local z.
+  const Asy = m.shearAreaY > 0 ? m.shearAreaY : null;
+  const Asz = m.shearAreaZ > 0 ? m.shearAreaZ : null;
+  return { E, A, Iz, Iy, J, G, L, Asy, Asz };
 }
 
 // Rotation (rows = local x, y, z in global coordinates). Local y lies in the
@@ -92,12 +95,22 @@ function rotation(lx, ly, lz, yRef) {
   return [x, y, z];
 }
 
-function localStiffness({ E, A, Iz, Iy, J, G, L }) {
+// Bending terms with optional shear deformation (Timoshenko beam; Przemieniecki,
+// Theory of Matrix Structural Analysis, 1968, sec. 5.6): phi = 12 E I / (G As L^2);
+// without a shear area phi = 0 and the terms are the Euler-Bernoulli ones.
+function bendingTerms(E, I, G, As, L) {
+  const phi = As ? (12 * E * I) / (G * As * L * L) : 0;
+  const d = 1 + phi;
+  return { k12: (12 * E * I) / (d * L ** 3), k6: (6 * E * I) / (d * L ** 2), k4: ((4 + phi) * E * I) / (d * L), k2: ((2 - phi) * E * I) / (d * L) };
+}
+
+function localStiffness({ E, A, Iz, Iy, J, G, L, Asy = null, Asz = null }) {
   const k = Array.from({ length: 12 }, () => new Float64Array(12));
   const set = (r, c, v) => { k[r][c] = v; k[c][r] = v; };
   const a = (E * A) / L, t = (G * J) / L;
-  const z12 = 12 * E * Iz / L ** 3, z6 = 6 * E * Iz / L ** 2, z4 = 4 * E * Iz / L, z2 = 2 * E * Iz / L;
-  const y12 = 12 * E * Iy / L ** 3, y6 = 6 * E * Iy / L ** 2, y4 = 4 * E * Iy / L, y2 = 2 * E * Iy / L;
+  const bz = bendingTerms(E, Iz, G, Asy, L), by = bendingTerms(E, Iy, G, Asz, L);
+  const z12 = bz.k12, z6 = bz.k6, z4 = bz.k4, z2 = bz.k2;
+  const y12 = by.k12, y6 = by.k6, y4 = by.k4, y2 = by.k2;
   set(0, 0, a); set(0, 6, -a); set(6, 6, a);
   set(3, 3, t); set(3, 9, -t); set(9, 9, t);
   // bending in local x–y plane (v, θz) — uses Iz
