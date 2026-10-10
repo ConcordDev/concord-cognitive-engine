@@ -14,6 +14,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import logger from './logger.js';
 import { startSSE } from './lib/sse.js';
+import { gateLogRead, gateLogAdmin, sendGate, isLogAdmin, redactLogValue } from './lib/log-access.js';
 
 function uid(prefix = "") {
   return prefix ? `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}` : randomUUID().replace(/-/g, "").slice(0, 20);
@@ -110,6 +111,8 @@ export function registerGuidanceEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   app.get("/api/events/stream", (req, res) => {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
     startSSE(res);
     res.write("data: {\"type\":\"connected\"}\n\n");
     sseClients.add(res);
@@ -125,6 +128,9 @@ export function registerGuidanceEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   app.get("/api/events/paginated", (req, res) => {
+    // Shadowed by the earlier server.js handler. Fail closed anyway.
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     try {
       const { type, scope, entityType, entityId, limit = 50, offset = 0 } = req.query;
       const where = [];
@@ -134,6 +140,7 @@ export function registerGuidanceEndpoints(app, db) {
       if (entityType) { where.push("payload_json LIKE ?"); params.push(`%"_entityType":"${escapeLike(entityType)}"%`); }
       if (entityId) { where.push("payload_json LIKE ?"); params.push(`%"_entityId":"${escapeLike(entityId)}"%`); }
       if (scope) { where.push("payload_json LIKE ?"); params.push(`%"_scope":"${escapeLike(scope)}"%`); }
+      if (!isLogAdmin(gate.actor)) { where.push("actor_user_id = ?"); params.push(gate.actor.userId); }
 
       const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -164,7 +171,7 @@ export function registerGuidanceEndpoints(app, db) {
         };
       });
 
-      res.json({ ok: true, items, total, limit: lim, offset: off });
+      res.json({ ok: true, items: redactLogValue(items), total, limit: lim, offset: off });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

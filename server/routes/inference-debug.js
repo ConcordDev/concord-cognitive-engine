@@ -7,6 +7,16 @@
 
 import { Router } from "express";
 import { getSpans } from "../lib/inference/tracer.js";
+import {
+  gateLogRead,
+  gateLogAdmin,
+  sendGate,
+  isLogAdmin,
+  filterInferenceTraces,
+  recordOwnedByCaller,
+  selectScopedUserId,
+  redactLogValue,
+} from "../lib/log-access.js";
 import { aggregateCosts, computeInferenceCost } from "../lib/inference/cost-model.js";
 import {
   listThreads,
@@ -27,6 +37,8 @@ export function createInferenceDebugRouter({ db }) {
   // ─── TRACES ────────────────────────────────────────────────────────────────
 
   router.get("/traces", (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     const { limit = 30, inferenceId, minLatency } = req.query;
     const spans = getSpans(inferenceId);
 
@@ -67,18 +79,27 @@ export function createInferenceDebugRouter({ db }) {
       return bTime - aTime;
     });
 
-    res.json({ ok: true, traces: traces.slice(0, Number(limit)) });
+    const visible = filterInferenceTraces(traces, gate.actor).slice(0, Number(limit));
+    res.json({ ok: true, traces: redactLogValue(visible) });
   });
 
   router.get("/traces/:inferenceId", (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     const spans = getSpans(req.params.inferenceId);
     if (!spans.length) return res.status(404).json({ ok: false, error: "trace_not_found" });
-    res.json({ ok: true, inferenceId: req.params.inferenceId, spans });
+    const visible = isLogAdmin(gate.actor)
+      ? spans
+      : spans.filter((span) => recordOwnedByCaller(span, gate.actor, ["callerId", "userId"]));
+    if (!visible.length) return res.status(403).json({ ok: false, error: "forbidden" });
+    res.json({ ok: true, inferenceId: req.params.inferenceId, spans: redactLogValue(visible) });
   });
 
   // ─── SQL OVER SPANS ─────────────────────────────────────────────────────────
 
   router.get("/spans", (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     if (!db) return res.json({ ok: true, spans: [] });
     const { brain, type, limit = 100, since, caller } = req.query;
 
@@ -88,14 +109,22 @@ export function createInferenceDebugRouter({ db }) {
     if (brain) { conditions.push("brain_used = ?"); params.push(brain); }
     if (type) { conditions.push("span_type = ?"); params.push(type); }
     if (since) { conditions.push("recorded_at >= ?"); params.push(since); }
-    if (caller) { conditions.push("caller_id LIKE ?"); params.push(`%${caller}%`); }
+    if (isLogAdmin(gate.actor)) {
+      if (caller) { conditions.push("caller_id LIKE ?"); params.push(`%${caller}%`); }
+    } else {
+      conditions.push("(caller_id = ? OR caller_id LIKE ?)");
+      params.push(gate.actor.userId, `%:${gate.actor.userId}`);
+    }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     try {
       const rows = db.prepare(`
         SELECT * FROM inference_spans ${where} ORDER BY recorded_at DESC LIMIT ?
       `).all(...params, Number(limit));
-      res.json({ ok: true, spans: rows });
+      const visible = isLogAdmin(gate.actor)
+        ? rows
+        : rows.filter((row) => recordOwnedByCaller(row, gate.actor, ["caller_id", "user_id"]));
+      res.json({ ok: true, spans: redactLogValue(visible) });
     } catch (err) {
       res.status(400).json({ ok: false, error: err?.message });
     }
@@ -103,6 +132,8 @@ export function createInferenceDebugRouter({ db }) {
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/spans/query", (req, res) => {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 
     const { sql } = req.body;
@@ -118,13 +149,15 @@ export function createInferenceDebugRouter({ db }) {
 
     try {
       const rows = db.prepare(sql).all();
-      res.json({ ok: true, rows, count: rows.length });
+      res.json({ ok: true, rows: redactLogValue(rows), count: rows.length });
     } catch (err) {
       res.status(400).json({ ok: false, error: err?.message });
     }
   });
 
   router.get("/spans/stats", (req, res) => {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
     if (!db) return res.json({ ok: true, stats: {} });
     try {
       const byBrain = db.prepare(`
@@ -139,7 +172,7 @@ export function createInferenceDebugRouter({ db }) {
         WHERE span_type = 'failure' ORDER BY recorded_at DESC LIMIT 10
       `).all();
 
-      res.json({ ok: true, byBrain, recentFailures });
+      res.json({ ok: true, byBrain, recentFailures: redactLogValue(recentFailures) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -148,9 +181,16 @@ export function createInferenceDebugRouter({ db }) {
   // ─── COSTS ──────────────────────────────────────────────────────────────────
 
   router.get("/costs", (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     if (!db) return res.json({ ok: true, totalUsd: 0, byModel: {}, byLens: {}, byCaller: {} });
 
-    const { days = 30, userId } = req.query;
+    const { days = 30 } = req.query;
+    // Admin with no userId sees every caller. A member cannot widen the
+    // filter by passing ?userId= someone else.
+    const userId = isLogAdmin(gate.actor)
+      ? (req.query.userId ? String(req.query.userId) : null)
+      : selectScopedUserId(gate.actor, null);
     const since = new Date(Date.now() - Number(days) * 86400000).toISOString();
 
     try {
