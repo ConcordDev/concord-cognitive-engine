@@ -333,6 +333,21 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
     for (const x of c.clearances) assert.ok(x.clearanceM >= 0.05 - 5e-4, x.id);
   });
 
+  it("kernel 2.2 receipts: the hood fill (outward only) and the feature fairness windows", () => {
+    assert.equal(a.kernel.script, "2.2.0");
+    assert.equal(a.params.fairHoodCloseRadius, 6);
+    assert.equal(a.params.fairSigmaXSide, 0.45);
+    assert.equal(a.fairing.sigmaXSideM, 0.45);
+    const hood = a.fairing.fill.hood;
+    assert.equal(hood.radiusM, 6);
+    assert.ok(hood.maxRaiseM >= 0 && hood.raysRaised >= 0);
+    const f = a.fairness.features;
+    for (const w of ["hoodFender", "door"]) {
+      assert.ok(Array.isArray(f.windows[w]) && f.windows[w][0] < f.windows[w][1], w);
+      for (const d of ["alongCar", "aroundSection"]) assert.ok(Number.isFinite(f[w][d].inflections), `${w} ${d}`);
+    }
+  });
+
   it("fairing: fairer than the v2.0 loft, with the floor, envelopes and tyres all still held", async () => {
     const v20 = await runBodyKernelAsync({ ...SCENE, params: { ...SCENE.params, fairSigmaX: 0, fairEnds: false, fairPoleSpacing: 0 } }, { noCache: true });
     assert.equal(v20.ok, true, v20.error);
@@ -385,6 +400,33 @@ describe("CAD body kernel (OpenCascade)", { skip: !HAVE_KERNEL && "no Python wit
 describe("CAD body on the library car (full kernel run)", { skip: !FULL && "set CONKAY_CAD_BODY_FULL=1 with a kernel available" }, () => {
   let r = null, s = null;
   before(async () => { r = await carAcceptanceAsync(BRIEF); s = r.session; });
+
+  it("kernel 2.2 smooths the hood-to-fender S-bend and the door bump against 2.1, with every constraint held", async () => {
+    const g = DesignGraph.fromIR(buildCarFromLibrary(BRIEF).ir).graph;
+    const req = cadBodyRequest({ get: (id, p) => g.get(id, p) }, "BODY_SHELL").request;
+    const v21 = await runBodyKernelAsync({ ...req, params: { ...req.params, fairHoodCloseRadius: 0, fairSigmaXSide: 0.25 }, exports: [] }, { noCache: true });
+    const v22 = await runBodyKernelAsync({ ...req, exports: [] }, { noCache: true });
+    assert.equal(v21.ok, true, v21.error);
+    assert.equal(v22.ok, true, v22.error);
+    const f1 = v21.fairness.features, f2 = v22.fairness.features;
+    // measured 2026-10-09 (OCC 7.7.2): hood band around the section 67.2 -> 10.5 1/m^2; door along the car 5.69 -> 2.12
+    assert.ok(f2.hoodFender.aroundSection.rmsDkDs < 0.25 * f1.hoodFender.aroundSection.rmsDkDs, `${f2.hoodFender.aroundSection.rmsDkDs} vs ${f1.hoodFender.aroundSection.rmsDkDs}`);
+    assert.ok(f2.door.alongCar.rmsDkDs < 0.5 * f1.door.alongCar.rmsDkDs, `${f2.door.alongCar.rmsDkDs} vs ${f1.door.alongCar.rmsDkDs}`);
+    assert.ok(f2.door.alongCar.kRange[1] < 0.5 * f1.door.alongCar.kRange[1], "the door's convex peak along the car");
+    // the trade, pinned so it cannot grow unseen: around the section the body and tail regions roughen
+    // (measured 63.3 -> 75.9 and 77.9 -> 99.4 1/m^2) where the side rays' longer fairing meets the roof rays'
+    const r1 = v21.fairness.regions, r2 = v22.fairness.regions;
+    assert.ok(r2.body.aroundSection.rmsDkDs < 1.3 * r1.body.aroundSection.rmsDkDs, `body around ${r2.body.aroundSection.rmsDkDs} vs ${r1.body.aroundSection.rmsDkDs}`);
+    assert.ok(r2.tail.aroundSection.rmsDkDs < 1.4 * r1.tail.aroundSection.rmsDkDs, `tail around ${r2.tail.aroundSection.rmsDkDs} vs ${r1.tail.aroundSection.rmsDkDs}`);
+    assert.ok(r2.body.alongCar.rmsDkDs <= 1.0 * r1.body.alongCar.rmsDkDs, "along the car the body region is no rougher");
+    // constraints: every envelope keeps its skin offset, tyres clear, floor, width bound, roof height
+    const o = req.params.skinOffset;
+    for (const c of v22.clearances.filter((x) => x.enclose)) assert.ok(c.clearanceM >= o - 5e-4, `${c.id}: ${c.clearanceM}`);
+    for (const w of v22.wheels) assert.ok(w.minClearanceM >= req.params.archClearance - 1e-4, `${w.id}: ${w.minClearanceM}`);
+    assert.ok(v22.metrics.groundClearanceM >= 0.1 - 1e-4, `${v22.metrics.groundClearanceM}`);
+    assert.ok(v22.metrics.widthM <= req.params.maxWidth + 1e-6, `${v22.metrics.widthM}`);
+    assert.ok(Math.abs(v22.metrics.heightM - v21.metrics.heightM) < 0.001, "the roof line does not lift");
+  });
 
   it("cad.body runs with receipts; its parameters are the design graph's", () => {
     const e = s.result("cad.body@BODY_SHELL");

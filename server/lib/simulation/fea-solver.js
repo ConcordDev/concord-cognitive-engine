@@ -68,12 +68,26 @@ function memberProps(m, L) {
 // Rotation (rows = local x, y, z in global coordinates). Local y lies in the
 // plane containing global Z (the 2D-frame convention: in-plane bending is about
 // local z = global Z); members parallel to Z use global Y as the reference.
-function rotation(lx, ly, lz) {
+// Optional `yRef` (a member's `yRef`: a global vector, not parallel to the
+// member) sets local y explicitly: local y = yRef with its component along the
+// member removed. A 3D model with z up passes yRef = [0, 0, 1] so a horizontal
+// member's section height (local y) is vertical. Without it the planar
+// convention above applies (unchanged).
+function rotation(lx, ly, lz, yRef) {
   const x = [lx, ly, lz];
-  const ref = Math.abs(lz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
-  let y = [ref[1] * x[2] - ref[2] * x[1], ref[2] * x[0] - ref[0] * x[2], ref[0] * x[1] - ref[1] * x[0]];
-  const ny = Math.hypot(y[0], y[1], y[2]);
-  y = y.map((v) => v / ny);
+  let y;
+  if (yRef) {
+    const d = yRef[0] * x[0] + yRef[1] * x[1] + yRef[2] * x[2];
+    y = [yRef[0] - d * x[0], yRef[1] - d * x[1], yRef[2] - d * x[2]];
+    const n = Math.hypot(y[0], y[1], y[2]);
+    if (!(n > 1e-9)) throw new Error("member yRef is parallel to the member axis");
+    y = y.map((v) => v / n);
+  } else {
+    const ref = Math.abs(lz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
+    y = [ref[1] * x[2] - ref[2] * x[1], ref[2] * x[0] - ref[0] * x[2], ref[0] * x[1] - ref[1] * x[0]];
+    const ny = Math.hypot(y[0], y[1], y[2]);
+    y = y.map((v) => v / ny);
+  }
   const z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
   return [x, y, z];
 }
@@ -110,9 +124,9 @@ function toLocal(R, ue) {
   return out;
 }
 
-function elementData(nodes, m) {
+export function elementData(nodes, m) {
   const { lx, ly, lz, L } = memberCosines(nodes, m);
-  const R = rotation(lx, ly, lz);
+  const R = rotation(lx, ly, lz, m.yRef);
   const props = memberProps(m, L);
   const kl = localStiffness(props);
   return { R, kl, props, iIdx: nodeIndex(nodes, m.nodeI), jIdx: nodeIndex(nodes, m.nodeJ) };
