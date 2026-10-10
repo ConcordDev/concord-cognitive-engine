@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { _resetServerBusyForTest, noteServerBusy } from '@/lib/realtime/server-busy';
 
 // ConnectionStatus now reads its polling cadence from useClientConfig()
 // (shell-diet: server-tunable poll interval, /api/config/client). Mocked to
@@ -21,6 +22,7 @@ describe('ConnectionStatus', () => {
   });
 
   afterEach(() => {
+    _resetServerBusyForTest();
     vi.restoreAllMocks();
   });
 
@@ -71,5 +73,58 @@ describe('ConnectionStatus', () => {
     await waitFor(() => {
       expect(screen.getByText(/Connection lost/i)).toBeInTheDocument();
     });
+  });
+
+  it('does not treat a single health timeout as a disconnect', async () => {
+    const err = new Error('The operation was aborted due to timeout');
+    err.name = 'TimeoutError';
+    fetchMock.mockRejectedValue(err);
+
+    const { container } = render(<ConnectionStatus />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(container.querySelector('.fixed')).toBeNull();
+    expect(screen.queryByText(/Connection lost/i)).toBeNull();
+  });
+
+  it('shows server busy, not connection lost, on 503 service_overloaded', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      headers: { get: () => null },
+      clone() { return this; },
+      json: async () => ({
+        ok: false,
+        error: 'service_overloaded',
+        code: 'busy_retry',
+        retryAfterS: 2,
+        message: 'Server is busy. Retry shortly.',
+      }),
+    });
+
+    render(<ConnectionStatus />);
+    await waitFor(() => {
+      expect(screen.getByText(/Server busy\. Retrying in 2s/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Connection lost/i)).toBeNull();
+  });
+
+  it('shows server busy from an API shed even when /health is up', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+    });
+
+    render(<ConnectionStatus />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    noteServerBusy({ retryAfterS: 4, message: 'Server busy. Retrying…' });
+    await waitFor(() => {
+      expect(screen.getByText(/Server busy\. Retrying in 4s/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Connection lost/i)).toBeNull();
   });
 });

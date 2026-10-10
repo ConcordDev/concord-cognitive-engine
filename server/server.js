@@ -1868,6 +1868,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
+import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
@@ -10459,8 +10460,10 @@ async function tryInitWebSockets(server) {
     transports: process.env.CONCORD_SOCKET_WEBSOCKET_ONLY === "true"
       ? ["websocket"]
       : ["websocket", "polling"],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // A several-second GC or swap stall must not drop the socket. 90s is
+    // the pong deadline; the frontend grace period is the UI half of this.
+    pingTimeout: Number(process.env.CONCORD_SOCKET_PING_TIMEOUT_MS) || 90_000,
+    pingInterval: Number(process.env.CONCORD_SOCKET_PING_INTERVAL_MS) || 25_000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
@@ -37839,6 +37842,10 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
+  if (shouldPauseHeavyBackground()) {
+    log("heartbeat.worker", "Cognitive worker not spawned (low-memory host profile)");
+    return;
+  }
   // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
   // .pathname does NOT decode percent-encoding, so on a checkout path
   // containing a space (encoded "%20" in the URL), the Worker constructor's
@@ -38019,7 +38026,16 @@ function startHeartbeat() {
     // ── Cognitive pipeline tasks: dispatch to worker thread ──
     // The 4 pipeline tasks (autogen, dream, evolution, synthesize) run off-thread.
     // This is the core of the worker migration: HTTP never blocks during pipeline computation.
-    if (cognitiveWorkerReady && STATE.dtus.size > 0) {
+    // Low-memory hosts skip both the worker and the main-thread fallback so a
+    // single interactive session is not competing with autogen/dream/synth.
+    if (!shouldPauseHeavyBackground() && !cognitiveWorker && !_cognitiveWorkerTestShutdown) {
+      try { spawnCognitiveWorker(); } catch (err) {
+        console.error("[cognitive-worker] Failed to spawn:", err);
+      }
+    }
+    if (shouldPauseHeavyBackground()) {
+      // paused — no worker tick and no main-thread autogen/dream/synth fallback
+    } else if (cognitiveWorkerReady && STATE.dtus.size > 0) {
       const anyEnabled = STATE.settings.autogenEnabled || STATE.settings.dreamEnabled
         || STATE.settings.evolutionEnabled || STATE.settings.synthEnabled;
       if (anyEnabled) {
