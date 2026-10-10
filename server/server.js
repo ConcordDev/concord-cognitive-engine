@@ -17622,7 +17622,15 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
+              body: JSON.stringify({
+                model: brainModel,
+                messages: ollamaMessages,
+                stream: false,
+                // Not a named parameter — chat.respond passes think:false and
+                // the destructure above drops it. Read the call object here.
+                ...(typeof arguments[0]?.think === "boolean" ? { think: arguments[0].think } : {}),
+                options: { temperature, num_predict: maxTokens, num_ctx: _numCtx },
+              }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
@@ -27929,18 +27937,11 @@ ${_operatorV6Block}` : "";
     try {
       switch (call.tool) {
         case "web_search": {
-          const searchResult = await runMacro("tools", "web_search", {
-            query: String(call.params.query || ""),
-            sessionId,
-          }, ctx);
-          if (!searchResult?.ok) {
-            return { tool: call.tool, ok: false, error: searchResult?.error || "web_search failed" };
-          }
-          return {
-            tool: call.tool, ok: true,
-            result: (searchResult.summary || searchResult.text || "").slice(0, MAX_TOOL_RESULT_LEN),
-            source: searchResult.source || "unknown",
-          };
+          // expert_mode.web_search, same as the agent loop. tools.web_search
+          // goes through governedCall and is rejected overlap_below_threshold
+          // once the substrate is past ~1000 DTUs.
+          const { dispatchChatWebSearch } = await import("./lib/chat-tool-surface.js");
+          return dispatchChatWebSearch(runMacro, ctx, call.params || {});
         }
         case "create_dtu": {
           const dtuResult = await runMacro("dtu", "create", {
@@ -28941,69 +28942,15 @@ ${_operatorV6Block}` : "";
 // ===== CHAT PIPELINE MACROS =====
 // New macros for the DTU-enriched context pipeline.
 
-register("chat", "tools", (ctx, _input = {}) => {
+register("chat", "tools", async (ctx, _input = {}) => {
   try {
   const flags = _c3sessionFlags(ctx);
-  const globalEnabled = Boolean(STATE.__chicken3?.toolsEnabled);
-  const sessionOptIn = flags.toolsOptIn;
-  const available = globalEnabled && sessionOptIn;
-
-  const tools = [
-    {
-      name: "web_search",
-      description: "Search the web for current information using DuckDuckGo or SearxNG.",
-      params: { query: { type: "string", required: true, description: "Search query" } },
-      requiresOptIn: true,
-    },
-    {
-      name: "create_dtu",
-      description: "Create a new DTU (Decision/Thought Unit) from the conversation.",
-      params: {
-        title: { type: "string", required: true, description: "DTU title" },
-        summary: { type: "string", required: false, description: "Brief summary" },
-        tags: { type: "array", required: false, description: "Tags for categorization" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_compute",
-      description: "Run a physics, chemistry, math, quantum, or engineering calculation. Keys: chemistry.molecularAnalysis, chemistry.balanceReaction, physics.beamDeflection, quantum.simulateCircuit, engineering.columnBuckling, statistics.linearRegression, etc.",
-      params: {
-        key: { type: "string", required: true, description: "module.function e.g. chemistry.balanceReaction" },
-        input: { type: "object", required: false, description: "Function-specific arguments" },
-      },
-      requiresOptIn: false,
-    },
-    {
-      name: "browse_url",
-      description: "Fetch and read the text content of any public web page.",
-      params: {
-        url: { type: "string", required: true, description: "Full https:// URL" },
-        selector: { type: "string", required: false, description: "Optional CSS selector to narrow content" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_lens_action",
-      description: "Invoke a lens domain action (e.g., legal.draft, finance.analyze).",
-      params: {
-        domain: { type: "string", required: true, description: "Lens domain" },
-        action: { type: "string", required: true, description: "Action name" },
-        params: { type: "object", required: false, description: "Action-specific parameters" },
-      },
-      requiresOptIn: true,
-    },
-  ];
-
-  // Compute module keys for discovery
-  const computeKeys = [
-    "chemistry.molecularAnalysis","chemistry.balanceReaction","chemistry.solutionChemistry","chemistry.enthalpyOfReaction","chemistry.gibbsFreeEnergy",
-    "physics.beamDeflection","physics.windLoad","physics.momentOfInertia","physics.heatTransfer","physics.carnotEfficiency","physics.idealGasLaw",
-    "quantum.simulateCircuit","quantum.analyzeCircuit","quantum.measureCircuit","quantum.circuitDepth",
-    "engineering.columnBuckling","engineering.weldStrength","engineering.reinforcedConcreteWall","engineering.voltageDrop","engineering.heatLoadCalc",
-    "statistics.linearRegression","statistics.polynomialRegression","statistics.pearsonCorrelation","statistics.fitNormal","statistics.hypothesisTest",
-    "math.differentiate","math.integrate","math.solve","math.simplify",
-  ];
+  const { buildChatToolsReport } = await import("./lib/chat-tool-surface.js");
+  const report = buildChatToolsReport({
+    toolsEnabled: STATE.__chicken3?.toolsEnabled,
+    sessionOptIn: flags.toolsOptIn,
+    operator: _isOperatorActor(ctx),
+  });
 
   // List registered lens actions
   const lensActions = [];
@@ -29012,18 +28959,9 @@ register("chat", "tools", (ctx, _input = {}) => {
     lensActions.push({ domain, action, key });
   }
 
-  return {
-    ok: true,
-    available,
-    globalEnabled,
-    sessionOptIn,
-    tools,
-    lensActions,
-    computeKeys,
-    usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
-  };
+  return { ok: true, ...report, lensActions };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "List all tools available to the chat system and their opt-in status." });
+}, { description: "List the tools chat.respond and the agent loop actually inject, and whether each path will dispatch them." });
 
 // Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
 // a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The
