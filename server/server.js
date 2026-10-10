@@ -19866,6 +19866,8 @@ import {
   finishLengthLimitedReply,
   stoppedOnLength,
   buildChatHistoryMessages,
+  stripGovernanceScaffold,
+  createGovernanceStreamFilter,
 } from "./lib/chat-reply-policy.js";
 
 // Single-instance fallback: someone running one plain `ollama serve` (every
@@ -28610,6 +28612,11 @@ ${_operatorV6Block}` : "";
     }
   }
 
+  // Drop a GRC scaffold the model appended or embedded. Do this before
+  // the length continuation so a cutoff inside the object is not what
+  // we ask the model to finish.
+  if (typeof finalReply === "string") finalReply = stripGovernanceScaffold(finalReply);
+
   // A length stop is not a finished reply. One short continuation, then
   // trim to the last complete sentence or list item. Persist only that
   // text — the next turn must not be handed a mid-sentence stub.
@@ -28653,6 +28660,8 @@ ${_operatorV6Block}` : "";
       ctx.log("chat", "Length-stop finish failed; trimmed.", { error: String(_finErr?.message || _finErr) });
     }
   }
+
+  if (typeof finalReply === "string") finalReply = stripGovernanceScaffold(finalReply);
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
@@ -37100,7 +37109,7 @@ const INTERNAL_LEAK_PATTERNS = [
 function stripInternalLeakage(reply, { debug=false, showInternals=false } = {}) {
   if (!reply) return "";
   if (debug || showInternals) return String(reply);
-  const lines = String(reply).split("\n");
+  const lines = stripGovernanceScaffold(String(reply)).split("\n");
   const kept = [];
   for (const line of lines) {
     const bad = INTERNAL_LEAK_PATTERNS.some(re => re.test(line));
@@ -54565,18 +54574,25 @@ function initChatSocketHandlers(io) {
             // never entered, and background brain work competed with live
             // chat for the same Ollama slots un-arbitrated.
             let _streamSeq = 0;
+            // Hold back a trailing `{` until it is clearly not the GRC
+            // scaffold, so chat:token chunks never show toneLock/anchor.
+            const _govFilter = createGovernanceStreamFilter();
+            const _emitGovToken = (token) => {
+              const delta = _govFilter.push(token);
+              if (delta) socket.emit("chat:token", { token: delta, sessionId, seq: _streamSeq++ });
+            };
             const streamResult = _streamByo
               ? (() => {
                   // _streamByo.text is the real field (see the bug-fix note
                   // above) — normalize to `.content` here so the downstream
                   // consumer (which expects callOllamaStreaming's shape) sees
                   // the same field name regardless of which branch produced it.
-                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
+                  _emitGovToken(_streamByo.text);
                   return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
                 })()
               : _streamPlatform
               ? (() => {
-                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
+                  _emitGovToken(_streamPlatform.text);
                   return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
                 })()
               : await _llmQueue.enqueue(
@@ -54586,7 +54602,7 @@ function initChatSocketHandlers(io) {
                     _streamMessages,
                     _streamSystem,
                     (token) => {
-                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                      _emitGovToken(token);
                     },
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
@@ -54597,9 +54613,10 @@ function initChatSocketHandlers(io) {
                 ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
+              let _cleanStream = stripGovernanceScaffold(streamResult.content);
               if (stoppedOnLength(streamResult.doneReason)) {
                 try {
-                  const _streamFinished = await finishLengthLimitedReply(streamResult.content, {
+                  const _streamFinished = await finishLengthLimitedReply(_cleanStream, {
                     doneReason: streamResult.doneReason,
                     continueOnce: async (partial) => {
                       const _cAc = new AbortController();
@@ -54624,16 +54641,19 @@ function initChatSocketHandlers(io) {
                         const _cJson = await _cRes.json().catch(() => ({}));
                         if (!_cRes.ok) return { content: "", doneReason: null };
                         const extra = String(_cJson.message?.content || "");
-                        if (extra) socket.emit("chat:token", { token: extra, sessionId, seq: _streamSeq++ });
+                        if (extra) _emitGovToken(extra);
                         return { content: extra, doneReason: _cJson.done_reason || null };
                       } finally {
                         clearTimeout(_cTimeout);
                       }
                     },
                   });
-                  if (_streamFinished.text) streamResult.content = _streamFinished.text;
+                  if (_streamFinished.text) _cleanStream = stripGovernanceScaffold(_streamFinished.text);
                 } catch { /* keep the streamed text; history trim still drops a stub next turn */ }
               }
+              const _govDone = _govFilter.finish();
+              if (_govDone.delta) socket.emit("chat:token", { token: _govDone.delta, sessionId, seq: _streamSeq++ });
+              streamResult.content = _cleanStream || _govDone.text;
               // Store assistant response in session
               _streamSess.messages.push({
                 role: "assistant",

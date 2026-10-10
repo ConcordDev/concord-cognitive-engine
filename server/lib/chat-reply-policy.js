@@ -226,3 +226,275 @@ export function buildChatHistoryMessages(sessionMessages, currentUserContent) {
   out.push({ role: "user", content: current });
   return out;
 }
+
+/**
+ * GRC scaffold leak (INC-20261010-10).
+ *
+ * Conversational completions sometimes append the Grounded Recursive
+ * Closure object (toneLock / anchor / invariants / reality) after the
+ * real sentence. jsonOnlyReply only matches when the entire reply is
+ * one JSON value, so a prose prefix — or an object cut off before its
+ * closing brace — was stored and shown as-is. Fenced code and any
+ * other JSON stay. A reply that is only the scaffold keeps its payload.
+ */
+
+const GOVERNANCE_SIGNATURE = ["toneLock", "anchor", "invariants", "reality"];
+
+function fenceRanges(text) {
+  const ranges = [];
+  let i = 0;
+  while (i < text.length) {
+    const start = text.indexOf("```", i);
+    if (start < 0) break;
+    const close = text.indexOf("```", start + 3);
+    if (close < 0) {
+      ranges.push([start, text.length]);
+      break;
+    }
+    ranges.push([start, close + 3]);
+    i = close + 3;
+  }
+  return ranges;
+}
+
+function inFence(ranges, index) {
+  for (const [start, end] of ranges) {
+    if (index >= start && index < end) return true;
+  }
+  return false;
+}
+
+function nextFenceStart(ranges, index) {
+  for (const [start] of ranges) {
+    if (start > index) return start;
+  }
+  return null;
+}
+
+function scanObjectEnd(text, open) {
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === "\\") {
+        esc = true;
+        continue;
+      }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+function readFirstKey(text, open, limit) {
+  let j = open + 1;
+  while (j < limit && /\s/.test(text[j])) j++;
+  if (j >= limit) return { status: "hold" };
+  if (text[j] !== '"') return { status: "prose" };
+  let k = j + 1;
+  let key = "";
+  while (k < limit) {
+    const c = text[k];
+    if (c === "\\") {
+      if (k + 1 >= limit) return { status: "hold" };
+      key += text[k + 1];
+      k += 2;
+      continue;
+    }
+    if (c === '"') return { status: "key", key };
+    key += c;
+    k++;
+  }
+  return { status: "hold" };
+}
+
+function jsonKeyPresent(slice, key) {
+  return new RegExp(`"${key}"\\s*:`).test(slice);
+}
+
+function isGovernanceObject(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
+  if (typeof obj.toneLock !== "string") return false;
+  const anchor = obj.anchor && typeof obj.anchor === "object" && !Array.isArray(obj.anchor);
+  const invariants = Array.isArray(obj.invariants);
+  const reality = obj.reality && typeof obj.reality === "object" && !Array.isArray(obj.reality);
+  return Boolean(anchor || invariants || reality);
+}
+
+function truncatedGovernance(slice) {
+  const first = readFirstKey(slice, 0, slice.length);
+  if (first.status !== "key" || first.key !== "toneLock") return false;
+  // An unclosed object that opens with toneLock is the scaffold cut off
+  // mid-generation. A finished object is classified by isGovernanceObject,
+  // so a user JSON value that merely contains that word is left alone.
+  if (scanObjectEnd(slice, 0) < 0) return true;
+  const hits = GOVERNANCE_SIGNATURE.filter((key) => jsonKeyPresent(slice, key));
+  return hits.length >= 2;
+}
+
+function salvagePayload(slice) {
+  const match = String(slice || "").match(/"payload"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  if (!match) return "";
+  try {
+    const value = JSON.parse(`"${match[1]}"`);
+    return typeof value === "string" ? value.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+function tidyGap(text) {
+  return text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function trimGovGap(text) {
+  return text.replace(/(?:\n[ \t]*)+$/g, "");
+}
+
+export function stripGovernanceScaffold(text, depth = 0) {
+  const src = String(text ?? "");
+  if (!src) return src;
+  const ranges = fenceRanges(src);
+  const cuts = [];
+  let payload = "";
+  let i = 0;
+  while (i < src.length) {
+    if (inFence(ranges, i)) {
+      i++;
+      continue;
+    }
+    if (src[i] !== "{") {
+      i++;
+      continue;
+    }
+    const limit = nextFenceStart(ranges, i) ?? src.length;
+    const end = scanObjectEnd(src, i);
+    if (end > 0 && end <= limit) {
+      const slice = src.slice(i, end);
+      let obj = null;
+      try {
+        obj = JSON.parse(slice);
+      } catch {
+        obj = null;
+      }
+      if (isGovernanceObject(obj) || (!obj && truncatedGovernance(slice))) {
+        if (!payload && obj && typeof obj.payload === "string") payload = obj.payload.trim();
+        if (!payload) payload = salvagePayload(slice);
+        cuts.push([i, end]);
+        i = end;
+        continue;
+      }
+      i = end;
+      continue;
+    }
+    const slice = src.slice(i, limit);
+    if (truncatedGovernance(slice)) {
+      if (!payload) payload = salvagePayload(slice);
+      cuts.push([i, limit]);
+      i = limit;
+      continue;
+    }
+    i++;
+  }
+  if (!cuts.length) return src;
+  let out = src;
+  for (let c = cuts.length - 1; c >= 0; c--) {
+    out = out.slice(0, cuts[c][0]) + out.slice(cuts[c][1]);
+  }
+  out = tidyGap(out);
+  if (!out && payload && depth < 2) return stripGovernanceScaffold(payload, depth + 1) || payload;
+  return out;
+}
+
+/**
+ * Prefix of a streaming completion that is safe to show. A `{` that
+ * might open the governance object is held back until it is either
+ * the scaffold (dropped) or some other JSON (released).
+ */
+export function governanceVisiblePrefix(text) {
+  const src = String(text ?? "");
+  const ranges = fenceRanges(src);
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    const fence = ranges.find(([start, end]) => i >= start && i < end);
+    if (fence) {
+      out += src.slice(i, fence[1]);
+      i = fence[1];
+      continue;
+    }
+    if (src[i] !== "{") {
+      out += src[i];
+      i++;
+      continue;
+    }
+    const limit = nextFenceStart(ranges, i) ?? src.length;
+    const end = scanObjectEnd(src, i);
+    if (end > 0 && end <= limit) {
+      const slice = src.slice(i, end);
+      let obj = null;
+      try {
+        obj = JSON.parse(slice);
+      } catch {
+        obj = null;
+      }
+      if (isGovernanceObject(obj) || (!obj && truncatedGovernance(slice))) {
+        out = trimGovGap(out);
+        i = end;
+        continue;
+      }
+      out += slice;
+      i = end;
+      continue;
+    }
+    const first = readFirstKey(src, i, limit);
+    if (first.status === "key" && first.key === "toneLock") {
+      out = trimGovGap(out);
+      break;
+    }
+    if (first.status === "hold") break;
+    out += src.slice(i, limit);
+    i = limit;
+  }
+  return out;
+}
+
+export function createGovernanceStreamFilter() {
+  let raw = "";
+  let emitted = "";
+  return {
+    push(token) {
+      raw += String(token ?? "");
+      const visible = governanceVisiblePrefix(raw);
+      if (!visible.startsWith(emitted)) return "";
+      const delta = visible.slice(emitted.length);
+      emitted = visible;
+      return delta;
+    },
+    finish() {
+      const text = stripGovernanceScaffold(raw);
+      let delta = "";
+      if (text.startsWith(emitted)) {
+        delta = text.slice(emitted.length);
+        emitted = text;
+      }
+      return { delta, text };
+    },
+  };
+}
