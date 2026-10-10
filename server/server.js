@@ -59,6 +59,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { privateDtuHiddenFrom, ctxMayReadDtu } from "./lib/dtu-read-access.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
@@ -18039,18 +18040,10 @@ function userVisibleDTUs(viewerId = null) {
     // Privacy / scope filters — private or user-scoped content is only
     // visible to its owner, never to a system caller that forgot to
     // pass a viewer ID.
-    const isPrivate =
-      d.privacy === "private" ||
-      d.privacy === "followers-only" ||
-      d.scope === "user" ||
-      d.visibility === "private";
-
+    // Same predicate as by-id reads (lib/dtu-read-access.js). Kept as a
+    // call, not a copy, so list and get cannot drift.
     const owner = d.author || d.ownerId || d.userId || d.createdBy;
-
-    if (isPrivate) {
-      if (!viewerId) return false;
-      if (owner !== viewerId) return false;
-    }
+    if (privateDtuHiddenFrom(d, viewerId)) return false;
 
     // ── Federation tier filter ───────────────────────────────────
     // Regional / national tier DTUs are only visible to viewers in
@@ -25660,7 +25653,11 @@ register("dtu", "get", async (ctx, input) => {
       if (await dtuSidecar.isAvailable()) {
         const r = await dtuSidecar.getDTU(id);
         if (r && (r.ok === true || r.error === "DTU not found")) {
-          return r.ok ? { ok: true, dtu: r.dtu } : { ok: false, error: "DTU not found" };
+          if (!r.ok) return { ok: false, error: "DTU not found" };
+          // Sidecar get is unfiltered. Apply the same private gate as the
+          // in-memory path before the body leaves this macro.
+          if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
+          return { ok: true, dtu: r.dtu };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar get unavailable — inline fallback", { error: _e?.message }); }
@@ -25670,6 +25667,10 @@ register("dtu", "get", async (ctx, input) => {
   if (!dtu) return { ok: false, error: "DTU not found" };
   // Don't expose shadow DTUs via this endpoint
   if (isShadowDTU(dtu)) return { ok: false, error: "DTU not found" };
+  // Private / user-scoped DTUs are owner-only. Same predicate as
+  // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
+  // the id exists. Internal callers (makeInternalCtx) are exempt.
+  if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
 
@@ -26034,9 +26035,11 @@ register("dtu", "export", (ctx, input = {}) => {
   try {
     const id = input.id || input.dtuId;
     if (!id) return { ok: false, error: "id required" };
-    const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const d = (typeof userVisibleDTUs === "function" ? userVisibleDTUs(userId) : []).find(x => x.id === id) || STATE.dtus?.get?.(id);
+    const d = STATE.dtus?.get?.(id);
+    // The previous `|| STATE.dtus.get` fallback returned the DTU even when
+    // userVisibleDTUs had filtered it out. Misses are not_found.
     if (!d || (typeof isShadowDTU === "function" && isShadowDTU(d))) return { ok: false, error: "not_found" };
+    if (!ctxMayReadDtu(ctx, d)) return { ok: false, error: "not_found" };
     return { ok: true, dtu: d, format: input.format || "json" };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -32565,9 +32568,13 @@ register("dtu", "confidence", (ctx, input = {}) => {
 // Fields with no real backing on this pass (forks / citedBy / relatedIds)
 // are left as empty arrays rather than invented — an honest "no ancestors"
 // empty state is the correct UI for an original, uncited DTU.
-function _dtuLineageRef(id) {
+function _dtuLineageRef(id, ctx) {
   const d = STATE.dtus.get(id);
   if (!d) return { id };
+  // A public child's lineage must not carry a private parent's title,
+  // summary, or owner. The id is already on the visible subject's own
+  // lineage field; the private body stays off this response.
+  if (!ctxMayReadDtu(ctx, d)) return { id };
   return {
     id: d.id,
     title: d.title || d.human?.summary || null,
@@ -32583,6 +32590,7 @@ register("dtu", "lineage", (ctx, input = {}) => {
     if (!id) return { ok: false, error: "missing_id" };
     const dtu = STATE.dtus.get(id);
     if (!dtu) return { ok: false, error: "DTU not found" };
+    if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
 
     let parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
     // Fallback: derive from the plain-array `input.lineage` form when the
@@ -32595,8 +32603,8 @@ register("dtu", "lineage", (ctx, input = {}) => {
         .filter(Boolean);
     }
     const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
-    const parents = parentIds.map(_dtuLineageRef);
-    const children = childIds.map(_dtuLineageRef);
+    const parents = parentIds.map((pid) => _dtuLineageRef(pid, ctx));
+    const children = childIds.map((cid) => _dtuLineageRef(cid, ctx));
 
     let royaltyCascade = [];
     const db = ctx?.db || STATE?.db;
@@ -32605,10 +32613,11 @@ register("dtu", "lineage", (ctx, input = {}) => {
         const chain = _dtuLineageAncestorChain(db, id);
         royaltyCascade = chain.map((a) => {
           const ref = STATE.dtus.get(a.contentId);
+          const hidden = ref ? !ctxMayReadDtu(ctx, ref) : false;
           return {
             id: a.contentId,
-            title: ref?.title || null,
-            ownerId: ref?.ownerId || a.creatorId || null,
+            title: hidden ? null : (ref?.title || null),
+            ownerId: hidden ? null : (ref?.ownerId || a.creatorId || null),
             generation: a.generation,
             royaltyRate: a.rate,
             royaltyPercent: `${(a.rate * 100).toFixed(1)}%`,
@@ -56879,7 +56888,18 @@ structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations"
 // ============================================================================
 
 // ---- Wave 2: Version History Endpoints ----
+// By-id reads of a DTU that exists and is private to someone else are 404.
+// A missing id keeps the handler's previous behavior (versions may be []).
+function rejectIfPrivateDtuHidden(req, res, id) {
+  const dtu = STATE.dtus?.get?.(id);
+  if (dtu && !ctxMayReadDtu(req, dtu)) {
+    res.status(404).json({ ok: false, error: "DTU not found" });
+    return true;
+  }
+  return false;
+}
 app.get("/api/dtus/:id/versions", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const versions = getDTUVersions(req.params.id);
   res.json({ ok: true, versions });
 });
@@ -56996,6 +57016,7 @@ app.get("/api/ai/search", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/suggestions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await suggestConnections(req.params.id, { limit: Number(req.query.limit || 5) });
   res.json(result);
 }));
@@ -57006,6 +57027,7 @@ app.post("/api/ai/creti", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/contradictions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await detectContradictions(req.params.id);
   res.json(result);
 }));
@@ -57103,6 +57125,7 @@ app.post("/api/workspaces/:id/members", (req, res) => {
 
 // ---- Wave 4: Comments Endpoints ----
 app.get("/api/dtus/:id/comments", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = getComments(req.params.id);
   res.json(result);
 });
@@ -57164,7 +57187,7 @@ app.post("/api/dtus/:id/share", (req, res) => {
 app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
   try {
     const dtu = STATE.dtus?.get?.(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const lens = req.body?.lens || req.body?.domain;
     if (!lens) return res.status(400).json({ ok: false, error: "lens/domain required" });
     const userId = req.user.id;
@@ -57199,7 +57222,7 @@ app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
 app.post("/api/dtus/:id/fork", requireAuth(), (req, res) => {
   try {
     const sourceDtu = STATE.dtus?.get?.(req.params.id);
-    if (!sourceDtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!sourceDtu || !ctxMayReadDtu(req, sourceDtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const userId = req.user.id;
     const forkedDtu = {
       ...structuredClone(sourceDtu),
@@ -57237,6 +57260,9 @@ app.post("/api/lens/:domain/:id/pull", (req, res) => {
     // If the artifact links to an existing DTU, fork that DTU
     if (artifact.data?.dtuId && STATE.dtus.get(artifact.data.dtuId)) {
       const sourceDtu = STATE.dtus.get(artifact.data.dtuId);
+      if (!ctxMayReadDtu(req, sourceDtu)) {
+        return res.status(404).json({ ok: false, error: "DTU not found" });
+      }
       const forkedDtu = {
         ...structuredClone(sourceDtu),
         id: uid("dtu"),
@@ -67683,7 +67709,7 @@ function freshnessLabel(score) {
 // Track DTU access for freshness
 app.get("/api/dtus/:id/freshness", (req, res) => {
   const dtu = STATE.dtus.get(req.params.id);
-  if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+  if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
 
   // Record access
   if (!dtu.meta) dtu.meta = {};

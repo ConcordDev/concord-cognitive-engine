@@ -14,6 +14,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import logger from './logger.js';
 import { startSSE } from './lib/sse.js';
+import { ctxMayReadDtu } from './lib/dtu-read-access.js';
 
 function uid(prefix = "") {
   return prefix ? `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}` : randomUUID().replace(/-/g, "").slice(0, 20);
@@ -366,6 +367,9 @@ export function registerGuidanceEndpoints(app, db) {
       const dtuId = req.params.id;
       const dtuRow = db.prepare("SELECT id, title, tier, owner_user_id, visibility FROM dtus WHERE id = ?").get(dtuId);
       if (!dtuRow) return res.status(404).json({ ok: false, error: "DTU not found" });
+      if (!ctxMayReadDtu(req, { visibility: dtuRow.visibility, ownerId: dtuRow.owner_user_id })) {
+        return res.status(404).json({ ok: false, error: "DTU not found" });
+      }
 
       const rows = db.prepare(
         "SELECT id, version, body_json, created_at FROM dtu_versions WHERE dtu_id = ? ORDER BY version ASC"
