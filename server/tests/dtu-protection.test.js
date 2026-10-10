@@ -422,3 +422,47 @@ describe("evolution.dedupe — the hard-delete path now checks protection", () =
     assert.equal(verifyDtuIntegrity(a).verified, true, "the protected keeper still verifies");
   });
 });
+
+describe("dtu-protection — mega/hyper tiers and JSON-string tags", () => {
+  it("protects mega and hyper, including a raw SQL tags string", () => {
+    assert.equal(isDtuProtected({ tier: "mega" }), true);
+    assert.equal(isDtuProtected({ tier: "hyper" }), true);
+    assert.equal(isDtuProtected({ tier: "MEGA" }), true);
+    assert.equal(isDtuProtected({ tier: "regular", tags: '["vault"]' }), true);
+    assert.equal(isDtuProtected({ tier: "regular", tags: '["permanent_record"]' }), true);
+    assert.equal(isDtuProtected({ tier: "regular", tags: '["archive"]' }), false);
+    assert.equal(isDtuProtected({ tier: "regular", tags: ["archive"] }), false);
+  });
+
+  it("cold archive skips mega, hyper, and JSON vault tags without reselecting them", async () => {
+    const { archiveOldDtuStore } = await import("../lib/dtu-archive.js");
+    const db = new Database(":memory:");
+    initDTUStore(db);
+    const { up } = await import("../migrations/401_dtu_store_archive.js");
+    up(db);
+    const old = "2000-01-01T00:00:00.000Z";
+    const insert = db.prepare(`
+      INSERT INTO dtu_store (id, title, tier, scope, tags, source, created_at, updated_at, data)
+      VALUES (?, ?, ?, 'global', ?, 'system', ?, ?, '{}')
+    `);
+    insert.run("a-mega-1", "mega one", "mega", "[]", old, old);
+    insert.run("a-mega-2", "mega two", "mega", "[]", old, old);
+    insert.run("b-regular", "plain note", "regular", "[]", old, old);
+    insert.run("c-vault", "vault note", "regular", '["vault"]', old, old);
+    insert.run("d-hyper", "hyper one", "hyper", "[]", old, old);
+
+    const result = await archiveOldDtuStore(db, { ageMs: 1000, batchSize: 1 });
+    assert.equal(result.archived, 1, JSON.stringify(result));
+    assert.equal(result.interrupted, 0);
+
+    const live = new Set(db.prepare(`SELECT id FROM dtu_store`).all().map(r => r.id));
+    assert.equal(live.has("a-mega-1"), true);
+    assert.equal(live.has("a-mega-2"), true);
+    assert.equal(live.has("c-vault"), true);
+    assert.equal(live.has("d-hyper"), true);
+    assert.equal(live.has("b-regular"), false);
+    const archived = db.prepare(`SELECT id FROM dtu_store_archive WHERE id = ?`).get("b-regular");
+    assert.ok(archived);
+    db.close();
+  });
+});

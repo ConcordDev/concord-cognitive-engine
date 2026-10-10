@@ -94,17 +94,36 @@ export const PROTECTED_TAGS = Object.freeze(["vault", "permanent_record"]);
  * archive tags, so a DTU protected through any of them is protected in all
  * of them.
  *
- * NOTE: this is intentionally NARROWER than
- * `forgetting-engine.js#isProtected`, which additionally treats whole
- * CATEGORIES as protected (tier core/mega, source user/sovereign,
- * constitutional/breakthrough tags, >5 children). Those are retention
- * heuristics for a scoring cycle; this is an explicit "this record is
- * permanent" assertion. Deletion paths that want the broader retention
- * policy should call the forgetting-engine's predicate instead.
+ * Mega and hyper tiers are protected here too. Cold archive
+ * (`lib/dtu-archive.js`) calls this predicate on raw SQL rows, and those
+ * tiers are the consolidation product — archiving them is how production
+ * ended up with 0 megas and 0 hypers. Consolidation's own
+ * `demoteToArchive` does not call this predicate; it still absorbs
+ * members into a parent on purpose.
+ *
+ * `tags` may be a JSON string. Raw `SELECT` rows store tags as text
+ * (`'["vault"]'`), not an array. Both shapes are honored.
  *
  * @param {object} dtu
  * @returns {boolean}
  */
+export function dtuTagList(dtu) {
+  const raw = dtu?.tags;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (!s) return [];
+    if (s.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed;
+      } catch { /* not JSON — fall through */ }
+    }
+    return s.split(",").map(t => t.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export function isDtuProtected(dtu) {
   if (!dtu || typeof dtu !== "object") return false;
   if (dtu.protected === true) return true;
@@ -112,9 +131,10 @@ export function isDtuProtected(dtu) {
   if (dtu.immutable === true) return true;
   if (dtu.seedOrigin) return true;
   if (dtu.protection && dtu.protection.protected === true) return true;
-  if (Array.isArray(dtu.tags)) {
-    for (const t of PROTECTED_TAGS) if (dtu.tags.includes(t)) return true;
-  }
+  const tier = String(dtu.tier || "").toLowerCase();
+  if (tier === "mega" || tier === "hyper") return true;
+  const tags = dtuTagList(dtu);
+  for (const t of PROTECTED_TAGS) if (tags.includes(t)) return true;
   return false;
 }
 

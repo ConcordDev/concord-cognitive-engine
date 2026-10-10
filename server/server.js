@@ -1870,7 +1870,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
-import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
+import { shouldPauseHeavyBackground, shouldRunConsolidation } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
@@ -24837,19 +24837,30 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     }
   }
 
-  if (!PIPE.enabled) {
-    // fallback to legacy write
-    if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
-    else STATE.dtus.set(dtu.id, dtu);
-    saveStateDebounced();
-    return { ok:true, dtu, bypassed:true };
-  }
-  // --- Anti-gaming guard: only system promotion may create MEGA/HYPER DTUs ---
+  // --- Anti-gaming guard: users can't self-promote MEGA/HYPER ---
+  // Runs before the PIPE bypass so a disabled pipeline cannot skip it.
+  // auto.promo.* and an explicit system ctx still pass (historical).
+  // Trusted consolidation ops (gap_promotion, system.promotionTick,
+  // system.evolution) pass only from an internal/governor ctx —
+  // makeInternalCtx sets ctx.internal, not ctx.system, and that mismatch
+  // was downgrading every heartbeat mega to regular + tier_downgraded.
+  // A user ctx calling the same op is still downgraded.
   try {
     const op = String(opts.op || "");
-    const systemOp = op.startsWith("auto.promo.") || op.startsWith("auto.promo") || op.startsWith("auto.promotion");
+    const autoPromo = op.startsWith("auto.promo.") || op.startsWith("auto.promo") || op.startsWith("auto.promotion");
     const systemCtx = !!(ctx && (ctx.system === true || ctx.isSystem === true || ctx?.meta?.system === true));
-    if ((dtu?.tier === "mega" || dtu?.tier === "hyper") && !(systemOp || systemCtx)) {
+    const internalCtx = !!(ctx && (
+      ctx.internal === true
+      || ctx.actor?.internal === true
+      || ctx.reqMeta?.internal === true
+      || ctx.reqMeta?.source === "governor"
+    ));
+    const trustedInternalOp = (
+      op === "gap_promotion"
+      || op === "system.promotionTick"
+      || op === "system.evolution"
+    ) && internalCtx;
+    if ((dtu?.tier === "mega" || dtu?.tier === "hyper") && !(autoPromo || systemCtx || trustedInternalOp)) {
       // Downgrade to regular; users can't self-promote tiers.
       dtu.tier = "regular";
       dtu.tags = Array.from(new Set([...(dtu.tags||[]), "tier_downgraded"]));
@@ -24858,6 +24869,14 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
       dtu.meta.tierDowngradeReason = "anti_gaming_only_auto_promo_can_set_tier";
     }
   } catch (_e) { logger.debug('server', 'anti-gaming guard may fail gracefully', { error: _e?.message }); }
+
+  if (!PIPE.enabled) {
+    // fallback to legacy write
+    if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
+    else STATE.dtus.set(dtu.id, dtu);
+    saveStateDebounced();
+    return { ok:true, dtu, bypassed:true };
+  }
   const p = pipeProposal("dtu.commit", { dtu }, { kind:"macro", id: opts.op || "unknown" });
   const vr = pipeVerify(p);
   p.verify = vr; p.updatedAt = nowISO();
@@ -26348,10 +26367,6 @@ register("dtu", "gapPromote", async (ctx, input) => {
   const targetTier = input.tier === "hyper" ? "hyper" : "mega";
   const childTier = targetTier === "hyper" ? "mega" : "regular";
 
-  // Promote stable clusters of childTier DTUs into a targetTier DTU.
-  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
-  if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length };
-
   // Lightweight topic hashing for cluster identity
   const topicKeyOf = (cluster) => {
     const tags = cluster.flatMap(d => Array.isArray(d.tags)?d.tags:[]).map(t=>String(t).toLowerCase()).filter(Boolean);
@@ -26359,23 +26374,44 @@ register("dtu", "gapPromote", async (ctx, input) => {
     return simpleHash(tags.slice(0, 30).join("|") + "|" + cluster.map(d=>d.id).slice(0,10).join("|"));
   };
 
-  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
-  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
-  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
-  if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
-  const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
+  const _idOf = (x) => (x && typeof x === "object") ? (x.id || null) : x;
+
+  // When the caller already picked the cluster (heartbeat passes cluster.ids),
+  // use that list as the single cluster. Re-clustering here used to run a full
+  // O(n^2) pass per promotion — up to 9 per tick on top of the pass that
+  // already produced the ids.
+  let clusters;
+  if (Array.isArray(input.ids)) {
+    const ids = input.ids.map(_idOf).filter(Boolean);
+    clusters = [{ ids, label: input.label || null }];
+  } else {
+    // Promote stable clusters of childTier DTUs into a targetTier DTU.
+    const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
+    if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length, promoted: [], dtus: [], dtu: null };
+
+    // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
+    // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
+    const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
+    if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
+    clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
+  }
 
   const promoted = [];
+  const created = [];
   for (const c of clusters) {
     if (promoted.length >= maxPromotions) break;
-    const ids = Array.isArray(c.ids) ? c.ids : [];
+    const ids = Array.isArray(c.ids) ? c.ids.map(_idOf).filter(Boolean) : [];
     if (ids.length < minCluster) continue;
-    const members = ids.map(id => STATE.dtus.get(id)).filter(Boolean);
+    const members = ids
+      .map(id => STATE.dtus.get(id))
+      .filter(d => d && (d.tier || "regular") === childTier && !isShadowDTU(d) && (d.status || "active") === "active");
     if (members.length < minCluster) continue;
 
     const clusterKey = topicKeyOf(members);
-    // Skip if a mega already exists for this cluster key
-    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === targetTier && d?.meta?.clusterKey === clusterKey);
+    // Tier-independent: a downgraded regular that already carries this
+    // clusterKey must block a rebuild, or the same megas are minted every
+    // tick and then re-clustered into "MEGA — MEGA …".
+    const existing = Array.from(STATE.dtus.values()).find(d => d?.meta?.clusterKey === clusterKey);
     if (existing) continue;
 
     // Build a deterministic mega summary (no LLM dependency)
@@ -26396,6 +26432,8 @@ register("dtu", "gapPromote", async (ctx, input) => {
     const _lensSet = Array.from(new Set(members.map(m => m.lens_id || m.lensId || m.meta?.lensId).filter(Boolean)));
     const _megaLens = _lensSet.length === 1 ? _lensSet[0] : (_lensSet.length > 1 ? "multi" : (_seed.lens_id || _seed.lensId || null));
     const _megaCreator = _seed.creator_id || _seed.creatorId || _seed.createdBy || _seed.userId || _seed.meta?.creatorId || null;
+    const memberIds = members.map(d => d.id);
+    const memberClaims = members.flatMap(d => Array.isArray(d.core?.claims) ? d.core.claims : []).slice(0, 24);
     const mega = {
       id: uid("dtu"),
       tier: targetTier,
@@ -26410,33 +26448,38 @@ register("dtu", "gapPromote", async (ctx, input) => {
       createdAt: nowISO(),
       updatedAt: nowISO(),
       status: "active",
-      lineage: { parents: members.map(d=>d.id), kind: "gap_promotion" },
+      lineage: { parents: memberIds, kind: "gap_promotion" },
       core: {
-        definitions: [`A compressed synthesis of ${members.length} regular DTUs around: ${titleSeed}.`],
+        definitions: [`A compressed synthesis of ${members.length} ${childTier} DTUs around: ${titleSeed}.`],
         invariants: [
-          "This MEGA is derived from a stable local cluster (gap promotion).",
-          "Member DTUs remain active; this is a soft promotion (no destructive merge)."
+          "This node is derived from a stable local cluster (gap promotion).",
+          "The consolidation cycle archives member DTUs into this node after a successful promotion."
         ],
+        claims: memberClaims,
         examples: [],
         tests: [],
         next_actions: [
-          "Review this MEGA for crispness and missing gaps.",
+          "Review this synthesis for crispness and missing gaps.",
           "If stable, consider elevating to Hyper only with citations + verification."
         ]
       },
       cretiHuman: [
-        `**What this MEGA represents**: ${members.length} related DTUs clustered around **${titleSeed}**.`,
+        `**What this ${targetTier.toUpperCase()} represents**: ${members.length} related ${childTier} DTUs clustered around **${titleSeed}**.`,
+        `Cluster representative for ids ${memberIds.join(", ")}. The synthesis adds the cluster key, the promotion lineage, and a review checklist that no single member states on its own. It is the stable node for this cluster, not a copy of any one member.`,
         tags.length ? `**Tag hints**: ${tags.join(", ")}` : "",
         excerpts.length ? `**Representative excerpts**:\n- ${excerpts.map(e=>e.replace(/\n+/g," ").slice(0,180)).join("\n- ")}` : "",
-        "**Lineage**: soft-promoted from regular DTUs; members remain canonical unless explicitly merged later."
+        "**Lineage**: promoted from the member DTUs. Consolidation archives those members into this node."
       ].filter(Boolean).join("\n\n"),
-      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO() }
+      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO(), createdBy: _megaCreator || undefined }
     };
 
     if (!dryRun) {
-      // Sprint 32 E3 — compression quality gate: ensure mega is an upgrade, not a downgrade
+      // Sprint 32 E3 — compression quality gate: ensure mega is an upgrade, not a downgrade.
+      // The pass row is written only AFTER pipelineCommitDTU keeps the target tier.
+      // Logging it before the commit counted downgraded regulars as successful megas.
       let compressionScore = null;
       let compressionReasons = [];
+      let qualityPassed = true;
       try {
         const { scoreCompression, logCompressionAttempt } = await import("./lib/compression-quality.js");
         const qualityResult = scoreCompression({ mega, children: members, STATE });
@@ -26444,7 +26487,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
         compressionReasons = qualityResult.reasons;
 
         if (!qualityResult.pass) {
-          // Quality gate failed — log and skip this promotion
+          qualityPassed = false;
           logCompressionAttempt({
             db: STATE.db,
             mega,
@@ -26458,24 +26501,31 @@ register("dtu", "gapPromote", async (ctx, input) => {
             score: compressionScore,
             reasons: compressionReasons,
           });
-          continue;
         }
+      } catch (err) {
+        logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
+      }
+      if (!qualityPassed) continue;
 
-        // Gate passed — log success
+      const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
+      if (!r?.ok) continue;
+      const committed = STATE.dtus.get(mega.id) || r.dtu || mega;
+      // Anti-gaming downgrade stores a regular with this clusterKey. That row
+      // blocks a rebuild, but it is not a promotion and must not audit as a pass.
+      if (committed?.tier !== targetTier) continue;
+      try {
+        const { logCompressionAttempt } = await import("./lib/compression-quality.js");
         logCompressionAttempt({
           db: STATE.db,
-          mega,
+          mega: committed,
           children: members,
           passed: true,
           score: compressionScore,
           reasons: compressionReasons,
         });
       } catch (err) {
-        logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
+        logger.debug?.("[compression] pass audit skipped", { error: err?.message });
       }
-
-      const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
-      if (!r?.ok) continue;
       for (const m of members) {
         try {
           m.meta = m.meta || {};
@@ -26483,12 +26533,20 @@ register("dtu", "gapPromote", async (ctx, input) => {
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
       }
       saveStateDebounced();
+      created.push(committed);
     }
 
-    promoted.push({ megaId: mega.id, clusterKey, members: members.length, label: titleSeed });
+    promoted.push({ megaId: mega.id, clusterKey, members: members.length, memberIds, label: titleSeed });
   }
 
-  return { ok:true, did: promoted.length ? "promoted" : "none", promoted, dryRun };
+  return {
+    ok: true,
+    did: promoted.length ? "promoted" : "none",
+    promoted,
+    dtus: created,
+    dtu: created[0] || null,
+    dryRun,
+  };
 }, { description: "Detect stable clusters (gaps) and soft-promote them into MEGA DTUs." });
 
 // Chat domain
@@ -41290,9 +41348,14 @@ async function federationPublish(eventType, payload) {
 let __governorTimer = null;
 
 function _governorCtx() {
-  // internal ctx: owner actor + founder override flag for safe local growth operations
+  // internal ctx: owner actor + founder override flag for safe local growth operations.
+  // ctx.system is set so pipelineCommitDTU's anti-gaming guard accepts MEGA/HYPER
+  // from the heartbeat. makeInternalCtx alone only sets ctx.internal, which used
+  // to downgrade every consolidation mega to regular.
   const ctx = makeInternalCtx("governor");
-  ctx.reqMeta = { ...(ctx.reqMeta||{}), override: true, internal: true, source: "governor" };
+  ctx.system = true;
+  ctx.isSystem = true;
+  ctx.reqMeta = { ...(ctx.reqMeta||{}), override: true, internal: true, source: "governor", system: true };
   return ctx;
 }
 
@@ -41355,11 +41418,21 @@ async function governorTick(reason="heartbeat") {
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
   //
-  // This gate is idle-only. The heavy-maintenance helper also returns false
-  // on a low-memory host, and using it here skipped the liveness counter
-  // even while authenticated users were driving load (tick-SLO: 0 ticks,
-  // "frozen loop", on a 16 GB CI runner).
+  // This gate is idle-only. The heavy-maintenance helper is also false on a
+  // low-memory host, and using it here skipped the liveness counter while
+  // authenticated users were driving load (tick-SLO: 0 ticks, "frozen loop",
+  // on a 16 GB CI runner). Consolidation uses the same isIdle() signal, not
+  // that helper, so a small host with users still compresses.
   if (reason !== "boot" && presenceIdle.isIdle()) {
+    // Quiet room: skip autogen/dream/jobs. A due consolidation cycle still
+    // runs so a restart during idle does not drop the wall-clock pass.
+    try {
+      if (shouldRunConsolidation() && await _consolidationDue()) {
+        _governorTickRunning = true;
+        try { await _runDtuConsolidationCycle(_governorCtx()); }
+        finally { _governorTickRunning = false; }
+      }
+    } catch (e) { observe(e, "governor_consolidation_idle"); }
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41374,22 +41447,33 @@ async function governorTick(reason="heartbeat") {
   // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
-    if (reason !== "boot" && shouldPauseHeavyBackground()) {
-      return { ok: true, skipped: "low_memory_host" };
-    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
+    // Low-memory is a flag, not a return. The old return sat above jobs,
+    // the queue, and consolidation, so a 16GB host never compressed and
+    // user-awaited background jobs stalled. Autogen/dream/ingest still pause.
+    const lowMemoryPause = reason !== "boot" && shouldPauseHeavyBackground();
 
     // 1) Deterministic + bounded growth engines
-    if (s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
-    if (s.dreamEnabled)    { try { await runMacro("system","dream",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_dream_heartbeat"); } }
-    if (s.evolutionEnabled){ try { await runMacro("system","evolution",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_evolution_heartbeat"); } }
-    if (s.synthEnabled)    { try { await runMacro("system","synth",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_synth_heartbeat"); } }
+    if (!lowMemoryPause && s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
+    if (!lowMemoryPause && s.dreamEnabled)    { try { await runMacro("system","dream",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_dream_heartbeat"); } }
+    if (!lowMemoryPause && s.evolutionEnabled){ try { await runMacro("system","evolution",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_evolution_heartbeat"); } }
+    if (!lowMemoryPause && s.synthEnabled)    { try { await runMacro("system","synth",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_synth_heartbeat"); } }
 
-    // 2) Queue processing (best-effort; only if macros exist)
+    // 2) Queue processing. Jobs and the queue are user-awaited — they run
+    // even when the low-memory profile is on. Ingest/crawl stay paused.
     try { await runMacro("jobs","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_jobs_tick"); }
     try { await runMacro("queue","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_queue_tick"); }
+    if (lowMemoryPause) {
+      // Users are present (the idle return already left). Compression follows
+      // isIdle(), so this host still consolidates unless
+      // CONCORD_CONSOLIDATION_ON_LOW_MEMORY=0.
+      if (shouldRunConsolidation() && !presenceIdle.isIdle() && await _consolidationDue()) {
+        try { await _runDtuConsolidationCycle(ctx); } catch (e) { observe(e, "governor_consolidation_low_memory"); }
+      }
+      return { ok: true, skipped: "low_memory_host" };
+    }
     try { await runMacro("ingest","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_ingest_tick"); }
     try { await runMacro("crawl","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_crawl_tick"); }
 
@@ -41871,147 +41955,14 @@ async function governorTick(reason="heartbeat") {
       }
 
       // ── Consolidation Pipeline (derived from hardware math) ──
-      // Runs every CONSOLIDATION.TICK_INTERVAL ticks (~7.5 minutes)
-      // This is the primary memory management system — consolidation is the lungs.
-      // Wrapped via runHeartbeatModule so timing lands in
-      // concord_heartbeat_block_ms{module="consolidation"} — this block
-      // is the most likely heartbeat-overrun culprit at scale.
-      if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
-        await runHeartbeatModule("consolidation", async () => {
-          // Sprint 60+ — idle gate. Consolidation = cluster detection + MEGA
-          // formation across 6000+ DTUs. Pure maintenance. With no real users,
-          // there's no one to read those DTUs soon. Skip the heavy work;
-          // next tick after users return will catch up.
-          if (!presenceIdle.shouldRunHeavyMaintenance()) {
-            return { ok: true, skipped: "idle_no_users" };
-          }
-          const ctx = _governorCtx();
-          // Phase 1: Cluster detection for MEGA formation
-          try {
-            const clusterResult = await runMacro("dtu", "cluster", {
-              minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
-              maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
-              excludeTiers: ["mega", "hyper"],
-            }, ctx);
-
-            // Phase 2: Create MEGAs from qualifying clusters
-            // Sprint 32 — hard cap per-tick work + cooperative yield to the
-            // event loop between clusters. Pre-fix, a 100+ cluster run was
-            // blocking the event loop for 100+ seconds (heartbeat_block_slow
-            // module=consolidation ms=109043). Now we process at most N
-            // clusters per tick and yield with setImmediate(0) so HTTP
-            // requests (and other heartbeat modules) get scheduled in.
-            // Unprocessed clusters spill to the next consolidation tick
-            // (no data loss — just a slower drain).
-            const CONSO_YIELD_MS = 50;
-            const CONSO_BUDGET_MS = 4000;
-            const _consoStart = Date.now();
-            if (clusterResult?.clusters?.length > 0) {
-              let _consoDone = 0;
-              for (const cluster of clusterResult.clusters.slice(0, CONSOLIDATION.MEGA_MAX_PER_CYCLE)) {
-                // Yield to the event loop between clusters so /api/* and
-                // the rest of the heartbeat get CPU time.
-                await new Promise((r) => { setImmediate(r); });
-                if (Date.now() - _consoStart > CONSO_BUDGET_MS) {
-                  structuredLog("info", "consolidation_defer_remaining", {
-                    done: _consoDone,
-                    remaining: clusterResult.clusters.length - _consoDone,
-                    budgetMs: CONSO_BUDGET_MS,
-                  });
-                  break;
-                }
-                _consoDone++;
-                try {
-                  const mega = await runMacro("dtu", "gapPromote", {
-                    ids: (cluster.members || cluster.dtus || []).map(d => d.id || d),
-                    tier: "mega",
-                    dryRun: false
-                  }, ctx);
-
-                  if (mega?.ok && mega?.dtu?.id) {
-                    // Quality gate: validate consolidation before committing
-                    const quality = validateConsolidationQuality(mega.dtu, (cluster.members || cluster.dtus || []).map(d => d.id || d));
-                    if (!quality.ok) { STATE.dtus.delete(mega.dtu.id); continue; }
-
-                    // Transfer edges before archiving sources
-                    for (const member of (cluster.members || cluster.dtus || [])) {
-                      const memberId = member.id || member;
-                      try { transferEdgesToConsolidated(memberId, mega.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                    }
-                    // Demote absorbed regular DTUs to archive
-                    for (const member of (cluster.members || cluster.dtus || [])) {
-                      const memberId = member.id || member;
-                      try { demoteToArchive(memberId, mega.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                    }
-                    // Credit contributing entities
-                    if (entityEconMod) {
-                      for (const member of (cluster.members || cluster.dtus || [])) {
-                        const src = STATE.dtus.get(member.id || member);
-                        if (src?.meta?.createdBy) {
-                          try { entityEconMod.earnResource(src.meta.createdBy, "INSIGHT", ENTITY_ECONOMY_CONSTANTS.INCOME_CONSOLIDATION, "consolidation"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                        }
-                      }
-                    }
-                    // Earned-storage hook — every MEGA owned by a creator
-                    // grants STORAGE_EARN_PER_MEGA_BYTES (default 512 MiB).
-                    // The MEGA owner is the creator most-cited in the cluster
-                    // (its meta.createdBy); we grant once per MEGA, idempotent
-                    // by the MEGA's id.
-                    try {
-                      const megaOwner = mega.dtu?.meta?.createdBy;
-                      if (megaOwner) {
-                        grantEarnedStorage(
-                          db,
-                          megaOwner,
-                          STORAGE_REASONS.EARNED_MEGA,
-                          STORAGE_EARN_PER_MEGA_BYTES,
-                          `mega:${mega.dtu.id}`,
-                        );
-                      }
-                    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                  }
-                } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              }
-            }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-
-          // Phase 3: HYPER formation (cluster MEGAs into HYPERs)
-          const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
-          if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION) {
-            try {
-              const megaClusters = await runMacro("dtu", "cluster", {
-                minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-                maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
-                onlyTier: "mega",
-              }, ctx);
-
-              if (megaClusters?.clusters?.length > 0) {
-                for (const mc of megaClusters.clusters.slice(0, CONSOLIDATION.HYPER_MAX_PER_CYCLE)) {
-                  try {
-                    const hyper = await runMacro("dtu", "gapPromote", {
-                      ids: (mc.members || mc.dtus || []).map(d => d.id || d),
-                      tier: "hyper",
-                      dryRun: false
-                    }, ctx);
-                    if (hyper?.ok && hyper?.dtu?.id) {
-                      // Quality gate: validate HYPER consolidation
-                      const hyperQuality = validateConsolidationQuality(hyper.dtu, (mc.members || mc.dtus || []).map(d => d.id || d));
-                      if (!hyperQuality.ok) { STATE.dtus.delete(hyper.dtu.id); continue; }
-
-                      // Transfer edges before archiving source MEGAs
-                      for (const member of (mc.members || mc.dtus || [])) {
-                        try { transferEdgesToConsolidated(member.id || member, hyper.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                      }
-                      for (const member of (mc.members || mc.dtus || [])) {
-                        try { demoteToArchive(member.id || member, hyper.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                      }
-                    }
-                  } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                }
-              }
-            } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-          }
-        });
+      // Wall-clock cadence (TICK_FREQUENCIES.CONSOLIDATION heartbeats),
+      // persisted across restarts. Not an in-memory tick modulus.
+      // Wrapped via runHeartbeatModule inside _runDtuConsolidationCycle so
+      // timing lands in concord_heartbeat_block_ms{module="consolidation"}.
+      // isIdle() — the heavy-maintenance helper is also false on a low-memory
+      // host and was pausing compression while users were here.
+      if (shouldRunConsolidation() && !presenceIdle.isIdle() && await _consolidationDue()) {
+        await _runDtuConsolidationCycle(ctx);
       }
 
       // Heap pressure check
@@ -42523,6 +42474,207 @@ async function governorTick(reason="heartbeat") {
   } finally {
     _governorTickRunning = false;
   }
+}
+
+const CONSOLIDATION_LAST_RUN_KEY = "dtu.consolidation.lastRunAt";
+let _consolidationScheduleMod = null;
+
+async function _consolidationSchedule() {
+  if (!_consolidationScheduleMod) {
+    _consolidationScheduleMod = await import("./lib/consolidation-schedule.js");
+  }
+  return _consolidationScheduleMod;
+}
+
+async function _consolidationIntervalMs() {
+  const { consolidationIntervalMs } = await _consolidationSchedule();
+  // TICK_FREQUENCIES.CONSOLIDATION and CONSOLIDATION.TICK_INTERVAL are the
+  // same historical every-30-ticks period, now measured in wall time.
+  return consolidationIntervalMs({
+    heartbeatMs: STATE.settings?.heartbeatMs,
+    everyTicks: TICK_FREQUENCIES.CONSOLIDATION || CONSOLIDATION.TICK_INTERVAL,
+    overrideMs: process.env.CONCORD_CONSOLIDATION_INTERVAL_MS,
+  });
+}
+
+async function _readConsolidationLastRunAt() {
+  const fromSettings = Number(STATE.settings?.consolidationLastRunAt) || 0;
+  let fromDb = 0;
+  try {
+    const { getConfig } = await import("./lib/runtime/runtime-config.js");
+    const v = getConfig(db, CONSOLIDATION_LAST_RUN_KEY, null);
+    fromDb = Number(v && typeof v === "object" ? v.at : v) || 0;
+  } catch { /* kv is optional — settings snapshot still carries the stamp */ }
+  return Math.max(fromSettings, fromDb);
+}
+
+async function _consolidationDue(now = Date.now()) {
+  const { consolidationIsDue } = await _consolidationSchedule();
+  return consolidationIsDue({
+    lastRunAt: await _readConsolidationLastRunAt(),
+    now,
+    intervalMs: await _consolidationIntervalMs(),
+  });
+}
+
+async function _markConsolidationRan(now = Date.now()) {
+  STATE.settings = STATE.settings || {};
+  STATE.settings.consolidationLastRunAt = now;
+  try { saveStateDebounced(); } catch { /* snapshot is best-effort */ }
+  try {
+    const { setConfig } = await import("./lib/runtime/runtime-config.js");
+    setConfig(db, CONSOLIDATION_LAST_RUN_KEY, { at: now }, { source: "governor" });
+  } catch { /* kv is optional */ }
+}
+
+function _clusterMemberIds(cluster) {
+  if (Array.isArray(cluster?.ids) && cluster.ids.length) {
+    return cluster.ids.map(x => (x && typeof x === "object") ? x.id : x).filter(Boolean);
+  }
+  const raw = cluster?.members || cluster?.dtus || [];
+  return raw.map(d => (d && typeof d === "object") ? (d.id || d) : d).filter(Boolean);
+}
+
+/**
+ * Read gapPromote's real return ({ promoted:[{megaId, memberIds}], dtu, dtus })
+ * and absorb members: quality gate, edge transfer, demoteToArchive.
+ * The old tick looked for mega.dtu.id, which gapPromote never set, so
+ * members stayed hot and the regular count never dropped.
+ */
+async function absorbConsolidatedPromotion(promotionResult, cluster) {
+  if (!promotionResult?.ok) return { ok: false, reason: "promote_failed" };
+  const records = Array.isArray(promotionResult.promoted) ? promotionResult.promoted : [];
+  const dtus = Array.isArray(promotionResult.dtus) ? promotionResult.dtus : [];
+  const list = records.length
+    ? records
+    : (promotionResult.dtu?.id ? [{ megaId: promotionResult.dtu.id, memberIds: _clusterMemberIds(cluster) }] : []);
+  if (!list.length) return { ok: false, reason: "no_dtu", promoted: records };
+  const entityEconMod = await import("./emergent/entity-economy.js").catch(() => null);
+  let absorbed = 0;
+  const failures = [];
+  for (const rec of list) {
+    const megaId = rec.megaId || rec.id;
+    const live = (megaId && STATE.dtus.get(megaId))
+      || dtus.find(d => d?.id === megaId)
+      || (promotionResult.dtu?.id === megaId ? promotionResult.dtu : null);
+    if (!live?.id) {
+      failures.push({ megaId, reason: "missing" });
+      continue;
+    }
+    const memberIds = (Array.isArray(rec.memberIds) && rec.memberIds.length)
+      ? rec.memberIds
+      : _clusterMemberIds(cluster);
+    const quality = validateConsolidationQuality(live, memberIds);
+    if (!quality.ok) {
+      try { STATE.dtus.delete(live.id); } catch { /* best-effort */ }
+      failures.push({ megaId: live.id, reason: quality.reason });
+      continue;
+    }
+    const creators = [];
+    for (const memberId of memberIds) {
+      if (!memberId || memberId === live.id) continue;
+      const src = STATE.dtus.get(memberId);
+      if (src?.meta?.createdBy) creators.push(src.meta.createdBy);
+      try { await transferEdgesToConsolidated(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      try { demoteToArchive(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      absorbed++;
+    }
+    if (entityEconMod?.earnResource) {
+      for (const creator of creators) {
+        try { entityEconMod.earnResource(creator, "INSIGHT", ENTITY_ECONOMY_CONSTANTS.INCOME_CONSOLIDATION, "consolidation"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      }
+    }
+    try {
+      const megaOwner = live.meta?.createdBy || live.creator_id || live.creatorId || null;
+      if (megaOwner) {
+        grantEarnedStorage(db, megaOwner, STORAGE_REASONS.EARNED_MEGA, STORAGE_EARN_PER_MEGA_BYTES, `mega:${live.id}`);
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  }
+  return { ok: failures.length === 0, absorbed, failures, megaId: list[0]?.megaId || null };
+}
+
+async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
+  let done = 0;
+  const batch = (clusters || []).slice(0, tier === "hyper" ? CONSOLIDATION.HYPER_MAX_PER_CYCLE : CONSOLIDATION.MEGA_MAX_PER_CYCLE);
+  for (const cluster of batch) {
+    await new Promise((r) => { setImmediate(r); });
+    if (Date.now() - startedAt > budgetMs) {
+      structuredLog("info", "consolidation_defer_remaining", {
+        done,
+        remaining: batch.length - done,
+        budgetMs,
+        tier,
+      });
+      break;
+    }
+    done++;
+    try {
+      const ids = _clusterMemberIds(cluster);
+      const promoted = await runMacro("dtu", "gapPromote", {
+        ids,
+        tier,
+        minCluster,
+        maxPromotions: 1,
+        dryRun: false,
+      }, ctx);
+      await absorbConsolidatedPromotion(promoted, { ids });
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  }
+  return done;
+}
+
+// Primary memory compression. Yields between clusters and stops at a
+// per-tick budget. Eligibility is wall-clock (see _consolidationDue), so a
+// restart does not wait another 30 ticks and an idle room still compresses.
+async function _runDtuConsolidationCycle(ctx) {
+  const cycleCtx = ctx || _governorCtx();
+  const startedAt = Date.now();
+  structuredLog("info", "consolidation_cycle", {
+    at: startedAt,
+    lowMemory: shouldPauseHeavyBackground(),
+    budgetMs: 4000,
+  });
+  await _markConsolidationRan(startedAt);
+  return runHeartbeatModule("consolidation", async () => {
+    const CONSO_BUDGET_MS = 4000;
+    const startedAt = Date.now();
+    try {
+      const clusterResult = await runMacro("dtu", "cluster", {
+        minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
+        maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
+        fromTier: "regular",
+      }, cycleCtx);
+      if (clusterResult?.clusters?.length > 0) {
+        await _promoteClusterBatch(cycleCtx, clusterResult.clusters, {
+          tier: "mega",
+          minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
+          budgetMs: CONSO_BUDGET_MS,
+          startedAt,
+        });
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+    const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
+    if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION && Date.now() - startedAt <= CONSO_BUDGET_MS) {
+      try {
+        const megaClusters = await runMacro("dtu", "cluster", {
+          minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+          maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
+          fromTier: "mega",
+        }, cycleCtx);
+        if (megaClusters?.clusters?.length > 0) {
+          await _promoteClusterBatch(cycleCtx, megaClusters.clusters, {
+            tier: "hyper",
+            minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+            budgetMs: CONSO_BUDGET_MS,
+            startedAt,
+          });
+        }
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
+    return { ok: true };
+  });
 }
 
 function _startGovernorHeartbeat() {
@@ -89005,5 +89157,7 @@ export const __TEST__ = Object.freeze({
   getEthosEnforcementSnapshot,
   ETHOS_ENFORCEMENT_HISTORY_CAP,
   initGhostFleet,
+  absorbConsolidatedPromotion,
+  governorTick,
 });
 // Test commit
