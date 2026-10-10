@@ -4198,7 +4198,7 @@ function buildStyleHints(sv) {
   lines.push(`- Technical depth: ${sv.technicality > 0.6 ? 'deep technical detail' : sv.technicality < 0.4 ? 'plain language' : 'moderate technical'}`);
   lines.push(`- Response length: ${sv.verbosity > 0.6 ? 'detailed, thorough' : sv.verbosity < 0.4 ? 'concise, brief' : 'moderate length'}`);
   lines.push(`- Warmth: ${sv.warmth > 0.6 ? 'warm and personal' : sv.warmth < 0.4 ? 'terse and direct' : 'professional'}`);
-  lines.push(`- Bullet lists: ${sv.bulletiness > 0.6 ? 'prefers structured lists' : sv.bulletiness < 0.4 ? 'prefers flowing prose' : 'mixed format'}`);
+  lines.push(`- Shape: plain prose. ${sv.bulletiness > 0.6 ? "They sometimes write lists; still answer in prose unless they explicitly ask for a list." : "Prefer flowing prose."}`);
   lines.push(`Adapt your responses to match these preferences naturally.`);
   return lines.join("\n");
 }
@@ -17422,7 +17422,14 @@ function makeCtx(req=null) {
     },
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
-      async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+      async chat({ system, messages, temperature=0.3, maxTokens, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // Conscious chat used to default to 1500, which sat under the
+        // conversational cap and cut replies off before CONCORD_CHAT_MAX_TOKENS
+        // could matter. Callers that pass maxTokens are unchanged.
+        const _resolvedMaxTokens = (Number.isFinite(maxTokens) && maxTokens > 0)
+          ? maxTokens
+          : (slot === "conscious" ? resolveChatMaxTokens() : 1500);
+        maxTokens = _resolvedMaxTokens;
         // Private/High Power Mode (migration 397). Private is the
         // whole-account "no exceptions" guarantee — skip BOTH the BYO
         // override branch below AND the platform-provider attempt
@@ -17645,7 +17652,7 @@ function makeCtx(req=null) {
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama" };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", doneReason: json.done_reason || null };
             }
             _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
@@ -19557,7 +19564,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     stream: true,
     options: {
       temperature: options.temperature || 0.7,
-      num_predict: options.maxTokens || 1500,
+      num_predict: options.maxTokens || resolveChatMaxTokens(),
       // num_ctx is sized to the MODEL actually loading (see callOllama note) —
       // not options.brainName, which can disagree with `model`. Pass
       // options.numCtx to force a specific window.
@@ -19599,7 +19606,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
             onToken(parsed.message.content);
           }
           if (parsed.done) {
-            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0 };
+            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0, doneReason: parsed.done_reason || null };
           }
         } catch (_parseErr) {
           // skip malformed NDJSON lines
@@ -19839,7 +19846,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // actual content lives in one file now (the registry), not scattered.
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
-import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS, finalizeConversationalSystemPrompt, isConversationalChatMode, CHAT_LENGTH_CONTINUE_SYSTEM } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
 // Adversarial-hardening: per-user token bucket for HOT raw socket events.
 // Raw socket.io events bypass the HTTP rate-limit middleware entirely; this is
@@ -19854,6 +19861,12 @@ const _combatSocketLimiter = makeSocketRateLimiter({
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
+import {
+  resolveChatMaxTokens,
+  finishLengthLimitedReply,
+  stoppedOnLength,
+  buildChatHistoryMessages,
+} from "./lib/chat-reply-policy.js";
 
 // Single-instance fallback: someone running one plain `ollama serve` (every
 // model pulled into it, e.g. via OLLAMA_HOST/OLLAMA_URL) rather than the
@@ -21490,7 +21503,7 @@ ${_sharedToolRules}` : "";
       stream: false,
       options: {
         temperature: options.temperature || 0.7,
-        num_predict: options.maxTokens || 500,
+        num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500),
         num_ctx: _ollamaNumCtx(brainName),
       },
     };
@@ -21794,7 +21807,7 @@ ${_sharedToolRules}` : "";
           model: brain.model,
           messages: _followUpMessages,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx(brainName) },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500), num_ctx: _ollamaNumCtx(brainName) },
         };
 
         try {
@@ -23061,12 +23074,16 @@ function getConsciousOllamaCallback() {
     return (prompt, opts) => callBrain("conscious", prompt, {
       system: opts?.system,
       temperature: opts?.temperature || 0.7,
-      maxTokens: opts?.maxTokens || opts?.num_predict || 700,
+      maxTokens: opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens(),
     });
   }
-  // Fall back to default Ollama
+  // Fall back to default Ollama. Pass the chat cap through — callOllama's
+  // own omitted-maxTokens default is 500 and would silently undo it.
   if (LLM_PIPELINE?.providers?.ollama?.enabled) {
-    return (prompt, opts) => callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, opts);
+    return (prompt, opts) => {
+      const maxTokens = opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens();
+      return callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, { ...opts, maxTokens });
+    };
   }
   return null;
 }
@@ -28138,6 +28155,15 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
+  let _replyDoneReason = null;
+  // Conversational cap. Verbosity 0.5 (the affect default) resolves to
+  // CONCORD_CHAT_MAX_TOKENS itself, default 2000 — not the old 700 base
+  // that stopped replies mid-sentence. Shared by the ctx.llm path, the
+  // direct fetch, and the tool follow-up so none of them re-cap lower.
+  const _chatMaxTokens = resolveChatMaxTokens({
+    verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
+  });
+  const _conversationalChat = isConversationalChatMode(mode);
   if (_deterministicAnswer) {
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
@@ -28152,11 +28178,7 @@ ${_operatorV6Block}` : "";
     // No DHTP preset result is computed in this code path (confirmed via eslint
     // scope analysis — `_dhtpApplied` above lives in a sibling scope, not this
     // one), so this always falls through to the affect-modulated default below.
-    const _presetMaxTokens = 0;
-    const _affectMaxTokens = Math.round(
-      700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
-    );
-    const _llmMaxTokens = Math.max(_presetMaxTokens, _affectMaxTokens);
+    const _llmMaxTokens = _chatMaxTokens;
     // Inject affect-aware behavioral guidance into system prompt
     const _affectGuidance = _aff.policy ? [
       _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
@@ -28167,7 +28189,10 @@ ${_operatorV6Block}` : "";
     // GRC: Inject Grounded Recursive Closure system prompt when module is available
     // Use _enrichedFocus (unified context engine: regular + MEGA + HYPER tiers) instead of bare focus
     const _dtuTitles = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
-    const _grcSystemPrompt = GRC_MODULE
+    // GRC's JSON output contract fights the persona's prose rule. Keep the
+    // post-hoc grcFormatAndValidate pass; don't put the format into the
+    // conversational prompt.
+    const _grcSystemPrompt = (GRC_MODULE && !_conversationalChat)
       ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
       : "";
     // Prefer the DTU Context Pipeline's token-budgeted output (_pipelineBudget,
@@ -28239,7 +28264,7 @@ ${_operatorV6Block}` : "";
 
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-    const system = buildConsciousPrompt({
+    const system = finalizeConversationalSystemPrompt(buildConsciousPrompt({
       dtu_count: STATE.dtus?.size || 0,
       domain_count: Object.keys(STATE.domains || {}).length || _enrichedFocus.reduce((s, d) => { s.add(d.domain); return s; }, new Set()).size,
       lens: currentLens || mode || "general",
@@ -28254,17 +28279,14 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "");
-    // Build messages with conversation history for continuity
-    const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
-    messages = [];
-    for (const msg of _recentHistory) {
-      messages.push({ role: msg.role === "assistant" ? "assistant" : "user", content: String(msg.content || "").slice(0, 1500) });
-    }
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : ""), mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
-    messages.push({ role: "user", content: _userContent });
+    // Prior turns once, as history. The current user message is already on
+    // the session; buildChatHistoryMessages drops that copy and appends
+    // _userContent last so the request never ends on an assistant prefill.
+    messages = buildChatHistoryMessages(sess.messages, _userContent);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
       system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
@@ -28275,6 +28297,7 @@ ${_operatorV6Block}` : "";
     });
     if (r.ok) {
       _lastBrainMessage = r.message || r.raw || r;
+      _replyDoneReason = r.doneReason || r.raw?.done_reason || null;
       finalReply = String(r.content || "").trim() || localReply;
       llmUsed = true;
       _llmSpan.end("ok", { responseLength: finalReply.length });
@@ -28306,6 +28329,7 @@ ${_operatorV6Block}` : "";
         BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
         if (_fbRes.ok && (_fbJson.message?.content || _fbJson.message?.tool_calls)) {
           _lastBrainMessage = _fbJson.message || null;
+          _replyDoneReason = _fbJson.done_reason || null;
           finalReply = String(_fbJson.message?.content || "").trim() || localReply;
           llmUsed = true;
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
@@ -28326,7 +28350,7 @@ ${_operatorV6Block}` : "";
     try {
       const _directDtuContext = _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
       const _directParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-      const _directSystem = buildConsciousPrompt({
+      const _directSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
         dtu_count: STATE.dtus?.size || 0,
         domain_count: Object.keys(STATE.domains || {}).length,
         lens: currentLens || mode || "general",
@@ -28339,13 +28363,10 @@ ${_operatorV6Block}` : "";
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt + _lensHintSuffix;
-      // Include conversation history in messages
-      const _directHistory = (sess.messages || []).slice(-10, -1);
+      }) + _toolSystemPrompt + _lensHintSuffix, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
-        ..._directHistory.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "").slice(0, 1500) })),
-        { role: "user", content: prompt }
+        ...buildChatHistoryMessages(sess.messages, prompt),
       ];
       const _directAc = new AbortController();
       const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
@@ -28358,7 +28379,7 @@ ${_operatorV6Block}` : "";
           messages: _directMessages,
           stream: false,
           think: false,
-          options: { temperature: _directParams.temperature || 0.75, num_predict: _directParams.maxTokens || 1500 }
+          options: { temperature: _directParams.temperature || 0.75, num_predict: _chatMaxTokens }
         }),
         signal: _directAc.signal
       }).finally(() => clearTimeout(_directTimeout));
@@ -28369,6 +28390,7 @@ ${_operatorV6Block}` : "";
       BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
       if (_directRes.ok && (_directJson.message?.content || _directJson.message?.tool_calls)) {
         _lastBrainMessage = _directJson.message || null;
+        _replyDoneReason = _directJson.done_reason || null;
         finalReply = String(_directJson.message?.content || "").trim() || localReply;
         llmUsed = true;
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
@@ -28454,12 +28476,12 @@ ${_operatorV6Block}` : "";
         // Tool-call follow-up: same composeSystemPrompt path but with
         // an `extra` note that primes the model to synthesize over the
         // tool results it just received.
-        const _followUpSystem = composeSystemPrompt("conscious", {
+        const _followUpSystem = finalizeConversationalSystemPrompt(composeSystemPrompt("conscious", {
           mode,
           currentLens,
           worldId: input?.worldId || null,
-          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation.",
-        }).system;
+          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation. A fenced code block is fine when the result is code.",
+        }).system, mode);
         try {
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
@@ -28472,7 +28494,7 @@ ${_operatorV6Block}` : "";
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
               stream: false,
               think: false,
-              options: { temperature: 0.4, num_predict: 900 }
+              options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
           }).finally(() => clearTimeout(_fuTimeout));
@@ -28482,6 +28504,7 @@ ${_operatorV6Block}` : "";
           BRAIN.conscious.stats.totalMs += _fuElapsed;
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (_fuRes.ok && _fuJson.message?.content) {
+            _replyDoneReason = _fuJson.done_reason || null;
             finalReply = _enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText);
             ctx.log("chat_tools", "Follow-up brain call with tool results succeeded", { elapsed: _fuElapsed, toolCount: _toolResults.length, citeEnforce: true });
           } else {
@@ -28584,6 +28607,50 @@ ${_operatorV6Block}` : "";
         `\n\nI'm currently running without my full AI capabilities (LLM offline), so my responses are based on stored knowledge. Once my brain is back online, I can have much deeper conversations about this.`;
     } else {
       finalReply = `I'd love to help with "${userQuestion.slice(0, 80)}", but I'm currently running in limited mode (my AI brain is offline). I don't have stored knowledge on this topic yet. Once my brain comes back online, I'll be able to have a full conversation about this. In the meantime, try creating some DTUs about this topic so I can learn!`;
+    }
+  }
+
+  // A length stop is not a finished reply. One short continuation, then
+  // trim to the last complete sentence or list item. Persist only that
+  // text — the next turn must not be handed a mid-sentence stub.
+  if (llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
+    try {
+      const _finished = await finishLengthLimitedReply(finalReply, {
+        doneReason: _replyDoneReason,
+        continueOnce: async (partial) => {
+          const _cAc = new AbortController();
+          const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+          try {
+            const _cRes = await fetch(`${brainUrl}/api/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: brainModel,
+                messages: [
+                  { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                  { role: "assistant", content: partial },
+                  { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                ],
+                stream: false,
+                think: false,
+                options: { temperature: 0.3, num_predict: Math.min(600, _chatMaxTokens) },
+              }),
+              signal: _cAc.signal,
+            });
+            const _cJson = await _cRes.json().catch(() => ({}));
+            if (!_cRes.ok) return { content: "", doneReason: null };
+            return { content: String(_cJson.message?.content || ""), doneReason: _cJson.done_reason || null };
+          } finally {
+            clearTimeout(_cTimeout);
+          }
+        },
+      });
+      if (_finished.text) finalReply = _finished.text;
+      else finalReply = "I lost the end of that thought. Ask me to pick it up and I will.";
+    } catch (_finErr) {
+      const _cut = (await finishLengthLimitedReply(finalReply, { doneReason: "length" })).text;
+      if (_cut) finalReply = _cut;
+      ctx.log("chat", "Length-stop finish failed; trimmed.", { error: String(_finErr?.message || _finErr) });
     }
   }
 
@@ -54403,7 +54470,8 @@ function initChatSocketHandlers(io) {
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
-            const _streamSystem = buildConsciousPrompt({
+            const _streamMaxTokens = resolveChatMaxTokens({ verbosity: _streamStyleVec?.verbosity });
+            const _streamSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
@@ -54416,17 +54484,10 @@ function initChatSocketHandlers(io) {
               entityStateBlock: "",
               affectGuidance: "",
               styleHints: buildStyleHints(_streamStyleVec),
-            });
+            }), "chat");
 
-            // Build messages with conversation history
-            const _streamHistory = (_streamSess.messages || []).slice(-10, -1);
-            const _streamMessages = [
-              ..._streamHistory.map(m => ({
-                role: m.role === "assistant" ? "assistant" : "user",
-                content: String(m.content || "").slice(0, 1500),
-              })),
-              { role: "user", content: String(prompt) },
-            ];
+            // Prior turns once. Current user message is already on the session.
+            const _streamMessages = buildChatHistoryMessages(_streamSess.messages, String(prompt));
 
             // ===== BYO KEY ROUTING (streaming path) =====
             // Audit 2026-07-27: this path used to ignore BYO overrides
@@ -54456,7 +54517,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   // Bug fix (found while wiring High Power Mode alongside
@@ -54485,7 +54546,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   if (pg?.ok && pg.text) {
@@ -54529,13 +54590,50 @@ function initChatSocketHandlers(io) {
                     },
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     }
                   ),
                   _llmQueue.PRIORITY.CRITICAL
                 ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
+              if (stoppedOnLength(streamResult.doneReason)) {
+                try {
+                  const _streamFinished = await finishLengthLimitedReply(streamResult.content, {
+                    doneReason: streamResult.doneReason,
+                    continueOnce: async (partial) => {
+                      const _cAc = new AbortController();
+                      const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+                      try {
+                        const _cRes = await fetch(`${_streamBrainUrl}/api/chat`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            model: _streamBrainModel,
+                            messages: [
+                              { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                              { role: "assistant", content: partial },
+                              { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                            ],
+                            stream: false,
+                            think: false,
+                            options: { temperature: 0.3, num_predict: Math.min(600, _streamMaxTokens) },
+                          }),
+                          signal: _cAc.signal,
+                        });
+                        const _cJson = await _cRes.json().catch(() => ({}));
+                        if (!_cRes.ok) return { content: "", doneReason: null };
+                        const extra = String(_cJson.message?.content || "");
+                        if (extra) socket.emit("chat:token", { token: extra, sessionId, seq: _streamSeq++ });
+                        return { content: extra, doneReason: _cJson.done_reason || null };
+                      } finally {
+                        clearTimeout(_cTimeout);
+                      }
+                    },
+                  });
+                  if (_streamFinished.text) streamResult.content = _streamFinished.text;
+                } catch { /* keep the streamed text; history trim still drops a stub next turn */ }
+              }
               // Store assistant response in session
               _streamSess.messages.push({
                 role: "assistant",
@@ -54633,7 +54731,7 @@ function initChatSocketHandlers(io) {
               const br = await byoBrainChat({
                 db, userId: _rlKey, slot: "conscious",
                 messages: _messages,
-                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || 700, timeout: opts.timeout },
+                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || resolveChatMaxTokens(), timeout: opts.timeout },
               });
               if (br.ok && br.text) {
                 _meterLlmChat(db, {
