@@ -61,6 +61,7 @@ const DOF_MAP = { x: 0, y: 1, z: 2, rx: 3, ry: 4, rz: 5 };
  *   round-tube { od, wall }
  *   rect { width, height }              solid
  *   i-beam { height, flangeWidth, flangeThickness, webThickness }  open, thin-walled torsion
+ *   u-channel { width, height, wall }   a rect tube open at the top (a cut-out): open-section torsion
  *   properties { A, Iz, Iy, J, cy?, cz?, depth?, tauPerT? }  given directly
  * Returns { A, Iz, Iy, J, cy, cz, round, torsionShear(T), depth, wall? , kind }.
  */
@@ -112,6 +113,41 @@ export function sectionProps(s) {
       torsionShear: (T) => (Math.abs(T) * Math.max(tf, tw)) / J,
     };
   }
+  if (s.shape === "u-channel") {
+    // a rect tube with its top wall cut over a length (an access opening): bottom wall b × t, two side
+    // walls t × (h - t), and (lip > 0) the top wall left either side of the opening as two inward lips
+    // of width `lip`. The cell is open there: thin-walled open-section torsion J = sum(l_i t³ / 3)
+    // (Saint-Venant). The shear centre's offset from the centroid is not modelled (the frame node stays
+    // on the closed cell's line), so twist coupled to lateral shear is not captured.
+    const b = s.width, h = s.height, t = s.wall, lip = s.lip || 0;
+    if (!(b > 2 * t && h > 2 * t && t > 0 && lip >= 0 && 2 * lip < b)) throw new Error("u-channel needs width > 2·wall, height > 2·wall, 0 ≤ 2·lip < width");
+    const Ab = b * t, Aw = t * (h - 2 * t), Al = lip * t, A = Ab + 2 * Aw + 2 * Al;
+    const zw = h / 2, zl = h - t / 2;
+    const zc = (Ab * (t / 2) + 2 * Aw * zw + 2 * Al * zl) / A;
+    const Iz = (b * t ** 3) / 12 + Ab * (zc - t / 2) ** 2 + 2 * ((t * (h - 2 * t) ** 3) / 12 + Aw * (zw - zc) ** 2) + 2 * ((lip * t ** 3) / 12 + Al * (zl - zc) ** 2);
+    const Iy = (t * b ** 3) / 12 + 2 * (((h - 2 * t) * t ** 3) / 12 + Aw * (b / 2 - t / 2) ** 2) + 2 * ((t * lip ** 3) / 12 + Al * (b / 2 - lip / 2) ** 2);
+    const J = ((b - t) * t ** 3 + 2 * (h - t) * t ** 3 + 2 * lip * t ** 3) / 3;
+    // plate elements for local buckling: the side walls (both edges supported when lipped, else one free
+    // edge) and the lips (one free edge). Free-edge coefficient 0.425 (long plate, one unloaded edge free,
+    // the other simply supported: Gerard & Becker, NACA TN 3781, 1957; Timoshenko & Gere sec. 9.2); no
+    // shear coefficient for that edge case is sourced here, so 0.425 is used for shear too (below the
+    // four-edge 5.35: the check errs on the buckling side). A lip is taken as supporting the wall's edge
+    // (its stiffness as an edge stiffener is not checked to AISI S100).
+    const free = { kc: 0.425, ks: 0.425 };
+    const plates = [
+      { id: "side wall", width: h - t, ...(lip > 0 ? { kc: 4.0, ks: 5.35 } : free) },
+      ...(lip > 0 ? [{ id: "lip", width: lip - t / 2, ...free }] : []),
+      { id: "bottom", width: b - t, kc: 4.0, ks: 5.35 },
+    ];
+    const ratio = Math.max(...plates.map((p) => p.width / t));
+    return {
+      kind: "u-channel", A, Iz, Iy, J, cy: Math.max(zc, h - zc), cz: b / 2, round: false, depth: Math.max(b, h),
+      Asy: 2 * Aw, Asz: Ab, shearAreaBasis: "open channel: the two side walls (vertical shear), the bottom wall (lateral)",
+      wallSlenderness: { ratio, basis: "the most slender plate element (side wall, lip or bottom) width / t" },
+      walls: { t, widest: Math.max(...plates.map((p) => p.width)), plates, basis: lip > 0 ? "lipped open channel" : "open channel, side walls with a free top edge" },
+      torsionShear: (T) => (Math.abs(T) * t) / J,
+    };
+  }
   if (s.shape === "properties") {
     // explicit section properties (a catalogue section, or a benchmark idealisation such as
     // an axially rigid member); stresses need cy, cz; torsional shear needs tauPerT (1/m^3)
@@ -122,7 +158,7 @@ export function sectionProps(s) {
       torsionShear: (T) => Math.abs(T) * (s.tauPerT ?? 0),
     };
   }
-  throw new Error(`section shape "${s.shape}" not supported (rect-tube, round-tube, rect, i-beam, properties)`);
+  throw new Error(`section shape "${s.shape}" not supported (rect-tube, round-tube, rect, i-beam, u-channel, properties)`);
 }
 
 // ── dense linear algebra on the free DOFs ───────────────────────────────────
@@ -488,11 +524,18 @@ export function frameValidity(result, caseResult) {
  * (conservative: both taken on the widest wall). Returns { R, sigma, tau, sigmaCr, tauCr, inelastic }.
  */
 export function plateLocalBuckling(m, worst) {
-  const { t, widest: b } = m.sec.walls;
+  const { t } = m.sec.walls;
   const nu = m.G > 0 ? m.E / (2 * m.G) - 1 : 0.33;
-  const base = (Math.PI ** 2 * m.E) / (12 * (1 - nu * nu)) * (t / b) ** 2;
-  const sigmaCr = 4.0 * base, tauCr = 5.35 * base;
   const sigma = worst.sigma, tau = worst.tau;
   const inelastic = !!m.fy && (sigma > 0.5 * m.fy || tau > (0.5 * m.fy) / Math.sqrt(3));
-  return { R: sigma / sigmaCr + (tau / tauCr) ** 2, sigma, tau, sigmaCr, tauCr, inelastic };
+  // a section may list its plate elements with their own buckling coefficients; the worst governs
+  const plates = m.sec.walls.plates || [{ id: "wall", width: m.sec.walls.widest, kc: 4.0, ks: 5.35 }];
+  let worstP = null;
+  for (const p of plates) {
+    const base = (Math.PI ** 2 * m.E) / (12 * (1 - nu * nu)) * (t / p.width) ** 2;
+    const sigmaCr = p.kc * base, tauCr = p.ks * base;
+    const R = sigma / sigmaCr + (tau / tauCr) ** 2;
+    if (!worstP || R > worstP.R) worstP = { R, sigmaCr, tauCr, plate: p.id };
+  }
+  return { ...worstP, sigma, tau, inelastic };
 }
