@@ -83,10 +83,13 @@ export default function registerChatRoutes(app, {
         sse("meta", { ok:true, mode: req._concordMode, sessionId: req.body.sessionId || null });
         const out = await runMacro("chat","respond", req.body, ctx);
 
-        // Pick a best-effort text field for progressive display.
-        const answer = out?.answer ?? out?.content ?? out?.text ?? out?.message ?? out?.response ?? "";
-        for await (const delta of chunkText(answer)) {
-          sse("chunk", { delta });
+        // An unavailable brain is a notice, not a streamed answer.
+        if (out?.code !== "ai_unavailable") {
+          // Pick a best-effort text field for progressive display.
+          const answer = out?.answer ?? out?.content ?? out?.text ?? out?.message ?? out?.response ?? "";
+          for await (const delta of chunkText(answer)) {
+            sse("chunk", { delta });
+          }
         }
         sse("final", _withAck(out, req, ["state","logs","shadow"], ["/api/state/latest","/api/logs"], null, { panel: "chat" }));
         kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
@@ -235,14 +238,17 @@ export default function registerChatRoutes(app, {
       kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       const content = String(out?.reply || out?.content || out?.answer || out?.text || "");
-      // Deterministic chunking (local-first). If you later add true token-streaming LLM, swap this chunker.
-      const step = clamp(Number(req.body?.chunkSize || 220), 40, 1200);
-      for (let i = 0; i < content.length; i += step) {
-        const chunk = content.slice(i, i + step);
-        res.write(`data: ${JSON.stringify({ ok: true, chunk, done: false })}\n\n`);
+      // An unavailable brain is a notice on `out`, not token chunks of a fake answer.
+      if (out?.code !== "ai_unavailable") {
+        // Deterministic chunking (local-first). If you later add true token-streaming LLM, swap this chunker.
+        const step = clamp(Number(req.body?.chunkSize || 220), 40, 1200);
+        for (let i = 0; i < content.length; i += step) {
+          const chunk = content.slice(i, i + step);
+          res.write(`data: ${JSON.stringify({ ok: true, chunk, done: false })}\n\n`);
+        }
       }
       // Final envelope (also contains full out for UI parity)
-      res.write(`data: ${JSON.stringify({ ok: true, done: true, out })}\n\n`);
+      res.write(`data: ${JSON.stringify({ ok: out?.code === "ai_unavailable" ? false : true, done: true, out })}\n\n`);
       return res.end();
     } catch (e) {
       const msg = String(e?.message || e || "Unknown error");

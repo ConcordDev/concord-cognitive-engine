@@ -216,6 +216,41 @@ interface Message {
     engineCount?: number;
   } | null;
   dtuRefs?: Array<{ id: string; title: string | null; tier: string | null }>;
+  /** Brain was unreachable. Render as a notice, not an assistant answer. */
+  aiUnavailable?: boolean;
+  retrieval?: {
+    kind?: string;
+    label?: string;
+    items?: string[];
+  } | null;
+}
+
+const AI_UNAVAILABLE_FALLBACK = "AI is temporarily unavailable — your message was saved, try again shortly.";
+
+function readRetrieval(raw: unknown): Message["retrieval"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as { kind?: unknown; label?: unknown; items?: unknown };
+  const items = Array.isArray(r.items)
+    ? r.items.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+    : [];
+  if (!items.length) return undefined;
+  return {
+    kind: typeof r.kind === "string" ? r.kind : "stored_notes",
+    label: typeof r.label === "string" && r.label.trim() ? r.label : "Stored notes",
+    items,
+  };
+}
+
+function unavailableNotice(
+  data: { code?: unknown; notice?: unknown; reply?: unknown; retrieval?: unknown } | null | undefined,
+): { notice: string; retrieval?: Message["retrieval"] } | null {
+  if (!data || data.code !== "ai_unavailable") return null;
+  const fromNotice = typeof data.notice === "string" ? data.notice.trim() : "";
+  const fromReply = typeof data.reply === "string" ? data.reply.trim() : "";
+  return {
+    notice: fromNotice || fromReply || AI_UNAVAILABLE_FALLBACK,
+    retrieval: readRetrieval(data.retrieval),
+  };
 }
 
 interface Conversation {
@@ -723,9 +758,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           const meta = (m.meta || {}) as Record<string, unknown>;
           return {
             id: `hyd-${selectedConversation}-${i}-${m.ts}`,
-            role: (m.role === 'assistant' || m.role === 'system') ? m.role : 'user',
+            role: meta.code === "ai_unavailable"
+              ? "system"
+              : ((m.role === 'assistant' || m.role === 'system') ? m.role : 'user'),
             content: m.content,
             timestamp: m.ts,
+            aiUnavailable: meta.code === "ai_unavailable",
             toolCalls: Array.isArray(meta.toolCalls) ? (meta.toolCalls as Message['toolCalls']) : undefined,
             computed: (meta.computed && typeof meta.computed === 'object') ? (meta.computed as Message['computed']) : undefined,
             dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as Message['dtuRefs']) : undefined,
@@ -1229,6 +1267,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
           setStreamActive(false);
           setStreamingContent('');
+          const down = unavailableNotice(finalOut as { code?: unknown; notice?: unknown; reply?: unknown; retrieval?: unknown } | null);
+          if (down) {
+            return {
+              ok: false,
+              code: "ai_unavailable",
+              llmUsed: false,
+              notice: down.notice,
+              reply: down.notice,
+              retrieval: down.retrieval,
+              streamed: true,
+            };
+          }
           return {
             reply: accumulated || ((finalOut as Record<string, unknown>)?.reply as string) || '',
             refs: (finalOut as Record<string, unknown>)?.refs,
@@ -1275,6 +1325,37 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       }
     },
     onSuccess: (data) => {
+      const down = unavailableNotice(data);
+      if (down) {
+        const noticeMsg: Message = {
+          id: `notice-${Date.now()}`,
+          role: "system",
+          content: down.notice,
+          timestamp: new Date().toISOString(),
+          aiUnavailable: true,
+          retrieval: down.retrieval,
+        };
+        setLocalMessages((prev) => [...prev, noticeMsg]);
+        if (selectedConversation) {
+          setStoredConversations((prev) => {
+            const next = prev.map((c) =>
+              c.id === selectedConversation
+                ? {
+                    ...c,
+                    lastMessage: down.notice.slice(0, 100),
+                    updatedAt: new Date().toISOString(),
+                    messageCount: c.messageCount + 2,
+                  }
+                : c
+            );
+            saveConversations(next);
+            return next;
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ["cognitive-status"] });
+        setInput("");
+        return;
+      }
       const assistantMsg: Message = {
         id: `asst-${Date.now()}`,
         role: 'assistant',
@@ -1366,6 +1447,25 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return response.data;
     },
     onSuccess: (data) => {
+      const down = unavailableNotice(data);
+      if (down) {
+        const noticeMsg: Message = {
+          id: `notice-regen-${Date.now()}`,
+          role: "system",
+          content: down.notice,
+          timestamp: new Date().toISOString(),
+          aiUnavailable: true,
+          retrieval: down.retrieval,
+        };
+        setLocalMessages((prev) => {
+          const lastAssistantIdx = [...prev].reverse().findIndex((m) => m.role === "assistant" || m.aiUnavailable);
+          if (lastAssistantIdx === -1) return [...prev, noticeMsg];
+          const idx = prev.length - 1 - lastAssistantIdx;
+          return [...prev.slice(0, idx), noticeMsg];
+        });
+        queryClient.invalidateQueries({ queryKey: ["cognitive-status"] });
+        return;
+      }
       const assistantMsg: Message = {
         id: `asst-regen-${Date.now()}`,
         role: 'assistant',
@@ -2027,7 +2127,29 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               </div>
             )}
 
-            {message.role === 'assistant' && message.oracleResponse ? (
+            {message.aiUnavailable ? (
+              <div
+                role="status"
+                data-testid="ai-unavailable-notice"
+                className="w-full max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-100"
+              >
+                <p className="text-sm leading-snug">{message.content}</p>
+                {message.retrieval?.items && message.retrieval.items.length > 0 && (
+                  <div className="mt-3 border-t border-amber-500/20 pt-2">
+                    <p className="text-[11px] uppercase tracking-wide text-amber-200/70">
+                      {message.retrieval.label || "Stored notes"}
+                    </p>
+                    <ul className="mt-1 space-y-1">
+                      {message.retrieval.items.slice(0, 5).map((item, i) => (
+                        <li key={i} className="text-xs text-amber-50/80 leading-snug">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : message.role === 'assistant' && message.oracleResponse ? (
               <div className="w-full max-w-3xl">
                 <OracleResponse
                   response={message.oracleResponse}
@@ -2183,8 +2305,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             )}
 
             {/* Message action bar — the time already sits in the bubble; actions
-                show on hover / focus on desktop and stay visible on touch. */}
-            <div
+                show on hover / focus on desktop and stay visible on touch.
+                An availability notice is not a message to rate or quote. */}
+            {!message.aiUnavailable && <div
               className={cn(
                 'flex items-center gap-2 mt-2 text-xs text-gray-400 transition-opacity',
                 'sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100',
@@ -2361,7 +2484,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   </button>
                 </>
               )}
-            </div>
+            </div>}
           </div>
         </motion.div>
       );
