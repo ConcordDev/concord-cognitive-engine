@@ -1,0 +1,1170 @@
+{
+ "showcaseVersion": "1.0.0",
+ "id": "nuscale-us600",
+ "title": "NuScale US600 facility screening",
+ "kind": "nuclear",
+ "pipeline": "runFacilityScreen + drawFacility (public NRC sources)",
+ "brief": "NuScale US600 (design certification, 10 CFR 52 App. G)",
+ "headline": {
+  "verdict": "screening_findings_pending_review",
+  "status": "WARN",
+  "counts": {
+   "ssc": 161,
+   "dependencies": 301,
+   "functions": 24,
+   "facts": 24,
+   "sources": 2
+  },
+  "pendingReview": 36
+ },
+ "disclaimers": [
+  "Nuclear outputs are screening-only. Not a safety determination. Decisions and approvals belong to qualified engineers and regulators.",
+  "Screening analysis only. Not a safety determination. Decisions and approvals belong to qualified engineers and regulators.",
+  "Single-failure FAIL rows are screening findings for engineering disposition, not determinations about the certified design."
+ ],
+ "caveats": [
+  "not drawn (dimension unknown): RXB: Reactor building (Seismic Category I, below-grade pool)",
+  "not drawn (dimension unknown): GALLERY: Reactor building steam gallery area (behind the module bays' shield walls)",
+  "not drawn (dimension unknown): POOL: Common reactor pool / ultimate heat sink",
+  "not drawn (dimension unknown): CR: Single control room for up to 12 modules",
+  "not drawn (dimension unknown): ELEC: Electrical power (non-Class 1E AC and DC; no safety-related function relies on it)",
+  "not drawn (dimension unknown): DHRS condensers (2 trains per module, submerged in the pool): positions UNKNOWN",
+  "not drawn (dimension unknown): ECCS valves (3 RVV + 2 RRV per module, on the vessel): positions UNKNOWN",
+  "not drawn (dimension unknown): shield walls between the bays and the steam gallery: positions UNKNOWN",
+  "not drawn (dimension unknown): grade line: elevation UNKNOWN; rule: the pool portion of the building is below grade",
+  "not drawn (dimension unknown): site layout outside the reactor building: not in the sources read"
+ ],
+ "failures": [],
+ "checks": [
+  {
+   "runId": "safety.single-failure@M1:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M1:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M2:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M2:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M3:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M3:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M4:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M4:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M5:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M5:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M6:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M6:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M7:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M7:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M8:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M8:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M9:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M9:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M10:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M10:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M11:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M11:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.single-failure@M12:SF-DHR",
+   "solver": "safety.single-failure",
+   "target": "M12:SF-DHR",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "safety.cross-function@SC-FACILITY",
+   "solver": "safety.single-failure",
+   "target": "SC-FACILITY",
+   "status": "FAIL",
+   "method": "single-failure screen over the declared support graph",
+   "reason": "2 single-failure finding(s): screening findings for engineering disposition, not a safety determination",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement:R-FAC-DHR-SF",
+   "solver": "requirement",
+   "target": "R-FAC-DHR-SF",
+   "status": "FAIL",
+   "method": "Each module's decay heat removal function shall remain available after any single failure of a component or support item in its declared support graph.",
+   "reason": "screening_fail; Screening requirement written for this skeleton; not regulatory text. Regulatory locators below are context.; owner: a named human is required; verification not yet performed by a qualified engineer; reviewer: a named human is required",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement:R-FAC-XFN",
+   "solver": "requirement",
+   "target": "R-FAC-XFN",
+   "status": "FAIL",
+   "method": "No single support item shall defeat the safety functions of more than one module.",
+   "reason": "screening_fail; Screening requirement written for this skeleton (multi-module shared SSCs); not regulatory text.; owner: a named human is required; verification not yet performed by a qualified engineer; reviewer: a named human is required",
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  }
+ ],
+ "checkCounts": {
+  "PASS": 0,
+  "WARN": 0,
+  "FAIL": 15,
+  "NOT_COMPUTED": 0,
+  "ERROR": 0
+ },
+ "values": [
+  {
+   "id": "F-module",
+   "group": "Facts (primary source)",
+   "name": "module",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "A power module is a natural circulation light water reactor composed of a reactor core, a pressurizer, and two helical coil steam generators located in a common reactor pressure vessel that is housed in a compact cylindrical steel containment.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "I. Background",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-rating",
+   "group": "Facts (primary source)",
+   "name": "rating",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "Each power module has a rated thermal output of 160 megawatt thermal (MWt) and electrical output of 50 megawatt electric (MWe), yielding a total capacity of 600 MWe for 12 power modules.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "I. Background",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-pool",
+   "group": "Facts (primary source)",
+   "name": "pool",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "All the NuScale power modules are partially submerged in a common safety-related pool, which is also the ultimate heat sink for up to 12 power modules.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "I. Background",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-no-1E",
+   "group": "Facts (primary source)",
+   "name": "no-1E",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "NuScale does not contain safety-related Class 1E AC or DC electrical power systems.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "IV.E Absence of Safety-Related Class 1E AC or DC Electrical Power",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-no-power",
+   "group": "Facts (primary source)",
+   "name": "no-power",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "NuScale has no safety-related functions that rely on electrical power. For example, the emergency core cooling system performs its safety function without reliance on safety-related electrical power or external sources of coolant inventory makeup.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "IV.E Absence of Safety-Related Class 1E AC or DC Electrical Power",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-eccs",
+   "group": "Facts (primary source)",
+   "name": "eccs",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The NuScale emergency core cooling system relies on natural circulation cooling of the reactor core by releasing the heated reactor coolant steam from the top of the reactor pressure vessel through three reactor vent valves into the containment vessel and returning the cooled condensed reactor coolant water to the reactor pressure vessel through two reactor recirculation valves.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "IV.C Emergency Core Cooling System Inadvertent Actuation Block Valve",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-eccs-valve",
+   "group": "Facts (primary source)",
+   "name": "eccs-valve",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "Each reactor vent valve and reactor recirculation valve consists of a first-of-a-kind arrangement of a main valve, an inadvertent actuation block (IAB) valve, a solenoid trip valve, and a solenoid reset valve.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "IV.C Emergency Core Cooling System Inadvertent Actuation Block Valve",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-iab",
+   "group": "Facts (primary source)",
+   "name": "iab",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The IAB valve for each reactor vent valve and reactor recirculation valve is designed to close rapidly to prevent its corresponding emergency core cooling system main valve from opening when the reactor coolant system is at high pressure conditions.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "IV.C Emergency Core Cooling System Inadvertent Actuation Block Valve",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-sg",
+   "group": "Facts (primary source)",
+   "name": "sg",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "Damage to multiple steam generator tubes could disrupt natural circulation in the reactor coolant pathway and interfere with the decay heat removal system and the emergency core cooling system, which is relied upon to cool the reactor core in a NuScale power module.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "III.C.3 Steam Generator Stability",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-cr",
+   "group": "Facts (primary source)",
+   "name": "cr",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "In a letter to the NRC, dated September 15, 2015, NuScale Power proposed that 6 licensed operators would operate up to 12 power modules from a single control room.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "III. Control Room Staffing Requirements",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-dhrs",
+   "group": "Facts (secondary source)",
+   "name": "dhrs",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "Two trains of decay heat removal equipment are provided, one for each steam generator. Each train is capable of removing 100 percent of the decay heat load",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.1 Decay heat removal system",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-dhrs-act",
+   "group": "Facts (secondary source)",
+   "name": "dhrs-act",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "When responding to a design basis event and upon receipt of an actuation signal, the DHRS isolation valves open and the secondary system (main steam and feedwater) isolation valves close.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.1 Decay heat removal system",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-dhrs-pool",
+   "group": "Facts (secondary source)",
+   "name": "dhrs-pool",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The DHRS condenser...is submerged in the reactor pool.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.1 Decay heat removal system",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-failsafe",
+   "group": "Facts (secondary source)",
+   "name": "failsafe",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "valves that fail to their safe position on a loss of power, meaning that safety system operation is ensured without reliance on electrical power.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2 Passive safety systems",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-mps",
+   "group": "Facts (secondary source)",
+   "name": "mps",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "When power is available, the systems are controlled via a dedicated safety-related module protection system (MPS), which monitors various plant conditions and actuates the safety systems if required.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2 Passive safety systems",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-pool-heat",
+   "group": "Facts (secondary source)",
+   "name": "pool-heat",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The pool absorbs the decay heat from the modules and eventually begins to boil.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.3 Containment and ultimate heat sink",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-rxb",
+   "group": "Facts (secondary source)",
+   "name": "rxb",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The NPMs are located below grade in a...Seismic Category I reactor building.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.3 Containment and ultimate heat sink",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-eccs-2rvv",
+   "group": "Facts (secondary source)",
+   "name": "eccs-2rvv",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The system is initiated by opening the two reactor vent valves at the top of the reactor pressure vessel (the pressurizer region) and the two fail-safe reactor recirculation valves",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "2.2.2 Emergency core cooling system",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-rxb-12",
+   "group": "Facts (primary source)",
+   "name": "rxb-12",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The NuScale reactor building is designed to hold up to 12 power modules.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "I. Background",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-pool-grade",
+   "group": "Facts (primary source)",
+   "name": "pool-grade",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The pool portion of the reactor building is located below grade.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "I. Background",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-bay-gallery",
+   "group": "Facts (primary source)",
+   "name": "bay-gallery",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "This issue is narrowly focused on the shielding walls between the reactor module bays and the reactor building steam gallery areas.",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "III.C Issues Not Resolved by the Design Certification",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-rz-map",
+   "group": "Facts (primary source)",
+   "name": "rz-map",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "design certification application Part 2, Tier 2, Chapter 12, Figure 12.3-1, ``Reactor Building Radiation Zone Map''",
+   "status": "sourced",
+   "statusLabel": "sourced (primary, verbatim)",
+   "source": {
+    "title": "NuScale Small Modular Reactor Design Certification, final rule (10 CFR Part 52, Appendix G), 88 FR 3287, Federal Register Doc. 2023-00729, 2023-01-19",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm",
+    "locator": "Appendix G, Section IV.A.2.g",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-cnv-size",
+   "group": "Facts (secondary source)",
+   "name": "cnv-size",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "The reactor vessel is enclosed in a stainless steel containment vessel (CNV) that is nominally 76 ft tall and 19 ft in diameter.",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "1.1 Reactor configuration",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "F-bay-size",
+   "group": "Facts (secondary source)",
+   "name": "bay-size",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "Each NPM is operated in its own bay, immersed in a pool of water which is approximately 20 ft square by 53 ft deep (see Figure 3 ).",
+   "status": "sourced",
+   "statusLabel": "sourced (secondary, verbatim)",
+   "source": {
+    "title": "K. Welter, J. N. Reyes Jr, A. Brigantic, Unique safety features and licensing requirements of the NuScale small modular reactor, Frontiers in Energy Research 11 (2023), doi:10.3389/fenrg.2023.1160150",
+    "url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full",
+    "locator": "1.1 Reactor configuration",
+    "retrieved": "2026-10-10"
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "G-eccs-success",
+   "group": "Gaps (unknown)",
+   "name": "ECCS success criterion (how many RVVs and RRVs must open)",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "ECCS is screened only for supports every valve train shares (valid for any success criterion); no k-of-n single-failure screen",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 6.3 (not read: nrc.gov HTTP 403)"
+  },
+  {
+   "id": "G-dhrs-valves",
+   "group": "Gaps (unknown)",
+   "name": "DHRS actuation / isolation valve count and type per train",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "each train is modelled as one valve group + one condenser; no NUREG/CR-6928 data row can be matched",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 (DHRS section)"
+  },
+  {
+   "id": "G-dc",
+   "group": "Gaps (unknown)",
+   "name": "non-Class 1E DC system architecture (common vs module-specific, divisions, battery duration)",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "multi-module actuation on loss of a shared DC supply is not determinable",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 8.3.2"
+  },
+  {
+   "id": "G-mps",
+   "group": "Gaps (unknown)",
+   "name": "module protection system separation groups / divisions and their power",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "MPS modelled as one actuating system per module; channel independence not screened",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 7"
+  },
+  {
+   "id": "G-layout",
+   "group": "Gaps (unknown)",
+   "name": "building, room and fire-area layout of DHRS / ECCS equipment",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "spatial common-cause (fire, flood) not screened",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 1.2, 3, 9.5.1"
+  },
+  {
+   "id": "G-pool-inventory",
+   "group": "Gaps (unknown)",
+   "name": "pool inventory, level limits and heat-up / boil-off times for the US600",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "the shared heat sink is a structural dependency only; no time to boil",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 9.2.5"
+  },
+  {
+   "id": "G-dimensions",
+   "group": "Gaps (unknown)",
+   "name": "US600 building, pool, bay and containment dimensions and the bay arrangement",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "the facility GA is schematic: the only dimensions drawn are the secondary, design-family values (CNV 76 ft x 19 ft, bay 20 ft square x 53 ft deep), labelled S2; the bay arrangement, building outline and pool-to-grade elevation are UNKNOWN",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: US600 DCA FSAR Tier 2 ch. 1.2 and 3.8 (and Figure 12.3-1)"
+  },
+  {
+   "id": "G-reliability",
+   "group": "Gaps (unknown)",
+   "name": "failure data for passive components (condensers, pool, building) and NuScale valve designs",
+   "subject": "NuScale US600",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "statement": "fault and event trees are built and their cut sets computed; nothing is quantified",
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "where: a human-chosen data basis (NUREG/CR-6928 has no matching rows for these)"
+  }
+ ],
+ "mass": null,
+ "drawings": [
+  {
+   "title": "Plant GA CK-GA-US600-PLANT",
+   "revision": "R-9A68158C",
+   "modelHash": "9a68158c7c4fecf5e40e7ffb9213038c1d3ddedbc7abf5476ebd4f4889bafef2",
+   "method": "facility skeleton laid out from public-source dimensions; unknown dimensions not drawn",
+   "files": [
+    {
+     "label": "Sheet 1 (site / plant plan)",
+     "name": "CK-GA-US600-PLANT-R-9A68158C-sheet1.svg",
+     "kind": "svg",
+     "bytes": 24329,
+     "sha256": "de4721b83589185d166cf11fea0176f12ddd591b1907743b8701151d1b21e0c4"
+    },
+    {
+     "label": "Sheet 2 (section)",
+     "name": "CK-GA-US600-PLANT-R-9A68158C-sheet2.svg",
+     "kind": "svg",
+     "bytes": 25946,
+     "sha256": "d2dd3ce6c5079ffde73b0b7a03c70aa2bc5b13aa794af1d9c0f7a5643c33eedd"
+    },
+    {
+     "label": "PDF (both sheets)",
+     "name": "CK-GA-US600-PLANT-R-9A68158C.pdf",
+     "kind": "pdf",
+     "bytes": 44053,
+     "sha256": "2fcf114988464332f66a85cee1223c34f0523970a2901cd8037f0534d0010a4b"
+    }
+   ]
+  }
+ ],
+ "model3d": null,
+ "physicalTests": [
+  "Not applicable to a screening skeleton: every gap below needs the named FSAR chapter read by a qualified engineer, and every finding needs a human disposition."
+ ],
+ "reviewQueue": [
+  {
+   "id": "D-M10:CNV",
+   "kind": "finding-disposition",
+   "subject": "M10:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M11:CNV",
+   "kind": "finding-disposition",
+   "subject": "M11:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M12:CNV",
+   "kind": "finding-disposition",
+   "subject": "M12:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M1:CNV",
+   "kind": "finding-disposition",
+   "subject": "M1:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M2:CNV",
+   "kind": "finding-disposition",
+   "subject": "M2:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M3:CNV",
+   "kind": "finding-disposition",
+   "subject": "M3:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M4:CNV",
+   "kind": "finding-disposition",
+   "subject": "M4:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M5:CNV",
+   "kind": "finding-disposition",
+   "subject": "M5:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M6:CNV",
+   "kind": "finding-disposition",
+   "subject": "M6:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M7:CNV",
+   "kind": "finding-disposition",
+   "subject": "M7:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M8:CNV",
+   "kind": "finding-disposition",
+   "subject": "M8:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-M9:CNV",
+   "kind": "finding-disposition",
+   "subject": "M9:CNV",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-POOL",
+   "kind": "finding-disposition",
+   "subject": "POOL",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "D-RXB",
+   "kind": "finding-disposition",
+   "subject": "RXB",
+   "decision": "pending_human_review",
+   "reason": "shared-passive-ssc: common-cause candidate (structural / inventory loss); treatment under the single-failure criterion is an engineering disposition"
+  },
+  {
+   "id": "C-rvv-count",
+   "kind": "source-conflict",
+   "subject": "number of ECCS reactor vent valves per module",
+   "decision": "pending_human_review",
+   "reason": "the US600 model uses the primary source (3 RVVs); the conflict is kept for a reviewer, who decides whether the secondary source describes US460 / VOYGR"
+  },
+  {
+   "id": "G-eccs-success",
+   "kind": "gap",
+   "subject": "ECCS success criterion (how many RVVs and RRVs must open)",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 6.3 (not read: nrc.gov HTTP 403); effect: ECCS is screened only for supports every valve train shares (valid for any success criterion); no k-of-n single-failure screen"
+  },
+  {
+   "id": "G-dhrs-valves",
+   "kind": "gap",
+   "subject": "DHRS actuation / isolation valve count and type per train",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 (DHRS section); effect: each train is modelled as one valve group + one condenser; no NUREG/CR-6928 data row can be matched"
+  },
+  {
+   "id": "G-dc",
+   "kind": "gap",
+   "subject": "non-Class 1E DC system architecture (common vs module-specific, divisions, battery duration)",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 8.3.2; effect: multi-module actuation on loss of a shared DC supply is not determinable"
+  },
+  {
+   "id": "G-mps",
+   "kind": "gap",
+   "subject": "module protection system separation groups / divisions and their power",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 7; effect: MPS modelled as one actuating system per module; channel independence not screened"
+  },
+  {
+   "id": "G-layout",
+   "kind": "gap",
+   "subject": "building, room and fire-area layout of DHRS / ECCS equipment",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 1.2, 3, 9.5.1; effect: spatial common-cause (fire, flood) not screened"
+  },
+  {
+   "id": "G-pool-inventory",
+   "kind": "gap",
+   "subject": "pool inventory, level limits and heat-up / boil-off times for the US600",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 9.2.5; effect: the shared heat sink is a structural dependency only; no time to boil"
+  },
+  {
+   "id": "G-dimensions",
+   "kind": "gap",
+   "subject": "US600 building, pool, bay and containment dimensions and the bay arrangement",
+   "decision": "pending_human_review",
+   "reason": "US600 DCA FSAR Tier 2 ch. 1.2 and 3.8 (and Figure 12.3-1); effect: the facility GA is schematic: the only dimensions drawn are the secondary, design-family values (CNV 76 ft x 19 ft, bay 20 ft square x 53 ft deep), labelled S2; the bay arrangement, building outline and pool-to-grade elevation are UNKNOWN"
+  },
+  {
+   "id": "G-reliability",
+   "kind": "gap",
+   "subject": "failure data for passive components (condensers, pool, building) and NuScale valve designs",
+   "decision": "pending_human_review",
+   "reason": "a human-chosen data basis (NUREG/CR-6928 has no matching rows for these); effect: fault and event trees are built and their cut sets computed; nothing is quantified"
+  },
+  {
+   "id": "M1:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M1:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M2:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M2:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M3:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M3:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M4:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M4:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M5:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M5:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M6:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M6:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M7:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M7:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M8:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M8:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M9:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M9:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M10:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M10:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M11:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M11:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "M12:SF-ECCS",
+   "kind": "excluded-from-k-of-n",
+   "subject": "M12:SF-ECCS",
+   "decision": "pending_human_review",
+   "reason": "success criterion unknown (G-eccs-success)"
+  },
+  {
+   "id": "ECCS-all-trains",
+   "kind": "note",
+   "subject": "ECCS",
+   "decision": "pending_human_review",
+   "reason": "screened for supports shared by every valve train (valid for any success criterion)"
+  }
+ ],
+ "statuses": [
+  "sourced",
+  "measured",
+  "computed",
+  "estimated",
+  "design",
+  "unknown"
+ ],
+ "statusMeaning": {
+  "sourced": "taken from a cited document (data sheet, standard, public record)",
+  "measured": "a third-party measurement, cited",
+  "computed": "computed by a ConKay solver from the inputs shown",
+  "estimated": "an estimate with a stated method and range",
+  "design": "a design choice or requirement input, not a claim about the world",
+  "unknown": "not known: no source, or not computed"
+ },
+ "files": [
+  {
+   "name": "CK-GA-US600-PLANT-R-9A68158C-sheet1.svg",
+   "bytes": 24329,
+   "sha256": "de4721b83589185d166cf11fea0176f12ddd591b1907743b8701151d1b21e0c4"
+  },
+  {
+   "name": "CK-GA-US600-PLANT-R-9A68158C-sheet2.svg",
+   "bytes": 25946,
+   "sha256": "d2dd3ce6c5079ffde73b0b7a03c70aa2bc5b13aa794af1d9c0f7a5643c33eedd"
+  },
+  {
+   "name": "CK-GA-US600-PLANT-R-9A68158C.pdf",
+   "bytes": 44053,
+   "sha256": "2fcf114988464332f66a85cee1223c34f0523970a2901cd8037f0534d0010a4b"
+  }
+ ],
+ "snapshotSha256": "e2e8fa4884e6cc256907aad01af74c0f5266361e5c72191c0fa4ac58d5af5584"
+}

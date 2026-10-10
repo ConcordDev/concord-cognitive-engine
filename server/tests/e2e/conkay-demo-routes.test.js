@@ -7,8 +7,10 @@
  * account, (b) the numbers are the engine's own (same as calling the solver
  * directly, hand check agreeing), (c) bad input is a 400 with the solver's
  * reason, never a made-up result, (d) the bypass is GET-only and limited to
- * the three demo paths: POST to them, the signed-in ConKay routes and an
- * anonymous lens-run of the saving macro are still refused.
+ * the demo paths: POST to them, the signed-in ConKay routes and an
+ * anonymous lens-run of the saving macro are still refused, (e) the results
+ * page's showcase snapshots are readable with no account and only files a
+ * snapshot lists are served.
  */
 
 import { describe, it, before, after } from 'node:test';
@@ -269,6 +271,32 @@ describe('E2E — no-login ConKay demo (/api/conkay/demo/*)', { timeout: 150000 
     const m = await getJSON(base, '/api/conkay/demo/beam?' + BEAM.replace('steel-a992', 'unobtainium'));
     assert.equal(m.status, 400);
     assert.match(m.body.error, /unknown material/);
+  });
+
+  it('serves the results page snapshots with no account (precomputed, nothing solved)', async function () {
+    const idx = await getJSON(base, '/api/conkay/demo/designs');
+    assert.equal(idx.status, 200, JSON.stringify(idx.body));
+    const ids = idx.body.designs.map((d) => d.id);
+    assert.deepEqual(ids, ['car', 'sentinel-m1', 'usb-blend-d', 'methanol-water', 'nuscale-us600']);
+    assert.ok(idx.body.designs.every((d) => d.available), 'every showcase snapshot is built');
+    const s = await getJSON(base, '/api/conkay/demo/designs/sentinel-m1');
+    assert.equal(s.status, 200);
+    assert.equal(s.body.design.id, 'sentinel-m1');
+    assert.ok(s.body.design.checks.length > 0 && s.body.design.values.length > 0);
+    const svg = s.body.design.files.find((f) => f.name.endsWith('.svg'));
+    const f = await apiFetch(base, '/api/conkay/demo/designs/sentinel-m1/files/' + svg.name);
+    assert.equal(f.status, 200);
+    assert.equal(f.headers.get('content-type'), 'image/svg+xml');
+    assert.match(f.headers.get('content-security-policy') || '', /default-src 'none'/);
+    const n = await getJSON(base, '/api/conkay/demo/designs/nuscale-us600');
+    assert.ok(n.body.design.disclaimers.some((d) => /screening-only/.test(d)), 'nuclear snapshot carries the screening disclaimer');
+  });
+
+  it('the snapshot routes serve only listed files', async function () {
+    assert.equal((await getJSON(base, '/api/conkay/demo/designs/nope')).status, 404);
+    assert.equal((await getJSON(base, '/api/conkay/demo/designs/car/files/server.js')).status, 404);
+    assert.notEqual((await getJSON(base, '/api/conkay/demo/designs/car/files/..%2F..%2Fserver.js')).status, 200);
+    assert.notEqual((await postJSON(base, '/api/conkay/demo/designs', {})).status, 200, 'POST not served');
   });
 
   it('the bypass is narrow', async function () {

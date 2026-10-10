@@ -8210,9 +8210,10 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && /^\/api\/spectate\/[^/]+\/subscribe$/.test(req.path)) return next();
   if (req.method === "POST" && req.path === "/api/spectate/heartbeat") return next();
   if (req.method === "GET" && /^\/api\/spectate\/[^/]+\/feed$/.test(req.path)) return next();
-  // No-login ConKay demo: GET-only, compute-only beam FEA (routes/conkay-demo.js).
+  // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
+  // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.
-  if (req.method === "GET" && /^\/api\/conkay\/demo\/(materials|beam|sweep)$/.test(req.path)) return next();
+  if (req.method === "GET" && /^\/api\/conkay\/demo\/(materials|beam|sweep|designs(\/[a-z0-9-]{1,40}(\/files\/[A-Za-z0-9._-]{1,120})?)?)$/.test(req.path)) return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";

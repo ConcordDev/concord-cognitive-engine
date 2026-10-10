@@ -1,0 +1,3968 @@
+{
+ "showcaseVersion": "1.0.0",
+ "id": "car",
+ "title": "Four-seat 180 mph car",
+ "kind": "vehicle",
+ "pipeline": "carAcceptanceAsync (CAD body, tub, aero build-up, drawings)",
+ "brief": "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.",
+ "headline": {
+  "verdict": "credible_with_caveats",
+  "status": "WARN",
+  "topSpeed": {
+   "mph": 183.3,
+   "kmh": 295,
+   "status": "model_output_unvalidated",
+   "basis": "speed limiter set point (design choice, 295 km/h); without it, the lower of the drag-limited and gear-limited top speeds"
+  }
+ },
+ "disclaimers": [
+  "Software screening only. Passing software checks is not physical validation; every result below still needs the physical tests listed.",
+  "Aerodynamics is a component drag build-up and 2D panel screening, not CFD or wind-tunnel data.",
+  "Torsional stiffness assumes rigid joints."
+ ],
+ "caveats": [
+  "The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
+  "The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.19006044550065382 is computed (screening range): aero.drag-buildup centre of 0.107..0.338 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+  "The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
+  "The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
+  "REQ_mass passes on a lower-bound mass.",
+  "REQ_topSpeed passes on a model output (model_output_unvalidated), not a validated top speed: the limited speed (the 295 km/h set point) is reachable only if the unlimited model output holds.",
+  "Packaging is screening level: not checked for want of dimensions or design: bellhousing, SUSPENSION_FRONT, SUSPENSION_REAR, STEERING_RACK, EXHAUST, CONTROL_PACK, SEAT_3, SEAT_4, BRAKES_FRONT, BRAKES_REAR, structural tub, pedal box, dash, steering column, driveshaft, doors, suspension travel."
+ ],
+ "failures": [],
+ "checks": [
+  {
+   "runId": "drawing.ga@VEH",
+   "solver": "drawing.ga",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "Hidden-line projection (OpenCascade HLRBRep_PolyAlgo) of the CAD body's STEP into side, plan and front views at 1:25 on A3, first-angle; tyres and axle centre lines from the node positions; key dimensions from cad.body (computed) and the layout (design / derived); BOM grouped from the component library and designed parts with mass.part masses; title block revision = SHA-256 of everything shown",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement.check@REQ_mass",
+   "solver": "requirement.check",
+   "target": "REQ_mass",
+   "status": "PASS",
+   "method": "compare a solver output with the requirement's bound",
+   "reason": null,
+   "margins": [
+    {
+     "check": "weighs 2,500 lb: mass ≤ max",
+     "demand": 1032.228,
+     "capacity": 1133.9809,
+     "unit": "kg",
+     "utilization": 0.9103,
+     "marginPct": 9.86
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement.check@REQ_topSpeed",
+   "solver": "requirement.check",
+   "target": "REQ_topSpeed",
+   "status": "PASS",
+   "method": "compare a solver output with the requirement's bound",
+   "reason": null,
+   "margins": [
+    {
+     "check": "go 180 mph: topSpeed ≥ min",
+     "demand": 80.4672,
+     "capacity": 81.9444,
+     "unit": "m/s",
+     "utilization": 0.982,
+     "marginPct": 1.84
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement.check@REQ_seats",
+   "solver": "requirement.check",
+   "target": "REQ_seats",
+   "status": "PASS",
+   "method": "compare a solver output with the requirement's bound",
+   "reason": null,
+   "margins": [
+    {
+     "check": "seats 4: seats ≥ min",
+     "demand": 4,
+     "capacity": 4,
+     "unit": "1",
+     "utilization": 1,
+     "marginPct": 0
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "structure.frame@CHASSIS",
+   "solver": "structure.frame",
+   "target": "CHASSIS",
+   "status": "PASS",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "reason": null,
+   "margins": [
+    {
+     "check": "bending: rail-fL1 von Mises ≤ Fy / 1",
+     "demand": 1596934.4571,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0058,
+     "marginPct": 17183.11
+    },
+    {
+     "check": "bending: rail-fL2 von Mises ≤ Fy / 1",
+     "demand": 13271083.5141,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0481,
+     "marginPct": 1979.71
+    },
+    {
+     "check": "bending: sill-L1 von Mises ≤ Fy / 1",
+     "demand": 11921434.0159,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0432,
+     "marginPct": 2215.16
+    },
+    {
+     "check": "bending: sill-L2 von Mises ≤ Fy / 1",
+     "demand": 12569951.3201,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0455,
+     "marginPct": 2095.71
+    },
+    {
+     "check": "bending: sill-L3 von Mises ≤ Fy / 1",
+     "demand": 13156466.5004,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0477,
+     "marginPct": 1997.83
+    },
+    {
+     "check": "bending: sill-L4 von Mises ≤ Fy / 1",
+     "demand": 13135476.1117,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0476,
+     "marginPct": 2001.18
+    },
+    {
+     "check": "bending: kick-L1 von Mises ≤ Fy / 1",
+     "demand": 20110129.7686,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0729,
+     "marginPct": 1272.44
+    },
+    {
+     "check": "bending: kick-L2 von Mises ≤ Fy / 1",
+     "demand": 11277317.2678,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0409,
+     "marginPct": 2347.39
+    },
+    {
+     "check": "bending: kick-L3 von Mises ≤ Fy / 1",
+     "demand": 10630139.7034,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0385,
+     "marginPct": 2496.39
+    },
+    {
+     "check": "bending: qtr-L1 von Mises ≤ Fy / 1",
+     "demand": 2586755.8873,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0094,
+     "marginPct": 10569.74
+    },
+    {
+     "check": "bending: qtr-L2 von Mises ≤ Fy / 1",
+     "demand": 4374599.9559,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0158,
+     "marginPct": 6209.15
+    },
+    {
+     "check": "bending: qtr-L3 von Mises ≤ Fy / 1",
+     "demand": 1283718.4518,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0047,
+     "marginPct": 21400.04
+    },
+    {
+     "check": "bending: fw-post-L von Mises ≤ Fy / 1",
+     "demand": 31369058.8142,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1137,
+     "marginPct": 779.85
+    },
+    {
+     "check": "bending: rail-fR1 von Mises ≤ Fy / 1",
+     "demand": 1596934.4571,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0058,
+     "marginPct": 17183.11
+    },
+    {
+     "check": "bending: rail-fR2 von Mises ≤ Fy / 1",
+     "demand": 13271083.5141,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0481,
+     "marginPct": 1979.71
+    },
+    {
+     "check": "bending: sill-R1 von Mises ≤ Fy / 1",
+     "demand": 11921434.0159,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0432,
+     "marginPct": 2215.16
+    },
+    {
+     "check": "bending: sill-R2 von Mises ≤ Fy / 1",
+     "demand": 12569951.3201,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0455,
+     "marginPct": 2095.71
+    },
+    {
+     "check": "bending: sill-R3 von Mises ≤ Fy / 1",
+     "demand": 13156466.5004,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0477,
+     "marginPct": 1997.83
+    },
+    {
+     "check": "bending: sill-R4 von Mises ≤ Fy / 1",
+     "demand": 13135476.1117,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0476,
+     "marginPct": 2001.18
+    },
+    {
+     "check": "bending: kick-R1 von Mises ≤ Fy / 1",
+     "demand": 20110129.7686,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0729,
+     "marginPct": 1272.44
+    },
+    {
+     "check": "bending: kick-R2 von Mises ≤ Fy / 1",
+     "demand": 11277317.2678,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0409,
+     "marginPct": 2347.39
+    },
+    {
+     "check": "bending: kick-R3 von Mises ≤ Fy / 1",
+     "demand": 10630139.7034,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0385,
+     "marginPct": 2496.39
+    },
+    {
+     "check": "bending: qtr-R1 von Mises ≤ Fy / 1",
+     "demand": 2586755.8873,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0094,
+     "marginPct": 10569.74
+    },
+    {
+     "check": "bending: qtr-R2 von Mises ≤ Fy / 1",
+     "demand": 4374599.9559,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0158,
+     "marginPct": 6209.15
+    },
+    {
+     "check": "bending: qtr-R3 von Mises ≤ Fy / 1",
+     "demand": 1283718.4518,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0047,
+     "marginPct": 21400.04
+    },
+    {
+     "check": "bending: fw-post-R von Mises ≤ Fy / 1",
+     "demand": 31369058.8142,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1137,
+     "marginPct": 779.85
+    },
+    {
+     "check": "bending: fw-lower-L1 von Mises ≤ Fy / 1",
+     "demand": 8987446.2411,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0326,
+     "marginPct": 2970.95
+    },
+    {
+     "check": "bending: fw-lower-L2 von Mises ≤ Fy / 1",
+     "demand": 3074490.5918,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0111,
+     "marginPct": 8877.1
+    },
+    {
+     "check": "bending: fw-lower-R1 von Mises ≤ Fy / 1",
+     "demand": 8987446.2411,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0326,
+     "marginPct": 2970.95
+    },
+    {
+     "check": "bending: fw-lower-R2 von Mises ≤ Fy / 1",
+     "demand": 3074490.5918,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0111,
+     "marginPct": 8877.1
+    },
+    {
+     "check": "bending: scuttle-L1 von Mises ≤ Fy / 1",
+     "demand": 11108500.0423,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0402,
+     "marginPct": 2384.58
+    },
+    {
+     "check": "bending: scuttle-L2 von Mises ≤ Fy / 1",
+     "demand": 11391941.5415,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0413,
+     "marginPct": 2322.77
+    },
+    {
+     "check": "bending: scuttle-R1 von Mises ≤ Fy / 1",
+     "demand": 11108500.0423,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0402,
+     "marginPct": 2384.58
+    },
+    {
+     "check": "bending: scuttle-R2 von Mises ≤ Fy / 1",
+     "demand": 11391941.5415,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0413,
+     "marginPct": 2322.77
+    },
+    {
+     "check": "bending: fw-cpost-1 von Mises ≤ Fy / 1",
+     "demand": 23462576.0923,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.085,
+     "marginPct": 1076.34
+    },
+    {
+     "check": "bending: fw-cpost-2 von Mises ≤ Fy / 1",
+     "demand": 23272234.9287,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0843,
+     "marginPct": 1085.96
+    },
+    {
+     "check": "bending: tunnel-f1 von Mises ≤ Fy / 1",
+     "demand": 246423.2662,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0009,
+     "marginPct": 111902.41
+    },
+    {
+     "check": "bending: tunnel-f2 von Mises ≤ Fy / 1",
+     "demand": 74257.3416,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0003,
+     "marginPct": 371580.42
+    },
+    {
+     "check": "bending: tunnel-r1 von Mises ≤ Fy / 1",
+     "demand": 798983.6619,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0029,
+     "marginPct": 34443.89
+    },
+    {
+     "check": "bending: tunnel-r2 von Mises ≤ Fy / 1",
+     "demand": 1009109.4773,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0037,
+     "marginPct": 27250.85
+    },
+    {
+     "check": "bending: seat-cross-L von Mises ≤ Fy / 1",
+     "demand": 1779449.3992,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0064,
+     "marginPct": 15410.42
+    },
+    {
+     "check": "bending: seat-cross-R von Mises ≤ Fy / 1",
+     "demand": 1779449.3992,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0064,
+     "marginPct": 15410.42
+    },
+    {
+     "check": "bending: heel-L von Mises ≤ Fy / 1",
+     "demand": 5365399.2987,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0194,
+     "marginPct": 5044.07
+    },
+    {
+     "check": "bending: heel-R von Mises ≤ Fy / 1",
+     "demand": 5365399.2987,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0194,
+     "marginPct": 5044.07
+    },
+    {
+     "check": "bending: rear-bulkhead-L von Mises ≤ Fy / 1",
+     "demand": 777365.6961,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0028,
+     "marginPct": 35404.53
+    },
+    {
+     "check": "bending: rear-bulkhead-R von Mises ≤ Fy / 1",
+     "demand": 777365.6961,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0028,
+     "marginPct": 35404.53
+    },
+    {
+     "check": "bending: rear-cross-L von Mises ≤ Fy / 1",
+     "demand": 308764.8078,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0011,
+     "marginPct": 89288.43
+    },
+    {
+     "check": "bending: rear-cross-R von Mises ≤ Fy / 1",
+     "demand": 308764.8078,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0011,
+     "marginPct": 89288.43
+    },
+    {
+     "check": "bending: a-pillar-L von Mises ≤ Fy / 1",
+     "demand": 10981576.4704,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0398,
+     "marginPct": 2413.3
+    },
+    {
+     "check": "bending: roof-rail-L von Mises ≤ Fy / 1",
+     "demand": 15375643.511,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0557,
+     "marginPct": 1695.05
+    },
+    {
+     "check": "bending: b-post-L von Mises ≤ Fy / 1",
+     "demand": 18103924.0221,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0656,
+     "marginPct": 1424.53
+    },
+    {
+     "check": "bending: roof-rail-r-L von Mises ≤ Fy / 1",
+     "demand": 27342974.9167,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0991,
+     "marginPct": 909.4
+    },
+    {
+     "check": "bending: c-post-L von Mises ≤ Fy / 1",
+     "demand": 29977352.6875,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1086,
+     "marginPct": 820.7
+    },
+    {
+     "check": "bending: a-pillar-R von Mises ≤ Fy / 1",
+     "demand": 10981576.4704,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0398,
+     "marginPct": 2413.3
+    },
+    {
+     "check": "bending: roof-rail-R von Mises ≤ Fy / 1",
+     "demand": 15375643.511,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0557,
+     "marginPct": 1695.05
+    },
+    {
+     "check": "bending: b-post-R von Mises ≤ Fy / 1",
+     "demand": 18103924.0221,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0656,
+     "marginPct": 1424.53
+    },
+    {
+     "check": "bending: roof-rail-r-R von Mises ≤ Fy / 1",
+     "demand": 27342974.9167,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0991,
+     "marginPct": 909.4
+    },
+    {
+     "check": "bending: c-post-R von Mises ≤ Fy / 1",
+     "demand": 29977352.6875,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1086,
+     "marginPct": 820.7
+    },
+    {
+     "check": "bending: roof-bow-L von Mises ≤ Fy / 1",
+     "demand": 2736003.6178,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0099,
+     "marginPct": 9987.71
+    },
+    {
+     "check": "bending: roof-bow-R von Mises ≤ Fy / 1",
+     "demand": 2736003.6178,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0099,
+     "marginPct": 9987.71
+    },
+    {
+     "check": "bending: ws-header-L von Mises ≤ Fy / 1",
+     "demand": 1172562.2536,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0042,
+     "marginPct": 23438.2
+    },
+    {
+     "check": "bending: ws-header-R von Mises ≤ Fy / 1",
+     "demand": 1172562.2536,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0042,
+     "marginPct": 23438.2
+    },
+    {
+     "check": "bending: panel roof-L shear ≤ Fy/√3 / 1",
+     "demand": 136747.7851,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0009,
+     "marginPct": 116427.43
+    },
+    {
+     "check": "bending: panel roof-L shear ≤ elastic shear buckling τcr (k_s 6.54)",
+     "demand": 136747.7851,
+     "capacity": 3459536.8434,
+     "unit": "Pa",
+     "utilization": 0.0395,
+     "marginPct": 2429.87
+    },
+    {
+     "check": "bending: panel roof-R shear ≤ Fy/√3 / 1",
+     "demand": 136747.7851,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0009,
+     "marginPct": 116427.43
+    },
+    {
+     "check": "bending: panel roof-R shear ≤ elastic shear buckling τcr (k_s 6.54)",
+     "demand": 136747.7851,
+     "capacity": 3459536.8434,
+     "unit": "Pa",
+     "utilization": 0.0395,
+     "marginPct": 2429.87
+    },
+    {
+     "check": "bending: panel floor-L1 shear ≤ Fy/√3 / 1",
+     "demand": 293031.2401,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0018,
+     "marginPct": 54279.42
+    },
+    {
+     "check": "bending: panel floor-L1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
+     "demand": 293031.2401,
+     "capacity": 7678696.0599,
+     "unit": "Pa",
+     "utilization": 0.0382,
+     "marginPct": 2520.44
+    },
+    {
+     "check": "bending: panel floor-L2 shear ≤ Fy/√3 / 1",
+     "demand": 552493.4704,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0035,
+     "marginPct": 28741.73
+    },
+    {
+     "check": "bending: panel floor-L2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
+     "demand": 552493.4704,
+     "capacity": 214650711.7604,
+     "unit": "Pa",
+     "utilization": 0.0026,
+     "marginPct": 38751.27
+    },
+    {
+     "check": "bending: panel floor-L3 shear ≤ Fy/√3 / 1",
+     "demand": 1042059.8426,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0065,
+     "marginPct": 15191.7
+    },
+    {
+     "check": "bending: panel floor-L3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
+     "demand": 1042059.8426,
+     "capacity": 42763235.5484,
+     "unit": "Pa",
+     "utilization": 0.0244,
+     "marginPct": 4003.72
+    },
+    {
+     "check": "bending: panel floor-L4 shear ≤ Fy/√3 / 1",
+     "demand": 45194.4908,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0003,
+     "marginPct": 352484.29
+    },
+    {
+     "check": "bending: panel floor-L4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
+     "demand": 45194.4908,
+     "capacity": 5161108.4215,
+     "unit": "Pa",
+     "utilization": 0.0088,
+     "marginPct": 11319.77
+    },
+    {
+     "check": "bending: panel floor-L5 shear ≤ Fy/√3 / 1",
+     "demand": 274454.4485,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0017,
+     "marginPct": 57960.15
+    },
+    {
+     "check": "bending: panel floor-L5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
+     "demand": 274454.4485,
+     "capacity": 17103243.3465,
+     "unit": "Pa",
+     "utilization": 0.016,
+     "marginPct": 6131.72
+    },
+    {
+     "check": "bending: panel rear-floor-L shear ≤ Fy/√3 / 1",
+     "demand": 481064.6918,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.003,
+     "marginPct": 33024.17
+    },
+    {
+     "check": "bending: panel rear-floor-L shear ≤ elastic shear buckling τcr (k_s 8.70)",
+     "demand": 481064.6918,
+     "capacity": 6853140.6111,
+     "unit": "Pa",
+     "utilization": 0.0702,
+     "marginPct": 1324.58
+    },
+    {
+     "check": "bending: panel firewall-L shear ≤ Fy/√3 / 1",
+     "demand": 1058726.5017,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0066,
+     "marginPct": 14950.98
+    },
+    {
+     "check": "bending: panel firewall-L shear ≤ elastic shear buckling τcr (k_s 6.57)",
+     "demand": 1058726.5017,
+     "capacity": 10994544.9018,
+     "unit": "Pa",
+     "utilization": 0.0963,
+     "marginPct": 938.47
+    },
+    {
+     "check": "bending: panel floor-R1 shear ≤ Fy/√3 / 1",
+     "demand": 293031.2401,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0018,
+     "marginPct": 54279.42
+    },
+    {
+     "check": "bending: panel floor-R1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
+     "demand": 293031.2401,
+     "capacity": 7678696.0599,
+     "unit": "Pa",
+     "utilization": 0.0382,
+     "marginPct": 2520.44
+    },
+    {
+     "check": "bending: panel floor-R2 shear ≤ Fy/√3 / 1",
+     "demand": 552493.4704,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0035,
+     "marginPct": 28741.73
+    },
+    {
+     "check": "bending: panel floor-R2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
+     "demand": 552493.4704,
+     "capacity": 214650711.7604,
+     "unit": "Pa",
+     "utilization": 0.0026,
+     "marginPct": 38751.27
+    },
+    {
+     "check": "bending: panel floor-R3 shear ≤ Fy/√3 / 1",
+     "demand": 1042059.8426,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0065,
+     "marginPct": 15191.7
+    },
+    {
+     "check": "bending: panel floor-R3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
+     "demand": 1042059.8426,
+     "capacity": 42763235.5484,
+     "unit": "Pa",
+     "utilization": 0.0244,
+     "marginPct": 4003.72
+    },
+    {
+     "check": "bending: panel floor-R4 shear ≤ Fy/√3 / 1",
+     "demand": 45194.4908,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0003,
+     "marginPct": 352484.29
+    },
+    {
+     "check": "bending: panel floor-R4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
+     "demand": 45194.4908,
+     "capacity": 5161108.4215,
+     "unit": "Pa",
+     "utilization": 0.0088,
+     "marginPct": 11319.77
+    },
+    {
+     "check": "bending: panel floor-R5 shear ≤ Fy/√3 / 1",
+     "demand": 274454.4485,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0017,
+     "marginPct": 57960.15
+    },
+    {
+     "check": "bending: panel floor-R5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
+     "demand": 274454.4485,
+     "capacity": 17103243.3465,
+     "unit": "Pa",
+     "utilization": 0.016,
+     "marginPct": 6131.72
+    },
+    {
+     "check": "bending: panel rear-floor-R shear ≤ Fy/√3 / 1",
+     "demand": 481064.6918,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.003,
+     "marginPct": 33024.17
+    },
+    {
+     "check": "bending: panel rear-floor-R shear ≤ elastic shear buckling τcr (k_s 8.70)",
+     "demand": 481064.6918,
+     "capacity": 6853140.6111,
+     "unit": "Pa",
+     "utilization": 0.0702,
+     "marginPct": 1324.58
+    },
+    {
+     "check": "bending: panel firewall-R shear ≤ Fy/√3 / 1",
+     "demand": 1058726.5017,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0066,
+     "marginPct": 14950.98
+    },
+    {
+     "check": "bending: panel firewall-R shear ≤ elastic shear buckling τcr (k_s 6.57)",
+     "demand": 1058726.5017,
+     "capacity": 10994544.9018,
+     "unit": "Pa",
+     "utilization": 0.0963,
+     "marginPct": 938.47
+    },
+    {
+     "check": "kerb-twist: rail-fL1 von Mises ≤ Fy / 1",
+     "demand": 0,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0,
+     "marginPct": 192277983130571900
+    },
+    {
+     "check": "kerb-twist: rail-fL2 von Mises ≤ Fy / 1",
+     "demand": 20866617.5704,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0756,
+     "marginPct": 1222.69
+    },
+    {
+     "check": "kerb-twist: sill-L1 von Mises ≤ Fy / 1",
+     "demand": 11510127.5394,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0417,
+     "marginPct": 2297.89
+    },
+    {
+     "check": "kerb-twist: sill-L2 von Mises ≤ Fy / 1",
+     "demand": 8220855.5404,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0298,
+     "marginPct": 3257.31
+    },
+    {
+     "check": "kerb-twist: sill-L3 von Mises ≤ Fy / 1",
+     "demand": 7663489.1235,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0278,
+     "marginPct": 3501.49
+    },
+    {
+     "check": "kerb-twist: sill-L4 von Mises ≤ Fy / 1",
+     "demand": 7142969.7225,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0259,
+     "marginPct": 3763.94
+    },
+    {
+     "check": "kerb-twist: kick-L1 von Mises ≤ Fy / 1",
+     "demand": 11724126.0747,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0425,
+     "marginPct": 2254.12
+    },
+    {
+     "check": "kerb-twist: kick-L2 von Mises ≤ Fy / 1",
+     "demand": 9210665.6074,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0334,
+     "marginPct": 2896.53
+    },
+    {
+     "check": "kerb-twist: kick-L3 von Mises ≤ Fy / 1",
+     "demand": 14401392.1911,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0522,
+     "marginPct": 1816.48
+    },
+    {
+     "check": "kerb-twist: qtr-L1 von Mises ≤ Fy / 1",
+     "demand": 7360311.94,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0267,
+     "marginPct": 3649.84
+    },
+    {
+     "check": "kerb-twist: qtr-L2 von Mises ≤ Fy / 1",
+     "demand": 6666370.1948,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0242,
+     "marginPct": 4040.18
+    },
+    {
+     "check": "kerb-twist: qtr-L3 von Mises ≤ Fy / 1",
+     "demand": 7565817.8495,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0274,
+     "marginPct": 3547.99
+    },
+    {
+     "check": "kerb-twist: fw-post-L von Mises ≤ Fy / 1",
+     "demand": 40941627.4462,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1483,
+     "marginPct": 574.13
+    },
+    {
+     "check": "kerb-twist: rail-fR1 von Mises ≤ Fy / 1",
+     "demand": 0,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0,
+     "marginPct": 10663937816039156
+    },
+    {
+     "check": "kerb-twist: rail-fR2 von Mises ≤ Fy / 1",
+     "demand": 20866617.5704,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0756,
+     "marginPct": 1222.69
+    },
+    {
+     "check": "kerb-twist: sill-R1 von Mises ≤ Fy / 1",
+     "demand": 11510127.5394,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0417,
+     "marginPct": 2297.89
+    },
+    {
+     "check": "kerb-twist: sill-R2 von Mises ≤ Fy / 1",
+     "demand": 8220855.5404,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0298,
+     "marginPct": 3257.31
+    },
+    {
+     "check": "kerb-twist: sill-R3 von Mises ≤ Fy / 1",
+     "demand": 7663489.1236,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0278,
+     "marginPct": 3501.49
+    },
+    {
+     "check": "kerb-twist: sill-R4 von Mises ≤ Fy / 1",
+     "demand": 7142969.7226,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0259,
+     "marginPct": 3763.94
+    },
+    {
+     "check": "kerb-twist: kick-R1 von Mises ≤ Fy / 1",
+     "demand": 11724126.0747,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0425,
+     "marginPct": 2254.12
+    },
+    {
+     "check": "kerb-twist: kick-R2 von Mises ≤ Fy / 1",
+     "demand": 9210665.6074,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0334,
+     "marginPct": 2896.53
+    },
+    {
+     "check": "kerb-twist: kick-R3 von Mises ≤ Fy / 1",
+     "demand": 14401392.1911,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0522,
+     "marginPct": 1816.48
+    },
+    {
+     "check": "kerb-twist: qtr-R1 von Mises ≤ Fy / 1",
+     "demand": 7360311.94,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0267,
+     "marginPct": 3649.84
+    },
+    {
+     "check": "kerb-twist: qtr-R2 von Mises ≤ Fy / 1",
+     "demand": 6666370.1948,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0242,
+     "marginPct": 4040.18
+    },
+    {
+     "check": "kerb-twist: qtr-R3 von Mises ≤ Fy / 1",
+     "demand": 7565817.8495,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0274,
+     "marginPct": 3547.99
+    },
+    {
+     "check": "kerb-twist: fw-post-R von Mises ≤ Fy / 1",
+     "demand": 40941627.4462,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1483,
+     "marginPct": 574.13
+    },
+    {
+     "check": "kerb-twist: fw-lower-L1 von Mises ≤ Fy / 1",
+     "demand": 5056316.5907,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0183,
+     "marginPct": 5358.52
+    },
+    {
+     "check": "kerb-twist: fw-lower-L2 von Mises ≤ Fy / 1",
+     "demand": 16196665.0504,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0587,
+     "marginPct": 1604.05
+    },
+    {
+     "check": "kerb-twist: fw-lower-R1 von Mises ≤ Fy / 1",
+     "demand": 5056316.5907,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0183,
+     "marginPct": 5358.52
+    },
+    {
+     "check": "kerb-twist: fw-lower-R2 von Mises ≤ Fy / 1",
+     "demand": 16196665.0504,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0587,
+     "marginPct": 1604.05
+    },
+    {
+     "check": "kerb-twist: scuttle-L1 von Mises ≤ Fy / 1",
+     "demand": 23803761.1126,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0862,
+     "marginPct": 1059.48
+    },
+    {
+     "check": "kerb-twist: scuttle-L2 von Mises ≤ Fy / 1",
+     "demand": 11355713.433,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0411,
+     "marginPct": 2330.49
+    },
+    {
+     "check": "kerb-twist: scuttle-R1 von Mises ≤ Fy / 1",
+     "demand": 23803761.1127,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0862,
+     "marginPct": 1059.48
+    },
+    {
+     "check": "kerb-twist: scuttle-R2 von Mises ≤ Fy / 1",
+     "demand": 11355713.433,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0411,
+     "marginPct": 2330.49
+    },
+    {
+     "check": "kerb-twist: fw-cpost-1 von Mises ≤ Fy / 1",
+     "demand": 19703628.6214,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0714,
+     "marginPct": 1300.76
+    },
+    {
+     "check": "kerb-twist: fw-cpost-2 von Mises ≤ Fy / 1",
+     "demand": 10212613.0308,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.037,
+     "marginPct": 2602.54
+    },
+    {
+     "check": "kerb-twist: tunnel-f1 von Mises ≤ Fy / 1",
+     "demand": 1871974.8553,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0068,
+     "marginPct": 14643.79
+    },
+    {
+     "check": "kerb-twist: tunnel-f2 von Mises ≤ Fy / 1",
+     "demand": 495608.7159,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0018,
+     "marginPct": 55589.09
+    },
+    {
+     "check": "kerb-twist: tunnel-r1 von Mises ≤ Fy / 1",
+     "demand": 479045.8738,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0017,
+     "marginPct": 57514.52
+    },
+    {
+     "check": "kerb-twist: tunnel-r2 von Mises ≤ Fy / 1",
+     "demand": 520682.4385,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0019,
+     "marginPct": 52907.36
+    },
+    {
+     "check": "kerb-twist: seat-cross-L von Mises ≤ Fy / 1",
+     "demand": 11632570.0508,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0421,
+     "marginPct": 2272.65
+    },
+    {
+     "check": "kerb-twist: seat-cross-R von Mises ≤ Fy / 1",
+     "demand": 11632570.051,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0421,
+     "marginPct": 2272.65
+    },
+    {
+     "check": "kerb-twist: heel-L von Mises ≤ Fy / 1",
+     "demand": 11352643.8191,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0411,
+     "marginPct": 2331.15
+    },
+    {
+     "check": "kerb-twist: heel-R von Mises ≤ Fy / 1",
+     "demand": 11352643.8191,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0411,
+     "marginPct": 2331.15
+    },
+    {
+     "check": "kerb-twist: rear-bulkhead-L von Mises ≤ Fy / 1",
+     "demand": 5380847.4737,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0195,
+     "marginPct": 5029.3
+    },
+    {
+     "check": "kerb-twist: rear-bulkhead-R von Mises ≤ Fy / 1",
+     "demand": 5380847.4737,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0195,
+     "marginPct": 5029.3
+    },
+    {
+     "check": "kerb-twist: rear-cross-L von Mises ≤ Fy / 1",
+     "demand": 14755099.8048,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0535,
+     "marginPct": 1770.54
+    },
+    {
+     "check": "kerb-twist: rear-cross-R von Mises ≤ Fy / 1",
+     "demand": 14755099.8048,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0535,
+     "marginPct": 1770.54
+    },
+    {
+     "check": "kerb-twist: a-pillar-L von Mises ≤ Fy / 1",
+     "demand": 31890161.2753,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1155,
+     "marginPct": 765.47
+    },
+    {
+     "check": "kerb-twist: roof-rail-L von Mises ≤ Fy / 1",
+     "demand": 19050206.4055,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.069,
+     "marginPct": 1348.8
+    },
+    {
+     "check": "kerb-twist: b-post-L von Mises ≤ Fy / 1",
+     "demand": 32584377.3789,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1181,
+     "marginPct": 747.03
+    },
+    {
+     "check": "kerb-twist: roof-rail-r-L von Mises ≤ Fy / 1",
+     "demand": 26220898.2864,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.095,
+     "marginPct": 952.6
+    },
+    {
+     "check": "kerb-twist: c-post-L von Mises ≤ Fy / 1",
+     "demand": 33643894.5372,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1219,
+     "marginPct": 720.36
+    },
+    {
+     "check": "kerb-twist: a-pillar-R von Mises ≤ Fy / 1",
+     "demand": 31890161.2753,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1155,
+     "marginPct": 765.47
+    },
+    {
+     "check": "kerb-twist: roof-rail-R von Mises ≤ Fy / 1",
+     "demand": 19050206.4055,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.069,
+     "marginPct": 1348.8
+    },
+    {
+     "check": "kerb-twist: b-post-R von Mises ≤ Fy / 1",
+     "demand": 32584377.379,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1181,
+     "marginPct": 747.03
+    },
+    {
+     "check": "kerb-twist: roof-rail-r-R von Mises ≤ Fy / 1",
+     "demand": 26220898.2864,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.095,
+     "marginPct": 952.6
+    },
+    {
+     "check": "kerb-twist: c-post-R von Mises ≤ Fy / 1",
+     "demand": 33643894.5372,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1219,
+     "marginPct": 720.36
+    },
+    {
+     "check": "kerb-twist: roof-bow-L von Mises ≤ Fy / 1",
+     "demand": 28661807.9916,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1038,
+     "marginPct": 862.95
+    },
+    {
+     "check": "kerb-twist: roof-bow-R von Mises ≤ Fy / 1",
+     "demand": 28661807.9916,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.1038,
+     "marginPct": 862.95
+    },
+    {
+     "check": "kerb-twist: ws-header-L von Mises ≤ Fy / 1",
+     "demand": 21869362.4758,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0792,
+     "marginPct": 1162.04
+    },
+    {
+     "check": "kerb-twist: ws-header-R von Mises ≤ Fy / 1",
+     "demand": 21869362.4758,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0792,
+     "marginPct": 1162.04
+    },
+    {
+     "check": "kerb-twist: panel roof-L shear ≤ Fy/√3 / 1",
+     "demand": 2350701.1835,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0148,
+     "marginPct": 6678.77
+    },
+    {
+     "check": "kerb-twist: panel roof-L shear ≤ elastic shear buckling τcr (k_s 6.54)",
+     "demand": 2350701.1835,
+     "capacity": 3459536.8434,
+     "unit": "Pa",
+     "utilization": 0.6795,
+     "marginPct": 47.17
+    },
+    {
+     "check": "kerb-twist: panel roof-R shear ≤ Fy/√3 / 1",
+     "demand": 2350701.1835,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0148,
+     "marginPct": 6678.77
+    },
+    {
+     "check": "kerb-twist: panel roof-R shear ≤ elastic shear buckling τcr (k_s 6.54)",
+     "demand": 2350701.1835,
+     "capacity": 3459536.8434,
+     "unit": "Pa",
+     "utilization": 0.6795,
+     "marginPct": 47.17
+    },
+    {
+     "check": "kerb-twist: panel floor-L1 shear ≤ Fy/√3 / 1",
+     "demand": 542314.5938,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0034,
+     "marginPct": 29283.07
+    },
+    {
+     "check": "kerb-twist: panel floor-L1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
+     "demand": 542314.5938,
+     "capacity": 7678696.0599,
+     "unit": "Pa",
+     "utilization": 0.0706,
+     "marginPct": 1315.91
+    },
+    {
+     "check": "kerb-twist: panel floor-L2 shear ≤ Fy/√3 / 1",
+     "demand": 744542.5078,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0047,
+     "marginPct": 21302.23
+    },
+    {
+     "check": "kerb-twist: panel floor-L2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
+     "demand": 744542.5078,
+     "capacity": 214650711.7604,
+     "unit": "Pa",
+     "utilization": 0.0035,
+     "marginPct": 28729.88
+    },
+    {
+     "check": "kerb-twist: panel floor-L3 shear ≤ Fy/√3 / 1",
+     "demand": 831358.3786,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0052,
+     "marginPct": 19067.27
+    },
+    {
+     "check": "kerb-twist: panel floor-L3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
+     "demand": 831358.3786,
+     "capacity": 42763235.5484,
+     "unit": "Pa",
+     "utilization": 0.0194,
+     "marginPct": 5043.78
+    },
+    {
+     "check": "kerb-twist: panel floor-L4 shear ≤ Fy/√3 / 1",
+     "demand": 1084241.719,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0068,
+     "marginPct": 14596.78
+    },
+    {
+     "check": "kerb-twist: panel floor-L4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
+     "demand": 1084241.719,
+     "capacity": 5161108.4215,
+     "unit": "Pa",
+     "utilization": 0.2101,
+     "marginPct": 376.01
+    },
+    {
+     "check": "kerb-twist: panel floor-L5 shear ≤ Fy/√3 / 1",
+     "demand": 966129.5555,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0061,
+     "marginPct": 16393.51
+    },
+    {
+     "check": "kerb-twist: panel floor-L5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
+     "demand": 966129.5555,
+     "capacity": 17103243.3465,
+     "unit": "Pa",
+     "utilization": 0.0565,
+     "marginPct": 1670.28
+    },
+    {
+     "check": "kerb-twist: panel rear-floor-L shear ≤ Fy/√3 / 1",
+     "demand": 1309039.8308,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0082,
+     "marginPct": 12072.94
+    },
+    {
+     "check": "kerb-twist: panel rear-floor-L shear ≤ elastic shear buckling τcr (k_s 8.70)",
+     "demand": 1309039.8308,
+     "capacity": 6853140.6111,
+     "unit": "Pa",
+     "utilization": 0.191,
+     "marginPct": 423.52
+    },
+    {
+     "check": "kerb-twist: panel firewall-L shear ≤ Fy/√3 / 1",
+     "demand": 1372920.8309,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0086,
+     "marginPct": 11506.55
+    },
+    {
+     "check": "kerb-twist: panel firewall-L shear ≤ elastic shear buckling τcr (k_s 6.57)",
+     "demand": 1372920.8309,
+     "capacity": 10994544.9018,
+     "unit": "Pa",
+     "utilization": 0.1249,
+     "marginPct": 700.81
+    },
+    {
+     "check": "kerb-twist: panel floor-R1 shear ≤ Fy/√3 / 1",
+     "demand": 542314.5938,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0034,
+     "marginPct": 29283.07
+    },
+    {
+     "check": "kerb-twist: panel floor-R1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
+     "demand": 542314.5938,
+     "capacity": 7678696.0599,
+     "unit": "Pa",
+     "utilization": 0.0706,
+     "marginPct": 1315.91
+    },
+    {
+     "check": "kerb-twist: panel floor-R2 shear ≤ Fy/√3 / 1",
+     "demand": 744542.5078,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0047,
+     "marginPct": 21302.23
+    },
+    {
+     "check": "kerb-twist: panel floor-R2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
+     "demand": 744542.5078,
+     "capacity": 214650711.7604,
+     "unit": "Pa",
+     "utilization": 0.0035,
+     "marginPct": 28729.88
+    },
+    {
+     "check": "kerb-twist: panel floor-R3 shear ≤ Fy/√3 / 1",
+     "demand": 831358.3786,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0052,
+     "marginPct": 19067.27
+    },
+    {
+     "check": "kerb-twist: panel floor-R3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
+     "demand": 831358.3786,
+     "capacity": 42763235.5484,
+     "unit": "Pa",
+     "utilization": 0.0194,
+     "marginPct": 5043.78
+    },
+    {
+     "check": "kerb-twist: panel floor-R4 shear ≤ Fy/√3 / 1",
+     "demand": 1084241.719,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0068,
+     "marginPct": 14596.78
+    },
+    {
+     "check": "kerb-twist: panel floor-R4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
+     "demand": 1084241.719,
+     "capacity": 5161108.4215,
+     "unit": "Pa",
+     "utilization": 0.2101,
+     "marginPct": 376.01
+    },
+    {
+     "check": "kerb-twist: panel floor-R5 shear ≤ Fy/√3 / 1",
+     "demand": 966129.5555,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0061,
+     "marginPct": 16393.51
+    },
+    {
+     "check": "kerb-twist: panel floor-R5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
+     "demand": 966129.5555,
+     "capacity": 17103243.3465,
+     "unit": "Pa",
+     "utilization": 0.0565,
+     "marginPct": 1670.28
+    },
+    {
+     "check": "kerb-twist: panel rear-floor-R shear ≤ Fy/√3 / 1",
+     "demand": 1309039.8308,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0082,
+     "marginPct": 12072.94
+    },
+    {
+     "check": "kerb-twist: panel rear-floor-R shear ≤ elastic shear buckling τcr (k_s 8.70)",
+     "demand": 1309039.8308,
+     "capacity": 6853140.6111,
+     "unit": "Pa",
+     "utilization": 0.191,
+     "marginPct": 423.52
+    },
+    {
+     "check": "kerb-twist: panel firewall-R shear ≤ Fy/√3 / 1",
+     "demand": 1372920.8309,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0086,
+     "marginPct": 11506.55
+    },
+    {
+     "check": "kerb-twist: panel firewall-R shear ≤ elastic shear buckling τcr (k_s 6.57)",
+     "demand": 1372920.8309,
+     "capacity": 10994544.9018,
+     "unit": "Pa",
+     "utilization": 0.1249,
+     "marginPct": 700.81
+    },
+    {
+     "check": "stiffness torsional ≥ target 10,800 N·m/deg (low end of the cited sports-car range: Lotus Elise bonded extruded aluminium tub, 10,800 N·m/deg (Lotus 2011 press pack); high end Lamborghini Aventador CFRP monocoque, 35,000 N·m/deg; test methods not published, so a screening target)",
+     "demand": 618794.4187,
+     "capacity": 629793.5908,
+     "unit": "N·m/rad",
+     "utilization": 0.9825,
+     "marginPct": 1.78
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "vehicle.top-speed@VEH",
+   "solver": "vehicle.top-speed",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "vehicle.required-power@VEH",
+   "solver": "vehicle.required-power",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
+   "reason": null,
+   "margins": [
+    {
+     "check": "installed power ≥ power to reach the required top speed",
+     "demand": 151233.7348,
+     "capacity": 343021.9,
+     "unit": "W",
+     "utilization": 0.4409,
+     "marginPct": 126.82
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "vehicle.axle-loads@VEH",
+   "solver": "vehicle.axle-loads",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "vehicle.gearing@VEH",
+   "solver": "vehicle.gearing",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "Top gear runs out of revs at 224 mph, below the 240 mph the power allows: the top speed is gear-limited."
+   ]
+  },
+  {
+   "runId": "tire.speed-rating@VEH",
+   "solver": "tire.speed-rating",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "tyre established speed (ISO 4000-1 speed symbol) ≥ required top speed (hard) and ≥ the vehicle's top speed: the model output, or the speed limiter's set point (and set point + overshoot allowance) when a limiter caps it",
+   "reason": null,
+   "margins": [
+    {
+     "check": "TIRE_FL established speed ≥ required top speed",
+     "demand": 80.4672,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9656,
+     "marginPct": 3.56
+    },
+    {
+     "check": "TIRE_FL established speed ≥ limited top speed (speed limiter set at 295 km/h, design choice)",
+     "demand": 81.9444,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9833,
+     "marginPct": 1.69
+    },
+    {
+     "check": "TIRE_FL established speed ≥ limiter set point + overshoot allowance (295 + 5 km/h)",
+     "demand": 83.3333,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 1,
+     "marginPct": 0
+    },
+    {
+     "check": "TIRE_FR established speed ≥ required top speed",
+     "demand": 80.4672,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9656,
+     "marginPct": 3.56
+    },
+    {
+     "check": "TIRE_FR established speed ≥ limited top speed (speed limiter set at 295 km/h, design choice)",
+     "demand": 81.9444,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9833,
+     "marginPct": 1.69
+    },
+    {
+     "check": "TIRE_FR established speed ≥ limiter set point + overshoot allowance (295 + 5 km/h)",
+     "demand": 83.3333,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 1,
+     "marginPct": 0
+    },
+    {
+     "check": "TIRE_RL established speed ≥ required top speed",
+     "demand": 80.4672,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9656,
+     "marginPct": 3.56
+    },
+    {
+     "check": "TIRE_RL established speed ≥ limited top speed (speed limiter set at 295 km/h, design choice)",
+     "demand": 81.9444,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9833,
+     "marginPct": 1.69
+    },
+    {
+     "check": "TIRE_RL established speed ≥ limiter set point + overshoot allowance (295 + 5 km/h)",
+     "demand": 83.3333,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 1,
+     "marginPct": 0
+    },
+    {
+     "check": "TIRE_RR established speed ≥ required top speed",
+     "demand": 80.4672,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9656,
+     "marginPct": 3.56
+    },
+    {
+     "check": "TIRE_RR established speed ≥ limited top speed (speed limiter set at 295 km/h, design choice)",
+     "demand": 81.9444,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 0.9833,
+     "marginPct": 1.69
+    },
+    {
+     "check": "TIRE_RR established speed ≥ limiter set point + overshoot allowance (295 + 5 km/h)",
+     "demand": 83.3333,
+     "capacity": 83.3333,
+     "unit": "m/s",
+     "utilization": 1,
+     "marginPct": 0
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "tire.load-index@VEH",
+   "solver": "tire.load-index",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "static load per tyre = axle load / tyres on that axle ≤ load-index capacity (ISO 4000-1 table)",
+   "reason": null,
+   "margins": [
+    {
+     "check": "TIRE_FL (front) static load ≤ load index 97",
+     "demand": 3398.8183,
+     "capacity": 7158.8545,
+     "unit": "N",
+     "utilization": 0.4748,
+     "marginPct": 110.63
+    },
+    {
+     "check": "TIRE_FR (front) static load ≤ load index 97",
+     "demand": 3398.8183,
+     "capacity": 7158.8545,
+     "unit": "N",
+     "utilization": 0.4748,
+     "marginPct": 110.63
+    },
+    {
+     "check": "TIRE_RL (rear) static load ≤ load index 97",
+     "demand": 3172.7552,
+     "capacity": 7158.8545,
+     "unit": "N",
+     "utilization": 0.4432,
+     "marginPct": 125.64
+    },
+    {
+     "check": "TIRE_RR (rear) static load ≤ load index 97",
+     "demand": 3172.7552,
+     "capacity": 7158.8545,
+     "unit": "N",
+     "utilization": 0.4432,
+     "marginPct": 125.64
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "package.seat-count@VEH",
+   "solver": "package.seat-count",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "count of Seat nodes contained by the assembly",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "cad.body@BODY_SHELL",
+   "solver": "cad.body",
+   "target": "BODY_SHELL",
+   "status": "PASS",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and Gaussian smoothing of belt, plan, roof and floor lines, a fastback limit on the roof, a pointed nose ",
+   "reason": null,
+   "margins": [
+    {
+     "check": "closest envelope (SEAT_3:M95:torso) to the outer surface >= skin offset",
+     "demand": 0.04,
+     "capacity": 0.0401,
+     "unit": "m",
+     "utilization": 0.9988,
+     "marginPct": 0.12
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "package.tub-fit@VEH",
+   "solver": "package.tub-fit",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "separating-axis test of each tub part's walls against the packaging envelopes and egress lines; OpenCascade classification + BRepExtrema distance of each part's box to the CAD body's outer shell, minus the skin thickness",
+   "reason": null,
+   "margins": [
+    {
+     "check": "TUB_ROOF_LINER (on the skin's inner face): head SEAT_1:M95:head clearance to the outer surface - skin - sheet ≥ 0",
+     "demand": 0,
+     "capacity": 0.0646,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_RAIL_FL: clearance to packaging envelopes (closest RADIATOR) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0086,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SILL_L: clearance to packaging envelopes (closest egress:SEAT_2:M95) ≥ 0",
+     "demand": 0,
+     "capacity": 0.006,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_KICK_L: clearance to packaging envelopes (closest egress:SEAT_4:M95) ≥ 0",
+     "demand": 0,
+     "capacity": 0.005,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_QTR_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:F95:pelvis) ≥ 0",
+     "demand": 0,
+     "capacity": 0.005,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_POST_L: clearance to packaging envelopes (closest TIRE_FR:steer-sweep) ≥ 0",
+     "demand": 0,
+     "capacity": 0.1007,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_RAIL_FR: clearance to packaging envelopes (closest RADIATOR) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0086,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SILL_R: clearance to packaging envelopes (closest egress:SEAT_1:M95) ≥ 0",
+     "demand": 0,
+     "capacity": 0.006,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_KICK_R: clearance to packaging envelopes (closest egress:SEAT_3:M95) ≥ 0",
+     "demand": 0,
+     "capacity": 0.005,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_QTR_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:F95:pelvis) ≥ 0",
+     "demand": 0,
+     "capacity": 0.005,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_POST_R: clearance to packaging envelopes (closest TIRE_FL:steer-sweep) ≥ 0",
+     "demand": 0,
+     "capacity": 0.1007,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_LOWER: clearance to packaging envelopes (closest ENGINE) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0081,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SCUTTLE: clearance to packaging envelopes (closest ENGINE) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0381,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_CPOST: clearance to packaging envelopes (closest ENGINE) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0381,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_TUNNEL_F: clearance to packaging envelopes (closest SEAT_1:cushion@F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0152,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_TUNNEL_R: clearance to packaging envelopes (closest SEAT_1:SEAT_1:M95:torso) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0115,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SEAT_CROSS: clearance to packaging envelopes (closest SEAT_1:cushion@F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0552,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_HEEL_CROSS: clearance to packaging envelopes (closest SEAT_3:SEAT_3:F95:pelvis) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0671,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_BULKHEAD: clearance to packaging envelopes (closest DIFFERENTIAL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0159,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_CROSS: clearance to packaging envelopes (closest DIFFERENTIAL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0289,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_A_PILLAR_L: clearance to packaging envelopes (closest egress:SEAT_2:F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.1035,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_L: clearance to packaging envelopes (closest SEAT_2:back@F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0079,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_B_POST_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:F95:thighR) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0076,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:M95:head) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0229,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_C_POST_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:M95:head) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0322,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_A_PILLAR_R: clearance to packaging envelopes (closest STEERING_WHEEL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0398,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R: clearance to packaging envelopes (closest SEAT_1:back@F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0079,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_B_POST_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:F95:thighL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0076,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:M95:head) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0229,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_C_POST_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:M95:head) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0322,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_BOW: clearance to packaging envelopes (closest SEAT_1:back@M95) ≥ 0",
+     "demand": 0,
+     "capacity": 0.1194,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_WS_HEADER: clearance to packaging envelopes (closest egress:SEAT_1:F5) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0854,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FLOOR_L: clearance to packaging envelopes (closest SEAT_2:SEAT_2:F95:footL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.017,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_FLOOR_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:M95:pelvis) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0314,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FIREWALL_L: clearance to packaging envelopes (closest TRANSMISSION) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0329,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FLOOR_R: clearance to packaging envelopes (closest SEAT_1:SEAT_1:F95:footL) ≥ 0",
+     "demand": 0,
+     "capacity": 0.017,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_FLOOR_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:M95:pelvis) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0314,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FIREWALL_R: clearance to packaging envelopes (closest TRANSMISSION) ≥ 0",
+     "demand": 0,
+     "capacity": 0.0329,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_RAIL_FL: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0075,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SILL_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0226,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_KICK_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0036,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_QTR_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0076,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_POST_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0772,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_RAIL_FR: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0075,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SILL_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0226,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_KICK_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0036,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_QTR_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0076,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_POST_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0772,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_LOWER: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0278,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SCUTTLE: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0602,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FW_CPOST: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.3112,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_TUNNEL_F: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0346,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_TUNNEL_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0085,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_SEAT_CROSS: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0346,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_HEEL_CROSS: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0081,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_BULKHEAD: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0314,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_CROSS: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0848,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_A_PILLAR_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0049,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0072,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_B_POST_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0344,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0066,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_C_POST_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0233,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_A_PILLAR_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0049,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0072,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_B_POST_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0344,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_RAIL_R_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0066,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_C_POST_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0233,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_ROOF_BOW: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0191,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_WS_HEADER: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0195,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FLOOR_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0041,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_FLOOR_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0041,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FIREWALL_L: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.1661,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FLOOR_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0041,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_REAR_FLOOR_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.0041,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "TUB_FIREWALL_R: clearance to the skin's inner face ≥ 0",
+     "demand": 0,
+     "capacity": 0.1661,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "aero.drag-buildup@VEH",
+   "solver": "aero.drag-buildup",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground effect for the section lift sign. Not CFD, not a wind-tunnel value.",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation"
+   ]
+  },
+  {
+   "runId": "package.occupant-fit@VEH",
+   "solver": "package.occupant-fit",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "ANSUR II percentile occupants as seated boxes (torso line through the H-point, two-link legs), UMTRI seat-position model; cabin surface = the CAD body (cad.body, kernel clearances and rays) or the screening ellipsoid; SAE J1100 dimensions by definition",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "package.interference@VEH",
+   "solver": "package.interference",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "oriented-box separating-axis gaps between component, seat and occupant envelopes (a lower bound on the true distance); front tyres swept over the steering lock",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "Not checked (no dimensions): bellhousing, SUSPENSION_FRONT, SUSPENSION_REAR, STEERING_RACK, EXHAUST, CONTROL_PACK, SEAT_3, SEAT_4, BRAKES_FRONT, BRAKES_REAR, structural tub, pedal box, dash, steering column, driveshaft, doors, suspension travel."
+   ]
+  },
+  {
+   "runId": "mass.breakdown@VEH",
+   "solver": "mass.breakdown",
+   "target": "VEH",
+   "status": "PASS",
+   "method": "kerb mass by mass state (sourced / estimated / computed / placeholder); uncertainty band = Σ estimated ranges",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "vehicle.acceptance@VEH",
+   "solver": "vehicle.acceptance",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "gate: every critical component real (not a placeholder), no hard tyre failure, no failed requirement, no applicability mismatch on a critical part, no occupant-fit failure or interference",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "caveat: The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
+    "caveat: The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.19006044550065382 is computed (screening range): aero.drag-buildup centre of 0.107..0.338 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+    "caveat: The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
+    "caveat: The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
+    "caveat: REQ_mass passes on a lower-bound mass.",
+    "caveat: REQ_topSpeed passes on a model output (model_output_unvalidated), not a validated top speed: the limited speed (the 295 km/h set point) is reachable only if the unlimited model output holds."
+   ]
+  }
+ ],
+ "checkCounts": {
+  "PASS": 15,
+  "WARN": 4,
+  "FAIL": 0,
+  "NOT_COMPUTED": 0,
+  "ERROR": 0
+ },
+ "perPartRuns": {
+  "PASS": 127,
+  "WARN": 0,
+  "FAIL": 0,
+  "NOT_COMPUTED": 35,
+  "ERROR": 0
+ },
+ "values": [
+  {
+   "id": "component:ENGINE",
+   "group": "Component masses",
+   "name": "ENGINE · Ford Performance 5.0L Gen 4X Mustang crate engine (M-6007-M50H (10R80 flexplate; manual flywheel M-6375-M50 sold separately))",
+   "subject": "engine.ford.coyote-gen4x.m-6007-m50h",
+   "value": 201.849,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "5.0L Gen 4X Mustang Crate Engine | Accessories | Ford.com",
+    "url": "https://www.ford.com/product/50l-gen-4x-mustang-crate-engine-p2959841005",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: front accessory drive components; alternator; manual-transmission flywheel (M-6375-M50); control pack (M-6017-M50HM / -M50HA)"
+  },
+  {
+   "id": "component:TIRE_FL",
+   "group": "Component masses",
+   "name": "TIRE_FL · Michelin Pilot Sport 4S (245/40ZR18 (97Y) XL, MSPN 37666)",
+   "subject": "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl",
+   "value": 11.521,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Michelin Pilot Sport 4 S 245/40ZR18 - Wheelwiz (supplier listing, 'Weight (approx.) 25.4 lb')",
+    "url": "https://wheelwiz.ca/products/m-37666",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:TIRE_FR",
+   "group": "Component masses",
+   "name": "TIRE_FR · Michelin Pilot Sport 4S (245/40ZR18 (97Y) XL, MSPN 37666)",
+   "subject": "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl",
+   "value": 11.521,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Michelin Pilot Sport 4 S 245/40ZR18 - Wheelwiz (supplier listing, 'Weight (approx.) 25.4 lb')",
+    "url": "https://wheelwiz.ca/products/m-37666",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:TIRE_RL",
+   "group": "Component masses",
+   "name": "TIRE_RL · Michelin Pilot Sport 4S (245/40ZR18 (97Y) XL, MSPN 37666)",
+   "subject": "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl",
+   "value": 11.521,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Michelin Pilot Sport 4 S 245/40ZR18 - Wheelwiz (supplier listing, 'Weight (approx.) 25.4 lb')",
+    "url": "https://wheelwiz.ca/products/m-37666",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:TIRE_RR",
+   "group": "Component masses",
+   "name": "TIRE_RR · Michelin Pilot Sport 4S (245/40ZR18 (97Y) XL, MSPN 37666)",
+   "subject": "tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl",
+   "value": 11.521,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Michelin Pilot Sport 4 S 245/40ZR18 - Wheelwiz (supplier listing, 'Weight (approx.) 25.4 lb')",
+    "url": "https://wheelwiz.ca/products/m-37666",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:SEAT_1",
+   "group": "Component masses",
+   "name": "SEAT_1 · Seat 1: RECARO Sportster GT",
+   "subject": "seat.recaro.sportster-gt",
+   "value": 15,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RECARO hotsheet: Sportster GT, SPECIFICATIONS 'Weight: 33 lbs / 15 kg'",
+    "url": "https://www.recaro-automotive.com/fileadmin/01-products/documents/hotsheets/recaro-hotsheet-sportster-gt.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: mounting hardware (sold separately: slider track kit 7227671 and vehicle brackets); harness or belts"
+  },
+  {
+   "id": "component:SEAT_2",
+   "group": "Component masses",
+   "name": "SEAT_2 · Seat 2: RECARO Sportster GT",
+   "subject": "seat.recaro.sportster-gt",
+   "value": 15,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RECARO hotsheet: Sportster GT, SPECIFICATIONS 'Weight: 33 lbs / 15 kg'",
+    "url": "https://www.recaro-automotive.com/fileadmin/01-products/documents/hotsheets/recaro-hotsheet-sportster-gt.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: mounting hardware (sold separately: slider track kit 7227671 and vehicle brackets); harness or belts"
+  },
+  {
+   "id": "component:SEAT_3",
+   "group": "Component masses",
+   "name": "SEAT_3 · Seat 3: Ford (OEM) S550 Mustang rear seat",
+   "subject": "seat.ford.s550-rear.oem",
+   "value": 9.48,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: rear seat belts; trim and carpet"
+  },
+  {
+   "id": "component:SEAT_4",
+   "group": "Component masses",
+   "name": "SEAT_4 · Seat 4: Ford (OEM) S550 Mustang rear seat",
+   "subject": "seat.ford.s550-rear.oem",
+   "value": 9.48,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: rear seat belts; trim and carpet"
+  },
+  {
+   "id": "component:CONTROL_PACK",
+   "group": "Component masses",
+   "name": "CONTROL_PACK · Ford Performance Gen 4X Coyote control pack, manual transmission (M-6017-M50HM: PCM with Ford Performance calibration, control pack harness, electronic throttle pedal, OBD-II port, power distribution module, air box, inlet tube, radiator hoses, HEGO sensors)",
+   "subject": "wiring.ford.control-pack.m-6017-m50hm",
+   "value": 14.061,
+   "unit": "kg",
+   "range": {
+    "low": 11.249,
+    "high": 14.061
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "Ford Performance M-6017-M50HM Gen 4X Coyote Control Pack w/ Manual Trans (Package Weight 31 lb)",
+    "url": "https://performanceparts.ford.com/part/M-6017-M50HM",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": "The manufacturer publishes only the package (shipping) weight, which is an upper bound on the part's mass. Nominal = package weight (conservative); low = 80% of it (an assumed packaging allowance of up to 20%; not published).",
+   "note": "excludes: body/chassis harness for lights, gauges and accessories (the control pack runs the engine only); battery and battery cables; alternator (M-8600 alternator kits)"
+  },
+  {
+   "id": "component:TRANSMISSION",
+   "group": "Component masses",
+   "name": "TRANSMISSION · TREMEC TKX 5-speed RWD manual (TCET18085 (Ford, 26-spline input, 3.27 first / 0.72 fifth))",
+   "subject": "transmission.tremec.tkx.tcet18085",
+   "value": 50,
+   "unit": "kg",
+   "range": {
+    "low": 44.906,
+    "high": 50
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "TREMEC TKX 5-Speed Rear-Wheel Drive Manual Transmission service manual (04.05.2021), Quick Specs",
+    "url": "https://tremec.com/wp-content/uploads/2023/05/TKX-Service-Manual_04.05.2021.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": "TREMEC publishes the dry weight as '99 lbs / 50 kg', which disagree (99 lb = 44.9 kg). The range spans both published figures; the nominal takes the heavier one.",
+   "note": null
+  },
+  {
+   "id": "component:DIFFERENTIAL",
+   "group": "Component masses",
+   "name": "DIFFERENTIAL · Ford Performance Mustang Super 8.8-inch IRS loaded differential housing, with S550 IRS halfshafts (M-4001-88355B: iron housing, aluminium cover, 3.55:1 gear set M-4209-88355A, Traction-Lok differential M-4204-M, 34-spline (OE on 2019 Mustang GT); plus 2 OEM S550 IRS halfshafts and inner/outer stubs)",
+   "subject": "differential.ford.super-8.8-irs.m-4001-88355b",
+   "value": 71.894,
+   "unit": "kg",
+   "range": {
+    "low": 69.173,
+    "high": 74.616
+   },
+   "status": "estimated",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": "BMR's scale measurement of a 2015 Mustang GT OEM iron Super 8.8 housing, loaded, with both halfshafts and stubs, no fluid (158.5 lb). Ford's M-4001-88355B is the same Super 8.8 iron housing (OE on the 2019 GT) but with an aluminium cover, and Ford publishes only its package weight (105 lb, housing alone), 6 lb above BMR's 99 lb for the loaded housing alone. The range is the measurement ± that 6 lb difference.",
+   "note": "excludes: gear oil (fluid); IRS cradle and diff mount bushings; driveshaft"
+  },
+  {
+   "id": "component:SUSPENSION_FRONT",
+   "group": "Component masses",
+   "name": "SUSPENSION_FRONT · Ford (OEM) S550 Mustang front suspension (2015 Mustang GT (non-Performance Pack) OEM front: 2 x complete strut assembly (strut, spring, mount), 2 x front control arm, 2 x radius arm, 2 x spindle/hub assembly, front subframe (K-member), base front sway bar, sway bar end links (pair))",
+   "subject": "suspension.ford.s550-front.oem",
+   "value": 78.063,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: fasteners; jounce bumpers; alignment hardware"
+  },
+  {
+   "id": "component:SUSPENSION_REAR",
+   "group": "Component masses",
+   "name": "SUSPENSION_REAR · Ford (OEM) S550 Mustang independent rear suspension (2015 Mustang GT OEM IRS: rear subframe (empty), 2 x rear lower control arm, 2 x upper camber link, vertical links (pair), 2 x toe link, 2 x rear shock, 2 x base rear coil spring, base rear sway bar)",
+   "subject": "suspension.ford.s550-irs-rear.oem",
+   "value": 61.834,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: rear knuckles and hubs (not in the source; no published weight); IRS cradle mount bushings (1.05 lb each, count not stated); diff mount bushings; halfshafts (counted with the differential); fasteners"
+  },
+  {
+   "id": "component:STEERING_RACK",
+   "group": "Component masses",
+   "name": "STEERING_RACK · Ford (OEM) S550 Mustang electric power-assisted steering (EPAS) rack (2015 Mustang OEM EPAS rack-and-pinion with 2 x front (outer) tie rods)",
+   "subject": "steering.ford.s550-epas",
+   "value": 18.352,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: steering column and intermediate shaft; steering wheel; EPAS control/network integration"
+  },
+  {
+   "id": "component:WHEEL_FL",
+   "group": "Component masses",
+   "name": "WHEEL_FL · Enkei RPF1 (3798906535SP, 18x9, inset +35 mm, 5x114.3, 73 mm bore, silver)",
+   "subject": "wheel.enkei.rpf1.3798906535sp",
+   "value": 7.756,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RPF1 | Enkei Wheels (size table)",
+    "url": "https://enkei.com/shop/wheels/racing/rpf1/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:WHEEL_FR",
+   "group": "Component masses",
+   "name": "WHEEL_FR · Enkei RPF1 (3798906535SP, 18x9, inset +35 mm, 5x114.3, 73 mm bore, silver)",
+   "subject": "wheel.enkei.rpf1.3798906535sp",
+   "value": 7.756,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RPF1 | Enkei Wheels (size table)",
+    "url": "https://enkei.com/shop/wheels/racing/rpf1/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:WHEEL_RL",
+   "group": "Component masses",
+   "name": "WHEEL_RL · Enkei RPF1 (3798906535SP, 18x9, inset +35 mm, 5x114.3, 73 mm bore, silver)",
+   "subject": "wheel.enkei.rpf1.3798906535sp",
+   "value": 7.756,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RPF1 | Enkei Wheels (size table)",
+    "url": "https://enkei.com/shop/wheels/racing/rpf1/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:WHEEL_RR",
+   "group": "Component masses",
+   "name": "WHEEL_RR · Enkei RPF1 (3798906535SP, 18x9, inset +35 mm, 5x114.3, 73 mm bore, silver)",
+   "subject": "wheel.enkei.rpf1.3798906535sp",
+   "value": 7.756,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RPF1 | Enkei Wheels (size table)",
+    "url": "https://enkei.com/shop/wheels/racing/rpf1/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "component:BRAKES_FRONT",
+   "group": "Component masses",
+   "name": "BRAKES_FRONT · Wilwood AERO6 Big Brake front brake kit (140-13886, black calipers, 14.00 in x 1.25 in GT slotted rotors (one axle: front))",
+   "subject": "brakes.wilwood.aero6.140-13886",
+   "value": 23.859,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Wilwood Disc Brakes - Front Brake Kit Part No: 140-13886 (kit contents)",
+    "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdFront?itemno=140-13886",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: bolt kit 230-8008; brake lines 220-13912; fluid; the OE hub (the kit has none; counted with the front suspension)"
+  },
+  {
+   "id": "component:BRAKES_REAR",
+   "group": "Component masses",
+   "name": "BRAKES_REAR · Wilwood AERO4-MC4 Big Brake rear parking brake kit (140-13888, black calipers, 14.00 in x 0.81 in GT slotted rotors, MC4 parking brake (one axle: rear))",
+   "subject": "brakes.wilwood.aero4-mc4.140-13888",
+   "value": 20.321,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Wilwood Disc Brakes - Rear Brake Kit Part No: 140-13888 (kit contents)",
+    "url": "https://www.wilwood.com/BrakeKits/BrakeKitsProdRear?itemno=140-13888",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: MC4 parking brake assemblies and mounting brackets 249-14009/10 (no published weight); brake lines 220-13913; parking brake cables 330-15137; bolt kits; fluid"
+  },
+  {
+   "id": "component:RADIATOR",
+   "group": "Component masses",
+   "name": "RADIATOR · Cold Case Radiators Coyote swap aluminium radiator kit with fans and shroud (LMM570-5K (79-93 Mustang Coyote swap): 2-row, 1.25 in tubes, dual 12 in fans, shroud)",
+   "subject": "cooling.coldcase.lmm570-5k",
+   "value": 16.783,
+   "unit": "kg",
+   "range": {
+    "low": 13.426,
+    "high": 16.783
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "Wheelfront: COLD CASE RADIATORS 79-93 Mustang Coyote Swap Radiator w/Fan LMM570-5K (Weight 37 lbs; Dimensions 36 x 24 x 15 in)",
+    "url": "https://wheelfront.com/shop/product/cold-case-radiators-79-93-mustang-coyote-swap-radiator-w-fan-lmm570-5k/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": "Cold Case publishes no spec weight; the 37 lb retailer figure sits with shipping-box dimensions, so it is treated as a package weight: an upper bound. Nominal = 37 lb (conservative); low = 80% of it (an assumed packaging allowance of up to 20%; not published).",
+   "note": "excludes: coolant; hoses (radiator hoses come with the control pack)"
+  },
+  {
+   "id": "component:EXHAUST",
+   "group": "Component masses",
+   "name": "EXHAUST · Ford (OEM) / Bassani Exhaust after the crate engine's right-hand manifold (2015 Mustang GT OEM driver's-side exhaust manifold + OEM mid pipes with catalysts + Bassani X-pipe cat-back)",
+   "subject": "exhaust.s550-gt.oem-lh-manifold-midpipe.bassani-xpipe-catback",
+   "value": 36.015,
+   "unit": "kg",
+   "range": null,
+   "status": "measured",
+   "statusLabel": "sourced (third-party scale measurement published by BMR Suspension on the Mustang6G forum (not a manufacturer specification))",
+   "source": {
+    "title": "Mustang6G forum, 'The what things weigh thread', first post by BMR Tech (BMR Suspension): 2015 Mustang component weights (scale measurements, post dated 2014-11-17)",
+    "url": "https://www.mustang6g.com/forums/threads/the-what-things-weigh-thread.15864/",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: hangers, gaskets and clamps; oxygen sensors (HEGO sensors come with the control pack); the right-hand manifold (included with the Gen 4X crate engine)"
+  },
+  {
+   "id": "component:FUEL_CELL",
+   "group": "Component masses",
+   "name": "FUEL_CELL · ATL (Aero Tec Laboratories) Saver Cell, 60 L (15 US gal) (SA-AA-070 (legacy SA115), yellow foam, -6 outlets)",
+   "subject": "fuel.atl.saver-cell.sa-aa-070",
+   "value": 8.1,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "ATL Saver Cell Series data sheets (2026): 60L (15 GALLON) SAVER CELL",
+    "url": "https://atlinside.com/Content/Downloads/ATL-Saver-Cell-Data-Sheets-2026-ALL.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": "excludes: metal container (CN-AA-071 aluminium or CN-AA-072 steel; mass not given on the sheet); fuel load; pump"
+  },
+  {
+   "id": "structure.frame@CHASSIS:bending.maxVonMises",
+   "group": "Solver outputs",
+   "name": "structure.frame · bending.max von mises",
+   "subject": "CHASSIS",
+   "value": 31369058.814183,
+   "unit": "Pa",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": "member fw-post-L"
+  },
+  {
+   "id": "structure.frame@CHASSIS:bending.maxTranslation",
+   "group": "Solver outputs",
+   "name": "structure.frame · bending.max translation",
+   "subject": "CHASSIS",
+   "value": 0.001686,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:bending.maxRotation",
+   "group": "Solver outputs",
+   "name": "structure.frame · bending.max rotation",
+   "subject": "CHASSIS",
+   "value": 0.002014,
+   "unit": "rad",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:twist.maxVonMises",
+   "group": "Solver outputs",
+   "name": "structure.frame · twist.max von mises",
+   "subject": "CHASSIS",
+   "value": 61734.938988,
+   "unit": "Pa",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": "member fw-post-L"
+  },
+  {
+   "id": "structure.frame@CHASSIS:twist.maxTranslation",
+   "group": "Solver outputs",
+   "name": "structure.frame · twist.max translation",
+   "subject": "CHASSIS",
+   "value": 0.000012,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:twist.maxRotation",
+   "group": "Solver outputs",
+   "name": "structure.frame · twist.max rotation",
+   "subject": "CHASSIS",
+   "value": 0.00001,
+   "unit": "rad",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:kerb-twist.maxVonMises",
+   "group": "Solver outputs",
+   "name": "structure.frame · kerb-twist.max von mises",
+   "subject": "CHASSIS",
+   "value": 40941627.446229,
+   "unit": "Pa",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": "member fw-post-L"
+  },
+  {
+   "id": "structure.frame@CHASSIS:kerb-twist.maxTranslation",
+   "group": "Solver outputs",
+   "name": "structure.frame · kerb-twist.max translation",
+   "subject": "CHASSIS",
+   "value": 0.00806,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:kerb-twist.maxRotation",
+   "group": "Solver outputs",
+   "name": "structure.frame · kerb-twist.max rotation",
+   "subject": "CHASSIS",
+   "value": 0.006481,
+   "unit": "rad",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": null
+  },
+  {
+   "id": "structure.frame@CHASSIS:stiffness.torsional",
+   "group": "Solver outputs",
+   "name": "structure.frame · stiffness.torsional",
+   "subject": "CHASSIS",
+   "value": 629793.590794,
+   "unit": "N·m/rad",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "structure.frame 1.0.0 (server/lib/conkay/structural/frame-fe.js; benchmarks in tests/conkay-frame-fe.test.js)",
+    "url": null,
+    "locator": "structure.frame@CHASSIS"
+   },
+   "sourceRole": "solver",
+   "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
+   "note": "couple 10 N × 0.82 m over twist u/arm; u = 1.0677e-5 m at FA.R.z"
+  },
+  {
+   "id": "vehicle.top-speed@VEH:topSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · top speed",
+   "subject": "VEH",
+   "value": 81.944444,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": "capped at the speed limiter's 295 km/h set point (design choice); that the car reaches it rests on the unlimited model output"
+  },
+  {
+   "id": "vehicle.top-speed@VEH:unlimitedTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · unlimited top speed",
+   "subject": "VEH",
+   "value": 100.294977,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": "without the speed limiter: the lower of the drag-limited and gear-limited speeds"
+  },
+  {
+   "id": "vehicle.top-speed@VEH:dragLimitedTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · drag limited top speed",
+   "subject": "VEH",
+   "value": 107.069035,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": null
+  },
+  {
+   "id": "vehicle.top-speed@VEH:gearLimitedTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · gear limited top speed",
+   "subject": "VEH",
+   "value": 100.294977,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": "fastest speed any gear reaches at 7500 rpm (ENGINE redline (estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) e"
+  },
+  {
+   "id": "vehicle.top-speed@VEH:aeroPowerAtTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · aero power at top speed",
+   "subject": "VEH",
+   "value": 131459.039573,
+   "unit": "W",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": null
+  },
+  {
+   "id": "vehicle.top-speed@VEH:rollingPowerAtTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.top-speed · rolling power at top speed",
+   "subject": "VEH",
+   "value": 11847.08672,
+   "unit": "W",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.top-speed 1.4.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.top-speed@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
+   "note": null
+  },
+  {
+   "id": "vehicle.required-power@VEH:requiredPower",
+   "group": "Solver outputs",
+   "name": "vehicle.required-power · required power",
+   "subject": "VEH",
+   "value": 151233.734844,
+   "unit": "W",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.required-power 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.required-power@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
+   "note": null
+  },
+  {
+   "id": "vehicle.required-power@VEH:aeroPower",
+   "group": "Solver outputs",
+   "name": "vehicle.required-power · aero power",
+   "subject": "VEH",
+   "value": 124476.84669,
+   "unit": "W",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.required-power 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.required-power@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
+   "note": null
+  },
+  {
+   "id": "vehicle.required-power@VEH:rollingPower",
+   "group": "Solver outputs",
+   "name": "vehicle.required-power · rolling power",
+   "subject": "VEH",
+   "value": 11633.51467,
+   "unit": "W",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.required-power 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.required-power@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
+   "note": null
+  },
+  {
+   "id": "vehicle.axle-loads@VEH:frontShare",
+   "group": "Solver outputs",
+   "name": "vehicle.axle-loads · front share",
+   "subject": "VEH",
+   "value": 0.5172,
+   "unit": "1",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.axle-loads 1.0.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.axle-loads@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "note": null
+  },
+  {
+   "id": "vehicle.axle-loads@VEH:rearShare",
+   "group": "Solver outputs",
+   "name": "vehicle.axle-loads · rear share",
+   "subject": "VEH",
+   "value": 0.4828,
+   "unit": "1",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.axle-loads 1.0.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.axle-loads@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "note": null
+  },
+  {
+   "id": "vehicle.axle-loads@VEH:frontAxleLoad",
+   "group": "Solver outputs",
+   "name": "vehicle.axle-loads · front axle load",
+   "subject": "VEH",
+   "value": 6797.636609,
+   "unit": "N",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.axle-loads 1.0.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.axle-loads@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "note": null
+  },
+  {
+   "id": "vehicle.axle-loads@VEH:rearAxleLoad",
+   "group": "Solver outputs",
+   "name": "vehicle.axle-loads · rear axle load",
+   "subject": "VEH",
+   "value": 6345.510446,
+   "unit": "N",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.axle-loads 1.0.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.axle-loads@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "note": null
+  },
+  {
+   "id": "vehicle.axle-loads@VEH:wheelbase",
+   "group": "Solver outputs",
+   "name": "vehicle.axle-loads · wheelbase",
+   "subject": "VEH",
+   "value": 2.966,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.axle-loads 1.0.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.axle-loads@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static moment balance about the axles: front share = (x_rear − x_cg)/(x_rear − x_front)",
+   "note": null
+  },
+  {
+   "id": "vehicle.gearing@VEH:revLimitRpm",
+   "group": "Solver outputs",
+   "name": "vehicle.gearing · rev limit rpm",
+   "subject": "VEH",
+   "value": 7500,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.gearing 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.gearing@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "note": null
+  },
+  {
+   "id": "vehicle.gearing@VEH:redlineSpeedTopGear",
+   "group": "Solver outputs",
+   "name": "vehicle.gearing · redline speed top gear",
+   "subject": "VEH",
+   "value": 100.294977,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.gearing 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.gearing@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "note": null
+  },
+  {
+   "id": "vehicle.gearing@VEH:gearLimitedTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.gearing · gear limited top speed",
+   "subject": "VEH",
+   "value": 100.294977,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "vehicle.gearing 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.gearing@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "note": "fastest speed any gear reaches at 7500 rpm"
+  },
+  {
+   "id": "vehicle.gearing@VEH:dragLimitedTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.gearing · drag limited top speed",
+   "subject": "VEH",
+   "value": 107.069035,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.gearing 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.gearing@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "note": null
+  },
+  {
+   "id": "vehicle.gearing@VEH:effectiveTopSpeed",
+   "group": "Solver outputs",
+   "name": "vehicle.gearing · effective top speed",
+   "subject": "VEH",
+   "value": 100.294977,
+   "unit": "m/s",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "model_output_unvalidated",
+   "source": {
+    "title": "vehicle.gearing 1.1.0 (ConKay solver)",
+    "url": null,
+    "locator": "vehicle.gearing@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
+   "note": "the lower of the drag-limited and gear-limited top speeds"
+  },
+  {
+   "id": "tire.speed-rating@VEH:tires",
+   "group": "Solver outputs",
+   "name": "tire.speed-rating · tires",
+   "subject": "VEH",
+   "value": 4,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "tire.speed-rating 2.1.0 (Speed symbols (km/h): L 120, M 130, N 140, P 150, Q 160, R 170, S 180, T 190, U 200, H 210, V 240, W 270, Y 300; (Y) over 300 only with the manufacturer's explicit rating. Sources: Yokohama Europe, Technical Information / For Your Comfort & Safety (PCR, 2026) <https://www.yokohama.eu/wp-content/uploads/2026/01/YEU-PCR-Technical-Information-2026-A4-English-01.pdf> (retrieved 2026-10-09); Tires Plus (Bridgestone Retail Operations), Speed Rating Chart <https://www.tiresplus.com/tires/tire-guide/basics/understanding-tire-speed-rating/> (retrieved 2026-10-09))",
+    "url": null,
+    "locator": "tire.speed-rating@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "tyre established speed (ISO 4000-1 speed symbol) ≥ required top speed (hard) and ≥ the vehicle's top speed: the model output, or the speed limiter's set point (and set point + overshoot allowance) when a limiter caps it",
+   "note": null
+  },
+  {
+   "id": "tire.load-index@VEH:tires",
+   "group": "Solver outputs",
+   "name": "tire.load-index · tires",
+   "subject": "VEH",
+   "value": 4,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "tire.load-index 1.0.0 (Load index table (kg per tyre). Sources: Yokohama Europe, Technical Information / For Your Comfort & Safety (PCR, 2026) <https://www.yokohama.eu/wp-content/uploads/2026/01/YEU-PCR-Technical-Information-2026-A4-English-01.pdf> (retrieved 2026-10-09))",
+    "url": null,
+    "locator": "tire.load-index@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "static load per tyre = axle load / tyres on that axle ≤ load-index capacity (ISO 4000-1 table)",
+   "note": null
+  },
+  {
+   "id": "cad.body@BODY_SHELL:surfaceArea",
+   "group": "Solver outputs",
+   "name": "cad.body · surface area",
+   "subject": "BODY_SHELL",
+   "value": 26.289963,
+   "unit": "m2",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed (kernel GProp, outer skin incl. wheel-well surfaces)",
+   "source": {
+    "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
+    "url": null,
+    "locator": "cad.body@BODY_SHELL"
+   },
+   "sourceRole": "solver",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and G",
+   "note": null
+  },
+  {
+   "id": "cad.body@BODY_SHELL:volume",
+   "group": "Solver outputs",
+   "name": "cad.body · volume",
+   "subject": "BODY_SHELL",
+   "value": 6.389902,
+   "unit": "m3",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed (kernel GProp, enclosed volume)",
+   "source": {
+    "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
+    "url": null,
+    "locator": "cad.body@BODY_SHELL"
+   },
+   "sourceRole": "solver",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and G",
+   "note": null
+  },
+  {
+   "id": "cad.body@BODY_SHELL:frontalArea",
+   "group": "Solver outputs",
+   "name": "cad.body · frontal area",
+   "subject": "BODY_SHELL",
+   "value": 2.052268,
+   "unit": "m2",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed: projection onto the y-z plane, 240 horizontal slices of the kernel tessellation (chordal deviation 2 mm: inscribed, so low by at most 0.004726 m2 plus the slicing error; body only: tyres, mi",
+   "source": {
+    "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
+    "url": null,
+    "locator": "cad.body@BODY_SHELL"
+   },
+   "sourceRole": "solver",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and G",
+   "note": null
+  },
+  {
+   "id": "cad.body@BODY_SHELL:thickness",
+   "group": "Solver outputs",
+   "name": "cad.body · thickness",
+   "subject": "BODY_SHELL",
+   "value": 0.002925,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
+    "url": null,
+    "locator": "cad.body@BODY_SHELL"
+   },
+   "sourceRole": "solver",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and G",
+   "note": null
+  },
+  {
+   "id": "cad.body@BODY_SHELL:skinOffset",
+   "group": "Solver outputs",
+   "name": "cad.body · skin offset",
+   "subject": "BODY_SHELL",
+   "value": 0.04,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
+    "url": null,
+    "locator": "cad.body@BODY_SHELL"
+   },
+   "sourceRole": "solver",
+   "method": "OpenCascade (OCP) B-spline loft through superellipse cross-sections solved around the packaging envelopes inflated by the skin offset (each section the smooth union of a lower body, a greenhouse with tumblehome and one fender pod per wheel; per-station minimum-area belt line, then rolling-disc and G",
+   "note": null
+  },
+  {
+   "id": "package.tub-fit@VEH:minEnvelopeClearanceM",
+   "group": "Solver outputs",
+   "name": "package.tub-fit · min envelope clearance m",
+   "subject": "VEH",
+   "value": 0.005,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "package.tub-fit 1.0.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
+    "url": null,
+    "locator": "package.tub-fit@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "separating-axis test of each tub part's walls against the packaging envelopes and egress lines; OpenCascade classification + BRepExtrema distance of each part's box to the CAD body's outer shell, minus the skin thickness",
+   "note": null
+  },
+  {
+   "id": "package.tub-fit@VEH:minSkinClearanceM",
+   "group": "Solver outputs",
+   "name": "package.tub-fit · min skin clearance m",
+   "subject": "VEH",
+   "value": 0.003613,
+   "unit": "m",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "package.tub-fit 1.0.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
+    "url": null,
+    "locator": "package.tub-fit@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "separating-axis test of each tub part's walls against the packaging envelopes and egress lines; OpenCascade classification + BRepExtrema distance of each part's box to the CAD body's outer shell, minus the skin thickness",
+   "note": null
+  },
+  {
+   "id": "aero.drag-buildup@VEH:reynolds",
+   "group": "Solver outputs",
+   "name": "aero.drag-buildup · reynolds",
+   "subject": "VEH",
+   "value": 24733974.052423,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "url": null,
+    "locator": "aero.drag-buildup@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "note": null
+  },
+  {
+   "id": "aero.drag-buildup@VEH:mach",
+   "group": "Solver outputs",
+   "name": "aero.drag-buildup · mach",
+   "subject": "VEH",
+   "value": 0.236467,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "solver output",
+   "source": {
+    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "url": null,
+    "locator": "aero.drag-buildup@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "note": null
+  },
+  {
+   "id": "aero.drag-buildup@VEH:skinFriction",
+   "group": "Solver outputs",
+   "name": "aero.drag-buildup · skin friction",
+   "subject": "VEH",
+   "value": 0.002609,
+   "unit": null,
+   "range": null,
+   "status": "computed",
+   "statusLabel": "Prandtl-Schlichting turbulent flat plate",
+   "source": {
+    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "url": null,
+    "locator": "aero.drag-buildup@VEH"
+   },
+   "sourceRole": "solver",
+   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "note": null
+  }
+ ],
+ "mass": {
+  "totalKg": 1032.2,
+  "bandKg": [
+   1018.2,
+   1034.9
+  ],
+  "byState": {
+   "sourced": 361.2,
+   "measured": 213.2,
+   "computed": 305,
+   "estimated": 152.7,
+   "design": 0,
+   "unknown": 0
+  },
+  "unknownCount": 0,
+  "notIncluded": [
+   "fuel load",
+   "fluids",
+   "ENGINE: front accessory drive components",
+   "ENGINE: alternator",
+   "ENGINE: manual-transmission flywheel (M-6375-M50)",
+   "RADIATOR: coolant",
+   "EXHAUST: hangers, gaskets and clamps",
+   "FUEL_CELL: metal container (CN-AA-071 aluminium or CN-AA-072 steel; mass not given on the sheet)",
+   "FUEL_CELL: fuel load",
+   "FUEL_CELL: pump",
+   "DIFFERENTIAL: gear oil (fluid)",
+   "DIFFERENTIAL: IRS cradle and diff mount bushings",
+   "DIFFERENTIAL: driveshaft",
+   "SUSPENSION_FRONT: fasteners",
+   "SUSPENSION_FRONT: jounce bumpers",
+   "SUSPENSION_FRONT: alignment hardware",
+   "SUSPENSION_REAR: rear knuckles and hubs (not in the source; no published weight)",
+   "SUSPENSION_REAR: IRS cradle mount bushings (1.05 lb each, count not stated)",
+   "SUSPENSION_REAR: diff mount bushings",
+   "SUSPENSION_REAR: fasteners",
+   "STEERING_RACK: steering column and intermediate shaft",
+   "STEERING_RACK: steering wheel",
+   "STEERING_RACK: EPAS control/network integration",
+   "BRAKES_FRONT: bolt kit 230-8008",
+   "BRAKES_FRONT: brake lines 220-13912",
+   "BRAKES_FRONT: fluid",
+   "BRAKES_REAR: MC4 parking brake assemblies and mounting brackets 249-14009/10 (no published weight)",
+   "BRAKES_REAR: brake lines 220-13913",
+   "BRAKES_REAR: parking brake cables 330-15137",
+   "BRAKES_REAR: bolt kits",
+   "BRAKES_REAR: fluid",
+   "SEAT_1: mounting hardware (sold separately: slider track kit 7227671 and vehicle brackets)",
+   "SEAT_1: harness or belts",
+   "SEAT_2: mounting hardware (sold separately: slider track kit 7227671 and vehicle brackets)",
+   "SEAT_2: harness or belts",
+   "SEAT_3: rear seat belts",
+   "SEAT_3: trim and carpet",
+   "SEAT_4: rear seat belts",
+   "SEAT_4: trim and carpet",
+   "CONTROL_PACK: body/chassis harness for lights, gauges and accessories (the control pack runs the engine only)",
+   "CONTROL_PACK: battery and battery cables",
+   "CONTROL_PACK: alternator (M-8600 alternator kits)"
+  ],
+  "note": "kerb mass, payload excluded; the total is a lower bound (see notIncluded), so the margin is an upper bound",
+  "limit": {
+   "label": "brief: 2,500 lb",
+   "kg": 1134,
+   "marginKg": 101.8
+  }
+ },
+ "drawings": [
+  {
+   "title": "General arrangement CK-GA-VEH",
+   "revision": "R-77BE7CCC",
+   "modelHash": "77be7cccdad938d58faf40bba510f41ec2df4f91420b1d38a4e280f4452c6385",
+   "method": "Hidden-line projection (OpenCascade HLRBRep_PolyAlgo) of the CAD body's STEP into side, plan and front views at 1:25 on A3, first-angle; tyres and axle centre lines from the node positions; key dimensions from cad.body (computed) and the layout (design / derived); BOM grouped from the component library and designed parts with mass.part masses; title block revision = SHA-256 of everything shown",
+   "files": [
+    {
+     "label": "Sheet 1 (side, plan, front)",
+     "name": "CK-GA-VEH-R-77BE7CCC-sheet1.svg",
+     "kind": "svg",
+     "bytes": 353236,
+     "sha256": "a0c0298291a12dd46b24c6ea012ab49f06a04504c578774cf42fddf1446361c5"
+    },
+    {
+     "label": "Sheet 2 (BOM, dimensions)",
+     "name": "CK-GA-VEH-R-77BE7CCC-sheet2.svg",
+     "kind": "svg",
+     "bytes": 76718,
+     "sha256": "6e380bda2bb38541c4e098c6ea027a19eaf7fc29d40af4b6e933a422795badb6"
+    },
+    {
+     "label": "PDF (both sheets)",
+     "name": "CK-GA-VEH-R-77BE7CCC.pdf",
+     "kind": "pdf",
+     "bytes": 361078,
+     "sha256": "88c21920d369f2dad58ee9e297d17e06c47f8ca7f1a1a69f35e05f420a97db5b"
+    }
+   ]
+  }
+ ],
+ "model3d": {
+  "name": "body-8d37536a86f7.stl",
+  "format": "stl",
+  "bytes": 715384,
+  "sha256": "8d37536a86f7d1543ba52512dab70fb245a98e8c725c0ba90c531fe6f7860836",
+  "triangles": 14306,
+  "units": "m",
+  "upAxis": "z",
+  "source": "cad.body@BODY_SHELL (OpenCascade kernel b1d9ec5642008c8708fe9d79); exterior skin only, no tyres or interior"
+ },
+ "physicalTests": [
+  "Cd and frontal area: Cd is an input or the centre of a screening drag build-up range (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening) (the top speed depends on it)",
+  "driveline efficiency is an input, not measured or computed from the gearbox and differential (the top speed depends on it)",
+  "the gear limit needs the gear ratios, final drive, tyre radius and a redline; the redline and the power available at that engine speed are inputs (vehicle.gearing) (the top speed depends on it)",
+  "tyre speed rating and load index against this speed and the axle loads (tire.speed-rating, tire.load-index) (the top speed depends on it)",
+  "high-speed stability and aero lift: no solver yet (the top speed depends on it)",
+  "cooling capacity for sustained full power: no solver yet (the top speed depends on it)",
+  "the electronic speed limiter is a design choice: its calibration, the accuracy of the road-speed signal it acts on and its overshoot are not verified (the top speed depends on it)",
+  "Weigh the built car: the kerb mass is a lower bound (items the published part masses exclude are listed below)",
+  "Torsion rig test of the tub: the stiffness is a frame/shell model, not a measurement",
+  "Coast-down or wind-tunnel test: Cd is a screening build-up range, not CFD or a wind tunnel",
+  "Occupant fit and egress with real people in a buck or prototype"
+ ],
+ "statuses": [
+  "sourced",
+  "measured",
+  "computed",
+  "estimated",
+  "design",
+  "unknown"
+ ],
+ "statusMeaning": {
+  "sourced": "taken from a cited document (data sheet, standard, public record)",
+  "measured": "a third-party measurement, cited",
+  "computed": "computed by a ConKay solver from the inputs shown",
+  "estimated": "an estimate with a stated method and range",
+  "design": "a design choice or requirement input, not a claim about the world",
+  "unknown": "not known: no source, or not computed"
+ },
+ "files": [
+  {
+   "name": "CK-GA-VEH-R-77BE7CCC-sheet1.svg",
+   "bytes": 353236,
+   "sha256": "a0c0298291a12dd46b24c6ea012ab49f06a04504c578774cf42fddf1446361c5"
+  },
+  {
+   "name": "CK-GA-VEH-R-77BE7CCC-sheet2.svg",
+   "bytes": 76718,
+   "sha256": "6e380bda2bb38541c4e098c6ea027a19eaf7fc29d40af4b6e933a422795badb6"
+  },
+  {
+   "name": "CK-GA-VEH-R-77BE7CCC.pdf",
+   "bytes": 361078,
+   "sha256": "88c21920d369f2dad58ee9e297d17e06c47f8ca7f1a1a69f35e05f420a97db5b"
+  },
+  {
+   "name": "body-8d37536a86f7.stl",
+   "bytes": 715384,
+   "sha256": "8d37536a86f7d1543ba52512dab70fb245a98e8c725c0ba90c531fe6f7860836"
+  }
+ ],
+ "snapshotSha256": "db763464d1631c128b3f0df3a41b6afb54940b7a51cac26c32095772db8d8330"
+}
