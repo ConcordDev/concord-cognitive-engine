@@ -71,6 +71,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -1868,6 +1869,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
+import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
@@ -10459,8 +10461,10 @@ async function tryInitWebSockets(server) {
     transports: process.env.CONCORD_SOCKET_WEBSOCKET_ONLY === "true"
       ? ["websocket"]
       : ["websocket", "polling"],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // A several-second GC or swap stall must not drop the socket. 90s is
+    // the pong deadline; the frontend grace period is the UI half of this.
+    pingTimeout: Number(process.env.CONCORD_SOCKET_PING_TIMEOUT_MS) || 90_000,
+    pingInterval: Number(process.env.CONCORD_SOCKET_PING_INTERVAL_MS) || 25_000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
@@ -37839,6 +37843,10 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
+  if (shouldPauseHeavyBackground()) {
+    log("heartbeat.worker", "Cognitive worker not spawned (low-memory host profile)");
+    return;
+  }
   // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
   // .pathname does NOT decode percent-encoding, so on a checkout path
   // containing a space (encoded "%20" in the URL), the Worker constructor's
@@ -38019,7 +38027,16 @@ function startHeartbeat() {
     // ── Cognitive pipeline tasks: dispatch to worker thread ──
     // The 4 pipeline tasks (autogen, dream, evolution, synthesize) run off-thread.
     // This is the core of the worker migration: HTTP never blocks during pipeline computation.
-    if (cognitiveWorkerReady && STATE.dtus.size > 0) {
+    // Low-memory hosts skip both the worker and the main-thread fallback so a
+    // single interactive session is not competing with autogen/dream/synth.
+    if (!shouldPauseHeavyBackground() && !cognitiveWorker && !_cognitiveWorkerTestShutdown) {
+      try { spawnCognitiveWorker(); } catch (err) {
+        console.error("[cognitive-worker] Failed to spawn:", err);
+      }
+    }
+    if (shouldPauseHeavyBackground()) {
+      // paused — no worker tick and no main-thread autogen/dream/synth fallback
+    } else if (cognitiveWorkerReady && STATE.dtus.size > 0) {
       const anyEnabled = STATE.settings.autogenEnabled || STATE.settings.dreamEnabled
         || STATE.settings.evolutionEnabled || STATE.settings.synthEnabled;
       if (anyEnabled) {
@@ -41255,7 +41272,12 @@ async function governorTick(reason="heartbeat") {
   // cluster detection). With no users, there's no one to notice the result.
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
-  if (reason !== "boot" && !presenceIdle.shouldRunHeavyMaintenance()) {
+  //
+  // This gate is idle-only. The heavy-maintenance helper also returns false
+  // on a low-memory host, and using it here skipped the liveness counter
+  // even while authenticated users were driving load (tick-SLO: 0 ticks,
+  // "frozen loop", on a 16 GB CI runner).
+  if (reason !== "boot" && presenceIdle.isIdle()) {
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41266,8 +41288,13 @@ async function governorTick(reason="heartbeat") {
   try { const nsMod = await import("./lib/npc-simulator.js"); nsMod.resetNpcQuestTickCounter?.(); } catch (_e) { /* best-effort */ }
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  // This happens BEFORE the low-memory pause so a small host still looks
+  // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
+    if (reason !== "boot" && shouldPauseHeavyBackground()) {
+      return { ok: true, skipped: "low_memory_host" };
+    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
@@ -85766,8 +85793,9 @@ async function runBackup() {
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room, and copy in one step so concurrent
-        // writes can't restart it.
+        // honestly when there's no room. The one-step copy still runs, but
+        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
+        // loop for up to 8.4s and the shedder 503'd login during warmup.
         const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
         let freeBytes = Infinity;
         try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
@@ -85776,7 +85804,7 @@ async function runBackup() {
           throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
         }
         try {
-          await _db.backup(snapPath, { progress: () => 0x7fffffff });
+          await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),

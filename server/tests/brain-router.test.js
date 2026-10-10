@@ -195,6 +195,24 @@ describe("preloadBrains", () => {
     assert.ok(allBrains.size >= 1, "Should attempt at least some brains");
   });
 
+  it("does not pull or warm models when the low-memory profile is on", async () => {
+    process.env.CONCORD_LOW_MEMORY_HOST = "1";
+    let calls = 0;
+    mock.method(globalThis, "fetch", async () => {
+      calls += 1;
+      return { ok: false, status: 503 };
+    });
+    try {
+      const mod = await import("../lib/brain-router.js");
+      const result = await mod.preloadBrains();
+      assert.equal(result.skipped, "low_memory_host");
+      assert.deepEqual(result.loaded, []);
+      assert.equal(calls, 0);
+    } finally {
+      delete process.env.CONCORD_LOW_MEMORY_HOST;
+    }
+  });
+
   it("logs structured messages during preload", async () => {
     const mod = await import("../lib/brain-router.js");
     const logs = [];

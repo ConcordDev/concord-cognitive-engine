@@ -28,6 +28,7 @@
  */
 import logger from "../logger.js";
 import { LruMap } from "./lru-map.js";
+import { shouldPauseHeavyBackground } from "./host-profile.js";
 
 const DEFAULT_AUTH_IDLE_MS    = 5 * 60 * 1000;   // 5 minutes
 const DEFAULT_TRAFFIC_IDLE_MS = 2 * 60 * 1000;   // 2 minutes
@@ -83,6 +84,9 @@ export function isIdle() {
  * @returns {boolean} true if work should proceed.
  */
 export function shouldRunHeavyMaintenance() {
+  // Low-memory hosts pause the same work idle does: city presence, feed
+  // polls, embed backfill. Interactive requests are unaffected.
+  if (shouldPauseHeavyBackground()) return false;
   return !isIdle();
 }
 

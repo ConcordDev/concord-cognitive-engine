@@ -10,7 +10,9 @@ import { validateBody, llmGenerateSchema } from "../lib/validators/mutation-sche
 import logger from '../logger.js';
 import { assertSessionAccessible } from "../lib/session-access.js";
 import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
+import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
+import { getHostIdentity } from "../lib/host-profile.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -155,11 +157,17 @@ export default function registerSystemRoutes(app, {
     }
 
     // Always 200 — liveness is "the process responded". Diagnostics ride in `checks`.
+    // `host` names which machine answered (hostname, or HOST_ROLE when set)
+    // so an alert can tell a fallback box from the primary.
+    let host = { hostname: null, role: process.env.HOST_ROLE || null, lowMemory: false };
+    try { host = getHostIdentity(); } catch { /* diagnostic only */ }
+    checks.host = host;
     res.status(200).json({
       status: "healthy",
       version: VERSION,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
+      host,
       checks
     });
   });
@@ -198,13 +206,17 @@ export default function registerSystemRoutes(app, {
     }
 
     let lagMs = 0;
+    let sustainedLagMs = 0;
     let shedBarMs = 0;
     try {
       lagMs = Math.round(getCurrentLagMs() || 0);
+      // Strike on the sustained p99 mean, not the single worst sample in the
+      // window. The raw max stays in the payload so a spike is still visible.
+      sustainedLagMs = Math.round(getSustainedLagMs() || 0);
       shedBarMs = getShedLagMs();
     } catch { /* pressure monitor not started — treat as no pressure */ }
 
-    const overBar = shedBarMs > 0 && lagMs > shedBarMs;
+    const overBar = shedBarMs > 0 && sustainedLagMs > shedBarMs;
     _readyPressureStrikes = overBar ? _readyPressureStrikes + 1 : 0;
     // `admitting` is the honest per-probe answer: would a sheddable request
     // be admitted RIGHT NOW. The check that gates the verdict is the
@@ -223,6 +235,7 @@ export default function registerSystemRoutes(app, {
       ready,
       checks,
       eventLoopLagMs: lagMs,
+      eventLoopSustainedLagMs: sustainedLagMs,
       shedThresholdMs: shedBarMs,
       pressureStrikes: _readyPressureStrikes,
       pressureStrikesToNotReady: READY_PRESSURE_STRIKES,
