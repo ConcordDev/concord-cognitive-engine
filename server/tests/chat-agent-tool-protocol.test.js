@@ -292,9 +292,7 @@ test("generate_image uses the pod image path and does not touch ctx.state", asyn
   const saved = {
     gen: process.env.CONCORD_GEN_URL,
     data: process.env.DATA_DIR,
-    force: process.env.CONCORD_FORCE_POLLINATIONS,
   };
-  delete process.env.CONCORD_FORCE_POLLINATIONS;
   process.env.DATA_DIR = dataDir;
   let macroCalled = false;
   try {
@@ -311,16 +309,7 @@ test("generate_image uses the pod image path and does not touch ctx.state", asyn
     assert.equal(result.artifact.width, 512);
     assert.equal(result.artifact.height, 512);
     assert.ok(!JSON.stringify(formatToolResults([result])).includes(png));
-
-    process.env.CONCORD_GEN_URL = "http://127.0.0.1:9";
-    const fallback = await executeToolCall({}, async () => { macroCalled = true; return { ok: false }; }, new Map(), {
-      tool: "generate_image",
-      params: { prompt: "a red cube" },
-    });
-    assert.equal(macroCalled, false);
-    assert.equal(fallback.ok, true);
-    assert.equal(fallback.source, "pollinations");
-    assert.match(fallback.artifact.url, /^https:\/\/image\.pollinations\.ai\//);
+    assert.ok(!/pollinations/i.test(JSON.stringify(result)));
 
     const oom = await startGen((url) => (url === "/health" ? { ok: true } : { ok: false, reason: "cuda_oom", error: "out of memory" }));
     try {
@@ -334,9 +323,46 @@ test("generate_image uses the pod image path and does not touch ctx.state", asyn
   } finally {
     srv.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
-    for (const [k, v] of [["CONCORD_GEN_URL", saved.gen], ["DATA_DIR", saved.data], ["CONCORD_FORCE_POLLINATIONS", saved.force]]) {
+    for (const [k, v] of [["CONCORD_GEN_URL", saved.gen], ["DATA_DIR", saved.data]]) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
     }
+  }
+});
+
+test("generate_image reports GPU offline and never calls Pollinations", async () => {
+  const saved = {
+    gen: process.env.CONCORD_GEN_URL,
+    force: process.env.CONCORD_FORCE_POLLINATIONS,
+  };
+  const origFetch = globalThis.fetch;
+  const urls = [];
+  globalThis.fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? String(input) : String(input?.url || input);
+    urls.push(url);
+    return origFetch(input, init);
+  };
+  // Force-flag must not reopen the watermarked fallback.
+  process.env.CONCORD_GEN_URL = "http://127.0.0.1:9";
+  process.env.CONCORD_FORCE_POLLINATIONS = "1";
+  try {
+    const offline = await executeToolCall({}, async () => { throw new Error("macro should not run"); }, new Map(), {
+      tool: "generate_image",
+      params: { prompt: "a red cube" },
+    });
+    assert.equal(offline.ok, false);
+    assert.equal(offline.error, "image generation is temporarily unavailable (GPU offline)");
+    assert.equal(offline.artifact, undefined);
+    assert.ok(urls.some((u) => u.includes("127.0.0.1:9")));
+    assert.ok(urls.every((u) => !/pollinations/i.test(u)));
+    const rendered = formatToolResults([offline]);
+    assert.match(rendered, /image generation is temporarily unavailable \(GPU offline\)/);
+    assert.ok(!/pollinations/i.test(rendered));
+  } finally {
+    globalThis.fetch = origFetch;
+    if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL;
+    else process.env.CONCORD_GEN_URL = saved.gen;
+    if (saved.force === undefined) delete process.env.CONCORD_FORCE_POLLINATIONS;
+    else process.env.CONCORD_FORCE_POLLINATIONS = saved.force;
   }
 });

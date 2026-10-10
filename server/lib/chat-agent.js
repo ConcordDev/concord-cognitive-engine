@@ -827,22 +827,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_image": {
-        // The old multimodal.image_generate macro reads ctx.state (undefined
-        // on this loop's ctx) and only talks to SD_URL / ComfyUI. Image
-        // generation that actually runs is the pod FLUX path shared with
-        // chat.image-generate (generatePollinationsImage: local GPU first,
-        // Pollinations only when that server is unreachable).
+        // Pod GPU FLUX only. The old multimodal.image_generate macro reads
+        // ctx.state (undefined on this loop's ctx) and only talks to SD_URL.
+        // Pollinations is watermarked and is not a fallback: if the GPU
+        // server is down, say so.
         const prompt = String(call.params.prompt || "");
-        const { generatePollinationsImage } = await import("./pollinations-image.js");
+        const { generateViaLocalGpu } = await import("./pollinations-image.js");
         let width;
         let height;
         const size = String(call.params.size || "");
         const sizeMatch = size.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
         if (sizeMatch) { width = Number(sizeMatch[1]); height = Number(sizeMatch[2]); }
-        const gen = await generatePollinationsImage({ prompt, width, height, seed: call.params.seed });
-        if (!gen?.ok) return { tool: call.tool, ok: false, error: gen?.error || gen?.reason || "generate_image failed" };
+        const gen = await generateViaLocalGpu({ prompt, width, height, seed: call.params.seed });
+        const GPU_OFFLINE = "image generation is temporarily unavailable (GPU offline)";
+        const external = gen?.provider === "pollinations"
+          || /pollinations\.ai/i.test(String(gen?.url || ""));
+        if (!gen?.ok || external) {
+          if (external || gen?.reason === "local_gpu_unreachable" || gen?.reason === "weights_missing") {
+            return { tool: call.tool, ok: false, error: GPU_OFFLINE, reason: gen?.reason || "local_gpu_unreachable" };
+          }
+          return { tool: call.tool, ok: false, error: gen?.error || gen?.reason || "generate_image failed", reason: gen?.reason };
+        }
         const dataUrl = typeof gen.url === "string" && gen.url.startsWith("data:") ? gen.url : "";
-        const image_b64 = gen.imageB64 || (dataUrl ? dataUrl.slice(dataUrl.indexOf(",") + 1) : undefined);
+        const image_b64 = gen.imageB64 || (dataUrl ? dataUrl.slice(dataUrl.indexOf(",") + 1) : "");
+        if (!image_b64) {
+          return { tool: call.tool, ok: false, error: GPU_OFFLINE, reason: "no_image" };
+        }
         const source = gen.provider || "local_gpu_flux";
         return {
           tool: call.tool, ok: true,
@@ -855,8 +865,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             source,
             prompt,
             mimeType: "image/png",
-            ...(image_b64 ? { image_b64 } : {}),
-            ...(!dataUrl && gen.url ? { url: gen.url } : {}),
+            image_b64,
             ...(gen.width ? { width: gen.width } : {}),
             ...(gen.height ? { height: gen.height } : {}),
           },
