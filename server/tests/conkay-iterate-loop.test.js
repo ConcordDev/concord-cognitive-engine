@@ -10,6 +10,7 @@ import { runRechecks } from "../lib/conkay/knowledge/spec-rechecks.js";
 import { energyBalance } from "../lib/conkay/physics/solvers/energy-balance.js";
 import { iterateToPhysical } from "../lib/conkay/iterate/loop.js";
 import { verifyReceipt } from "../lib/conkay/iterate/receipt.js";
+import { validateMassState } from "../lib/conkay/verification/mass-state.js";
 import { runSentinelM1, buildSentinelM1IR, DESIGN_VARIABLES, EXCLUDED_SOLVERS } from "../lib/conkay/demos/sentinel-m1.js";
 import { runNorthStar, renderNorthStarMarkdown } from "../lib/conkay/northstar/index.js";
 import { listSolvers } from "../lib/conkay/index.js";
@@ -55,10 +56,18 @@ describe("claim statuses: hypothesis, contradicted, bins", () => {
     assert.equal(r.report.converged, true);
     assert.equal(r.gate.accepted, false);
     assert.ok(r.gate.blockers.some((b) => b.kind === "claim" && b.claim === "spec.lift"));
-    // Without the claim, the only blocker left is the open mass budget: unknown masses block a PASS.
+    // Without the claim nothing blocks: every mass is sourced, computed or estimated (the budget closes).
     const clean = runSentinelM1();
-    assert.equal(clean.gate.accepted, false);
-    assert.deepEqual(clean.gate.blockers.map((b) => `${b.kind}:${b.runId}`), ["unknown:mass.budget@sentinel"]);
+    assert.equal(clean.gate.accepted, true);
+    assert.deepEqual(clean.gate.blockers, []);
+    // An unknown mass still blocks a PASS: re-open the budget with one placeholder.
+    const open = buildSentinelM1IR();
+    const cam = open.nodes.find((n) => n.id === "camera");
+    delete cam.props.mass;
+    cam.props.massState = { state: "placeholder", note: "test: camera not selected" };
+    const reopened = runSentinelM1({ ir: open });
+    assert.equal(reopened.gate.accepted, false);
+    assert.deepEqual(reopened.gate.blockers.map((b) => `${b.kind}:${b.runId}`), ["unknown:mass.budget@sentinel"]);
   });
 });
 
@@ -150,19 +159,21 @@ describe("iterate-to-physical loop: Sentinel Milestone 1", () => {
   it("keeps domains separate and lists unknown mass instead of zeroing it", () => {
     for (const d of ["mass.budget", "geometry.clearance", "stability.static", "structural.bending", "electrical.power", "energy.solar", "conservation.energy", "actuation.torque"]) assert.ok(R.byDomain[d], d);
     assert.equal(R.score, undefined);
-    const unknown = at(R.checks, "mass.budget@sentinel").outputs.unknownItems.value.map((u) => u.id);
-    assert.ok(unknown.includes("compute") && unknown.includes("armor"));
-    // #1037 mass states: unknown masses are placeholders with no mass value (never zero),
-    // datasheet masses are sourced with a URL and variant, and the payload stays a requirement.
+    const mb = at(R.checks, "mass.budget@sentinel").outputs;
+    // the budget closes: no placeholder is left, the armor cage is listed as not fitted (a stated decision), not as mass
+    assert.deepEqual(mb.unknownItems.value, []);
+    assert.deepEqual(mb.notFitted.value.map((u) => u.id), ["armor"]);
+    assert.match(mb.notFitted.value[0].reason, /spec 4\.1/);
+    // #1037 mass states: datasheet masses are sourced with a URL and variant, estimates carry a range,
+    // and the payload stays a requirement.
     const ir = buildSentinelM1IR();
-    for (const n of ir.nodes.filter((x) => x.props?.massState?.state === "placeholder")) {
-      assert.equal(n.props.mass, undefined, n.id);
-      assert.ok(unknown.includes(n.id), n.id);
-    }
+    assert.equal(ir.nodes.filter((x) => x.props?.massState?.state === "placeholder").length, 0);
+    for (const n of ir.nodes.filter((x) => x.props?.massState?.state === "estimated")) assert.deepEqual(validateMassState(n.props.massState, { massKg: parseFloat(n.props.mass) }), [], n.id);
+    assert.ok(mb.massLow.value < mb.knownMass.value && mb.knownMass.value < mb.massHigh.value);
     for (const n of ir.nodes.filter((x) => x.props?.massState?.state === "sourced")) assert.ok(/^https:\/\//.test(n.props.massState.source.url) && n.props.massState.variant, n.id);
     const byState = at(R.checks, "mass.budget@sentinel").outputs.massByState.value;
     assert.equal(byState.requirement, 20);
-    assert.equal(byState.sourced, 6 * 0.85 + 0.83 + 6.4);
+    assert.ok(Math.abs(byState.sourced - (6 * 0.85 + 0.83 + 6.4 + 4.5 + 0.116 + 0.0089 + 2 * 0.11)) < 1e-9, `${byState.sourced}`);
     for (const s of listSolvers().filter((x) => ["mass.budget", "electrical.budget", "stability.static"].includes(x.id))) assert.ok(s.regime && s.units && s.tolerance && s.screening != null, s.id);
   });
   it("is deterministic, and its receipt is invalidated by an input or solver-version change", () => {

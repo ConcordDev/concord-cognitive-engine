@@ -169,10 +169,11 @@ export const frameStructure = registerSolver({
         }
       }
       const w = scaleable.get(c.id);
-      if (w && w.some((x) => x.unknown > 0) && gov) {
+      if (w && gov) {
+        const open = w.some((x) => x.unknown > 0);
         const lim = Math.min(gov.fy / fs / gov.worst.vonMises, Number.isFinite(bucklingFactor) ? bucklingFactor / reqBuckling : Infinity);
         const known = w.reduce((s, x) => s + x.mass, 0);
-        outputs[`${c.id}.loadToLimit`] = { value: { scale: lim, totalMassKg: known * lim, knownMassKg: known, governs: Number.isFinite(bucklingFactor) && bucklingFactor / reqBuckling < gov.fy / fs / gov.worst.vonMises ? "buckling" : `stress in ${gov.id}` }, basis: "computed: linear model, every load of the case proportional to the mass; the total mass at which the governing check reaches 1. A bound for the unknown masses, not a pass" };
+        outputs[`${c.id}.loadToLimit`] = { value: { scale: lim, totalMassKg: known * lim, knownMassKg: known, governs: Number.isFinite(bucklingFactor) && bucklingFactor / reqBuckling < gov.fy / fs / gov.worst.vonMises ? "buckling" : `stress in ${gov.id}` }, basis: open ? "computed: linear model, every load of the case proportional to the mass; the total mass at which the governing check reaches 1. A bound for the unknown masses, not a pass" : "computed: linear model, every load of the case proportional to the mass; the total mass at which the governing check reaches 1 (the budget is closed: the margin checks above apply to the mass as it stands)" };
       }
     }
     for (const k of fm.stiffness || []) {

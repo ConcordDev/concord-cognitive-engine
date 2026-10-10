@@ -54,7 +54,7 @@ describe("Sentinel M1 GA drawing (drawing.ga-assembly)", () => {
   const R = r.report;
   const d0 = at(R.initial, "drawing.ga-assembly@sentinel"), d = at(R.checks, "drawing.ga-assembly@sentinel");
   it("is generated inside the loop from the same model, and repairs give a new revision", () => {
-    assert.equal(d.status, "WARN");
+    assert.equal(d.status, "PASS");
     assert.match(d.outputs.revision.value, /^R-[0-9A-F]{8}$/);
     assert.notEqual(d0.outputs.revision.value, d.outputs.revision.value, "battery and bracket repairs change the drawing");
     assert.equal(at(runSentinelM1().report.checks, "drawing.ga-assembly@sentinel").outputs.modelHash.value, d.outputs.modelHash.value, "deterministic");
@@ -65,25 +65,39 @@ describe("Sentinel M1 GA drawing (drawing.ga-assembly)", () => {
     const nodes = bom.flatMap((b) => b.nodes).sort();
     const ir = buildSentinelM1IR();
     assert.deepEqual(nodes, ir.nodes.filter((n) => n.id !== "sentinel").map((n) => n.id).sort());
-    const unknown = bom.filter((b) => b.massState === "unknown");
-    assert.deepEqual(unknown.flatMap((b) => b.nodes).sort(), ["armor", "bms", "compute", "compute-carrier", "fans", "fasteners", "panel-mount", "sensors-misc", "wiring"]);
-    for (const b of unknown) assert.equal(b.unitMassKg, null);
+    assert.deepEqual(bom.filter((b) => b.massState === "unknown"), []);
+    const nf = bom.filter((b) => b.massState === "not fitted");
+    assert.deepEqual(nf.flatMap((b) => b.nodes), ["armor"]);
+    assert.equal(nf[0].unitMassKg, null, "not fitted is not a mass");
+    assert.deepEqual(bom.find((b) => b.nodes.includes("compute")).massState, "sourced");
+    for (const id of ["wiring", "fasteners", "bms"]) assert.equal(bom.find((b) => b.nodes.includes(id)).massState, "estimated", id);
     const act = bom.find((b) => b.material === "CubeMars AK80-64 KV80");
     assert.deepEqual([act.qty, act.unitMassKg, act.massState], [6, 0.85, "sourced"]);
     assert.equal(bom.find((b) => b.nodes.includes("battery")).description.includes("13S5P"), true, "the repaired battery");
     assert.equal(bom.find((b) => b.nodes.includes("payload")).massState, "requirement");
     assert.equal(bom.reduce((s, b) => s + (b.unitMassKg ?? 0) * b.qty, 0).toFixed(9), at(R.checks, "mass.budget@sentinel").outputs.knownMass.value.toFixed(9));
   });
-  it("blocks the CG / support-polygon PASS while masses are unknown, and says how much unknown mass the stance tolerates", () => {
+  it("passes the CG / support-polygon check with the budget closed", () => {
     const c = d.outputs.cgCheck.value;
+    assert.equal(c.closed, true);
+    assert.equal(c.verdict, "PASS");
+    assert.ok(c.margin >= c.requiredMargin);
+    assert.equal(r.gate.accepted, true);
+  });
+  it("still blocks the CG / support-polygon PASS when a mass is unknown, and says how much unknown mass the stance tolerates", () => {
+    const ir = buildSentinelM1IR();
+    const cam = ir.nodes.find((n) => n.id === "camera");
+    delete cam.props.mass;
+    cam.props.massState = { state: "placeholder", note: "test: camera not selected" };
+    const ro = runSentinelM1({ ir });
+    const c = at(ro.report.checks, "drawing.ga-assembly@sentinel").outputs.cgCheck.value;
     assert.equal(c.closed, false);
-    assert.match(c.verdict, /^NOT PASSED: mass budget open \(9 unknown/);
-    assert.ok(c.margin >= c.requiredMargin, "the known-mass margin alone would meet the requirement: still not a pass");
-    const st = at(R.checks, "stability.static@sentinel");
+    assert.match(c.verdict, /^NOT PASSED: mass budget open \(1 unknown/);
+    const st = at(ro.report.checks, "stability.static@sentinel");
     assert.equal(c.tolerableUnknownMassKg, st.outputs.unknownMassTolerance.value.massKg);
     assert.ok(c.tolerableUnknownMassKg > 0 && c.tolerableUnknownMassKg < 50);
-    assert.equal(r.gate.accepted, false);
-    assert.ok(r.gate.blockers.some((b) => b.kind === "unknown" && b.runId === "mass.budget@sentinel"));
+    assert.equal(ro.gate.accepted, false);
+    assert.ok(ro.gate.blockers.some((b) => b.kind === "unknown" && b.runId === "mass.budget@sentinel"));
   });
   it("draws dimensions with their basis and lists what is not drawn", () => {
     const dims = d.outputs.dimensions.value;
@@ -91,15 +105,15 @@ describe("Sentinel M1 GA drawing (drawing.ga-assembly)", () => {
     assert.deepEqual(dims.stance, { mm: 400, basis: "D" });
     assert.equal(dims.overallHeight.mm, Math.round(at(R.checks, "geometry.clearance@sentinel").outputs.overallHeight.value * 1000));
     assert.equal(dims.cgHeight.mm, Math.round(at(R.checks, "mass.budget@sentinel").outputs.cgZ.value * 1000));
-    assert.ok(d.outputs.notDrawn.value.includes("armor") && !d.outputs.notDrawn.value.includes("compute"));
+    assert.deepEqual([...d.outputs.notDrawn.value].sort(), ["armor", "fasteners", "wiring"], "not fitted, and distributed (no single box)");
     for (const v of Object.values(d.outputs.views.value)) assert.ok(v.visible > 0);
   });
   it("writes SVG and PDF sheets that carry the revision, and knows when a sheet is superseded", () => {
     const f = d.outputs.files.value;
     const svg = drawingContent(f.sheet1Svg.sha256);
     assert.match(svg, /^<\?xml/);
-    assert.ok(svg.includes(d.outputs.revision.value) && svg.includes("MASS/CG OPEN"));
-    assert.ok(drawingContent(f.sheet2Svg.sha256).includes("NOT PASSED: mass budget open"));
+    assert.ok(svg.includes(d.outputs.revision.value) && svg.includes("SCREENING - NOT FOR MANUFACTURE") && !svg.includes("MASS/CG OPEN"));
+    assert.ok(drawingContent(f.sheet2Svg.sha256).includes("Mass budget closed"));
     assert.equal(drawingContent(f.pdf.sha256).slice(0, 8).toString(), "%PDF-1.4");
     const s = openDesign(buildSentinelM1IR({ batteryParallel: 5, bracket: "sq-1x0.065" })).session;
     const now = s.result("drawing.ga-assembly@sentinel");
@@ -144,7 +158,7 @@ describe("north-star report and lens action", () => {
   it("adds the drawing to the report and serves the sheets", async () => {
     const { runNorthStar, renderNorthStarMarkdown } = await import("../lib/conkay/northstar/index.js");
     const md = renderNorthStarMarkdown(runNorthStar());
-    assert.ok(md.includes("GA drawing, BOM and CG check") && md.includes("NOT PASSED: mass budget open"));
+    assert.ok(md.includes("GA drawing, BOM and CG check") && !md.includes("NOT PASSED: mass budget open"));
     const { default: register } = await import("../domains/conkay-northstar.js");
     const actions = {};
     register((dom, n, fn) => { actions[`${dom}.${n}`] = fn; });
@@ -152,6 +166,7 @@ describe("north-star report and lens action", () => {
     assert.equal(r.ok, true);
     assert.match(r.result.files.sheet1Svg.svg, /CK-GA-SENTINEL-M1/);
     assert.equal(Buffer.from(r.result.files.pdf.base64, "base64").subarray(0, 5).toString(), "%PDF-");
-    assert.equal(r.result.gate.accepted, false);
+    assert.equal(r.result.gate.accepted, true);
+    assert.match(r.result.gate.scope, /software screening only/);
   });
 });

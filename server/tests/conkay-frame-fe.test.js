@@ -221,11 +221,11 @@ describe("structure.frame applications", () => {
     s.engine.applyEdits([{ node: "RAIL_L", path: "geometry.height", value: 0.16 }, { node: "RAIL_R", path: "geometry.height", value: 0.16 }], { source: "test" });
     assert.ok(s.result("structure.frame@CHASSIS").outputs["bending.maxVonMises"].value < before);
   });
-  it("Sentinel M1: stance leg buckling matches π²EI/(4L²), and an open mass budget is a warning with the mass at the limit", () => {
+  it("Sentinel M1: stance leg buckling matches π²EI/(4L²); the closed budget passes, with the mass at the limit", () => {
     const s = openDesign(buildSentinelM1IR({ batteryParallel: 5, bracket: "sq-1x0.065" })).session;
     const env = s.result("structure.frame@sentinel");
-    assert.equal(env.status, "WARN");
-    assert.ok(env.warnings.some((w) => /9 unknown item/.test(w)));
+    assert.equal(env.status, "PASS", (env.warnings || []).join(" | "));
+    assert.equal(s.result("mass.budget@sentinel").outputs.unknownCount.value, 0);
     const known = s.result("mass.budget@sentinel").outputs.knownMass.value;
     const W = known * 9.80665 * 2;
     const g = s.graph.node("shin-l").geometry;
