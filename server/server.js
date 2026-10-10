@@ -3484,7 +3484,7 @@ function releaseMutex() {
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
 import { startupFdGuard, startFdMonitor } from "./lib/fd-guard.js";
-import { distinctDtuSummaries } from "./lib/chat-offline-reply.js";
+import { distinctDtuSummaries, aiUnavailableChat } from "./lib/chat-offline-reply.js";
 import { getFactionRepBuffer, flushAllBuffers } from "./lib/batch-commit-buffer.js";
 
 // FD-limit guard: runs at module load. Detects under-provisioned
@@ -27747,6 +27747,9 @@ let localReply = formatCrispResponse({
 
   let finalReply = localReply;
   let llmUsed = false;
+  // Set when a requested brain call fails (503 / circuit-open / network).
+  // Read only if llmUsed stays false — a later successful attempt wins.
+  let _brainFailure = null;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
 
   // ===== TOOL CALLING INFRASTRUCTURE =====
@@ -28279,6 +28282,7 @@ ${_operatorV6Block}` : "";
       llmUsed = true;
       _llmSpan.end("ok", { responseLength: finalReply.length });
     } else {
+      _brainFailure = { status: r?.status ?? null, error: r?.error || r?.reason || "llm_failed" };
       _llmSpan.end("error", { error: String(r?.error || "llm_failed") });
       ctx.log("llm.error", "LLM call via ctx.llm failed; attempting conscious brain fallback.", { error: r });
       // ===== CONSCIOUS BRAIN FALLBACK (within ctx.llm block) =====
@@ -28311,10 +28315,12 @@ ${_operatorV6Block}` : "";
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
         } else {
           BRAIN.conscious.stats.errors++;
+          _brainFailure = { status: _fbRes.status, error: _fbJson?.error || _brainFailure?.error || "llm_failed" };
           ctx.log("llm.fallback.error", "Conscious brain fallback returned non-ok.", { status: _fbRes.status, error: _fbJson?.error });
         }
       } catch (_fbErr) {
         BRAIN.conscious.stats.errors++;
+        _brainFailure = { status: null, error: String(_fbErr?.message || _fbErr) };
         ctx.log("llm.fallback.error", "Conscious brain fallback threw.", { error: String(_fbErr?.message || _fbErr) });
       }
       // ===== END CONSCIOUS BRAIN FALLBACK =====
@@ -28374,10 +28380,12 @@ ${_operatorV6Block}` : "";
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
       } else {
         BRAIN.conscious.stats.errors++;
+        _brainFailure = { status: _directRes.status, error: _directJson?.error || "llm_failed" };
         ctx.log("llm.direct.error", "Direct conscious brain call returned non-ok.", { status: _directRes.status, error: _directJson?.error });
       }
     } catch (_directErr) {
       BRAIN.conscious.stats.errors++;
+      _brainFailure = { status: null, error: String(_directErr?.message || _directErr) };
       ctx.log("llm.direct.error", "Direct conscious brain call threw.", { error: String(_directErr?.message || _directErr) });
     }
     // ===== END DIRECT CONSCIOUS BRAIN CALL =====
@@ -28567,8 +28575,15 @@ ${_operatorV6Block}` : "";
     if (!_carries) finalReply = _deterministicAnswer.text;
   }
 
-  // If LLM failed, make the fallback response conversational instead of a DTU dump
-  if (!llmUsed && localReply && finalReply === localReply) {
+  // The brain was requested and produced no reply (pod down, 503, circuit
+  // open). Say so. Do not dress retrieved notes up as an answer. Callers
+  // that passed llm:false opted out on purpose — that local path stays below.
+  let _aiUnavailable = null;
+  const _llmWasRequested = llm !== false;
+  if (_llmWasRequested && !llmUsed && !_deterministicAnswer && localReply && finalReply === localReply) {
+    _aiUnavailable = aiUnavailableChat({ items: distinctDtuSummaries(relevant, 5) });
+    finalReply = _aiUnavailable.reply;
+  } else if (!llmUsed && localReply && finalReply === localReply) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -28576,24 +28591,24 @@ ${_operatorV6Block}` : "";
     const userQuestion = (Array.isArray(messages) && messages.length > 0)
       ? (messages[messages.length - 1]?.content || prompt || '')
       : (prompt || '');
-    // Build a helpful response from the DTU context, each distinct note once.
+    // Explicit no-LLM callers still get stored notes, labelled as notes.
     const topSummaries = distinctDtuSummaries(relevant, 5);
     if (topSummaries.length > 0) {
-      finalReply = `Based on what I know, here's what I can share about "${userQuestion.slice(0, 80)}":\n\n` +
-        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n') +
-        `\n\nI'm currently running without my full AI capabilities (LLM offline), so my responses are based on stored knowledge. Once my brain is back online, I can have much deeper conversations about this.`;
+      finalReply = `Stored notes (not an AI answer) about "${userQuestion.slice(0, 80)}":\n\n` +
+        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n');
     } else {
-      finalReply = `I'd love to help with "${userQuestion.slice(0, 80)}", but I'm currently running in limited mode (my AI brain is offline). I don't have stored knowledge on this topic yet. Once my brain comes back online, I'll be able to have a full conversation about this. In the meantime, try creating some DTUs about this topic so I can learn!`;
+      finalReply = `No AI reply for "${userQuestion.slice(0, 80)}" — this request did not use the language model, and there are no stored notes on it.`;
     }
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
+  // An outage notice is not knowledge — don't mint a DTU from it.
   try {
-    createOutputDTU(STATE, {
+    if (!_aiUnavailable) createOutputDTU(STATE, {
       sessionId,
       response: finalReply,
       entityId: null,
@@ -28705,7 +28720,7 @@ ${_operatorV6Block}` : "";
       };
 
       // Forge pipeline: if the request produced a deliverable artifact
-      if (_forgeDetection?.shouldForge && finalReply) {
+      if (_forgeDetection?.shouldForge && finalReply && !_aiUnavailable) {
         _forgeResult = runForgePipeline({
           message: prompt,
           route: _chatRoute,
@@ -28784,6 +28799,7 @@ ${_operatorV6Block}` : "";
         ts: Date.now(),
         meta: {
           llmUsed,
+          code: _aiUnavailable?.code,
           mode,
           toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined,
           toolCallCount: _toolCallsExecuted.length,
@@ -28821,7 +28837,13 @@ ${_operatorV6Block}` : "";
   } catch { /* best-effort, never blocks chat */ }
 
   return {
-    ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_aiUnavailable ? {
+      code: _aiUnavailable.code,
+      notice: _aiUnavailable.notice,
+      ...(_aiUnavailable.retrieval ? { retrieval: _aiUnavailable.retrieval } : {}),
+      ...(_brainFailure?.error ? { providerError: String(_brainFailure.error).slice(0, 200) } : {}),
+    } : {}),
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
       tool: t.tool, ok: t.ok,
       params: t.params || {},

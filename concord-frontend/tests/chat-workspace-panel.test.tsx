@@ -695,6 +695,55 @@ describe('ChatWorkspacePanel — sending', () => {
     expect(chatCall![1]).toMatchObject({ message: 'hello?', mode: 'overview' });
   });
 
+  it('shows an in-app notice when the brain is unavailable, not a fabricated answer', async () => {
+    const notice = 'AI is temporarily unavailable — your message was saved, try again shortly.';
+    fetchHandler = async (url) => {
+      if (url === '/api/chat/stream') {
+        return sseResponse([
+          { chunk: 'Based on what I know, here is a fake answer about OK.' },
+          {
+            done: true,
+            out: {
+              ok: false,
+              code: 'ai_unavailable',
+              llmUsed: false,
+              notice,
+              reply: notice,
+              retrieval: { kind: 'stored_notes', label: 'Stored notes', items: ['A real stored note'] },
+            },
+          },
+        ]);
+      }
+      return jsonResponse({ ok: false });
+    };
+    renderPanel();
+    send('Reply with just the word OK.');
+    const banner = await within(thread()).findByTestId('ai-unavailable-notice');
+    expect(banner).toHaveTextContent(notice);
+    expect(banner).toHaveTextContent('Stored notes');
+    expect(banner).toHaveTextContent('A real stored note');
+    expect(within(thread()).queryByText(/Based on what I know/)).not.toBeInTheDocument();
+    expect(banner.className).not.toMatch(/red-/);
+  });
+
+  it('shows the same notice when the buffered chat body carries ai_unavailable', async () => {
+    const notice = 'AI is temporarily unavailable — your message was saved, try again shortly.';
+    fetchHandler = async (url) => {
+      if (url === '/api/chat/stream') throw new TypeError('stream down');
+      return jsonResponse({ ok: false });
+    };
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === '/api/chat') {
+        return { data: { ok: false, code: 'ai_unavailable', llmUsed: false, notice, reply: notice } };
+      }
+      return { data: {} };
+    });
+    renderPanel();
+    send('hello');
+    expect(await within(thread()).findByTestId('ai-unavailable-notice')).toHaveTextContent(notice);
+    expect(within(thread()).queryByText(/Error:/)).not.toBeInTheDocument();
+  });
+
   it('shows an honest "no answer" reply when the backend returns nothing usable', async () => {
     fetchHandler = async (url) => (url === '/api/chat/stream' ? jsonResponse({}) : jsonResponse({ ok: false }));
     renderPanel();

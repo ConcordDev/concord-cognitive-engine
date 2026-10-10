@@ -38,6 +38,7 @@ function _serialiseMeta(meta) {
     // from; everything else is router/log debris.
     const slim = {
       llmUsed: meta.llmUsed,
+      code: meta.code,
       mode: meta.mode,
       toolCalls: meta.toolCalls,
       toolCallCount: meta.toolCallCount,
