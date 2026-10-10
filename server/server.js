@@ -5563,8 +5563,11 @@ const STOPWORDS = new Set([
   "this","that","these","those","it","its","there","here","what","why","how","when","where","who"
 ]);
 
-// Small, safe synonym map (expand over time via shadow linguistic DTUs)
-const SYN_MAP = Object.freeze({
+// Small, safe synonym map (expand over time via shadow linguistic DTUs).
+// Null prototype: these keys are user tokens. A plain object resolves
+// "constructor" / "toString" / "valueOf" / "hasOwnProperty" to prototype
+// functions, which are truthy, and `for...of` then throws "syns is not iterable".
+const SYN_MAP = Object.freeze(Object.assign(Object.create(null), {
   "talk": ["chat","conversation","dialogue"],
   "chat": ["talk","conversation","dialogue"],
   "conversation": ["chat","talk","dialogue"],
@@ -5583,7 +5586,22 @@ const SYN_MAP = Object.freeze({
   "topic": ["subject","theme","thread"],
   "recency": ["recent","fresh","new"],
   "recent": ["recency","fresh","new"]
-});
+}));
+
+// Own array only. stemLite can turn "constructors" into "constructor".
+function synsFor(token) {
+  const key = String(token ?? "");
+  if (Object.hasOwn(SYN_MAP, key)) {
+    const direct = SYN_MAP[key];
+    if (Array.isArray(direct)) return direct;
+  }
+  const stem = stemLite(key);
+  if (stem !== key && Object.hasOwn(SYN_MAP, stem)) {
+    const stemmed = SYN_MAP[stem];
+    if (Array.isArray(stemmed)) return stemmed;
+  }
+  return null;
+}
 
 function stemLite(t="") {
   let s = String(t||"").toLowerCase();
@@ -5641,7 +5659,7 @@ function expandQueryTokens(q="") {
   const expanded = new Set(base);
   // Synonym expansion
   for (const t of base) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
+    const syns = synsFor(t);
     if (syns) for (const s of syns) expanded.add(stemLite(s));
   }
   // Phrase-level learned expansions
@@ -27222,7 +27240,7 @@ const qExp  = expandQueryTokens(qRaw);
 const expandTokensFromTokens = (tokens=[]) => {
   const out = new Set(tokens.map(stemLite));
   for (const t of tokens) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
+    const syns = synsFor(t);
     if (syns) for (const s of syns) out.add(stemLite(s));
   }
   return Array.from(out).slice(0, 256);
@@ -27295,7 +27313,10 @@ const scored = _consentFiltered.map(d => {
     forge:    ["prototype","build","design","artifact","template","generate","create","wireframe","mockup","specification"],
     atlas:    ["knowledge","concept","definition","theory","domain","taxonomy","ontology","category","classification"],
   };
-  const _lensAffinity = _LENS_DOMAIN_AFFINITY[currentLens] || null;
+  // Same prototype-key hazard as SYN_MAP: lens ids are caller input.
+  const _lensAffinity = (currentLens != null && Object.hasOwn(_LENS_DOMAIN_AFFINITY, currentLens) && Array.isArray(_LENS_DOMAIN_AFFINITY[currentLens]))
+    ? _LENS_DOMAIN_AFFINITY[currentLens]
+    : null;
   let _lensBoost = 1.0;
   if (_lensAffinity) {
     const dTextLower = dText.toLowerCase();
