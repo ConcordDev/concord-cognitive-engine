@@ -70,6 +70,7 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -9326,13 +9327,10 @@ async function createBackup(name = null) {
     // in disk from a constant nobody re-read. Derive it instead.
     try {
       const MAX_STATE_BACKUPS = _stateBackupRetentionCount();
-      const allBackups = fs.readdirSync(BACKUP_DIR)
-        .filter(f => f.endsWith(".json") && !f.startsWith("."))
-        .sort();
-      while (allBackups.length > MAX_STATE_BACKUPS) {
-        const oldest = allBackups.shift();
-        try { fs.unlinkSync(path.join(BACKUP_DIR, oldest)); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-      }
+      // JSON files only. Dated DB directories in this same folder are
+      // runBackup's, and a lexical listing would otherwise treat them as
+      // rotation candidates.
+      pruneJsonStateBackups(BACKUP_DIR, MAX_STATE_BACKUPS);
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     structuredLog("info", "backup_created", { path: backupPath });
@@ -66965,32 +66963,12 @@ app.get("/api/workers/stats", requireAuth(), requireRole("owner"), (_req, res) =
 
 // ---- Admin: Backup Status Endpoint ----
 app.get("/api/admin/backup/status", requireAuth(), requireRole("owner"), asyncHandler(async (_req, res) => {
-  const backupDir = path.join(DATA_DIR, 'backups');
+  // runBackup writes <YYYY-MM-DD>/concord.db.gz under BACKUP_DIR. A scan for
+  // top-level concord-YYYYMMDD_HHMMSS.db(.gz) never matches that layout, so
+  // this endpoint reported no backup (hours Infinity, healthy false) even
+  // when a multi-GB snapshot was on disk.
   try {
-    const files = fs.readdirSync(backupDir);
-    const backups = files
-      .filter(f => f.endsWith('.db.gz') || f.endsWith('.db'))
-      .map(f => {
-        const stat = fs.statSync(path.join(backupDir, f));
-        const dateMatch = f.match(/concord-(\d{8}_\d{6})/);
-        return { filename: f, size: stat.size, date: dateMatch?.[1] || null };
-      })
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-    const lastBackup = backups[0];
-    let hoursSinceBackup = Infinity;
-    if (lastBackup?.date) {
-      const parsed = lastBackup.date.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6');
-      hoursSinceBackup = (Date.now() - new Date(parsed).getTime()) / 3600000;
-    }
-
-    res.json({
-      totalBackups: backups.length,
-      lastBackup: lastBackup?.date || null,
-      hoursSinceLastBackup: Math.round(hoursSinceBackup),
-      healthy: hoursSinceBackup < 26,
-      backups: backups.slice(0, 7),
-    });
+    res.json(await summarizeDatedDbBackups(BACKUP_DIR));
   } catch {
     res.json({ totalBackups: 0, lastBackup: null, hoursSinceLastBackup: Infinity, healthy: false, backups: [] });
   }
@@ -85834,14 +85812,15 @@ async function runBackup() {
       structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
     }
 
-    // Clean old backups (keep BACKUP_RETENTION_DAYS)
+    // Keep the newest dated DB directories only. Do not readdir+sort the
+    // whole folder: JSON state backups live here too, and digit-leading
+    // YYYY-MM-DD names sort first, so retention 1 deleted the directory
+    // this run just wrote whenever any backup-*.json / auto-*.json existed.
     try {
-      const backups = fs.readdirSync(BACKUP_DIR).sort();
-      while (backups.length > _BACKUP_RETENTION_DAYS) {
-        const oldest = backups.shift();
-        const oldPath = `${BACKUP_DIR}/${oldest}`;
-        fs.rmSync(oldPath, { recursive: true, force: true });
-      }
+      pruneDatedDbBackups(BACKUP_DIR, {
+        retentionDays: _BACKUP_RETENTION_DAYS,
+        protectName: timestamp,
+      });
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     structuredLog("info", "backup_complete", { backupDir });
