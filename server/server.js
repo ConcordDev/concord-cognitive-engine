@@ -5556,34 +5556,18 @@ function simpleTokens(s) {
 }
 
 // ---- Offline-first semantic query expansion (synonyms + fuzzy) ----
+// SYN_MAP lives in lib/synonym-map.js as a null-prototype dictionary.
+// A plain object lookup of "constructor" (or stemLite("constructors"))
+// is Object.prototype.constructor, and `for (const s of syns)` throws
+// "syns is not iterable" — macro_uncaught_throw before the LLM.
+import { expandTokenList, forEachSynonym } from "./lib/synonym-map.js";
+import { nullDict, ownArray } from "./lib/own-lookup.js";
 const STOPWORDS = new Set([
   "a","an","the","and","or","but","if","then","else","so","to","of","in","on","for","from","with","as","at","by",
   "is","are","was","were","be","been","being","do","does","did","doing","done","can","could","should","would","may","might",
   "i","me","my","mine","you","your","yours","we","us","our","ours","they","them","their","theirs",
   "this","that","these","those","it","its","there","here","what","why","how","when","where","who"
 ]);
-
-// Small, safe synonym map (expand over time via shadow linguistic DTUs)
-const SYN_MAP = Object.freeze({
-  "talk": ["chat","conversation","dialogue"],
-  "chat": ["talk","conversation","dialogue"],
-  "conversation": ["chat","talk","dialogue"],
-  "help": ["assist","support","aid"],
-  "fix": ["repair","patch","resolve"],
-  "bug": ["issue","error","problem"],
-  "search": ["retrieve","lookup","find"],
-  "retrieve": ["search","lookup","find"],
-  "dtu": ["dtus","unit","thought"],
-  "dtus": ["dtu","units","thoughts"],
-  "offline": ["local","local-first","no-llm"],
-  "static": ["canned","repetitive","monotone"],
-  "dynamic": ["adaptive","responsive","fluid"],
-  "meaning": ["semantics","intent","sense"],
-  "synonym": ["similar","equivalent","alias"],
-  "topic": ["subject","theme","thread"],
-  "recency": ["recent","fresh","new"],
-  "recent": ["recency","fresh","new"]
-});
 
 function stemLite(t="") {
   let s = String(t||"").toLowerCase();
@@ -5636,29 +5620,30 @@ function learnedSynonymsMap() {
 }
 
 function expandQueryTokens(q="") {
-  const raw = normalizeQueryText(q);
-  const base = tokensNoStop(raw);
-  const expanded = new Set(base);
-  // Synonym expansion
-  for (const t of base) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
-    if (syns) for (const s of syns) expanded.add(stemLite(s));
-  }
-  // Phrase-level learned expansions
-  const lmap = learnedSynonymsMap();
-  if (lmap.size) {
-    const low = raw.toLowerCase();
-    // direct phrase
-    const hit = lmap.get(low);
-    if (hit) for (const s of hit) expanded.add(stemLite(s));
-    // soft phrase match (contains)
-    for (const [k, v] of lmap.entries()) {
-      if (k.length >= 6 && low.includes(k)) {
-        for (const s of v) expanded.add(stemLite(s));
+  // A single bad synonym, learned list, or prototype-key token degrades
+  // to no expansion for that entry. It must not throw out of chat.respond.
+  let base = [];
+  try {
+    const raw = normalizeQueryText(q);
+    base = tokensNoStop(raw);
+    const expanded = new Set(expandTokenList(base, stemLite));
+    try {
+      const lmap = learnedSynonymsMap();
+      if (lmap && lmap.size) {
+        const low = raw.toLowerCase();
+        const hit = lmap.get(low);
+        forEachSynonym(hit, (s) => expanded.add(stemLite(s)));
+        for (const [k, v] of lmap.entries()) {
+          if (typeof k === "string" && k.length >= 6 && low.includes(k)) {
+            forEachSynonym(v, (s) => expanded.add(stemLite(s)));
+          }
+        }
       }
-    }
+    } catch { /* learned expansions are optional */ }
+    return Array.from(expanded).slice(0, 256);
+  } catch {
+    return Array.isArray(base) ? base.slice(0, 256) : [];
   }
-  return Array.from(expanded).slice(0, 256);
 }
 
 function charNgrams(s="", n=3) {
@@ -27220,12 +27205,8 @@ const qBase = tokensNoStop(qRaw);
 const qExp  = expandQueryTokens(qRaw);
 
 const expandTokensFromTokens = (tokens=[]) => {
-  const out = new Set(tokens.map(stemLite));
-  for (const t of tokens) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
-    if (syns) for (const s of syns) out.add(stemLite(s));
-  }
-  return Array.from(out).slice(0, 256);
+  try { return expandTokenList(tokens, stemLite); }
+  catch { return []; }
 };
 
 // ── Usage Rights Enforcement ─────────────────────────────────────
@@ -27265,6 +27246,21 @@ try {
   }
 } catch (_embErr) { _queryVec = null; _dtuEmbedMap = null; }
 
+// Lens-domain affinity. Null prototype: currentLens is caller-supplied, and
+// "constructor" on a plain object is a function (`.some` would throw and
+// kill the reply). Built once per turn, not once per DTU.
+const _LENS_DOMAIN_AFFINITY = nullDict({
+  studio:   ["audio","music","sound","creative","production","mixing","recording","composition","track","beat","melody","harmony"],
+  code:     ["programming","software","algorithm","implementation","code","function","class","typescript","javascript","python","api","debug"],
+  board:    ["planning","task","project","kanban","sprint","milestone","workflow","schedule","deadline","backlog","roadmap"],
+  graph:    ["relationship","network","graph","node","edge","connection","topology","cluster","link","visualization","map","tree"],
+  research: ["research","academic","citation","paper","study","experiment","hypothesis","analysis","literature","evidence","findings"],
+  film:     ["film","video","scene","shot","edit","cut","narrative","cinematography","screenplay","director","footage"],
+  forge:    ["prototype","build","design","artifact","template","generate","create","wireframe","mockup","specification"],
+  atlas:    ["knowledge","concept","definition","theory","domain","taxonomy","ontology","category","classification"],
+});
+const _lensAffinity = ownArray(_LENS_DOMAIN_AFFINITY, currentLens);
+
 const scored = _consentFiltered.map(d => {
   const dText = [
     d?.title || "",
@@ -27285,17 +27281,6 @@ const scored = _consentFiltered.map(d => {
 
   // Lens-domain affinity boost — prioritize DTUs matching the active lens's domain
   // so "studio" chat surfaces audio/music DTUs ahead of unrelated content.
-  const _LENS_DOMAIN_AFFINITY = {
-    studio:   ["audio","music","sound","creative","production","mixing","recording","composition","track","beat","melody","harmony"],
-    code:     ["programming","software","algorithm","implementation","code","function","class","typescript","javascript","python","api","debug"],
-    board:    ["planning","task","project","kanban","sprint","milestone","workflow","schedule","deadline","backlog","roadmap"],
-    graph:    ["relationship","network","graph","node","edge","connection","topology","cluster","link","visualization","map","tree"],
-    research: ["research","academic","citation","paper","study","experiment","hypothesis","analysis","literature","evidence","findings"],
-    film:     ["film","video","scene","shot","edit","cut","narrative","cinematography","screenplay","director","footage"],
-    forge:    ["prototype","build","design","artifact","template","generate","create","wireframe","mockup","specification"],
-    atlas:    ["knowledge","concept","definition","theory","domain","taxonomy","ontology","category","classification"],
-  };
-  const _lensAffinity = _LENS_DOMAIN_AFFINITY[currentLens] || null;
   let _lensBoost = 1.0;
   if (_lensAffinity) {
     const dTextLower = dText.toLowerCase();
@@ -32887,8 +32872,11 @@ register("context", "query", async (ctx, input) => {
     const relevance = keywordOverlap(query || "", dtuText);
     score += relevance * 0.5;
 
-    // Tier boost
-    const tierBoost = CONTEXT_TIER_BOOST[dtu.tier || "regular"] || 1.0;
+    // Tier boost. dtu.tier is stored data; "constructor" on a plain
+    // object is a function, and `function || 1.0` keeps the function.
+    const tierKey = dtu.tier || "regular";
+    const tierRaw = Object.hasOwn(CONTEXT_TIER_BOOST, tierKey) ? CONTEXT_TIER_BOOST[tierKey] : 1.0;
+    const tierBoost = typeof tierRaw === "number" ? tierRaw : 1.0;
     score *= tierBoost;
 
     // Domain boost

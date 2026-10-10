@@ -1,4 +1,5 @@
 import { LruMap, LruSet } from "./lru-map.js";
+import { nullDict, ownArray } from "./own-lookup.js";
 /**
  * Reputation badges + milestone notifications.
  *
@@ -15,7 +16,7 @@ import { LruMap, LruSet } from "./lru-map.js";
  * realtime "reputation:badge-earned" event scoped to the user.
  */
 
-const TIER_TABLE = {
+const TIER_TABLE = nullDict({
   citations_received: [
     { tier: "bronze",   threshold: 5,    label: "First Citation" },
     { tier: "silver",   threshold: 25,   label: "Cited Voice" },
@@ -62,7 +63,7 @@ const TIER_TABLE = {
     { tier: "platinum", threshold: 5000,  label: "Knowledge Magnate" },
     { tier: "diamond",  threshold: 20000, label: "Knowledge Sovereign" },
   ],
-};
+});
 
 /**
  * Composite knowledge-entrepreneur score. Weights chosen so the four
@@ -101,7 +102,9 @@ export function evaluateBadges({ userId, citationsReceived = 0, downloads = 0, l
     ["knowledge_entrepreneur", keScore],
   ];
   for (const [category, value] of checks) {
-    for (const t of TIER_TABLE[category]) {
+    const tiers = ownArray(TIER_TABLE, category);
+    if (!tiers) continue;
+    for (const t of tiers) {
       if (value < t.threshold) break;
       const key = badgeKey(category, t.tier);
       if (have.has(key)) continue;
@@ -125,7 +128,7 @@ export function listBadges(userId) {
   const out = [];
   for (const key of set) {
     const [category, tier] = key.split(":");
-    const meta = (TIER_TABLE[category] ?? []).find(t => t.tier === tier);
+    const meta = (ownArray(TIER_TABLE, category) ?? []).find(t => t.tier === tier);
     if (meta) out.push({ key, category, tier, label: meta.label, threshold: meta.threshold });
   }
   return { ok: true, badges: out };

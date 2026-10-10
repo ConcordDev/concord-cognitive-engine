@@ -25,6 +25,7 @@
 import crypto from "crypto";
 import logger from '../logger.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { nullDict, ownArray } from "../lib/own-lookup.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,12 +75,12 @@ const PIPELINE_STEPS = Object.freeze([
 /**
  * Which pipeline steps are included at each depth.
  */
-const DEPTH_STEPS = Object.freeze({
+const DEPTH_STEPS = Object.freeze(nullDict({
   shallow:    ["survey", "complete"],
   normal:     ["survey", "gap_analysis", "reasoning", "synthesis", "complete"],
   deep:       ["survey", "gap_analysis", "ingest", "reasoning", "hypotheses", "synthesis", "complete"],
   exhaustive: ["survey", "gap_analysis", "ingest", "reasoning", "hypotheses", "synthesis", "complete"],
-});
+}));
 
 const PRIORITY_LEVELS = Object.freeze(["low", "normal", "high", "critical"]);
 
@@ -110,7 +111,7 @@ function createJobObject(topic, config) {
     requestedBy: cfg.requestedBy || "sovereign",
     currentStep: null,
     stepIndex:   -1,
-    pipeline:    [...DEPTH_STEPS[depth]],
+    pipeline:    [...(ownArray(DEPTH_STEPS, depth) || [])],
     config: {
       depth,
       domains:            Array.isArray(cfg.domains) ? cfg.domains.slice(0, 50) : [],
