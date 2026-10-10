@@ -25,9 +25,11 @@
 // Material: bonded aluminium extrusions and sheet (aluminum-6061-t6 from the
 // library), the construction of the Lotus Elise tub (Lotus 2011 Elise press
 // pack: "World's first bonded and extruded Aluminium chassis ... Lightweight
-// (68 kg) ... Stiff (10,800 Nm / degree)"). Bond-line and joint compliance
-// are not modelled (joints rigid): the computed stiffness is an upper bound
-// on the as-built value in that respect.
+// (68 kg) ... Stiff (10,800 Nm / degree)"). The main solve keeps rigid joints
+// (an upper bound). Bond-line springs are computed from sourced adhesive
+// moduli; joint-wall distortion is only bounded (EN 1993-1-8, an estimate).
+// The stiffness is reported as that range. The hard margin uses the lowest
+// computed bond-line value, not the estimate.
 //
 // Every position and section here is a design choice; the clearance to the
 // packaging envelopes (occupants of every checked percentile, seats, engine,
@@ -40,6 +42,7 @@
 
 import { obb, separation } from "../packaging/geometry.js";
 import { openingsLayout, applyServiceCutouts } from "./car-openings.js";
+import { tubJointScenarios, ADHESIVES, EN1993_CLASSIFICATION, RIVET_NOTE, JOINT_CHOICES, JOINT_MODEL_VERSION } from "./joint-stiffness.js";
 
 const MATERIAL = "aluminum-6061-t6";
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -385,8 +388,12 @@ export function withStructuralTub(ir, { choices, walls, openings: withOpenings =
         { id: "twist", stiffnessOnly: true, nodal: [{ node: FR, F: [0, 0, lc.twistForceN.value] }], supports: twistSupports },
         ...(Number.isFinite(track) ? [{ id: "kerb-twist", forces: [{ from: { solver: "vehicle.axle-loads", target: "VEH", output: "frontAxleLoad" }, factor: { value: track / (2 * frontArm), state: lc.kerbTwist.state, basis: `${lc.kerbTwist.basis}; track ${r4(track)} m, front pickup spacing ${r4(frontArm)} m` }, node: FR, dir: [0, 0, 1] }], supports: twistSupports }] : []),
       ],
+      // joint and bond-line stiffness (structural/joint-stiffness.js): the twist re-solved with joint springs
+      jointScenarios: tubJointScenarios(),
+      jointModel: { version: JOINT_MODEL_VERSION, choices: JOINT_CHOICES, adhesives: ADHESIVES, classification: EN1993_CLASSIFICATION, rivets: RIVET_NOTE },
+      torsionCrossCheck: { x0: fx, x1: rx, axis: { y: 0, z: layout.choices.nodeZ } },
       stiffness: [{
-        id: "torsional", case: "twist", node: FR, dof: "z", force: lc.twistForceN.value, arm: frontArm, kind: "torsional",
+        id: "torsional", case: "twist", node: FR, dof: "z", force: lc.twistForceN.value, arm: frontArm, kind: "torsional", jointRange: true,
         target: { value: TORSION_TARGET.value, label: TORSION_TARGET.label, basis: TORSION_TARGET.basis, sources: TORSION_TARGET.sources },
         profile: [["front-axle", "FA"], ["firewall-rails", "FWR"], ["firewall-sills", `S${layout.choices.firewallX}`], ["sill-2.24", "S2.24"], ["kick-start", `S${layout.choices.kickStartX}`], ["heel", "K"], ["quarter-start", "Q0"], ["rear-bulkhead", "QB"], ["rear-axle", "QA"]]
           .map(([sid, n]) => ({ id: sid, nodes: [`${n}.L`, `${n}.R`] })),
@@ -394,7 +401,7 @@ export function withStructuralTub(ir, { choices, walls, openings: withOpenings =
       assumptions: [
         "Structural tub (design change, structural/car-tub.js): every position and section is a design choice; packaging clearances are computed separately (tubPackagingFit, OCC body check).",
         "Suspension pickups are rigid supports on the front rails (axle line) and the rear quarter boxes (axle line); springs, bushings and the S550 subframes are not modelled or credited.",
-        "Joints and bond lines are rigid; member centrelines meet at nodes (joint offsets between members of different heights idealised).",
+        "Joints are rigid in the main solve (the stiffness's upper bound). The torsional stiffness is also a range (structural/joint-stiffness.js): bond-line springs from the sourced adhesive moduli are computed; joint-wall distortion is bounded by placing every joint at the EN 1993-1-8 rigid boundary (k_b 25, then 8), an estimate because that rule classifies steel building frames. The stiffness margin uses the lowest computed bond-line value. An estimated bound below the target is a warning, not a failed capacity. Self-piercing rivets are not credited with stiffness. Member centrelines meet at nodes (joint offsets idealised).",
         "The CFRP body skin and the glazing are not structural here: not credited (a bonded windscreen would add stiffness that is not counted).",
         ...(openings ? [`Openings (structural/car-openings.js): door apertures, windscreen, backlight and side glass are open (no sheet credited in them); service cut-outs are cut in: ${cutoutNotes.map((n) => (n.panel ? `${n.panel} × ${n.factor.toFixed(4)} (${n.holes.join(", ")})` : `${n.member} → ${n.to}`)).join("; ")}.`] : ["Openings not designed (openings: false): the firewall sheets and the tunnel cell are uncut."]),
         "Gross mass spread uniformly along the rails, sills, kicks and quarter boxes (bending case), times the stated load factor.",
