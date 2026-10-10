@@ -1,0 +1,1419 @@
+{
+ "showcaseVersion": "1.0.0",
+ "id": "sentinel-m1",
+ "title": "Sentinel M1 ground prototype",
+ "kind": "robot",
+ "pipeline": "runSentinelM1 (iterate-to-physical loop)",
+ "brief": "Sentinel / RAM spec rev 1.0, Milestone 1 ground prototype (armor not fitted on M1)",
+ "headline": {
+  "verdict": "accepted_for_screening",
+  "status": "PASS",
+  "converged": true,
+  "iterations": 3
+ },
+ "disclaimers": [
+  "software screening only; passing software checks is not physical validation",
+  "Software screening only. Passing software checks is not physical validation; every result below still needs the physical tests listed."
+ ],
+ "caveats": [
+  "Stated mass, not computed: sourced: CubeMars AK80-64 KV80 Robotic Actuator, product page specifications (CubeMars AK80-64 KV80).",
+  "Tube modelled with sharp corners: corner radii are not included.",
+  "Stated mass, not computed: sourced: Velodyne Lidar Puck (VLP-16) datasheet 63-9229 Rev-K (Velodyne VLP-16 Puck).",
+  "Stated mass, not computed: sourced: Advantech MIC-733-AO AI Inference System (NVIDIA Jetson AGX Orin) datasheet, 2023-07-13 (hosted by CSI) (MIC-733-A06A1 (AGX Orin 64G), core module without the MIC-75M10 iModule).",
+  "Stated mass, not computed: sourced: RealSense D400 Series Product Family Datasheet, 337029-017 (Mar 2026) (D455 (bulk, without the 2.3 g USB cap)).",
+  "Stated mass, not computed: sourced: Xsens MTi-630 AHRS product leaflet (07-02-2025) (MTi-630 module (28 × 31.5 × 13 mm)).",
+  "Stated mass, not computed: sourced: Sanyo Denki San Ace 80 9GA type Low Power Consumption Fan, 80×80×25 mm, datasheet (hosted by CERN EPC) (9GA0824P4H001, San Ace 80 9GA 80 × 80 × 25 mm).",
+  "Stated mass, not computed: sourced: Renogy RNG-100D-SS G3 100W Monocrystalline Solar Panel datasheet (Renogy RNG-100D-SS).",
+  "Stated mass, not computed: Milestone 1 demo requirement: carry a stated 20 kg payload.",
+  "Stated mass, not computed: estimated: engineering estimate: a 13S BMS board for ~60 A (one leg's three actuator peaks, 57 A) with its FET heatsink (~0.15-0.35 kg) plus nickel-strip interconnects for 65 cells (~0.5 g each); no part selected and no data-sheet mass retrieved, so the range is deliberately wide (range 0.12–0.6 kg).",
+  "Stated mass, not computed: estimated: copper computed: 25.928 m of conductor (2 × AWG 14 per actuator for 19 A peaks, 2 × AWG 24 CAN per leg; ASTM B258 nominal diameters) × 8960 kg/m³ (copper-c11000) = 0.3303 kg; × 1.8 for insulation, connectors and sleeving (estimated, range × 1.4 to × 3.0); the LiDAR, camera and compute cables (VLP-16 mass excludes its cabling and interface box) are inside the range, not itemised. Wire gauge is a design choice; ampacity not checked (range 0.4625–0.991 kg).",
+  "Stated mass, not computed: estimated: engineering estimate: ~150 M4-M6 steel screws, nuts and washers (≈ 2-5 g each) for 6 actuators × 2 side plates, the tube joints and the panel mount; no fastener schedule exists (range 0.25–1 kg).",
+  "Linear elastic, small displacement, Euler-Bernoulli members; transverse shear stress neglected; joints rigid unless a support releases them.",
+  "Buckling: elastic flexural (linear eigenvalue) only; lateral-torsional, local and torsional buckling are not modelled.",
+  "Body weight acts at the hip 50 mm inboard (estimated lever, as the joint holding torques); single support on the left leg.",
+  "Joints rigid: the actuators hold the pose; actuator compliance and backlash are not modelled. Fixed at the ankle (foot flat).",
+  "Positions are body centroids in the design frame for the stated pose.",
+  "Estimated masses carry their stated ranges; they are not datasheet values.",
+  "Bodies joined by MATED_TO/BOLTED_TO/WELDED_TO/SUPPORTS edges may touch.",
+  "Height is measured from the ground plane z = 0.",
+  "Stated pose (props.stability.pose); both feet flat.",
+  "Static: no walking dynamics, no ground slope.",
+  "Cantilever fixed at the root; tip mass at its CG lever.",
+  "Sharp-corner section (corner radii ignored).",
+  "No weld heat-affected-zone reduction (members bolted/clamped).",
+  "single support on the left leg",
+  "Gravity only; no inertial or impact torques.",
+  "Experimental rail (QCL) is excluded: not part of Milestone 1 (spec 3.1, 6).",
+  "No regeneration credited (spec 4.4).",
+  "Reserve energy is not available to the mission.",
+  "Temperature derate at NOCT (47 °C cell) from the datasheet coefficient: a typical-day estimate.",
+  "Solar is external intake, not recovered energy; it is not added to battery endurance.",
+  "Solar intake is an estimate (typical-year irradiance), not a measured credit.",
+  "Recovered energy counts only when measured (spec section 2).",
+  "A screening drawing of a software model: not checked, approved or released; not for manufacture.",
+  "Bought parts drawn as their datasheet envelopes; frame members as their sections; no joints or fasteners drawn.",
+  "Static pose as stated for stability.static; no gait, no joint angles."
+ ],
+ "failures": [],
+ "repairs": [
+  {
+   "variable": "battery.parallel",
+   "before": "13S2P",
+   "after": "13S3P",
+   "result": "accepted",
+   "failingRun": "electrical.budget@sentinel"
+  },
+  {
+   "variable": "battery.parallel",
+   "before": "13S3P",
+   "after": "13S4P",
+   "result": "reverted",
+   "failingRun": "requirement.check@R-duration"
+  },
+  {
+   "variable": "battery.parallel",
+   "before": "13S3P",
+   "after": "13S5P",
+   "result": "accepted",
+   "failingRun": "requirement.check@R-duration"
+  },
+  {
+   "variable": "bracket.section",
+   "before": "0.75\" × 0.049\" 6061-T6",
+   "after": "1\" × 0.065\" 6061-T6",
+   "result": "accepted",
+   "failingRun": "structural.tube-bending@bracket"
+  }
+ ],
+ "checks": [
+  {
+   "runId": "requirement.check@R-height",
+   "solver": "requirement.check",
+   "target": "R-height",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "frame height 3.05 m ± 0.05 m: overallHeight ≤ max",
+     "demand": 3.05,
+     "capacity": 3.1,
+     "unit": "m",
+     "utilization": 0.9839
+    },
+    {
+     "check": "frame height 3.05 m ± 0.05 m: overallHeight ≥ min",
+     "demand": 3,
+     "capacity": 3.05,
+     "unit": "m",
+     "utilization": 0.9836
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement.check@R-duration",
+   "solver": "requirement.check",
+   "target": "R-duration",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "operate ≥ 1 h on the battery at the average load: operatingDuration ≥ min",
+     "demand": 3600,
+     "capacity": 4361.81,
+     "unit": "s",
+     "utilization": 0.8253
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "requirement.check@R-stability",
+   "solver": "requirement.check",
+   "target": "R-stability",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "static stability margin ≥ 0.05 m: stabilityMargin ≥ min",
+     "demand": 0.05,
+     "capacity": 0.113,
+     "unit": "m",
+     "utilization": 0.4425
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "structure.frame@sentinel",
+   "solver": "structure.frame",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "single-support: shin von Mises ≤ Fy / 2",
+     "demand": 8549327.1534,
+     "capacity": 120658252.6304,
+     "unit": "Pa",
+     "utilization": 0.0709
+    },
+    {
+     "check": "single-support: thigh von Mises ≤ Fy / 2",
+     "demand": 8549327.1534,
+     "capacity": 120658252.6304,
+     "unit": "Pa",
+     "utilization": 0.0709
+    },
+    {
+     "check": "single-support: buckling factor ≥ 2",
+     "demand": 2,
+     "capacity": 10.6386,
+     "unit": "1",
+     "utilization": 0.188
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "mass.budget@sentinel",
+   "solver": "mass.budget",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "geometry.clearance@sentinel",
+   "solver": "geometry.clearance",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "stability.static@sentinel",
+   "solver": "stability.static",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "structural.tube-bending@bracket",
+   "solver": "structural.tube-bending",
+   "target": "bracket",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "bending stress ≤ Fy/2 (bracket)",
+     "demand": 92911611.1718,
+     "capacity": 120658252.6304,
+     "unit": "Pa",
+     "utilization": 0.77
+    }
+   ],
+   "failures": [],
+   "warnings": [
+    "dynamic factor 2 is an estimate (walking/stop-start load amplification; no measured load spectrum)"
+   ]
+  },
+  {
+   "runId": "actuation.static-torque@ankle-l",
+   "solver": "actuation.static-torque",
+   "target": "ankle-l",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "holding torque ≤ rated continuous torque (ankle-l)",
+     "demand": 28.7248,
+     "capacity": 48,
+     "unit": "N·m",
+     "utilization": 0.5984
+    }
+   ],
+   "failures": [],
+   "warnings": [
+    "pose lever 0.05 m is an estimate"
+   ]
+  },
+  {
+   "runId": "actuation.static-torque@knee-l",
+   "solver": "actuation.static-torque",
+   "target": "knee-l",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "holding torque ≤ rated continuous torque (knee-l)",
+     "demand": 27.6835,
+     "capacity": 48,
+     "unit": "N·m",
+     "utilization": 0.5767
+    }
+   ],
+   "failures": [],
+   "warnings": [
+    "pose lever 0.05 m is an estimate"
+   ]
+  },
+  {
+   "runId": "actuation.static-torque@hip-l",
+   "solver": "actuation.static-torque",
+   "target": "hip-l",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "holding torque ≤ rated continuous torque (hip-l)",
+     "demand": 26.6421,
+     "capacity": 48,
+     "unit": "N·m",
+     "utilization": 0.555
+    }
+   ],
+   "failures": [],
+   "warnings": [
+    "pose lever 0.05 m is an estimate"
+   ]
+  },
+  {
+   "runId": "electrical.budget@sentinel",
+   "solver": "electrical.budget",
+   "target": "sentinel",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [
+    {
+     "check": "peak current at end-of-discharge voltage ≤ cells' continuous rating",
+     "demand": 117.7673,
+     "capacity": 225,
+     "unit": "A",
+     "utilization": 0.5234
+    }
+   ],
+   "failures": [],
+   "warnings": [
+    "walk fraction = 0.3 is an estimate (range 0.1–0.6): mission: stand/sense 70 %, walk 30 %; no gait log exists (spec 9 gap 1)",
+    "walking load factor = 0.5 is an estimate (range 0.3–0.8): fraction of rated electrical power while walking; unmeasured",
+    "standing load factor = 0.15 is an estimate (range 0.05–0.3): holding current fraction while standing; unmeasured",
+    "simultaneous peak actuators = 3 is an estimate (range 2–6): controller limits peak current to one leg's three joints at a time (policy to be implemented and logged)",
+    "DC-DC efficiency = 0.92 is an estimate (range 0.88–0.95): typical isolated DC-DC converter; no converter selected yet",
+    "usable fraction = 0.8 is an estimate (range 0.7–0.9): usable window not in the cell datasheet; to be measured by rundown (spec 3.2)"
+   ]
+  },
+  {
+   "runId": "energy.solar-yield@sentinel",
+   "solver": "energy.solar-yield",
+   "target": "sentinel",
+   "status": "WARN",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "irradiance 2.918 kWh/m²/day is estimated (NREL/NLR PVWatts v8 TMY annual mean, tilt 90° south, NYC (lat 40.71, lon −74.01); not a site measurement), not measured at the site",
+    "charge-controller efficiency = 0.96 is an estimate (range 0.93–0.98): MPPT controller not selected"
+   ]
+  },
+  {
+   "runId": "conservation.energy@sentinel",
+   "solver": "conservation.energy",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "drawing.ga-assembly@sentinel",
+   "solver": "drawing.ga-assembly",
+   "target": "sentinel",
+   "status": "PASS",
+   "method": null,
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": []
+  }
+ ],
+ "checkCounts": {
+  "PASS": 9,
+  "WARN": 6,
+  "FAIL": 0,
+  "NOT_COMPUTED": 0,
+  "ERROR": 0
+ },
+ "perPartRuns": {
+  "PASS": 47,
+  "WARN": 0,
+  "FAIL": 0,
+  "NOT_COMPUTED": 0,
+  "ERROR": 0
+ },
+ "values": [
+  {
+   "id": "mass:foot-l",
+   "group": "Mass budget",
+   "name": "foot l",
+   "subject": "foot-l",
+   "value": 2.0995,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@foot-l (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:ankle-l",
+   "group": "Mass budget",
+   "name": "ankle l (CubeMars AK80-64 KV80)",
+   "subject": "ankle-l",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:shin-l",
+   "group": "Mass budget",
+   "name": "shin l",
+   "subject": "shin-l",
+   "value": 1.2738,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@shin-l (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:knee-l",
+   "group": "Mass budget",
+   "name": "knee l (CubeMars AK80-64 KV80)",
+   "subject": "knee-l",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:thigh-l",
+   "group": "Mass budget",
+   "name": "thigh l",
+   "subject": "thigh-l",
+   "value": 1.2738,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@thigh-l (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:hip-l",
+   "group": "Mass budget",
+   "name": "hip l (CubeMars AK80-64 KV80)",
+   "subject": "hip-l",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:foot-r",
+   "group": "Mass budget",
+   "name": "foot r",
+   "subject": "foot-r",
+   "value": 2.0995,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@foot-r (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:ankle-r",
+   "group": "Mass budget",
+   "name": "ankle r (CubeMars AK80-64 KV80)",
+   "subject": "ankle-r",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:shin-r",
+   "group": "Mass budget",
+   "name": "shin r",
+   "subject": "shin-r",
+   "value": 1.2738,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@shin-r (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:knee-r",
+   "group": "Mass budget",
+   "name": "knee r (CubeMars AK80-64 KV80)",
+   "subject": "knee-r",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:thigh-r",
+   "group": "Mass budget",
+   "name": "thigh r",
+   "subject": "thigh-r",
+   "value": 1.2738,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@thigh-r (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:hip-r",
+   "group": "Mass budget",
+   "name": "hip r (CubeMars AK80-64 KV80)",
+   "subject": "hip-r",
+   "value": 0.85,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "CubeMars AK80-64 KV80 Robotic Actuator, product page specifications",
+    "url": "https://www.cubemars.com/product/ak80-64-kv80-robotic-actuator.html",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:pelvis",
+   "group": "Mass budget",
+   "name": "pelvis beam",
+   "subject": "pelvis",
+   "value": 0.9145,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@pelvis (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:torso-l",
+   "group": "Mass budget",
+   "name": "torso upright l",
+   "subject": "torso-l",
+   "value": 1.3064,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@torso-l (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:torso-r",
+   "group": "Mass budget",
+   "name": "torso upright r",
+   "subject": "torso-r",
+   "value": 1.3064,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@torso-r (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:shoulder",
+   "group": "Mass budget",
+   "name": "shoulder beam",
+   "subject": "shoulder",
+   "value": 0.9145,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@shoulder (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mast",
+   "group": "Mass budget",
+   "name": "sensor mast",
+   "subject": "mast",
+   "value": 0.0891,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mast (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:lidar",
+   "group": "Mass budget",
+   "name": "Velodyne VLP-16 Puck",
+   "subject": "lidar",
+   "value": 0.83,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Velodyne Lidar Puck (VLP-16) datasheet 63-9229 Rev-K",
+    "url": "https://docs.clearpathrobotics.com/assets/files/clearpath_robotics_020972-TDS2-7ff55388f43738df9b51da2a7fc1110a.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:compute",
+   "group": "Mass budget",
+   "name": "Advantech MIC-733-A06A1 (Jetson AGX Orin 64G, fanless): NVIDIA Jetson AGX Orin 64GB module",
+   "subject": "compute",
+   "value": 4.5,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Advantech MIC-733-AO AI Inference System (NVIDIA Jetson AGX Orin) datasheet, 2023-07-13 (hosted by CSI)",
+    "url": "https://csi.pl/wp-content/uploads/2023/09/MIC-733-AO_DS07132320230714103359.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:camera",
+   "group": "Mass budget",
+   "name": "RealSense D455",
+   "subject": "camera",
+   "value": 0.116,
+   "unit": "kg",
+   "range": {
+    "low": 0.1044,
+    "high": 0.1276
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "RealSense D400 Series Product Family Datasheet, 337029-017 (Mar 2026)",
+    "url": "https://www.realsenseai.com/wp-content/uploads/2026/03/RealSense-D400-Series-Datasheet-Mar-2026.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:imu",
+   "group": "Mass budget",
+   "name": "Xsens MTi-630 AHRS",
+   "subject": "imu",
+   "value": 0.0089,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Xsens MTi-630 AHRS product leaflet (07-02-2025)",
+    "url": "https://www.xsens.com/hubfs/MTi%20product%20leaflet_07022025_MTi-630.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:fan-1",
+   "group": "Mass budget",
+   "name": "controller/driver bay fan 1: Sanyo Denki San Ace 80 9GA0824P4H001 (24 V)",
+   "subject": "fan-1",
+   "value": 0.11,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Sanyo Denki San Ace 80 9GA type Low Power Consumption Fan, 80×80×25 mm, datasheet (hosted by CERN EPC)",
+    "url": "https://sy-dep-epc-lpc.web.cern.ch/components/datasheets/epc-lpc%20(converters)/9GA0824P4J001-24VDC%20Axial%20Fan%2080x25-Sanyo%20Denki.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:fan-2",
+   "group": "Mass budget",
+   "name": "controller/driver bay fan 2: Sanyo Denki San Ace 80 9GA0824P4H001 (24 V)",
+   "subject": "fan-2",
+   "value": 0.11,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Sanyo Denki San Ace 80 9GA type Low Power Consumption Fan, 80×80×25 mm, datasheet (hosted by CERN EPC)",
+    "url": "https://sy-dep-epc-lpc.web.cern.ch/components/datasheets/epc-lpc%20(converters)/9GA0824P4J001-24VDC%20Axial%20Fan%2080x25-Sanyo%20Denki.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:battery",
+   "group": "Mass budget",
+   "name": "battery 13S2P Molicel INR-21700-P45B",
+   "subject": "battery",
+   "value": 5.1051,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "65 cells × 0.07 kg (molicel-p45b) + enclosure 0.555 kg (aluminum-6061-t6 1.5 mm sheet box 296 × 116 × 83 mm, 0.1371 m² × 2700 kg/m³)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:solar",
+   "group": "Mass budget",
+   "name": "Renogy RNG-100D-SS (back-mounted, vertical, facing south when parked)",
+   "subject": "solar",
+   "value": 6.4,
+   "unit": "kg",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "source": {
+    "title": "Renogy RNG-100D-SS G3 100W Monocrystalline Solar Panel datasheet",
+    "url": "https://store-fhnch.mybigcommerce.com/content/RNG-100D-SS/RNG-100D-SS-G3%20Datasheet.pdf",
+    "locator": null
+   },
+   "sourceRole": "evidence",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:bracket",
+   "group": "Mass budget",
+   "name": "payload hard-point bracket (cantilever)",
+   "subject": "bracket",
+   "value": 0.1694,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@bracket (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:payload",
+   "group": "Mass budget",
+   "name": "payload (user requirement)",
+   "subject": "payload",
+   "value": 20,
+   "unit": "kg",
+   "range": null,
+   "status": "design",
+   "statusLabel": "requirement",
+   "source": {
+    "title": "Milestone 1 demo requirement: carry a stated 20 kg payload",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:bms",
+   "group": "Mass budget",
+   "name": "battery BMS board (13S, ~60 A class) and cell interconnects (not selected)",
+   "subject": "bms",
+   "value": 0.3,
+   "unit": "kg",
+   "range": {
+    "low": 0.12,
+    "high": 0.6
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "estimated: engineering estimate: a 13S BMS board for ~60 A (one leg's three actuator peaks, 57 A) with its FET heatsink (~0.15-0.35 kg) plus nickel-strip interconnects for 65 cells (~0.5 g each); no part selected and no data-sheet mass retrieved, so the range is deliberately wide (range 0.12–0.6 kg)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-ankle-la",
+   "group": "Mass budget",
+   "name": "ankle l actuator side plate a",
+   "subject": "mount-ankle-la",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-ankle-la (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-ankle-lb",
+   "group": "Mass budget",
+   "name": "ankle l actuator side plate b",
+   "subject": "mount-ankle-lb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-ankle-lb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-knee-la",
+   "group": "Mass budget",
+   "name": "knee l actuator side plate a",
+   "subject": "mount-knee-la",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-knee-la (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-knee-lb",
+   "group": "Mass budget",
+   "name": "knee l actuator side plate b",
+   "subject": "mount-knee-lb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-knee-lb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-hip-la",
+   "group": "Mass budget",
+   "name": "hip l actuator side plate a",
+   "subject": "mount-hip-la",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-hip-la (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-hip-lb",
+   "group": "Mass budget",
+   "name": "hip l actuator side plate b",
+   "subject": "mount-hip-lb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-hip-lb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-ankle-ra",
+   "group": "Mass budget",
+   "name": "ankle r actuator side plate a",
+   "subject": "mount-ankle-ra",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-ankle-ra (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-ankle-rb",
+   "group": "Mass budget",
+   "name": "ankle r actuator side plate b",
+   "subject": "mount-ankle-rb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-ankle-rb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-knee-ra",
+   "group": "Mass budget",
+   "name": "knee r actuator side plate a",
+   "subject": "mount-knee-ra",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-knee-ra (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-knee-rb",
+   "group": "Mass budget",
+   "name": "knee r actuator side plate b",
+   "subject": "mount-knee-rb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-knee-rb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-hip-ra",
+   "group": "Mass budget",
+   "name": "hip r actuator side plate a",
+   "subject": "mount-hip-ra",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-hip-ra (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:mount-hip-rb",
+   "group": "Mass budget",
+   "name": "hip r actuator side plate b",
+   "subject": "mount-hip-rb",
+   "value": 0.162,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@mount-hip-rb (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-rail-l",
+   "group": "Mass budget",
+   "name": "solar panel rail l",
+   "subject": "panel-rail-l",
+   "value": 0.4235,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-rail-l (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-standoff-llo",
+   "group": "Mass budget",
+   "name": "solar panel stand-off l lo",
+   "subject": "panel-standoff-llo",
+   "value": 0.0554,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-standoff-llo (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-standoff-lhi",
+   "group": "Mass budget",
+   "name": "solar panel stand-off l hi",
+   "subject": "panel-standoff-lhi",
+   "value": 0.0554,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-standoff-lhi (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-rail-r",
+   "group": "Mass budget",
+   "name": "solar panel rail r",
+   "subject": "panel-rail-r",
+   "value": 0.4235,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-rail-r (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-standoff-rlo",
+   "group": "Mass budget",
+   "name": "solar panel stand-off r lo",
+   "subject": "panel-standoff-rlo",
+   "value": 0.0554,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-standoff-rlo (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:panel-standoff-rhi",
+   "group": "Mass budget",
+   "name": "solar panel stand-off r hi",
+   "subject": "panel-standoff-rhi",
+   "value": 0.0554,
+   "unit": "kg",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "source": {
+    "title": "mass.part@panel-standoff-rhi (aluminum-6061-t6-b221, specified minimum)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:wiring",
+   "group": "Mass budget",
+   "name": "wiring harness (actuator power + CAN)",
+   "subject": "wiring",
+   "value": 0.5946,
+   "unit": "kg",
+   "range": {
+    "low": 0.4625,
+    "high": 0.991
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "estimated: copper computed: 25.928 m of conductor (2 × AWG 14 per actuator for 19 A peaks, 2 × AWG 24 CAN per leg; ASTM B258 nominal diameters) × 8960 kg/m³ (copper-c11000) = 0.3303 kg; × 1.8 for insulation, connectors and sleeving (estimated, range × 1.4 to × 3.0); the LiDAR, camera and compute cab",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:fasteners",
+   "group": "Mass budget",
+   "name": "fasteners (actuator, plate, tube-clamp and panel bolts)",
+   "subject": "fasteners",
+   "value": 0.5,
+   "unit": "kg",
+   "range": {
+    "low": 0.25,
+    "high": 1
+   },
+   "status": "estimated",
+   "statusLabel": "estimated",
+   "source": {
+    "title": "estimated: engineering estimate: ~150 M4-M6 steel screws, nuts and washers (≈ 2-5 g each) for 6 actuators × 2 side plates, the tube joints and the panel mount; no fastener schedule exists (range 0.25–1 kg)",
+    "url": null,
+    "locator": null
+   },
+   "sourceRole": "stated basis",
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "mass:armor",
+   "group": "Not fitted on M1",
+   "name": "armor cage (spec 4.2)",
+   "subject": "armor",
+   "value": null,
+   "unit": "kg",
+   "range": null,
+   "status": "design",
+   "statusLabel": "not fitted (design decision)",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "Milestone 1 does not fit an armor cage: spec 4.1 mission (stand, walk, carry the payload, sense, stop safely); spec 4.2 lists the 600 lb cage as Unknown, a component line, not a capability. Design decision for the owner to reverse; the leg's load-to-limit says how much it could carry."
+  }
+ ],
+ "mass": {
+  "totalKg": 60.68,
+  "bandKg": [
+   60.11,
+   61.89
+  ],
+  "byState": {
+   "sourced": 17.17,
+   "measured": 0,
+   "computed": 22.11,
+   "estimated": 1.39,
+   "design": 20,
+   "unknown": 0
+  },
+  "unknownCount": 0,
+  "notIncluded": [
+   "armor: not fitted on Milestone 1"
+  ],
+  "note": "CG (0.067, 0, 1.761) m",
+  "limit": {
+   "label": "stance leg mass at limit (buckling)",
+   "kg": 322.78,
+   "marginKg": 260.89
+  }
+ },
+ "drawings": [
+  {
+   "title": "General arrangement CK-GA-SENTINEL-M1",
+   "revision": "R-BD6B4261",
+   "modelHash": "bd6b42619415a96d716a67d42b3d6062ec93e07e11197396d7a5a40c414d1c41",
+   "method": null,
+   "files": [
+    {
+     "label": "Sheet 1 (views)",
+     "name": "CK-GA-SENTINEL-M1-R-BD6B4261-sheet1.svg",
+     "kind": "svg",
+     "bytes": 105805,
+     "sha256": "586b3932dce4c109f5acd59c6914b802359da4208a70d08146340e5a51db81e1"
+    },
+    {
+     "label": "Sheet 2 (BOM)",
+     "name": "CK-GA-SENTINEL-M1-R-BD6B4261-sheet2.svg",
+     "kind": "svg",
+     "bytes": 47999,
+     "sha256": "9c1ea93b5f36dcaa68630a0a13cc24cd39b71cc91cb5f524558826c9ada5dc3a"
+    },
+    {
+     "label": "PDF (both sheets)",
+     "name": "CK-GA-SENTINEL-M1-R-BD6B4261.pdf",
+     "kind": "pdf",
+     "bytes": 62142,
+     "sha256": "ee5a68981e923cccd2ea17ce1f06df6e891cb526df66d5a80336b31d6311c55d"
+    }
+   ]
+  }
+ ],
+ "model3d": null,
+ "physicalTests": [
+  "Measured component masses against the CAD mass budget (spec 4.5)",
+  "Static tip-load or joint-torque test",
+  "Logged walk at the accepted speed on the accepted surface (walking speed is not computed here)",
+  "Battery rundown at the logged average load (replaces the estimated usable fraction and duty cycle)",
+  "Thermal measurement at the controller and actuator drivers"
+ ],
+ "statuses": [
+  "sourced",
+  "measured",
+  "computed",
+  "estimated",
+  "design",
+  "unknown"
+ ],
+ "statusMeaning": {
+  "sourced": "taken from a cited document (data sheet, standard, public record)",
+  "measured": "a third-party measurement, cited",
+  "computed": "computed by a ConKay solver from the inputs shown",
+  "estimated": "an estimate with a stated method and range",
+  "design": "a design choice or requirement input, not a claim about the world",
+  "unknown": "not known: no source, or not computed"
+ },
+ "files": [
+  {
+   "name": "CK-GA-SENTINEL-M1-R-BD6B4261-sheet1.svg",
+   "bytes": 105805,
+   "sha256": "586b3932dce4c109f5acd59c6914b802359da4208a70d08146340e5a51db81e1"
+  },
+  {
+   "name": "CK-GA-SENTINEL-M1-R-BD6B4261-sheet2.svg",
+   "bytes": 47999,
+   "sha256": "9c1ea93b5f36dcaa68630a0a13cc24cd39b71cc91cb5f524558826c9ada5dc3a"
+  },
+  {
+   "name": "CK-GA-SENTINEL-M1-R-BD6B4261.pdf",
+   "bytes": 62142,
+   "sha256": "ee5a68981e923cccd2ea17ce1f06df6e891cb526df66d5a80336b31d6311c55d"
+  }
+ ],
+ "snapshotSha256": "6d7a3a7d361965d8337d22fa5b9947e9463ad0549c765a64e42e9f8f8dc4a000"
+}

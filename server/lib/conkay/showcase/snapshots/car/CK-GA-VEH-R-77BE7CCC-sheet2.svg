@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420mm" height="297mm" viewBox="0 0 420 297">
+<metadata id="conkay-drawing">{"drawing":"CK-GA-VEH","revision":"R-77BE7CCC","modelHash":"77be7cccdad938d58faf40bba510f41ec2df4f91420b1d38a4e280f4452c6385","solver":"drawing.ga@1.0.0","body":{"requestHash":"b1d9ec5642008c8708fe9d79","stl":"8d37536a86f7d1543ba52512dab70fb245a98e8c725c0ba90c531fe6f7860836","glb":"802572966f23fd9ea1e358e0d50242ea32f08490c914cef498fb8d4f7bbd522f"},"sheet":2}</metadata>
+<rect x="0" y="0" width="420" height="297" fill="#ffffff"/>
+<rect x="10" y="10" width="400" height="277" fill="none" stroke="#000" stroke-width="0.7"/>
+<text x="14" y="18" font-family="Helvetica, Arial, sans-serif" font-size="3.2" font-weight="bold" text-anchor="start">BILL OF MATERIALS (component library + designed parts)</text>
+<text x="15" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Item</text>
+<text x="25" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Qty</text>
+<text x="34" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Nodes</text>
+<text x="86" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Description</text>
+<text x="180" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Library id / material</text>
+<text x="297.5" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="end">Unit mass kg</text>
+<text x="300" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Mass state</text>
+<text x="320" y="23.5" font-family="Helvetica, Arial, sans-serif" font-size="2.4" font-weight="bold" text-anchor="start">Source</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,25 404,25"/>
+<text x="15" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="25" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">BODY_SHELL</text>
+<text x="86" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">BODY_SHELL (designed part)</text>
+<text x="180" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: cfrp-hexply-8552-agp193pw</text>
+<text x="297.5" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">120.73</text>
+<text x="300" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="28.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">cfrp-hexply-8552-agp193pw (density: Hexcel HexPly 8552 product...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,30 404,30"/>
+<text x="15" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">2</text>
+<text x="25" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">BRAKES_FRONT</text>
+<text x="86" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Wilwood AERO6 Big Brake front brake kit 140-13886, black calipers, 14...</text>
+<text x="180" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">brakes.wilwood.aero6.140-13886</text>
+<text x="297.5" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">23.86</text>
+<text x="300" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="33.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.wilwood.com/BrakeKits/BrakeKitsProdFront</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,35 404,35"/>
+<text x="15" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">3</text>
+<text x="25" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">BRAKES_REAR</text>
+<text x="86" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Wilwood AERO4-MC4 Big Brake rear parking brake kit 140-13888, black c...</text>
+<text x="180" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">brakes.wilwood.aero4-mc4.140-13888</text>
+<text x="297.5" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">20.32</text>
+<text x="300" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="38.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.wilwood.com/BrakeKits/BrakeKitsProdRear</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,40 404,40"/>
+<text x="15" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">4</text>
+<text x="25" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">CONTROL_PACK</text>
+<text x="86" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford Performance Gen 4X Coyote control pack, manual transmission M-60...</text>
+<text x="180" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">wiring.ford.control-pack.m-6017-m50hm</text>
+<text x="297.5" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">14.06</text>
+<text x="300" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">estimated</text>
+<text x="320" y="43.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">performanceparts.ford.com/part/M-6017-M50HM</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,45 404,45"/>
+<text x="15" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">5</text>
+<text x="25" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">DIFFERENTIAL</text>
+<text x="86" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford Performance Mustang Super 8.8-inch IRS loaded differential housi...</text>
+<text x="180" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">differential.ford.super-8.8-irs.m-4001-88355b</text>
+<text x="297.5" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">71.89</text>
+<text x="300" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">estimated</text>
+<text x="320" y="48.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,50 404,50"/>
+<text x="15" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">6</text>
+<text x="25" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">ENGINE</text>
+<text x="86" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford Performance 5.0L Gen 4X Mustang crate engine M-6007-M50H (10R80 ...</text>
+<text x="180" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">engine.ford.coyote-gen4x.m-6007-m50h</text>
+<text x="297.5" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">201.85</text>
+<text x="300" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="53.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.ford.com/product/50l-gen-4x-mustang-crate-engine</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,55 404,55"/>
+<text x="15" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">7</text>
+<text x="25" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">EXHAUST</text>
+<text x="86" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford (OEM) / Bassani Exhaust after the crate engine's right-hand mani...</text>
+<text x="180" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">exhaust.s550-gt.oem-lh-manifold-midpipe.bassani-xpipe-catback</text>
+<text x="297.5" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">36.02</text>
+<text x="300" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="58.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,60 404,60"/>
+<text x="15" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">8</text>
+<text x="25" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">FUEL_CELL</text>
+<text x="86" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">ATL (Aero Tec Laboratories) Saver Cell, 60 L (15 US gal) SA-AA-070 (l...</text>
+<text x="180" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">fuel.atl.saver-cell.sa-aa-070</text>
+<text x="297.5" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">8.10</text>
+<text x="300" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="63.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">atlinside.com/Content/Downloads/ATL-Saver-Cell-Data-S</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,65 404,65"/>
+<text x="15" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">9</text>
+<text x="25" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">GLAZING</text>
+<text x="86" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">GLAZING (designed part)</text>
+<text x="180" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: glass-soda-lime</text>
+<text x="297.5" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">22.00</text>
+<text x="300" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="68.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">glass-soda-lime (density: typical annealed float glass; streng...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,70 404,70"/>
+<text x="15" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">10</text>
+<text x="25" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">RADIATOR</text>
+<text x="86" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Cold Case Radiators Coyote swap aluminium radiator kit with fans and ...</text>
+<text x="180" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">cooling.coldcase.lmm570-5k</text>
+<text x="297.5" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">16.78</text>
+<text x="300" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">estimated</text>
+<text x="320" y="73.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">wheelfront.com/shop/product/cold-case-radiators-79-93-</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,75 404,75"/>
+<text x="15" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">11</text>
+<text x="25" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">2</text>
+<text x="34" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">SEAT_1, SEAT_2</text>
+<text x="86" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">RECARO Sportster GT reclining sport seat, metal seat base with reinfo...</text>
+<text x="180" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">seat.recaro.sportster-gt</text>
+<text x="297.5" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">15.00</text>
+<text x="300" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="78.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.recaro-automotive.com/fileadmin/01-products/documents/hotshee</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,80 404,80"/>
+<text x="15" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">12</text>
+<text x="25" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">2</text>
+<text x="34" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">SEAT_3, SEAT_4</text>
+<text x="86" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford (OEM) S550 Mustang rear seat 2015 Mustang OEM rear seat backs + ...</text>
+<text x="180" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">seat.ford.s550-rear.oem</text>
+<text x="297.5" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">9.48</text>
+<text x="300" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="83.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,85 404,85"/>
+<text x="15" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">13</text>
+<text x="25" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">STEERING_RACK</text>
+<text x="86" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford (OEM) S550 Mustang electric power-assisted steering (EPAS) rack ...</text>
+<text x="180" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">steering.ford.s550-epas</text>
+<text x="297.5" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">18.35</text>
+<text x="300" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="88.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,90 404,90"/>
+<text x="15" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">14</text>
+<text x="25" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">SUSPENSION_FRONT</text>
+<text x="86" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford (OEM) S550 Mustang front suspension 2015 Mustang GT (non-Perform...</text>
+<text x="180" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">suspension.ford.s550-front.oem</text>
+<text x="297.5" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">78.06</text>
+<text x="300" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="93.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,95 404,95"/>
+<text x="15" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">15</text>
+<text x="25" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">SUSPENSION_REAR</text>
+<text x="86" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ford (OEM) S550 Mustang independent rear suspension 2015 Mustang GT O...</text>
+<text x="180" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">suspension.ford.s550-irs-rear.oem</text>
+<text x="297.5" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">61.83</text>
+<text x="300" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="98.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">www.mustang6g.com/forums/threads/the-what-things-weigh-th</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,100 404,100"/>
+<text x="15" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">16</text>
+<text x="25" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">4</text>
+<text x="34" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TIRE_FL, TIRE_FR, TIRE_RL, TIRE_RR</text>
+<text x="86" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Michelin Pilot Sport 4S 245/40ZR18 (97Y) XL, MSPN 37666</text>
+<text x="180" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">tyre.michelin.pilot-sport-4s.245-40zr18-97y-xl</text>
+<text x="297.5" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">11.52</text>
+<text x="300" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="103.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">wheelwiz.ca/products/m-37666</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,105 404,105"/>
+<text x="15" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">17</text>
+<text x="25" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TRANSMISSION</text>
+<text x="86" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TREMEC TKX 5-speed RWD manual TCET18085 (Ford, 26-spline input, 3.27 ...</text>
+<text x="180" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">transmission.tremec.tkx.tcet18085</text>
+<text x="297.5" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">50.00</text>
+<text x="300" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">estimated</text>
+<text x="320" y="108.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">tremec.com/wp-content/uploads/2023/05/TKX-Service-</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,110 404,110"/>
+<text x="15" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">18</text>
+<text x="25" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_A_PILLAR_L</text>
+<text x="86" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">A-pillar L (designed part)</text>
+<text x="180" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.99</text>
+<text x="300" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="113.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,115 404,115"/>
+<text x="15" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">19</text>
+<text x="25" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_A_PILLAR_R</text>
+<text x="86" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">A-pillar R (designed part)</text>
+<text x="180" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.99</text>
+<text x="300" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="118.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,120 404,120"/>
+<text x="15" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">20</text>
+<text x="25" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_B_POST_L</text>
+<text x="86" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">B-post L (designed part)</text>
+<text x="180" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.94</text>
+<text x="300" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="123.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,125 404,125"/>
+<text x="15" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">21</text>
+<text x="25" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_B_POST_R</text>
+<text x="86" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">B-post R (designed part)</text>
+<text x="180" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.94</text>
+<text x="300" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="128.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,130 404,130"/>
+<text x="15" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">22</text>
+<text x="25" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_C_POST_L</text>
+<text x="86" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">C-post L (designed part)</text>
+<text x="180" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.04</text>
+<text x="300" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="133.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,135 404,135"/>
+<text x="15" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">23</text>
+<text x="25" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_C_POST_R</text>
+<text x="86" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">C-post R (designed part)</text>
+<text x="180" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.04</text>
+<text x="300" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="138.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,140 404,140"/>
+<text x="15" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">24</text>
+<text x="25" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FIREWALL_L</text>
+<text x="86" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall sheet L (designed part)</text>
+<text x="180" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1.48</text>
+<text x="300" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="143.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,145 404,145"/>
+<text x="15" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">25</text>
+<text x="25" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FIREWALL_R</text>
+<text x="86" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall sheet R (designed part)</text>
+<text x="180" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1.48</text>
+<text x="300" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="148.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,150 404,150"/>
+<text x="15" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">26</text>
+<text x="25" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FLOOR_L</text>
+<text x="86" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Floor sheet L (designed part)</text>
+<text x="180" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">5.40</text>
+<text x="300" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="153.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,155 404,155"/>
+<text x="15" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">27</text>
+<text x="25" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FLOOR_R</text>
+<text x="86" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Floor sheet R (designed part)</text>
+<text x="180" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">5.40</text>
+<text x="300" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="158.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,160 404,160"/>
+<text x="15" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">28</text>
+<text x="25" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FW_CPOST</text>
+<text x="86" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall centre post (designed part)</text>
+<text x="180" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">0.55</text>
+<text x="300" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="163.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,165 404,165"/>
+<text x="15" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">29</text>
+<text x="25" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FW_LOWER</text>
+<text x="86" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall lower cross (designed part)</text>
+<text x="180" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">17.45</text>
+<text x="300" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="168.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,170 404,170"/>
+<text x="15" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">30</text>
+<text x="25" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FW_POST_L</text>
+<text x="86" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall post L (designed part)</text>
+<text x="180" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">0.45</text>
+<text x="300" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="173.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,175 404,175"/>
+<text x="15" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">31</text>
+<text x="25" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_FW_POST_R</text>
+<text x="86" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Firewall post R (designed part)</text>
+<text x="180" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">0.45</text>
+<text x="300" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="178.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,180 404,180"/>
+<text x="15" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">32</text>
+<text x="25" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_HEEL_CROSS</text>
+<text x="86" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Heel cross (designed part)</text>
+<text x="180" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.87</text>
+<text x="300" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="183.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,185 404,185"/>
+<text x="15" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">33</text>
+<text x="25" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_KICK_L</text>
+<text x="86" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Sill kick L (designed part)</text>
+<text x="180" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.80</text>
+<text x="300" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="188.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,190 404,190"/>
+<text x="15" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">34</text>
+<text x="25" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_KICK_R</text>
+<text x="86" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Sill kick R (designed part)</text>
+<text x="180" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.80</text>
+<text x="300" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="193.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,195 404,195"/>
+<text x="15" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">35</text>
+<text x="25" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_QTR_L</text>
+<text x="86" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear quarter box L (designed part)</text>
+<text x="180" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">7.97</text>
+<text x="300" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="198.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,200 404,200"/>
+<text x="15" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">36</text>
+<text x="25" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_QTR_R</text>
+<text x="86" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear quarter box R (designed part)</text>
+<text x="180" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">7.97</text>
+<text x="300" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="203.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,205 404,205"/>
+<text x="15" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">37</text>
+<text x="25" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_RAIL_FL</text>
+<text x="86" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Front rail L (designed part)</text>
+<text x="180" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.60</text>
+<text x="300" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="208.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,210 404,210"/>
+<text x="15" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">38</text>
+<text x="25" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_RAIL_FR</text>
+<text x="86" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Front rail R (designed part)</text>
+<text x="180" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.60</text>
+<text x="300" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="213.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,215 404,215"/>
+<text x="15" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">39</text>
+<text x="25" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_REAR_BULKHEAD</text>
+<text x="86" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear bulkhead (designed part)</text>
+<text x="180" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">5.52</text>
+<text x="300" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="218.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,220 404,220"/>
+<text x="15" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">40</text>
+<text x="25" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_REAR_CROSS</text>
+<text x="86" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear end cross (designed part)</text>
+<text x="180" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.84</text>
+<text x="300" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="223.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,225 404,225"/>
+<text x="15" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">41</text>
+<text x="25" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_REAR_FLOOR_L</text>
+<text x="86" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear floor sheet L (designed part)</text>
+<text x="180" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1.66</text>
+<text x="300" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="228.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,230 404,230"/>
+<text x="15" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">42</text>
+<text x="25" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_REAR_FLOOR_R</text>
+<text x="86" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear floor sheet R (designed part)</text>
+<text x="180" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1.66</text>
+<text x="300" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="233.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,235 404,235"/>
+<text x="15" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">43</text>
+<text x="25" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_BOW</text>
+<text x="86" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Roof bow (B-hoop top) (designed part)</text>
+<text x="180" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.31</text>
+<text x="300" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="238.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,240 404,240"/>
+<text x="15" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">44</text>
+<text x="25" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_LINER</text>
+<text x="86" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Roof liner (bonded to the skin) (designed part)</text>
+<text x="180" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.00</text>
+<text x="300" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="243.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,245 404,245"/>
+<text x="15" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">45</text>
+<text x="25" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_RAIL_L</text>
+<text x="86" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Roof rail L (designed part)</text>
+<text x="180" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.04</text>
+<text x="300" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="248.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,250 404,250"/>
+<text x="15" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">46</text>
+<text x="25" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_RAIL_R</text>
+<text x="86" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Roof rail R (designed part)</text>
+<text x="180" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.04</text>
+<text x="300" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="253.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,255 404,255"/>
+<text x="15" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">47</text>
+<text x="25" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_RAIL_R_L</text>
+<text x="86" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear roof rail L (designed part)</text>
+<text x="180" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.15</text>
+<text x="300" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="258.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,260 404,260"/>
+<text x="15" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">48</text>
+<text x="25" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_ROOF_RAIL_R_R</text>
+<text x="86" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear roof rail R (designed part)</text>
+<text x="180" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2.15</text>
+<text x="300" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="263.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,265 404,265"/>
+<text x="15" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">49</text>
+<text x="25" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_SCUTTLE</text>
+<text x="86" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Scuttle cross (designed part)</text>
+<text x="180" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.20</text>
+<text x="300" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="268.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,270 404,270"/>
+<text x="15" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">50</text>
+<text x="25" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_SEAT_CROSS</text>
+<text x="86" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Seat cross (designed part)</text>
+<text x="180" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.01</text>
+<text x="300" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="273.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,275 404,275"/>
+<text x="15" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">51</text>
+<text x="25" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_SILL_L</text>
+<text x="86" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Sill L (designed part)</text>
+<text x="180" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">11.57</text>
+<text x="300" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="278.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,280 404,280"/>
+<text x="15" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">52</text>
+<text x="25" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_SILL_R</text>
+<text x="86" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Sill R (designed part)</text>
+<text x="180" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">11.57</text>
+<text x="300" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="283.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,285 404,285"/>
+<text x="15" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">53</text>
+<text x="25" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_TUNNEL_F</text>
+<text x="86" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Tunnel, gearbox cell (designed part)</text>
+<text x="180" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4.41</text>
+<text x="300" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="288.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,290 404,290"/>
+<text x="15" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">54</text>
+<text x="25" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_TUNNEL_R</text>
+<text x="86" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Tunnel, driveshaft cell (designed part)</text>
+<text x="180" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">5.62</text>
+<text x="300" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="293.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,295 404,295"/>
+<text x="15" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">55</text>
+<text x="25" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">1</text>
+<text x="34" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">TUB_WS_HEADER</text>
+<text x="86" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Windscreen header (designed part)</text>
+<text x="180" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">material: aluminum-6061-t6</text>
+<text x="297.5" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">3.31</text>
+<text x="300" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">computed</text>
+<text x="320" y="298.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">aluminum-6061-t6 (density: engineering material library (lib/a...</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,300 404,300"/>
+<text x="15" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">56</text>
+<text x="25" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">4</text>
+<text x="34" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">WHEEL_FL, WHEEL_FR, WHEEL_RL, WHEEL_RR</text>
+<text x="86" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Enkei RPF1 3798906535SP, 18x9, inset +35 mm, 5x114.3, 73 mm bore, silver</text>
+<text x="180" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">wheel.enkei.rpf1.3798906535sp</text>
+<text x="297.5" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">7.76</text>
+<text x="300" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">sourced</text>
+<text x="320" y="303.5" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">enkei.com/shop/wheels/racing/rpf1/</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="14,305 404,305"/>
+<text x="15" y="308.5" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Quantities by node; unit mass from mass.part (not computed where the solver did not compute it). Payload (occupants) excluded. Full source URLs: drawing.json.</text>
+<text x="14" y="320" font-family="Helvetica, Arial, sans-serif" font-size="3.2" font-weight="bold" text-anchor="start">KEY DIMENSIONS (value, basis, where it comes from)</text>
+<text x="15" y="326" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Overall length</text>
+<text x="84" y="326" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">4490</text>
+<text x="88" y="326" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="326" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">exact extents of the cad.body solid (BRepExtrema; body kernel 7.7.2.0, request b1d9ec5642008c8708fe9d79)</text>
+<text x="15" y="330.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Overall width (body)</text>
+<text x="84" y="330.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1942</text>
+<text x="88" y="330.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="330.2" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">exact extents of the cad.body solid (BRepExtrema)</text>
+<text x="15" y="334.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Overall height</text>
+<text x="84" y="334.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1282</text>
+<text x="88" y="334.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="334.4" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">exact extents of the cad.body solid (ground at z = 0; static, no suspension travel)</text>
+<text x="15" y="338.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Ground clearance (body)</text>
+<text x="84" y="338.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">100</text>
+<text x="88" y="338.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="338.6" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">exact lowest point of the cad.body solid (static; suspension travel not published, not included)</text>
+<text x="15" y="342.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Wheelbase</text>
+<text x="84" y="342.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">2966</text>
+<text x="88" y="342.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">D</text>
+<text x="94" y="342.8" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">rear axle x - front axle x: layout revision 2.1.0 (derived / design choices; old -&gt; new rows in the realization README)</text>
+<text x="15" y="347" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Front track</text>
+<text x="84" y="347" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1600</text>
+<text x="88" y="347" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">D</text>
+<text x="94" y="347" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">tyre centre y positions: design choice</text>
+<text x="15" y="351.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear track</text>
+<text x="84" y="351.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">1600</text>
+<text x="88" y="351.2" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">D</text>
+<text x="94" y="351.2" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">tyre centre y positions: design choice</text>
+<text x="15" y="355.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Front overhang</text>
+<text x="84" y="355.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">900</text>
+<text x="88" y="355.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="355.4" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">front axle x - exact body front</text>
+<text x="15" y="359.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Rear overhang</text>
+<text x="84" y="359.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">624</text>
+<text x="88" y="359.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">C</text>
+<text x="94" y="359.6" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">exact body rear - rear axle x</text>
+<text x="15" y="363.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">Tyre overall diameter</text>
+<text x="84" y="363.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="end">653</text>
+<text x="88" y="363.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="start">S</text>
+<text x="94" y="363.8" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">component library (sourced: https://tiresize.com/tires/Michelin/Pilot-Sport-4S-245-40R18.htm)</text>
+<text x="14" y="372" font-family="Helvetica, Arial, sans-serif" font-size="3.2" font-weight="bold" text-anchor="start">NOTES</text>
+<text x="15" y="377.5" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">SCREENING DRAWING: generated from a software model; not checked, not approved, not for manufacture.</text>
+<rect x="230" y="241" width="180" height="46" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,253 410,253"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,261 410,261"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,269 410,269"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,277 410,277"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="340,287 340,253"/>
+<text x="232" y="247.5" font-family="Helvetica, Arial, sans-serif" font-size="4" font-weight="bold" text-anchor="start">GENERAL ARRANGEMENT - VEH (ConKay library car)</text>
+<text x="232" y="257" font-family="Helvetica, Arial, sans-serif" font-size="2.8" text-anchor="start">Drawing no. CK-GA-VEH   Sheet 2 of 2</text>
+<text x="232" y="265" font-family="Helvetica, Arial, sans-serif" font-size="2.8" text-anchor="start">Scale 1:25 (A3)   Units mm   First-angle projection</text>
+<text x="232" y="273" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Model: BODY_SHELL + VEH layout + BOM (56 items)</text>
+<text x="232" y="281" font-family="Helvetica, Arial, sans-serif" font-size="2.2" font-weight="bold" text-anchor="start">SCREENING - NOT FOR MANUFACTURE</text>
+<text x="232" y="285.4" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">Generated by ConKay drawing.ga 1.0.0 from cad.body (OCCT 7.7.2.0); revision = model hash</text>
+<text x="342" y="257" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Revision</text>
+<text x="342" y="266" font-family="Helvetica, Arial, sans-serif" font-size="5" font-weight="bold" text-anchor="start">R-77BE7CCC</text>
+<text x="342" y="273" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">model hash 77be7cccdad938d58faf40bba510f41e</text>
+<text x="342" y="279.5" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">c2df4f91420b1d38a4e280f4452c6385</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="380,262.5 388,264 388,258 380,259.5 380,262.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="379,261 389,261"/>
+<circle cx="394" cy="261" r="3" fill="none" stroke="#000" stroke-width="0.25"/>
+<circle cx="394" cy="261" r="1.5" fill="none" stroke="#000" stroke-width="0.25"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="390,261 398,261"/>
+</svg>

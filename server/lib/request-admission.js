@@ -95,9 +95,10 @@ const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 // it blocks the flow just as effectively as shedding login itself.
 const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
-// The public ConKay demo (routes/conkay-demo.js): materials, beam, sweep.
+// The public ConKay demo (routes/conkay-demo.js): materials, beam, sweep, and
+// the results page's precomputed design snapshots (designs, read from disk).
 // Reserved lane, not an exemption: it still sheds at the PROTECTED bar.
-const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep)(\?|$|\/)/;
+const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep|designs)(\?|$|\/)/;
 
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;

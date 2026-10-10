@@ -166,6 +166,18 @@ describe('Auth Middleware', () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
+    it('allows the read-only results pages without auth', () => {
+      middleware(makeRequest('/conkay/designs'));
+      middleware(makeRequest('/conkay/designs/car'));
+      expect(mockNext).toHaveBeenCalledTimes(2);
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it('does not open other /conkay paths', () => {
+      middleware(makeRequest('/conkay/designsx'));
+      expect(mockRedirect).toHaveBeenCalled();
+    });
+
     it('sends a logged-out /lenses/conkay visit to the demo, not to /login', () => {
       middleware(makeRequest('/lenses/conkay'));
       expect(mockRedirect).toHaveBeenCalledTimes(1);

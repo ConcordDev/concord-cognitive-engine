@@ -61,12 +61,16 @@ describe("request-admission — classifyRequest", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/sweep" })), PRIORITY.PROTECTED);
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/materials" })), PRIORITY.PROTECTED);
     assert.equal(classifyRequest({ url: "/api/conkay/demo/beam?length=1000&loadN=5" }), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/designs" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/designs/car" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/designs/car/files/CK-GA-VEH.pdf" })), PRIORITY.PROTECTED);
   });
 
   it("the demo lane is narrow: other /api/conkay paths and look-alikes stay SHEDDABLE", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/design" })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/export" })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/beamx" })), PRIORITY.SHEDDABLE);
+    assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/designsx" })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/x/api/conkay/demo/beam" })), PRIORITY.SHEDDABLE);
   });
 

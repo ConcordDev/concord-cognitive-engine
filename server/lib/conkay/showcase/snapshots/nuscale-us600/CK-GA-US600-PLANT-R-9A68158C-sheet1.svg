@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420mm" height="297mm" viewBox="0 0 420 297">
+<metadata id="conkay-drawing">{"drawing":"CK-GA-US600-PLANT","revision":"R-9A68158C","modelHash":"9a68158c7c4fecf5e40e7ffb9213038c1d3ddedbc7abf5476ebd4f4889bafef2","generator":"facility-ga@1.0.0","design":"nuscale-us600","modules":12,"sheet":1}</metadata>
+<rect x="0" y="0" width="420" height="297" fill="#ffffff"/>
+<rect x="10" y="10" width="400" height="277" fill="none" stroke="#000" stroke-width="0.7"/>
+<text x="30" y="25.62" font-family="Helvetica, Arial, sans-serif" font-size="2.8" font-weight="bold" text-anchor="start">PLAN AT POOL LEVEL - MODULE BAYS (schematic order)</text>
+<text x="30" y="30.12" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">Each bay and containment at true size and scale. Bay ARRANGEMENT, spacing, walls, building outline and pool extent: UNKNOWN (G-dimensions) - bays shown in module order with a fixed sheet gap, NOT to scale between bays.</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="30,62 54.38,62 54.38,37.62 30,37.62 30,62"/>
+<circle cx="42.19" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="29,49.81 55.38,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="42.19,63 42.19,36.62"/>
+<text x="42.19" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M1</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="58.38,62 82.77,62 82.77,37.62 58.38,37.62 58.38,62"/>
+<circle cx="70.58" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="57.38,49.81 83.77,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="70.58,63 70.58,36.62"/>
+<text x="70.58" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="86.77,62 111.15,62 111.15,37.62 86.77,37.62 86.77,62"/>
+<circle cx="98.96" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="85.77,49.81 112.15,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="98.96,63 98.96,36.62"/>
+<text x="98.96" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M3</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="115.15,62 139.54,62 139.54,37.62 115.15,37.62 115.15,62"/>
+<circle cx="127.34" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="114.15,49.81 140.54,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="127.34,63 127.34,36.62"/>
+<text x="127.34" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M4</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="143.54,62 167.92,62 167.92,37.62 143.54,37.62 143.54,62"/>
+<circle cx="155.73" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="142.54,49.81 168.92,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="155.73,63 155.73,36.62"/>
+<text x="155.73" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M5</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="171.92,62 196.3,62 196.3,37.62 171.92,37.62 171.92,62"/>
+<circle cx="184.11" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="170.92,49.81 197.3,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="184.11,63 184.11,36.62"/>
+<text x="184.11" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M6</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="200.3,62 224.69,62 224.69,37.62 200.3,37.62 200.3,62"/>
+<circle cx="212.5" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="199.3,49.81 225.69,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="212.5,63 212.5,36.62"/>
+<text x="212.5" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M7</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="228.69,62 253.07,62 253.07,37.62 228.69,37.62 228.69,62"/>
+<circle cx="240.88" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="227.69,49.81 254.07,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="240.88,63 240.88,36.62"/>
+<text x="240.88" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M8</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="257.07,62 281.46,62 281.46,37.62 257.07,37.62 257.07,62"/>
+<circle cx="269.26" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="256.07,49.81 282.46,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="269.26,63 269.26,36.62"/>
+<text x="269.26" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M9</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="285.46,62 309.84,62 309.84,37.62 285.46,37.62 285.46,62"/>
+<circle cx="297.65" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="284.46,49.81 310.84,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="297.65,63 297.65,36.62"/>
+<text x="297.65" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M10</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="313.84,62 338.22,62 338.22,37.62 313.84,37.62 313.84,62"/>
+<circle cx="326.03" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="312.84,49.81 339.22,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="326.03,63 326.03,36.62"/>
+<text x="326.03" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M11</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="342.22,62 366.61,62 366.61,37.62 342.22,37.62 342.22,62"/>
+<circle cx="354.42" cy="49.81" r="11.58" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="341.22,49.81 367.61,49.81"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="354.42,63 354.42,36.62"/>
+<text x="354.42" y="36.12" font-family="Helvetica, Arial, sans-serif" font-size="2.3" font-weight="bold" text-anchor="middle">M12</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,63 30,71.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="54.38,63 54.38,71.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,70 54.38,70"/>
+<polygon fill="#000" points="30,70 32.5,70.6 32.5,69.4"/>
+<polygon fill="#000" points="54.38,70 51.88,69.4 51.88,70.6"/>
+<text x="42.19" y="73.2" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="middle">20 ft (6.10 m) S2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round" points="24,49.81 28.5,49.81"/>
+<text x="23" y="50.81" font-family="Helvetica, Arial, sans-serif" font-size="3" font-weight="bold" text-anchor="end">A</text>
+<polygon fill="#000" points="27,47.31 26.4,49.81 27.6,49.81"/>
+<text x="42.19" y="76" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">CNV dia 19 ft (5.79 m) S2; centred in bay: D (schematic)</text>
+<text x="30" y="108.34" font-family="Helvetica, Arial, sans-serif" font-size="2.8" font-weight="bold" text-anchor="start">SECTION A-A - ONE MODULE BAY (true scale)</text>
+<polyline fill="none" stroke="#000" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round" points="54,217 90.38,217"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="54,217 52,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="56.5,217 54.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="59,217 57,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="61.5,217 59.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="64,217 62,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="66.5,217 64.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="69,217 67,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="71.5,217 69.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="74,217 72,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="76.5,217 74.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="79,217 77,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="81.5,217 79.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="84,217 82,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="86.5,217 84.5,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="89,217 87,219"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,1,1,1,1,1" points="60,217 60,152.38"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,1,1,1,1,1" points="84.38,217 84.38,152.38"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="54,152.38 90.38,152.38"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="86.38,150.18 89.38,150.18 87.88,152.38 86.38,150.18"/>
+<text x="91.38" y="153.18" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">pool water surface</text>
+<polyline fill="none" stroke="#000" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" points="60.61,217 83.77,217 83.77,124.34 60.61,124.34 60.61,217"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="72.19,220 72.19,121.34"/>
+<text x="72.19" y="119.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="middle">containment vessel (CNV) envelope</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="59,217 49.5,217"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="59,152.38 49.5,152.38"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="51,217 51,152.38"/>
+<polygon fill="#000" points="51,217 51.6,214.5 50.4,214.5"/>
+<polygon fill="#000" points="51,152.38 50.4,154.88 51.6,154.88"/>
+<text x="50.2" y="185.69" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="end">53 ft (16.15 m) S2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="85.38,217 119.88,217"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="85.38,124.34 119.88,124.34"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="118.38,217 118.38,124.34"/>
+<polygon fill="#000" points="118.38,217 118.98,214.5 117.78,214.5"/>
+<polygon fill="#000" points="118.38,124.34 117.78,126.84 118.98,126.84"/>
+<text x="119.18" y="171.67" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">76 ft (23.16 m) S2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="85.38,152.38 91.88,152.38"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="85.38,124.34 91.88,124.34"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="90.38,152.38 90.38,124.34"/>
+<polygon fill="#000" points="90.38,152.38 90.98,149.88 89.78,149.88"/>
+<polygon fill="#000" points="90.38,124.34 89.78,126.84 90.98,126.84"/>
+<text x="91.18" y="139.36" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">23 ft (7.01 m) C</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="60.61,218 60.61,225.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="83.77,218 83.77,225.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="60.61,224 83.77,224"/>
+<polygon fill="#000" points="60.61,224 63.11,224.6 63.11,223.4"/>
+<polygon fill="#000" points="83.77,224 81.27,223.4 81.27,224.6"/>
+<text x="72.19" y="227.2" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="middle">19 ft (5.79 m) S2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="60,218 60,233.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="84.38,218 84.38,233.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="60,232 84.38,232"/>
+<polygon fill="#000" points="60,232 62.5,232.6 62.5,231.4"/>
+<polygon fill="#000" points="84.38,232 81.88,231.4 81.88,232.6"/>
+<text x="72.19" y="235.2" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="middle">20 ft (6.10 m) S2</text>
+<text x="51" y="239" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">Radial clearance CNV to bay boundary: 0.5 ft (0.15 m) C (nominal; flanges, supports, guides not modelled)</text>
+<text x="51" y="243" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">CNV seated on the bay floor and centred: D (schematic placement; the support arrangement is not in the sources read).</text>
+<text x="156.38" y="110.34" font-family="Helvetica, Arial, sans-serif" font-size="2.6" font-weight="bold" text-anchor="start">NOT DRAWN - UNKNOWN (positions not in the sources read)</text>
+<text x="156.38" y="115.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- RXB: Reactor building (Seismic Category I, below-grade pool)</text>
+<text x="156.38" y="119.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- GALLERY: Reactor building steam gallery area (behind the module bays' shield walls)</text>
+<text x="156.38" y="123.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- POOL: Common reactor pool / ultimate heat sink</text>
+<text x="156.38" y="127.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- CR: Single control room for up to 12 modules</text>
+<text x="156.38" y="131.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- ELEC: Electrical power (non-Class 1E AC and DC; no safety-related function relies on it)</text>
+<text x="156.38" y="135.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- DHRS condensers (2 trains per module, submerged in the pool): positions UNKNOWN</text>
+<text x="156.38" y="139.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- ECCS valves (3 RVV + 2 RRV per module, on the vessel): positions UNKNOWN</text>
+<text x="156.38" y="143.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- shield walls between the bays and the steam gallery: positions UNKNOWN</text>
+<text x="156.38" y="147.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- grade line: elevation UNKNOWN; rule: the pool portion of the building is below grade</text>
+<text x="156.38" y="151.34" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">- site layout outside the reactor building: not in the sources read</text>
+<text x="156.38" y="158.34" font-family="Helvetica, Arial, sans-serif" font-size="2.6" font-weight="bold" text-anchor="start">NOTES</text>
+<text x="156.38" y="162.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">SCREENING DRAWING of a public-source skeleton: not a plant drawing; not for construction, licensing or safety use.</text>
+<text x="156.38" y="166.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">S2 = secondary, design-family value (Welter et al. 2023 also covers US460 / VOYGR): NOT a confirmed US600 dimension.</text>
+<text x="156.38" y="170.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">C = computed from drawn values; D = schematic placement; UNK = not drawn. Units ft (m in brackets).</text>
+<text x="156.38" y="174.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">Revision = hash of the facility model; any model change gives a new revision and supersedes this sheet.</text>
+<text x="156.38" y="178.84" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start">Unknowns stay unknown until a human reads the FSAR sections on sheet 3.</text>
+<rect x="230" y="241" width="180" height="46" fill="none" stroke="#000" stroke-width="0.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,253 410,253"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,261 410,261"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,269 410,269"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="230,277 410,277"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="340,287 340,253"/>
+<text x="232" y="247.5" font-family="Helvetica, Arial, sans-serif" font-size="4" font-weight="bold" text-anchor="start">PLANT GA - NUSCALE-US600 (public-source skeleton)</text>
+<text x="232" y="257" font-family="Helvetica, Arial, sans-serif" font-size="2.8" text-anchor="start">Drawing no. CK-GA-US600-PLANT   Sheet 1 of 3</text>
+<text x="232" y="265" font-family="Helvetica, Arial, sans-serif" font-size="2.8" text-anchor="start">Scale 1:250 (A3)   Units ft (m)   Plan + section</text>
+<text x="232" y="273" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Model: nuscale-us600: 161 SSCs, 301 dependencies, 24 facts</text>
+<text x="232" y="281" font-family="Helvetica, Arial, sans-serif" font-size="2.2" font-weight="bold" text-anchor="start">SCREENING - SCHEMATIC - NOT FOR CONSTRUCTION</text>
+<text x="232" y="285.4" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">Generated by ConKay facility-ga 1.0.0 from the facility model; revision = model hash</text>
+<text x="342" y="257" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Revision</text>
+<text x="342" y="266" font-family="Helvetica, Arial, sans-serif" font-size="5" font-weight="bold" text-anchor="start">R-9A68158C</text>
+<text x="342" y="273" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">model hash 9a68158c7c4fecf5e40e7ffb9213038c</text>
+<text x="342" y="279.5" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">1d3ddedbc7abf5476ebd4f4889bafef2</text>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="380,262.5 388,264 388,258 380,259.5 380,262.5"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="379,261 389,261"/>
+<circle cx="394" cy="261" r="3" fill="none" stroke="#000" stroke-width="0.25"/>
+<circle cx="394" cy="261" r="1.5" fill="none" stroke="#000" stroke-width="0.25"/>
+<polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="390,261 398,261"/>
+</svg>
