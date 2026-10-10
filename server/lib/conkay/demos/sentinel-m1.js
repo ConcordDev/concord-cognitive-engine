@@ -85,6 +85,25 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
       massBudget: true,
       drawing: { number: "CK-GA-SENTINEL-M1" },
       clearance: { tolerance: 0.001 },
+      // Stance leg in single support as a 3D frame (structure.frame): shin and thigh are
+      // the shin-l / thigh-l parts (section + material from the graph), joint centre to
+      // joint centre; ankle fixed (foot flat, actuators holding the pose).
+      frameModel: {
+        nodes: [{ id: "ankle", x: 0, y: 0.2, z: 0.061 }, { id: "knee", x: 0, y: 0.2, z: 0.939 }, { id: "hip", x: 0, y: 0.2, z: 1.817 }],
+        members: [{ id: "shin", i: "ankle", j: "knee", part: "shin-l" }, { id: "thigh", i: "knee", j: "hip", part: "thigh-l" }],
+        supports: [{ node: "ankle", fix: "fixed" }],
+        loadCases: [{
+          id: "single-support",
+          weight: [{ from: { solver: "mass.budget", target: "sentinel", output: "knownMass" }, factor: { value: 2, state: "estimated", basis: "walking/stop-start load amplification, as the bracket; no measured load spectrum" },
+            dir: [0, 0, -1], node: "hip", lever: [0, -0.05, 0] }],
+        }],
+        buckling: { cases: ["single-support"], requiredFactor: { value: 2, state: "design rule", basis: "screening factor on the elastic buckling load; not a code check" } },
+        factorOfSafety: { value: 2, state: "design rule", basis: "screening factor on specified-minimum yield; not a code check" },
+        assumptions: [
+          "Body weight acts at the hip 50 mm inboard (estimated lever, as the joint holding torques); single support on the left leg.",
+          "Joints rigid: the actuators hold the pose; actuator compliance and backlash are not modelled. Fixed at the ankle (foot flat).",
+        ],
+      },
       stability: { contacts: ["foot-l", "foot-r"], pose: "standing, both feet flat, payload on the chest hard-point" },
       electrical: {
         battery: "battery", solarPanel: "solar",
