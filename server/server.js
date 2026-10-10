@@ -13741,27 +13741,189 @@ function _c2repairDominance(){
   } catch { return { ok: false, error: 'health_check_failed', score: 0 }; }
 }
 
-/**
- * Adaptive overlap threshold: ramps up as the DTU substrate grows.
- * During bootstrap (few DTUs), novel content has no prior art to match against,
- * so the threshold must be low. As the knowledge base matures, the threshold
- * rises automatically. Can be overridden via admin dashboard.
- */
-function _getAdaptiveOverlapThreshold() {
-  // Manual override from admin: if explicitly set to a number, use it
-  const manual = STATE.__chicken2?.thresholdOverlap;
-  if (typeof manual === "number" && manual >= 0 && manual < 0.95) return manual;
+// Fixed overlap bar. One missed genesis invariant out of the five anchor
+// constraints scores 0.7*(4/5)+0.3 = 0.86, so 0.95 admits a candidate that
+// satisfies every anchor invariant and rejects one that breaks any of them.
+// The value does not scale with STATE.dtus.size. 0.95 is a real threshold,
+// not a sentinel that falls through to another ladder.
+const _C2_DEFAULT_OVERLAP_THRESHOLD = 0.95;
+const _C2_GENESIS_ROOT = "genesis_reality_anchor_v1";
+const _C2_OPAQUE_KEYS = new Set([
+  "imagebase64", "image", "audiobase64", "audio", "bytes", "payloadbytes", "datab64", "wav", "buffer",
+]);
+// Read-only tools. Birth-overlap is an admission check for effectful actions
+// and DTU birth, not a tax on observation.
+const _C2_OBSERVE_BARE = new Set([
+  "web_search", "browse_url", "dtu_search", "compute", "run_compute", "symboliccompute",
+]);
 
-  const dtuCount = typeof STATE.dtus?.size === "number" ? STATE.dtus.size : 0;
-  if (dtuCount < 100) return 0.00;      // Bootstrap: let everything through
-  if (dtuCount < 500) return 0.10;      // Early growth: very loose
-  if (dtuCount < 1000) return 0.20;     // Building invariants
-  if (dtuCount < 5000) return 0.35;     // Substrate has enough to compare
-  if (dtuCount < 10000) return 0.50;    // Real filtering begins
-  if (dtuCount < 50000) return 0.65;    // Strong coherence expected
-  if (dtuCount < 100000) return 0.80;   // Mature lattice
-  return 0.90;                           // Full protection
+function _c2finiteUnit(value) {
+  const n = typeof value === "number" ? value : (typeof value === "string" && value.trim() !== "" ? Number(value) : NaN);
+  if (!Number.isFinite(n)) return null;
+  return clamp(n, 0, 1);
 }
+
+/**
+ * Overlap threshold for admitting a candidate into the lattice.
+ * Precedence: CONCORD_OVERLAP_THRESHOLD, then __chicken2.thresholdOverlap
+ * (including an explicit 0.95), then settings.thresholdOverlap, then 0.95.
+ * DTU count is not an input.
+ */
+function _getOverlapThreshold() {
+  const fromEnv = _c2finiteUnit(process.env.CONCORD_OVERLAP_THRESHOLD);
+  if (fromEnv !== null && process.env.CONCORD_OVERLAP_THRESHOLD !== undefined && String(process.env.CONCORD_OVERLAP_THRESHOLD).trim() !== "") {
+    return fromEnv;
+  }
+  const fromChicken = STATE.__chicken2?.thresholdOverlap;
+  if (typeof fromChicken === "number" && Number.isFinite(fromChicken)) return clamp(fromChicken, 0, 1);
+  const fromSettings = STATE.settings?.thresholdOverlap;
+  if (typeof fromSettings === "number" && Number.isFinite(fromSettings)) return clamp(fromSettings, 0, 1);
+  return _C2_DEFAULT_OVERLAP_THRESHOLD;
+}
+
+function _c2isObserveAction({ domain = "", name = "" } = {}) {
+  // Classification is the effect name the gate was asked to admit, not a
+  // field inside the payload (a payload must not relabel an effectful action).
+  const domainStr = String(domain || "").toLowerCase();
+  const n = String(name || "").toLowerCase();
+  const bare = n.split(/[./]/).pop();
+  if (_C2_OBSERVE_BARE.has(n) || _C2_OBSERVE_BARE.has(bare)) return true;
+  if (n.endsWith("dtu.search") || n.endsWith("dtu_search") || n.endsWith("web_search") || n.endsWith("browse_url") || n.endsWith("run_compute")) return true;
+  if ((domainStr === "dtu" || domainStr === "discovery") && /(^|\.)search$/.test(n)) return true;
+  return false;
+}
+
+function _c2stripOpaque(value) {
+  if (!value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(v => _c2stripOpaque(v));
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (_C2_OPAQUE_KEYS.has(String(k).toLowerCase())) continue;
+    if (typeof v === "string" && v.length > 8000 && !/\s/.test(v.slice(0, 80))) continue;
+    out[k] = (v && typeof v === "object") ? _c2stripOpaque(v) : v;
+  }
+  return out;
+}
+
+function _c2subject(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const proposal = input.proposal;
+  if (proposal && typeof proposal === "object" && !Array.isArray(proposal)) {
+    const keys = Object.keys(input);
+    const wrapper = keys.length === 1 || proposal.invariants || proposal.lineage || proposal.lineageRoot;
+    if (wrapper && (keys.length === 1 || keys.every(k => k === "proposal" || k === "steps" || k === "override"))) {
+      return proposal;
+    }
+  }
+  return input;
+}
+
+function _c2declaredInvariantList(subject) {
+  if (!subject || typeof subject !== "object") return null;
+  const raw = subject.invariants ?? subject.invariantKeys ?? subject.core?.invariants ?? null;
+  if (Array.isArray(raw)) return raw.map(x => String(x));
+  if (raw && typeof raw === "object") return Object.keys(raw);
+  return null;
+}
+
+function _c2genesisView(genesis) {
+  const root = genesis?.lineage?.root || genesis?.lineageRoot || genesis?.id || _C2_GENESIS_ROOT;
+  const invariants = Array.isArray(genesis?.invariants) ? genesis.invariants.map(v => String(v)) : [];
+  return { ...genesis, invariants, lineage: { ...(genesis?.lineage || {}), root } };
+}
+
+function _c2negativeValenceContradiction(subject, declared) {
+  if (subject && typeof subject === "object") {
+    if (subject.negativeValence === true) return true;
+    if (String(subject.valence || "").toLowerCase() === "negative") return true;
+  }
+  if (Array.isArray(declared)) {
+    for (const k of declared) {
+      if (/no[_\s-]*negative[_\s-]*valence/i.test(k)) continue;
+      if (/negative[_\s-]*valence/i.test(k)) return true;
+    }
+  }
+  return !_c2negativeValenceProjection(_c2stripOpaque(subject)).ok;
+}
+
+function _c2repairDominanceContradiction(subject, declared, required) {
+  if (subject && typeof subject === "object") {
+    if (subject.repairDominance === false) return true;
+    if (subject.repair && typeof subject.repair === "object" && (subject.repair.required === false || subject.repair.dominance === false)) return true;
+  }
+  if (!Array.isArray(declared)) return false;
+  for (const k of declared) {
+    if (/no[_\s-]*repair[_\s-]*dominance|repair[_\s-]*dominance[_\s-]*(not[_\s-]*required|disabled|optional)|repair[_\s-]*optional/i.test(k)) return true;
+  }
+  const requiredSet = new Set(required);
+  const editsGenesis = declared.some(k => requiredSet.has(k) || /OVERLAP\s*>=/i.test(k) || /x\^2\s*-\s*x/.test(k) || /NEGATIVE_VALENCE/i.test(k) || /REPAIR_DOMINANCE/i.test(k));
+  if (editsGenesis && !declared.some(k => k === "REPAIR_DOMINANCE_REQUIRED" || /repair[_\s-]*dominance[_\s-]*required/i.test(k))) return true;
+  return false;
+}
+
+function _c2overlapFloorContradiction(subject, declared) {
+  if (Array.isArray(declared)) {
+    for (const k of declared) {
+      const m = String(k).match(/OVERLAP\s*>=\s*([0-9]*\.?[0-9]+)/i);
+      if (m && Number(m[1]) < 0.95) return true;
+    }
+  }
+  return false;
+}
+
+function _c2quadraticContradiction(subject) {
+  if (!subject || typeof subject !== "object") return false;
+  if (subject.invertVacuum === true) return true;
+  const disc = subject.invertTest && typeof subject.invertTest === "object" ? subject.invertTest.discriminant : null;
+  return typeof disc === "number" && disc < 0;
+}
+
+function _c2invariantHolds(invariant, subject, declared, required) {
+  const inv = String(invariant);
+  if (inv === "NO_NEGATIVE_VALENCE_DIMENSION" || /no[_\s-]*negative[_\s-]*valence/i.test(inv)) {
+    return !_c2negativeValenceContradiction(subject, declared);
+  }
+  if (inv === "REPAIR_DOMINANCE_REQUIRED" || /repair[_\s-]*dominance[_\s-]*required/i.test(inv)) {
+    return !_c2repairDominanceContradiction(subject, declared, required);
+  }
+  if (inv === "x^2 - x = 0" || inv === "x^2 - x - 1 = 0" || /x\^2\s*-\s*x/.test(inv)) {
+    return !_c2quadraticContradiction(subject);
+  }
+  if (/^OVERLAP\s*>=/i.test(inv)) return !_c2overlapFloorContradiction(subject, declared);
+  if (Array.isArray(declared) && declared.length > 0 && !declared.includes(inv)) {
+    const editsGenesis = declared.some(k => required.includes(k));
+    if (editsGenesis) return false;
+  }
+  return true;
+}
+
+/**
+ * Overlap of the candidate being admitted against the genesis anchor.
+ * The candidate is its own effect payload, proposed invariants, and lineage.
+ * A payload that does not propose a replacement invariant set is admitted
+ * under the anchor constraints: it scores a full match unless its content
+ * contradicts one (negative valence, dropped repair dominance, inversion,
+ * or a looser overlap floor).
+ */
+function _c2admissionOverlap(genesis, input) {
+  const view = _c2genesisView(genesis);
+  const subject = _c2subject(input);
+  const declared = _c2declaredInvariantList(subject);
+  const required = view.invariants;
+  const satisfied = [];
+  const violated = [];
+  for (const inv of required) {
+    if (_c2invariantHolds(inv, subject, declared, required)) satisfied.push(inv);
+    else violated.push(inv);
+  }
+  const declaredLineage = (subject.lineage && typeof subject.lineage === "object")
+    ? subject.lineage
+    : (typeof subject.lineageRoot === "string" && subject.lineageRoot ? { root: subject.lineageRoot } : null);
+  const lineage = declaredLineage || { root: view.lineage.root };
+  const ov = overlap_verifier(view, { invariants: satisfied, lineage });
+  return { ov, violated, satisfied };
+}
+
 function inLatticeReality({ type="macro", domain="", name="", input=null, ctx=null }={}){
   const cfg = STATE.__chicken2 || {};
   // 1) primal satisfaction
@@ -13775,21 +13937,21 @@ function inLatticeReality({ type="macro", domain="", name="", input=null, ctx=nu
     cfg.metrics.rejections++;
     return { ok:false, severity:"hard", reason:"inversion_vacuum", meta: inv };
   }
-  // 3) negative valence projection
-  const nv = _c2negativeValenceProjection({ input, actor: ctx?.actor, type, domain, name });
+  // 3) negative valence projection (text). Opaque blobs are not scanned.
+  const nv = _c2negativeValenceProjection({ input: _c2stripOpaque(input), actor: ctx?.actor, type, domain, name });
   if (!nv.ok){
     cfg.metrics.rejections++;
     return { ok:false, severity:"hard", reason:nv.reason };
   }
-  // 4) repair dominance projection + overlap requirement if genesis exists
-  // Adaptive threshold: ramps up as the substrate grows (bootstrap-friendly)
+  // 4) overlap of THIS candidate against genesis. Observe tools skip it.
+  //    Effectful actions and DTU birth still have to clear the bar.
   const g = _c2genesisDTU();
-  if (g){
-    const ov = overlap_verifier(g, { invariants: Object.keys(STATE.settings||{}), lineage:{ root:"genesis_reality_anchor_v1" }});
-    const adaptiveThreshold = _getAdaptiveOverlapThreshold();
-    if (ov < adaptiveThreshold){
+  if (g && !_c2isObserveAction({ type, domain, name, input })){
+    const { ov, violated } = _c2admissionOverlap(g, input);
+    const threshold = _getOverlapThreshold();
+    if (ov < threshold){
       cfg.metrics.rejections++;
-      return { ok:false, severity:"quarantine", reason:"overlap_below_threshold", meta:{ ov, threshold: adaptiveThreshold, dtuCount: typeof STATE.dtus?.size === "number" ? STATE.dtus.size : 0 } };
+      return { ok:false, severity:"quarantine", reason:"overlap_below_threshold", meta:{ ov, threshold, violated } };
     }
   }
   const rd = _c2repairDominance();
@@ -13834,8 +13996,11 @@ function _c2founderOverrideAllowed(ctx){
   }
   return true;
 }
-async function governedCall(ctx, effectName, fn){
-  const pre = inLatticeReality({ type:"governedCall", domain:"governed", name:effectName, ctx, input:{} });
+async function governedCall(ctx, effectName, fn, effectPayload){
+  // The 4th argument is the effect payload being admitted. Callers that have
+  // one must pass it; an omitted payload is the effect identity, not {}.
+  const input = arguments.length >= 4 ? effectPayload : { effect: String(effectName || "") };
+  const pre = inLatticeReality({ type:"governedCall", domain:"governed", name:effectName, ctx, input });
   if (!pre.ok){
     _c2log("governed.reject", "governedCall rejected by lattice reality", { effectName, pre });
     throw new Error(`governedCall rejected: ${pre.reason}`);
@@ -15494,7 +15659,7 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   }
 
   return { ok:false, error:"No vision backend configured. Set OLLAMA_URL with a vision-capable model (e.g. llava)" };
-  });
+  }, input);
 }, { public:false });
 
 register("multimodal","image_generate", (ctx, input={}) => {
@@ -15521,7 +15686,7 @@ register("multimodal","image_generate", (ctx, input={}) => {
   }
 
   return { ok:false, error:"No image generation backend configured. Set SD_URL (Stable Diffusion) or COMFYUI_URL or A1111_URL" };
-  });
+  }, input);
 }, { public:false });
 
 register("voice","transcribe", async (ctx, input={}) => {
@@ -15654,7 +15819,7 @@ register("tools","web_search", (ctx, input={}) => {
   }
 
   return { ok:true, source: local ? "searxng" : "duckduckgo_html", text: text.slice(0, 200000), summary };
-  });
+  }, input);
 }, { public:false });
 
 // ===== END CHICKEN3 MACROS =====
@@ -35962,10 +36127,10 @@ register("verify","stressTest", (ctx, input) => {
 register("lattice", "beacon", (ctx, input={}) => {
   const g = _c2genesisDTU();
   const rootHash = g ? _c2hash({ id:g.id, formula:g.formula, invariants:g.invariants }) : "missing";
-  const threshold = Number(input.threshold ?? (STATE.__chicken2.thresholdOverlap ?? 0.95));
-  // Compare current lattice signature against genesis
-  const latticeSig = { invariants: Object.keys(STATE.settings||{}), lineage:{ root:"genesis_reality_anchor_v1" } };
-  const overlap = g ? overlap_verifier(g, latticeSig) : 0;
+  const threshold = Number(input.threshold ?? _getOverlapThreshold());
+  // Beacon reads the anchor against itself. The runtime settings key list is
+  // not a lattice signature and is not an overlap operand.
+  const overlap = g ? _c2admissionOverlap(g, { invariants: g.invariants, lineage: g.lineage || { root: g.id } }).ov : 0;
   const awake = overlap >= threshold;
   // Update continuity metric
   STATE.__chicken2.metrics.continuityAvg = clamp(overlap, 0, 1);
@@ -88908,6 +89073,8 @@ export const __TEST__ = Object.freeze({
   emitToWorld,
   inLatticeReality,
   overlap_verifier,
+  _getOverlapThreshold,
+  governedCall,
   _defaultOrganState,
   register,
   runMacro,
