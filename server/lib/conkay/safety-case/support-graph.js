@@ -18,7 +18,7 @@
 
 import { minimalCutSets, FT_VERSION } from "./fault-tree.js";
 
-export const SUPPORT_KINDS = Object.freeze(["offsite-power", "emergency-generator", "ac-division", "battery", "battery-charger", "dc-bus", "ic-channel", "room-fire-area", "cooling", "hvac"]);
+export const SUPPORT_KINDS = Object.freeze(["offsite-power", "emergency-generator", "ac-division", "battery", "battery-charger", "dc-bus", "ic-channel", "room-fire-area", "cooling", "hvac", "structure", "ultimate-heat-sink"]);
 export const SCREEN_VERSION = "1.0.0";
 
 const reqs = (it) => [...(it.requires || []), ...(it.dcBus ? [it.dcBus] : [])];

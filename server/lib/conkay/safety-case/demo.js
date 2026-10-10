@@ -67,14 +67,14 @@ export function demoSystem() {
 }
 
 /** Plain system → design IR (one node per function, train, component, support; one case node). */
-export function systemToIR(sys, caseId = CASE_ID) {
-  const nodes = [{ id: caseId, kind: "SafetyCase", name: "Generic two-function demo (not a real plant)", props: { safetyCase: true } }];
+export function systemToIR(sys, caseId = CASE_ID, { name = "Generic two-function demo (not a real plant)", designId = "safety-case-demo", designName = "ConKay nuclear Phase 1 demo (generic)" } = {}) {
+  const nodes = [{ id: caseId, kind: "SafetyCase", name, props: { safetyCase: true } }];
   for (const [id, f] of Object.entries(sys.functions)) nodes.push({ id, kind: "SafetyFunction", name: f.name, props: { trains: f.trains, successCriterion: f.successCriterion } });
   for (const [id, t] of Object.entries(sys.trains)) nodes.push({ id, kind: "SafetyTrain", props: { function: t.function, components: t.components } });
   for (const [id, c] of Object.entries(sys.components)) nodes.push({ id, kind: "SafetyComponent", props: { train: c.train, requires: c.requires || [], anyOf: c.anyOf || [], ...(c.dcBus ? { dcBus: c.dcBus } : {}) } });
   for (const [id, s] of Object.entries(sys.supports)) nodes.push({ id, kind: "SupportItem", props: { supportKind: s.supportKind, requires: s.requires || [], anyOf: s.anyOf || [] } });
   return {
-    design: { id: "safety-case-demo", name: "ConKay nuclear Phase 1 demo (generic)" },
+    design: { id: designId, name: designName },
     nodes,
     // The success criteria are requirements: the loop may not touch them.
     locked: Object.keys(sys.functions).map((id) => ({ node: id, path: "props.successCriterion", reason: "safety-function success criterion (a requirement)" })),
