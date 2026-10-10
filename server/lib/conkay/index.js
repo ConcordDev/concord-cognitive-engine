@@ -17,6 +17,7 @@ import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/requirements.js";
 import "./physics/solvers/structural-members.js";
 import "./physics/solvers/frame-structure.js";
+import "./physics/solvers/crush-paths.js";
 import "./physics/solvers/brake-thermal.js";
 import "./physics/solvers/coolant-loop.js";
 import "./physics/solvers/vehicle.js";
