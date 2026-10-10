@@ -53,7 +53,7 @@ export function ConnectionStatus() {
   const [socketDown, setSocketDown] = useState(false);
   const [healthOk, setHealthOk] = useState(true);
   const [stale, setStale] = useState(false);
-  const [busy, setBusy] = useState<ServerBusyDetail | null>(null);
+  const [busy, setBusy] = useState<ServerBusyDetail | null>(() => getServerBusy());
   // OfflineFallback (components/pwa/OfflineFallback.tsx) renders its own
   // full-width banner at this exact same top strip whenever the BROWSER goes
   // offline. OfflineFallback is the more fundamental of the two and outranks
@@ -89,10 +89,7 @@ export function ConnectionStatus() {
   // 503 service_overloaded is "server busy", including when it arrives on
   // some other request (the API client notes it). /health itself is never
   // shed, so this subscription is what a lens-run 503 actually drives.
-  useEffect(() => {
-    setBusy(getServerBusy());
-    return onServerBusy(setBusy);
-  }, []);
+  useEffect(() => onServerBusy(setBusy), []);
 
   // Secondary: stale-data header + fallback liveness. Audit fix
   // (2026-07-27): this mounts on every page for every user — useSmartPolling

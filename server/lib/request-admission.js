@@ -235,9 +235,11 @@ function _writeShed(res, { decision, priority, code, message, retryAfterS, queue
 }
 
 function _sleep(ms) {
+  // Ref'd on purpose. This timer is the only thing keeping an admitted-wait
+  // request alive; unref'ing it lets the loop go idle and the response never
+  // lands (node:test reports the promise still pending).
   return new Promise((resolve) => {
-    const t = setTimeout(resolve, ms);
-    t.unref?.();
+    setTimeout(resolve, ms);
   });
 }
 

@@ -9,7 +9,8 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, llmGenerateSchema } from "../lib/validators/mutation-schemas.js";
 import logger from '../logger.js';
 import { assertSessionAccessible } from "../lib/session-access.js";
-import { getCurrentLagMs, getSustainedLagMs } from "../lib/event-loop-pressure.js";
+import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
+import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 
