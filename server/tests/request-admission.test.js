@@ -149,7 +149,7 @@ describe("request-admission — decideAdmission (pure)", () => {
 });
 
 describe("request-admission — createLoadSheddingMiddleware (integration, real lag signal)", () => {
-  afterEach(() => {
+  afterEach(async () => {
     _setLagMsForTest(0);
     _resetAdmissionForTest();
     stopEventLoopPressureMonitor();
@@ -160,6 +160,8 @@ describe("request-admission — createLoadSheddingMiddleware (integration, real 
     delete process.env.CONCORD_LOAD_SHED_ADMISSION_WAIT_MS;
     delete process.env.CONCORD_LOAD_SHED_ADMISSION_POLL_MS;
     delete process.env.CONCORD_LOAD_SHED_INTERACTIVE_QUEUE;
+    const backup = await import("../lib/sqlite-online-backup.js");
+    backup._setSqliteBackupRunningForTest(false);
   });
 
   it("under simulated high lag: health check succeeds, a protected request succeeds, a sheddable request gets 503 + Retry-After", () => {
@@ -273,6 +275,23 @@ describe("request-admission — createLoadSheddingMiddleware (integration, real 
     assert.match(res.body.message, /busy/i);
     assert.equal(res.headers["Retry-After"], "3");
     delete process.env.CONCORD_LOAD_SHED_RETRY_AFTER_S;
+  });
+
+  it("login and authenticated traffic stay admitted while the SQLite backup worker is running", async () => {
+    const backup = await import("../lib/sqlite-online-backup.js");
+    process.env.CONCORD_LOAD_SHED_LAG_MS = "300";
+    process.env.CONCORD_LOAD_SHED_LAG_MS_PROTECTED = "900";
+    _setLagMsForTest(5000);
+    _setStrikesForTest(5);
+    backup._setSqliteBackupRunningForTest(true);
+    const middleware = createLoadSheddingMiddleware();
+    let loginNext = false;
+    middleware(makeReq({ path: "/api/auth/login" }), makeRes(), () => { loginNext = true; });
+    assert.equal(loginNext, true, "login must not 503 during the startup snapshot");
+    let lensNext = false;
+    middleware(makeReq({ path: "/api/lens/run", authed: true }), makeRes(), () => { lensNext = true; });
+    assert.equal(lensNext, true);
+    backup._setSqliteBackupRunningForTest(false);
   });
 
   it("a non-interactive protected route still sheds immediately once pressure is sustained", () => {

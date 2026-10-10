@@ -3,6 +3,9 @@
 
 import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   isLowMemoryHost,
   shouldPauseHeavyBackground,
@@ -70,6 +73,12 @@ describe("host-profile — isLowMemoryHost", () => {
   it("NODE_ENV=test does not auto-detect from a small snapshot", () => {
     assert.equal(isLowMemoryHost(snap({ totalBytes: 4 * GB, availableRatio: 0.01 }), { NODE_ENV: "test" }), false);
   });
+
+  it("NODE_ENV=ci does not auto-detect from a 16GB runner", () => {
+    assert.equal(isLowMemoryHost(snap({ totalBytes: 16 * GB, availableRatio: 0.5 }), { NODE_ENV: "ci" }), false);
+    assert.equal(isLowMemoryHost(snap({ totalBytes: 16 * GB, availableRatio: 0.5 }), { NODE_ENV: "CI" }), false);
+    assert.equal(isLowMemoryHost(snap({ totalBytes: 16 * GB, availableRatio: 0.5 }), { NODE_ENV: "production", CI: "true" }), false);
+  });
 });
 
 describe("host-profile — gates", () => {
@@ -114,5 +123,24 @@ describe("host-profile — gates", () => {
     assert.equal(drift.skipped, "low_memory_host");
     const quests = await runLatticeQuestCycle({});
     assert.equal(quests.skipped, "low_memory_host");
+  });
+});
+
+describe("governorTick — low memory does not freeze the liveness counter", () => {
+  const src = readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../server.js"),
+    "utf8",
+  );
+  const start = src.indexOf("async function governorTick(");
+  const body = src.slice(start, start + 3200);
+
+  it("the idle skip uses isIdle, and the tick counter runs before the low-memory pause", () => {
+    assert.ok(start > 0, "governorTick present");
+    assert.match(body, /presenceIdle\.isIdle\(\)/);
+    assert.doesNotMatch(body, /shouldRunHeavyMaintenance\(\)/);
+    const inc = body.indexOf("heartbeatTicks?.inc()");
+    const pause = body.indexOf('skipped: "low_memory_host"');
+    assert.ok(inc > 0, "liveness counter increment present");
+    assert.ok(pause > inc, "low-memory pause must come after the tick is counted");
   });
 });

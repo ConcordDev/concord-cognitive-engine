@@ -71,6 +71,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -41271,7 +41272,12 @@ async function governorTick(reason="heartbeat") {
   // cluster detection). With no users, there's no one to notice the result.
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
-  if (reason !== "boot" && !presenceIdle.shouldRunHeavyMaintenance()) {
+  //
+  // This gate is idle-only. The heavy-maintenance helper also returns false
+  // on a low-memory host, and using it here skipped the liveness counter
+  // even while authenticated users were driving load (tick-SLO: 0 ticks,
+  // "frozen loop", on a 16 GB CI runner).
+  if (reason !== "boot" && presenceIdle.isIdle()) {
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41282,8 +41288,13 @@ async function governorTick(reason="heartbeat") {
   try { const nsMod = await import("./lib/npc-simulator.js"); nsMod.resetNpcQuestTickCounter?.(); } catch (_e) { /* best-effort */ }
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  // This happens BEFORE the low-memory pause so a small host still looks
+  // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
+    if (reason !== "boot" && shouldPauseHeavyBackground()) {
+      return { ok: true, skipped: "low_memory_host" };
+    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
@@ -85782,8 +85793,9 @@ async function runBackup() {
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room, and copy in one step so concurrent
-        // writes can't restart it.
+        // honestly when there's no room. The one-step copy still runs, but
+        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
+        // loop for up to 8.4s and the shedder 503'd login during warmup.
         const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
         let freeBytes = Infinity;
         try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
@@ -85792,7 +85804,7 @@ async function runBackup() {
           throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
         }
         try {
-          await _db.backup(snapPath, { progress: () => 0x7fffffff });
+          await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),

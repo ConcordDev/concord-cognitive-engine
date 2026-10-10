@@ -33,6 +33,7 @@
 // Never a fabricated empty success.
 
 import { getSustainedLagMs } from "./event-loop-pressure.js";
+import { isSqliteBackupRunning } from "./sqlite-online-backup.js";
 
 export const PRIORITY = Object.freeze({
   CRITICAL: "critical",
@@ -271,6 +272,10 @@ export function createLoadSheddingMiddleware(deps = {}) {
   return function loadSheddingMiddleware(req, res, next) {
     const priority = classifyRequest(req);
     if (priority === PRIORITY.CRITICAL) return next();
+    // The post-start SQLite snapshot used to stall the loop for seconds.
+    // It now runs off-thread, and while it is in flight authenticated
+    // traffic and login stay admitted even if a residual spike is sustained.
+    if (priority === PRIORITY.PROTECTED && isSqliteBackupRunning()) return next();
 
     const lagMs = getLagMs();
     const decision = decideAdmission(priority, lagMs, { strikes: strikesFor(priority) });

@@ -13,8 +13,10 @@
 //   - swap used / swap total is at or above CONCORD_SWAP_PRESSURE_RATIO (0.5)
 //   - available memory / total is at or below CONCORD_MEM_AVAILABLE_MIN_RATIO (0.15)
 //
-// NODE_ENV=test does not auto-detect from the runner's hardware, so a 16 GB
-// CI box does not silently pause maintenance. Tests opt in with
+// NODE_ENV=test, NODE_ENV=ci, and a set CI env var do not auto-detect from
+// the runner's hardware. GitHub's tick-SLO job is NODE_ENV=ci on a 16 GB
+// runner; treating that box as a low-memory host paused the governor and the
+// gate reported a frozen loop. Tests and CI opt in with
 // CONCORD_LOW_MEMORY_HOST=1 or by passing an explicit env object.
 
 import os from "node:os";
@@ -29,6 +31,14 @@ let _cacheAt = 0;
 function _num(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** Unit tests and GitHub Actions must not inherit the runner's RAM size. */
+function _skipHardwareAutoDetect(env = process.env) {
+  const nodeEnv = String(env.NODE_ENV || "").toLowerCase();
+  if (nodeEnv === "test" || nodeEnv === "ci") return true;
+  const ci = String(env.CI ?? "").toLowerCase();
+  return ci === "1" || ci === "true";
 }
 
 /**
@@ -84,7 +94,7 @@ export function readHostMemory(io = {}) {
 export function isLowMemoryHost(snapshot, env = process.env) {
   if (env.CONCORD_LOW_MEMORY_HOST === "0") return false;
   if (env.CONCORD_LOW_MEMORY_HOST === "1") return true;
-  if (String(env.NODE_ENV || "").toLowerCase() === "test") return false;
+  if (_skipHardwareAutoDetect(env)) return false;
 
   const snap = snapshot || readHostMemory();
   const ramCeiling = _num(env.CONCORD_LOW_MEMORY_RAM_BYTES, RAM_16GB);
@@ -112,7 +122,7 @@ function _liveProfile() {
 export function shouldPauseHeavyBackground() {
   if (process.env.CONCORD_LOW_MEMORY_HOST === "0") return false;
   if (process.env.CONCORD_LOW_MEMORY_HOST === "1") return true;
-  if (String(process.env.NODE_ENV || "").toLowerCase() === "test") return false;
+  if (_skipHardwareAutoDetect()) return false;
   return _liveProfile().lowMemory;
 }
 
