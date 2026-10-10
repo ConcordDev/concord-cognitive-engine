@@ -34,6 +34,8 @@ export function extentsOf(ctx, id) {
   if (bat) {
     const d = bat.cell?.diameterM; const h = bat.cell?.heightM;
     if (![d, h, bat.series, bat.parallel].every(Number.isFinite)) return null;
+    const e = bat.enclosure;
+    if (e) return { x: bat.parallel * (d + e.gapM) + 2 * e.sheetM, y: bat.series * (d + e.gapM) + 2 * e.sheetM, z: h + e.extraHeightM + 2 * e.sheetM };
     return { x: bat.parallel * d, y: bat.series * d, z: h };
   }
   const env = ctx.get(id, "props.envelope");
@@ -84,7 +86,12 @@ export const clearance = registerSolver({
   targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.clearance).map((n) => n.id),
   run(ctx, id) {
     const tol = ctx.get(id, "props.clearance.tolerance") ?? 0.001;
-    const all = bodies(ctx, id).filter((n) => !ctx.get(n.id, "props.logical"));
+    // distributed items (a harness, fasteners) have a mass and a centroid but no single box; a part not
+    // fitted is not a body: both are listed, not checked
+    const listed = bodies(ctx, id).filter((n) => !ctx.get(n.id, "props.logical"));
+    const distributed = listed.filter((n) => ctx.get(n.id, "props.distributed")).map((n) => n.id);
+    const notFitted = listed.filter((n) => ctx.get(n.id, "props.notFitted")).map((n) => n.id);
+    const all = listed.filter((n) => !distributed.includes(n.id) && !notFitted.includes(n.id));
     ctx.children(id, "MATED_TO"); // record a structure read: joins come from edges
     const joined = new Set(ctx.graph.edges().filter((e) => JOIN.has(e.type)).flatMap((e) => [`${e.from}|${e.to}`, `${e.to}|${e.from}`]));
     const boxes = [];
@@ -123,6 +130,8 @@ export const clearance = registerSolver({
         interferences: { value: interferences },
         serviceBlocked: { value: blocked },
         noEnvelope: { value: noBox },
+        distributed: { value: distributed, note: "spread over the assembly (no single box): not checked for interference" },
+        notFitted: { value: notFitted },
       },
       failures: [
         ...interferences.map((x) => `interference: ${x.a} ↔ ${x.b} (${(x.penetration * 1000).toFixed(1)} mm)`),

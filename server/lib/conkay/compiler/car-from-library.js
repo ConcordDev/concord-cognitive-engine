@@ -25,6 +25,7 @@ import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, L
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
+import { withStructuralTub } from "../structural/car-tub.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
 
@@ -132,7 +133,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package" } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis = "ladder", tub = {} } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -311,7 +312,18 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     if (!d.error) veh.props.vehicle.speedLimiter = d;
   }
   sources.speedLimiter = !limiter ? "none (no speed limiter in this design)" : limiter.error ? `not applied: ${limiter.error}` : limiter.basis;
-  return { ir, configuration: { config, sources }, selection, parsed: c.parsed, speedLimiter: limiter };
+  // Chassis structure: the ladder-frame screen parts (default) or the structural tub (a design change,
+  // structural/car-tub.js: closed boxes, shear sheets and a pillar ring laid out in the package and the body).
+  let out = ir, tubChange = null;
+  if (chassis === "tub") {
+    if (!packaging) return { error: "the structural tub is laid out in the package: it needs packaging" };
+    const t = withStructuralTub(ir, tub);
+    out = t.ir;
+    tubChange = t.change;
+    sources.chassis = `design change: ${t.change.new} (replaces ${t.change.old})`;
+  } else if (chassis !== "ladder") return { error: `unknown chassis "${chassis}" (ladder | tub)` };
+  else sources.chassis = "ladder-frame screen parts (RAIL_L, RAIL_R, TUB): placeholders, see notIncluded";
+  return { ir: out, configuration: { config, sources }, selection, parsed: c.parsed, speedLimiter: limiter, ...(tubChange ? { tubChange } : {}) };
 }
 
 // Occupants checked by default: the smallest (5th female stature) and largest (95th male) occupant,

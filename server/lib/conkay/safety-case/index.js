@@ -12,5 +12,6 @@ export * from "./reliability-data.js";
 export { Bdd, buildBdd, variableOrder, BDD_VERSION } from "./bdd.js";
 export { quantifyTree, importance, betaFactor, eventProbability, modelProbabilities, meanParams, monteCarlo, eventTree, IMPORTANCE_DEFINITIONS, PRA_VERSION } from "./pra.js";
 export { runPraDemo, renderPraMarkdown, LOOP_ET, LOCHS_ET, MISSION_HOURS } from "./pra-demo.js";
-export { buildUS600Facility, US600_SOURCES, US600_FACTS, US600_CONFLICTS, US600_GAPS } from "./facility-nuscale-us600.js";
+export { buildUS600Facility, US600_SOURCES, US600_FACTS, US600_CONFLICTS, US600_GAPS, US600_GAP_SOURCES, US600_RETRIEVAL_LOG } from "./facility-nuscale-us600.js";
+export { drawFacility, facilityDrawingStatus, facilityModelHash, FACILITY_GA_VERSION } from "./facility-drawing.js";
 export { runFacilityScreen, renderFacilityMarkdown, validateFacility, facilitySupportSystem, allTrainSupports, sharedExposure, phase2Link, FACILITY_VERSION } from "./facility.js";
