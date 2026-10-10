@@ -254,7 +254,11 @@ export const vehicleAcceptance = registerSolver({
       drivetrain_losses: `driveline efficiency ${ts?.inputs?.drivelineEfficiency?.value ?? "?"} (${ts?.inputs?.drivelineEfficiency?.source ?? "not given"})`,
       gearing: !gear ? "no gearing in the design (vehicle.gearing did not run)" : gear.status === "NOT_COMPUTED" ? `not computed: ${gear.reason}` : gearEvidence(gear),
       tyre_limits: `speed rating ${tyre?.status ?? "not run"}${tyre?.outputs?.demandBasis ? ` (against the ${tyre.outputs.demandBasis.value})` : ""}; load index ${load?.status ?? "not run"}`,
-      stability: "no solver yet",
+      stability: (() => {
+        const aero = ctx.result("aero.drag-buildup", id);
+        const sign = aero?.outputs?.sectionLift?.value?.sign;
+        return sign ? `no stability solver; 2D centreline-section lift sign from aero.drag-buildup: ${sign} (inviscid panel method, screening; not the car's 3D lift)` : "no solver yet";
+      })(),
       thermal: "no solver yet",
       speed_limiter: "design choice: no limiter calibration, road-speed signal accuracy or overshoot test in the design",
     };

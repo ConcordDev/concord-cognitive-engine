@@ -273,14 +273,17 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     replace({ ...byId.get(id), props: rest });
   }
 
-  // Vehicle inputs. Cd and losses are inputs, which is why the top speed is a model output.
+  // Vehicle inputs. Losses are inputs and Cd is a screening range at best, which is why the top speed is a model output.
   const veh = byId.get("VEH");
   veh.props = {
     ...veh.props,
     vehicle: {
       fuelType: config.fuelType,
-      dragCoefficient: 0.28,
-      dragCoefficientSource: "design target (not computed: no CFD or wind-tunnel value)",
+      // With the CAD body, Cd is the centre of the screening drag build-up range (aero.drag-buildup) computed
+      // from the solid; without it (ellipsoid screening body) the 0.28 design target stays the input.
+      ...(packaging && cadBody
+        ? { dragCoefficientFrom: "aero.drag-buildup", dragCoefficientTarget: 0.28, dragCoefficientTargetSource: "former design target (not computed); kept for comparison only" }
+        : { dragCoefficient: 0.28, dragCoefficientSource: "design target (not computed: no CFD or wind-tunnel value)" }),
       frontalAreaFrom: "BODY_SHELL",
       rollingResistance: 0.011,
       drivelineEfficiency: 0.9,
