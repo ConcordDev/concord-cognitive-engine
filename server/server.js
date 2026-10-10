@@ -1906,6 +1906,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { stripGovernanceLeak, visibleChatReply, createGovernanceLeakFilter } from "./lib/chat-governance-leak.js";
 import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
@@ -28571,7 +28572,7 @@ ${_operatorV6Block}` : "";
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
@@ -37016,10 +37017,14 @@ const INTERNAL_LEAK_PATTERNS = [
   /\bshadow\s*dtu\b.*\bhidden\b/i,
   /\bSYSTEM\s+PROMPT\b/i
 ];
-function stripInternalLeakage(reply, { debug=false, showInternals=false } = {}) {
+function stripInternalLeakage(reply, { debug=false, showInternals=false, userText="" } = {}) {
   if (!reply) return "";
-  if (debug || showInternals) return String(reply);
-  const lines = String(reply).split("\n");
+  // Governance envelopes are never user-visible, including when a caller
+  // asked to see internals — the structured copy already rides on `grc`.
+  const text = stripGovernanceLeak(reply, { userText });
+  if (!text) return "";
+  if (debug || showInternals) return text;
+  const lines = text.split("\n");
   const kept = [];
   for (const line of lines) {
     const bad = INTERNAL_LEAK_PATTERNS.some(re => re.test(line));
@@ -37079,7 +37084,8 @@ function toUI(out, req, extraMeta={}) {
   const base = ensureReplyEnvelope(out, req, extraMeta);
   let reply = String(base.reply || "");
   const showInternals = Boolean(req?.body?.showInternals || req?.query?.showInternals === "1");
-  reply = stripInternalLeakage(reply, { debug: false, showInternals });
+  const userText = req?.body?.prompt || req?.body?.message || req?.body?.query || req?.body?.content || "";
+  reply = stripInternalLeakage(reply, { debug: false, showInternals, userText });
   reply = softEnforceLabelDiscipline(reply, base?.meta?.mode || req?.body?.mode || "chat");
   if (!reply) reply = deterministicFallbackReply(req);
 
@@ -54490,19 +54496,23 @@ function initChatSocketHandlers(io) {
             // never entered, and background brain work competed with live
             // chat for the same Ollama slots un-arbitrated.
             let _streamSeq = 0;
+            const _streamUserText = String(prompt || "");
+            const _govFilter = createGovernanceLeakFilter({ userText: _streamUserText });
             const streamResult = _streamByo
               ? (() => {
                   // _streamByo.text is the real field (see the bug-fix note
                   // above) — normalize to `.content` here so the downstream
                   // consumer (which expects callOllamaStreaming's shape) sees
                   // the same field name regardless of which branch produced it.
-                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
+                  const _byoVisible = visibleChatReply(_streamByo.text, _streamUserText);
+                  if (_byoVisible) socket.emit("chat:token", { token: _byoVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _byoVisible, model: _streamByo.model || "byo", source: "byo" };
                 })()
               : _streamPlatform
               ? (() => {
-                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
+                  const _platVisible = visibleChatReply(_streamPlatform.text, _streamUserText);
+                  if (_platVisible) socket.emit("chat:token", { token: _platVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _platVisible, model: _streamPlatform.model || "platform", source: "platform" };
                 })()
               : await _llmQueue.enqueue(
                   () => callOllamaStreaming(
@@ -54511,7 +54521,8 @@ function initChatSocketHandlers(io) {
                     _streamMessages,
                     _streamSystem,
                     (token) => {
-                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                      const visible = _govFilter.push(token);
+                      if (visible) socket.emit("chat:token", { token: visible, sessionId, seq: _streamSeq++ });
                     },
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
@@ -54525,7 +54536,7 @@ function initChatSocketHandlers(io) {
               // Store assistant response in session
               _streamSess.messages.push({
                 role: "assistant",
-                content: streamResult.content,
+                content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
                 meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
               });

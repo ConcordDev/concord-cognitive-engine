@@ -9,6 +9,12 @@ import { buildWorkingContext } from '../lib/chat/working-context.js';
 import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRESSION_BATCH } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
+import { scrubChatFields } from '../lib/chat-governance-leak.js';
+
+function chatUserText(body) {
+  const b = body || {};
+  return String(b.prompt || b.message || b.query || b.content || "");
+}
 export default function registerChatRoutes(app, {
   STATE,
   makeCtx,
@@ -81,7 +87,7 @@ export default function registerChatRoutes(app, {
         }
 
         sse("meta", { ok:true, mode: req._concordMode, sessionId: req.body.sessionId || null });
-        const out = await runMacro("chat","respond", req.body, ctx);
+        const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
 
         // Pick a best-effort text field for progressive display.
         const answer = out?.answer ?? out?.content ?? out?.text ?? out?.message ?? out?.response ?? "";
@@ -110,7 +116,7 @@ export default function registerChatRoutes(app, {
         logger.debug('[chat] buildWorkingContext failed', { err: _wcErr?.message });
       }
 
-      const out = await runMacro("chat","respond", req.body, { ...ctx, workingContext });
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext }), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       // Attach confidence score to the final response
@@ -222,7 +228,7 @@ export default function registerChatRoutes(app, {
         req.body = enforceRequestInvariants(req, req.body || {});
         req._concordMode = req.body.mode || "chat";
         const fallbackCtx = makeCtx(req);
-        const fallbackOut = await runMacro("chat","respond", req.body, fallbackCtx);
+        const fallbackOut = scrubChatFields(await runMacro("chat","respond", req.body, fallbackCtx), chatUserText(req.body));
         return res.json(fallbackOut);
       }
       req.body = enforceRequestInvariants(req, req.body || {});
@@ -231,7 +237,7 @@ export default function registerChatRoutes(app, {
 
       startSSE(res);
 
-      const out = await runMacro("chat","respond", req.body, ctx);
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       const content = String(out?.reply || out?.content || out?.answer || out?.text || "");
