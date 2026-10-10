@@ -15,9 +15,12 @@
 //                                         probability and exact importance measures (FV, RAW, RRW, Birnbaum)
 //   conkay_safety.pra-demo { samples?, seed? } → Phase 2 toy LOOP / LOCHS event trees on NUREG/CR-6928 2020
 //                                         data: sequences, uncertainty, importance, data trail, gaps, markdown
+//   conkay_safety.facility-us600 { modules? } → Phase 3 facility SSC skeleton of the NRC-certified NuScale US600
+//                                         (public sources only), Phase 1 screen + cross-system checks + Phase 2
+//                                         link, review queue, markdown
 
 import "../lib/conkay/index.js";
-import { runSafetyCaseDemo, renderSafetyCaseMarkdown, minimalCutSets, verifyChain, BANNER, quantifyTree, importance, runPraDemo, renderPraMarkdown } from "../lib/conkay/safety-case/index.js";
+import { runSafetyCaseDemo, renderSafetyCaseMarkdown, minimalCutSets, verifyChain, BANNER, quantifyTree, importance, runPraDemo, renderPraMarkdown, buildUS600Facility, runFacilityScreen, renderFacilityMarkdown } from "../lib/conkay/safety-case/index.js";
 
 export default function registerConkaySafetyActions(registerLensAction) {
   registerLensAction("conkay_safety", "case-report", () => {
@@ -51,6 +54,14 @@ export default function registerConkaySafetyActions(registerLensAction) {
     const samples = Number.isInteger(params?.samples) && params.samples > 0 && params.samples <= 50000 ? params.samples : 4000;
     const r = runPraDemo({ samples, seed: typeof params?.seed === "string" ? params.seed : "conkay-pra-demo" });
     return { ok: true, result: { ...r, markdown: renderPraMarkdown(r) } };
+  });
+
+  registerLensAction("conkay_safety", "facility-us600", (_ctx, _artifact, params) => {
+    const modules = Number.isInteger(params?.modules) ? params.modules : 12;
+    if (modules < 1 || modules > 12) return { ok: false, error: "modules must be 1..12", banner: BANNER };
+    const r = runFacilityScreen(buildUS600Facility({ modules }));
+    if (!r.ok) return { ok: false, error: r.errors.join("; "), banner: BANNER };
+    return { ok: true, result: { ...r, markdown: renderFacilityMarkdown(r) } };
   });
 
   registerLensAction("conkay_safety", "verify-log", (_ctx, _artifact, params) => {
