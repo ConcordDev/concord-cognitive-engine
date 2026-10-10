@@ -49,7 +49,7 @@
 
 import { buildStiffnessMatrix, elementData } from "../../simulation/fea-solver.js";
 
-export const FRAME_FE_VERSION = "1.0.0";
+export const FRAME_FE_VERSION = "1.1.0";
 const DOF = 6;
 const DOF_MAP = { x: 0, y: 1, z: 2, rx: 3, ry: 4, rz: 5 };
 
@@ -242,6 +242,20 @@ function localYRef(m, a, b, up) {
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 
 /**
+ * Member rotation (rows = local x, y, z in global coordinates), the same axes the
+ * element uses. `up` is the section-height reference (model.up).
+ */
+export function memberAxes(a, b, up) {
+  const yRef = localYRef({}, a, b, up);
+  const nodes = [
+    { id: "i", x: a.x, y: a.y, z: a.z ?? 0 },
+    { id: "j", x: b.x, y: b.y, z: b.z ?? 0 },
+  ];
+  const { R } = elementData(nodes, { nodeI: "i", nodeJ: "j", yRef, area: 1, momentI: 1, Iy: 1, J: 1, elasticModulus: 1, shearModulus: 1 });
+  return R;
+}
+
+/**
  * Build the element mesh. model: { nodes: [{ id, x, y, z }], members: [{ id, i, j,
  * section, E, G, fy?, segments? }], supports: [{ node, fix: ["x",...] | "fixed" | "pinned" }] }
  */
@@ -250,6 +264,7 @@ function mesh(model, segmentsDefault) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const elements = [];
   const members = [];
+  const springs = [];
   for (const m of model.members) {
     const a = byId.get(String(m.i)), b = byId.get(String(m.j));
     if (!a || !b) throw new Error(`member ${m.id}: unknown node ${!a ? m.i : m.j}`);
@@ -258,14 +273,27 @@ function mesh(model, segmentsDefault) {
     const G = m.G > 0 ? m.G : null;
     if (!G) throw new Error(`member ${m.id}: G required (E / (2 (1 + nu)))`);
     const nSeg = Math.max(1, Math.round(m.segments ?? segmentsDefault));
-    const ids = [a.id];
+    // semi-rigid ends: the member starts at a coincident internal node tied to the joint node in
+    // translation and joined to it in rotation by springs [k_torsion, k_y, k_z] (N·m/rad, member axes)
+    const endNode = (end, n) => {
+      const k = m.endSprings?.[end];
+      if (!k) return n;
+      if (!(Array.isArray(k) && k.length === 3 && k.every((v) => v > 0))) throw new Error(`member ${m.id}: endSprings.${end} must be [k_torsion, k_y, k_z] > 0 (N·m/rad)`);
+      const id = `${m.id}@${end}`;
+      const c = { id, x: n.x, y: n.y, z: n.z, internal: true };
+      nodes.push(c); byId.set(id, c);
+      springs.push({ id, member: m.id, end, joint: n.id, inner: id, k, a, b });
+      return c;
+    };
+    const ea = endNode("i", a), eb = endNode("j", b);
+    const ids = [ea.id];
     for (let s = 1; s < nSeg; s++) {
       const t = s / nSeg;
       const id = `${m.id}#${s}`;
       const n = { id, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t, internal: true };
       nodes.push(n); byId.set(id, n); ids.push(id);
     }
-    ids.push(b.id);
+    ids.push(eb.id);
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     if (model.shearDeformation && !(sec.Asy > 0 && sec.Asz > 0)) throw new Error(`member ${m.id}: shearDeformation needs the section's shear areas (Asy, Asz)`);
     const mem = { ...m, sec, L, elements: [] };
@@ -284,7 +312,33 @@ function mesh(model, segmentsDefault) {
     const fix = s.fix === "fixed" ? Object.keys(DOF_MAP) : s.fix === "pinned" ? ["x", "y", "z"] : s.fix || [];
     for (const d of fix) constrained.add(i * DOF + DOF_MAP[d]);
   }
-  return { nodes, elements, members, index, constrained, shearDeformation: !!model.shearDeformation };
+  for (const sp of springs) sp.yRef = localYRef(members.find((x) => x.id === sp.member), sp.a, sp.b, model.up);
+  return { nodes, elements, members, index, constrained, springs, shearDeformation: !!model.shearDeformation };
+}
+
+/**
+ * Add the semi-rigid end springs to K: translations tied by a penalty (1e3 × the largest diagonal),
+ * rotations by the springs in the member's local axes (R from the member's direction and yRef).
+ */
+function addEndSprings(K, M, size) {
+  if (!M.springs.length) return;
+  let maxDiag = 0;
+  for (let i = 0; i < size; i++) maxDiag = Math.max(maxDiag, K[i * size + i]);
+  const tie = 1e3 * maxDiag;
+  for (const sp of M.springs) {
+    const { R } = elementData(M.nodes, { nodeI: sp.a.id, nodeJ: sp.b.id, yRef: sp.yRef, area: 1, Iz: 1, Iy: 1, J: 1, elasticModulus: 1, shearModulus: 1 });
+    const ia = M.index.get(sp.joint) * DOF, ib = M.index.get(sp.inner) * DOF;
+    const add = (r, c, v) => { K[r * size + c] += v; };
+    for (let d = 0; d < 3; d++) { add(ia + d, ia + d, tie); add(ib + d, ib + d, tie); add(ia + d, ib + d, -tie); add(ib + d, ia + d, -tie); }
+    // rotational block: Rᵀ diag(k) R
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        let v = 0;
+        for (let q = 0; q < 3; q++) v += R[q][r] * sp.k[q] * R[q][c];
+        add(ia + 3 + r, ia + 3 + c, v); add(ib + 3 + r, ib + 3 + c, v); add(ia + 3 + r, ib + 3 + c, -v); add(ib + 3 + r, ia + 3 + c, -v);
+      }
+    }
+  }
 }
 
 /** Consistent load vector (local) of a uniform local load q = [qx, qy, qz] (N/m) on an element of length L. */
@@ -325,6 +379,7 @@ export function analyzeFrame(model, { segments = 8, buckling = [] } = {}) {
   const M = mesh(model, segments);
   const nN = M.nodes.length, size = nN * DOF;
   const { K } = buildStiffnessMatrix(M.elements, M.nodes);
+  addEndSprings(K, M, size);
   const free = [];
   for (let i = 0; i < size; i++) if (!M.constrained.has(i)) free.push(i);
   const nf = free.length;

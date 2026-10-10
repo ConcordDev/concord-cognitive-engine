@@ -123,8 +123,21 @@ describe("the car's openings and the tub as the default", () => {
   });
 
   it("stiffness: what the openings cost, what the repairs bought, against the cited target", () => {
-    const k3 = kOf(brief3.ir).outputs["stiffness.torsional"].perDegree;
+    const f3 = kOf(brief3.ir);
+    const k3 = f3.outputs["stiffness.torsional"].perDegree;
     near(k3, 10992, 0.01, "brief 3 tub (openings not designed)");
+    const cc3 = f3.outputs["stiffness.torsional.crossCheck"].value;
+    assert.ok(Number.isFinite(cc3.withoutPanelsPerDegree) && Number.isFinite(cc3.saintVenantPerDegree) && cc3.reading, JSON.stringify(cc3));
+    // rigid 10,992 is the upper bound. The computed bond line on these sections is under the target, so this geometry fails that one margin. The cross-check is mixed, not a panel-only artifact.
+    assert.equal(f3.status, "FAIL");
+    const jr3 = f3.outputs["stiffness.torsional.jointRange"].value;
+    assert.ok(jr3.rigidPerDegree > TORSION_TARGET.perDegree && jr3.lowComputedPerDegree < TORSION_TARGET.perDegree, JSON.stringify(jr3));
+    const over3 = (f3.margins || []).filter((m) => m.demand / m.capacity > 1);
+    assert.equal(over3.length, 1);
+    assert.match(over3[0].check, /lowest computed joint scenario/);
+    near(cc3.withoutPanelsPerDegree, 8157, 0.01, "brief 3 with the shear panels removed");
+    near(cc3.saintVenantPerDegree, 4207, 0.01, "brief 3 Saint-Venant of the closed extrusions");
+    assert.ok(cc3.reading.startsWith("mixed"), cc3.reading);
     // the openings on the brief 3 sections (no repairs)
     const cut = withStructuralTub(lad.ir, { choices: brief3Choices });
     const kCut = kOf(cut.ir).outputs["stiffness.torsional"].perDegree;
@@ -137,7 +150,8 @@ describe("the car's openings and the tub as the default", () => {
     const kClosed = kOf(closedIr).outputs["stiffness.torsional"].perDegree;
     assert.ok(kClosed > 1.7 * kCut, `closed ${kClosed} vs open ${kCut}`);
     // the repaired design
-    assert.equal(frame.status, "PASS", `${frame.reason || ""} ${(frame.warnings || []).join(" | ")}`);
+    assert.equal(frame.status, "WARN", `${frame.reason || ""} ${(frame.warnings || []).join(" | ")}`);
+    assert.ok((frame.warnings || []).some((w) => /estimated joint-wall bound/.test(w)));
     const k = frame.outputs["stiffness.torsional"].perDegree;
     near(k, 12222, 0.01, "repaired tub with openings");
     assert.ok(k / TORSION_TARGET.perDegree > 1.1);
