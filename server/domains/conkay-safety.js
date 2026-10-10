@@ -18,9 +18,12 @@
 //   conkay_safety.facility-us600 { modules? } → Phase 3 facility SSC skeleton of the NRC-certified NuScale US600
 //                                         (public sources only), Phase 1 screen + cross-system checks + Phase 2
 //                                         link, review queue, markdown
+//   conkay_safety.facility-us600-drawing { modules? } → schematic plant GA (plan + section A-A, SSC register, FSAR gap
+//                                         pull list) from the same model; revision = model hash; unknowns not drawn
 
 import "../lib/conkay/index.js";
-import { runSafetyCaseDemo, renderSafetyCaseMarkdown, minimalCutSets, verifyChain, BANNER, quantifyTree, importance, runPraDemo, renderPraMarkdown, buildUS600Facility, runFacilityScreen, renderFacilityMarkdown } from "../lib/conkay/safety-case/index.js";
+import { runSafetyCaseDemo, renderSafetyCaseMarkdown, minimalCutSets, verifyChain, BANNER, quantifyTree, importance, runPraDemo, renderPraMarkdown, buildUS600Facility, runFacilityScreen, renderFacilityMarkdown, drawFacility } from "../lib/conkay/safety-case/index.js";
+import { toSvg } from "../lib/conkay/drawings/sheet.js";
 
 export default function registerConkaySafetyActions(registerLensAction) {
   registerLensAction("conkay_safety", "case-report", () => {
@@ -62,6 +65,15 @@ export default function registerConkaySafetyActions(registerLensAction) {
     const r = runFacilityScreen(buildUS600Facility({ modules }));
     if (!r.ok) return { ok: false, error: r.errors.join("; "), banner: BANNER };
     return { ok: true, result: { ...r, markdown: renderFacilityMarkdown(r) } };
+  });
+
+  registerLensAction("conkay_safety", "facility-us600-drawing", (_ctx, _artifact, params) => {
+    const modules = Number.isInteger(params?.modules) ? params.modules : 12;
+    if (modules < 1 || modules > 12) return { ok: false, error: "modules must be 1..12", banner: BANNER };
+    const r = drawFacility(buildUS600Facility({ modules }));
+    if (!r.ok) return { ok: false, error: r.errors.join("; "), banner: BANNER };
+    const { _sheets, ...rest } = r;
+    return { ok: true, result: { ...rest, svg: _sheets.map((s, i) => toSvg(s, { drawing: r.drawing, revision: r.revision, modelHash: r.modelHash, sheet: i + 1 })) } };
   });
 
   registerLensAction("conkay_safety", "verify-log", (_ctx, _artifact, params) => {

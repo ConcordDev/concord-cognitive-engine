@@ -67,7 +67,7 @@ export function titleBlock(items, t, [W]) {
   line(items, [[x0 + 110, y0], [x0 + 110, y0 + 34]], "thin");
   text(items, x0 + 2, y0 + 39.5, fitText(t.title, 4, w - 4), 4, "start", true);
   text(items, x0 + 2, rows[1], fitText(`Drawing no. ${t.number}   Sheet ${t.sheet}`, 2.8, 106), 2.8);
-  text(items, x0 + 2, rows[2], fitText(`Scale 1:${t.scale} (A3)   Units mm   ${t.projection}`, 2.8, 106), 2.8);
+  text(items, x0 + 2, rows[2], fitText(`Scale 1:${t.scale} (A3)   Units ${t.units || "mm"}   ${t.projection}`, 2.8, 106), 2.8);
   text(items, x0 + 2, rows[3], fitText(`Model: ${t.model}`, 2.2, 106), 2.2);
   text(items, x0 + 2, rows[4], fitText(t.status, 2.2, 106), 2.2, "start", true);
   text(items, x0 + 2, y0 + 1.6, fitText(t.generated, 1.8, 106), 1.8);
