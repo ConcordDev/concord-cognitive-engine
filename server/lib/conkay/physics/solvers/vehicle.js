@@ -51,12 +51,26 @@ function frontalArea(ctx, id) {
   return { error: null };
 }
 
+// Cd: given in the design, or the centre of the aero.drag-buildup range when
+// props.vehicle.dragCoefficientFrom = "aero.drag-buildup" (then the range's
+// low / high are carried so the top speed is reported as a range too).
+export function dragCoefficientOf(ctx, id) {
+  if (ctx.get(id, "props.vehicle.dragCoefficientFrom") === "aero.drag-buildup") {
+    const env = ctx.result("aero.drag-buildup", id);
+    const r = env?.outputs?.dragCoefficient?.value;
+    if (!r || !Number.isFinite(r.centre)) return { error: `Cd from aero.drag-buildup is not computed (${env?.reason || env?.status || "no run"})` };
+    return { value: r.centre, range: { low: r.low, high: r.high }, source: `computed (screening range): aero.drag-buildup centre of ${r.low.toFixed(3)}..${r.high.toFixed(3)} (not CFD or wind tunnel)` };
+  }
+  const v = ctx.get(id, "props.vehicle.dragCoefficient");
+  return { value: v, source: ctx.get(id, "props.vehicle.dragCoefficientSource") || "given in the design (not computed from geometry)" };
+}
+
 // A top speed from this model is a model output, not a validated claim:
 // it holds only as far as each of these is shown to hold. The acceptance
 // check reports which of them the design has evidence for.
 export const TOP_SPEED_CLAIM_STATUS = "model_output_unvalidated";
 export const TOP_SPEED_UNVERIFIED_DEPENDENCIES = [
-  { id: "drag_model", what: "Cd and frontal area: Cd is an input (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening)" },
+  { id: "drag_model", what: "Cd and frontal area: Cd is an input or the centre of a screening drag build-up range (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening)" },
   { id: "drivetrain_losses", what: "driveline efficiency is an input, not measured or computed from the gearbox and differential" },
   { id: "gearing", what: "the gear limit needs the gear ratios, final drive, tyre radius and a redline; the redline and the power available at that engine speed are inputs (vehicle.gearing)" },
   { id: "tyre_limits", what: "tyre speed rating and load index against this speed and the axle loads (tire.speed-rating, tire.load-index)" },
@@ -147,7 +161,7 @@ export function solveTopSpeed(wheelPowerW, a, b) {
 
 export const vehicleTopSpeed = registerSolver({
   id: "vehicle.top-speed",
-  version: "1.3.0",
+  version: "1.4.0",
   domain: "performance.top-speed",
   fidelity: 1,
   method: "steady state: P·η = ½ρ·Cd·A·v³ + Crr·m·g·v, solved for v by bisection; then min(that, speed at the rev limit in the tallest gear) when the gearing is known; then min(that, the speed limiter's set point) when the design has a limiter",
@@ -160,6 +174,10 @@ export const vehicleTopSpeed = registerSolver({
     if (fa.error) return { notComputed: fa.error };
     v.frontalArea = fa.value;
     v.frontalAreaSource = fa.source;
+    const cdOf = dragCoefficientOf(ctx, id);
+    if (cdOf.error) return { notComputed: cdOf.error };
+    v.dragCoefficient = cdOf.value;
+    v.dragCoefficientSource = cdOf.source;
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     if (v.drivelineEfficiency > 1) return { notComputed: "drivelineEfficiency must be at most 1" };
@@ -195,7 +213,7 @@ export const vehicleTopSpeed = registerSolver({
       inputs: {
         mass: { value: m, unit: "kg", source: `${massEnv.runId} (gross: kerb + payload)` },
         power: { value: P, unit: "W", source: powers.map((p) => p.id).join(" + ") },
-        dragCoefficient: { value: v.dragCoefficient, source: v.dragCoefficientSource || "given in the design (not computed from geometry)" },
+        dragCoefficient: { value: v.dragCoefficient, source: v.dragCoefficientSource, ...(cdOf.range ? { range: cdOf.range } : {}) },
         frontalArea: { value: v.frontalArea, unit: "m2", source: v.frontalAreaSource },
         rollingResistance: { value: v.rollingResistance, source: "given in the design" },
         drivelineEfficiency: { value: v.drivelineEfficiency, source: "given in the design" },
@@ -209,6 +227,12 @@ export const vehicleTopSpeed = registerSolver({
         unlimitedTopSpeed: { value: vUnlimited, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, limitedBy: unlimitedBy, note: "without the speed limiter: the lower of the drag-limited and gear-limited speeds" },
         ...(lim ? { speedLimiter: { value: { setKmh: lim.setKmh, overshootAllowanceKmh: lim.overshootAllowanceKmh, binding: capped, basis: lim.basis, sources: lim.sources }, status: "design_choice_unverified" } } : {}),
         dragLimitedTopSpeed: { value: vDrag, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS },
+        ...(cdOf.range ? {
+          dragLimitedTopSpeedRange: {
+            value: { low: solveTopSpeed(P * v.drivelineEfficiency, 0.5 * rho * cdOf.range.high * v.frontalArea, b), high: solveTopSpeed(P * v.drivelineEfficiency, 0.5 * rho * cdOf.range.low * v.frontalArea, b) },
+            unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, note: "drag-limited speed at the high and the low end of the Cd range (all other inputs as above)",
+          },
+        } : {}),
         ...(Number.isFinite(gl.value) ? { gearLimitedTopSpeed: { value: gl.value, unit: "m/s", status: TOP_SPEED_CLAIM_STATUS, note: `fastest speed any gear reaches at ${gl.revLimitRpm} rpm (${gl.limitSource})` } } : {}),
         limitedBy: { value: limitedBy },
         claimStatus: { value: TOP_SPEED_CLAIM_STATUS, note: "a model output, not a validated top speed", unverifiedDependencies: deps },
@@ -217,7 +241,7 @@ export const vehicleTopSpeed = registerSolver({
       },
       assumptions: [
         "Steady, level road, no wind; the lower of the power-limited speed and, when the gearing is known, the speed at the rev limit in the tallest gear; capped at the speed limiter's set point when the design has one.",
-        "Cd and frontal area are inputs; aero is screening until a CFD or wind-tunnel value replaces them.",
+        cdOf.range ? "Cd is the centre of a screening drag build-up range (aero.drag-buildup), not CFD or wind tunnel; the drag-limited speed is also given at both ends of the range." : "Cd and frontal area are inputs; aero is screening until a CFD or wind-tunnel value replaces them.",
         `Model output (${TOP_SPEED_CLAIM_STATUS}): depends on ${deps.map((d) => d.id).join(", ")}.`,
       ],
     };
@@ -230,7 +254,7 @@ export const vehicleTopSpeed = registerSolver({
 // changing the requirement, the mass or the aero reruns this.
 export const vehicleRequiredPower = registerSolver({
   id: "vehicle.required-power",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "performance.power-sizing",
   fidelity: 1,
   method: "P = (½ρ·Cd·A·v³ + Crr·m·g·v)/η at the required top speed",
@@ -246,6 +270,9 @@ export const vehicleRequiredPower = registerSolver({
     const fa = frontalArea(ctx, id);
     if (fa.error) return { notComputed: fa.error };
     v.frontalArea = fa.value;
+    const cdReq = dragCoefficientOf(ctx, id);
+    if (cdReq.error) return { notComputed: cdReq.error };
+    v.dragCoefficient = cdReq.value;
     const missing = ["dragCoefficient", "frontalArea", "rollingResistance", "drivelineEfficiency"].filter((k) => !(Number.isFinite(v[k]) && v[k] > 0));
     if (missing.length) return { notComputed: `props.vehicle needs ${missing.join(", ")}` };
     const massEnv = ctx.result("mass.assembly", id);
