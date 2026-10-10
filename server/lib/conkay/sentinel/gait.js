@@ -20,6 +20,12 @@
 // The design's estimated electrical profile (walkFraction 0.3, walkLoadFactor
 // 0.5 of rated) is a different check. This module does not replace it and
 // does not close requirement R-duration.
+//
+// Electrical energy is not mechanical work divided by the rated-point
+// efficiency. That point is 48 rpm and about 240 W. This gait is a few rpm,
+// so most of the electrical input is holding current. The scale used here is
+// the table's rated watts per rated newton-metre, applied to |torque|. It is
+// an estimate: the excerpt does not say current is proportional to torque.
 
 import { solve1D } from "../thermal/conduction.js";
 
@@ -119,7 +125,7 @@ function torqueStatus(demandLow, demandHigh, capacity) {
  * Single support is the middle of the stance; double support (share 0.5) is
  * each end. Both fractions are estimated.
  */
-function oneCase({ massKg, A, d, v, stanceFraction, doubleSupportFraction, eta, samples = 4000 }) {
+function oneCase({ massKg, A, d, v, stanceFraction, doubleSupportFraction, wPerNm, samples = 4000 }) {
   const L = LEG.straightM;
   const W = massKg * G;
   const singleReach = ((stanceFraction - doubleSupportFraction) / stanceFraction) * A;
@@ -139,15 +145,24 @@ function oneCase({ massKg, A, d, v, stanceFraction, doubleSupportFraction, eta, 
   };
   const dx = (2 * A) / samples;
   let anklePosJ = 0;
+  let ankleSignedJ = 0;
   let hipPosJ = 0;
+  let ankleHoldJ = 0;
+  let holdJ = 0;
   for (let i = 0; i < samples; i++) {
     const x = -A + (i + 0.5) * dx;
     const share = shareAt(x);
     const omegaDt = dx / Math.sqrt(L * L - x * x); // ω dt, with dt = dx / v and ω = v / sqrt(...)
+    const dt = dx / v;
     const ankleJ = -share * W * (x + d) * omegaDt;
     const hipJ = -share * W * d * omegaDt;
+    ankleSignedJ += ankleJ;
     if (ankleJ > 0) anklePosJ += ankleJ;
     if (hipJ > 0) hipPosJ += hipJ;
+    const tau = at(x, share);
+    const ankleE = wPerNm * Math.abs(tau.ankle) * dt;
+    ankleHoldJ += ankleE;
+    holdJ += ankleE + wPerNm * (Math.abs(tau.knee) + Math.abs(tau.hip)) * dt;
   }
   const stanceS = (2 * A) / v;
   const cycleS = stanceS / stanceFraction;
@@ -170,12 +185,19 @@ function oneCase({ massKg, A, d, v, stanceFraction, doubleSupportFraction, eta, 
     singleReach,
     peaks,
     ankleMotoringJ: anklePosJ,
+    ankleSignedJ,
     hipMotoringJ: hipPosJ,
+    ankleHoldJ,
+    holdJ,
     stanceS,
     cycleS,
     // Two legs each take one stance per cycle. Swing is not in the integral.
-    electricalJPerCycle: 2 * (anklePosJ + hipPosJ) / eta,
-    ankleLossW: (anklePosJ * (1 / eta - 1)) / cycleS,
+    // holdJ is estimated electrical joules for one leg's stance (ankle, knee and hip).
+    electricalJPerCycle: 2 * holdJ,
+    mechanicalJPerCycle: 2 * anklePosJ,
+    // Heat in one ankle: electrical in, minus mechanical power out of that ankle.
+    // Absorbing mechanical power (negative) adds to the heat. Regeneration is not credited.
+    ankleLossW: (ankleHoldJ - ankleSignedJ) / cycleS,
     speedRpm: {
       mid: rpmOf(v / L),
       atExcursion: rpmOf(v / Math.sqrt(L * L - A * A)),
@@ -198,6 +220,14 @@ function housingTemperature({ lossW, h, tInfC }) {
   });
   const tK1 = solve(1).T[0];
   const tK100 = solve(100).T[0];
+  // Incropera benchmark range of solve1D is constant-k conduction with no radiation.
+  // A polished-metal emissivity of 0.05 is a low estimate; if even that radiates
+  // more than a quarter of the convection, the linear temperature is outside the solver.
+  const sigma = 5.670374419e-8;
+  const kelvin = (c) => c + 273.15;
+  const qRad = 0.05 * sigma * (kelvin(lumpedC) ** 4 - kelvin(tInfC) ** 4);
+  const qConv = h * (lumpedC - tInfC);
+  const conductionValidity = qRad > 0.25 * qConv ? "outside" : "inside";
   return {
     hWm2K: h,
     hState: "estimated",
@@ -209,6 +239,8 @@ function housingTemperature({ lossW, h, tInfC }) {
     lateralM2: r6(lateralM2),
     ends: "adiabatic (the two faces of the Ф98×61.9 mm envelope are not credited with convection, so the rise is high)",
     limitC: { state: "unknown", reason: "the CubeMars excerpt states no winding or housing temperature limit" },
+    conductionValidity,
+    conductionValidityBasis: "solve1D is constant-k, no radiation. Compared with ε = 0.05 (estimated, low for bare aluminium) at the linear temperature",
     status: "not determined",
   };
 }
@@ -238,8 +270,9 @@ export function quasiStaticGait({
   const highM = massHighKg ?? massKg;
   const [aLow, aHigh] = hipExcursionM;
   const eff = ratedPointEfficiency();
+  const wPerNm = (ACTUATOR.voltageV * ACTUATOR.ratedCurrentA) / ACTUATOR.ratedTorqueNm;
   const common = {
-    d: comForwardOfHipM, v: speedMs, stanceFraction, doubleSupportFraction, eta: eff.eta, samples,
+    d: comForwardOfHipM, v: speedMs, stanceFraction, doubleSupportFraction, wPerNm, samples,
   };
   const corners = [];
   for (const mass of [lowM, highM]) {
@@ -266,7 +299,8 @@ export function quasiStaticGait({
   };
   const speedRpmHigh = maxOf((c) => c.speedRpm.atExcursion);
   const speedUtil = speedRpmHigh / ACTUATOR.ratedSpeedRpm48V;
-  const elecWh = corners.map((c) => (c.electricalJPerCycle / c.cycleS) * durationH / 3600);
+  const elecWh = corners.map((c) => (c.electricalJPerCycle / c.cycleS) * durationH);
+  const mechWh = corners.map((c) => (c.mechanicalJPerCycle / c.cycleS) * durationH);
   const elecLow = Math.min(...elecWh);
   const elecHigh = Math.max(...elecWh);
   const lossLow = minOf((c) => c.ankleLossW);
@@ -307,7 +341,17 @@ export function quasiStaticGait({
       model: ACTUATOR.model,
       gearRatio: { state: "unknown", status: "not determined", reason: "the CubeMars AK80-64 excerpt does not state a gear ratio. The 64 in the model name is not used as one. Sized against the packaged output ratings only." },
     },
-    efficiency: eff,
+    efficiency: {
+      ...eff,
+      usedForBattery: false,
+      notUsedBecause: "the rated point is 48 rpm and the mechanical power that goes with 48 Nm. This gait is a few rpm, so rated-point efficiency does not give the electrical energy",
+    },
+    wattsPerNm: {
+      value: wPerNm,
+      state: "estimated",
+      basis: "rated electrical power (48 V × 7 A) divided by rated torque (48 Nm). The excerpt does not say current is proportional to torque, or that 7 A is the bus current at that torque alone",
+      source: ACTUATOR.source,
+    },
     cycleAtHighExcursion: {
       massKg,
       excursionM: aHigh,
@@ -341,24 +385,25 @@ export function quasiStaticGait({
       note: "the assembly's walkFraction 0.3 and walkLoadFactor 0.5 of rated electrical power stay as a separate estimated profile",
     },
     energy: {
+      mechanicalWh: { low: r6(Math.min(...mechWh)), high: r6(Math.max(...mechWh)) },
+      mechanicalState: "computed: positive ankle work only, both legs, stance only. Knee mechanical work is unknown because knee speed is unknown",
       electricalWh: { low: r6(elecLow), high: r6(elecHigh) },
-      state: "computed from estimated kinematics and the estimated rated-point efficiency",
+      electricalState: "estimated: rated watts per rated newton-metre times |torque| on the ankle, knee and hip, both legs, stance only",
       regeneration: "not credited; the excerpt does not say the drive regenerates",
       excluded: [
         { item: "swing leg", state: "unknown" },
-        { item: "knee flexion", state: "unknown" },
         { item: "compute, sensors, fans", state: "not in this integral" },
       ],
       lowerBound: true,
       packs,
       closesDurationRequirement: false,
-      durationReason: "R-duration is the average load for an hour, including compute and sensors, against the electrical profile. This integral is a gait lower bound only.",
+      durationReason: "R-duration is the average load for an hour, including compute and sensors, against the electrical profile. This integral is a gait lower bound on an estimated current scale. It does not close the requirement.",
     },
     heating: {
       ankleAverageLossW: { low: r6(lossLow), high: r6(lossHigh) },
-      lossState: "estimated from the rated-point efficiency applied to positive ankle work only. Absorbing work is not added: how the drive dissipates it is unknown.",
+      lossState: "estimated: ankle electrical input on the watts-per-newton-metre scale, minus the ankle's signed mechanical power. Absorbing work is heat, because regeneration is not in the excerpt",
       cases: heating,
-      hip: { state: "unknown", reason: "hip power is absorbing for the whole stance in this model, and dissipation of absorbing work is not in the excerpt" },
+      hip: { state: "not solved", reason: "the housing solve is the ankle, the highest torque. Knee and hip sit on the same scale at lower torque and are not a second solve" },
       withinStep: "steady temperature at the average loss. The step-period swing is not resolved: housing heat capacity is not in the excerpt.",
     },
   };

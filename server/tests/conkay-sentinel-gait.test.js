@@ -19,6 +19,17 @@ const D = 0.05;
 const A_LOW = 0.12;
 const A_HIGH = 0.15;
 
+function holdingElectricalJ({ massKg, A }) {
+  const W = massKg * G;
+  const v = 0.5;
+  const k = (48 * 7) / 48;
+  const sr = (2 / 3) * A;
+  const Fa = (x) => ((x + D) * Math.abs(x + D)) / 2;
+  const Fk = (x) => (x / 2 + D) * Math.abs(x / 2 + D);
+  const seg = (x0, x1, share) => share * W * ((Fa(x1) - Fa(x0)) + (Fk(x1) - Fk(x0)) + D * (x1 - x0)) / v * k;
+  return seg(-A, -sr, 0.5) + seg(-sr, sr, 1) + seg(sr, A, 0.5);
+}
+
 function ankleMotoringJ({ massKg, A }) {
   const L = LEG.straightM;
   const W = massKg * G;
@@ -89,22 +100,35 @@ describe("quasi-static gait", () => {
     assert.equal(g.speed.knee.status, "not determined");
   });
 
-  it("integrates positive ankle work to the closed form and does not credit regeneration or the swing leg", () => {
+  it("integrates positive ankle work and the holding-current estimate, and does not use rated-point efficiency for the battery", () => {
     const eff = ratedPointEfficiency();
     near(eff.eta, (48 * (48 * 2 * Math.PI / 60)) / (48 * 7), 1e-12, "eta");
     assert.equal(eff.state, "estimated");
-    assert.ok(eff.electricalW > eff.mechanicalW);
-    const hour = (massKg, A) => {
+    assert.equal(g.efficiency.usedForBattery, false);
+    assert.equal(g.wattsPerNm.value, (48 * 7) / 48);
+    assert.equal(g.wattsPerNm.state, "estimated");
+    const mech = (massKg, A) => {
       const cycleS = ((2 * A) / 0.5) / 0.6;
-      return (2 * ankleMotoringJ({ massKg, A }) / eff.eta) / cycleS / 3600;
+      return (2 * ankleMotoringJ({ massKg, A }) / cycleS);
     };
-    const corners = [hour(MASS_LOW, A_LOW), hour(MASS_LOW, A_HIGH), hour(MASS_HIGH, A_LOW), hour(MASS_HIGH, A_HIGH)];
-    near(g.energy.electricalWh.low, Math.min(...corners), 1e-4 * Math.min(...corners), "low corner");
-    near(g.energy.electricalWh.high, Math.max(...corners), 1e-4 * Math.max(...corners), "high corner");
+    const hold = (massKg, A) => {
+      const cycleS = ((2 * A) / 0.5) / 0.6;
+      return (2 * holdingElectricalJ({ massKg, A }) / cycleS);
+    };
+    const masses = [MASS_LOW, MASS_HIGH];
+    const excursions = [A_LOW, A_HIGH];
+    const mechC = masses.flatMap((m) => excursions.map((A) => mech(m, A)));
+    const holdC = masses.flatMap((m) => excursions.map((A) => hold(m, A)));
+    // 0.1 % covers the midpoint rule at the sign change x = -d (4000 samples).
+    near(g.energy.mechanicalWh.low, Math.min(...mechC), 1e-3 * Math.min(...mechC), "mechanical low");
+    near(g.energy.mechanicalWh.high, Math.max(...mechC), 1e-3 * Math.max(...mechC), "mechanical high");
+    near(g.energy.electricalWh.low, Math.min(...holdC), 1e-3 * Math.min(...holdC), "electrical low");
+    near(g.energy.electricalWh.high, Math.max(...holdC), 1e-3 * Math.max(...holdC), "electrical high");
+    assert.ok(g.energy.electricalWh.low > 10 * g.energy.mechanicalWh.high, "holding current, not the rated-point efficiency, sets the watt-hours");
     assert.equal(g.energy.regeneration, "not credited; the excerpt does not say the drive regenerates");
     assert.ok(g.energy.excluded.some((e) => e.item === "swing leg" && e.state === "unknown"));
     assert.equal(g.energy.lowerBound, true);
-    assert.equal(g.heating.hip.state, "unknown");
+    assert.equal(g.heating.hip.state, "not solved");
   });
 
   it("compares the gait lower bound to 13S2P and 13S5P without closing the duration requirement", () => {
@@ -116,11 +140,16 @@ describe("quasi-static gait", () => {
     near(two.missionWh.low, 26 * CELL_WH * (WINDOW.usable.low - WINDOW.reserve.value), 1e-9, "mission low");
     assert.equal(two.usableState, "estimated");
     assert.equal(two.reserveState, "requirement");
-    assert.equal(g.energy.packs["13S2P"].lowerBoundVsWindow, "below the low end of the window");
-    assert.equal(g.energy.packs["13S5P"].lowerBoundVsWindow, "below the low end of the window");
+    const windowOf = (demand, mission) => {
+      if (demand > mission.high) return "FAIL";
+      if (demand <= mission.low) return "below the low end of the window";
+      return "not determined";
+    };
+    assert.equal(g.energy.packs["13S2P"].lowerBoundVsWindow, windowOf(g.energy.electricalWh.high, two.missionWh));
+    assert.equal(g.energy.packs["13S5P"].lowerBoundVsWindow, windowOf(g.energy.electricalWh.high, five.missionWh));
     assert.equal(g.energy.packs["13S2P"].requirementStatus, "not closed");
-    assert.ok(g.energy.electricalWh.high < two.missionWh.low);
-    assert.equal(g.energy.packs["13S2P"].lowerBoundVsWindow === "PASS", false);
+    assert.equal(g.energy.packs["13S5P"].requirementStatus, "not closed");
+    assert.notEqual(g.energy.packs["13S2P"].lowerBoundVsWindow, "PASS");
   });
 
   it("matches solve1D to the lumped housing balance and does not pass or fail a temperature", () => {
@@ -143,6 +172,7 @@ describe("quasi-static gait", () => {
     near(solved.T[0], lumped, 1e-6, "independent solve1D");
     assert.equal(hot.limitC.state, "unknown");
     assert.equal(hot.status, "not determined");
+    assert.equal(hot.conductionValidity, "outside", "the linear temperature is past the no-radiation range of solve1D");
     assert.equal(hot.hState, "estimated");
     const mild = g.heating.cases.find((c) => c.atHighLoss.hWm2K === 10).atHighLoss;
     assert.ok(mild.lumpedC < hot.lumpedC);
