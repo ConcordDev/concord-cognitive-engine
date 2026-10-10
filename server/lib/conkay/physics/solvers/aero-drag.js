@@ -6,9 +6,11 @@
 //   - length, base area and the centreline roof / floor lines: slices of the
 //     kernel's STL (aero/stl-sections.js; base area = the cut just ahead of
 //     the tail face);
-//   - Cd range: aero/drag-buildup.js (turbulent friction x forebody factor,
-//     Hoerner base drag, rear-slant bound, cooling, wheel share), every
-//     coefficient with its source and status;
+//   - Cd range: aero/calibrated-drag.js (1.1). Flat-plate friction, Ahmed's
+//     25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, a
+//     slant bound from those readings, cooling 0.003..0.017, wheel share
+//     0.20..0.30. The 1.0 Hoerner envelope (aero/drag-buildup.js) is computed
+//     on the same geometry and stored as previousEnvelope. It is not the Cd.
 //   - lift sign: 2D panel method (aero/panel2d.js) on the centreline section
 //     in ground effect, with the Kutta condition at the upper and at the lower
 //     tail corner; the sign is reported only when both agree.
@@ -21,7 +23,8 @@
 
 import { registerSolver } from "../registry.js";
 import { readStlFile, sectionAreas, meshExtent } from "../../aero/stl-sections.js";
-import { dragBuildup, rearSlantDeg, ISA_SEA_LEVEL, BUILDUP_COEFFICIENTS, AERO_SOURCES, DRAG_BUILDUP_VERSION } from "../../aero/drag-buildup.js";
+import { dragBuildup, rearSlantDeg, ISA_SEA_LEVEL, AERO_SOURCES } from "../../aero/drag-buildup.js";
+import { calibratedDrag, ahmedBenchmark, CALIBRATED_DRAG_VERSION } from "../../aero/calibrated-drag.js";
 import { solvePanels, PANEL2D_VERSION } from "../../aero/panel2d.js";
 
 export const AERO_FROM = "aero.drag-buildup";
@@ -76,13 +79,13 @@ export function profilePolygon(profile, startAt = "upper") {
 
 export const aeroDragBuildup = registerSolver({
   id: AERO_FROM,
-  version: DRAG_BUILDUP_VERSION,
+  version: CALIBRATED_DRAG_VERSION,
   domain: "aero.drag",
   fidelity: 1,
   screening: true,
   regime: "incompressible (M < 0.3), turbulent, attached flow ahead of a blunt base; rear slant <= 25 deg",
-  method: "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground effect for the section lift sign. Not CFD, not a wind-tunnel value.",
-  reference: "Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967",
+  method: "calibrated component drag build-up (1.1) on the CAD solid: flat-plate friction, Ahmed 25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, slant bound from those 25 deg readings, cooling 0.003..0.017, wheel share 0.20..0.30. The 1.0 Hoerner/reentry envelope is computed on the same geometry and reported beside it, not used as the Cd. 2D Hess-Smith panel method in ground effect for the section lift sign only. Not CFD, not a wind-tunnel value.",
+  reference: "Ahmed, Ramm & Faltin SAE 840300 via Gant Tables 7.3-7.4 and Lienhart as tabulated there; Guilmineau SAE 2018-01-0720 Table 4 (Ahmed rows only); ERCOFTAC case 082 and Minguez et al. JWEIA 2008 for the 222 mm slant; Brandt et al. SAE 2019-01-0662; Hobeika et al. 2017; Schlichting; Hess & Smith 1967. Hoerner/Saltzman is a residual check, not the base term.",
   targets: (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle?.dragCoefficientFrom === AERO_FROM).map((n) => n.id),
   run(ctx, id) {
     const from = ctx.get(id, "props.vehicle.frontalAreaFrom");
@@ -102,7 +105,9 @@ export const aeroDragBuildup = registerSolver({
     const rhoGiven = ctx.get(id, "props.vehicle.airDensity");
     const flow = { speedMs: speed, rho: Number.isFinite(rhoGiven) ? rhoGiven : ISA_SEA_LEVEL.rho, mu: ISA_SEA_LEVEL.mu };
     const geom = { lengthM: prof.L, wettedAreaM2: S, frontalAreaM2: A, baseAreaM2: prof.baseArea, rearSlantDeg: slant };
-    const b = dragBuildup(geom, flow);
+    const b = calibratedDrag(geom, flow);
+    const v1 = dragBuildup(geom, flow);
+    const ahmed = ahmedBenchmark();
     const geometryOut = {
       lengthM: { value: prof.L, unit: "m", basis: "computed: STL extent along x" },
       wettedAreaM2: { value: S, unit: "m2", basis: "computed: cad.body surface area (includes the wheel-well surfaces: the friction term is high by their share)" },
@@ -123,20 +128,28 @@ export const aeroDragBuildup = registerSolver({
     }
     const signs = ["upper", "lower"].map((k) => Math.sign(lift[k].cl2d ?? NaN));
     const liftSign = signs.every((s) => s === 1) ? "lift" : signs.every((s) => s === -1) ? "downforce" : "indeterminate";
-    const term = (side) => ({ forebody: side.fore, base: side.base, baseCp: side.cpb == null ? null : -side.cpb, slant: side.slant, cooling: side.cooling, wheelsShare: side.wheelsShare, cd: side.cd });
+    const term = (side) => ({ friction: side.friction, nose: side.nose, base: side.base, slant: side.slant, cooling: side.cooling, wheelsShare: side.wheelsShare, cd: side.cd });
     return {
       inputs: {
         cadBody: { value: cad.runId, source: cad.runId },
         stl: { value: stl.sha256 || stl.path, note: `${tris.length} triangles` },
         referenceSpeed: { value: speed, unit: "m/s", basis: Number.isFinite(vReq) ? "the top-speed requirement (Reynolds number)" : "40 m/s (no top-speed requirement)" },
         air: { value: flow, basis: Number.isFinite(rhoGiven) ? "density given in the design; viscosity ISA" : "ISA sea level (ISO 2533)" },
-        coefficients: { value: BUILDUP_COEFFICIENTS },
+        coefficients: { value: b.terms, note: "1.1 terms. The 1.0 envelope is previousEnvelope, not these." },
         ...geometryOut,
       },
       outputs: {
         dragCoefficient: {
           value: { low: b.low.cd, high: b.high.cd, centre: b.centre }, status: "computed_screening_range",
-          note: `${b.centreNote}; not CFD, not a wind-tunnel value`,
+          note: `${b.centreNote}; calibrated build-up ${CALIBRATED_DRAG_VERSION}; not CFD, not a wind-tunnel value`,
+        },
+        previousEnvelope: {
+          value: { low: v1.low.cd, high: v1.high.cd, centre: v1.centre }, status: "superseded",
+          note: "drag build-up 1.0 on the same geometry (Hoerner K up to 0.10, cooling high 0.05). Not the reported Cd.",
+        },
+        ahmedBenchmark: {
+          value: { low: ahmed.low.cd, high: ahmed.high.cd, centre: ahmed.centre, target: ahmed.target.total, containsTarget: ahmed.low.cd <= ahmed.target.total && ahmed.high.cd >= ahmed.target.total },
+          note: "the same build-up on the Ahmed 25 deg body (no wheels, no cooling). target is Gant's 0.285. Contains the target; it does not validate the car.",
         },
         terms: { value: { low: term(b.low), high: term(b.high) }, note: "Cd contributions on the frontal area (wheels as a share of the total)" },
         reynolds: { value: b.Re }, mach: { value: b.mach }, skinFriction: { value: b.cf, basis: "Prandtl-Schlichting turbulent flat plate" },
@@ -147,9 +160,10 @@ export const aeroDragBuildup = registerSolver({
       },
       warnings: ["screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation", ...b.flags],
       assumptions: [
-        "Turbulent attached boundary layer over the whole wetted area; no separation ahead of the base.",
-        "Hoerner's base relation (bodies of revolution) applied to a road-vehicle base; ground and wheel interference not modelled.",
-        "The wheel share and cooling increment are fleet-level figures for passenger cars, not this car's.",
+        "Turbulent flat-plate friction over the whole wetted area, scaled up by the factor by which Ahmed's residual friction exceeds that correlation.",
+        "Base pressure is the 25 deg Ahmed vertical-base pressure (Gant and Lienhart), transferred by Ab/A. Hoerner's relation is evaluated on Ahmed and not used here.",
+        "A rear slant between 12.5 and 24 deg takes Lienhart's 25 deg slant Cd as an upper bound, not as this angle's value. At 24..25 deg the bound is the Gant-to-Lienhart pair.",
+        "Cooling 0.003..0.017 and a wheel share of 0.20..0.30 are fleet figures, not this car's ducts or wheels. The +/- 0.05 on the wheel share is an estimate.",
       ],
     };
   },

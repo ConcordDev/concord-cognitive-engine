@@ -24,6 +24,7 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { solvePanels, velocityAt, signedArea } from "../lib/conkay/aero/panel2d.js";
 import { cfTurbulent, cfSchoenherr, cfLaminar, dragBuildup, rearSlantDeg, BUILDUP_COEFFICIENTS, ISA_SEA_LEVEL } from "../lib/conkay/aero/drag-buildup.js";
+import { ahmedBenchmark, ahmedBaseCp25, ahmedFrictionCheck, hoernerAhmedBase, calibratedDrag, AHMED_GANT_25, AHMED_LIENHART_25 } from "../lib/conkay/aero/calibrated-drag.js";
 import { sectionAreas, meshChecks } from "../lib/conkay/aero/stl-sections.js";
 import { profilePolygon } from "../lib/conkay/physics/solvers/aero-drag.js";
 import { buildCarFromLibrary, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
@@ -213,6 +214,9 @@ describe("the library car: Cd from its CAD body", () => {
     const cd = a.outputs.dragCoefficient.value;
     assert.ok(cd.low > 0.05 && cd.low < cd.centre && cd.centre < cd.high && cd.high < 0.6, JSON.stringify(cd));
     rel(cd.centre, Math.sqrt(cd.low * cd.high), 1e-12, "centre");
+    const prev = a.outputs.previousEnvelope.value;
+    assert.ok(cd.high - cd.low < prev.high - prev.low, `1.1 width ${cd.high - cd.low} vs 1.0 width ${prev.high - prev.low}`);
+    assert.equal(a.outputs.ahmedBenchmark.value.containsTarget, true);
     // the geometry it used is the kernel's
     const cad = s.result("cad.body@BODY_SHELL");
     assert.equal(a.inputs.frontalAreaM2.value, cad.outputs.frontalArea.value);
@@ -242,5 +246,46 @@ describe("the library car: Cd from its CAD body", () => {
       assert.ok(signedArea(p) < 0, k);
       assert.deepEqual(p[0], k === "upper" ? [4, 1.1] : [4, 0.15]);
     }
+  });
+});
+
+describe("calibrated drag build-up 1.1, benchmarked on the Ahmed body", () => {
+  it("25 deg Ahmed: Gant's 0.285 sits inside the band, and the band is narrower than the 1.0 envelope", () => {
+    const b = ahmedBenchmark();
+    assert.ok(b.low.cd <= AHMED_GANT_25.total && AHMED_GANT_25.total <= b.high.cd, JSON.stringify(b));
+    rel(b.low.base, AHMED_GANT_25.base, 1e-9, "base low is Gant's 0.070");
+    rel(b.high.base, AHMED_LIENHART_25.base, 1e-9, "base high is Lienhart's 0.116");
+    rel(b.low.slant, AHMED_GANT_25.slant, 1e-12, "slant low");
+    rel(b.high.slant, AHMED_LIENHART_25.slant, 1e-12, "slant high");
+    rel(b.high.friction, AHMED_GANT_25.friction, 1e-12, "friction high is the residual");
+    const fr = ahmedFrictionCheck();
+    const cp = ahmedBaseCp25();
+    const v1a = dragBuildup(
+      { lengthM: 1.044, wettedAreaM2: fr.wettedBoxM2, frontalAreaM2: fr.frontalAreaM2, baseAreaM2: cp.Ab, rearSlantDeg: 25 },
+      { speedMs: b.speedMs, ...ISA_SEA_LEVEL },
+    );
+    assert.ok(b.high.cd - b.low.cd < (v1a.high.cd - v1a.low.cd) / 2, `v2 ${b.high.cd - b.low.cd} vs v1 ${v1a.high.cd - v1a.low.cd}`);
+  });
+  it("Guilmineau's 25 deg base pressure sits between Gant and Lienhart; Hoerner K=0.10 does not", () => {
+    const cp = ahmedBaseCp25();
+    assert.ok(cp.guilmineau > cp.gant && cp.guilmineau < cp.lienhart, JSON.stringify(cp));
+    const h029 = hoernerAhmedBase(0.029);
+    const h10 = hoernerAhmedBase(0.10);
+    assert.ok(h029.cd > AHMED_GANT_25.base && h029.cd < AHMED_LIENHART_25.base, `K=0.029 base Cd ${h029.cd}`);
+    assert.ok(h10.cd > AHMED_LIENHART_25.base * 2, `K=0.10 base Cd ${h10.cd} is not an Ahmed base`);
+  });
+  it("a slant past 25 deg is out of range; at 12.5 deg no slant increment is added", () => {
+    const flow = { speedMs: 30, ...ISA_SEA_LEVEL };
+    const geom = { lengthM: 4, wettedAreaM2: 20, frontalAreaM2: 2, baseAreaM2: 0.4, rearSlantDeg: 30 };
+    assert.equal(calibratedDrag(geom, flow).inRange, false);
+    const low = calibratedDrag({ ...geom, rearSlantDeg: 12.5 }, flow);
+    assert.equal(low.low.slant, 0);
+    assert.equal(low.high.slant, 0);
+    assert.ok(low.flags.some((f) => /12\.5/.test(f) || /12.5/.test(f)));
+  });
+  it("flat-plate friction on the Ahmed box is 15 to 25 % below Ahmed's residual friction", () => {
+    const fr = ahmedFrictionCheck();
+    const d = (fr.flatCd - fr.residualCd) / fr.residualCd;
+    assert.ok(d > -0.25 && d < -0.15, `${d}`);
   });
 });
