@@ -20,6 +20,7 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
+import { nullDict, ownArray } from "./own-lookup.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -40,14 +41,14 @@ const VALID_DTU_TYPES = new Set([
 
 const REQUIRED_ENVELOPE_FIELDS = ["$schema", "dtuVersion", "id", "type", "creator", "content", "citations", "metadata"];
 
-const REQUIRED_FIELDS_BY_TYPE = {
+const REQUIRED_FIELDS_BY_TYPE = nullDict({
   component: ["geometry", "material", "performance"],
   structure: ["members", "connections"],
   material: ["mechanical"],
   npc: ["identity", "personality"],
   quest: ["objectives", "rewards"],
   policy: ["rules", "jurisdiction"],
-};
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -449,9 +450,12 @@ class DTUProtocol {
       errors.push("Creator must be an object with 'name' and 'id'");
     }
 
-    // Check content has required fields for its type
-    if (dtu.type && dtu.content && REQUIRED_FIELDS_BY_TYPE[dtu.type]) {
-      for (const field of REQUIRED_FIELDS_BY_TYPE[dtu.type]) {
+    // Check content has required fields for its type.
+    // dtu.type is caller-supplied. A plain-object lookup of "constructor"
+    // is a function, and iterating it throws "is not iterable".
+    const requiredFields = ownArray(REQUIRED_FIELDS_BY_TYPE, dtu.type);
+    if (dtu.type && dtu.content && requiredFields) {
+      for (const field of requiredFields) {
         if (!(field in dtu.content)) {
           errors.push(`Content missing required field for type '${dtu.type}': '${field}'`);
         }

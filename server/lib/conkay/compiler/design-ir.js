@@ -20,6 +20,7 @@ import { parseQuantity } from "./units.js";
 import { getMaterial } from "../materials/index.js";
 import { validateMassState } from "../verification/mass-state.js";
 import { CAD_BODY_OPTIONAL } from "../cad/body-params.js";
+import { nullDict, ownArray, ownValue } from "../../own-lookup.js";
 
 export const NODE_KINDS = new Set([
   "Part", "Assembly", "Volume", "Surface", "Beam", "Shell", "Solid", "Joint", "Constraint", "Load",
@@ -44,7 +45,9 @@ export const EDGE_TYPES = new Set([
 ]);
 
 // Geometry shapes and the length parameters each one needs.
-export const SHAPES = {
+// Null prototype so a caller-supplied shape of "constructor" is an
+// unknown shape, not Object.prototype.constructor (which is not iterable).
+export const SHAPES = nullDict({
   box: ["length", "width", "height"],
   plate: ["length", "width", "thickness"],
   cylinder: ["diameter", "length"],
@@ -62,10 +65,10 @@ export const SHAPES = {
   // The CAD body (cad.body): a B-spline skin solved around the vehicle's
   // packaging envelopes; area, volume, frontal area come from the kernel.
   "cad-body": ["thickness", "skinOffset"],
-};
+});
 
 // Optional shape parameters: lengths (with units) and plain numbers.
-export const SHAPE_OPTIONAL = { "cad-body": CAD_BODY_OPTIONAL };
+export const SHAPE_OPTIONAL = nullDict({ "cad-body": CAD_BODY_OPTIONAL });
 
 // Shape parameters are lengths unless listed here.
 export const PARAM_DIM = { area: "area" };
@@ -166,24 +169,27 @@ export function compileDesignIR(ir) {
     }
     if (n.geometry != null) {
       const shape = n.geometry.shape;
-      if (!SHAPES[shape]) errors.push(`${where}: unknown shape "${shape}"`);
+      const shapeKeys = ownArray(SHAPES, shape);
+      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}"`);
       else {
         const geometry = { shape };
-        for (const key of SHAPES[shape]) {
+        for (const key of shapeKeys) {
           const q = parseQuantity(n.geometry[key], paramDim(key));
           if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
           else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
           else geometry[key] = q.si;
         }
-        const opt = SHAPE_OPTIONAL[shape];
-        for (const key of opt?.lengths || []) {
+        const opt = ownValue(SHAPE_OPTIONAL, shape);
+        const optLengths = opt && Array.isArray(opt.lengths) ? opt.lengths : [];
+        for (const key of optLengths) {
           if (n.geometry[key] == null) continue;
           const q = parseQuantity(n.geometry[key], "length");
           if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
           else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
           else geometry[key] = q.si;
         }
-        for (const key of opt?.numbers || []) {
+        const optNumbers = opt && Array.isArray(opt.numbers) ? opt.numbers : [];
+        for (const key of optNumbers) {
           if (n.geometry[key] == null) continue;
           const v = Number(n.geometry[key]);
           if (!Number.isFinite(v) || v <= 0) errors.push(`${where}.geometry.${key}: must be a positive number`);
