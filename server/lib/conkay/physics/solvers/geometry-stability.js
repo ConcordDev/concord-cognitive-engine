@@ -11,6 +11,10 @@
 // patches of the nodes listed in props.stability.contacts. The margin is the
 // distance from the CG to the nearest polygon edge (negative = outside).
 // Reported on its own, never folded into a score with other domains.
+// With unknown masses on the budget it also reports how much unknown mass the
+// stance tolerates: the largest total that, put at the worst point of the
+// assembly's plan extents, still leaves the CG inside the polygon. That bound
+// is computed, not a pass: the unknown masses still have to be measured.
 
 import { registerSolver } from "../registry.js";
 
@@ -47,7 +51,7 @@ export function extentsOf(ctx, id) {
   return null;
 }
 
-function aabb(ctx, id) {
+export function aabb(ctx, id) {
   const e = extentsOf(ctx, id);
   const p = ctx.get(id, "position");
   if (!e || !p) return null;
@@ -140,6 +144,37 @@ function hull(points) {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)]; // counter-clockwise
 }
 
+/** Signed distance from a point to each edge of a CCW convex polygon (positive inside). */
+export function edgeDistances(poly, pt) {
+  return poly.map((a, i) => {
+    const b = poly[(i + 1) % poly.length];
+    return ((b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x)) / Math.hypot(b.x - a.x, b.y - a.y);
+  });
+}
+
+/**
+ * Largest extra mass m that keeps the CG of (known mass M at cg) + (m at any
+ * point of `region`, a list of plan points whose convex hull bounds where it
+ * can be) inside the polygon. Signed edge distance is linear in position, so
+ * the worst placement is a region corner, and spreading the mass out never
+ * makes it worse than putting it all there:
+ *   M·d_e + m·s_e(p) ≥ 0 for every edge e and corner p  →  m ≤ M·d_e / −s_e(p) where s_e(p) < 0.
+ * Returns { massKg: Infinity } when no corner lies outside any edge.
+ */
+export function tolerableUnknownMass(poly, cg, M, region) {
+  const d = edgeDistances(poly, cg);
+  let best = { massKg: Infinity, edge: null, corner: null };
+  for (const p of region) {
+    const s = edgeDistances(poly, p);
+    s.forEach((se, e) => {
+      if (se >= 0) return;
+      const m = d[e] <= 0 ? 0 : (M * d[e]) / -se;
+      if (m < best.massKg) best = { massKg: m, edge: e, corner: p };
+    });
+  }
+  return best;
+}
+
 /** Signed distance from point to a CCW convex polygon (positive inside). */
 export function insideMargin(poly, pt) {
   let m = Infinity;
@@ -154,7 +189,7 @@ export function insideMargin(poly, pt) {
 
 export const staticStability = registerSolver({
   id: "stability.static",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "stability.static",
   fidelity: 0,
   method: "CG ground projection vs convex hull of contact patches; margin = distance to nearest edge",
@@ -178,12 +213,32 @@ export const staticStability = registerSolver({
     const cg = { x: mb.outputs.cgX.value, y: mb.outputs.cgY.value };
     const margin = insideMargin(poly, cg);
     const unknown = mb.outputs.unknownItems.value;
+    const outputs = { stabilityMargin: { value: margin, unit: "m" }, supportPolygon: { value: poly, unit: "m" }, cgHeight: { value: mb.outputs.cgZ.value, unit: "m" } };
+    if (unknown.length && margin >= 0) {
+      // Where an unknown mass can sit: the plan extents of every body that has a box (an assumption, stated).
+      const ext = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      for (const n of bodies(ctx, id)) {
+        const b = aabb(ctx, n.id);
+        if (!b) continue;
+        ext.x0 = Math.min(ext.x0, b.min.x); ext.y0 = Math.min(ext.y0, b.min.y); ext.x1 = Math.max(ext.x1, b.max.x); ext.y1 = Math.max(ext.y1, b.max.y);
+      }
+      const region = [{ x: ext.x0, y: ext.y0 }, { x: ext.x1, y: ext.y0 }, { x: ext.x1, y: ext.y1 }, { x: ext.x0, y: ext.y1 }];
+      const t = tolerableUnknownMass(poly, cg, mb.outputs.knownMass.value, region);
+      outputs.unknownMassTolerance = {
+        value: { massKg: t.massKg, worstPoint: t.corner, edge: t.edge, region: ext, unknownItems: unknown.length },
+        unit: "kg",
+        basis: "computed: largest total unknown mass that keeps the CG inside the support polygon wherever it sits in the assembly's plan extents (worst corner); a bound to measure against, not a pass",
+      };
+    }
     return {
       inputs: { cg: { value: cg, unit: "m", source: mb.runId }, contacts: { value: contacts } },
-      outputs: { stabilityMargin: { value: margin, unit: "m" }, supportPolygon: { value: poly, unit: "m" }, cgHeight: { value: mb.outputs.cgZ.value, unit: "m" } },
+      outputs,
       failures: margin < 0 ? [`CG (${cg.x.toFixed(3)}, ${cg.y.toFixed(3)}) m is outside the support polygon by ${(-margin).toFixed(3)} m`] : [],
       warnings: unknown.length ? [`CG is of the known mass only; ${unknown.length} unknown-mass item(s) can move it`] : [],
-      assumptions: ["Stated pose (props.stability.pose); both feet flat.", "Static: no walking dynamics, no ground slope."],
+      assumptions: [
+        "Stated pose (props.stability.pose); both feet flat.", "Static: no walking dynamics, no ground slope.",
+        ...(outputs.unknownMassTolerance ? ["Unknown-mass tolerance assumes every unknown item lies within the plan extents of the bodies that have boxes."] : []),
+      ],
     };
   },
 });

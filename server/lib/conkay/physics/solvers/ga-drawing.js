@@ -206,7 +206,7 @@ export const gaDrawing = registerSolver({
 // ── sheet content (memory, by SHA-256) and the async writer ──────────────────
 const CONTENT = new Map();
 const CONTENT_MAX = 64;
-function keepContent(name, data) {
+export function keepContent(name, data) {
   const h = sha(data);
   CONTENT.delete(h);
   CONTENT.set(h, { name, data });
@@ -236,14 +236,14 @@ export async function writeDrawingFiles(envelope, dir) {
 }
 
 /** Is a drawing in hand (its embedded meta, or the SVG / JSON text) the current revision of the session's model? */
-export function drawingStatus(drawing, session, veh = "VEH") {
+export function drawingStatus(drawing, session, veh = "VEH", solverId = "drawing.ga") {
   let meta = drawing;
   if (typeof drawing === "string") {
     const m = drawing.match(/<metadata id="conkay-drawing">([^<]*)<\/metadata>/);
     const raw = m ? m[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") : drawing;
     try { meta = JSON.parse(raw); } catch { return { current: false, reason: "no ConKay drawing metadata found" }; }
   }
-  const run = session.result(`drawing.ga@${veh}`);
+  const run = session.result(`${solverId}@${veh}`);
   if (!run || run.status === "NOT_COMPUTED" || run.status === "ERROR") return { current: false, reason: `the model's drawing is not computed (${run?.reason || run?.error || "no run"})` };
   const now = run.outputs.modelHash.value;
   return now === meta.modelHash
