@@ -23,12 +23,22 @@
 //   (rotations < 0.1 rad, translations < 2 % of the longest member);
 //   Euler-Bernoulli members (length / depth >= 10 for every member carrying
 //   at least a quarter of the largest bending stress; shear deformation not
-//   modelled); flexural buckling only (no lateral-torsional, local or
+//   modelled), or, with model.shearDeformation, Timoshenko members (shear
+//   areas per Cowper 1966, element per Przemieniecki 1968; length / depth >= 2,
+//   a stated limit below which beam theory is not a model of the part);
+//   flexural buckling only (no lateral-torsional, local or
 //   torsional buckling); elastic buckling (each compressed member's stress at
 //   the critical load <= 0.44 Fy, the AISC 360-16 E3 elastic limit
 //   Fy/Fe <= 2.25); tube walls within AISC 360-16 Table B4.1a slenderness
 //   (rect HSS b/t <= 1.40 sqrt(E/Fy), round HSS D/t <= 0.11 E/Fy), since
-//   local buckling is not modelled; transverse shear stress neglected.
+//   local buckling is not modelled, except that a rect-tube wall beyond that
+//   limit is checked for elastic plate buckling under the member's stresses
+//   (k = 4.0 compression, 5.35 shear, long simply supported plate, interaction
+//   Rc + Rs^2 <= 1: Gerard & Becker, NACA TN 3781, 1957) and flagged when it
+//   fails or when its stress is in the inelastic range (> 0.5 Fy, a stated
+//   screening cap: plate plasticity is not modelled); transverse shear stress
+//   neglected for Euler-Bernoulli models, included as V / As (added to the
+//   torsional shear, conservative) with shearDeformation.
 //
 // Local axes: local x along the member; local y from the member's yRef or the
 // model's `up` vector (model.up = [0,0,1] for a z-up model: horizontal
@@ -65,6 +75,8 @@ export function sectionProps(s) {
       kind: "rect-tube", A: b * h - bi * hi, Iz: (b * h ** 3 - bi * hi ** 3) / 12, Iy: (h * b ** 3 - hi * bi ** 3) / 12,
       J: (2 * t * (b - t) ** 2 * (h - t) ** 2) / (b + h - 2 * t), cy: h / 2, cz: b / 2, round: false, depth: Math.max(b, h),
       wallSlenderness: { ratio: (Math.max(b, h) - 3 * t) / t, basis: "flat width (b - 3t) / t, AISC 360-16 B4.1b(d)" },
+      walls: { t, widest: Math.max(b, h) - t },
+      Asy: 2 * t * (h - t), Asz: 2 * t * (b - t), shearAreaBasis: "thin-walled box: the two walls parallel to the shear (Cowper 1966 thin-walled limit)",
       torsionShear: (T) => Math.abs(T) / (2 * t * Am),
     };
   }
@@ -74,6 +86,7 @@ export function sectionProps(s) {
     const I = (Math.PI / 64) * (D ** 4 - d ** 4);
     return {
       kind: "round-tube", A: (Math.PI / 4) * (D ** 2 - d ** 2), Iz: I, Iy: I, J: 2 * I, cy: D / 2, cz: D / 2, round: true, depth: D,
+      Asy: (Math.PI / 8) * (D ** 2 - d ** 2), Asz: (Math.PI / 8) * (D ** 2 - d ** 2), shearAreaBasis: "thin-walled round tube: A / 2 (Cowper 1966)",
       wallSlenderness: { ratio: D / t, basis: "D / t" },
       torsionShear: (T) => (Math.abs(T) * D) / 2 / (2 * I),
     };
@@ -84,6 +97,7 @@ export function sectionProps(s) {
     const beta = 1 / 3 - 0.21 * q * (1 - q ** 4 / 12);
     return {
       kind: "rect", A: b * h, Iz: (b * h ** 3) / 12, Iy: (h * b ** 3) / 12, J: beta * long * short ** 3, cy: h / 2, cz: b / 2, round: false, depth: long,
+      Asy: (5 / 6) * b * h, Asz: (5 / 6) * b * h, shearAreaBasis: "solid rectangle: 5/6 A",
       torsionShear: (T) => (Math.abs(T) * (3 * long + 1.8 * short)) / (long ** 2 * short ** 2),
     };
   }
@@ -94,6 +108,7 @@ export function sectionProps(s) {
     return {
       kind: "i-beam", A: 2 * bf * tf + hw * tw, Iz: (bf * h ** 3 - (bf - tw) * hw ** 3) / 12, Iy: (2 * tf * bf ** 3) / 12 + (hw * tw ** 3) / 12,
       J, cy: h / 2, cz: bf / 2, round: false, depth: h,
+      Asy: h * tw, Asz: (5 / 6) * 2 * bf * tf, shearAreaBasis: "I-section: web area (vertical shear), 5/6 of the flange area (lateral)",
       torsionShear: (T) => (Math.abs(T) * Math.max(tf, tw)) / J,
     };
   }
@@ -103,6 +118,7 @@ export function sectionProps(s) {
     for (const k of ["A", "Iz", "Iy", "J"]) if (!(s[k] > 0)) throw new Error(`properties section needs ${k} > 0`);
     return {
       kind: "properties", A: s.A, Iz: s.Iz, Iy: s.Iy, J: s.J, cy: s.cy ?? 0, cz: s.cz ?? 0, round: false, depth: s.depth ?? 2 * Math.max(s.cy ?? 0, s.cz ?? 0),
+      Asy: s.Asy ?? null, Asz: s.Asz ?? null,
       torsionShear: (T) => Math.abs(T) * (s.tauPerT ?? 0),
     };
   }
@@ -215,9 +231,11 @@ function mesh(model, segmentsDefault) {
     }
     ids.push(b.id);
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (model.shearDeformation && !(sec.Asy > 0 && sec.Asz > 0)) throw new Error(`member ${m.id}: shearDeformation needs the section's shear areas (Asy, Asz)`);
     const mem = { ...m, sec, L, elements: [] };
     for (let s = 0; s < nSeg; s++) {
-      const e = { id: `${m.id}:${s}`, member: m.id, nodeI: ids[s], nodeJ: ids[s + 1], yRef: localYRef(m, a, b, model.up), area: sec.A, Iz: sec.Iz, Iy: sec.Iy, J: sec.J, elasticModulus: m.E, shearModulus: G, s0: (s / nSeg) * L };
+      const e = { id: `${m.id}:${s}`, member: m.id, nodeI: ids[s], nodeJ: ids[s + 1], yRef: localYRef(m, a, b, model.up), area: sec.A, Iz: sec.Iz, Iy: sec.Iy, J: sec.J, elasticModulus: m.E, shearModulus: G, s0: (s / nSeg) * L,
+        ...(model.shearDeformation ? { shearAreaY: sec.Asy, shearAreaZ: sec.Asz } : {}) };
       elements.push(e); mem.elements.push(e);
     }
     members.push(mem);
@@ -230,7 +248,7 @@ function mesh(model, segmentsDefault) {
     const fix = s.fix === "fixed" ? Object.keys(DOF_MAP) : s.fix === "pinned" ? ["x", "y", "z"] : s.fix || [];
     for (const d of fix) constrained.add(i * DOF + DOF_MAP[d]);
   }
-  return { nodes, elements, members, index, constrained };
+  return { nodes, elements, members, index, constrained, shearDeformation: !!model.shearDeformation };
 }
 
 /** Consistent load vector (local) of a uniform local load q = [qx, qy, qz] (N/m) on an element of length L. */
@@ -345,9 +363,11 @@ export function analyzeFrame(model, { segments = 8, buckling = [] } = {}) {
           const sec = mem.sec;
           const bend = sec.round ? (Math.hypot(Mz, My) * sec.cy) / sec.Iz : (Math.abs(Mz) * sec.cy) / sec.Iz + (Math.abs(My) * sec.cz) / sec.Iy;
           const sigma = Math.abs(N) / sec.A + bend;
-          const tau = sec.torsionShear(T);
+          let tau = sec.torsionShear(T);
+          const Vy = f[1] + q[1] * s, Vz = f[2] + q[2] * s;
+          if (M.shearDeformation) tau += Math.max(Math.abs(Vy) / sec.Asy, Math.abs(Vz) / sec.Asz);
           const vm = Math.sqrt(sigma * sigma + 3 * tau * tau);
-          const r = { at: e.s0 + s, N, Mz, My, T, sigma, tau, vonMises: vm };
+          const r = { at: e.s0 + s, N, Mz, My, T, Vy, Vz, sigma, tau, vonMises: vm };
           along.push(r);
           if (!worst || vm > worst.vonMises) worst = r;
         }
@@ -370,7 +390,7 @@ export function analyzeFrame(model, { segments = 8, buckling = [] } = {}) {
     if (buckling.includes(lc.id)) res.buckling = bucklingSolve(M, K, free, ch.L, elData, elForces, size);
     cases.push(res);
   }
-  return { ok: true, version: FRAME_FE_VERSION, cases, members: M.members.map((m) => ({ id: m.id, L: m.L, sec: m.sec, E: m.E, fy: m.fy ?? null })), dofs: { total: size, free: nf } };
+  return { ok: true, version: FRAME_FE_VERSION, shearDeformation: M.shearDeformation, cases, members: M.members.map((m) => ({ id: m.id, L: m.L, checkLength: m.checkLength ?? null, sec: m.sec, E: m.E, G: m.G, fy: m.fy ?? null })), dofs: { total: size, free: nf } };
 }
 
 const MAX_BUCKLING_DOF = 900;
@@ -379,7 +399,9 @@ function bucklingSolve(M, K, free, L, elData, elForces, size) {
   const nf = free.length;
   if (nf > MAX_BUCKLING_DOF) return { ok: false, error: `buckling not computed: ${nf} free DOFs exceeds the dense eigen-solver limit ${MAX_BUCKLING_DOF}` };
   const Kg = new Float64Array(size * size);
+  const noKg = new Set(M.members.filter((m) => m.geometricStiffness === false).map((m) => m.id));
   for (const e of M.elements) {
+    if (noKg.has(e.member)) continue; // e.g. shear-panel diagonals: the sheet's buckling is checked as a panel
     const { R } = elData.get(e.id);
     const { f, L: le } = elForces.get(e.id);
     const N = (f[6] - f[0]) / 2; // mean axial force, tension +
@@ -427,6 +449,7 @@ function bucklingSolve(M, K, free, L, elData, elForces, size) {
  */
 export function frameValidity(result, caseResult) {
   const flags = [];
+  const checks = [];
   const longest = Math.max(...result.members.map((m) => m.L));
   // members whose bending stress is under a quarter of the largest are not flagged as deep (lightly loaded stubs)
   const maxBend = Math.max(0, ...caseResult.members.map((mr) => mr.worst.sigma - Math.abs(mr.worst.N) / mr.A));
@@ -434,16 +457,42 @@ export function frameValidity(result, caseResult) {
   if (caseResult.maxTranslation > 0.02 * longest) flags.push({ code: "large_displacement", detail: `max translation ${(caseResult.maxTranslation * 1000).toFixed(1)} mm > 2 % of the longest member: geometric nonlinearity not modelled` });
   for (const m of result.members) {
     const mr = caseResult.members.find((x) => x.id === m.id);
-    if (m.L / m.sec.depth < 10 && mr.worst.sigma - Math.abs(mr.worst.N) / m.sec.A > 0.25 * maxBend) flags.push({ code: "deep_member", member: m.id, detail: `length/depth ${(m.L / m.sec.depth).toFixed(1)} < 10: shear deformation (Timoshenko) not modelled` });
+    const deepLimit = result.shearDeformation ? 2 : 10;
+    const Lb = m.checkLength > 0 ? m.checkLength : m.L; // the physical member's length when one member is split at joints
+    if (Lb / m.sec.depth < deepLimit && mr.worst.sigma - Math.abs(mr.worst.N) / m.sec.A > 0.25 * maxBend) flags.push({ code: "deep_member", member: m.id, detail: result.shearDeformation ? `length/depth ${(Lb / m.sec.depth).toFixed(1)} < 2: beam theory (even with shear deformation) is not a model of this part; shell or solid FE needed` : `length/depth ${(Lb / m.sec.depth).toFixed(1)} < 10: shear deformation (Timoshenko) not modelled` });
     if (m.fy && mr.worst.vonMises > m.fy) flags.push({ code: "beyond_yield", member: m.id, detail: `von Mises ${(mr.worst.vonMises / 1e6).toFixed(1)} MPa > Fy ${(m.fy / 1e6).toFixed(1)} MPa: linear-elastic result not valid` });
     if (m.fy && m.sec.wallSlenderness) {
       const lim = m.sec.kind === "round-tube" ? (0.11 * m.E) / m.fy : 1.4 * Math.sqrt(m.E / m.fy);
-      if (m.sec.wallSlenderness.ratio > lim) flags.push({ code: "slender_wall", member: m.id, detail: `wall slenderness ${m.sec.wallSlenderness.ratio.toFixed(1)} > ${lim.toFixed(1)} (AISC 360-16 Table B4.1a): local buckling not modelled` });
+      if (m.sec.wallSlenderness.ratio > lim) {
+        const lb = m.sec.walls ? plateLocalBuckling(m, mr.worst) : null;
+        if (!lb) flags.push({ code: "slender_wall", member: m.id, detail: `wall slenderness ${m.sec.wallSlenderness.ratio.toFixed(1)} > ${lim.toFixed(1)} (AISC 360-16 Table B4.1a): local buckling not modelled` });
+        else if (lb.inelastic) flags.push({ code: "slender_wall", member: m.id, detail: `wall slenderness ${m.sec.wallSlenderness.ratio.toFixed(1)} > ${lim.toFixed(1)} with stress above 0.5 Fy (σ ${(lb.sigma / 1e6).toFixed(1)} MPa, τ ${(lb.tau / 1e6).toFixed(1)} MPa): inelastic plate buckling not modelled` });
+        else if (lb.R > 1) flags.push({ code: "local_buckling", member: m.id, detail: `wall plate buckling interaction Rc + Rs² = ${lb.R.toFixed(2)} > 1 (σcr ${(lb.sigmaCr / 1e6).toFixed(1)} MPa, τcr ${(lb.tauCr / 1e6).toFixed(1)} MPa, NACA TN 3781): the wall buckles; post-buckling stiffness is not modelled` });
+        else checks.push({ code: "local_buckling_checked", member: m.id, R: lb.R, sigmaCr: lb.sigmaCr, tauCr: lb.tauCr });
+      }
     }
     if (caseResult.buckling?.ok && Number.isFinite(caseResult.buckling.factor) && m.fy && mr.compression > 0) {
       const fe = (caseResult.buckling.factor * mr.compression) / m.sec.A;
       if (fe > 0.44 * m.fy) flags.push({ code: "inelastic_buckling", member: m.id, detail: `stress at the critical load ${(fe / 1e6).toFixed(1)} MPa > 0.44 Fy: inelastic buckling (AISC 360-16 E3, Fy/Fe > 2.25); the elastic buckling factor overestimates capacity` });
     }
   }
-  return { inRange: flags.length === 0, flags };
+  return { inRange: flags.length === 0, flags, checks };
+}
+
+/**
+ * Elastic local buckling of a thin rect-tube wall (the widest flat, mid-line width b, thickness t), taken as a
+ * long plate simply supported on its edges by the adjacent walls: sigma_cr = k pi^2 E / (12 (1 - nu^2)) (t/b)^2
+ * with k = 4.0 (uniform compression) and 5.35 (shear), Timoshenko & Gere, Theory of Elastic Stability, 2nd ed.,
+ * sec. 9.2 and 9.7; combined compression and shear Rc + Rs^2 <= 1 (Gerard & Becker, Handbook of Structural
+ * Stability Part I, NACA TN 3781, 1957). Demand: the member's worst-station extreme-fibre stress and shear
+ * (conservative: both taken on the widest wall). Returns { R, sigma, tau, sigmaCr, tauCr, inelastic }.
+ */
+export function plateLocalBuckling(m, worst) {
+  const { t, widest: b } = m.sec.walls;
+  const nu = m.G > 0 ? m.E / (2 * m.G) - 1 : 0.33;
+  const base = (Math.PI ** 2 * m.E) / (12 * (1 - nu * nu)) * (t / b) ** 2;
+  const sigmaCr = 4.0 * base, tauCr = 5.35 * base;
+  const sigma = worst.sigma, tau = worst.tau;
+  const inelastic = !!m.fy && (sigma > 0.5 * m.fy || tau > (0.5 * m.fy) / Math.sqrt(3));
+  return { R: sigma / sigmaCr + (tau / tauCr) ** 2, sigma, tau, sigmaCr, tauCr, inelastic };
 }
