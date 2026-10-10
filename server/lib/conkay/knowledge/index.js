@@ -21,6 +21,7 @@ export { registerExtension, listExtensions, validateExtensions } from "./extensi
 export { parseFormulationText, sourceFormulation, checkComposition, proposeVersion, processVersion, uniformRangePosition } from "./formulation.js";
 export { ruleOfMixturesDensity, mixtureDensity } from "./rule-of-mixtures.js";
 export { buildTestPlan } from "./test-plan.js";
+export { renderLabPlan, LAB_PLAN_VERSION, SPECIMEN_MINIMUM } from "./lab-plan.js";
 export { buildFormulationReport, renderFormulationMarkdown } from "./formulation-report.js";
 export { SOURCES, DOCUMENTS, CONNECTOR_DUTIES } from "./sources.js";
 export { STANDARDS } from "./standards.js";
