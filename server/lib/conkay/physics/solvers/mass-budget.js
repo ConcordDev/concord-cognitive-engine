@@ -10,7 +10,13 @@
 //     (datasheet URL + variant) or "estimated" (method + range); or with
 //     props.massRequirement (a user requirement, stated with massSource),
 //   - props.battery { series, parallel, cell: { massKg, ... } } → cells × cell
-//     mass (computed from a sourced cell mass).
+//     mass (computed from a sourced cell mass), plus, with
+//     props.battery.enclosure { material, sheetM, gapM, extraHeightM }, a
+//     closed sheet box around the series × parallel cell grid (computed: shell
+//     area × sheet × the material's density), so it follows the battery size.
+// Each mass carries a band: an estimate's range, a sourced mass's stated
+// tolerance (massState.uncertainty), else the value itself; the budget sums
+// them (massLow / massHigh).
 // A "placeholder" mass state, a stated mass with no mass state, or no mass
 // at all puts the item on the unknown list; it is never counted as zero mass
 // silently: the CG is the CG of the KNOWN mass, labelled so, with every
@@ -18,6 +24,25 @@
 
 import { registerSolver } from "../registry.js";
 import { describeMassState } from "./mass-cost.js";
+import { getMaterial } from "../../materials/index.js";
+
+/** The sheet box around a battery's cells (series along x, parallel along y, cells upright). */
+export function batteryEnclosure(bat) {
+  const e = bat.enclosure;
+  const mat = getMaterial(e.material);
+  if (!mat?.densityKgM3) return { error: `enclosure material ${e.material} has no density` };
+  const pitch = bat.cell.diameterM + e.gapM;
+  const L = bat.series * pitch + 2 * e.sheetM, W = bat.parallel * pitch + 2 * e.sheetM, H = bat.cell.heightM + e.extraHeightM + 2 * e.sheetM;
+  const area = 2 * (L * W + L * H + W * H);
+  return { L, W, H, area, massKg: area * e.sheetM * mat.densityKgM3, material: mat.id, density: mat.densityKgM3 };
+}
+
+function bandOf(mass, ms) {
+  const u = ms?.uncertainty;
+  if (!u) return [mass, mass];
+  if (u.pct != null) return [mass * (1 - u.pct / 100), mass * (1 + u.pct / 100)];
+  return [u.lowKg, u.highKg];
+}
 
 const STATES = ["sourced", "computed", "estimated", "requirement"];
 
@@ -36,13 +61,17 @@ export function bodyMass(ctx, n) {
   if (bat) {
     const cells = bat.series * bat.parallel;
     if (!Number.isFinite(cells) || !Number.isFinite(bat.cell?.massKg)) return { unknown: "battery needs series, parallel and cell.massKg" };
-    return { mass: cells * bat.cell.massKg, state: "computed", source: `${cells} cells × ${bat.cell.massKg} kg (${bat.cell.source})`, note: "cells only" };
+    const cellKg = cells * bat.cell.massKg;
+    if (!bat.enclosure) return { mass: cellKg, state: "computed", source: `${cells} cells × ${bat.cell.massKg} kg (${bat.cell.source})`, note: "cells only" };
+    const enc = batteryEnclosure(bat);
+    if (enc.error) return { unknown: enc.error };
+    return { mass: cellKg + enc.massKg, state: "computed", source: `${cells} cells × ${bat.cell.massKg} kg (${bat.cell.source}) + enclosure ${enc.massKg.toFixed(3)} kg (${enc.material} ${(bat.enclosure.sheetM * 1000).toFixed(1)} mm sheet box ${(enc.L * 1000).toFixed(0)} × ${(enc.W * 1000).toFixed(0)} × ${(enc.H * 1000).toFixed(0)} mm, ${enc.area.toFixed(4)} m² × ${enc.density} kg/m³)`, note: "cells and enclosure" };
   }
   const pm = ctx.get(n.id, "props.mass");
   const ms = ctx.get(n.id, "props.massState");
   if (ms?.state === "placeholder") return { unknown: ms.note || "placeholder mass" };
   if (Number.isFinite(pm)) {
-    if (ms?.state === "sourced" || ms?.state === "estimated") return { mass: pm, state: ms.state, source: describeMassState(ms) };
+    if (ms?.state === "sourced" || ms?.state === "estimated") return { mass: pm, state: ms.state, source: describeMassState(ms), band: bandOf(pm, ms) };
     if (!ms && ctx.get(n.id, "props.massRequirement") === true) return { mass: pm, state: "requirement", source: ctx.get(n.id, "props.massSource") || null };
     return { unknown: `stated mass ${pm} kg has no mass state (${ctx.get(n.id, "props.massSource") || "no source"}): a placeholder, not counted` };
   }
@@ -70,13 +99,16 @@ export const massBudget = registerSolver({
   run(ctx, id) {
     const items = [];
     const unknown = [];
+    const notFitted = [];
     for (const n of bodies(ctx, id)) {
       if (ctx.get(n.id, "props.logical")) continue;
+      const nf = ctx.get(n.id, "props.notFitted");
+      if (nf) { notFitted.push({ id: n.id, name: n.name, reason: nf.reason || String(nf) }); continue; }
       const m = bodyMass(ctx, n);
       if (m.unknown) { unknown.push({ id: n.id, name: n.name, reason: m.unknown }); continue; }
       const pos = ctx.get(n.id, "position");
       if (!pos) { unknown.push({ id: n.id, name: n.name, reason: `mass ${m.mass.toFixed(3)} kg known but no position: excluded from CG` }); continue; }
-      items.push({ id: n.id, name: n.name, mass: m.mass, state: m.state, source: m.source, position: pos });
+      items.push({ id: n.id, name: n.name, mass: m.mass, state: m.state, source: m.source, position: pos, band: m.band || [m.mass, m.mass] });
     }
     if (!items.length) return { notComputed: "no body with a known mass" };
     const M = items.reduce((s, i) => s + i.mass, 0);
@@ -87,11 +119,14 @@ export const massBudget = registerSolver({
       inputs: { items: { value: items.map(({ id: i, mass, state, position }) => ({ id: i, mass, state, position })), unit: "kg, m" } },
       outputs: {
         knownMass: { value: M, unit: "kg" },
+        massLow: { value: items.reduce((t, i) => t + i.band[0], 0), unit: "kg", basis: "sum of each item's low bound (estimate ranges, sourced tolerances)" },
+        massHigh: { value: items.reduce((t, i) => t + i.band[1], 0), unit: "kg", basis: "sum of each item's high bound" },
         cgX: { value: cg.x, unit: "m" }, cgY: { value: cg.y, unit: "m" }, cgZ: { value: cg.z, unit: "m" },
         massByState: { value: byState, unit: "kg" },
         items: { value: items },
         unknownItems: { value: unknown },
         unknownCount: { value: unknown.length, unit: "1" },
+        notFitted: { value: notFitted, note: "component lines deliberately not fitted in this design (with the reason): not mass, not unknown" },
       },
       warnings: unknown.length ? [`mass budget does not close: ${unknown.length} item(s) of unknown mass (${unknown.map((u) => u.id).join(", ")}); total and CG are of the known mass only`] : [],
       assumptions: ["Positions are body centroids in the design frame for the stated pose.", "Estimated masses carry their stated ranges; they are not datasheet values."],

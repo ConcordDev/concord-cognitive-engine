@@ -125,15 +125,16 @@ export const assemblyGaDrawing = registerSolver({
     const M = mb.outputs;
     const known = new Map(M.items.value.map((i) => [i.id, i]));
     const unknown = new Map(M.unknownItems.value.map((u) => [u.id, u]));
+    const notFitted = new Map((M.notFitted?.value || []).map((u) => [u.id, u]));
     const groups = new Map();
     for (const n of [...all].sort((a, b) => a.id.localeCompare(b.id))) {
-      const k = known.get(n.id), u = unknown.get(n.id);
+      const k = known.get(n.id), u = unknown.get(n.id), nf = notFitted.get(n.id);
       const { description, material } = describe(ctx, n);
       const ms = ctx.get(n.id, "props.massState");
       // per-node run ids are dropped from the source so identical parts group into one line
-      const src = k ? (ms?.source?.url ? host(ms.source.url) : String(k.source || "").replace(/@[\w.-]+/g, "")) : u ? u.reason : "not in the mass budget";
+      const src = k ? (ms?.source?.url ? host(ms.source.url) : String(k.source || "").replace(/@[\w.-]+/g, "")) : u ? u.reason : nf ? nf.reason : "not in the mass budget";
       const unitMassKg = k ? k.mass : null;
-      const massState = k ? k.state : "unknown";
+      const massState = k ? k.state : nf ? "not fitted" : "unknown";
       const key = JSON.stringify([description, material, unitMassKg == null ? null : r9(unitMassKg), massState, src]);
       if (!groups.has(key)) groups.set(key, { nodes: [], qty: 0, description, material, unitMassKg, massState, source: src || "" });
       const g = groups.get(key);
@@ -145,6 +146,8 @@ export const assemblyGaDrawing = registerSolver({
     const closed = unknownIds.length === 0;
     const bomTotals = [
       `Known mass ${M.knownMass.value.toFixed(2)} kg: sourced ${by.sourced.toFixed(2)}, computed ${by.computed.toFixed(2)}, estimated ${by.estimated.toFixed(2)}, requirement ${by.requirement.toFixed(2)} kg (mass.budget).`,
+      ...(M.massLow ? [`Mass band ${M.massLow.value.toFixed(2)}-${M.massHigh.value.toFixed(2)} kg (estimate ranges and sourced tolerances).`] : []),
+      ...(notFitted.size ? [`Not fitted in this design: ${[...notFitted.keys()].join(", ")} (see BOM).`] : []),
       closed ? "Mass budget closed: every body has a mass with a state." : `Unknown mass: ${unknownIds.length} item(s) (${unknownIds.join(", ")}). MASS BUDGET NOT CLOSED: total mass and CG are not established.`,
     ];
 
@@ -202,7 +205,7 @@ export const assemblyGaDrawing = registerSolver({
     const nearest = margin >= 0 ? nearestOnPolygon(poly, cg) : null;
     const notes = [
       "SCREENING DRAWING: generated from a software model; not checked, not approved, not for manufacture.",
-      "Masses: mass.budget states (sourced / computed / estimated / requirement / unknown).",
+      "Masses: mass.budget states (sourced / computed / estimated / requirement / unknown / not fitted).",
       "Passing software checks is not physical validation: weigh the parts and run the tip test.",
     ];
     const model = {

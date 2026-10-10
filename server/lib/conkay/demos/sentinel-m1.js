@@ -57,6 +57,17 @@ export const CELL = { model: "Molicel INR-21700-P45B", nominalV: 3.6, maxV: 4.2,
 export const PANEL = { model: "Renogy RNG-100D-SS", nameplateW: 100, efficiency: 0.178, lengthM: 1.062, widthM: 0.53, depthM: 0.035, massKg: 6.4, noctC: 47, tempCoeffPctPerC: -0.37, source: "renogy-rng-100d-ss" };
 export const COMPUTE = { model: "NVIDIA Jetson AGX Orin 64GB module", modeW: 30, maxW: 60, envelope: { x: 0.016, y: 0.1, z: 0.087 }, massKg: null, source: "nvidia-jetson-agx-orin" };
 export const LIDAR = { model: "Velodyne VLP-16 Puck", typicalW: 8, massKg: 0.83, diameterM: 0.103, heightM: 0.072, source: "velodyne-vlp16" };
+// The compute system: the Jetson AGX Orin 64GB in Advantech's fanless MIC-733-A06A1 (module, carrier and
+// thermal solution in one sourced mass; the NVIDIA module data sheet states no mass). Mounted 230 mm along x,
+// 87 mm along y (between the torso uprights) and 192 mm along z.
+export const COMPUTE_SYSTEM = { model: "Advantech MIC-733-A06A1 (Jetson AGX Orin 64G, fanless)", massKg: 4.5, envelope: { x: 0.23, y: 0.087, z: 0.192 }, inputV: [9, 36], source: "advantech-mic-733-ao" };
+export const CAMERA = { model: "RealSense D455", massKg: 0.116, tolerancePct: 10, maxW: 3.46147, envelope: { x: 0.026, y: 0.124, z: 0.029 }, source: "realsense-d400-datasheet" };
+export const IMU = { model: "Xsens MTi-630 AHRS", massKg: 0.0089, maxW: 0.5, envelope: { x: 0.0315, y: 0.028, z: 0.013 }, source: "xsens-mti-630" };
+export const FAN = { model: "Sanyo Denki San Ace 80 9GA0824P4H001 (24 V)", massKg: 0.11, ratedW: 2.4, envelope: { x: 0.025, y: 0.08, z: 0.08 }, source: "sanyo-san-ace-80-9ga" };
+const COPPER = "copper-c11000";
+const RHO_CU = 8960; // kg/m³, the library's copper-c11000 density (materials/index.js)
+// ASTM B258 nominal diameters (in) of AWG 14 and 24 solid conductors: 0.0641 and 0.0201.
+const AWG = { 14: 0.0641 * IN, 24: 0.0201 * IN };
 
 // Mass records in the #1037 mass-state schema (verification/mass-state.js).
 // A datasheet mass is "sourced" with the datasheet URL and the exact variant;
@@ -141,13 +152,28 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
   add({ id: "lidar", kind: "Sensor", name: LIDAR.model, position: pos(0, 0, 3.014),
     props: { envelope: { x: LIDAR.diameterM, y: LIDAR.diameterM, z: LIDAR.heightM }, ...sourcedMass(LIDAR.massKg, LIDAR.source, LIDAR.model), load: { rail: "sensors", typicalW: { value: LIDAR.typicalW, state: "sourced", source: LIDAR.source } } } });
   mate("shoulder", "mast"); mate("mast", "lidar");
-  add({ id: "compute", kind: "Part", name: COMPUTE.model, position: pos(0, 0, 2.4),
-    props: { envelope: COMPUTE.envelope, ...unknownMass(`module mass not stated in the NVIDIA data sheet read (${COMPUTE.source})`), serviceAccess: { face: "+x", depth: 0.05 },
-      load: { rail: "compute", typicalW: { value: COMPUTE.modeW, state: "sourced", source: COMPUTE.source }, peakW: { value: COMPUTE.maxW, state: "sourced", source: COMPUTE.source } } } });
-  add({ id: "sensors-misc", kind: "Sensor", name: "IMU + cameras (not selected)", props: { ...unknownMass("no part selected"), load: { rail: "sensors", typicalW: { value: 10, state: "estimated", range: [5, 20], basis: "placeholder until parts are chosen" } } } });
-  add({ id: "fans", kind: "Part", name: "controller/driver cooling fans (not selected)", props: { ...unknownMass("no part selected"), load: { rail: "thermal", typicalW: { value: 12, state: "estimated", range: [5, 25], basis: "placeholder until thermal design" } } } });
-  add({ id: "battery", kind: "Part", name: `battery 13S${batteryParallel}P ${CELL.model}`, position: pos(-0.1, 0, 2.05),
-    props: { battery: { series: 13, parallel: batteryParallel, cell: CELL, usableFraction: { value: 0.8, state: "estimated", range: [0.7, 0.9], basis: "usable window not in the cell datasheet; to be measured by rundown (spec 3.2)" }, reserveFraction: { value: 0.15, state: "requirement", basis: "reserve held back for safe-stop (not available to the mission)" } },
+  add({ id: "compute", kind: "Part", name: `${COMPUTE_SYSTEM.model}: ${COMPUTE.model}`, position: pos(0, 0, 2.4),
+    props: { envelope: COMPUTE_SYSTEM.envelope, ...sourcedMass(COMPUTE_SYSTEM.massKg, COMPUTE_SYSTEM.source, "MIC-733-A06A1 (AGX Orin 64G), core module without the MIC-75M10 iModule"),
+      covers: ["Jetson AGX Orin 64GB module", "carrier board", "thermal solution (fanless)"], serviceAccess: { face: "+x", depth: 0.05 },
+      load: { rail: "compute", typicalW: { value: COMPUTE.modeW, state: "sourced", source: COMPUTE.source }, peakW: { value: COMPUTE.maxW, state: "sourced", source: COMPUTE.source }, note: "module power (NVIDIA); the MIC-733 carrier and I/O draw is not stated in its data sheet: not included" } } });
+  mate("compute", "torso-l"); mate("compute", "torso-r");
+  add({ id: "camera", kind: "Sensor", name: CAMERA.model, position: pos(0.06, 0, 2.785),
+    props: { envelope: CAMERA.envelope, mass: `${CAMERA.massKg} kg`, massState: { ...sourcedMass(CAMERA.massKg, CAMERA.source, "D455 (bulk, without the 2.3 g USB cap)").massState, uncertainty: { pct: CAMERA.tolerancePct }, tolerance: "the data sheet states ±10 % from the nominal" },
+      load: { rail: "sensors", typicalW: { value: CAMERA.maxW, state: "sourced", source: CAMERA.source, basis: "all components at max operating mode (an upper bound for the typical draw)" } } } });
+  mate("camera", "shoulder");
+  add({ id: "imu", kind: "Sensor", name: IMU.model, position: pos(0, 0, 1.925),
+    props: { envelope: IMU.envelope, ...sourcedMass(IMU.massKg, IMU.source, "MTi-630 module (28 × 31.5 × 13 mm)"),
+      load: { rail: "sensors", typicalW: { value: IMU.maxW, state: "sourced", source: IMU.source, basis: "typical < 0.5 W: 0.5 W taken (upper bound)" } } } });
+  mate("imu", "pelvis");
+  for (const [i, y] of [[1, 0.045], [2, -0.045]]) {
+    add({ id: `fan-${i}`, kind: "Part", name: `controller/driver bay fan ${i}: ${FAN.model}`, position: pos(-0.06, y, 1.96),
+      props: { envelope: FAN.envelope, ...sourcedMass(FAN.massKg, FAN.source, "9GA0824P4H001, San Ace 80 9GA 80 × 80 × 25 mm"),
+        load: { rail: "thermal", typicalW: { value: FAN.ratedW, state: "sourced", source: FAN.source, basis: "rated input at 100 % PWM (an upper bound); two fans is a design choice, airflow not yet sized by a thermal model" } } } });
+    mate(`fan-${i}`, "pelvis");
+  }
+  add({ id: "battery", kind: "Part", name: `battery 13S${batteryParallel}P ${CELL.model}`, position: pos(-0.09, 0, 2.05),
+    props: { battery: { series: 13, parallel: batteryParallel, cell: CELL,
+      enclosure: { material: "aluminum-6061-t6", sheetM: 0.0015, gapM: 0.001, extraHeightM: 0.01, basis: "design choice: 1.5 mm 6061 sheet box around the 13S × nP cell grid (1 mm between cells, 10 mm above the cells for the interconnects and the BMS sense leads); mass computed, so it follows the battery's size" }, usableFraction: { value: 0.8, state: "estimated", range: [0.7, 0.9], basis: "usable window not in the cell datasheet; to be measured by rundown (spec 3.2)" }, reserveFraction: { value: 0.15, state: "requirement", basis: "reserve held back for safe-stop (not available to the mission)" } },
       serviceAccess: { face: "+z", depth: 0.05 } } });
   mate("battery", "torso-l"); mate("battery", "torso-r");
   add({ id: "solar", kind: "Part", name: `${PANEL.model} (back-mounted, vertical, facing south when parked)`, position: pos(-0.2, 0, 2.3),
@@ -165,10 +191,55 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
     // counts it as "requirement" and the loop may not change it (locked below).
     massRequirement: true } });
   mate("torso-l", "bracket"); mate("torso-r", "bracket"); mate("bracket", "payload");
-  for (const [id, name] of [
-    ["wiring", "wiring harness"], ["fasteners", "fasteners, joint brackets, actuator mounts"], ["bms", "battery BMS, enclosure, interconnects"],
-    ["compute-carrier", "Jetson carrier board and thermal solution"], ["panel-mount", "solar panel mount"], ["armor", "armor cage (spec 4.2: unknown, a component line)"],
-  ]) add({ id, kind: "Part", name, props: unknownMass("not designed / not in any datasheet") });
+  // Battery management board and the cell interconnects: no part selected, no data-sheet mass retrieved.
+  add({ id: "bms", kind: "Part", name: "battery BMS board (13S, ~60 A class) and cell interconnects (not selected)", position: pos(-0.12, 0, 1.97),
+    props: { envelope: { x: 0.08, y: 0.06, z: 0.015 }, mass: "0.3 kg",
+      massState: { state: "estimated", method: "engineering estimate: a 13S BMS board for ~60 A (one leg's three actuator peaks, 57 A) with its FET heatsink (~0.15-0.35 kg) plus nickel-strip interconnects for 65 cells (~0.5 g each); no part selected and no data-sheet mass retrieved, so the range is deliberately wide", uncertainty: { lowKg: 0.12, highKg: 0.6 } } } });
+  mate("bms", "battery");
+  // Actuator mounts: two 6061 side plates per joint (100 × 6 × 100 mm), one each side of the actuator.
+  for (const [s, y] of [["l", 0.2], ["r", -0.2]]) {
+    for (const [j, z] of [["ankle", 0.066], ["knee", 0.939], ["hip", 1.817]]) {
+      for (const [k, dy] of [["a", 0.034], ["b", -0.034]]) {
+        const id = `mount-${j}-${s}${k}`;
+        add({ id, kind: "Plate", name: `${j} ${s} actuator side plate ${k}`, material: FRAME, geometry: { shape: "box", length: "0.1 m", width: "0.006 m", height: "0.1 m" }, position: pos(0, y + dy, z), props: { designChoice: "actuator side plate 100 × 100 × 6 mm 6061-T6 (mass computed)" } });
+        mate(id, `${j}-${s}`);
+        for (const t of j === "ankle" ? [`shin-${s}`, `foot-${s}`] : j === "knee" ? [`shin-${s}`, `thigh-${s}`] : [`thigh-${s}`, "pelvis"]) mate(id, t);
+      }
+    }
+  }
+  // Solar panel mount: two 1" × 0.065" 6061 rails behind the panel and four stand-offs to the torso uprights.
+  for (const [s, y] of [["l", 0.12], ["r", -0.12]]) {
+    add({ id: `panel-rail-${s}`, kind: "Beam", name: `solar panel rail ${s}`, material: FRAME, geometry: { ...tube("sq-1x0.065"), length: "1 m" }, position: pos(-0.169, y, 2.3), props: { axis: "z", section: "sq-1x0.065" } });
+    mate(`panel-rail-${s}`, "solar");
+    for (const [k, z] of [["lo", 1.95], ["hi", 2.65]]) {
+      add({ id: `panel-standoff-${s}${k}`, kind: "Beam", name: `solar panel stand-off ${s} ${k}`, material: FRAME, geometry: { ...tube("sq-1x0.065"), length: "0.1309 m" }, position: pos(-0.0909, y, z), props: { axis: "x", section: "sq-1x0.065" } });
+      mate(`panel-standoff-${s}${k}`, `panel-rail-${s}`); mate(`panel-standoff-${s}${k}`, `torso-${s}`);
+    }
+  }
+  // Harness: actuator power (2 × AWG 14 per actuator) and one CAN pair (2 × AWG 24) per leg, battery to each
+  // joint along the torso and leg; copper mass computed, insulation, connectors and sleeving estimated.
+  const bat0 = { x: -0.09, y: 0, z: 2.05 };
+  const runs = [];
+  for (const y of [0.2, -0.2]) {
+    for (const z of [1.817, 0.939, 0.061]) runs.push({ len: Math.abs(bat0.x) + Math.abs(y) + (bat0.z - z), conductors: 2, d: AWG[14], mid: { x: bat0.x / 2, y, z: (bat0.z + z) / 2 } });
+    runs.push({ len: Math.abs(bat0.x) + Math.abs(y) + (bat0.z - 0.061), conductors: 2, d: AWG[24], mid: { x: bat0.x / 2, y, z: (bat0.z + 0.061) / 2 } });
+  }
+  const cu = runs.map((r) => ({ ...r, kg: r.len * r.conductors * (Math.PI / 4) * r.d * r.d * RHO_CU }));
+  const cuKg = cu.reduce((t, r) => t + r.kg, 0);
+  const cg = ["x", "y", "z"].map((k) => cu.reduce((t, r) => t + r.kg * r.mid[k], 0) / cuKg);
+  const harnessKg = +(cuKg * 1.8).toFixed(4);
+  add({ id: "wiring", kind: "Part", name: "wiring harness (actuator power + CAN)", position: pos(cg[0], cg[1], cg[2]),
+    props: { distributed: true, mass: `${harnessKg} kg`,
+      massState: { state: "estimated", method: `copper computed: ${cu.reduce((t, r) => t + r.len * r.conductors, 0).toFixed(3)} m of conductor (2 × AWG 14 per actuator for 19 A peaks, 2 × AWG 24 CAN per leg; ASTM B258 nominal diameters) × ${RHO_CU} kg/m³ (${COPPER}) = ${cuKg.toFixed(4)} kg; × 1.8 for insulation, connectors and sleeving (estimated, range × 1.4 to × 3.0); the LiDAR, camera and compute cables (VLP-16 mass excludes its cabling and interface box) are inside the range, not itemised. Wire gauge is a design choice; ampacity not checked`, uncertainty: { lowKg: +(cuKg * 1.4).toFixed(4), highKg: +(cuKg * 3.0).toFixed(4) } },
+      centroid: "copper-mass-weighted midpoint of the runs (computed)" } });
+  add({ id: "fasteners", kind: "Part", name: "fasteners (actuator, plate, tube-clamp and panel bolts)", position: pos(0, 0, 0.94),
+    props: { distributed: true, mass: "0.5 kg",
+      massState: { state: "estimated", method: "engineering estimate: ~150 M4-M6 steel screws, nuts and washers (≈ 2-5 g each) for 6 actuators × 2 side plates, the tube joints and the panel mount; no fastener schedule exists", uncertainty: { lowKg: 0.25, highKg: 1.0 } },
+      centroid: "estimated: the actuator stack's mean height (most bolts are at the joints)" } });
+  // Armor cage: not fitted on Milestone 1 (a stated design decision, reversible): spec 4.1 lists the M1 mission
+  // (stand, walk at low speed, carry the payload, sense, stop safely) and 4.2 makes the 600 lb cage "Unknown ...
+  // a component line, not a capability". Its mass is not zero and not unknown: it is not in this design.
+  add({ id: "armor", kind: "Part", name: "armor cage (spec 4.2)", props: { notFitted: { reason: "Milestone 1 does not fit an armor cage: spec 4.1 mission (stand, walk, carry the payload, sense, stop safely); spec 4.2 lists the 600 lb cage as Unknown, a component line, not a capability. Design decision for the owner to reverse; the leg's load-to-limit says how much it could carry." } } });
   // Single-support holding torques, left leg in stance (right is symmetric).
   const below = { ankle: ["foot-l"], knee: ["foot-l", "ankle-l", "shin-l"], hip: ["foot-l", "ankle-l", "shin-l", "knee-l", "thigh-l"] };
   for (const j of ["ankle", "knee", "hip"]) {
@@ -193,14 +264,14 @@ export const DESIGN_VARIABLES = [
     options: [2, 3, 4, 5, 6, 7, 8].map((p) => ({ label: `13S${p}P`, set: { "props.battery.parallel": p } })) },
 ];
 
-// Solvers that don't apply to a component-list design with unknown masses:
-// mass.cg and mass.assembly stop (NOT_COMPUTED) while any body has no mass
-// (the battery's mass is cells × cell mass, and nine parts are placeholders).
-// mass.budget replaces them: the known mass and its CG, labelled so, with
-// every unknown named.
+// Solvers that don't apply to a component-list design: mass.cg and
+// mass.assembly need geometry × density for every body, and most bodies here
+// carry a data-sheet or estimated mass instead (actuators, cells, compute,
+// sensors, harness). mass.budget replaces them: every mass with its state,
+// the CG, the band, and any unknown named.
 export const EXCLUDED_SOLVERS = [
-  { id: "mass.cg", reason: "not computed while any body lacks a mass (battery from cells, nine placeholder parts); mass.budget gives the known-mass CG and lists the unknowns" },
-  { id: "mass.assembly", reason: "as mass.cg: no total while masses are unknown (mass.budget lists them)" },
+  { id: "mass.cg", reason: "needs geometry for every body; most Sentinel bodies have a data-sheet or estimated mass instead (mass.budget gives the total, CG and band with each mass's state)" },
+  { id: "mass.assembly", reason: "as mass.cg: it sums geometry-derived masses; mass.budget gives the total" },
   { id: "cost.part", reason: "no prices sourced; cost is a BOM output (spec 4.2), not computed here" },
   { id: "cost.assembly", reason: "as cost.part" },
 ];
