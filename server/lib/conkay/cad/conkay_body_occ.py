@@ -63,7 +63,7 @@ from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
 from OCP.TopoDS import TopoDS_Compound
 from OCP.BRep import BRep_Builder
 
-KERNEL_VERSION = "2.1.1"
+KERNEL_VERSION = "2.2.0"
 
 
 def _st(cls, name):
@@ -604,6 +604,7 @@ def solve_sections(req, extra, adj=None):
     topL, bases = [d + P["lowerOverlap"] for d in zd], zd
     secs = []
     m, k = int(P["sectionPoints"]), P["blendRadius"]
+    x_front = min((w["center"][0] for w in wheels), default=None)
     for i, x in enumerate(xs):
         feats = [{"kind": "se", "uc": 0.0, "zc": 0.5 * (zb[i] + topL[i]), "a": W[i], "b": 0.5 * (topL[i] - zb[i]), "n": nl}]
         if zt[i] > bases[i] + 0.005:
@@ -617,7 +618,7 @@ def solve_sections(req, extra, adj=None):
         pts = [(y, max(z, zb[i])) for y, z in profile(feats, zc0, m, k, P["sectionSmoothing"])]  # every feature starts at zb: the blend may not dip below it
         secs.append({"x": x, "pts": pts,
                      "info": {"x": x, "zb": zb[i], "deck": bases[i], "W": W[i], "lowerTop": topL[i], "Wg": Wg[i], "zt": zt[i],
-                              "pods": [{"wheel": f["wheel"], "t": f["t"], "crown": f["crown"], "uOut": f["uOut"]} for f in pods]}})
+                              "pods": [{"wheel": f["wheel"], "t": f["t"], "crown": f["crown"], "uOut": f["uOut"], "front": any(w["id"] == f["wheel"] and w["center"][0] == x_front for w in wheels)} for f in pods]}})
     floor_min = min(zb)
     if P["fairSigmaX"] > 0:
         fair_sections(secs, xs, zb, P, adj)
@@ -678,6 +679,11 @@ def smooth_rows(secs, xs, sigma, zb, iters=4, max_shift=0.015):
 #   4. each faired section is resampled at equal arc-length fractions, like the solved ones.
 # F >= R_req at every station, so the clearances at the stations can only grow; between stations the
 # loft is checked by the exact clearance pass as before.
+# Kernel 2.2 (two residual features of 2.1, measured by fairness.features and fixed):
+#   - the hood-to-fender S-bend: before step 3, fill_concavities closes the top outline of each front-pod
+#     station from above (fairHoodCloseRadius), weighted by the pod's blend; R_req only grows;
+#   - the door bump: the along-car sigma is fairSigmaXSide on the side-facing rays (fairSigmaX on the roof,
+#     hood and floor rays, so the roof line does not lift).
 
 def _ray_hit_max(poly, cy, cz, sy, cz_dir):
     """Largest t >= 0 with (cy, cz) + t (sy, cz_dir) on the closed polygon (None if none)."""
@@ -766,13 +772,28 @@ def fair_sections(secs, xs, zb, P, adj=None, iters=2000, tol=1e-5):
                 u = min(u, ymax / sy)  # width
             rr.append(t); uu.append(max(u, t))
         req.append(rr); up.append(uu)
+    fill = fill_concavities(secs, xs, zc, ths, req, up, P)
     sx, st = P["fairSigmaX"], P["fairSigmaTheta"]
-    tx, tt = _taps_x(xs, sx), _taps_theta(len(ths), dth, st)
-    srcx, srct = _transpose(tx, len(xs)), _transpose(tt, len(ths))
     nx, nt = len(xs), len(ths)
-    # G (R_req + c), G the separable Gaussian; c grows only where the clamped field min(G(.), U) is short of
-    # R_req. G is linear, so after the first full pass the field is updated from the changed c only.
-    tmp = [[sum(w * req[j][k] for j, w in tx[i]) for k in range(nt)] for i in range(nx)]
+    # The along-car sigma may be wider on the side-facing rays (fairSigmaXSide; kernel 2.2): the door and
+    # flanks fair over a longer length while the roof, hood and floor keep fairSigmaX (so the roof line is
+    # not lifted). sigma_k = sx + (side - sx) * band(theta_k), band = smoothstep 10-80 deg x (1 - smoothstep
+    # 100-170 deg) from up (fairSideBand; wide ramps: narrow ones roughened the tail around the section),
+    # quantised to 5 mm so the tap lists are shared.
+    sxs = max(sx, P.get("fairSigmaXSide") or sx)
+    b1, b2, b3, b4 = P.get("fairSideBand") or (10, 80, 100, 170)
+    def _band(th):
+        dg = math.degrees(th)
+        return _smoothstep(b1, b2, dg) * (1 - _smoothstep(b3, b4, dg))
+    sig_k = [round((sx + (sxs - sx) * _band(th)) / 0.005) * 0.005 for th in ths]
+    taps_by = {sg: _taps_x(xs, sg) for sg in sorted(set(sig_k))}
+    src_by = {sg: _transpose(t, len(xs)) for sg, t in taps_by.items()}
+    tt = _taps_theta(len(ths), dth, st)
+    srct = _transpose(tt, len(ths))
+    # G (R_req + c), G = (around the section) o (along the car, per source ray); c grows only where the clamped
+    # field min(G(.), U) is short of R_req. G is linear, so after the first full pass the field is updated
+    # from the changed c only.
+    tmp = [[sum(w * req[j][q] for j, w in taps_by[sig_k[q]][i]) for q in range(nt)] for i in range(nx)]
     Fu = [[sum(w * tmp[i][q] for q, w in tt[k]) for k in range(nt)] for i in range(nx)]
     corr = [[0.0] * nt for _ in xs]
     worst = 0.0
@@ -791,12 +812,12 @@ def fair_sections(secs, xs, zb, P, adj=None, iters=2000, tol=1e-5):
             break
         for j, q, d in delta:
             corr[j][q] += d
-            for i, wi in srcx[j]:
+            for i, wi in src_by[sig_k[q]][j]:
                 row = Fu[i]
                 for k, wk in srct[q]:
                     row[k] += d * wi * wk
     F = [[min(v, u) for v, u in zip(fr, ur)] for fr, ur in zip(Fu, up)]
-    _FAIR_STATS.update(iterations=it + 1, residualM=worst, sigmaXM=sx, sigmaThetaRad=st, rays=na + 1, widthCapM=2 * ymax,
+    _FAIR_STATS.update(fill=fill, iterations=it + 1, residualM=worst, sigmaXM=sx, sigmaXSideM=sxs, sigmaThetaRad=st,  rays=na + 1, widthCapM=2 * ymax,
                        widthTrimM=adj.get("widthTrim", 0.0), centreLine=[r6(v) for v in zc])
     for s, c, fr, rr, ur in zip(secs, zc, F, req, up):
         dense = [(max(v, q) if v < q else min(v, u)) for v, q, u in zip(fr, rr, ur)]  # residual (<= tol) clamped
@@ -809,6 +830,81 @@ def fair_sections(secs, xs, zb, P, adj=None, iters=2000, tol=1e-5):
 
 
 _FAIR_STATS = {}
+
+
+def _smoothstep(a, b, v):
+    if b == a:
+        return 1.0 if v >= b else 0.0
+    t = min(max((v - a) / (b - a), 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
+def _ray_poly_far(poly, cy, cz, sy, sz):
+    """Farthest parameter t >= 0 at which the ray (cy, cz) + t (sy, sz) crosses the open polyline poly, or None."""
+    best = None
+    for (y1, z1), (y2, z2) in zip(poly, poly[1:]):
+        ey, ez = y2 - y1, z2 - z1
+        den = sy * ez - sz * ey
+        if abs(den) < 1e-15:
+            continue
+        t = ((y1 - cy) * ez - (z1 - cz) * ey) / den
+        u = ((y1 - cy) * sz - (z1 - cz) * sy) / den
+        if t >= 0 and -1e-12 <= u <= 1 + 1e-12:
+            best = t if best is None else max(best, t)
+    return best
+
+
+def fill_concavities(secs, xs, zc, ths, req, up, P):
+    """Outward-only fill of the required radius field R_req (kernel 2.2), applied before the fairing, so
+    every requirement still holds (the field only grows) and the floor / width caps still bound it:
+      hood:  at the stations with a front fender pod, the section's top outline z(y) is closed from above by
+             a disc of radius fairHoodCloseRadius (mirrored about the centre plane), weighted by the pod's
+             blend t (0 -> 1 -> 0 along the car): fills the valley where the hood dome meets the pods;
+    Returns the receipt: the stations and rays raised and the largest raise (m)."""
+    out = {}
+    na = len(ths) - 1
+    rh = float(P.get("fairHoodCloseRadius") or 0.0)
+    if rh > 0:
+        raised = 0; worst = 0.0; stations = []
+        for i, s in enumerate(secs):
+            tpod = max([q.get("t", 0.0) for q in s["info"].get("pods", []) if q.get("front")] or [0.0])
+            if tpod <= 0:
+                continue
+            c = zc[i]
+            hull = [(r_ * math.sin(th), c + r_ * math.cos(th)) for r_, th in zip(req[i], ths)]
+            poly = hull + [(-y, z) for (y, z) in reversed(hull[1:-1])] + [hull[0]]
+            ymax_s = max(y for y, _ in hull)
+            dy = 0.005
+            ys, zt = [], []
+            j = 0
+            while j * dy <= ymax_s:
+                t = _ray_hit_max(poly, j * dy, c, 0.0, 1.0)
+                if t is None:
+                    break
+                ys.append(j * dy); zt.append(c + t)
+                j += 1
+            if len(ys) < 3:
+                continue
+            ym = [-v for v in reversed(ys[1:])] + ys
+            zm = list(reversed(zt[1:])) + zt
+            zcl = closing(ym, zm, rh, above=True)[len(ys) - 1:]
+            top = list(zip(ys, zcl))
+            hit_any = False
+            for k, th in enumerate(ths):
+                if th >= 0.5 * math.pi:
+                    break
+                t2 = _ray_poly_far(top, 0.0, c, math.sin(th), math.cos(th))
+                if t2 is None or t2 <= req[i][k]:
+                    continue
+                d = tpod * (t2 - req[i][k])
+                nv = min(req[i][k] + d, up[i][k])
+                if nv > req[i][k] + 1e-9:
+                    worst = max(worst, nv - req[i][k]); raised += 1; hit_any = True
+                    req[i][k] = nv
+            if hit_any:
+                stations.append(r6(xs[i]))
+        out["hood"] = {"radiusM": rh, "raysRaised": raised, "maxRaiseM": r6(worst), "stationsX": stations}
+    return out
 
 
 def fairness(surf, body_x=None, nu=120, nv=320, kmin=0.05):
@@ -869,6 +965,86 @@ def fairness(surf, body_x=None, nu=120, nv=320, kmin=0.05):
                                     "aroundSection": stats(rows_u, sp_u, (u2 - u1) / nu, True) if rows_u else None}
     return {**out,
             "method": "normal curvature of the B-spline side surface (OCP D2) along each parameter direction on a uniform parameter grid; inflections = sign changes of k beyond +/-kmin; rmsDkDs = sqrt(integral (dk/ds)^2 ds / integral ds), finite differences"}
+
+
+def feature_fairness(surf, req, P, zref, pod_free=None, nu=160, nv=480, kmin=0.05):
+    """Fairness inside two named windows of the side surface, defined from the wheels (deterministic):
+      hoodFender: front axle x +/- (tyre radius + archClearance), upward-facing skin (outward normal z > 0.5)
+                  with |y| between half the tyre's inner face and the tyre centre: where the hood dome meets
+                  the front fender pods (an S-bend around the section);
+      door:       the span with no fender pod (pod_free: the last front-pod station to the first rear-pod
+                  station; else between the wells inset 0.1 m), side-facing skin (|outward normal y| > 0.8)
+                  above the wheel centre height: the door panel.
+    Per window and direction (alongCar = v rows, aroundSection = u rows): inflections (sign changes of the
+    normal curvature beyond +/-kmin), RMS and max dk/ds over the arc inside the window (1/m^2), and the
+    curvature range. Outward = the normal pointing away from (x, 0, zref)."""
+    ws = req.get("wheels") or []
+    if not ws:
+        return None
+    xf = min(w["center"][0] for w in ws); xr = max(w["center"][0] for w in ws)
+    r = max(w["radius"] for w in ws); zw = ws[0]["center"][2]
+    well = r + P["archClearance"]
+    yw = max(abs(w["center"][1]) for w in ws); hw = max(w["halfWidth"] for w in ws)
+    yband = (0.5 * (yw - hw), yw)  # hood edge .. pod crown: where the dome meets the pods
+    door = pod_free or (xf + well + 0.1, xr - well - 0.1)
+    wins = {"hoodFender": (xf - well, xf + well), "door": tuple(door)}
+    u1, u2, v1, v2 = surf.Bounds()
+    Pt = gp_Pnt(); du = gp_Vec(); dv = gp_Vec(); duu = gp_Vec(); dvv = gp_Vec(); duv = gp_Vec()
+    us = [u1 + (u2 - u1) * (j + 0.5) / nu for j in range(nu)]
+    vs = [v1 + (v2 - v1) * i / (nv - 1) for i in range(nv)]
+    K = {}  # (j, i) -> (kv, ku, sv, su, x, y, z, ny, nz)
+    for j, u in enumerate(us):
+        for i, v in enumerate(vs):
+            surf.D2(u, v, Pt, du, dv, duu, dvv, duv)
+            n = du.Crossed(dv); ln = n.Magnitude()
+            if ln < 1e-14:
+                continue
+            n.Divide(ln)
+            kv_ = dvv.Dot(n) / max(dv.Dot(dv), 1e-18); ku_ = duu.Dot(n) / max(du.Dot(du), 1e-18)
+            if n.Y() * Pt.Y() + n.Z() * (Pt.Z() - zref) < 0:  # orient outward (curvature sign follows the normal)
+                n.Reverse(); kv_, ku_ = -kv_, -ku_
+            K[(j, i)] = (kv_, ku_, dv.Magnitude(), du.Magnitude(), Pt.X(), Pt.Y(), Pt.Z(), n.Y(), n.Z())
+    def member(name, rec):
+        x0, x1 = wins[name]
+        x, y, z, ny, nz = rec[4], rec[5], rec[6], rec[7], rec[8]
+        if not (x0 <= x <= x1):
+            return False
+        return (nz > 0.5 and yband[0] <= abs(y) <= yband[1]) if name == "hoodFender" else (abs(ny) > 0.8 and z > zw)
+    def runs(seq_keys, kidx, sidx, step, name):
+        flips = 0; e = 0.0; L = 0.0; peak = 0.0; kmn = None; kmx = None; kmn_at = kmx_at = None
+        for keys in seq_keys:
+            last = 0; prev = None
+            for key in keys:
+                rec = K.get(key)
+                if rec is None or not member(name, rec):
+                    prev = None; last = 0
+                    continue
+                k_ = rec[kidx]
+                if kmn is None or k_ < kmn:
+                    kmn_at = (r6(rec[4]), r6(rec[5]), r6(rec[6]))
+                if kmx is None or k_ > kmx:
+                    kmx_at = (r6(rec[4]), r6(rec[5]), r6(rec[6]))
+                kmn = k_ if kmn is None else min(kmn, k_); kmx = k_ if kmx is None else max(kmx, k_)
+                if prev is not None:
+                    ds = 0.5 * (prev[sidx] + rec[sidx]) * step
+                    if ds > 0:
+                        g = (k_ - prev[kidx]) / ds
+                        e += g * g * ds; L += ds; peak = max(peak, abs(g))
+                sg = 1 if k_ > kmin else (-1 if k_ < -kmin else 0)
+                if sg and last and sg != last:
+                    flips += 1
+                if sg:
+                    last = sg
+                prev = rec
+        return {"inflections": flips, "rmsDkDs": r6(math.sqrt(e / L)) if L else None, "maxDkDs": r6(peak),
+                "kRange": [r6(kmn), r6(kmx)] if kmn is not None else None, "kMinAt": kmn_at, "kMaxAt": kmx_at, "arcM": r6(L)}
+    along = [[(j, i) for i in range(nv)] for j in range(nu)]
+    around = [[(j, i) for j in range(nu)] for i in range(nv)]
+    out = {"windows": {k: [r6(a), r6(b)] for k, (a, b) in wins.items()}, "hoodYBand": [r6(yband[0]), r6(yband[1])], "grid": [nu, nv], "kminPerM": kmin, "zrefM": r6(zref)}
+    for name in wins:
+        out[name] = {"alongCar": runs(along, 0, 2, (v2 - v1) / (nv - 1), name), "aroundSection": runs(around, 1, 3, (u2 - u1) / nu, name)}
+    out["method"] = "as fairness(), restricted to each window: hoodFender = front axle x +/- (tyre radius + archClearance), outward normal z > 0.5, |y| in hoodYBand; door = the pod-free span, |outward normal y| > 0.8, above the wheel centre; curvature signed positive convex"
+    return out
 
 
 def poly_area(pts):
@@ -1502,6 +1678,7 @@ DEFAULTS = {
     "archClearance": 0.04, "fenderSkin": 0.03, "fenderCover": 0.02,
     "podExponent": 2.5, "podShoulder": 0.10, "podShoulderDrop": 0.08, "podBlend": 0.8, "podMinHalfWidth": 0.30, "blendRadius": 0.08, "sectionSmoothing": 0.5, "rowSigma": 0.07, "podTuck": 0.10,
     "fairSigmaX": 0.25, "fairSigmaTheta": 0.10, "fairAngles": 4, "fairEnds": True, "endTipWidthFraction": 0.24, "fairPolesX": 0, "fairPoleSpacing": 0.24, "fairLambda": 0.0, "maxWidth": None,
+    "fairSigmaXSide": 0.45, "fairSideBand": None, "fairHoodCloseRadius": 6.0,
     "noseTipHeight": 0.22, "noseShapeExponent": 1.6, "noseRoundExponent": 3.0, "kammAreaRatio": 0.5, "tailRound": 0.0,
     "floorCornerAllowance": 0.015, "maxIterations": 4, "frontalSlices": 240, "meshLinear": 0.004, "meshAngular": 0.25,
 }
@@ -1583,6 +1760,12 @@ def build(req):
     val = validity(body)
     tick("validity")
     fair = fairness(surf, (span["xmin"], span["xmax"]))
+    cl_ = _FAIR_STATS.get("centreLine") or []
+    fr_ = [s_["x"] for s_ in sections if any(q.get("front") and q.get("t", 0) > 0 for q in s_["info"].get("pods", []))]
+    rr_ = [s_["x"] for s_ in sections if any(not q.get("front") and q.get("t", 0) > 0 for q in s_["info"].get("pods", []))]
+    feats = feature_fairness(surf, req, P, sum(cl_) / len(cl_) if cl_ else 0.6, (max(fr_), min(rr_)) if fr_ and rr_ else None)
+    if feats:
+        fair["features"] = rinfo(feats)
     tick("fairness")
     m = measure(solid, int(P["frontalSlices"]))
     tick("measured")
