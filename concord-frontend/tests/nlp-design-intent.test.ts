@@ -54,8 +54,42 @@ describe('parseDesignIntent (ConKay NLP CAD v1)', () => {
     expect(pm.kind).toBe('i-beam');
     expect(pm.params.length).toBe(6);
     const fea = intentToFeaModel(r.intent);
-    expect(fea.nodes).toHaveLength(3);
+    expect(fea.nodes).toHaveLength(9);
     expect(fea.loads[0].Fy).toBe(-5000);
-    expect(fea.nodes[2].x).toBe(6);
+    expect(fea.loads[0].nodeId).toBe('N4');
+    expect(fea.nodes[8].x).toBe(6);
+    const root = fea.supports[0].fixedDOF as string[];
+    const far = fea.supports[1].fixedDOF as string[];
+    expect(root).not.toContain('rz');
+    expect(far).not.toContain('x');
+    expect(fea.members[0].area).not.toBe(0.01);
+    expect(fea.members[0].momentI).not.toBe(1e-5);
+  });
+
+  it('converts 200 kg on a bracket and flags the defaults', () => {
+    const r = parseDesignIntent('design a steel bracket that holds 200 kg');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.intent.part).toBe('bracket');
+    expect(r.intent.support).toBe('cantilever');
+    expect(r.intent.spans[0]).toBe(0.12);
+    expect(r.intent.loads[0].forceN).toBeCloseTo(-200 * 9.80665, 6);
+    expect(r.intent.loads[0].forceN).not.toBe(-5000);
+    expect(r.intent.assumed).toMatchObject({ load: false, span: true, section: true, material: false, support: false });
+    const fea = intentToFeaModel(r.intent);
+    expect(fea.loads[0].nodeId).toBe('N8');
+    expect(fea.loads[0].Fy).toBeCloseTo(-200 * 9.80665, 6);
+    expect(fea.supports).toHaveLength(1);
+    const mesh = intentToPartMeshParams(r.intent);
+    expect(mesh.kind).toBe('box');
+    expect(mesh.params.length).toBe(0.12);
+    expect(mesh.params.height).toBe(0.008);
+  });
+
+  it('names bracket in the unsupported-part error', () => {
+    const r = parseDesignIntent('make me a spaceship');
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.supportedParts).toContain('bracket');
   });
 });

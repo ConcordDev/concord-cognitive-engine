@@ -122,6 +122,17 @@ describe('ConKay workspace — study edits', () => {
     await waitFor(() => expect(appended.length).toBe(2));
   });
 
+  it('applies a 4 m span and 10 kN, and shows a number that was not applied', async () => {
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('steel i-beam 4 m span carrying 10 kN');
+    await waitFor(() => expect(within(convo()).getByText(/Update applied: L = 4000 mm, load = 10 kN\./)).toBeTruthy());
+    const call = lensRun.mock.calls.find((c) => c[0] === 'engineering' && c[1] === 'beamStudy');
+    expect(call?.[2]).toMatchObject({ dims: { ...DIMS, length: 4000 }, loadN: 10000 });
+    send('4 m span carrying 10 kN and a 3 mm radius');
+    await waitFor(() => expect(within(convo()).getByText(/Not applied: 3 mm/)).toBeTruthy());
+  });
+
   it('hides results again when an input changes after the solve', async () => {
     render(<ConKayWorkspace />);
     await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
