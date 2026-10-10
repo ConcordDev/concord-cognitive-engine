@@ -110,6 +110,19 @@ describe("conkay design intent — loads, supports, sections", () => {
     assert.ok(rel(model.members[0].area, area) < 1e-9);
     assert.ok(rel(model.members[0].momentI, Ix) < 1e-9);
     assert.equal(model.members[0].depthIn, 0.2);
+
+    const adjacent = parseDesignIntent("aluminum cylinder diameter 80 mm length 1.5 m, 500 N at the tip");
+    assert.equal(adjacent.ok, true);
+    assert.equal(adjacent.intent.section.radius, 0.04);
+    assert.equal(adjacent.intent.spans[0], 1.5);
+    assert.equal(adjacent.intent.assumed.section, false);
+    const plate = parseDesignIntent("steel bracket arm 150 mm, 80 mm wide, 10 mm thick, leg 100 mm, holds 50 kg");
+    assert.equal(plate.ok, true);
+    assert.equal(plate.intent.spans[0], 0.15);
+    assert.equal(plate.intent.section.thickness, 0.01);
+    assert.equal(plate.intent.section.width, 0.08);
+    assert.equal(plate.intent.section.legHeight, 0.1);
+    assert.equal(plate.intent.assumed.section, false);
   });
 
   it("still fails closed when a beam has no span, and names the parts it can build", () => {

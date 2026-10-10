@@ -47,6 +47,25 @@ describe('beam report uses the solved span', () => {
     expect(beamReportSentence(r).startsWith('Shop beam:')).toBe(true);
   });
 
+  it('keeps a name whose span matches the solve, including mm, cm and ft', () => {
+    expect(beamReportHeadline(result({ name: '1200 mm span' }))).toBe('1200 mm span');
+    expect(beamReportHeadline(result({ name: '120 cm span' }))).toBe('120 cm span');
+    expect(beamReportHeadline(result({ name: 'shop, 3.937 ft' }))).toBe('shop, 3.937 ft');
+    expect(beamReportHeadline(result({ name: '' }))).toBe('1200 mm span');
+    const failed = result({
+      support: 'cantilever',
+      pass: false,
+      jobId: null,
+      handCheck: { maxStressMPa: 400, maxDeflectionMm: 12, stressError: 0.2, deflectionError: 0.1, agrees: false, tolerance: 0.02 },
+      warnings: ['shear not checked'],
+    });
+    const body = beamReportBody(failed);
+    expect(body).toContain('at the free end');
+    expect(body).toContain('fails');
+    expect(body).toContain('does not agree');
+    expect(body).toContain('sim job n/a');
+  });
+
   it('puts the solved length in the DTU title and machine record', () => {
     const call = beamReportDtuCall(result());
     expect(call).not.toBeNull();

@@ -94,18 +94,22 @@ export function forceToNewtons(value, unit) {
 }
 
 function lengthLabel(raw, index, matchLen) {
-  const before = raw.slice(Math.max(0, index - 32), index).toLowerCase();
-  const after = raw.slice(index + matchLen, index + matchLen + 18).toLowerCase();
-  if (/flange\s+thickness|t_?f\b/.test(before)) return "flangeThickness";
-  if (/web\s+thickness|t_?w\b/.test(before)) return "webThickness";
-  if (/flange\s+width|b_?f\b/.test(before)) return "flangeWidth";
-  if (/\b(diameter|dia)\b/.test(before)) return "diameter";
-  if (/\b(radius|rad)\b/.test(before)) return "radius";
-  if (/\b(thickness|thick)\b/.test(before) || /^\s*(thick|thickness)\b/.test(after)) return "thickness";
-  if (/\b(width|wide)\b/.test(before) || /^\s*(wide|width)\b/.test(after)) return "width";
-  if (/\bleg\b/.test(before)) return "legHeight";
-  if (/\b(depth|height|deep|tall)\b/.test(before) || /^\s*(deep|tall)\b/.test(after)) return "height";
-  if (/\b(arm|span|length|long)\b/.test(before) || /^\s*(span|long|length)\b/.test(after)) return "span";
+  // The label belongs to the words touching this number. A 32-character
+  // lookbehind let an earlier "diameter" or "thick" steal the next size.
+  const before = raw.slice(Math.max(0, index - 40), index).toLowerCase();
+  const after = raw.slice(index + matchLen, index + matchLen + 16).toLowerCase();
+  const pre = (re) => re.test(before);
+  const post = (re) => re.test(after);
+  if (pre(/flange\s+thickness\s*$|t_?f\s*$/)) return "flangeThickness";
+  if (pre(/web\s+thickness\s*$|t_?w\s*$/)) return "webThickness";
+  if (pre(/flange\s+width\s*$|b_?f\s*$/)) return "flangeWidth";
+  if (pre(/\b(?:diameter|dia)\s*$/)) return "diameter";
+  if (pre(/\b(?:radius|rad)\s*$/)) return "radius";
+  if (pre(/\b(?:thickness|thick)\s*$/) || post(/^\s*(?:thick|thickness)\b/)) return "thickness";
+  if (pre(/\b(?:width|wide)\s*$/) || post(/^\s*(?:wide|width)\b/)) return "width";
+  if (pre(/\bleg\s*$/)) return "legHeight";
+  if (pre(/\b(?:depth|height|deep|tall)\s*$/) || post(/^\s*(?:deep|tall)\b/)) return "height";
+  if (pre(/\b(?:arm|span|length|long)\s*$/) || post(/^\s*(?:span|long|length)\b/)) return "span";
   return null;
 }
 
