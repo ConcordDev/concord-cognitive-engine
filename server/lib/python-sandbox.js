@@ -299,16 +299,70 @@ async function resolveRequestedPackages(packages) {
  *   never falls back to a live fetch.
  * @returns {Promise<{ok: boolean, stdout: string, stderr: string, result: string|null, images?: Array<{mime:string, dataB64:string}>, error?: string, missing?: string[]}>}
  */
+const _SCIENTIFIC_IMPORTS = Object.freeze(["numpy", "sympy"]);
+
+function stripPythonNonCode(code) {
+  return String(code || "")
+    .replace(/'''[\s\S]*?'''/g, "\n")
+    .replace(/"""[\s\S]*?"""/g, "\n")
+    .replace(/'(?:\\.|[^'\n])*'/g, "''")
+    .replace(/"(?:\\.|[^"\n])*"/g, '""')
+    .replace(/#[^\n]*/g, "");
+}
+
+/**
+ * Top-level numpy/sympy imports in user code (`import numpy as np`,
+ * `from sympy import symbols`). Strings and comments are ignored.
+ * @param {string} code
+ * @returns {string[]}
+ */
+export function detectScientificImports(code) {
+  const src = stripPythonNonCode(code);
+  const found = new Set();
+  const consider = (raw) => {
+    const top = String(raw || "").split(".")[0];
+    if (_SCIENTIFIC_IMPORTS.includes(top)) found.add(top);
+  };
+  for (const m of src.matchAll(/(?:^|\n)\s*import\s+([^\n]+)/g)) {
+    for (const part of m[1].split(",")) {
+      const name = part.trim().split(/\s+/)[0];
+      if (name) consider(name);
+    }
+  }
+  for (const m of src.matchAll(/(?:^|\n)\s*from\s+([A-Za-z_][\w.]*)\s+import\b/g)) {
+    consider(m[1]);
+  }
+  return [...found];
+}
+
 export async function runPython(code, opts = {}) {
-  const packages = Array.isArray(opts.packages) ? opts.packages : [];
+  const requested = Array.isArray(opts.packages) ? opts.packages.map(String) : [];
+  // An `import numpy` / `import sympy` with the module not vendored used to
+  // boot Pyodide and come back as a micropip/loadPackage essay. Resolve the
+  // import up front and fail with the module name instead.
+  const imported = detectScientificImports(code);
+  const packages = [...new Set([...requested, ...imported])];
   const pkgResolution = await resolveRequestedPackages(packages);
   if (!pkgResolution.ok) {
     // No worker spawned — a doomed-to-fail request shouldn't pay the ~2s
     // cold-load cost, and the failure should be immediate and legible.
+    // An imported numpy/sympy that we cannot load (wheel absent, or the
+    // Pyodide lockfile itself missing) must name that module. A raw
+    // "Cannot find module 'pyodide/package.json'" is not that error.
+    let error = pkgResolution.error;
+    let missing = pkgResolution.missing;
+    const lockUnreadable = typeof error === "string" && error.startsWith("pyodide_lockfile_unreadable");
+    if (imported.length && (error === "python_package_not_vendored" || lockUnreadable)) {
+      missing = [...new Set([...imported, ...(Array.isArray(missing) ? missing : [])])];
+      error = "python_package_not_vendored";
+    }
+    const stderr = Array.isArray(missing) && missing.length
+      ? `Missing Python module: ${missing.join(", ")}.`
+      : "";
     return {
-      ok: false, stdout: "", stderr: "", result: null,
-      error: pkgResolution.error,
-      ...(pkgResolution.missing ? { missing: pkgResolution.missing } : {}),
+      ok: false, stdout: "", stderr, result: null,
+      error,
+      ...(missing ? { missing } : {}),
       ...(pkgResolution.unknown ? { unknown: pkgResolution.unknown } : {}),
     };
   }

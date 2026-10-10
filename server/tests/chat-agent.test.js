@@ -305,7 +305,8 @@ test("run_python surfaces a python_package_not_vendored failure with the missing
     tool: "run_python", params: { code: "import numpy", packages: ["numpy"] },
   });
   assert.equal(result.ok, false);
-  assert.equal(result.error, "python_package_not_vendored");
+  assert.match(result.error, /python_package_not_vendored/);
+  assert.match(result.error, /missing module numpy/);
   assert.deepEqual(result.missing, ["numpy"]);
 });
 
