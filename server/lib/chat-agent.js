@@ -41,6 +41,7 @@ import { resolveDualRegistry } from "./dual-registry-resolve.js";
 import { createInitiativeEngine } from "./initiative-engine.js";
 import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 import { routeComputeQuestion, composeRoutedReply } from "./chat/compute-router.js";
+import { findToolCallSpans, governancePayloads, unwrapGovernancePayload } from "./v6-observe-bridge.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -230,7 +231,7 @@ function _getStyleEngine(db) {
   return engine;
 }
 
-const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
+export const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
 [TOOL_CALL: {"tool": "tool_name", "params": {...}}]
 
 PARAM-VALIDATOR RULE: Every tool has REQUIRED params. If you emit a marker
@@ -250,7 +251,12 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "browse_url", "params": {"url": "https://example.com"}}]
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
   Example: [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "dtu", "action": "search", "params": {"query": "test"}}}]
-- list_lens_actions: Look up the REAL action names (and, where documented, their input fields) registered for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Params: {"domain": "domain_name"}
+  Call these by name when they match the request (list_lens_actions ranks them first and includes input fields):
+  - conkay_design: open, from-brief, edit, get, list, export, parse-brief, feasibility, solvers, car-acceptance
+  - productivity tasks: productivity.task-add, task-list, task-update, task-complete, today-view
+  - calendar: events-create, events-list, events-update, availability-find, conflicts-check
+  - music: music.render, track-list, track-add, playlist-create, play-track
+- list_lens_actions: Look up the REAL action names and their input fields for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Results rank top-level and common actions first. Params: {"domain": "domain_name"}
   Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
   Example: [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "Short note", "tags": ["physics", "conservation"]}}]
@@ -278,6 +284,7 @@ Available tools (with one working example each):
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
+- Never claim a source you did not actually retrieve. Cite only titles and URLs that came back from web_search, browse_url, or expert_mode. If the tool result is only a Wikipedia page, attribute Wikipedia — do not say the answer was confirmed by an official site (for example the official Node.js page) unless that page was actually in the tool result. If a tool failed or returned nothing, say that.
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
 - For any math/calculation use run_compute. Never guess at numbers.
 - For current events / facts you don't know, use web_search.
@@ -287,28 +294,153 @@ Rules:
 
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
+ * Nested objects/arrays and braces inside strings stay inside the call.
+ * Markers wrapped in a governance-JSON `payload` string are pulled out too.
  */
 export function parseToolCalls(text) {
   const calls = [];
-  const re = /\[TOOL_CALL:\s*(\{[\s\S]*?\})\s*\]/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(m[1]);
-      if (parsed?.tool) {
-        calls.push({ tool: String(parsed.tool), params: parsed.params || {}, raw: m[0] });
-      }
-    } catch { /* skip malformed */ }
-  }
+  const take = (source) => {
+    for (const span of findToolCallSpans(source)) {
+      const parsed = span.parsed;
+      if (!parsed?.tool) continue;
+      const params = parsed.params && typeof parsed.params === "object" ? parsed.params : {};
+      calls.push({ tool: String(parsed.tool), params, raw: span.raw });
+    }
+  };
+  const s = String(text ?? "");
+  // A governance envelope escapes the marker's quotes, so the raw scan
+  // misses it and the unescaped payload is the only copy. Repeated
+  // identical markers in one reply are real calls — don't collapse them.
+  take(s);
+  for (const payload of governancePayloads(s)) take(payload);
   return calls;
 }
 
 /** Strip tool-call markers from the visible answer body. */
 export function stripToolCalls(text) {
-  return text
-    .replace(/\[TOOL_CALL:\s*\{[\s\S]*?\}\s*\]/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  const raw = String(text ?? "");
+  const unwrapped = unwrapGovernancePayload(raw);
+  let s = unwrapped != null ? unwrapped : raw;
+  const spans = findToolCallSpans(s);
+  if (spans.length) {
+    let built = "";
+    let cursor = 0;
+    for (const span of spans) {
+      built += s.slice(cursor, span.start);
+      cursor = span.end;
+    }
+    s = built + s.slice(cursor);
+  }
+  return s.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// Names the agent is told to call directly. list_lens_actions surfaces these
+// ahead of the long alphabetical tail (a domain can carry the shared
+// save/like/star handlers plus hundreds of manifest actions). Top-level
+// names (no dot) come next; nested names like "sculpture.generate" last.
+const PREFERRED_LENS_ACTIONS = [
+  "task-add", "task-list", "task-update", "task-complete", "task-delete", "task-quick-add", "today-view", "upcoming-view",
+  "events-create", "events-list", "events-update", "events-delete", "calendars-list", "availability-find", "conflicts-check", "nl-parse-event",
+  "render", "play-track", "track-list", "track-add", "playlist-create", "playlist-list",
+  "open", "from-brief", "edit", "get", "list", "export", "parse-brief", "feasibility", "solvers", "car-acceptance",
+  "search", "create", "save",
+];
+const PREFERRED_LENS_RANK = new Map(PREFERRED_LENS_ACTIONS.map((name, i) => [name, i]));
+
+function rankLensActions(actions) {
+  return actions.slice().sort((a, b) => {
+    const an = a.action;
+    const bn = b.action;
+    const ap = PREFERRED_LENS_RANK.has(an) ? PREFERRED_LENS_RANK.get(an) : null;
+    const bp = PREFERRED_LENS_RANK.has(bn) ? PREFERRED_LENS_RANK.get(bn) : null;
+    if (ap != null || bp != null) {
+      if (ap == null) return 1;
+      if (bp == null) return -1;
+      return ap - bp;
+    }
+    const aNest = an.includes(".") ? 1 : 0;
+    const bNest = bn.includes(".") ? 1 : 0;
+    if (aNest !== bNest) return aNest - bNest;
+    return an.localeCompare(bn);
+  });
+}
+
+function formatActionForModel(action) {
+  const name = action?.action || action;
+  const fields = Array.isArray(action?.fields) ? action.fields : [];
+  if (!fields.length) return String(name);
+  const bits = fields.slice(0, 8).map((f) => (f?.optional ? `${f.name}?` : f.name));
+  return `${name} {${bits.join(", ")}}`;
+}
+
+// data: URLs in a lens result (an 80KB image, a rendered preview) must not
+// ride along in the text the model reads back — formatToolResults slices
+// that text, and the user then sees a broken prefix of the URL. Lift each
+// URL onto an artifact and leave a short reference in its place.
+function pullDataUrls(value, bucket, depth = 0, seen = new WeakSet()) {
+  if (value == null || depth > 8) return value;
+  if (typeof value === "string") return replaceDataUrls(value, bucket);
+  if (typeof value !== "object") return value;
+  if (seen.has(value)) return null;
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((v) => pullDataUrls(v, bucket, depth + 1, seen));
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = pullDataUrls(v, bucket, depth + 1, seen);
+  return out;
+}
+
+function replaceDataUrls(text, bucket) {
+  if (!text.includes("data:")) return text;
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    const at = text.indexOf("data:", i);
+    if (at < 0) { out += text.slice(i); break; }
+    const comma = text.indexOf(",", at);
+    const header = comma > at && comma - at <= 200 ? text.slice(at, comma) : "";
+    if (!/^data:[a-z0-9.+-]+\/[a-z0-9.+-]+(?:;[a-z0-9.=+-]+)*$/i.test(header)) {
+      out += text.slice(i, at + 5);
+      i = at + 5;
+      continue;
+    }
+    let end = comma + 1;
+    const isB64 = /;base64$/i.test(header);
+    if (isB64) {
+      // One contiguous blob. Stopping at whitespace keeps a caption
+      // ("...AAAA end") from being swallowed — letters are valid base64.
+      while (end < text.length && /[a-z0-9+/=]/i.test(text[end])) end++;
+    } else {
+      while (end < text.length && !/[\s"'`]/.test(text[end])) end++;
+    }
+    const raw = text.slice(at, end);
+    if (end <= comma + 1) {
+      out += text.slice(i, at + 5);
+      i = at + 5;
+      continue;
+    }
+    out += text.slice(i, at) + storeDataUrl(raw, header.slice(5), bucket);
+    i = end;
+  }
+  return out;
+}
+
+function storeDataUrl(raw, header, bucket) {
+  const mime = header.split(";")[0] || "application/octet-stream";
+  const isB64 = /base64/i.test(header);
+  const payload = raw.slice(raw.indexOf(",") + 1).replace(/\s/g, "");
+  const n = bucket.length + 1;
+  const ref = `artifact:data_${n}`;
+  const isImage = mime.startsWith("image/");
+  bucket.push({
+    kind: isImage ? "image" : "file",
+    source: "run_lens_action",
+    ref,
+    mimeType: mime,
+    ...(isImage && isB64 ? { image_b64: payload } : {}),
+    ...(!isImage && isB64 ? { data_b64: payload } : {}),
+    ...(!isB64 ? { text: payload } : {}),
+  });
+  return `[${ref} ${mime}]`;
 }
 
 /**
@@ -510,7 +642,17 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           // lib/conkay/artifact-kinds.ts) — the honest artifact->interactive-3D
           // pipeline needs this for agent-triggered lens actions the same way
           // it already works for directly-run macros.
-          return { tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput, result };
+          // data: URLs are lifted onto artifacts first so a multi-kilobyte
+          // image is not sliced down to a broken prefix in the model text.
+          const pulled = [];
+          const cleaned = pullDataUrls(result, pulled);
+          const lead = pulled.find((a) => a.kind === "image") || pulled[0];
+          return {
+            tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput,
+            result: cleaned,
+            ...(lead ? { artifact: lead } : {}),
+            ...(pulled.length ? { artifacts: pulled } : {}),
+          };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
@@ -535,30 +677,36 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
         const actions = new Map(); // action name → { action, fields? }
+        const add = (action) => {
+          const name = String(action ?? "").trim();
+          // A domain-keyed registry entry (no action half) used to land here
+          // as an empty name and sort to the front of the list.
+          if (!name || actions.has(name)) return;
+          const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
+          actions.set(name, fields ? { action: name, fields } : { action: name });
+        };
         for (const key of lensActions.keys()) {
-          const [d, ...rest] = key.split(".");
-          if (d !== domain) continue;
-          const action = rest.join(".");
-          const fields = MACRO_INPUT_HINTS[key];
-          actions.set(action, { action, ...(fields ? { fields } : {}) });
+          const s = String(key);
+          const dot = s.indexOf(".");
+          if (dot < 0 || s.slice(0, dot) !== domain) continue;
+          add(s.slice(dot + 1));
         }
-        // Also scan legacy MACROS registry via runMacro's introspection.
-        // The /api/lens-actions/:domain endpoint does this through
-        // MACRO_REGISTRY (the global register() map); do the same here.
+        // Live register() map is Map<domain, Map<action, entry>>. The
+        // reflection catalog (MACRO_REGISTRY) has the same shape — it is
+        // NOT a flat list of "domain.action" strings. Reading it as flat
+        // strings turned the domain key itself into an empty action.
+        const ingestBucket = (registry) => {
+          const bucket = registry?.get?.(domain);
+          if (!bucket || typeof bucket.keys !== "function") return;
+          for (const name of bucket.keys()) add(name);
+        };
+        try { ingestBucket(globalThis._concordMACROS); } catch { /* no live registry */ }
         try {
           const { MACRO_REGISTRY } = await import("./macro-reflection.js");
-          for (const key of (MACRO_REGISTRY?.keys?.() || [])) {
-            const [d, ...rest] = key.split(".");
-            if (d !== domain) continue;
-            const action = rest.join(".");
-            if (!actions.has(action)) {
-              const fields = MACRO_INPUT_HINTS[key];
-              actions.set(action, { action, ...(fields ? { fields } : {}) });
-            }
-          }
+          ingestBucket(MACRO_REGISTRY);
         } catch { /* macro-registry not loaded — keep lensActions-only result */ }
-        const sorted = [...actions.values()].sort((a, b) => a.action.localeCompare(b.action));
-        return { tool: call.tool, ok: true, domain, total: sorted.length, actions: sorted };
+        const ranked = rankLensActions([...actions.values()]);
+        return { tool: call.tool, ok: true, domain, total: ranked.length, actions: ranked };
       }
       case "create_dtu": {
         // The dtu.create macro is gated by councilGate() — a content-quality
@@ -679,19 +827,39 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_image": {
-        const r = await runMacro("multimodal", "image_generate", {
-          prompt: String(call.params.prompt || ""),
-          size: call.params.size || "1024x1024",
-          quality: call.params.quality || "standard",
-        }, ctx);
-        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "generate_image failed" };
+        // The old multimodal.image_generate macro reads ctx.state (undefined
+        // on this loop's ctx) and only talks to SD_URL / ComfyUI. Image
+        // generation that actually runs is the pod FLUX path shared with
+        // chat.image-generate (generatePollinationsImage: local GPU first,
+        // Pollinations only when that server is unreachable).
+        const prompt = String(call.params.prompt || "");
+        const { generatePollinationsImage } = await import("./pollinations-image.js");
+        let width;
+        let height;
+        const size = String(call.params.size || "");
+        const sizeMatch = size.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+        if (sizeMatch) { width = Number(sizeMatch[1]); height = Number(sizeMatch[2]); }
+        const gen = await generatePollinationsImage({ prompt, width, height, seed: call.params.seed });
+        if (!gen?.ok) return { tool: call.tool, ok: false, error: gen?.error || gen?.reason || "generate_image failed" };
+        const dataUrl = typeof gen.url === "string" && gen.url.startsWith("data:") ? gen.url : "";
+        const image_b64 = gen.imageB64 || (dataUrl ? dataUrl.slice(dataUrl.indexOf(",") + 1) : undefined);
+        const source = gen.provider || "local_gpu_flux";
         return {
           tool: call.tool, ok: true,
-          prompt: call.params.prompt,
-          source: r.source,
-          // Don't return the full image in the tool result (could be MB);
-          // return an artifact pointer the UI can render via separate fetch.
-          artifact: { kind: "image", source: r.source, prompt: call.params.prompt, image_b64: r.image },
+          prompt,
+          source,
+          // Bytes live on the artifact the UI renders. The model only hears
+          // that an image was attached (formatToolResults).
+          artifact: {
+            kind: "image",
+            source,
+            prompt,
+            mimeType: "image/png",
+            ...(image_b64 ? { image_b64 } : {}),
+            ...(!dataUrl && gen.url ? { url: gen.url } : {}),
+            ...(gen.width ? { width: gen.width } : {}),
+            ...(gen.height ? { height: gen.height } : {}),
+          },
         };
       }
       case "mcp_list": {
@@ -897,15 +1065,20 @@ export function formatToolResults(results) {
       const via = r.fallback ? " (fetch fallback)" : "";
       return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}]${via} title="${r.title}"\n${t}`);
     }
-    if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "run_lens_action") {
+      const note = Array.isArray(r.artifacts) && r.artifacts.length
+        ? ` ${r.artifacts.length} data URL(s) stored as artifacts (${r.artifacts.map(a => a.ref).join(", ")}). The bytes are attached — refer to those ids, do not invent a replacement image.`
+        : "";
+      return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}${note}`;
+    }
     if (r.tool === "list_lens_actions") {
-      // Don't dump the full action manifest into the model — too much token
-      // waste for what is usually a discoverability call. Summarize: total
-      // count + first ~30 action names so the model knows what's available
-      // and can read the rest on demand.
-      const names = (r.actions || []).map(a => a.action || a).slice(0, 30);
-      const more = (r.actions || []).length > names.length ? ` (+${(r.actions || []).length - names.length} more)` : "";
-      return `[TOOL_RESULT: list_lens_actions ${r.domain}] ${r.total || names.length} actions: ${names.join(", ")}${more}`;
+      // Ranked already (preferred + top-level first). Show input fields so
+      // the model can call the action without guessing params. Cap the
+      // text; the rest stay on r.actions for a follow-up.
+      const shown = (r.actions || []).slice(0, 40);
+      const lines = shown.map(formatActionForModel);
+      const more = (r.actions || []).length > shown.length ? ` (+${(r.actions || []).length - shown.length} more)` : "";
+      return `[TOOL_RESULT: list_lens_actions ${r.domain}] ${r.total || shown.length} actions: ${lines.join(", ")}${more}`;
     }
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
     if (r.tool === "create_document") return `[TOOL_RESULT: create_document] Created ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}. Tell the user the file is ready — do not describe its contents as if it were only text.`;
@@ -1198,7 +1371,13 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       if (result.artifact) allArtifacts.push(result.artifact);
       // run_python's matplotlib capture can return several figures per call
       // (plural), unlike every other tool's single result.artifact.
-      if (Array.isArray(result.artifacts)) allArtifacts.push(...result.artifacts);
+      // run_lens_action sets both: `artifact` is the first data-URL image
+      // and `artifacts` is the full list, so skip the one already pushed.
+      if (Array.isArray(result.artifacts)) {
+        for (const extra of result.artifacts) {
+          if (extra && extra !== result.artifact) allArtifacts.push(extra);
+        }
+      }
       // Grounding-audit gap fix (2026-07-24) — tool-preference tally. Every
       // REAL tool-call dispatch (this is the one exact site — one increment
       // per call, regardless of ok/error, since even a failed web_search
