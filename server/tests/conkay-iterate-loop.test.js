@@ -55,7 +55,10 @@ describe("claim statuses: hypothesis, contradicted, bins", () => {
     assert.equal(r.report.converged, true);
     assert.equal(r.gate.accepted, false);
     assert.ok(r.gate.blockers.some((b) => b.kind === "claim" && b.claim === "spec.lift"));
-    assert.equal(runSentinelM1().gate.accepted, true);
+    // Without the claim, the only blocker left is the open mass budget: unknown masses block a PASS.
+    const clean = runSentinelM1();
+    assert.equal(clean.gate.accepted, false);
+    assert.deepEqual(clean.gate.blockers.map((b) => `${b.kind}:${b.runId}`), ["unknown:mass.budget@sentinel"]);
   });
 });
 

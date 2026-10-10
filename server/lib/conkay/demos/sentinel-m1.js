@@ -83,6 +83,7 @@ export function buildSentinelM1IR({ batteryParallel = 2, bracket = "sq-0.75x0.04
     id: "sentinel", kind: "Assembly", name: "Sentinel M1 ground prototype",
     props: {
       massBudget: true,
+      drawing: { number: "CK-GA-SENTINEL-M1" },
       clearance: { tolerance: 0.001 },
       stability: { contacts: ["foot-l", "foot-r"], pose: "standing, both feet flat, payload on the chest hard-point" },
       electrical: {

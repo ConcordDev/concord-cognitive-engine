@@ -78,6 +78,11 @@ export function renderNorthStarMarkdown(ns) {
   L.push("### Mass and CG", "", `Known mass ${f(mb0.knownMass.value)} kg → ${f(mb.knownMass.value)} kg after repairs (sourced ${f(mb.massByState.value.sourced)}, computed ${f(mb.massByState.value.computed)}, requirement ${f(mb.massByState.value.requirement)} kg). CG of known mass (x fwd, y left, z up): (${f(mb.cgX.value)}, ${f(Math.abs(mb.cgY.value) < 1e-12 ? 0 : mb.cgY.value)}, ${f(mb.cgZ.value)}) m.`, "", "Unknown mass (a gap, not zero):", ...mb.unknownItems.value.map((u) => `- ${u.id}: ${u.name} — ${u.reason}`), "");
   const st0 = first("stability.static@sentinel").outputs; const st = run("stability.static@sentinel").outputs;
   L.push("### Static stability", "", `CG inside the two-foot support polygon; margin ${f(st0.stabilityMargin.value)} m → ${f(st.stabilityMargin.value)} m after the battery repair (requirement ≥ 0.05 m: ${run("requirement.check@R-stability").status}).`, "");
+  const dr = run("drawing.ga-assembly@sentinel");
+  if (dr?.outputs?.cgCheck) {
+    const c = dr.outputs.cgCheck.value;
+    L.push("### GA drawing, BOM and CG check", "", `Drawing CK-GA-SENTINEL-M1 revision ${dr.outputs.revision.value} (drawing.ga-assembly; initial design ${first("drawing.ga-assembly@sentinel")?.outputs?.revision?.value ?? "?"}): ${dr.outputs.bom.value.length} BOM lines with mass states. CG / support-polygon check: **${c.verdict}**.${c.tolerableUnknownMassKg != null ? ` The stance tolerates ${f(c.tolerableUnknownMassKg, 1)} kg of unknown mass at the worst point of the plan extents; the ${c.unknownItems.length} unknown items must be weighed against that.` : ""}`, "");
+  }
   const cl = run("geometry.clearance@sentinel");
   L.push("### Collision / clearance", "", `Overall height ${f(cl.outputs.overallHeight.value)} m (R-height ${run("requirement.check@R-height").status}); interferences: ${cl.outputs.interferences.value.length}; service envelopes blocked: ${cl.outputs.serviceBlocked.value.length}. ${cl.warnings.join(" ")}`, "");
   const tb0 = first("structural.tube-bending@bracket"); const tb = run("structural.tube-bending@bracket");
