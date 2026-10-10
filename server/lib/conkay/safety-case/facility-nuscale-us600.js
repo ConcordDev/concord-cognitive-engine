@@ -59,6 +59,14 @@ export const US600_FACTS = Object.freeze({
   poolHeat: fact("F-pool-heat", "frontiers-2023", "2.2.3 Containment and ultimate heat sink", "The pool absorbs the decay heat from the modules and eventually begins to boil."),
   building: fact("F-rxb", "frontiers-2023", "2.2.3 Containment and ultimate heat sink", "The NPMs are located below grade in a...Seismic Category I reactor building.", { note: "ellipsis as returned by the retrieval" }),
   eccsTwoRvv: fact("F-eccs-2rvv", "frontiers-2023", "2.2.2 Emergency core cooling system", "The system is initiated by opening the two reactor vent valves at the top of the reactor pressure vessel (the pressurizer region) and the two fail-safe reactor recirculation valves"),
+  // Layout (Phase 3 drawings): what the rule states about the building, verbatim; no dimension is in the rule.
+  rxbTwelve: fact("F-rxb-12", "fr-2023-00729", "I. Background", "The NuScale reactor building is designed to hold up to 12 power modules."),
+  poolBelowGrade: fact("F-pool-grade", "fr-2023-00729", "I. Background", "The pool portion of the reactor building is located below grade."),
+  bayGallery: fact("F-bay-gallery", "fr-2023-00729", "III.C Issues Not Resolved by the Design Certification", "This issue is narrowly focused on the shielding walls between the reactor module bays and the reactor building steam gallery areas."),
+  radZoneMap: fact("F-rz-map", "fr-2023-00729", "Appendix G, Section IV.A.2.g", "design certification application Part 2, Tier 2, Chapter 12, Figure 12.3-1, ``Reactor Building Radiation Zone Map''", { note: "names the DCA figure that shows the reactor building layout (not read: nrc.gov blocked)" }),
+  // Dimensions: secondary, design-family level (the review covers US600 and the later US460 / VOYGR); drawn as S2, never as US600 values.
+  cnvSize: fact("F-cnv-size", "frontiers-2023", "1.1 Reactor configuration", "The reactor vessel is enclosed in a stainless steel containment vessel (CNV) that is nominally 76 ft tall and 19 ft in diameter."),
+  baySize: fact("F-bay-size", "frontiers-2023", "1.1 Reactor configuration", "Each NPM is operated in its own bay, immersed in a pool of water which is approximately 20 ft square by 53 ft deep (see Figure 3 )."),
 });
 
 export const US600_CONFLICTS = Object.freeze([
@@ -69,6 +77,55 @@ export const US600_CONFLICTS = Object.freeze([
   },
 ]);
 
+// Where each gap's answer is, for a human to pull. Automated retrieval was attempted and blocked (US600_RETRIEVAL_LOG).
+// Document titles and ADAMS accession numbers are quoted from the final rule's "Availability of Documents" table
+// (88 FR 3287, section XVII). Tier 2 chapter titles are quoted from Appendix G, paragraph III.A.2.b (the material
+// incorporated by reference); Appendix G III.A.1.b says that material is in ADAMS under ML20225A071. Section and
+// figure numbers below a chapter are marked "rule" when the rule itself cites them, otherwise "verify" (the
+// standard-format numbering of RG 1.206 Rev. 1, ML18131A181, which must be checked against the DCA's own contents).
+const DCA_REV5 = { document: "NuScale Power, LLC, Submittal of the NuScale Standard Plant Design Certification Application, Revision 5, July 2020", adams: "ML20225A071", part: "Part 2--Tier 2, Revision 5, July 2020" };
+const FSER = { document: "NuScale DCA Final Safety Evaluation Report, August 2020", adams: "ML20023A318" };
+const ch = (n, title) => `Chapter ${n}, ${title}`; // verbatim from App. G III.A.2.b
+const ref = (base, chapter, section, sectionBasis) => ({ ...base, chapter, section, sectionBasis });
+const T2 = {
+  c1: ch("One", "Introduction and General Description of the Plant"), c3: ch("Three", "Design of Structures, Systems, Components and Equipment"),
+  c5: ch("Five", "Reactor Coolant System and Connecting Systems"), c6: ch("Six", "Engineered Safety Features"), c7: ch("Seven", "Instrumentation and Controls"),
+  c8: ch("Eight", "Electric Power"), c9: ch("Nine", "Auxiliary Systems"), c12: ch("Twelve", "Radiation Protection"), c15: ch("Fifteen", "Transient and Accident Analyses"),
+  c19: ch("Nineteen", "Probabilistic Risk Assessment and Severe Accident Evaluation"), c21: ch("Twenty-One", "Multi-Module Design Considerations"),
+};
+export const US600_GAP_SOURCES = Object.freeze({
+  "G-eccs-success": [
+    ref(DCA_REV5, T2.c6, "6.3 emergency core cooling system", "verify"),
+    ref(FSER, T2.c15, "15.0.0.5, \"Limiting Single Failures\"", "rule"),
+    ref(FSER, T2.c19, "19.1.4.6.4, \"Success Criteria, Accident Sequences, and Systems Analyses\"", "rule"),
+    { document: "SRM-SECY-19-0036, Staff Requirements--SECY-19-0036--Application of the Single Failure Criterion to NuScale Power LLC's Inadvertent Actuation Block Valves, July 2, 2019", adams: "ML19183A408", chapter: null, section: "whole document", sectionBasis: "rule" },
+  ],
+  "G-dhrs-valves": [ref(DCA_REV5, T2.c5, "the decay heat removal system section", "verify"), ref(FSER, T2.c5, "the decay heat removal system section", "verify")],
+  "G-dc": [
+    ref(DCA_REV5, T2.c8, "8.3.2 DC power systems", "verify"), ref(DCA_REV5, T2.c21, "shared electrical systems", "verify"),
+    { document: "NRC Safety Evaluation for NuScale Power, LLC, Topical Report, TR-0815-16497, Revision 1, Safety Classification of Passive Nuclear Power Plant Electrical Systems, December 13, 2017", adams: "ML17340A524", chapter: null, section: "whole document", sectionBasis: "rule" },
+  ],
+  "G-mps": [ref(DCA_REV5, T2.c7, "module protection system", "verify")],
+  "G-layout": [
+    ref(DCA_REV5, T2.c1, "1.2 general plant description (arrangement figures)", "verify"), ref(DCA_REV5, T2.c12, "Figure 12.3-1, \"Reactor Building Radiation Zone Map\"", "rule"),
+    ref(DCA_REV5, T2.c9, "9.5.1 fire protection (fire areas)", "verify"), ref(DCA_REV5, T2.c21, "shared structures and spatial interactions", "verify"),
+  ],
+  "G-dimensions": [ref(DCA_REV5, T2.c1, "1.2 general arrangement drawings of the reactor building", "verify"), ref(DCA_REV5, T2.c3, "3.8 seismic Category I structures (reactor building, pool)", "verify"), ref(DCA_REV5, T2.c12, "Figure 12.3-1, \"Reactor Building Radiation Zone Map\"", "rule")],
+  "G-pool-inventory": [ref(DCA_REV5, T2.c9, "9.2.5 ultimate heat sink", "verify"), ref(DCA_REV5, T2.c21, "shared pool", "verify")],
+  "G-reliability": [ref(DCA_REV5, T2.c19, "19.1 probabilistic risk assessment (data)", "verify"), ref(FSER, T2.c19, "19.1", "verify")],
+});
+
+// Automated retrieval attempts for the gaps (2026-10-10, curl with a browser user agent): status codes as returned.
+export const US600_RETRIEVAL_LOG = Object.freeze([
+  { url: "https://www.nrc.gov/reactors/new-reactors/smr/licensing-activities/nuscale.html", status: 403 },
+  { url: "https://www.nrc.gov/docs/ML2022/ML20225A071.html", status: 403 },
+  { url: "https://pbadupws.nrc.gov/docs/ML2022/ML20225A071.html", status: 403 },
+  { url: "https://adams.nrc.gov/wba/services/search/advanced/nrc (ML20225A071 query)", status: "no response (20 s timeout)" },
+  { url: "https://adams-api.nrc.gov/aps/api/search/ML20225A071", status: 401, note: "the ADAMS API needs a registered subscription key" },
+  { url: "https://www.govinfo.gov/content/pkg/FR-2023-01-19/html/2023-00729.htm", status: 200, note: "the final rule: read; quotes and locators re-checked against it" },
+  { url: "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1160150/full", status: 200, note: "the secondary review: read" },
+]);
+
 export const US600_GAPS = Object.freeze([
   { id: "G-eccs-success", item: "ECCS success criterion (how many RVVs and RRVs must open)", where: "US600 DCA FSAR Tier 2 ch. 6.3 (not read: nrc.gov HTTP 403)", effect: "ECCS is screened only for supports every valve train shares (valid for any success criterion); no k-of-n single-failure screen" },
   { id: "G-dhrs-valves", item: "DHRS actuation / isolation valve count and type per train", where: "US600 DCA FSAR Tier 2 (DHRS section)", effect: "each train is modelled as one valve group + one condenser; no NUREG/CR-6928 data row can be matched" },
@@ -76,6 +133,7 @@ export const US600_GAPS = Object.freeze([
   { id: "G-mps", item: "module protection system separation groups / divisions and their power", where: "US600 DCA FSAR Tier 2 ch. 7", effect: "MPS modelled as one actuating system per module; channel independence not screened" },
   { id: "G-layout", item: "building, room and fire-area layout of DHRS / ECCS equipment", where: "US600 DCA FSAR Tier 2 ch. 1.2, 3, 9.5.1", effect: "spatial common-cause (fire, flood) not screened" },
   { id: "G-pool-inventory", item: "pool inventory, level limits and heat-up / boil-off times for the US600", where: "US600 DCA FSAR Tier 2 ch. 9.2.5", effect: "the shared heat sink is a structural dependency only; no time to boil" },
+  { id: "G-dimensions", item: "US600 building, pool, bay and containment dimensions and the bay arrangement", where: "US600 DCA FSAR Tier 2 ch. 1.2 and 3.8 (and Figure 12.3-1)", effect: "the facility GA is schematic: the only dimensions drawn are the secondary, design-family values (CNV 76 ft x 19 ft, bay 20 ft square x 53 ft deep), labelled S2; the bay arrangement, building outline and pool-to-grade elevation are UNKNOWN" },
   { id: "G-reliability", item: "failure data for passive components (condensers, pool, building) and NuScale valve designs", where: "a human-chosen data basis (NUREG/CR-6928 has no matching rows for these)", effect: "fault and event trees are built and their cut sets computed; nothing is quantified" },
 ]);
 
@@ -91,7 +149,8 @@ export function buildUS600Facility({ modules = 12 } = {}) {
   if (!Number.isInteger(modules) || modules < 1 || modules > 12) throw new Error("modules must be 1..12 (the rule: up to 12 power modules)");
   const F = US600_FACTS;
   const ssc = [
-    { id: "RXB", name: "Reactor building (Seismic Category I, below-grade pool)", kind: "structure", scope: "shared", facts: [F.building.id] },
+    { id: "RXB", name: "Reactor building (Seismic Category I, below-grade pool)", kind: "structure", scope: "shared", facts: [F.building.id, F.rxbTwelve.id, F.poolBelowGrade.id] },
+    { id: "GALLERY", name: "Reactor building steam gallery area (behind the module bays' shield walls)", kind: "structure", scope: "shared", facts: [F.bayGallery.id] },
     { id: "POOL", name: "Common reactor pool / ultimate heat sink", kind: "ultimate-heat-sink", scope: "shared", facts: [F.pool.id, F.poolHeat.id] },
     { id: "CR", name: "Single control room for up to 12 modules", kind: "control-room", scope: "shared", facts: [F.controlRoom.id] },
     { id: "ELEC", name: "Electrical power (non-Class 1E AC and DC; no safety-related function relies on it)", kind: "power", scope: "shared", facts: [F.noClass1E.id, F.noPowerReliance.id], note: "the common / module-specific split is a gap (G-dc)" },
@@ -101,6 +160,7 @@ export function buildUS600Facility({ modules = 12 } = {}) {
   for (let i = 1; i <= modules; i++) {
     const m = (s) => `M${i}:${s}`;
     ssc.push(
+      { id: m("BAY"), name: `module ${i} bay (in the pool, shield wall to the steam gallery)`, kind: "structure", scope: "per-module", facts: [F.bayGallery.id, F.baySize.id] },
       { id: m("NPM"), name: `power module ${i}: RPV with core, pressurizer, two helical-coil SGs`, kind: "module", scope: "per-module", facts: [F.module.id, F.rating.id] },
       { id: m("CNV"), name: `module ${i} containment vessel`, kind: "structure", scope: "per-module", facts: [F.module.id, F.eccsPath.id] },
       { id: m("MPS"), name: `module ${i} protection system`, kind: "ic", scope: "per-module", facts: [F.mps.id] },
@@ -139,6 +199,20 @@ export function buildUS600Facility({ modules = 12 } = {}) {
   }
   return {
     design: { id: "nuscale-us600", name: "NuScale US600 (design certification, 10 CFR 52 App. G)", modules, certification: US600_SOURCES["fr-2023-00729"].title },
-    sources: US600_SOURCES, facts: US600_FACTS, ssc, dependencies, functions, conflicts: US600_CONFLICTS, gaps: US600_GAPS,
+    sources: US600_SOURCES, facts: US600_FACTS, ssc, dependencies, functions, conflicts: US600_CONFLICTS, gaps: US600_GAPS, gapSources: US600_GAP_SOURCES, retrievalLog: US600_RETRIEVAL_LOG,
+    // what the GA drawing places, and with what basis (P primary, S2 secondary family-level, UNK unknown)
+    layout: {
+      dims: {
+        cnvHeightFt: { value: 76, basis: "S2", fact: F.cnvSize.id },
+        cnvDiameterFt: { value: 19, basis: "S2", fact: F.cnvSize.id },
+        baySquareFt: { value: 20, basis: "S2", fact: F.baySize.id },
+        bayDepthFt: { value: 53, basis: "S2", fact: F.baySize.id },
+        buildingOutline: { value: null, basis: "UNK", gap: "G-dimensions" },
+        bayArrangement: { value: null, basis: "UNK", gap: "G-dimensions" },
+        poolSurfaceToGrade: { value: null, basis: "UNK", gap: "G-dimensions", stated: F.poolBelowGrade.id },
+        controlRoomLocation: { value: null, basis: "UNK", gap: "G-layout" },
+      },
+      bays: Array.from({ length: modules }, (_, k) => `M${k + 1}:BAY`),
+    },
   };
 }
