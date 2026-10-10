@@ -32,6 +32,7 @@ import "./physics/solvers/cad-body.js";
 import "./physics/solvers/design-surface.js";
 import "./physics/solvers/tub-fit.js";
 import "./physics/solvers/aero-drag.js";
+import "./physics/solvers/aero-shape.js";
 import "./physics/solvers/ga-drawing.js";
 import "./physics/solvers/assembly-ga-drawing.js";
 import "./physics/solvers/packaging.js";
