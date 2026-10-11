@@ -9,6 +9,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { _setNonprofitMailerForTest } from "../../domains/nonprofit.js";
 
 describe("nonprofit — calc contracts (exact computed values)", () => {
   it("donorRetention: retained-over-prior gives an exact percentage", async () => {
@@ -357,21 +358,46 @@ describe("nonprofit — communications + thank-you automation (shared ctx)", () 
     const sent = await lensRun("nonprofit", "comm-send", { params: { donorId, kind: "appeal", cause: "the food bank" } }, ctx);
     assert.equal(sent.result.comm.kind, "appeal");
     assert.ok(sent.result.comm.subject.includes("the food bank"));
+    // No email on the donor, so the log records the attempt and does not claim a send.
+    assert.equal(sent.result.status, "not_sent");
+    assert.equal(sent.result.reason, "no_email");
+    assert.equal(sent.result.comm.status, "not_sent");
     const log = await lensRun("nonprofit", "comm-log", { params: { donorId } }, ctx);
     assert.equal(log.result.count, 1);
     assert.equal(log.result.comms[0].kind, "appeal");
+    assert.equal(log.result.comms[0].status, "not_sent");
   });
 
-  it("thankyou-run acknowledges only unacked gifts (idempotent on second run)", async () => {
+  it("thankyou-run leaves ackSent false until a message is actually accepted", async () => {
     const run = await depthCtx("nonprofit-ty");
-    const dn = await lensRun("nonprofit", "donor-create", { params: { name: "Grateful" } }, run);
+    const dn = await lensRun("nonprofit", "donor-create", { params: { name: "Grateful", email: "grateful@x.org" } }, run);
     const donorId = dn.result.donor.id;
     await lensRun("nonprofit", "donor-gift-log", { params: { donorId, amount: 40 } }, run);
     const first = await lensRun("nonprofit", "thankyou-run", {}, run);
-    assert.equal(first.result.sent, 1);
-    // No new gifts → second run sends nothing.
+    assert.equal(first.result.sent, 0);
+    assert.equal(first.result.notSent, 1);
+    assert.equal(first.result.reasons[0].reason, "no_gmail_linked");
+    const pending = await lensRun("nonprofit", "donor-list", {}, run);
+    const gift = pending.result.donors.find((d) => d.id === donorId).gifts[0];
+    assert.equal(gift.ackSent, false);
+    // Still unacknowledged, so a second sweep reports notSent again.
     const second = await lensRun("nonprofit", "thankyou-run", {}, run);
     assert.equal(second.result.sent, 0);
+    assert.equal(second.result.notSent, 1);
+
+    _setNonprofitMailerForTest(async () => ({ ok: true }));
+    try {
+      const delivered = await lensRun("nonprofit", "thankyou-run", {}, run);
+      assert.equal(delivered.result.sent, 1);
+      assert.equal(delivered.result.notSent, 0);
+      const after = await lensRun("nonprofit", "donor-list", {}, run);
+      assert.equal(after.result.donors.find((d) => d.id === donorId).gifts[0].ackSent, true);
+      const idle = await lensRun("nonprofit", "thankyou-run", {}, run);
+      assert.equal(idle.result.sent, 0);
+      assert.equal(idle.result.notSent, 0);
+    } finally {
+      _setNonprofitMailerForTest(null);
+    }
   });
 
   it("validation: comm-send against a missing donor is rejected", async () => {
@@ -393,11 +419,17 @@ describe("nonprofit — recurring giving / pledges (shared ctx)", () => {
     assert.equal(pl.result.pledge.frequency, "monthly");
     assert.equal(pl.result.pledge.status, "active");
     const pledgeId = pl.result.pledge.id;
-    const charge = await lensRun("nonprofit", "pledge-charge", { params: { donorId, pledgeId } }, ctx);
+    const refused = await lensRun("nonprofit", "pledge-charge", { params: { donorId, pledgeId, method: "card" } }, ctx);
+    assert.equal(refused.result.ok, false);
+    assert.match(refused.result.error, /card and processor/);
+    const charge = await lensRun("nonprofit", "pledge-charge", { params: { donorId, pledgeId, method: "check" } }, ctx);
     assert.equal(charge.result.pledge.paid, 25);
     assert.equal(charge.result.pledge.payments, 1);
     assert.equal(charge.result.gift.amount, 25);
-    assert.equal(charge.result.gift.method, "recurring");
+    assert.equal(charge.result.gift.method, "check");
+    assert.equal(charge.result.gift.recordedManually, true);
+    assert.equal(charge.result.paymentLabel, "recorded manually");
+    assert.equal(["card", "stripe", "recurring", "ach"].includes(charge.result.gift.method), false);
   });
 
   it("pledge-list sums active monthly value (weekly counts 4.33x)", async () => {
@@ -425,6 +457,29 @@ describe("nonprofit — recurring giving / pledges (shared ctx)", () => {
     const cancel = await lensRun("nonprofit", "pledge-cancel", { params: { donorId, pledgeId } }, ctx);
     assert.equal(cancel.result.pledge.status, "cancelled");
     assert.equal(cancel.result.pledge.recurring, false);
+  });
+
+  it("INC-64: another account cannot charge or email the first account's donor", async () => {
+    const acct1 = await depthCtx("nonprofit-inc64-a");
+    const acct2 = await depthCtx("nonprofit-inc64-b");
+    const dn = await lensRun("nonprofit", "donor-create", { params: { name: "Private Pat", email: "pat@x.org" } }, acct1);
+    const donorId = dn.result.donor.id;
+    const pl = await lensRun("nonprofit", "pledge-create", { params: { donorId, amount: 10, frequency: "monthly" } }, acct1);
+    const pledgeId = pl.result.pledge.id;
+    await lensRun("nonprofit", "donor-gift-log", { params: { donorId, amount: 10 } }, acct1);
+    const mail = await lensRun("nonprofit", "comm-send", { params: { donorId, kind: "thank_you" } }, acct2);
+    assert.equal(mail.result.ok, false);
+    assert.match(mail.result.error, /not found/);
+    const charge = await lensRun("nonprofit", "pledge-charge", { params: { donorId, pledgeId, method: "cash" } }, acct2);
+    assert.equal(charge.result.ok, false);
+    assert.match(charge.result.error, /not found/);
+    const sweep = await lensRun("nonprofit", "thankyou-run", {}, acct2);
+    assert.equal(sweep.result.sent, 0);
+    assert.equal(sweep.result.notSent, 0);
+    const owner = await lensRun("nonprofit", "donor-list", {}, acct1);
+    const gift = owner.result.donors.find((d) => d.id === donorId).gifts[0];
+    assert.equal(gift.ackSent, false);
+    assert.equal(owner.result.donors.find((d) => d.id === donorId).pledges[0].paid, 0);
   });
 
   it("validation: pledge-charge on a non-active pledge is rejected", async () => {

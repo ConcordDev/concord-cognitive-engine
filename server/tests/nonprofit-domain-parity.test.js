@@ -4,7 +4,7 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerNonprofitActions from "../domains/nonprofit.js";
+import registerNonprofitActions, { _setNonprofitMailerForTest } from "../domains/nonprofit.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -182,18 +182,32 @@ describe("nonprofit communications", () => {
     assert.equal(r.ok, true);
     assert.match(r.result.subject, /Thank you/);
   });
-  it("sends a comm and appends it to the donor log", () => {
+  it("logs an appeal as not_sent when the donor has no email", async () => {
     const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
-    assert.equal(call("comm-send", ctxA, { donorId: d.id, kind: "appeal", cause: "clean water" }).ok, true);
-    assert.equal(call("comm-log", ctxA, { donorId: d.id }).result.count, 1);
-  });
-  it("thank-you automation acknowledges every pending gift", () => {
-    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
-    call("donor-gift-log", ctxA, { donorId: d.id, amount: 100 });
-    const r = call("thankyou-run", ctxA, {});
+    const r = await call("comm-send", ctxA, { donorId: d.id, kind: "appeal", cause: "clean water" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.sent, 1);
-    assert.equal(call("thankyou-run", ctxA, {}).result.sent, 0);
+    assert.equal(r.result.status, "not_sent");
+    assert.equal(r.result.reason, "no_email");
+    assert.equal(r.result.comm.status, "not_sent");
+    assert.equal(r.result.sent, 0);
+    const log = call("comm-log", ctxA, { donorId: d.id });
+    assert.equal(log.result.count, 1);
+    assert.equal(log.result.comms[0].status, "not_sent");
+    assert.equal(log.result.comms[0].sentAt, null);
+  });
+  it("thank-you sweep leaves gifts unacknowledged when mail is not sent", async () => {
+    const d = call("donor-create", ctxA, { name: "Pat", email: "pat@x.org" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: d.id, amount: 100 });
+    const r = await call("thankyou-run", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sent, 0);
+    assert.equal(r.result.notSent, 1);
+    assert.equal(r.result.reasons[0].reason, "no_gmail_linked");
+    const again = await call("thankyou-run", ctxA, {});
+    assert.equal(again.result.sent, 0);
+    assert.equal(again.result.notSent, 1);
+    const donor = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(donor.gifts[0].ackSent, false);
   });
 });
 
@@ -218,9 +232,13 @@ describe("nonprofit recurring giving", () => {
     const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
     const p = call("pledge-create", ctxA, { donorId: d.id, amount: 25, frequency: "monthly" }).result.pledge;
     assert.equal(call("pledge-list", ctxA, {}).result.active, 1);
-    const charged = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id });
+    const charged = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id, method: "check" });
     assert.equal(charged.ok, true);
     assert.equal(charged.result.pledge.paid, 25);
+    assert.equal(charged.result.gift.method, "check");
+    assert.equal(charged.result.gift.recordedManually, true);
+    assert.equal(charged.result.paymentLabel, "recorded manually");
+    assert.equal(["card", "stripe", "recurring", "ach"].includes(charged.result.gift.method), false);
     assert.equal(call("pledge-update", ctxA, { donorId: d.id, pledgeId: p.id, status: "paused" }).result.pledge.status, "paused");
     assert.equal(call("pledge-cancel", ctxA, { donorId: d.id, pledgeId: p.id }).result.pledge.status, "cancelled");
   });
@@ -310,6 +328,105 @@ describe("nonprofit.search-orgs (ProPublica search)", () => {
     const r = await call("search-orgs", ctxA, { query: "abc" });
     assert.equal(r.ok, false);
     assert.match(r.error, /unreachable/);
+  });
+});
+
+describe("INC-64 nonprofit mail and recorded payments", () => {
+  const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+  beforeEach(() => { withState(); _setNonprofitMailerForTest(null); });
+
+  it("comm-send with no Gmail linked is not_sent, and another account cannot use the donor", async () => {
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    const r = await call("comm-send", ctxA, { donorId: d.id, kind: "thank_you" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "not_sent");
+    assert.equal(r.result.reason, "no_gmail_linked");
+    assert.equal(r.result.comm.status, "not_sent");
+    assert.equal(r.result.sent, 0);
+    assert.equal(r.result.notSent, 1);
+    assert.notEqual(r.result.comm.status, "sent");
+    const cross = await call("comm-send", ctxB, { donorId: d.id, kind: "thank_you" });
+    assert.equal(cross.ok, false);
+    assert.match(cross.error, /not found/);
+  });
+
+  it("comm-send records sent only when the mail transport accepts the message", async () => {
+    const sentMail = [];
+    _setNonprofitMailerForTest(async (m) => { sentMail.push(m); return { ok: true }; });
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    const r = await call("comm-send", ctxA, { donorId: d.id, kind: "thank_you" });
+    _setNonprofitMailerForTest(null);
+    assert.equal(r.result.status, "sent");
+    assert.equal(r.result.reason, null);
+    assert.equal(r.result.sent, 1);
+    assert.equal(sentMail.length, 1);
+    assert.equal(sentMail[0].to, "Ada Lovelace <ada@x.org>");
+    assert.match(sentMail[0].subject, /Thank you/);
+  });
+
+  it("thankyou-run does not mark ackSent and reports notSent when Gmail is not linked", async () => {
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: d.id, amount: 40 });
+    const r = await call("thankyou-run", ctxA, {});
+    assert.equal(r.result.sent, 0);
+    assert.equal(r.result.notSent, 1);
+    assert.equal(r.result.reasons[0].reason, "no_gmail_linked");
+    assert.equal(r.result.reasons[0].donor, "Ada Lovelace");
+    const donor = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(donor.gifts[0].ackSent, false);
+    const other = await call("thankyou-run", ctxB, {});
+    assert.equal(other.result.sent, 0);
+    assert.equal(other.result.notSent, 0);
+    const still = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(still.gifts[0].ackSent, false);
+    const cross = await call("comm-send", ctxB, { donorId: d.id, kind: "thank_you" });
+    assert.equal(cross.ok, false);
+    assert.match(cross.error, /not found/);
+  });
+
+  it("thankyou-run sets ackSent only after a real send, then a second sweep sends nothing", async () => {
+    _setNonprofitMailerForTest(async () => ({ ok: true }));
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: d.id, amount: 40 });
+    const first = await call("thankyou-run", ctxA, {});
+    assert.equal(first.result.sent, 1);
+    assert.equal(first.result.notSent, 0);
+    assert.deepEqual(first.result.reasons, []);
+    const donor = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(donor.gifts[0].ackSent, true);
+    const second = await call("thankyou-run", ctxA, {});
+    _setNonprofitMailerForTest(null);
+    assert.equal(second.result.sent, 0);
+    assert.equal(second.result.notSent, 0);
+  });
+
+  it("pledge-charge records an offline payment and refuses card or processor methods", () => {
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    const p = call("pledge-create", ctxA, { donorId: d.id, amount: 25, frequency: "monthly" }).result.pledge;
+    const card = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id, method: "card" });
+    assert.equal(card.ok, false);
+    assert.match(card.error, /card and processor/);
+    const recurring = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id, method: "recurring" });
+    assert.equal(recurring.ok, false);
+    const stripe = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id, method: "check", paymentIntentId: "pi_fake" });
+    assert.equal(stripe.ok, false);
+    assert.match(stripe.error, /PaymentIntent/);
+    const omitted = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id });
+    assert.equal(omitted.ok, false);
+    let donor = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(donor.gifts.length, 0);
+    assert.equal(donor.pledges[0].paid, 0);
+    const recorded = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id, method: "wire" });
+    assert.equal(recorded.ok, true);
+    assert.equal(recorded.result.gift.method, "wire");
+    assert.equal(recorded.result.gift.recordedManually, true);
+    assert.equal(recorded.result.paymentLabel, "recorded manually");
+    assert.equal(recorded.result.pledge.paid, 25);
+    donor = call("donor-list", ctxA, {}).result.donors.find((x) => x.id === d.id);
+    assert.equal(donor.gifts.some((g) => ["card", "stripe", "recurring", "ach"].includes(g.method)), false);
+    const cross = call("pledge-charge", ctxB, { donorId: d.id, pledgeId: p.id, method: "check" });
+    assert.equal(cross.ok, false);
+    assert.match(cross.error, /not found/);
   });
 });
 
