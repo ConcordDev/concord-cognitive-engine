@@ -19380,6 +19380,12 @@ function addToSRS(dtuId) {
   return { ok: true, dtuId, message: "Added to SRS" };
 }
 
+function removeFromSRS(dtuId) {
+  if (!dtuId || !SRS.cards.has(dtuId)) return { ok: false, error: "Not in review" };
+  SRS.cards.delete(dtuId);
+  return { ok: true, dtuId };
+}
+
 // ---- Chat with Lattice (RAG) ----
 async function chatWithLattice(query, { contextLimit = 5, sessionId: _sessionId = "" } = {}) {
   // Retrieve relevant context using semantic search
@@ -57305,6 +57311,15 @@ app.post("/api/srs/:dtuId/review", (req, res) => {
   try {
     const result = reviewSRSCard(req.params.dtuId, Number(req.body.quality));
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete("/api/srs/:dtuId", (req, res) => {
+  try {
+    const result = removeFromSRS(req.params.dtuId);
+    res.status(result.ok ? 200 : 404).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

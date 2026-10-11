@@ -1482,6 +1482,7 @@ export const apiHelpers = {
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),
+    remove: (dtuId: string) => api.delete(`/api/srs/${dtuId}`),
   },
 
   // Commonsense knowledge
