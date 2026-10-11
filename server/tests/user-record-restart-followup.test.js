@@ -501,9 +501,18 @@ describe("code quality records survive a snapshot restart", () => {
 describe("crisis records survive a snapshot restart", () => {
   it("keeps playbook progress, acks, and resources per account, and the roster by crisis id", async () => {
     const crisisId = "crisis-span";
-    ok(await callFlat("crisis", "playbook_step", ctxA, { crisisId, stepId: "step_0" }), "step");
-    ok(await callFlat("crisis", "assign", ctxA, { crisisId, responder: "Ada", role: "incident_commander" }), "assign");
-    ok(await callFlat("crisis", "log_event", ctxA, { crisisId, note: "span closed" }), "log");
+    const db = new Database(":memory:");
+    db.exec(`CREATE TABLE world_crises (
+      id TEXT PRIMARY KEY, type TEXT, description TEXT, origin_world_id TEXT,
+      started_at INTEGER, status TEXT
+    )`);
+    db.prepare(`INSERT INTO world_crises (id, type, description, origin_world_id, started_at, status) VALUES (?, 'flood', 'span', 'w', ?, 'active')`)
+      .run(crisisId, Math.floor(Date.now() / 1000));
+    const a = { ...ctxA, db };
+    const b = { ...ctxB, db };
+    ok(await callFlat("crisis", "playbook_step", a, { crisisId, stepId: "step_0" }), "step");
+    ok(await callFlat("crisis", "assign", a, { crisisId, responder: "Ada", role: "incident_commander" }), "assign");
+    ok(await callFlat("crisis", "log_event", a, { crisisId, note: "span closed" }), "log");
     ok(await callFlat("crisis", "acknowledge_alert", ctxA, { alertId: "alert-span" }), "ack");
     ok(await callFlat("crisis", "resource_upsert", ctxA, { name: "pumps", quantity: 4, unit: "units" }), "res");
     ok(await callFlat("crisis", "resource_upsert", ctxB, { name: "blankets", quantity: 2 }), "res b");
@@ -514,8 +523,11 @@ describe("crisis records survive a snapshot restart", () => {
     assert.equal(otherBook.result.steps.find((s) => s.id === "step_0").done, false);
     const team = ok(await callFlat("crisis", "team", ctxB, { crisisId }), "team");
     assert.equal(team.result.team.some((m) => m.responder === "Ada"), true);
+    assert.equal(JSON.stringify(team.result).includes("user_a"), false);
     const timeline = ok(await callFlat("crisis", "timeline", ctxA, { crisisId }), "timeline");
     assert.equal(timeline.result.entries?.some((e) => e.note === "span closed") || timeline.result.events?.some((e) => e.note === "span closed") || timeline.result.timeline?.some((e) => e.note === "span closed"), true);
+    assert.equal(JSON.stringify(timeline.result).includes("user_a"), false);
+    db.close();
     const resources = ok(await callFlat("crisis", "resources", ctxA, {}), "resources");
     assert.equal(resources.result.resources.some((r) => r.name === "pumps"), true);
     assert.equal(resources.result.resources.some((r) => r.name === "blankets"), false);
