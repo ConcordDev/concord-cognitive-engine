@@ -164,8 +164,15 @@ describe("shutdown durability", { concurrency: 1 }, () => {
     const body = src.slice(start, end);
     const call = body.indexOf("runShutdownDurability(");
     const loop = body.indexOf("while (getActiveRequests()");
+    const guard = body.indexOf("beginShutdownHttp(");
+    const stopAccept = body.indexOf("httpServer.close(");
+    const inflightLog = body.indexOf("shutdown_inflight_drained");
     assert.ok(call > 0, "durability helper is on the shutdown path");
-    assert.ok(loop > call, "the request-drain timer is after db.close, not before flush");
+    assert.ok(loop > call, "the long request-drain timer is after db.close, not before flush");
+    assert.ok(guard > 0 && guard < stopAccept && stopAccept < inflightLog && inflightLog < call,
+      "guard and stop-accept, then the inflight log, then db.close");
+    assert.match(body, /if \(inflight\.length > 0\)/);
+    assert.match(body, /waitForInflight\(/);
     assert.equal(
       /await\s+new\s+Promise/.test(body.slice(0, call)),
       false,

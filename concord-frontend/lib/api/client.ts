@@ -215,6 +215,38 @@ function isServiceWarmingOrOverloaded(error: AxiosError): boolean {
   return isServiceOverloadedPayload(error.response?.data);
 }
 
+/** Restart is ~10–20s. Not the load-shed / warming 503. */
+export function isShuttingDownPayload(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const body = data as { reason?: string; code?: string };
+  return body.reason === 'shutting_down' || body.code === 'shutting_down';
+}
+
+function isShuttingDownResponse(error: AxiosError): boolean {
+  return error.response?.status === 503 && isShuttingDownPayload(error.response?.data);
+}
+
+/** Idempotent reads only. A write during restart must fail honestly. */
+function isIdempotentRead(method: string | undefined): boolean {
+  const m = (method || '').toLowerCase();
+  return m === 'get' || m === 'head';
+}
+
+const SHUTDOWN_RETRY_CAP_MS = 20_000;
+
+function shuttingDownRetryDelayMs(error: AxiosError): number {
+  const data = error.response?.data as { retryAfterS?: number; retryAfter?: number } | undefined;
+  const headerRetryAfter = error.response?.headers?.['retry-after'];
+  const retryAfterS =
+    (typeof data?.retryAfterS === 'number' && data.retryAfterS > 0 ? data.retryAfterS : undefined) ??
+    (typeof data?.retryAfter === 'number' && data.retryAfter > 0 ? data.retryAfter : undefined) ??
+    (headerRetryAfter ? Number(headerRetryAfter) : undefined);
+  const hinted = Number.isFinite(retryAfterS) && (retryAfterS as number) > 0
+    ? (retryAfterS as number) * 1000
+    : 5_000;
+  return Math.min(Math.max(hinted, 500), SHUTDOWN_RETRY_CAP_MS);
+}
+
 function retryDelayMsFor(error: AxiosError, retryCount: number): number {
   const data = error.response?.data as { retryAfterS?: number; retryAfter?: number } | undefined;
   const headerRetryAfter = error.response?.headers?.['retry-after'];
@@ -235,25 +267,35 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
 
   const status = error.response?.status;
   const warmingOrOverloaded = isServiceWarmingOrOverloaded(error);
+  const shuttingDown = isShuttingDownResponse(error);
+  // A restart 503 is not a transient overload. Retry idempotent GETs with
+  // a bounded backoff (the server is back in ~10–20s). Writes reject here
+  // so a later retry cannot look like the write succeeded.
+  if (shuttingDown && !isIdempotentRead(config.method)) {
+    return Promise.reject(error);
+  }
   // 503 family always retryable; also retry a single time on 429 when the body
   // is the load-shed/warmup path (never treat that as a permission gate).
-  const isRetryable =
-    (status && RETRY_STATUS_CODES.has(status)) ||
-    (warmingOrOverloaded && (status === 429 || status === 503));
+  const isRetryable = shuttingDown
+    ? isIdempotentRead(config.method)
+    : ((status && RETRY_STATUS_CODES.has(status)) ||
+      (warmingOrOverloaded && (status === 429 || status === 503)));
   const retryCount = config._retryCount || 0;
-  const maxRetries = warmingOrOverloaded ? Math.max(1, Math.min(MAX_RETRIES, 2)) : MAX_RETRIES;
+  const maxRetries = shuttingDown
+    ? MAX_RETRIES
+    : warmingOrOverloaded ? Math.max(1, Math.min(MAX_RETRIES, 2)) : MAX_RETRIES;
 
   if (isRetryable && retryCount < maxRetries) {
     config._retryCount = retryCount + 1;
     config._retried = true; // Signal to downstream interceptors that this request was already retried
-    if (warmingOrOverloaded) {
+    if (warmingOrOverloaded && !shuttingDown) {
       const shedBody = error.response?.data as { retryAfterS?: number; retryAfter?: number; warming?: boolean } | undefined;
       noteServerBusy({
         retryAfterS: shedBody?.retryAfterS ?? shedBody?.retryAfter,
         message: shedBody?.warming === true ? 'Concord warming up. Retrying…' : 'Server busy. Retrying…',
       });
     }
-    const delay = retryDelayMsFor(error, retryCount);
+    const delay = shuttingDown ? shuttingDownRetryDelayMs(error) : retryDelayMsFor(error, retryCount);
     console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} (attempt ${config._retryCount}/${maxRetries}) after ${delay}ms${warmingOrOverloaded ? ' [warming/overload]' : ''}`);
     await new Promise(resolve => setTimeout(resolve, delay));
     return api.request(config);
@@ -545,7 +587,12 @@ api.interceptors.response.use(
 
       if (!shouldThrottle) {
         const warmingOrOverloaded = isServiceOverloadedPayload(data);
-        if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
+        const shuttingDown = toastStatus === 503 && isShuttingDownPayload(data);
+        if (shuttingDown && !isBackgroundFetch) {
+          // The write was not applied. Do not describe it as a generic 500
+          // and do not say we are retrying it.
+          store.addToast({ type: 'error', message: 'Server restarting, try again.' });
+        } else if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
           // Shed / warmup is "server busy", not a dropped connection and not
           // a permission gate. The client already retries with Retry-After.
           const retryAfterRaw = (data as { retryAfterS?: number; retryAfter?: number } | undefined)?.retryAfterS
@@ -2749,6 +2796,10 @@ export async function safeUtilityCall(action: string, lens: string, data: Record
         return { error: 'Rate limit reached. Please wait a moment.', rateLimited: true };
       }
       if (status === 503) {
+        const data = err.response?.data as { reason?: string; code?: string } | undefined;
+        if (data?.reason === 'shutting_down' || data?.code === 'shutting_down') {
+          return { error: 'Server restarting, try again.', offline: true };
+        }
         return { error: 'AI features temporarily unavailable.', offline: true };
       }
       return { error: 'Something went wrong. Your data is safe.', status };

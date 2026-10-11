@@ -7,7 +7,12 @@
 // agent in about 5s — the same window — so the log ended at
 // shutdown_feed_stopped with the handle still open.
 //
-// flushFeed, then callbacks (db.close), then afterClose (the drain). A throw
+// The caller (gracefulShutdown) now stops accept, sets the shutting-down
+// guard, and — only when a response is actually in flight — waits on that
+// response's finish/close with a single deadline capped at 1.5s
+// (lib/shutdown-http.js) BEFORE calling this helper. This helper itself
+// does not poll. Order here: flushFeed, then callbacks (seal + db.close),
+// then afterClose (the long drain, after the handle is closed). A throw
 // in the flush still runs the callbacks. process.exit from another signal
 // handler during this stretch runs the callbacks and the caller's onExitRaced
 // log before the real exit returns.

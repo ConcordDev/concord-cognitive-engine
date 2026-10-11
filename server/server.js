@@ -3231,10 +3231,24 @@ function throttledInterval(fn, ms, name) {
 import { stopFeedManager } from "./lib/feed-manager.js";
 import { feedWriteStats, shutdownFeedPersistence } from "./emergent/feed.js";
 import { runShutdownDurability, writeShutdownLine } from "./lib/shutdown-durability.js";
+import {
+  beginShutdownHttp,
+  getInflightResponses,
+  rollbackOpenWrite,
+  sealDatabaseWrites,
+  shutdownHttpMiddleware,
+  SHUTDOWN_INFLIGHT_BUDGET_MS,
+  trySendShutdownError,
+  waitForInflight,
+} from "./lib/shutdown-http.js";
 
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  // Before server.close and before db.close. A request that still reaches
+  // the app from here on is 503 shutting_down; one already past the
+  // middleware keeps running until the inflight window below.
+  beginShutdownHttp();
 
   structuredLog("info", "shutdown_received", { signal });
 
@@ -3262,6 +3276,54 @@ async function gracefulShutdown(signal) {
     }
   } catch (e) {
     structuredLog("warn", "shutdown_governor_timer_clear_failed", { error: e.message });
+  }
+
+  // Stop accepting before any further database work. server.close() only
+  // stops accept; the close callback fires later. The shutting-down guard
+  // is already set. Both happen before db.close.
+  if (global.httpServer) {
+    try {
+      global.httpServer.close(() => {
+        structuredLog("info", "shutdown_http_closed", {});
+      });
+    } catch (e) {
+      structuredLog("error", "shutdown_http_close_failed", { error: e?.message, stack: e?.stack });
+    }
+  }
+
+  // Requests already inside the app get one short window to finish before
+  // the handle closes. The wait is their own finish/close events plus one
+  // monotonic deadline (clamped to 1.5s inside waitForInflight) — not a
+  // timer poll. Nothing in flight: do not schedule the deadline at all, so
+  // a queued stall cannot run ahead of db.close. This window is before the
+  // state snapshot: an explicit BEGIN left open shares this connection, and
+  // a snapshot written inside it would vanish if we later roll the
+  // transaction back. Anything still open after the deadline is rolled
+  // back here (no partial commit), then the snapshot is its own transaction.
+  let inflight = [];
+  try { inflight = getInflightResponses(); }
+  catch (e) { structuredLog("error", "shutdown_inflight_snapshot_failed", { error: e?.message, stack: e?.stack }); }
+  let inflightDrain = { waited_ms: 0, remaining: 0 };
+  if (inflight.length > 0) {
+    const requested = Number(process.env.SHUTDOWN_INFLIGHT_MS ?? SHUTDOWN_INFLIGHT_BUDGET_MS);
+    inflightDrain = await waitForInflight(inflight, { budgetMs: requested });
+  }
+  structuredLog("info", "shutdown_inflight_drained", {
+    waited_ms: Math.round(Number(inflightDrain.waited_ms) * 1000) / 1000,
+    remaining: inflightDrain.remaining,
+  });
+  if (inflightDrain.remaining > 0) {
+    structuredLog("warn", "shutdown_drain_deferred", {
+      activeRequests: inflightDrain.remaining,
+      reason: "inflight window elapsed; database close runs before the post-close drain",
+    });
+  }
+  try {
+    if (db && rollbackOpenWrite(db)) {
+      structuredLog("warn", "shutdown_open_write_rolled_back", {});
+    }
+  } catch (e) {
+    structuredLog("error", "shutdown_open_write_rollback_failed", { error: e?.message, stack: e?.stack });
   }
 
   // Flush state to disk immediately — critical for OOM kills and SIGTERM
@@ -3349,10 +3411,10 @@ async function gracefulShutdown(signal) {
   // ExitTimeOut can raise — with the log stuck at shutdown_timers_cleared,
   // so db.close() and the timer-cleanup callback never ran. Static
   // bindings plus shutdownFeedPersistence's microtask window keep the
-  // feed stop itself inside a few milliseconds. The HTTP drain below is
-  // the same class of yield and runs only after db.close (2026-10-11:
-  // the log stopped at shutdown_feed_stopped when that drain still ran
-  // first).
+  // feed stop itself inside a few milliseconds. The long post-close
+  // drain is still that class of yield and runs only after db.close.
+  // The short inflight window (finish/close, capped at 1.5s, skipped
+  // when nothing is in flight) sits between stop-accept and this flush.
   const _feedClock = () => process.hrtime.bigint();
   const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
   const _feedT0 = _feedClock();
@@ -3377,33 +3439,10 @@ async function gracefulShutdown(signal) {
   try { stopRepairLoop(); }
   catch (e) { structuredLog("warn", "shutdown_repair_stop_failed", { error: e?.message, stack: e?.stack }); }
 
-  // Stop accepting connections without waiting for them to drain.
-  // server.close() only stops accept; the close callback fires later.
-  if (global.httpServer) {
-    try {
-      global.httpServer.close(() => {
-        structuredLog("info", "shutdown_http_closed", {});
-      });
-    } catch (e) {
-      structuredLog("error", "shutdown_http_close_failed", { error: e?.message, stack: e?.stack });
-    }
-  }
-
-  // The request drain used to sit here, before feed flush and db.close:
-  // a loop on the active-request count awaited a 500ms timer, up to
-  // SHUTDOWN_DRAIN_MS (5s). That yield is what #1147 removed from the feed
-  // flush and left in front of it. With a request in flight (or a stuck
-  // activeRequests count) the next macrotask — including a CPU stall queued
-  // by the same busy machine — runs before shutdown_feed_flushing, and a
-  // ~5s launchd bootout kill arrives with the log still on
-  // shutdown_feed_stopped. Close the database first. The same drain still
-  // runs, after the close, inside afterClose below.
-  if (activeRequests > 0) {
-    structuredLog("warn", "shutdown_drain_deferred", {
-      activeRequests,
-      reason: "database close runs before the request-drain timer",
-    });
-  }
+  // Accept is already stopped and the inflight window already ran, before
+  // the state snapshot. Feed flush and db.close are still ahead. The long
+  // post-close drain stays inside afterClose, so a stuck count cannot push
+  // db.close out toward launchd's ~5s kill.
 
   // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
   // is the first callback. The flush does not wait on timers (see
@@ -6591,6 +6630,12 @@ let _shutdownDbClosed = false;
 if (db) {
   registerShutdownCallback(() => {
     if (_shutdownDbClosed) return;
+    // Roll back a multi-statement write still open, and refuse any SQL
+    // that has not started. Then close. Feed flush already ran.
+    try { sealDatabaseWrites(db); }
+    catch (e) {
+      structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
+    }
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
     try {
@@ -37177,6 +37222,11 @@ const app = express();
 // key on req.ip, so they follow this. See lib/trusted-client-ip.js.
 installTrustedClientIp(app);
 
+// Shutting-down guard. Mounted before auth and routes so a request that
+// arrives after beginShutdownHttp() does not touch SQLite on its way to
+// a 500. In-flight requests have already passed this middleware.
+app.use(shutdownHttpMiddleware);
+
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
   express,
@@ -37248,6 +37298,7 @@ app.use(createLoadSheddingMiddleware({
               const msg = String(err?.message || err);
               log("async.error", `Unhandled async error on ${req.method} ${req.path}: ${msg}`, { stack: String(err?.stack || "").slice(0, 500) });
               if (!res.headersSent) {
+                if (trySendShutdownError(err, res)) return;
                 const status = msg.startsWith("forbidden") ? 403 : msg.includes("not found") ? 404 : 500;
                 res.status(status).json({ ok: false, error: msg });
               }
@@ -38061,6 +38112,13 @@ registerAtlasSignalRoutes(app, {
 // Error handler
 app.use((err, req, res, _next) => {
   if (res.headersSent) return;
+
+  if (trySendShutdownError(err, res)) {
+    structuredLog("warn", "shutdown_request_after_close", {
+      requestId: req.id, method: req.method, path: req.path, error: String(err?.message || err),
+    });
+    return;
+  }
 
   // Handle ConcordError subclasses with proper HTTP status and code
   if (err instanceof ConcordError) {
@@ -41419,6 +41477,14 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
 app.use((err, req, res, _next) => {
   if (res.headersSent) return;
+  if (trySendShutdownError(err, res)) {
+    try {
+      structuredLog("warn", "shutdown_request_after_close", {
+        method: req.method, path: req.path, error: String(err?.message || err),
+      });
+    } catch { /* response already 503 */ }
+    return;
+  }
   // Routes mounted after the earlier error handler (including DELETE
   // /api/media/:id) land here. ConcordError already carries the right status
   // (404 not found, 403 forbidden, 400 validation). res.json() without a
