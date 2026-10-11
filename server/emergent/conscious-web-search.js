@@ -364,6 +364,8 @@ export async function webSearchForChat(queries) {
           allResults.push({
             title: result.title,
             url: articleUrl,
+            // Search blurb only — often the first sentence, and not the fact.
+            // content is the plain-text lead. Expert Mode cites content.
             snippet: (result.snippet || "").replace(/<[^>]+>/g, "").slice(0, 300),
             content: page.extract.slice(0, 2000),
             source: "en.wikipedia.org",
