@@ -388,7 +388,7 @@ function AddMilestone({
           disabled={!title.trim() || saving}
           className="rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black hover:bg-teal-300 disabled:opacity-50"
         >
-          {saving ? 'Adding…' : 'Add'}
+          {saving ? 'Saving…' : 'Save milestone'}
         </button>
       </div>
     </div>

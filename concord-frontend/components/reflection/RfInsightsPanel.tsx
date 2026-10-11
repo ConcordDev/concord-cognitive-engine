@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Flame, Hash, CalendarDays, BarChart2, Target, Check, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -47,14 +48,15 @@ export function RfInsightsPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const now = new Date();
+    const today = calendarDateKey();
+    const [year, month] = today.split('-').map(Number);
     const [s, t, tg, c, st, g] = await Promise.all([
-      lensRun('reflection', 'journal-streak', {}),
+      lensRun('reflection', 'journal-streak', { today }),
       lensRun('reflection', 'mood-trend', { days: 30 }),
       lensRun('reflection', 'tags-list', {}),
-      lensRun('reflection', 'calendar-month', { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 }),
+      lensRun('reflection', 'calendar-month', { year, month }),
       lensRun('reflection', 'journal-stats', {}),
-      lensRun('reflection', 'reflection-goal-status', {}),
+      lensRun('reflection', 'reflection-goal-status', { today }),
     ]);
     if ([s, t, tg, c, st, g].some((res) => res.data?.ok === false)) {
       setLoadError([s, t, tg, c, st, g].map((res) => res.data?.error).find(Boolean) || 'Could not load insights.');

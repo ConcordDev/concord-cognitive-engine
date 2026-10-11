@@ -10,7 +10,7 @@
 import Link from 'next/link';
 
 const TABS = [
-  { href: '/settings', key: 'general', label: 'General' },
+  { href: '/lenses/settings', key: 'general', label: 'General' },
   { href: '/settings/accessibility', key: 'accessibility', label: 'Accessibility' },
 ] as const;
 

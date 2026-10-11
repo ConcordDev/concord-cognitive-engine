@@ -107,7 +107,11 @@ describe("crisis — resolve DB round-trip", () => {
 
     // the resolution appended a "resolved" timeline event
     const tl = await runMacro("crisis", "timeline", { crisisId }, ctx);
-    assert.equal(tl.result.events.some((e) => e.kind === "resolved" && e.by === ctx.actor.userId), true);
+    const resolved = tl.result.events.find((e) => e.kind === "resolved");
+    assert.ok(resolved);
+    assert.equal(resolved.byIsMe, true);
+    assert.equal(Object.hasOwn(resolved, "by"), false);
+    assert.equal(JSON.stringify(tl.result).includes(ctx.actor.userId), false);
   });
 
   it("resolving the same crisis twice fails the second time", async () => {
@@ -134,6 +138,7 @@ describe("crisis — in-memory CRUD round-trips", () => {
 
   it("assign → team: an incident_commander demotes the prior IC to operations_chief", async () => {
     const crisisId = `cr-${randomUUID()}`;
+    seedCrisis(ctx.db, { id: crisisId, type: "flood", worldId: `w-${crisisId}` });
     const a1 = await runMacro("crisis", "assign", { crisisId, responder: "Alpha", role: "incident_commander" }, ctx);
     assert.equal(a1.result.entry.role, "incident_commander");
     const a2 = await runMacro("crisis", "assign", { crisisId, responder: "Bravo", role: "incident_commander" }, ctx);
@@ -168,6 +173,7 @@ describe("crisis — in-memory CRUD round-trips", () => {
 
   it("log_event → timeline: an appended status entry reads back in order", async () => {
     const crisisId = `cr-${randomUUID()}`;
+    seedCrisis(ctx.db, { id: crisisId, type: "flood", worldId: `w-${crisisId}` });
     const note = `levee breach at sector ${randomUUID().slice(0, 8)}`;
     const ev = await runMacro("crisis", "log_event", { crisisId, kind: "alert", note }, ctx);
     assert.equal(ev.result.entry.note, note);

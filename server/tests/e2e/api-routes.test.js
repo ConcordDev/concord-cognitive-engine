@@ -386,11 +386,10 @@ describe('E2E API routes — public auth mode', { timeout: 120000 }, function() 
     assert.ok(body !== null, 'Expected JSON body');
   });
 
-  it('GET /api/bridge/log returns 200 with ok:true and log array', async function() {
+  it('GET /api/bridge/log returns 401 to an anonymous caller', async function() {
     const { status, body } = await getJSON(base, '/api/bridge/log');
-    assert.equal(status, 200, 'Expected 200, got ' + status);
-    assert.equal(body && body.ok, true, 'Expected ok:true');
-    assert.ok(Array.isArray(body && body.log), 'Expected log array');
+    assert.equal(status, 401, 'Expected 401, got ' + status + ' ' + JSON.stringify(body));
+    assert.equal(body && body.error, 'authentication_required');
   });
 
   it('GET /api/bridge/debates returns 200', async function() {

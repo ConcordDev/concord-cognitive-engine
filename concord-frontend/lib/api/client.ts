@@ -199,9 +199,52 @@ const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
 const RETRY_BASE_DELAY_MS = 1000;
 
+// Lens-run refusals that are read-path noise, not a user action that just
+// failed. unknown_macro stays HTTP 200 (never hits the 4xx toast). The rest
+// are expected when a panel polls while logged out or the substrate is down.
+const QUIET_LENS_ERRORS = new Set([
+  'unknown_macro',
+  'no_actor',
+  'no_db',
+  'not_found',
+  'staking_unavailable',
+]);
+
 /** True when the server is shedding/warming (not a permission gate). */
 function isServiceWarmingOrOverloaded(error: AxiosError): boolean {
   return isServiceOverloadedPayload(error.response?.data);
+}
+
+/** Restart is ~10–20s. Not the load-shed / warming 503. */
+export function isShuttingDownPayload(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const body = data as { reason?: string; code?: string };
+  return body.reason === 'shutting_down' || body.code === 'shutting_down';
+}
+
+function isShuttingDownResponse(error: AxiosError): boolean {
+  return error.response?.status === 503 && isShuttingDownPayload(error.response?.data);
+}
+
+/** Idempotent reads only. A write during restart must fail honestly. */
+function isIdempotentRead(method: string | undefined): boolean {
+  const m = (method || '').toLowerCase();
+  return m === 'get' || m === 'head';
+}
+
+const SHUTDOWN_RETRY_CAP_MS = 20_000;
+
+function shuttingDownRetryDelayMs(error: AxiosError): number {
+  const data = error.response?.data as { retryAfterS?: number; retryAfter?: number } | undefined;
+  const headerRetryAfter = error.response?.headers?.['retry-after'];
+  const retryAfterS =
+    (typeof data?.retryAfterS === 'number' && data.retryAfterS > 0 ? data.retryAfterS : undefined) ??
+    (typeof data?.retryAfter === 'number' && data.retryAfter > 0 ? data.retryAfter : undefined) ??
+    (headerRetryAfter ? Number(headerRetryAfter) : undefined);
+  const hinted = Number.isFinite(retryAfterS) && (retryAfterS as number) > 0
+    ? (retryAfterS as number) * 1000
+    : 5_000;
+  return Math.min(Math.max(hinted, 500), SHUTDOWN_RETRY_CAP_MS);
 }
 
 function retryDelayMsFor(error: AxiosError, retryCount: number): number {
@@ -224,25 +267,35 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
 
   const status = error.response?.status;
   const warmingOrOverloaded = isServiceWarmingOrOverloaded(error);
+  const shuttingDown = isShuttingDownResponse(error);
+  // A restart 503 is not a transient overload. Retry idempotent GETs with
+  // a bounded backoff (the server is back in ~10–20s). Writes reject here
+  // so a later retry cannot look like the write succeeded.
+  if (shuttingDown && !isIdempotentRead(config.method)) {
+    return Promise.reject(error);
+  }
   // 503 family always retryable; also retry a single time on 429 when the body
   // is the load-shed/warmup path (never treat that as a permission gate).
-  const isRetryable =
-    (status && RETRY_STATUS_CODES.has(status)) ||
-    (warmingOrOverloaded && (status === 429 || status === 503));
+  const isRetryable = shuttingDown
+    ? isIdempotentRead(config.method)
+    : ((status && RETRY_STATUS_CODES.has(status)) ||
+      (warmingOrOverloaded && (status === 429 || status === 503)));
   const retryCount = config._retryCount || 0;
-  const maxRetries = warmingOrOverloaded ? Math.max(1, Math.min(MAX_RETRIES, 2)) : MAX_RETRIES;
+  const maxRetries = shuttingDown
+    ? MAX_RETRIES
+    : warmingOrOverloaded ? Math.max(1, Math.min(MAX_RETRIES, 2)) : MAX_RETRIES;
 
   if (isRetryable && retryCount < maxRetries) {
     config._retryCount = retryCount + 1;
     config._retried = true; // Signal to downstream interceptors that this request was already retried
-    if (warmingOrOverloaded) {
+    if (warmingOrOverloaded && !shuttingDown) {
       const shedBody = error.response?.data as { retryAfterS?: number; retryAfter?: number; warming?: boolean } | undefined;
       noteServerBusy({
         retryAfterS: shedBody?.retryAfterS ?? shedBody?.retryAfter,
         message: shedBody?.warming === true ? 'Concord warming up. Retrying…' : 'Server busy. Retrying…',
       });
     }
-    const delay = retryDelayMsFor(error, retryCount);
+    const delay = shuttingDown ? shuttingDownRetryDelayMs(error) : retryDelayMsFor(error, retryCount);
     console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} (attempt ${config._retryCount}/${maxRetries}) after ${delay}ms${warmingOrOverloaded ? ' [warming/overload]' : ''}`);
     await new Promise(resolve => setTimeout(resolve, delay));
     return api.request(config);
@@ -299,6 +352,16 @@ api.interceptors.request.use(
         }
       }
     }
+    // Handler refusals on /api/lens/run are HTTP 4xx with {ok:false, error}.
+    // Resolve them so existing callers can read data.ok instead of throwing
+    // before the check. 5xx still rejects (and stays in the retry set).
+    if (
+      typeof config.url === 'string' &&
+      config.url.includes('/api/lens/run') &&
+      !config.validateStatus
+    ) {
+      config.validateStatus = (status) => status < 500;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -338,6 +401,26 @@ api.interceptors.response.use(
     const admittedMethod = (response.config?.method || 'get').toUpperCase();
     const wasRetried = Boolean((response.config as { _retried?: boolean } | undefined)?._retried);
     if (wasRetried || admittedMethod !== 'GET') clearServerBusy();
+
+    // A lens action that refused (insufficient balance, validation, authz)
+    // is a 4xx we deliberately resolved above. Surface it once. Quiet codes
+    // are read-path noise (logged-out list, unknown macro still on HTTP 200).
+    const lensUrl = response.config?.url || '';
+    const lensData = response.data as { ok?: boolean; error?: string } | undefined;
+    if (
+      typeof window !== 'undefined' &&
+      response.status >= 400 &&
+      lensUrl.includes('/api/lens/run') &&
+      lensData?.ok === false &&
+      typeof lensData.error === 'string' &&
+      !QUIET_LENS_ERRORS.has(lensData.error)
+    ) {
+      const store = useUIStore.getState();
+      const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
+      if (existingToastCount < 2) {
+        store.addToast({ type: 'error', message: lensData.error.replace(/_/g, ' ') });
+      }
+    }
 
     return response;
   },
@@ -504,7 +587,12 @@ api.interceptors.response.use(
 
       if (!shouldThrottle) {
         const warmingOrOverloaded = isServiceOverloadedPayload(data);
-        if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
+        const shuttingDown = toastStatus === 503 && isShuttingDownPayload(data);
+        if (shuttingDown && !isBackgroundFetch) {
+          // The write was not applied. Do not describe it as a generic 500
+          // and do not say we are retrying it.
+          store.addToast({ type: 'error', message: 'Server restarting, try again.' });
+        } else if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
           // Shed / warmup is "server busy", not a dropped connection and not
           // a permission gate. The client already retries with Retry-After.
           const retryAfterRaw = (data as { retryAfterS?: number; retryAfter?: number } | undefined)?.retryAfterS
@@ -523,6 +611,8 @@ api.interceptors.response.use(
           const code = data?.code;
           if (code === 'CSRF_FAILED') {
             store.addToast({ type: 'warning', message: 'Session security token expired. Refresh the page and try again.' });
+          } else if (code === 'not_owner') {
+            store.addToast({ type: 'error', message: 'That belongs to another account.' });
           } else if (code === 'PERMISSION_DENIED' && data?.permission) {
             store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
           } else if (!isBackgroundFetch) {
@@ -655,7 +745,11 @@ export async function lensRun<T = any>(
     }
     return { data: { ok: !err, result: node as T, error: err } };
   } catch (e) {
-    return { data: { ok: false, result: null, error: e instanceof Error ? e.message : String(e) } };
+    const bodyErr = (e as { response?: { data?: { error?: unknown } } })?.response?.data?.error;
+    const message = typeof bodyErr === 'string' && bodyErr
+      ? bodyErr
+      : e instanceof Error ? e.message : String(e);
+    return { data: { ok: false, result: null, error: message } };
   }
 }
 
@@ -719,7 +813,7 @@ export const apiHelpers = {
 
   // DTU operations (note: endpoint is /api/dtus - plural)
   dtus: {
-    list: (params?: { scope?: string }) => api.get('/api/dtus', { params }),
+    list: (params?: { scope?: string; limit?: number; offset?: number }) => api.get('/api/dtus', { params }),
     paginated: (params: {
       limit?: number;
       offset?: number;
@@ -1480,6 +1574,7 @@ export const apiHelpers = {
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),
+    remove: (dtuId: string) => api.delete(`/api/srs/${dtuId}`),
   },
 
   // Commonsense knowledge
@@ -1973,7 +2068,8 @@ export const apiHelpers = {
   // ---- Scope Operations (v5.2.0+) ----
   scope: {
     metrics: () => api.get('/api/scope/metrics'),
-    dtus: (scope: string) => api.get(`/api/scope/dtus/${scope}`),
+    dtus: (scope: string, params?: { limit?: number; offset?: number }) =>
+      api.get(`/api/scope/dtus/${scope}`, { params }),
     promote: (data: { dtuId: string; targetScope: string; reason?: string }) =>
       api.post('/api/scope/promote', data),
     validateGlobal: (data: { dtuId: string }) =>
@@ -2700,6 +2796,10 @@ export async function safeUtilityCall(action: string, lens: string, data: Record
         return { error: 'Rate limit reached. Please wait a moment.', rateLimited: true };
       }
       if (status === 503) {
+        const data = err.response?.data as { reason?: string; code?: string } | undefined;
+        if (data?.reason === 'shutting_down' || data?.code === 'shutting_down') {
+          return { error: 'Server restarting, try again.', offline: true };
+        }
         return { error: 'AI features temporarily unavailable.', offline: true };
       }
       return { error: 'Something went wrong. Your data is safe.', status };

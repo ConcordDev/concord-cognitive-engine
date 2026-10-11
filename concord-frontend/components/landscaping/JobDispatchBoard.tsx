@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { CalendarClock, Plus, Loader2, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
@@ -74,7 +75,7 @@ export function JobDispatchBoard() {
   const [address, setAddress] = useState('');
   const [crew, setCrew] = useState('');
   const [bedId, setBedId] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => calendarDateKey());
   const [startHour, setStartHour] = useState('8');
   const [durationHours, setDurationHours] = useState('2');
   const [notes, setNotes] = useState('');

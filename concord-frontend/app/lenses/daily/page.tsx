@@ -18,6 +18,7 @@ import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { calendarDateKey, formatDateKey, profileTimeZone, resolveCalendarTimeZone } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 type DailyView = 'journal' | 'studio' | 'inspiration';
@@ -36,7 +37,8 @@ export default function DailyLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DailyView>('journal');
-  const dateTitle = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const timeZone = resolveCalendarTimeZone(profileTimeZone(user));
+  const dateTitle = formatDateKey(calendarDateKey(new Date(), timeZone));
   const current = TABS.find((t) => t.id === view)!;
 
   useLensCommand(

@@ -6,7 +6,37 @@ import { Network, Loader2, MapPin } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
-interface Walker { id: string; name?: string; species?: string; speedMps?: number; reliability?: number; costPerKm?: number; capacity?: number; specialization?: string[]; activeContracts?: number; [k: string]: unknown }
+interface Walker {
+  id: string;
+  name?: string;
+  species?: string;
+  speedMps?: number;
+  reliability?: number;
+  costPerKm?: number | string;
+  /** Snake-case alias, in case a row is forwarded without camel-casing. */
+  cost_per_km?: number | string;
+  capacity?: number;
+  specialization?: string[];
+  activeContracts?: number;
+  [k: string]: unknown;
+}
+
+const UNREPORTED_RATE = new Set(['', '?', '—', '-', 'n/a', 'na', 'null', 'undefined']);
+
+/**
+ * GET /api/concord-link/walkers selects id, npc_id, home_world,
+ * current_world, status, reputation. There is no per-kilometre rate on
+ * that row. A missing rate used to render as "?/km".
+ */
+export function walkerRateLabel(walker: { costPerKm?: unknown; cost_per_km?: unknown }): string {
+  const raw = walker.costPerKm ?? walker.cost_per_km;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return `${raw}/km`;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed && !UNREPORTED_RATE.has(trimmed.toLowerCase())) return `${trimmed}/km`;
+  }
+  return 'not reported';
+}
 interface Anchor { id: string; worldId: string; label?: string; x?: number; y?: number; z?: number }
 
 export function ConcordLinkWalkers() {
@@ -47,7 +77,7 @@ export function ConcordLinkWalkers() {
             compact
             apiSource="concord-link"
             title={`Concord-Link snapshot — ${(walkers.data?.length ?? 0)} walkers · ${(anchors.data?.length ?? 0)} anchors @ ${worldId}`}
-            content={`World: ${worldId}\n\nWalkers (${walkers.data?.length ?? 0}):\n${(walkers.data || []).slice(0, 15).map((w) => `  ${w.id} · ${w.name || w.species} · ${w.speedMps || '?'} m/s · cost ${w.costPerKm || '?'}/km · capacity ${w.capacity || '?'}`).join('\n')}\n\nAnchors:\n${(anchors.data || []).slice(0, 15).map((a) => `  ${a.id}: ${a.label || '(unnamed)'} @ (${a.x?.toFixed(1)}, ${a.y?.toFixed(1)})`).join('\n')}`}
+            content={`World: ${worldId}\n\nWalkers (${walkers.data?.length ?? 0}):\n${(walkers.data || []).slice(0, 15).map((w) => `  ${w.id} · ${w.name || w.species || w.id} · ${w.speedMps != null ? `${w.speedMps} m/s` : 'speed not reported'} · rate ${walkerRateLabel(w)} · ${w.capacity != null ? `capacity ${w.capacity}` : 'capacity not reported'}`).join('\n')}\n\nAnchors:\n${(anchors.data || []).slice(0, 15).map((a) => `  ${a.id}: ${a.label || '(unnamed)'} @ (${a.x?.toFixed(1)}, ${a.y?.toFixed(1)})`).join('\n')}`}
             extraTags={['bridge', 'concord-link', 'walkers']}
             rawData={{ worldId, walkers: walkers.data, anchors: anchors.data }}
           />
@@ -60,25 +90,29 @@ export function ConcordLinkWalkers() {
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
           <div className="mb-2 text-xs font-semibold text-zinc-200">Walker contracts ({walkers.data?.length ?? 0})</div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
-            {(walkers.data || []).map((w) => (
-              <div key={w.id} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-white">{w.name || w.species || w.id}</span>
-                  <span className="font-mono text-cyan-300">{w.costPerKm ?? '?'}/km</span>
-                </div>
-                <div className="mt-0.5 font-mono text-[10px] text-zinc-400">
-                  {w.speedMps != null && <span>v={w.speedMps}m/s · </span>}
-                  {w.reliability != null && <span>rel={(w.reliability * 100).toFixed(0)}% · </span>}
-                  {w.capacity != null && <span>cap={w.capacity} · </span>}
-                  {w.activeContracts != null && <span>active={w.activeContracts}</span>}
-                </div>
-                {w.specialization && w.specialization.length > 0 && (
-                  <div className="mt-0.5 flex flex-wrap gap-1">
-                    {w.specialization.slice(0, 4).map((s) => <span key={s} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-cyan-300/80">{s}</span>)}
+            {(walkers.data || []).map((w) => {
+              const rate = walkerRateLabel(w);
+              const rateMissing = rate === 'not reported';
+              return (
+                <div key={w.id} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white">{w.name || w.species || w.id}</span>
+                    <span className={`font-mono ${rateMissing ? 'text-zinc-500' : 'text-cyan-300'}`} title={rateMissing ? 'This walker list does not include a per-kilometre rate.' : undefined}>{rate}</span>
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="mt-0.5 font-mono text-[10px] text-zinc-400">
+                    {w.speedMps != null && <span>v={w.speedMps}m/s · </span>}
+                    {w.reliability != null && <span>rel={(w.reliability * 100).toFixed(0)}% · </span>}
+                    {w.capacity != null && <span>cap={w.capacity} · </span>}
+                    {w.activeContracts != null && <span>active={w.activeContracts}</span>}
+                  </div>
+                  {w.specialization && w.specialization.length > 0 && (
+                    <div className="mt-0.5 flex flex-wrap gap-1">
+                      {w.specialization.slice(0, 4).map((s) => <span key={s} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-cyan-300/80">{s}</span>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {walkers.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No walkers registered.</div>}
           </div>
         </div>

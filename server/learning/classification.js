@@ -39,6 +39,54 @@ export const INTERNAL_CLASSIFICATIONS = Object.freeze([
   CLASSIFICATIONS.DEPRECATED,
 ]);
 
+/** Object fields that name a source when `dtu.source` is a record, not a string. */
+const SOURCE_LABEL_KEYS = ["type", "name", "kind"];
+
+/** How many failing DTU ids to keep on a migration result. */
+const FAILED_SAMPLE_LIMIT = 5;
+
+/**
+ * Text used when a DTU field is compared as a label.
+ * Strings pass through unchanged. An object contributes the first non-empty
+ * string among type, name, and kind. Arrays, numbers, null, and other
+ * non-strings are empty so callers never call string methods on them.
+ */
+function fieldText(value) {
+  if (typeof value === "string") return value;
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return "";
+  for (const key of SOURCE_LABEL_KEYS) {
+    let inner;
+    try {
+      inner = value[key];
+    } catch {
+      continue;
+    }
+    if (typeof inner === "string" && inner) return inner;
+  }
+  return "";
+}
+
+function tagTexts(tags) {
+  if (!Array.isArray(tags)) return [];
+  const out = [];
+  for (const tag of tags) {
+    const text = fieldText(tag);
+    if (text) out.push(text);
+  }
+  return out;
+}
+
+function failureSampleId(key, dtu) {
+  try {
+    if (dtu && typeof dtu === "object" && typeof dtu.id === "string" && dtu.id) return dtu.id;
+  } catch {
+    // id itself can be the thing that threw; fall through to the map key.
+  }
+  if (typeof key === "string" && key) return key;
+  if (typeof key === "number" && Number.isFinite(key)) return String(key);
+  return "";
+}
+
 /**
  * Determine the classification for a DTU based on its properties.
  *
@@ -54,8 +102,9 @@ export function classifyDTU(dtu) {
   }
 
   // Shadow DTUs
-  const tier = (dtu.tier || "").toLowerCase();
-  if (tier === "shadow" || (Array.isArray(dtu.tags) && dtu.tags.includes("shadow"))) {
+  const tier = fieldText(dtu.tier).toLowerCase();
+  const tags = tagTexts(dtu.tags);
+  if (tier === "shadow" || tags.includes("shadow")) {
     return CLASSIFICATIONS.SHADOW;
   }
 
@@ -68,8 +117,10 @@ export function classifyDTU(dtu) {
   if (tier === "hyper") return CLASSIFICATIONS.HYPER;
   if (tier === "mega") return CLASSIFICATIONS.MEGA;
 
-  // Seed DTUs
-  if (dtu.source === "seed" || dtu.source === "bootstrap" || (dtu.authority && dtu.authority.model === "seed")) {
+  // Seed DTUs. Compared against the raw string (or an object's type/name/kind),
+  // not a lowercased copy, so "Seed" still does not match "seed".
+  const source = fieldText(dtu.source);
+  if (source === "seed" || source === "bootstrap" || (dtu.authority && dtu.authority.model === "seed")) {
     return CLASSIFICATIONS.SEED;
   }
 
@@ -83,16 +134,18 @@ export function classifyDTU(dtu) {
 export function isRepairDTU(dtu) {
   if (!dtu) return false;
 
-  const source = (dtu.source || "").toLowerCase();
-  const tags = Array.isArray(dtu.tags) ? dtu.tags : [];
-  const meta = dtu.meta || {};
+  const source = fieldText(dtu.source).toLowerCase();
+  const tags = tagTexts(dtu.tags);
+  const meta = dtu.meta && typeof dtu.meta === "object" && !Array.isArray(dtu.meta) ? dtu.meta : {};
+  const createdBy = fieldText(meta.createdBy);
+  const brainSource = fieldText(meta.brainSource);
 
   return (
     source.includes("repair") ||
     tags.includes("repair") ||
     tags.includes("repair_cortex") ||
-    meta.createdBy === "repair_cortex" ||
-    meta.brainSource === "repair" ||
+    createdBy === "repair_cortex" ||
+    brainSource === "repair" ||
     source.startsWith("repair.")
   );
 }
@@ -119,23 +172,39 @@ export function applyClassification(dtu) {
 
 /**
  * Migrate existing DTUs — add classification field to all DTUs that lack one.
+ * One record that throws is counted and skipped; the rest of the map still runs.
  *
  * @param {Map} dtus - STATE.dtus map
- * @returns {{ migrated: number, byClassification: object }}
+ * @returns {{ migrated: number, failed: number, failedSamples: string[], byClassification: object }}
  */
 export function migrateClassifications(dtus) {
   const counts = {};
   let migrated = 0;
+  let failed = 0;
+  const failedSamples = [];
 
-  for (const dtu of dtus.values()) {
-    if (!dtu.classification) {
-      dtu.classification = classifyDTU(dtu);
-      migrated++;
+  for (const [key, dtu] of dtus) {
+    try {
+      if (!dtu || typeof dtu !== "object") {
+        throw new TypeError("dtu is not an object");
+      }
+      let cls = dtu.classification;
+      if (!cls) {
+        cls = classifyDTU(dtu);
+        dtu.classification = cls;
+        migrated++;
+      }
+      counts[cls] = (counts[cls] || 0) + 1;
+    } catch {
+      failed++;
+      if (failedSamples.length < FAILED_SAMPLE_LIMIT) {
+        const sample = failureSampleId(key, dtu);
+        if (sample) failedSamples.push(sample);
+      }
     }
-    counts[dtu.classification] = (counts[dtu.classification] || 0) + 1;
   }
 
-  return { migrated, byClassification: counts };
+  return { migrated, failed, failedSamples, byClassification: counts };
 }
 
 /**

@@ -34,5 +34,5 @@
       }
     }
   ],
-  "_note": "Lists the responder roster for a crisis, bucketed by command role. Unknown/empty crisis \u2192 ok:true with team:[] count:0. Missing crisisId \u2192 missing_crisis_id."
+  "_note": "Lists the responder roster for a crisis, bucketed by command role. Members carry assignedByName, assignedByIsMe, and canUnassign. They never carry the raw assignedBy user id. Unknown/empty crisis is ok:true with team:[] count:0. Missing crisisId is missing_crisis_id."
 }

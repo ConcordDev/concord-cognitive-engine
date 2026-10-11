@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import {
   Timer, Play, Square, AlertTriangle, CalendarDays, CalendarClock,
@@ -62,7 +63,7 @@ interface PeakHour { hour: number; label: string; sessions: number; deepWork: nu
 interface PeakHours { hourly: PeakHour[]; peakHours: PeakHour[]; lowHours: PeakHour[]; taggedSessions: number; moodBreakdown: Record<string, number>; }
 
 const minToHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => calendarDateKey();
 
 export function FocusToolkit() {
   // ── pomodoro ──

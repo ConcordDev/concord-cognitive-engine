@@ -28,6 +28,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
 import { FieldService } from '@/components/hvac/FieldService';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
 import { DuctDesigner } from '@/components/hvac/DuctDesigner';
 import { type HvacView, type ModeTab } from '@/components/hvac/hvac-shared';
@@ -59,9 +60,10 @@ export default function HVACLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<HvacView>('jobs');
+  const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -108,7 +110,7 @@ export default function HVACLensPage() {
         actions={
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         }
-        tabs={VIEWS}
+        tabs={navViews}
         activeTab={active}
         onTab={(id) => setActive(id as HvacView)}
         tabsLabel="HVAC views"
