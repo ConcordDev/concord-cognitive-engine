@@ -56818,9 +56818,10 @@ app.get("/api/events", (req, res) => {
 app.get("/api/events/paginated", (req, res) => {
   const gate = gateLogRead(req);
   if (!gate.ok) return sendGate(res, gate);
+  // Declared outside try so the catch can still page an empty feed.
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Number(req.query.offset) || 0;
   try {
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
-    const offset = Number(req.query.offset) || 0;
     const domain = req.query.domain;
     const entityType = req.query.entityType;
     const activities = [];
