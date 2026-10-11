@@ -7,6 +7,14 @@
  * include request bodies, cookies, query strings, or raw ids. The module
  * keeps only bounded in-memory counters — no per-request DB writes — and
  * every public function swallows its own failures.
+ *
+ * Burst, 5xx, and logger-forwarded signals (including feed DB failures,
+ * which reach the cortex through logger.error) pass learn:false. Their
+ * text can be a crafted path or an error string that echoes user input.
+ * They still increment the accumulator and can emit recurring_error, and
+ * they never call matchErrorPattern / addToRepairMemory. Macro throws
+ * still learn: the message is a first-party handler failure, and the
+ * pain rows for those throws have their own cap below.
  */
 
 import crypto from "crypto";
@@ -23,6 +31,20 @@ const CLAIM_MAX = 2_000;
 const MACRO_THROW_SEVERITY = 0.5;
 const BURST_STATUSES = new Set([403, 422, 429]);
 
+/**
+ * Distinct macro-throw pain rows. avoidance-learning's pain map is only
+ * bounded at the process-wide LRU default (~100_000), so a handler that
+ * throws on every call would keep one organ_damage row per throw. Repeats
+ * of a stored (macro, fingerprint) are deduped. New signatures past this
+ * cap are still observed and are not stored. Do not switch the guard to
+ * LRU eviction: forgetting a signature would allocate another pain row
+ * for the same throw.
+ */
+export const MACRO_THROW_PAIN_CAP = 32;
+
+/** Count the signal. Do not teach repair memory from untrusted text. */
+const OBSERVE_NO_LEARN = Object.freeze({ learn: false });
+
 // These logs describe an HTTP status the handlers / response path already
 // report. Forwarding them again would double-count the same response.
 const HTTP_STATUS_LOG_EVENTS = new Set([
@@ -35,6 +57,8 @@ const HTTP_STATUS_LOG_EVENTS = new Set([
 const _bursts = new LruMap(BURST_MAX_KEYS);
 const _claimedIds = new LruMap(CLAIM_MAX);
 const _claimedReq = new WeakSet();
+/** signature -> painId. Size never exceeds MACRO_THROW_PAIN_CAP. */
+const _macroThrowPainIds = new LruMap(MACRO_THROW_PAIN_CAP);
 
 let _observeImpl = observe;
 let _recordPainImpl = recordPain;
@@ -109,10 +133,10 @@ function observationError(summary, fingerprint) {
   return err;
 }
 
-function safeObserve(err, context) {
+function safeObserve(err, context, opts) {
   _observeCalls += 1;
   try {
-    _observeImpl(err, context);
+    _observeImpl(err, context, opts);
   } catch {
     // The cortex must never break the request that reported the failure.
   }
@@ -144,6 +168,7 @@ function noteBurst(route, status, err) {
     safeObserve(
       observationError(`burst ${status} x${hits.length} ${route} fp=${fp}`, fp),
       `http_burst_${status}:${route}`,
+      OBSERVE_NO_LEARN,
     );
   }
   _bursts.set(key, slot);
@@ -166,6 +191,7 @@ export function reportHttpFailure(req, err, status) {
       safeObserve(
         observationError(`${code} ${route} ${errorClass}: ${message} fp=${fp}`, fp),
         `http_${code}:${route}`,
+        OBSERVE_NO_LEARN,
       );
       return;
     }
@@ -181,7 +207,9 @@ export function reportHttpFailure(req, err, status) {
 /**
  * Uncaught macro handler failure: observe the macro, then record pain
  * with avoidance-learning's (entityId, type, severity, source, context) shape.
- * @returns {{ ok: boolean, painId?: string, severity?: number, error?: string }}
+ * Pain rows are deduped by (macro, fingerprint) and capped at
+ * MACRO_THROW_PAIN_CAP. A throw past the cap is still observed.
+ * @returns {{ ok: boolean, painId?: string, severity?: number, deduped?: boolean, capped?: boolean, error?: string }}
  */
 export function reportMacroUncaughtThrow(macroErr, domain, name) {
   const d = String(domain || "unknown");
@@ -196,7 +224,11 @@ export function reportMacroUncaughtThrow(macroErr, domain, name) {
     );
   } catch { /* observe already swallows */ }
   try {
-    return _recordPainImpl(
+    const painKey = `${d}.${n}:${fp}`;
+    const existingPainId = _macroThrowPainIds.get(painKey);
+    if (existingPainId) return { ok: true, deduped: true, painId: existingPainId };
+    if (_macroThrowPainIds.size >= MACRO_THROW_PAIN_CAP) return { ok: true, capped: true };
+    const pain = _recordPainImpl(
       `macro:${d}.${n}`,
       PAIN_TYPES.ORGAN_DAMAGE,
       MACRO_THROW_SEVERITY,
@@ -209,6 +241,8 @@ export function reportMacroUncaughtThrow(macroErr, domain, name) {
         fingerprint: fp,
       },
     );
+    if (pain?.ok && pain.painId) _macroThrowPainIds.set(painKey, pain.painId);
+    return pain;
   } catch {
     return { ok: false, error: "record_pain_failed" };
   }
@@ -264,6 +298,7 @@ export function noteStructuredLog(level, event, data) {
       safeObserve(
         observationError(`${level} ${clip(event, 80)}${where} ${message} fp=${fp}`, fp),
         `log:${level}:${clip(event, 80)}`,
+        OBSERVE_NO_LEARN,
       );
     } finally {
       _inForward = false;
@@ -284,6 +319,7 @@ export function bindLoggerToCortex() {
 export function resetFailureSignalsForTests() {
   _bursts.clear();
   _claimedIds.clear();
+  _macroThrowPainIds.clear();
   _observeCalls = 0;
   _observeImpl = observe;
   _recordPainImpl = recordPain;
