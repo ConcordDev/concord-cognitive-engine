@@ -133,6 +133,6 @@ export function listAvailableProviders() {
       })[name],
     })),
     slots: ["conscious", "subconscious", "utility", "repair", "vision"],
-    note: "Plaintext keys are encrypted AES-GCM with a per-user wrapping key derived from JWT_SECRET. They are never returned to the frontend after save; the masked preview is shown instead.",
+    note: "Plaintext keys are encrypted AES-GCM with a per-user wrapping key derived from JWT_SECRET (PBKDF2-SHA256; new rows use 600000 iterations). They are never returned to the frontend after save; the masked preview is shown instead.",
   };
 }

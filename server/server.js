@@ -1963,6 +1963,7 @@ import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-route
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
 import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
+import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
@@ -3823,6 +3824,21 @@ if (!process.env.JWT_SECRET && NODE_ENV === "production" && AUTH_USES_JWT) {
   console.error("[FATAL] Generate one with: openssl rand -hex 64");
   console.error("[FATAL] Add it to your .env file or environment variables.\n");
   process.exit(1);
+}
+// BYOK wrapping keys are derived from JWT_SECRET. Missing and short secrets
+// already fail validateEnvironment() above when NODE_ENV=production. This
+// gate also rejects known defaults and unedited placeholders (the preflight
+// script catches those; the process itself previously still booted). Same
+// [FATAL] + exit posture as the JWT_SECRET check. Dev/test does not exit;
+// byo-crypto.js keeps a labelled test-only fallback for that case.
+if (NODE_ENV === "production") {
+  try {
+    assertByoCryptoReady();
+  } catch (err) {
+    console.error(`\n[FATAL] ${err.message}`);
+    console.error("[FATAL] Bring-your-own-key encryption will not start until JWT_SECRET is fixed.\n");
+    process.exit(1);
+  }
 }
 // NB: a present-but-too-short JWT_SECRET/SESSION_SECRET is rejected earlier by
 // validateEnvironment() (process.exit(1) in production) — see the length checks

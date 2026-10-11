@@ -35,7 +35,12 @@ async function getUserApiKey(db, userId, provider) {
     `).get(userId, provider);
     if (!row?.encrypted_key) return "";
     return (await decryptKey(userId, row.encrypted_key)) || "";
-  } catch { return ""; }
+  } catch (err) {
+    // A production JWT_SECRET refusal must stay loud. Swallowing it
+    // looks like a missing key and sends the provider an empty credential.
+    if (err && err.code === "BYO_SECRET_REFUSED") throw err;
+    return "";
+  }
 }
 
 // ── OpenAI Sora ──────────────────────────────────────────────────
