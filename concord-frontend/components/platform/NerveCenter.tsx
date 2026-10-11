@@ -21,6 +21,7 @@ type BeaconCheck = {
   name: string;
   pass: boolean;
   detail: string;
+  noData?: boolean;
 };
 
 type BeaconResult = {
@@ -79,18 +80,28 @@ function HealthIndicator({
   pass,
   label,
   detail,
+  noData,
 }: {
   pass: boolean;
   label: string;
   detail: string;
+  noData?: boolean;
 }) {
+  const neutral = noData === true || detail === 'no data yet';
   return (
     <div
+      data-state={neutral ? 'no-data' : pass ? 'pass' : 'fail'}
       className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
-        pass ? 'border-neon-green/20 bg-neon-green/5' : 'border-neon-orange/20 bg-neon-orange/5'
+        neutral
+          ? 'border-gray-700'
+          : pass
+            ? 'border-neon-green/20 bg-neon-green/5'
+            : 'border-neon-orange/20 bg-neon-orange/5'
       }`}
     >
-      {pass ? (
+      {neutral ? (
+        <span className="w-5 text-center text-xs text-gray-500 shrink-0" aria-hidden="true">—</span>
+      ) : pass ? (
         <CheckCircle className="w-5 h-5 text-neon-green shrink-0" />
       ) : (
         <XCircle className="w-5 h-5 text-neon-orange shrink-0" />
@@ -245,6 +256,7 @@ function NerveCenter() {
               <HealthIndicator
                 key={check.name}
                 pass={check.pass}
+                noData={check.noData}
                 label={check.name}
                 detail={check.detail}
               />
