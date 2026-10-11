@@ -10,7 +10,12 @@ import { validateBody, llmGenerateSchema } from "../lib/validators/mutation-sche
 import logger from '../logger.js';
 import { assertSessionAccessible } from "../lib/session-access.js";
 import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
+import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
+import { noteAdmittingTransition } from "../lib/request-admission.js";
+import { getHostIdentity } from "../lib/host-profile.js";
+import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
+import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -155,11 +160,17 @@ export default function registerSystemRoutes(app, {
     }
 
     // Always 200 — liveness is "the process responded". Diagnostics ride in `checks`.
+    // `host` names which machine answered (hostname, or HOST_ROLE when set)
+    // so an alert can tell a fallback box from the primary.
+    let host = { hostname: null, role: process.env.HOST_ROLE || null, lowMemory: false };
+    try { host = getHostIdentity(); } catch { /* diagnostic only */ }
+    checks.host = host;
     res.status(200).json({
       status: "healthy",
       version: VERSION,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
+      host,
       checks
     });
   });
@@ -198,13 +209,17 @@ export default function registerSystemRoutes(app, {
     }
 
     let lagMs = 0;
+    let sustainedLagMs = 0;
     let shedBarMs = 0;
     try {
       lagMs = Math.round(getCurrentLagMs() || 0);
+      // Strike on the sustained p99 mean, not the single worst sample in the
+      // window. The raw max stays in the payload so a spike is still visible.
+      sustainedLagMs = Math.round(getSustainedLagMs() || 0);
       shedBarMs = getShedLagMs();
     } catch { /* pressure monitor not started — treat as no pressure */ }
 
-    const overBar = shedBarMs > 0 && lagMs > shedBarMs;
+    const overBar = shedBarMs > 0 && sustainedLagMs > shedBarMs;
     _readyPressureStrikes = overBar ? _readyPressureStrikes + 1 : 0;
     // `admitting` is the honest per-probe answer: would a sheddable request
     // be admitted RIGHT NOW. The check that gates the verdict is the
@@ -219,10 +234,12 @@ export default function registerSystemRoutes(app, {
     // `admitting` is reported for observability only.
     const ready = Object.values(checks).every(v => v === true || v === "no_db");
     checks.admitting = !overBar;
+    try { noteAdmittingTransition(checks.admitting); } catch { /* admission signal is best-effort */ }
     res.status(ready ? 200 : 503).json({
       ready,
       checks,
       eventLoopLagMs: lagMs,
+      eventLoopSustainedLagMs: sustainedLagMs,
       shedThresholdMs: shedBarMs,
       pressureStrikes: _readyPressureStrikes,
       pressureStrikesToNotReady: READY_PRESSURE_STRIKES,
@@ -711,7 +728,9 @@ export default function registerSystemRoutes(app, {
     const tag = req.query.tag || null;
     const query = String(req.query.query || req.query.q || "").trim().toLowerCase();
     const scopeFilter = req.query.scope || null;
-    const userId = req.user?.id || null;
+    // Cookie auth sets req.user. The actor middleware (when it has already
+    // run) stamps userId and omits id. Either one is the signed-in owner.
+    const userId = viewerIdFromCtx(req);
 
     // Pass the viewer so the user's OWN private DTUs are visible (a bare
     // userVisibleDTUs() call hides every private DTU, including their own).
@@ -725,14 +744,11 @@ export default function registerSystemRoutes(app, {
       dtus = dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
       dtus = userId
-        ? dtus.filter(d => d.scope === "global" || !d.ownerId || d.ownerId === userId)
+        ? dtus.filter(d => d.scope === "global" || !dtuListedOwner(d) || dtuListedOwner(d) === userId)
         : dtus.filter(d => !d.scope || d.scope === "global");
     } else if (userId) {
       // "mine" (default + explicit scope=local/mine): the viewer's own DTUs only.
-      dtus = dtus.filter(d => {
-        const owner = d.ownerId || d.createdBy || d.authorId;
-        return owner === userId;
-      });
+      dtus = dtus.filter(d => dtuListedOwner(d) === userId);
     } else {
       // Anonymous: only global DTUs.
       dtus = dtus.filter(d => !d.scope || d.scope === "global");
@@ -740,17 +756,13 @@ export default function registerSystemRoutes(app, {
 
     if (tier) dtus = dtus.filter(d => d.tier === tier);
     if (tag) dtus = dtus.filter(d => (d.tags || []).includes(tag));
-    if (query) {
-      dtus = dtus.filter(d => {
-        const hay = [
-          d.title, d.human?.summary, d.cretiHuman,
-          ...(d.tags || []),
-        ].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(query);
-      });
-    }
+    if (query) dtus = dtus.filter(d => dtuMatchesQuery(d, query));
+    // Newest first so a DTU created seconds ago is on page 1 of My vault
+    // (the DTUs lens asks for offset 0 / limit 20). The visibility cache
+    // returns a shared array; filter already copied it.
+    dtus.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     const result = paginateResults(dtus, { page, pageSize });
-    return res.json({ ok: true, ...result });
+    return res.json(shapePaginatedBody(result));
   });
 
   // ---- Search (indexed, DSL, reindex, global) ----

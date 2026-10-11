@@ -20,7 +20,7 @@ import { ds } from '@/lib/design-system';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
-import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
+import { buildUnityIframeSearch, showUnityGatewayDevBadge } from '@/lib/unity-iframe-config';
 
 type Status =
   | { kind: 'checking' }
@@ -115,8 +115,15 @@ export default function NativeWorldPlayer({
               Concordia does not fall back to Three.js. Play the Editor client at{' '}
               <code className="font-mono text-[10px] text-amber-200">
                 apps/concordia-living-world/unity-client/
-              </code>{' '}
-              against <code className="font-mono text-[10px] text-zinc-400">ws://127.0.0.1:5050/unity-ws</code>.
+              </code>
+              {showUnityGatewayDevBadge() ? (
+                <>
+                  {' '}
+                  against <code className="font-mono text-[10px] text-zinc-400">ws://127.0.0.1:5050/unity-ws</code>.
+                </>
+              ) : (
+                '.'
+              )}
             </>
           }
           className="max-w-md border-amber-500/30 bg-black/60 text-zinc-200"
@@ -141,11 +148,14 @@ export default function NativeWorldPlayer({
         className="h-full w-full border-0 bg-black"
         allow="fullscreen; gamepad; clipboard-read; clipboard-write; accelerometer; gyroscope; pointer-lock"
       />
-      <div
-        className={`${ds.hudPill} pointer-events-none absolute left-3 top-3 px-2 py-0.5 text-[10px] uppercase tracking-widest text-amber-200/90`}
-      >
-        Unity WebGL · kernel `/unity-ws`
-      </div>
+      {showUnityGatewayDevBadge() ? (
+        <div
+          data-testid="unity-ws-dev-badge"
+          className={`${ds.hudPill} pointer-events-none absolute left-3 top-3 px-2 py-0.5 text-[10px] uppercase tracking-widest text-amber-200/90`}
+        >
+          Unity WebGL · kernel `/unity-ws`
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
+import { loadExportDtus } from '@/lib/dtu/list-pages';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── shared types ────────────────────────────────────────────────────
@@ -48,8 +49,8 @@ function b64ToArrayBuffer(b64: string): ArrayBuffer {
 
 export function ExportToolkit() {
   const { data: dtusData } = useQuery({
-    queryKey: ['dtus'],
-    queryFn: () => api.get('/api/dtus').then((r) => r.data),
+    queryKey: ['dtus', 'export-pages'],
+    queryFn: () => loadExportDtus((params) => api.get('/api/dtus', { params }).then((r) => r.data)),
   });
   const dtus = useMemo<Dtu[]>(() => (dtusData?.dtus || []) as Dtu[], [dtusData]);
 

@@ -95,6 +95,29 @@ describe("whiteboard keep + thread draft", () => {
     assert.equal(draftBack.result.draft.status, "draft", "draft-detail must still be draft");
   });
 
+  it("a board-report DTU with skipAutoTag does not pick up schema, news, or crypto", async () => {
+    const summary = "Updated: a definition of the board.";
+    const created = await lensRun("dtu", "create", {
+      params: {
+        title: "Board report",
+        tags: ["whiteboard", "board", "canvas"],
+        source: "whiteboard-lens:board-report",
+        skipAutoTag: true,
+        human: { summary },
+        core: { definitions: [summary], claims: [summary] },
+        meta: { visibility: "private", createdFrom: "whiteboard", skipAutoTag: true },
+      },
+    }, ctx);
+    assert.equal(created.ok, true);
+    const id = created.result.dtu.id;
+    const back = await lensRun("dtu", "get", { params: { id } }, ctx);
+    const tags = back.result.dtu.tags || [];
+    assert.equal(tags.includes("schema"), false);
+    assert.equal(tags.includes("news"), false);
+    assert.equal(tags.includes("crypto"), false);
+    assert.equal(tags.includes("whiteboard"), true);
+  });
+
   it("refuses to save a board with an unsafe id", async () => {
     const r = await lensRun("whiteboard", "board-save", {
       params: { id: "../../etc/passwd", title: "x", scene: { elements: [] } },

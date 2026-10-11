@@ -60,7 +60,7 @@ function payloadOf(data: { result?: unknown }): Record<string, unknown> | null {
   let node = asRecord(data.result);
   if (!node) return null;
   const inner = asRecord(node.result);
-  if (inner && ('dtu' in inner || 'post' in inner || 'event' in inner || 'id' in inner)) node = inner;
+  if (inner && ('dtu' in inner || 'post' in inner || 'event' in inner || 'draft' in inner || 'id' in inner)) node = inner;
   return node;
 }
 
@@ -130,6 +130,41 @@ export function dtuReadBackMatches(id: string, data: { ok?: boolean; result?: un
 
 export function dtuReadBackCall(id: string): CalendarKeepCall {
   return { domain: 'dtu', action: 'get', input: { id } };
+}
+
+export function draftEventInThreadCall(event: KeptEvent, dtuId: string): CalendarKeepCall | null {
+  const id = dtuId.trim();
+  const eventId = cleanId(event?.id);
+  const title = String(event?.title || '').trim();
+  if (!DTU_ID.test(id) || !eventId || !title) return null;
+  return {
+    domain: 'thread',
+    action: 'thread-draft',
+    input: {
+      title: `Event — ${title}`.slice(0, 120),
+      content: eventBody({ ...event, id: eventId, title }),
+      platform: 'x',
+      citedDtuId: id,
+    },
+  };
+}
+
+export function draftEventInThreadOutcome(
+  dtuId: string,
+  data: { ok?: boolean; result?: unknown; error?: string | null },
+): { claimed: boolean; text: string; draftId: string } {
+  if (data.ok === false) {
+    return { claimed: false, draftId: '', text: `Not drafted. ${data.error || 'The server refused this.'} Nothing was posted.` };
+  }
+  const payload = payloadOf(data);
+  const draft = asRecord(payload?.draft);
+  const draftId = String(draft?.id || '');
+  const cited = String(draft?.citedDtuId || '');
+  const status = String(draft?.status || '');
+  if (!draftId || status !== 'draft' || cited !== dtuId) {
+    return { claimed: false, draftId, text: 'Not drafted. Thread did not return a draft citing this DTU. Nothing was posted.' };
+  }
+  return { claimed: true, draftId, text: `Drafted in Thread as ${draftId}, citing ${dtuId}. Not posted.` };
 }
 
 export function sendEventDtuToTimelineCall(event: KeptEvent, dtuId: string): CalendarKeepCall | null {

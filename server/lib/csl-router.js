@@ -77,9 +77,12 @@ const FAIL_CLOSED = String(process.env.CONCORD_CSL_FAIL_CLOSED || "").toLowerCas
  *   chat, per docs/SPRINT-33-FRONTEND-AUDIT.md §5). Never trusted for the
  *   gate decision itself; threaded into the runCsl call and the log line
  *   purely for telemetry/debugging.
+ * @param {string} [opts.userText] The user's sentence. create_dtu is gated
+ *   on this, not on the tool-params JSON — "save a DTU titled …" is formal
+ *   intent even though the params object classifies as language.
  * @returns {(call: {tool: string, params?: object}) => Promise<{ok: boolean, cslRouted: boolean, reason?: string, halt?: boolean, proofArtifact?: object, cslError?: string}> & { shiftDecision: () => object|undefined }}
  */
-export function createCslToolGate({ runCsl, sessionId, userId, clientIntentHint } = {}) {
+export function createCslToolGate({ runCsl, sessionId, userId, clientIntentHint, userText } = {}) {
   const _decisionLog = [];
 
   const toolGate = async function toolGate(call) {
@@ -135,6 +138,7 @@ export function createCslToolGate({ runCsl, sessionId, userId, clientIntentHint 
         domainHint: domain,
         macroHint: action,
         clientIntentHint,
+        userPrompt: typeof userText === "string" ? userText : "",
       });
 
       const ok = !!(result && result.ok);

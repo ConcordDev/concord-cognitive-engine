@@ -344,7 +344,7 @@ describe("markets — resolution + settlement", () => {
     const m = freshMarket().result.market;
     call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 });
     call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 100 });
-    const r = call("market-resolve", ctxA, {
+    const r = call("market-resolve", ctxB, {
       marketId: m.id, outcome: "yes", evidence: "Substrate DTU count crossed 1M on 2026-12-30.",
     });
     assert.equal(r.ok, true);
@@ -356,16 +356,35 @@ describe("markets — resolution + settlement", () => {
     assert.match(res.result.resolution.evidence, /crossed 1M/);
   });
 
-  it("rejects resolution by a non-creator", () => {
+  it("rejects resolution by the creator", () => {
     const m = freshMarket().result.market;
-    const r = call("market-resolve", ctxB, { marketId: m.id, outcome: "yes", evidence: "not my market really" });
+    const r = call("market-resolve", ctxA, { marketId: m.id, outcome: "yes", evidence: "creator cannot settle this" });
     assert.equal(r.ok, false);
+    assert.match(r.error, /creator cannot resolve/);
   });
 
   it("rejects resolution without evidence", () => {
     const m = freshMarket().result.market;
-    const r = call("market-resolve", ctxA, { marketId: m.id, outcome: "no", evidence: "x" });
+    const r = call("market-resolve", ctxB, { marketId: m.id, outcome: "no", evidence: "x" });
     assert.equal(r.ok, false);
+    assert.match(r.error, /evidence/);
+  });
+
+  it("lets the creator cancel a market that has no positions", () => {
+    const m = freshMarket().result.market;
+    const blocked = call("market-cancel", ctxB, { marketId: m.id });
+    assert.equal(blocked.ok, false);
+    const r = call("market-cancel", ctxA, { marketId: m.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.market.status, "cancelled");
+  });
+
+  it("refuses to cancel a market that has a position", () => {
+    const m = freshMarket().result.market;
+    call("position-open", ctxB, { marketId: m.id, side: "yes", stakeSparks: 5 });
+    const r = call("market-cancel", ctxA, { marketId: m.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /has positions/);
   });
 });
 
@@ -374,7 +393,7 @@ describe("markets — leaderboard", () => {
     const m = freshMarket().result.market;
     call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 });
     call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 100 });
-    call("market-resolve", ctxA, { marketId: m.id, outcome: "yes", evidence: "Resolved YES per criteria." });
+    call("market-resolve", ctxB, { marketId: m.id, outcome: "yes", evidence: "Resolved YES per criteria." });
     const r = call("leaderboard", ctxA, {});
     assert.equal(r.ok, true);
     assert.ok(r.result.leaderboard.length >= 1);

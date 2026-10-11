@@ -30,6 +30,7 @@ import { SharedDebateView } from '@/components/debate/SharedDebateView';
 import { LiveFloorPanel } from '@/components/debate/LiveFloorPanel';
 import { ArgumentMapPanel } from '@/components/debate/ArgumentMapPanel';
 import { CmvPanel } from '@/components/debate/CmvPanel';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 
 type DebateView = 'floor' | 'map' | 'cmv';
 
@@ -53,6 +54,7 @@ export default function DebateLensPage() {
   const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DebateView>('floor');
+  const navViews = omitCommunityRedditViews(VIEWS, ['cmv']);
   const [shareToken, setShareToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function DebateLensPage() {
   }, []);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -112,7 +114,7 @@ export default function DebateLensPage() {
             <DTUExportButton domain="debate" data={realtimeData || {}} compact />
           </>
         }
-        tabs={shareToken ? undefined : VIEWS}
+        tabs={shareToken ? undefined : navViews}
         activeTab={active}
         onTab={(id) => setActive(id as DebateView)}
         tabsLabel="Debate views"

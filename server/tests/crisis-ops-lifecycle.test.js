@@ -183,6 +183,8 @@ describe("crisis — assign → team → unassign roster lifecycle", () => {
   it("assigns responders, enforces single incident_commander, then unassigns", async () => {
     const ctx = ctxFor(db);
     const crisisId = "cr_roster";
+    db.prepare(`INSERT INTO world_crises (id, type, description, origin_world_id, started_at, status) VALUES (?, 'flood', 'roster', ?, ?, 'active')`)
+      .run(crisisId, WORLD, Math.floor(Date.now() / 1000));
 
     const a1 = await call("assign", ctx, { crisisId, responder: "Maya", role: "incident_commander" });
     assert.equal(a1.ok, true);

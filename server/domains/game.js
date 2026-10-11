@@ -54,25 +54,32 @@ export default function registerGameActions(registerLensAction) {
 
   // -------------------------------------------------------------------------
   // Persistent gamification substrate — Habitica-style behavior-change loop.
-  // All per-user state lives in globalThis._concordSTATE.game.* keyed by userId.
+  // All per-user state lives in globalThis._concordSTATE.game, which is in
+  // LENS_STATE_KEYS, so tasks, progress, parties, cosmetics, rewards,
+  // reminders, challenges, and the XP log survive a restart. Gold here is
+  // Habitica-style virtual credit, not Concord Coin. The XP log keeps the
+  // newest 500 entries per user. Tasks are capped at 2000 per user.
   // -------------------------------------------------------------------------
+  const XP_LOG_CAP = 500;
+  const TASK_CAP = 2000;
+
   function gameState() {
     const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
-    if (!STATE.game) {
-      STATE.game = {
-        tasks: new Map(),       // userId -> Map<taskId, task>  (habits/dailies/todos)
-        progress: new Map(),    // userId -> { xp, level, gold, streak, longestStreak, lastActiveDay }
-        parties: new Map(),     // partyId -> party
-        membership: new Map(),  // userId -> partyId
-        cosmetics: new Map(),   // userId -> Map<cosmeticId, owned cosmetic>
-        equipped: new Map(),    // userId -> { [slot]: cosmeticId }
-        rewards: new Map(),     // userId -> Map<rewardId, custom reward>
-        reminders: new Map(),   // userId -> Map<reminderId, reminder>
-        challenges: new Map(),  // challengeId -> challenge
-        xpLog: new Map(),       // userId -> Array<xp/gold ledger entry> (append-only, chronological)
-      };
+    if (!STATE.game || typeof STATE.game !== "object" || Array.isArray(STATE.game) || STATE.game instanceof Map) {
+      STATE.game = {};
     }
-    return STATE.game;
+    const s = STATE.game;
+    if (!(s.tasks instanceof Map)) s.tasks = new Map();             // userId -> Map<taskId, task>
+    if (!(s.progress instanceof Map)) s.progress = new Map();       // userId -> { xp, level, gold, streak }
+    if (!(s.parties instanceof Map)) s.parties = new Map();         // partyId -> party
+    if (!(s.membership instanceof Map)) s.membership = new Map();   // userId -> partyId
+    if (!(s.cosmetics instanceof Map)) s.cosmetics = new Map();     // userId -> Map<cosmeticId, owned>
+    if (!(s.equipped instanceof Map)) s.equipped = new Map();       // userId -> { [slot]: cosmeticId }
+    if (!(s.rewards instanceof Map)) s.rewards = new Map();         // userId -> Map<rewardId, custom reward>
+    if (!(s.reminders instanceof Map)) s.reminders = new Map();     // userId -> Map<reminderId, reminder>
+    if (!(s.challenges instanceof Map)) s.challenges = new Map();   // challengeId -> challenge
+    if (!(s.xpLog instanceof Map)) s.xpLog = new Map();             // userId -> Array<xp/gold ledger entry>
+    return s;
   }
   function actorId(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function dayKey(ts) { return new Date(ts || Date.now()).toISOString().slice(0, 10); }
@@ -114,6 +121,7 @@ export default function registerGameActions(registerLensAction) {
         levelAfter: p.level,
         at: new Date().toISOString(),
       });
+      if (log.length > XP_LOG_CAP) log.splice(0, log.length - XP_LOG_CAP);
     }
     return p;
   }
@@ -138,6 +146,7 @@ export default function registerGameActions(registerLensAction) {
       const s = gameState();
       const userId = actorId(ctx);
       const map = userBucket(s.tasks, userId, () => new Map());
+      if (map.size >= TASK_CAP) return { ok: false, error: "task_cap" };
       const task = {
         id: uid("task"), kind, title,
         notes: String(p.notes || ""),

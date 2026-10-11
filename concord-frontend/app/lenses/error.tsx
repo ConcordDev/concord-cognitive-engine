@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import Link from 'next/link';
+import { useReportRouteError } from '@/lib/use-report-route-error';
 
 export default function LensError({
   error,
@@ -11,6 +12,7 @@ export default function LensError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportRouteError(error, 'lenses');
   useEffect(() => {
     console.error('Lens error:', error);
   }, [error]);

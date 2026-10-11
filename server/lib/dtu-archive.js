@@ -71,16 +71,12 @@ function cfg(name, fallback) {
 }
 
 function isProtected(dtu) {
-  // Re-use the same predicate the forgetting engine trusts so an archive
-  // and a forget can never disagree on "is this safe to drop". A DTU
-  // that forgetting would tombstone gets archived FIRST (memory-only),
-  // and only later tombstoned (data-only) — that's the intended order.
+  // isDtuProtected covers pins, vault tags (including JSON-string tags on
+  // raw SQL rows), and tier mega/hyper. Cold archive must not move the
+  // consolidation product off dtu_store. A throw protects the row.
   try {
     return isDtuProtected(dtu);
   } catch (_e) {
-    // Defensive: if the predicate ever throws on a malformed DTU, fall
-    // back to "protect it" rather than accidentally archiving something
-    // the operator pinned.
     return true;
   }
 }
@@ -105,6 +101,11 @@ export async function archiveOldDtuStore(db, opts = {}) {
   let totalArchived = 0;
   let remaining = -1;
   let interrupted = 0;
+  // Keyset cursor. A batch of only-protected rows (mega/hyper, vault tags)
+  // used to reselect itself forever, because nothing was deleted and the
+  // next SELECT started at the same oldest row.
+  let cursorUpdated = null;
+  let cursorId = null;
 
   try {
     while (true) {
@@ -112,14 +113,24 @@ export async function archiveOldDtuStore(db, opts = {}) {
       // because we have idx_dtu_store_updated_at from migration 401.
       // We pull one extra than batchSize so we can detect "is there
       // more work left" without an extra COUNT(*).
-      const candidates = db.prepare(`
+      const candidates = cursorUpdated == null
+        ? db.prepare(`
         SELECT id, title, tier, scope, tags, source, created_at, updated_at,
                content_hash, compressed_size, rights_id, data
           FROM dtu_store
          WHERE updated_at < ?
          ORDER BY updated_at ASC, id ASC
          LIMIT ?
-      `).all(cutOff, batchSize + 1);
+      `).all(cutOff, batchSize + 1)
+        : db.prepare(`
+        SELECT id, title, tier, scope, tags, source, created_at, updated_at,
+               content_hash, compressed_size, rights_id, data
+          FROM dtu_store
+         WHERE updated_at < ?
+           AND (updated_at > ? OR (updated_at = ? AND id > ?))
+         ORDER BY updated_at ASC, id ASC
+         LIMIT ?
+      `).all(cutOff, cursorUpdated, cursorUpdated, cursorId, batchSize + 1);
 
       if (candidates.length === 0) {
         remaining = 0;
@@ -134,15 +145,24 @@ export async function archiveOldDtuStore(db, opts = {}) {
       // engine made too; re-using the predicate keeps the two consistent).
       const archivable = batch.filter((d) => !isProtected(d));
 
+      const last = batch[batch.length - 1];
+      if (cursorUpdated === last.updated_at && cursorId === last.id) {
+        interrupted = 1;
+        break;
+      }
+      cursorUpdated = last.updated_at;
+      cursorId = last.id;
+
       if (archivable.length === 0) {
-        // Nothing in this batch was safe to archive. Yield + retry with
-        // a fresh batch so we don't infinite-loop on a table that's
-        // full of protected DTUs.
+        // Protected prefix (mega/hyper, vault tags). The cursor above
+        // already moved past it — do not reselect the same rows.
         await new Promise((r) => {
           setImmediate(r);
         });
         if (!hasMore) {
-          remaining = 0;
+          remaining = db.prepare(`
+            SELECT COUNT(*) AS n FROM dtu_store WHERE updated_at < ?
+          `).get(cutOff).n;
           break;
         }
         continue;

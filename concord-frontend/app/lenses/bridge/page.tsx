@@ -35,7 +35,9 @@ import { LifecyclePanel } from '@/components/bridge/LifecyclePanel';
 import { EmergentsPanel } from '@/components/bridge/EmergentsPanel';
 import { BridgeActionsPanel } from '@/components/bridge/BridgeActionsPanel';
 import { useBridgeData } from '@/components/bridge/useBridgeData';
-import type { BridgeView } from '@/components/bridge/types';
+import type {
+  BirthCert, BridgeLogAccess, BridgeLogEntry, BridgeView, CatalogStatus, Debate, EmergentRole, Organism,
+} from '@/components/bridge/types';
 
 const VIEWS: { id: BridgeView; label: string; keys: string; icon: typeof Activity }[] = [
   { id: 'activity', label: 'Activity', keys: 'a', icon: Activity },
@@ -54,7 +56,14 @@ export default function BridgeLens() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
-  const { organisms, log, debates, births, emergents, loading, refresh } = useBridgeData();
+  const {
+    organisms, organismStatus,
+    log, logAccess,
+    debates, debateStatus,
+    births, birthStatus,
+    emergents, emergentStatus,
+    loading, refresh,
+  } = useBridgeData();
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -106,23 +115,32 @@ export default function BridgeLens() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Organisms', value: organisms.length, icon: <Network className="w-5 h-5 text-purple-400" />, color: 'text-purple-400' },
-            { label: 'Bridge Events', value: log.length, icon: <Activity className="w-5 h-5 text-cyan-400" />, color: 'text-cyan-400' },
-            { label: 'Debates', value: debates.length, icon: <MessageSquare className="w-5 h-5 text-amber-400" />, color: 'text-amber-400' },
-            { label: 'Emergent Roles', value: emergents.length, icon: <Radio className="w-5 h-5 text-green-400" />, color: 'text-green-400' },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08, duration: 0.35 }}
-              className="rounded-2xl border border-white/10 bg-[#111] p-4"
-            >
-              <div className="flex items-center gap-2 mb-2">{stat.icon}</div>
-              <p className={`text-2xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-zinc-400">{stat.label}</p>
-            </motion.div>
-          ))}
+            { id: 'organisms', label: 'Organisms', value: catalogCount(organismStatus, organisms.length), icon: <Network className="w-5 h-5 text-purple-400" />, color: 'text-purple-400' },
+            { id: 'events', label: 'Bridge Events', value: eventCount(logAccess, log.length), icon: <Activity className="w-5 h-5 text-cyan-400" />, color: 'text-cyan-400' },
+            { id: 'debates', label: 'Debates', value: catalogCount(debateStatus, debates.length), icon: <MessageSquare className="w-5 h-5 text-amber-400" />, color: 'text-amber-400' },
+            { id: 'emergents', label: 'Emergent Roles', value: catalogCount(emergentStatus, emergents.length), icon: <Radio className="w-5 h-5 text-green-400" />, color: 'text-green-400' },
+          ].map((stat, i) => {
+            const numeric = /^\d+$/.test(stat.value);
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08, duration: 0.35 }}
+                className="rounded-2xl border border-white/10 bg-[#111] p-4"
+              >
+                <div className="flex items-center gap-2 mb-2">{stat.icon}</div>
+                <p
+                  data-testid={`bridge-stat-${stat.id}`}
+                  role="status"
+                  className={numeric ? `text-2xl font-bold font-mono ${stat.color}` : 'text-sm font-semibold tracking-tight text-zinc-200'}
+                >
+                  {stat.value}
+                </p>
+                <p className="text-xs text-zinc-400">{stat.label}</p>
+              </motion.div>
+            );
+          })}
         </div>
 
 
@@ -134,10 +152,15 @@ export default function BridgeLens() {
           <BridgePane
             active={active}
             log={log}
+            logAccess={logAccess}
             organisms={organisms}
+            organismStatus={organismStatus}
             debates={debates}
+            debateStatus={debateStatus}
             births={births}
+            birthStatus={birthStatus}
             emergents={emergents}
+            emergentStatus={emergentStatus}
             onRefresh={refresh}
             onDtuClick={setSelectedDtuId}
           />
@@ -160,23 +183,41 @@ export default function BridgeLens() {
   );
 }
 
+function catalogCount(status: CatalogStatus, count: number): string {
+  if (status === 'loading') return '…';
+  if (status === 'unavailable') return 'unavailable';
+  return String(count);
+}
+
+function eventCount(access: BridgeLogAccess, count: number): string {
+  if (access === 'pending') return '…';
+  if (access === 'operator-only') return 'operator-only';
+  if (access === 'unavailable') return 'unavailable';
+  return String(count);
+}
+
 function BridgePane({
-  active, log, organisms, debates, births, emergents, onRefresh, onDtuClick,
+  active, log, logAccess, organisms, organismStatus, debates, debateStatus, births, birthStatus, emergents, emergentStatus, onRefresh, onDtuClick,
 }: {
   active: BridgeView;
-  log: import('@/components/bridge/types').BridgeLogEntry[];
-  organisms: import('@/components/bridge/types').Organism[];
-  debates: import('@/components/bridge/types').Debate[];
-  births: import('@/components/bridge/types').BirthCert[];
-  emergents: import('@/components/bridge/types').EmergentRole[];
+  log: BridgeLogEntry[];
+  logAccess: BridgeLogAccess;
+  organisms: Organism[];
+  organismStatus: CatalogStatus;
+  debates: Debate[];
+  debateStatus: CatalogStatus;
+  births: BirthCert[];
+  birthStatus: CatalogStatus;
+  emergents: EmergentRole[];
+  emergentStatus: CatalogStatus;
   onRefresh: () => void;
   onDtuClick: (id: string) => void;
 }) {
-  if (active === 'activity') return <ActivityPanel log={log} onDtuClick={onDtuClick} />;
-  if (active === 'organisms') return <OrganismsPanel organisms={organisms} onRefresh={onRefresh} />;
-  if (active === 'debates') return <DebatesPanel debates={debates} onDtuClick={onDtuClick} />;
-  if (active === 'lifecycle') return <LifecyclePanel births={births} />;
-  if (active === 'emergents') return <EmergentsPanel emergents={emergents} />;
+  if (active === 'activity') return <ActivityPanel log={log} access={logAccess} onDtuClick={onDtuClick} />;
+  if (active === 'organisms') return <OrganismsPanel organisms={organisms} status={organismStatus} onRefresh={onRefresh} />;
+  if (active === 'debates') return <DebatesPanel debates={debates} status={debateStatus} onDtuClick={onDtuClick} />;
+  if (active === 'lifecycle') return <LifecyclePanel births={births} status={birthStatus} />;
+  if (active === 'emergents') return <EmergentsPanel emergents={emergents} status={emergentStatus} />;
   if (active === 'federation') return <FederationConsole />;
   return <BridgeActionsPanel />;
 }

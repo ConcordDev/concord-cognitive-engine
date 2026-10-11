@@ -7,6 +7,8 @@ import {
   eventOnCalendarSentence,
   eventSavedSentence,
   eventUpdatedSentence,
+  draftEventInThreadCall,
+  draftEventInThreadOutcome,
   sendEventDtuOutcome,
   sendEventDtuToTimelineCall,
 } from '@/components/calendar/calendarKeep';
@@ -61,5 +63,25 @@ describe('calendar keep', () => {
     }).text).toMatch(/was not sent as a private post/);
     expect(dtuReadBackMatches('dtu_9', { ok: true, result: { dtu: { id: 'dtu_9' } } })).toBe(true);
     expect(dtuReadBackMatches('dtu_9', { ok: true, result: { dtu: { id: 'other' } } })).toBe(false);
+  });
+
+  it('drafts in Thread only when the draft cites the saved DTU', () => {
+    const call = draftEventInThreadCall(event, 'dtu_9');
+    expect(call?.domain).toBe('thread');
+    expect(call?.action).toBe('thread-draft');
+    expect(call?.input.citedDtuId).toBe('dtu_9');
+    expect(String(call?.input.content)).toMatch(/Standup/);
+    expect(draftEventInThreadCall(event, 'bad id')).toBeNull();
+    const ok = draftEventInThreadOutcome('dtu_9', {
+      ok: true,
+      result: { draft: { id: 'th_1', status: 'draft', citedDtuId: 'dtu_9' } },
+    });
+    expect(ok.claimed).toBe(true);
+    expect(ok.text).toMatch(/Drafted in Thread as th_1, citing dtu_9/);
+    expect(draftEventInThreadOutcome('dtu_9', {
+      ok: true,
+      result: { draft: { id: 'th_2', status: 'draft', citedDtuId: 'other' } },
+    }).claimed).toBe(false);
+    expect(draftEventInThreadOutcome('dtu_9', { ok: false, error: 'refused' }).text).toMatch(/^Not drafted/);
   });
 });

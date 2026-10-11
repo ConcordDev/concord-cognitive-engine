@@ -29,6 +29,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import { InsuranceChatter } from '@/components/death-insurance/InsuranceChatter';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { PactWriter } from '@/components/death-insurance/PactWriter';
 import { PactCard } from '@/components/death-insurance/PactCard';
 import { BeneficiaryPactCard } from '@/components/death-insurance/BeneficiaryPactCard';
@@ -119,6 +121,7 @@ export default function DeathInsurancePage() {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
+  const navViews = omitCommunityRedditViews(VIEWS, ['community']);
   useLensCommand(
     [
       {
@@ -130,7 +133,7 @@ export default function DeathInsurancePage() {
           refresh();
         },
       },
-      ...VIEWS.map((v) => ({
+      ...navViews.map((v) => ({
         id: `death-insurance-${v.id}`,
         keys: v.keys,
         description: `${v.label} — ${v.hint}`,
@@ -153,7 +156,7 @@ export default function DeathInsurancePage() {
         crumb="Inheritance"
         title={`${current.title}${view === 'pacts' && who ? `, ${who}` : ''}`}
         subtitle="If you fall in Concordia, named friends inherit a share of your sparks. Currency: Sparks only. CC stays separate per the no-pay-to-win invariant. A beneficiary cannot equal the insured, and payouts cannot fire within 24h of writing."
-        tabs={VIEWS.map((v) => ({ id: v.id, label: v.id === 'pacts' && unreadHigh > 0 ? `${v.label} (${unreadHigh} urgent)` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        tabs={navViews.map((v) => ({ id: v.id, label: v.id === 'pacts' && unreadHigh > 0 ? `${v.label} (${unreadHigh} urgent)` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as DeskView)}
         tabsLabel="Inheritance views"
@@ -228,9 +231,11 @@ export default function DeathInsurancePage() {
           )}
 
           {view === 'community' && (
-            <section className={card}>
-              <InsuranceChatter />
-            </section>
+            <CommunityRedditSlot>
+              <section className={card}>
+                <InsuranceChatter />
+              </section>
+            </CommunityRedditSlot>
           )}
         </div>
       </NorthStarFrame>

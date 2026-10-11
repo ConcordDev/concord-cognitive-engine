@@ -20,7 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
-import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
+import { buildUnityIframeSearch, showUnityGatewayDevBadge } from '@/lib/unity-iframe-config';
 
 const WorldOsSurface = dynamic(() => import('@/components/world/WorldOsSurface'), {
   ssr: false,
@@ -51,15 +51,62 @@ const CANDIDATE_SRCS = [
   '/unity-client/index.html',
 ].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
 
+const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
+
+/** Directory of a player index (`…/index.html` → `…/`). */
+function playerDir(indexSrc: string): string {
+  const pathOnly = indexSrc.split('?')[0];
+  return pathOnly.endsWith('/') ? pathOnly : pathOnly.replace(/[^/]*$/, '');
+}
+
+/**
+ * Framework URL the player index actually loads. Unity's template writes
+ * `var buildUrl = "Build"` and `frameworkUrl: buildUrl + "/<name>.framework.js…"`;
+ * builds name that file differently (`concordia.framework.js.unityweb`,
+ * `<export>.framework.js.gz`), so read it from the index instead of guessing.
+ * Falls back to the committed player's name when the index does not say.
+ */
+export function unityFrameworkUrl(indexSrc: string, indexHtml = ''): string {
+  const dir = playerDir(indexSrc);
+  const build = /buildUrl\s*=\s*["']([^"']*)["']/.exec(indexHtml)?.[1];
+  const fw = /frameworkUrl\s*:\s*buildUrl\s*\+\s*["']([^"']+)["']/.exec(indexHtml)?.[1];
+  if (build !== undefined && fw) {
+    const base = build.startsWith('/') || /^https?:/.test(build) ? build : `${dir}${build}`;
+    return `${base}${fw.startsWith('/') ? fw : `/${fw}`}`;
+  }
+  return `${dir}Build/concordia.framework.js.unityweb`;
+}
+
 async function probeUnitySrc(src: string): Promise<boolean> {
   try {
-    const path = src.split('?')[0];
-    const r = await fetch(path, { credentials: 'include' });
-    const ct = r.headers.get('content-type') || '';
-    if (!r.ok) return false;
+    const pathOnly = src.split('?')[0];
+    const index = await fetch(pathOnly, { credentials: 'include' });
+    const ct = index.headers.get('content-type') || '';
+    if (!index.ok) return false;
     // Next JSON 404 / missing-export payloads are not a Unity index.
     if (ct.includes('application/json')) return false;
-    return true;
+    // The index HTML is real even when the Build/*.unityweb blobs are Git LFS
+    // pointers. Loading that player runs concordia.loader.js, which then
+    // throws `unityFramework is not defined`. A real export is gzip (1f 8b)
+    // or JS that defines unityFramework. A pointer, a failed gunzip, or a
+    // JSON 404 is an unbuilt player — leave the iframe unmounted.
+    const indexHtml = await index.text().catch(() => '');
+    const framework = await fetch(unityFrameworkUrl(src, indexHtml), { credentials: 'include' });
+    if (!framework.ok) return false;
+    const fwCt = framework.headers.get('content-type') || '';
+    if (fwCt.includes('application/json')) return false;
+    const reader = framework.body?.getReader();
+    if (!reader) return false;
+    const { value } = await reader.read();
+    await reader.cancel().catch(() => undefined);
+    const bytes = value ?? new Uint8Array();
+    if (bytes.length < 64) return false;
+    const head = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(0, 80));
+    if (head.startsWith(LFS_POINTER_PREFIX)) return false;
+    // Raw gzip export, or a large decoded JS blob. An LFS pointer is ~130 bytes.
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) return true;
+    if (bytes.length >= 512) return true;
+    return head.includes('unityFramework');
   } catch {
     return false;
   }
@@ -142,13 +189,17 @@ export default function WorldUnityShell() {
     setPanel('advanced');
   }, []);
 
+  const devGatewayBadge = showUnityGatewayDevBadge();
   const chromeHint = useMemo(() => {
     if (status === 'checking') return 'Locating Unity WebGL…';
     if (status === 'missing') {
-      return 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws';
+      return devGatewayBadge
+        ? 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws'
+        : 'Unity WebGL export is not built';
     }
-    return 'Unity WebGL · /unity-ws';
-  }, [status]);
+    // Ready: the gateway path is dev chrome. Players get the viewport, not a badge.
+    return devGatewayBadge ? 'Unity WebGL · /unity-ws' : '';
+  }, [status, devGatewayBadge]);
 
   if (panel === 'advanced') {
     return (
@@ -205,17 +256,20 @@ export default function WorldUnityShell() {
 
         {/* Minimal always-available chrome */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-between p-3">
-          <div
-            className="pointer-events-none rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-widest text-amber-200/90 backdrop-blur"
-            aria-hidden={status !== 'ready'}
-          >
-            {chromeHint}
-          </div>
+          {chromeHint ? (
+            <div
+              data-testid={status === 'ready' ? 'unity-ws-dev-badge' : undefined}
+              className="pointer-events-none rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-widest text-amber-200/90 backdrop-blur"
+              aria-hidden={status !== 'ready'}
+            >
+              {chromeHint}
+            </div>
+          ) : null}
           <button
             type="button"
             data-testid="world-unity-menu-btn"
             onClick={() => setPanel((p) => (p === 'menu' ? null : 'menu'))}
-            className="pointer-events-auto rounded-lg border border-white/15 bg-black/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur hover:bg-white/10"
+            className="pointer-events-auto ml-auto rounded-lg border border-white/15 bg-black/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur hover:bg-white/10"
           >
             Menu
           </button>

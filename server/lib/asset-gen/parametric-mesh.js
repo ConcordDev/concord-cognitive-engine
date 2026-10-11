@@ -31,7 +31,7 @@ import { unionCircleWithPolygon2D, extrudeRingBetweenX, ringArea2D } from "./csg
 // ── Cross-section profiles ──────────────────────────────────────────────
 // Unit-scale 2D points (Y,Z) around the origin, CCW as seen looking down the
 // -X axis from +X. Station-level halfWidth/halfThickness scale these.
-export function profilePoints(shape, sides) {
+export function profilePoints(shape, sides, flat = 0) {
   switch (shape) {
     case "rect":
       // Flat rectangular cross-section (e.g. a crossguard bar).
@@ -40,6 +40,13 @@ export function profilePoints(shape, sides) {
       // Lenticular/diamond cross-section (a common real bladed-weapon
       // section for rigidity) — 4 points on the width/thickness axes.
       return [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    case "hexagon": {
+      // Flattened diamond (a common real blade section): a flat of half-width
+      // `flat` (fraction of the half-width) across the middle, edges at ±1.
+      // flat = 0 is the diamond. Area = 2·hw·ht·(1 + flat).
+      if (!(flat >= 0 && flat < 1)) throw new Error(`parametric_mesh_bad_flat: flat must be in [0, 1), got ${flat}`);
+      return [[-flat, -1], [flat, -1], [1, 0], [flat, 1], [-flat, 1], [-1, 0]];
+    }
     case "circle": {
       // Regular N-gon approximating a circle (grip/pommel).
       const n = sides || 8;
@@ -76,7 +83,7 @@ export function profilePoints(shape, sides) {
  * @returns {{positions:Float32Array, indices:Uint32Array, vertsPerRing:number}}
  */
 export function loftClosedTube(shape, stations, opts = {}) {
-  const { sides = 8, capStart = true, capEnd = true, pointStart = false, pointEnd = false } = opts;
+  const { sides = 8, flat = 0, capStart = true, capEnd = true, pointStart = false, pointEnd = false } = opts;
   if (!Array.isArray(stations) || stations.length < 2) {
     throw new Error("parametric_mesh_bad_stations: need at least 2 stations");
   }
@@ -89,7 +96,7 @@ export function loftClosedTube(shape, stations, opts = {}) {
     }
   }
 
-  const profile = profilePoints(shape, sides);
+  const profile = profilePoints(shape, sides, flat);
   const n = profile.length;
   const positions = [];
   const ringStartIndex = [];
@@ -441,8 +448,8 @@ function assertStarShapedRing(points, label) {
  * @param {number} [sides] only used when shape === "circle"
  * @returns {Array<{x:number,y:number,z:number}>}
  */
-export function ringPointsAt(shape, x, halfWidth, halfThickness, sides) {
-  return profilePoints(shape, sides).map(([py, pz]) => ({
+export function ringPointsAt(shape, x, halfWidth, halfThickness, sides, flat = 0) {
+  return profilePoints(shape, sides, flat).map(([py, pz]) => ({
     x, y: py * halfWidth, z: pz * halfThickness,
   }));
 }
@@ -579,7 +586,7 @@ export function loftSectionsWithBridges(sections) {
     const capStart = isFirst && !sec.pointStart;
     const capEnd = isLast && !sec.pointEnd;
     const mesh = loftClosedTube(sec.shape, sec.stations, {
-      sides: sec.sides, capStart, capEnd,
+      sides: sec.sides, flat: sec.flat, capStart, capEnd,
       pointStart: !!sec.pointStart, pointEnd: !!sec.pointEnd,
     });
     parts.push(mesh);
@@ -591,8 +598,8 @@ export function loftSectionsWithBridges(sections) {
       if (!sec.pointEnd && !next.pointStart) {
         const lastSt = sec.stations[sec.stations.length - 1];
         const firstSt = next.stations[0];
-        const ringA = ringPointsAt(sec.shape, lastSt.x, lastSt.halfWidth, lastSt.halfThickness, sec.sides);
-        const ringB = ringPointsAt(next.shape, firstSt.x, firstSt.halfWidth, firstSt.halfThickness, next.sides);
+        const ringA = ringPointsAt(sec.shape, lastSt.x, lastSt.halfWidth, lastSt.halfThickness, sec.sides, sec.flat);
+        const ringB = ringPointsAt(next.shape, firstSt.x, firstSt.halfWidth, firstSt.halfThickness, next.sides, next.flat);
         bridges.push(bridgeMismatchedRings(ringA, ringB));
       }
       // If either side collapses to a point, that section's own point-fan
@@ -627,7 +634,7 @@ export function loftSectionsWithBridges(sections) {
 // width·thickness³/12 — the rectangle approximation over-states stiffness
 // ~4×). This is flagged in the returned station via `approximation` so a
 // Stage-4 FEA consumer can decide whether to correct for it.
-function crossSectionProps(shape, halfWidth, halfThickness) {
+function crossSectionProps(shape, halfWidth, halfThickness, flat = 0) {
   const width = 2 * halfWidth;
   const thickness = 2 * halfThickness;
   if (shape === "circle") {
@@ -642,6 +649,13 @@ function crossSectionProps(shape, halfWidth, halfThickness) {
     const moi = momentOfInertia("rectangle", { base: width, height: thickness });
     return { area, momentOfInertia: moi.value ?? 0, approximation: false };
   }
+  if (shape === "hexagon") {
+    // Exact area for the flattened diamond; I approximated by the bounding
+    // rectangle, as for the diamond.
+    const area = (width * thickness / 2) * (1 + flat);
+    const moi = momentOfInertia("rectangle", { base: width, height: thickness });
+    return { area, momentOfInertia: moi.value ?? 0, approximation: true };
+  }
   if (shape === "diamond") {
     // Exact rhombus area (diagonals width × thickness).
     const area = (width * thickness) / 2;
@@ -653,7 +667,7 @@ function crossSectionProps(shape, halfWidth, halfThickness) {
 }
 
 // ── Archetype 1: bladed weapon (sword) ──────────────────────────────────────
-const SWORD_DEFAULTS = {
+export const SWORD_DEFAULTS = {
   bladeLength: 0.75,
   bladeBaseWidth: 0.045,
   bladeBaseThickness: 0.006,
@@ -666,7 +680,43 @@ const SWORD_DEFAULTS = {
   pommelRadius: 0.022,
   pommelLength: 0.025,
   hiltSides: 8,
+  // Blade profile. With bladeTipStart = 0 (the default) width and thickness
+  // taper linearly from the guard straight to the point, the original
+  // geometry. A real blade keeps most of its width and tapers in thickness
+  // (distal taper) until the point section: bladeTipStart (fraction of the
+  // blade length) is where that point section begins, and the two ratios
+  // are the width and thickness there as fractions of the base values.
+  bladeTipStart: 0,
+  bladeTipWidthRatio: 1,
+  bladeTipThicknessRatio: 1,
+  // Steel tang through the grip (rectangular), for the per-part mass
+  // breakdown only; it does not change the mesh, which is the outer surface.
+  tangWidth: 0.012,
+  tangThickness: 0.005,
+  // Blade section flat (fraction of the half-width). 0 = pure diamond, the
+  // original section; real blades are flattened diamonds or lenticular.
+  bladeFlat: 0,
 };
+
+/**
+ * Blade half-width and half-thickness at fraction t (0 = guard, 1 = point).
+ * Piecewise linear: base → (ratios × base) at bladeTipStart → 0 at the point.
+ */
+export function bladeProfileAt(p, t) {
+  const ts = p.bladeTipStart;
+  const hw0 = p.bladeBaseWidth / 2;
+  const ht0 = p.bladeBaseThickness / 2;
+  if (!(ts > 0)) return { halfWidth: hw0 * (1 - t), halfThickness: ht0 * (1 - t) };
+  if (t <= ts) {
+    const u = t / ts;
+    return {
+      halfWidth: hw0 * (1 - u * (1 - p.bladeTipWidthRatio)),
+      halfThickness: ht0 * (1 - u * (1 - p.bladeTipThicknessRatio)),
+    };
+  }
+  const u = (t - ts) / (1 - ts);
+  return { halfWidth: hw0 * p.bladeTipWidthRatio * (1 - u), halfThickness: ht0 * p.bladeTipThicknessRatio * (1 - u) };
+}
 
 function assertPositive(name, v) {
   if (!Number.isFinite(v) || v <= 0) {
@@ -758,6 +808,11 @@ export function generateSwordMesh(params = {}) {
   if (!Number.isInteger(p.hiltSides) || p.hiltSides < 3) {
     throw new Error(`parametric_mesh_bad_param: hiltSides must be an integer >= 3, got ${p.hiltSides}`);
   }
+  if (!(p.bladeTipStart >= 0 && p.bladeTipStart < 1)) throw new Error(`parametric_mesh_bad_param: bladeTipStart must be in [0, 1), got ${p.bladeTipStart}`);
+  if (!(p.bladeFlat >= 0 && p.bladeFlat < 1)) throw new Error(`parametric_mesh_bad_param: bladeFlat must be in [0, 1), got ${p.bladeFlat}`);
+  for (const k of ["bladeTipWidthRatio", "bladeTipThicknessRatio"]) {
+    if (!(p[k] > 0 && p[k] <= 1)) throw new Error(`parametric_mesh_bad_param: ${k} must be in (0, 1], got ${p[k]}`);
+  }
 
   // ── Section 1: pommel + grip (circle profile tapered tube) ──────────────
   const xPommel = 0;
@@ -780,13 +835,15 @@ export function generateSwordMesh(params = {}) {
   // ── Section 3: blade (diamond profile, linear taper to a point tip) ────
   const xBladeStart = xGuardEnd;
   const bladeStations = [];
-  for (let i = 0; i <= p.bladeSegments; i++) {
-    const t = i / p.bladeSegments;
-    bladeStations.push({
-      x: xBladeStart + t * p.bladeLength,
-      halfWidth: (p.bladeBaseWidth / 2) * (1 - t),
-      halfThickness: (p.bladeBaseThickness / 2) * (1 - t),
-    });
+  const ts = [];
+  for (let i = 0; i <= p.bladeSegments; i++) ts.push(i / p.bladeSegments);
+  // A station exactly where the point section starts, so the kink is in the mesh.
+  if (p.bladeTipStart > 0 && p.bladeTipStart < 1 && !ts.some((t) => Math.abs(t - p.bladeTipStart) < 1e-12)) {
+    ts.push(p.bladeTipStart);
+    ts.sort((a, b) => a - b);
+  }
+  for (const t of ts) {
+    bladeStations.push({ x: xBladeStart + t * p.bladeLength, ...bladeProfileAt(p, t) });
   }
 
   // ── Assemble: hilt(circle) → guard(rect) → blade(diamond, tapers to a
@@ -800,7 +857,9 @@ export function generateSwordMesh(params = {}) {
   const loft = loftSectionsWithBridges([
     { shape: "circle", stations: hiltStations, sides: p.hiltSides },
     { shape: "rect", stations: guardStations },
-    { shape: "diamond", stations: bladeStations, pointEnd: true },
+    p.bladeFlat > 0
+      ? { shape: "hexagon", flat: p.bladeFlat, stations: bladeStations, pointEnd: true }
+      : { shape: "diamond", stations: bladeStations, pointEnd: true },
   ]);
 
   // ── Beam abstraction co-product (Stage 4 input) ─────────────────────────
@@ -815,7 +874,9 @@ export function generateSwordMesh(params = {}) {
     beamStations.push({ s: st.x / totalLength, ...props });
   }
   for (const st of bladeStations) {
-    const props = crossSectionProps("diamond", st.halfWidth, st.halfThickness);
+    const props = p.bladeFlat > 0
+      ? crossSectionProps("hexagon", st.halfWidth, st.halfThickness, p.bladeFlat)
+      : crossSectionProps("diamond", st.halfWidth, st.halfThickness);
     beamStations.push({ s: st.x / totalLength, ...props });
   }
 

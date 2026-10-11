@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Activity, Boxes, ChevronLeft, Database, FolderKanban, Library, Loader2, MessageSquare, Plus, Search,
+  Activity, Boxes, ChevronLeft, Database, FolderKanban, Library, Loader2, MessageSquare, Pencil, Plus, Search, Trash2,
 } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import type { BeamDims } from '@/lib/conkay/workspace-commands';
@@ -110,38 +110,121 @@ function ProjectsPanel({ refreshKey }: { refreshKey: number }) {
   );
 }
 
+function refused(message: string): string {
+  if (/forbidden|status code 403|(^|\D)403(\D|$)/i.test(message)) return 'This model belongs to another account.';
+  return message;
+}
+
 function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenModel: Props['onOpenModel'] }) {
+  const [revision, setRevision] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [rowError, setRowError] = useState('');
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const { items, error } = useList<Part>(async () => {
     const r = await lensRun<{ parts: Part[] }>('engineering', 'listParts', {});
     return { items: r.data?.result?.parts ?? [], error: r.data?.ok === false ? r.data.error || 'Could not load models.' : '' };
-  }, [refreshKey]);
+  }, [refreshKey, revision]);
+
+  const reload = () => setRevision((n) => n + 1);
+
+  const rename = async (id: string) => {
+    const name = draft.trim();
+    if (!name) return;
+    setPendingId(id);
+    setRowError('');
+    const r = await lensRun<{ part: { name: string } }>('engineering', 'renamePart', { id, name });
+    setPendingId(null);
+    if (r.data?.ok === false || !r.data?.result?.part) {
+      setRowError(refused(r.data?.error || 'The part store refused the new name.'));
+      return;
+    }
+    setEditingId(null);
+    reload();
+  };
+
+  const remove = async (id: string) => {
+    setPendingId(id);
+    setRowError('');
+    const r = await lensRun<{ deleted: number }>('engineering', 'deletePart', { id });
+    setPendingId(null);
+    if (r.data?.ok === false || !r.data?.result || r.data.result.deleted !== 1) {
+      setRowError(refused(r.data?.error || 'The part store did not delete this model.'));
+      return;
+    }
+    if (editingId === id) setEditingId(null);
+    reload();
+  };
+
   return (
     <div className="space-y-1">
       <ListState items={items} error={error} empty="No saved models. Say “save model” or use Save model to keep the current beam." />
+      {rowError && <p className="px-1 text-[11px] text-rose-300">{rowError}</p>}
       {items?.map((p) => {
         const isBeam = p.kind === 'i-beam' && p.params;
         const mm = (v?: number) => Math.round((v ?? 0) * 1000 * 1000) / 1000;
+        const busy = pendingId === p.id;
         return (
-          <div key={p.id} className={`${itemCls} flex items-center justify-between gap-2 text-slate-200 hover:bg-white/5`}>
-            <span className="min-w-0">
-              <span className="block truncate">{p.name}</span>
-              <span className="text-[11px] text-slate-400">
-                {p.kind}{typeof p.geometry?.mass === 'number' ? ` · ${p.geometry.mass.toFixed(1)} kg` : ''} · {when(p.updatedAt)}
-              </span>
-            </span>
-            {isBeam ? (
-              <button
-                type="button"
-                className="shrink-0 rounded-md border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10"
-                onClick={() => onOpenModel(p.name, {
-                  length: mm(p.params!.length), height: mm(p.params!.height), flangeWidth: mm(p.params!.flangeWidth),
-                  flangeThickness: mm(p.params!.flangeThickness), webThickness: mm(p.params!.webThickness),
-                }, p.material ?? null)}
-              >
-                Open
-              </button>
+          <div key={p.id} className={`${itemCls} text-slate-200 hover:bg-white/5`}>
+            {editingId === p.id ? (
+              <form className="flex items-center gap-1" onSubmit={(e) => { e.preventDefault(); void rename(p.id); }}>
+                <input
+                  aria-label={`New name for ${p.name}`}
+                  value={draft}
+                  maxLength={80}
+                  onChange={(e) => setDraft(e.target.value.slice(0, 80))}
+                  className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-sm text-slate-100 focus:border-sky-400/50 focus:outline-none"
+                />
+                <button type="submit" disabled={busy || !draft.trim()} className="shrink-0 rounded-md bg-sky-500/80 px-2 py-1 text-[11px] text-white disabled:opacity-50">
+                  Save name
+                </button>
+                <button type="button" onClick={() => setEditingId(null)} className="shrink-0 text-[11px] text-slate-400 hover:text-slate-200">Cancel</button>
+              </form>
             ) : (
-              <Link href="/lenses/engineering" className="shrink-0 text-[11px] text-slate-400 underline hover:text-slate-200">Engineering</Link>
+              <span className="flex items-start justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="block truncate">{p.name}</span>
+                  <span className="text-[11px] text-slate-400">
+                    {p.kind}{typeof p.geometry?.mass === 'number' ? ` · ${p.geometry.mass.toFixed(1)} kg` : ''} · {when(p.updatedAt)}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    aria-label={`Rename ${p.name}`}
+                    title="Rename"
+                    disabled={busy}
+                    className="rounded-md p-1 text-slate-300 hover:bg-white/10 disabled:opacity-50"
+                    onClick={() => { setRowError(''); setEditingId(p.id); setDraft(p.name); }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${p.name}`}
+                    title="Delete"
+                    disabled={busy}
+                    className="rounded-md p-1 text-slate-300 hover:bg-rose-400/15 hover:text-rose-200 disabled:opacity-50"
+                    onClick={() => void remove(p.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  {isBeam ? (
+                    <button
+                      type="button"
+                      className="rounded-md border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10"
+                      onClick={() => onOpenModel(p.name, {
+                        length: mm(p.params!.length), height: mm(p.params!.height), flangeWidth: mm(p.params!.flangeWidth),
+                        flangeThickness: mm(p.params!.flangeThickness), webThickness: mm(p.params!.webThickness),
+                      }, p.material ?? null)}
+                    >
+                      Open
+                    </button>
+                  ) : (
+                    <Link href="/lenses/engineering" className="px-1 text-[11px] text-slate-400 underline hover:text-slate-200">Engineering</Link>
+                  )}
+                </span>
+              </span>
             )}
           </div>
         );

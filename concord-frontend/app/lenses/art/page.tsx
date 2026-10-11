@@ -58,6 +58,17 @@ const VIEWS: { id: ArtView; label: string; keys: string; title: string; hint: st
   { id: 'workbench', title: 'What the piece says', label: 'Workbench', keys: '8', hint: 'Style · score', icon: Wand2 },
 ];
 
+/** Macro dump stays off the studio unless a developer asks for it. */
+function artDevActionsEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_ART_DEV_ACTIONS === '1') return true;
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).get('dev') === '1';
+  } catch {
+    return false;
+  }
+}
+
 const PANELS: Record<ArtView, ComponentType> = {
   studio: StudioPanel,
   gallery: GalleryPanel,
@@ -161,7 +172,9 @@ export default function ArtLensPage() {
         </AnimatePresence>
 
         <RecentMineCard domain="art" limit={10} hideWhenEmpty className="mt-4" />
-        <AutoActionStrip domain="art" hideWhenEmpty className="mt-3" title="More actions" />
+        {artDevActionsEnabled() && (
+          <AutoActionStrip domain="art" hideWhenEmpty className="mt-3" title="More actions" />
+        )}
         <CrossLensRecentsPanel lensId="art" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
 
         <button

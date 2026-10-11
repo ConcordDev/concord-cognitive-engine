@@ -6,8 +6,10 @@
 
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ds } from '@/lib/design-system';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 export function ChatterPanel() {
+  if (!isCommunityRedditEnabled()) return null;
   return (
     <div className="space-y-3">
       <div>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { AskResultCard, formatAskResult } from '@/components/math/ask-result';
 
 type Panel = 'nlquery' | 'symbolic' | 'solve' | 'plot' | 'units' | 'numbertheory' | 'history';
 
@@ -95,10 +96,11 @@ function ErrBanner({ text }: { text: string }) {
     </div>
   );
 }
-function RunBtn({ busy, onClick, label }: { busy: boolean; onClick: () => void; label: string }) {
+function RunBtn({ busy, onClick, label, testId }: { busy: boolean; onClick: () => void; label: string; testId?: string }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       disabled={busy}
       className="flex items-center gap-1.5 rounded-lg bg-indigo-500/20 px-4 py-2 text-xs font-semibold text-indigo-200 border border-indigo-500/40 hover:bg-indigo-500/30 disabled:opacity-40"
@@ -133,7 +135,7 @@ function NaturalQueryPanel() {
     const r = await runMath('naturalQuery', { query });
     if (r.ok) {
       setRes(r.result);
-      recordHistory({ kind: 'naturalQuery', input: query, answer: r.result?.answer ?? null });
+      recordHistory({ kind: 'naturalQuery', input: query, answer: formatAskResult(r.result).primary });
     } else setErr(r.error || 'Could not interpret query.');
     setBusy(false);
   }, [query]);
@@ -151,7 +153,7 @@ function NaturalQueryPanel() {
           onKeyDown={(e) => e.key === 'Enter' && !busy && ask()}
           placeholder='e.g. "integral of x^2 from 0 to 5"'
         />
-        <RunBtn busy={busy} onClick={ask} label="Ask" />
+        <RunBtn busy={busy} onClick={ask} label="Ask" testId="cas-ask-submit" />
       </div>
       <div className="flex flex-wrap gap-1.5">
         {examples.map((ex) => (
@@ -166,26 +168,7 @@ function NaturalQueryPanel() {
         ))}
       </div>
       {err && <ErrBanner text={err} />}
-      {res && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">
-            {res.kind}
-          </div>
-          <div className="font-mono text-lg text-emerald-200 break-all">
-            {res.answer != null ? String(res.answer) : '—'}
-          </div>
-          {res.primeFactors && (
-            <div className="text-[11px] text-zinc-300 font-mono">
-              {res.number} = {res.primeFactors.join(' × ')}
-            </div>
-          )}
-          {res.bounds && (
-            <div className="text-[10px] text-zinc-400">
-              bounds [{res.bounds[0]}, {res.bounds[1]}] · {res.closedForm ? 'closed form' : 'numeric'}
-            </div>
-          )}
-        </div>
-      )}
+      {res && <AskResultCard result={res} />}
     </div>
   );
 }
@@ -603,7 +586,17 @@ function NumberTheoryPanel() {
 }
 
 /* ─── 7. CAS history (persistent per-user) ─── */
-interface HistoryEntry { kind?: string; input?: string; answer?: string | null; at?: string }
+interface HistoryEntry { kind?: string; input?: string; answer?: unknown; at?: string }
+
+function historyAnswerText(answer: unknown): string | null {
+  if (answer == null) return null;
+  if (typeof answer === 'string') {
+    if (!answer || answer.includes('[object Object]') || answer === 'undefined' || answer === 'NaN' || answer === '\u2014') return null;
+    return answer;
+  }
+  if (typeof answer === 'number') return Number.isFinite(answer) ? String(answer) : null;
+  return formatAskResult(answer).primary;
+}
 
 function HistoryPanel({ active }: { active: boolean }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
@@ -668,7 +661,9 @@ function HistoryPanel({ active }: { active: boolean }) {
         </div>
       ) : (
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
-          {entries.map((e, i) => (
+          {entries.map((e, i) => {
+            const answer = historyAnswerText(e.answer);
+            return (
             <div key={i} className="rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
               <div className="flex items-center justify-between">
                 <span className="rounded bg-indigo-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-indigo-300">
@@ -679,11 +674,12 @@ function HistoryPanel({ active }: { active: boolean }) {
                 )}
               </div>
               <div className="mt-1 font-mono text-[11px] text-zinc-300 truncate">{e.input}</div>
-              {e.answer != null && (
-                <div className="font-mono text-[11px] text-emerald-300 truncate">→ {e.answer}</div>
+              {answer != null && (
+                <div className="font-mono text-[11px] text-emerald-300 truncate">→ {answer}</div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
