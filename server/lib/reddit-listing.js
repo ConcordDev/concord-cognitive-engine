@@ -15,6 +15,19 @@ import { fetchJsonWithTimeout } from "./external-fetch.js";
 export const REDDIT_LISTING_ORIGIN = "https://www.reddit.com";
 export const REDDIT_USER_AGENT = "ConcordOS/1.0 (community-listing; +https://concord-os.org)";
 
+/**
+ * Same switch as the frontend panels (`NEXT_PUBLIC_COMMUNITY_REDDIT`).
+ * Off unless the value is "1" or "true". The route checks this before
+ * any Reddit fetch. The loader stays callable so its allowlist tests
+ * do not depend on the flag.
+ */
+export function communityRedditEnabled(env = process.env) {
+  const raw = env?.NEXT_PUBLIC_COMMUNITY_REDDIT;
+  if (typeof raw !== "string") return false;
+  const value = raw.trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
 const WINDOWS = new Set(["hour", "day", "week", "month", "year", "all"]);
 const SORTS = new Set(["top", "hot", "new", "rising"]);
 const MAX_ATTEMPTS = 3;

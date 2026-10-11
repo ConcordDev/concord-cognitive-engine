@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Scroll, Loader2, ExternalLink, MessageSquare, ArrowUp } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 interface Post {
   id: string;
@@ -29,6 +30,11 @@ const SUBS = [
 const WINDOWS = ['day', 'week', 'month'] as const;
 
 export function InsuranceChatter() {
+  if (!isCommunityRedditEnabled()) return null;
+  return <InsuranceChatterLive />;
+}
+
+function InsuranceChatterLive() {
   const [sub, setSub] = useState(SUBS[0].id);
   const [windowKey, setWindowKey] = useState<typeof WINDOWS[number]>('week');
 

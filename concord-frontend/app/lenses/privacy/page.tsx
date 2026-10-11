@@ -23,6 +23,7 @@ import { ConsentPanel } from '@/components/privacy/ConsentPanel';
 import { DpoStudioPanel } from '@/components/privacy/DpoStudioPanel';
 import { DataControlsPanel } from '@/components/privacy/DataControlsPanel';
 import { PrivacyFeed } from '@/components/privacy/PrivacyFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 
 type PrivacyView = 'consent' | 'dpo' | 'controls' | 'feed';
 
@@ -47,9 +48,10 @@ export default function PrivacySharingPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PrivacyView>('controls');
+  const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -81,7 +83,7 @@ export default function PrivacySharingPage() {
         crumb="Privacy"
         title={`Your controls${who ? `, ${who}` : ''}`}
         subtitle="Download what is yours. Requests, sharing and flows sit in the other tabs."
-        tabs={VIEWS}
+        tabs={navViews}
         activeTab={active}
         onTab={(id) => setActive(id as PrivacyView)}
         tabsLabel="Privacy views"

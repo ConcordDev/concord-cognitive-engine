@@ -9,6 +9,7 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { MasonStuff } from '@/components/masonry/MasonStuff';
 import { ContractorSuite } from '@/components/masonry/ContractorSuite';
 import { lensRun } from '@/lib/api/client';
@@ -139,10 +140,12 @@ export default function MasonryLensPage() {
           <MasonStuff />
         </section>
 
-        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
-          <h2 className="mb-3 text-sm font-semibold text-white">Industry chatter (Reddit)</h2>
-          <MasonryFeed />
-        </section>
+        <CommunityRedditSlot>
+          <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="mb-3 text-sm font-semibold text-white">Industry chatter (Reddit)</h2>
+            <MasonryFeed />
+          </section>
+        </CommunityRedditSlot>
 
         {realtimeData && (
           <RealtimeDataPanel domain="masonry" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />

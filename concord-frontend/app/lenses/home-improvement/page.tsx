@@ -19,6 +19,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { PhotoGallery } from '@/components/home-improvement/PhotoGallery';
 import { IdeaBoards } from '@/components/home-improvement/IdeaBoards';
 import { ContractorDirectory } from '@/components/home-improvement/ContractorDirectory';
@@ -76,6 +77,7 @@ function MaintenancePanel() {
   return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><MaintenanceReminders /></div>;
 }
 function DiscussionPanel() {
+  if (!isCommunityRedditEnabled()) return null;
   return <div className="rounded-2xl border border-white/10 bg-[#111] p-4"><HomeImprovementFeed /></div>;
 }
 
@@ -100,9 +102,10 @@ export default function HomeImprovementLensPage() {
   const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<HiView>('projects');
+  const navTabs = omitCommunityRedditViews(TABS, ['discussion']);
 
   useLensCommand(
-    TABS.map((t) => ({
+    navTabs.map((t) => ({
       id: `tab-${t.id}`,
       keys: t.keys,
       description: t.label,
@@ -129,7 +132,7 @@ export default function HomeImprovementLensPage() {
             <DTUExportButton domain="home-improvement" data={realtimeData || {}} compact />
           </>
         }
-        tabs={TABS}
+        tabs={navTabs}
         activeTab={active}
         onTab={(id) => setActive(id as HiView)}
         tabsLabel="Home improvement views"

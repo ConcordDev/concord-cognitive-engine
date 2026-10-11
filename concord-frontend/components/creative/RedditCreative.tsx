@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Sparkles, Loader2, ArrowUp, MessageSquare, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 interface RedditPost {
   id: string;
@@ -32,6 +33,11 @@ const SUBS = [
 ];
 
 export function RedditCreative() {
+  if (!isCommunityRedditEnabled()) return null;
+  return <RedditCreativeLive />;
+}
+
+function RedditCreativeLive() {
   const [sub, setSub] = useState(SUBS[0].id);
   const [sort, setSort] = useState<'top' | 'hot' | 'new'>('top');
 

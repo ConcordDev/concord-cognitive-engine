@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Scale, Loader2, ExternalLink, MessageSquare, ArrowUp, Award } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 interface Post {
   id: string;
@@ -28,6 +29,11 @@ const SUBS = [
 const WINDOWS = ['day', 'week', 'month'] as const;
 
 export function CmvFeed() {
+  if (!isCommunityRedditEnabled()) return null;
+  return <CmvFeedLive />;
+}
+
+function CmvFeedLive() {
   const [sub, setSub] = useState(SUBS[0].id);
   const [windowKey, setWindowKey] = useState<typeof WINDOWS[number]>('week');
 

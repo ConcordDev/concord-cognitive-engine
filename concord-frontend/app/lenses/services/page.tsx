@@ -27,6 +27,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { ServicesDeskPanel } from '@/components/services/ServicesDeskPanel';
 import { BookingSuite } from '@/components/services/BookingSuite';
 import { ServicesFeed } from '@/components/services/ServicesFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { RevenueRetentionPanel } from '@/components/services/RevenueRetentionPanel';
 import type { ServicesView } from '@/components/services/services-model';
 
@@ -46,6 +47,7 @@ function SuitePanel() {
 }
 
 function FeedPanel() {
+  if (!isCommunityRedditEnabled()) return null;
   return (
     <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
       <ServicesFeed />
@@ -76,9 +78,10 @@ export default function ServicesLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ServicesView>('desk');
+  const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -110,7 +113,7 @@ export default function ServicesLensPage() {
         crumb="Services"
         title={`Run your appointments${active === 'desk' && who ? `, ${who}` : ''}`}
         subtitle="Bookings, POS, staff and retention for a service business."
-        tabs={VIEWS}
+        tabs={navViews}
         activeTab={active}
         onTab={(id) => setActive(id as ServicesView)}
         actions={

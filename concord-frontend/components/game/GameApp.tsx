@@ -8,6 +8,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TriviaPanel } from '@/components/game/TriviaPanel';
 import { GameFeed } from '@/components/game/GameFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { HabitHub } from '@/components/game/HabitHub';
 import { XpActivityFeed } from '@/components/game/XpActivityFeed';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -223,7 +225,9 @@ export default function GameApp() {
 
       { id: 'tab-minigame', keys: 'm', description: 'Minigame', category: 'navigation', action: () => setActiveTab('minigame') },
       { id: 'tab-trivia', keys: 'v', description: 'Trivia', category: 'navigation', action: () => setActiveTab('trivia') },
-      { id: 'tab-feed', keys: 'f', description: 'Feed', category: 'navigation', action: () => setActiveTab('feed') },
+      ...(isCommunityRedditEnabled()
+        ? [{ id: 'tab-feed', keys: 'f', description: 'Feed', category: 'navigation' as const, action: () => setActiveTab('feed') }]
+        : []),
       { id: 'game-new-challenge', keys: 'n', description: 'New challenge', category: 'actions', action: () => { setActiveTab('quests'); setShowCreateChallenge(true); } },
 
     ],
@@ -963,7 +967,7 @@ export default function GameApp() {
 
       {/* Tabs */}
       <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Game views">
-        {TABS.map((tab) => {
+        {omitCommunityRedditViews(TABS, ['feed']).map((tab) => {
           const Icon = tab.icon;
           const on = activeTab === tab.id;
           return (
@@ -1612,9 +1616,11 @@ export default function GameApp() {
       )}
 
       {activeTab === 'feed' && (
-        <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <GameFeed />
-        </section>
+        <CommunityRedditSlot>
+          <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <GameFeed />
+          </section>
+        </CommunityRedditSlot>
       )}
 
       {realtimeData && (

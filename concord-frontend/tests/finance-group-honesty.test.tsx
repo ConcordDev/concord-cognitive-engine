@@ -5,8 +5,8 @@
  *  - Billing's header chip and subtitle must name one data tier. The balance
  *    and platform economy are the real economy ledger, so the chip is Real
  *    and the copy does not say Simulated.
- *  - /lenses/insurance shows "Community feed unavailable" when the Reddit
- *    fetch fails, without console.error, and keeps the workbench tools
+ *  - /lenses/insurance hides the Reddit community panel unless
+ *    NEXT_PUBLIC_COMMUNITY_REDDIT is on, and keeps the workbench tools
  *    behind one Tools menu.
  */
 import React from 'react';
@@ -139,11 +139,16 @@ describe('Finance group honesty — insurance', () => {
   afterEach(() => {
     errorSpy.mockRestore();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
-  it('shows Community feed unavailable with no console error, and one Tools menu', async () => {
+  it('hides the Reddit community panel and keeps one Tools menu', async () => {
     renderInsurance();
-    await waitFor(() => expect(screen.getByText('Community feed unavailable')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Compare quotes' })).toBeInTheDocument());
+    expect(screen.queryByText('Community feed unavailable')).toBeNull();
+    expect(screen.queryByText('Community discussion (Reddit)')).toBeNull();
+    const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map((call) => String(call[0]));
+    expect(urls.some((url) => url.includes('/api/community/reddit-listing') || url.includes('reddit.com'))).toBe(false);
     expect(errorSpy).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Compare quotes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tools' })).toBeInTheDocument();

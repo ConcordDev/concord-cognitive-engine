@@ -17,6 +17,8 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeldingFeed } from '@/components/welding/WeldingFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { WelderProcedures } from '@/components/welding/WelderProcedures';
 import { WeldingOperations } from '@/components/welding/WeldingOperations';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -36,8 +38,9 @@ export default function WeldingLensPage() {
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<WeldingView>('shop');
 
+  const navViews = omitCommunityRedditViews(VIEWS, ['community']);
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `welding-${v.id}`,
       keys: v.keys,
       description: `${v.label}: ${v.hint}`,
@@ -58,7 +61,7 @@ export default function WeldingLensPage() {
         crumb="Welding"
         title={`${current.title}${view === 'shop' && who ? `, ${who}` : ''}`}
         subtitle="Field-service operations, welding-engineering calculators, WPS and certification tracking, and real-world welding chatter."
-        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        tabs={navViews.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as WeldingView)}
         tabsLabel="Welding views"
@@ -72,9 +75,11 @@ export default function WeldingLensPage() {
           )}
           {view === 'calculators' && <WelderProcedures />}
           {view === 'community' && (
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <WeldingFeed />
-            </section>
+            <CommunityRedditSlot>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <WeldingFeed />
+              </section>
+            </CommunityRedditSlot>
           )}
         </div>
       </NorthStarFrame>
