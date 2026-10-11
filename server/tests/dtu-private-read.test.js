@@ -358,9 +358,9 @@ async function startHttp({ STATE, db, runMacro, makeCtx }) {
     next();
   });
   const passthrough = () => (_req, _res, next) => next();
-  // helpers recent/search are literal paths. Mount them before the
-  // /api/dtus/:id param route so this app actually reaches those handlers
-  // (in production that param route is registered first and shadows them).
+  // recent/search/shadow are registered in routes/dtus.js before
+  // /api/dtus/:id. Production mount order is pinned by
+  // tests/dtu-literal-get-order.test.js.
   registerHelpersExtendedRoutes(app, {
     db,
     STATE,

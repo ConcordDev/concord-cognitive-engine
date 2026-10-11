@@ -34,6 +34,10 @@ export interface WorkspaceCommand {
   keep: boolean;
   /** One plain-language line per recognised edit, in the order given. */
   changes: string[];
+  /** Number+unit tokens in the prompt that did not change the study. */
+  unapplied?: string[];
+  /** Sentence the conversation shows when `unapplied` is non-empty. */
+  unappliedNote?: string;
 }
 
 export const DIM_LABELS: Record<keyof BeamDims, { symbol: string; name: string }> = {
@@ -60,12 +64,14 @@ const DIM_PATTERNS: Array<{ key: keyof BeamDims; re: string }> = [
 ];
 
 const NUM = '(-?\\d+(?:\\.\\d+)?)';
-const LEN_UNIT = '(mm|cm|m|in|inch|inches|")?';
+const LEN_UNIT = '(mm|cm|m|ft|feet|foot|in|inch|inches|")?';
+const G_N_PER_KG = 9.80665;
 
 function toMm(value: number, unit: string | undefined): number {
   switch ((unit || 'mm').toLowerCase()) {
     case 'cm': return value * 10;
     case 'm': return value * 1000;
+    case 'ft': case 'feet': case 'foot': return value * 304.8;
     case 'in': case 'inch': case 'inches': case '"': return value * 25.4;
     default: return value;
   }
@@ -77,6 +83,8 @@ function toN(value: number, unit: string): number {
     case 'mn': return value * 1e6;
     case 'lbf': case 'lb': case 'lbs': return value * 4.4482216;
     case 'kip': case 'kips': return value * 4448.2216;
+    case 'kg': return value * G_N_PER_KG;
+    case 't': case 'ton': case 'tons': case 'tonne': case 'tonnes': return value * 1000 * G_N_PER_KG;
     default: return value;
   }
 }
@@ -104,6 +112,10 @@ export function parseWorkspaceCommand(
   if (!src.trim()) return null;
   const lower = src.toLowerCase();
   const cmd: WorkspaceCommand = { dims: {}, run: false, save: false, keep: false, changes: [] };
+  const consumed: Array<[number, number]> = [];
+  const mark = (m: RegExpExecArray | null) => {
+    if (m) consumed.push([m.index, m.index + m[0].length]);
+  };
 
   for (const { key, re } of DIM_PATTERNS) {
     if (cmd.dims[key] !== undefined) continue;
@@ -113,6 +125,7 @@ export function parseWorkspaceCommand(
     const rel = new RegExp(`(increase|raise|grow|thicken|widen|lengthen|reduce|decrease|lower|shrink|thin|cut|shorten)\\s+(?:the\\s+)?(?:${re})\\s+by\\s+${NUM}\\s*${LEN_UNIT}(?![a-z])`, 'i');
     const r = rel.exec(src);
     if (r) {
+      mark(r);
       const sign = /increase|raise|grow|thicken|widen|lengthen/i.test(r[1]) ? 1 : -1;
       const next = current[key] + sign * toMm(Number(r[2]), r[3]);
       cmd.dims[key] = round(next);
@@ -121,6 +134,7 @@ export function parseWorkspaceCommand(
     }
     const a = abs.exec(src);
     if (a) {
+      mark(a);
       const v = toMm(Number(a[1]), a[2]);
       cmd.dims[key] = round(v);
       // "Keep flanges at 15 mm" restates a value: recorded, not reported as an edit.
@@ -128,9 +142,22 @@ export function parseWorkspaceCommand(
     }
   }
 
-  const load = /(?:load|force|p)\s*(?:to|=|:|of|at|is)?\s*(\d+(?:\.\d+)?)\s*(kn|mn|n|lbf|lbs|lb|kips|kip)(?![a-z])/i.exec(src)
-    || /(?:^|\s)(\d+(?:\.\d+)?)\s*(kn|mn|lbf|kips|kip)(?![a-z])/i.exec(src);
+  // "4 m span" / "4 m long" / "12 ft span" — the number comes before the word.
+  if (cmd.dims.length === undefined) {
+    const trail = new RegExp(`${NUM}\\s*(mm|cm|m|ft|feet|foot|in|inch|inches|")\\s*(?:span|long|length)\\b`, 'i');
+    const t = trail.exec(src);
+    if (t) {
+      mark(t);
+      const v = toMm(Number(t[1]), t[2]);
+      cmd.dims.length = round(v);
+      if (round(v) !== current.length) cmd.changes.push(`${DIM_LABELS.length.symbol} = ${formatMm(v)}`);
+    }
+  }
+
+  const load = /(?:load|force|p|carrying|carries|holds|holding)\s*(?:to|=|:|of|at|is|a)?\s*(\d+(?:\.\d+)?)\s*(tonnes|tonne|tons|ton|kn|mn|lbf|lbs|kips|kip|kg|lb|n|t)(?![a-z])/i.exec(src)
+    || /(?:^|\s)(\d+(?:\.\d+)?)\s*(tonnes|tonne|kn|mn|lbf|kips|kip|kg)(?![a-z])/i.exec(src);
   if (load) {
+    mark(load);
     cmd.loadN = round(toN(Number(load[1]), load[2]));
     cmd.changes.push(`load = ${formatForce(cmd.loadN)}`);
   }
@@ -151,7 +178,33 @@ export function parseWorkspaceCommand(
   cmd.keep = /\b(?:keep|save|cite|record)\b[^.]*\bdtu\b/i.test(src);
 
   const anything = cmd.changes.length > 0 || Object.keys(cmd.dims).length > 0 || cmd.run || cmd.save || cmd.keep;
-  return anything ? cmd : null;
+  if (!anything) return null;
+
+  const unapplied: string[] = [];
+  const tokenRe = /(\d+(?:\.\d+)?)\s*(mm|cm|m|ft|feet|foot|in|inch|inches|tonnes|tonne|tons|ton|kn|mn|lbf|lbs|kips|kip|kg|lb|n|t)(?![a-z])/gi;
+  let token: RegExpExecArray | null;
+  while ((token = tokenRe.exec(src)) !== null) {
+    const a = token.index;
+    const b = a + token[0].length;
+    const used = consumed.some(([s, e]) => a < e && b > s);
+    if (!used) unapplied.push(token[0].trim());
+  }
+  if (unapplied.length) {
+    cmd.unapplied = unapplied;
+    const list = unapplied.join(', ');
+    cmd.unappliedNote = unapplied.length === 1
+      ? `Not applied: ${list}. That number was in the prompt and did not change the study.`
+      : `Not applied: ${list}. Those numbers were in the prompt and did not change the study.`;
+  }
+  return cmd;
+}
+
+/** Conversation lead: applied edits, then any number the parser left unused. */
+export function formatWorkspaceLead(cmd: WorkspaceCommand): string {
+  const parts: string[] = [];
+  if (cmd.changes.length) parts.push(`Update applied: ${cmd.changes.join(', ')}.`);
+  if (cmd.unappliedNote) parts.push(cmd.unappliedNote);
+  return parts.length ? `${parts.join(' ')} ` : '';
 }
 
 function materialTokens(m: MaterialOption): string[] {
@@ -166,7 +219,7 @@ function materialTokens(m: MaterialOption): string[] {
  * a grade.
  */
 function matchMaterial(lower: string, materials: MaterialOption[]): MaterialOption | null {
-  const text = lower.replace(/\d+(?:\.\d+)?\s*(?:mm|cm|m|in|kn|mn|n|lbf|lbs|lb|kips|kip|mpa|gpa|ksi)(?![a-z])/g, ' ');
+  const text = lower.replace(/\d+(?:\.\d+)?\s*(?:mm|cm|m|ft|feet|foot|in|tonnes|tonne|tons|ton|kn|mn|n|lbf|lbs|lb|kips|kip|kg|t|mpa|gpa|ksi)(?![a-z])/g, ' ');
   const owners = new Map<string, Set<string>>();
   for (const m of materials) {
     for (const t of new Set(materialTokens(m))) {

@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { ReflectionSection } from '@/components/reflection/ReflectionSection';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -176,12 +177,14 @@ export default function ReflectionLensPage() {
         {mode === 'journal' && (
           <div className="space-y-6">
             <ReflectionSection />
-            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
-                <Users className="w-4 h-4 text-violet-400" /> Community
-              </h2>
-              <ReflectionFeed />
-            </section>
+            <CommunityRedditSlot>
+              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                  <Users className="w-4 h-4 text-violet-400" /> Community
+                </h2>
+                <ReflectionFeed />
+              </section>
+            </CommunityRedditSlot>
           </div>
         )}
 

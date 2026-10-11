@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, CheckCircle2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { goalKeepRecord } from '@/components/lens/recordKeep';
 import { type Goal, GOALS_FALLBACK, daysUntil } from '@/components/goals/goals-model';
 
 /** Dispatched by the Goals page chips; detail { weekly?: boolean }. */
@@ -165,6 +167,7 @@ export function GoalsListPanel() {
         const bar = i % 2 === 1 ? 'bg-teal-400' : 'bg-violet-400';
         const pctCls = i % 2 === 1 ? 'text-teal-400' : 'text-violet-400';
         const dLeft = daysUntil(goal.targetDate);
+        const kept = goalKeepRecord(goal);
         return (
           <div key={goal.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02]">
             <button
@@ -208,6 +211,9 @@ export function GoalsListPanel() {
                         Mark complete
                       </button>
                     )}
+                    <div className="pt-3">
+                      <KeepRecordActions key={kept?.body} record={kept} />
+                    </div>
                   </div>
                 </motion.div>
               )}

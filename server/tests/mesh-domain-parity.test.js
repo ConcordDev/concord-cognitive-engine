@@ -71,7 +71,7 @@ describe("mesh topology + node management", () => {
 });
 
 describe("mesh direct / group messaging", () => {
-  it("sendMessage to an online node delivers; conversation + markRead work", () => {
+  it("sendMessage to an online node is recorded; conversation + markRead work", () => {
     const ctx = freshCtx();
     const nodeId = call("addNode", ctx, { name: "Bob" }).result.node.id;
     const sent = call("sendMessage", ctx, { to: nodeId, body: "hello over mesh" });
@@ -88,7 +88,7 @@ describe("mesh direct / group messaging", () => {
     assert.equal(call("sendMessage", freshCtx(), { to: "broadcast", body: "" }).ok, false);
   });
 
-  it("broadcast messages are delivered without a node", () => {
+  it("broadcast messages are recorded without a node", () => {
     const r = call("sendMessage", freshCtx(), { to: "broadcast", body: "all stations" });
     assert.equal(r.ok, true);
     assert.equal(r.result.message.kind, "broadcast");

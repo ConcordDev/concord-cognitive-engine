@@ -599,16 +599,16 @@ export function MusicWorkspace() {
 
   // ---- Playlist creation ----
   const handleCreatePlaylist = useCallback(
-    (visionResult?: { analysis: string; suggestedTags?: string[] }) => {
-      const baseName = visionResult?.suggestedTags?.length
-        ? `${visionResult.suggestedTags.slice(0, 3).join(' / ')} Playlist`
-        : `New Playlist ${playlists.length + 1}`;
+    () => {
+      const creatorName = authUser?.username
+        ? titleCaseDisplayName(authUser.username)
+        : (authUser ? 'You' : '');
       const playlistData: Partial<Playlist> = {
-        name: baseName,
-        description: visionResult?.analysis ?? '',
+        name: `New Playlist ${playlists.length + 1}`,
+        description: '',
         coverArtUrl: null,
-        creatorId: 'user-1',
-        creatorName: 'Sovereign',
+        creatorId: authUser?.id || '',
+        creatorName,
         isCollaborative: false,
         isPublic: true,
         tracks: [],
@@ -617,15 +617,12 @@ export function MusicWorkspace() {
         updatedAt: new Date().toISOString(),
       };
       const data: Record<string, unknown> = { ...playlistData };
-      if (visionResult?.suggestedTags?.length) {
-        data.tags = visionResult.suggestedTags;
-      }
       createPlaylistItem({ title: playlistData.name!, data }).catch((err) => {
         console.error('Failed to create playlist:', err instanceof Error ? err.message : err);
         showToast('error', 'Failed to create playlist');
       });
     },
-    [playlists.length, createPlaylistItem]
+    [playlists.length, createPlaylistItem, authUser]
   );
 
   // ---- Royalty preview ----
@@ -675,39 +672,19 @@ export function MusicWorkspace() {
           new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
         );
 
-        setUploadProgress({ stage: 'uploading', progress: 30, audioAnalysis: null, error: null });
-        const mediaResp = await apiClient.post('/api/media/upload', {
-          title: trackTitle,
-          mediaType: 'audio',
-          mimeType: file.type || 'audio/mpeg',
-          fileSize: file.size,
-          originalFilename: file.name,
-          duration: (uploadData?.duration as number) || 240,
-          tags: (uploadData?.tags as string[]) || [],
-          data: base64Data,
-        });
-
-        setUploadProgress({ stage: 'analyzing', progress: 60, audioAnalysis: null, error: null });
-        const mediaId =
-          mediaResp.data?.mediaDTU?.id || mediaResp.data?.id || mediaResp.data?.media?.id;
-
-        // Real waveform + duration/sampleRate/channels — decoded from the
-        // actual uploaded audio via the Web Audio API (same PCM decode path
-        // as the Studio AudioEditor), not fabricated. bpm/key/loudnessLUFS/
-        // spectralCentroid/onsetDensity below are still honest-unknown
-        // placeholders — real beat/key/loudness detection needs a DSP or ML
-        // pass this client-side decode doesn't do; a future pass should wire
-        // those to a real analysis endpoint rather than compute a
-        // plausible-looking guess.
+        // Decode before the upload POST so the media DTU stores the real
+        // duration. The paywall slices non-WAV previews by this duration;
+        // a placeholder would mis-size that window.
+        setUploadProgress({ stage: 'analyzing', progress: 20, audioAnalysis: null, error: null });
         let realWaveformPeaks: number[] = [];
-        let realDuration = (uploadData?.duration as number) || 240;
+        let realDuration = (uploadData?.duration as number) || 0;
         let realSampleRate = 44100;
         let realChannels = 2;
         try {
           const { decodeBlobToDAWBuffer } = await import('@/lib/daw/audio-buffer-edit');
           const decoded = await decodeBlobToDAWBuffer(file, trackTitle);
           realWaveformPeaks = decoded.waveformPeaks;
-          realDuration = decoded.duration;
+          if (decoded.duration > 0) realDuration = decoded.duration;
           realSampleRate = decoded.sampleRate;
           realChannels = decoded.channels;
         } catch {
@@ -715,6 +692,34 @@ export function MusicWorkspace() {
           // degrade to an empty waveform (never a fabricated one) rather
           // than block the upload.
         }
+
+        const uploadTiers = (uploadData?.tiers as MusicTrack['tiers']) || [
+          { tier: 'listen' as const, enabled: true, price: 0, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
+          { tier: 'create' as const, enabled: true, price: 9.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
+          { tier: 'commercial' as const, enabled: true, price: 99.99, currency: 'USD', maxLicenses: null, licensesIssued: 0 },
+        ];
+
+        const storedDuration = realDuration || (uploadData?.duration as number) || 240;
+        setUploadProgress({ stage: 'uploading', progress: 30, audioAnalysis: null, error: null });
+        const mediaResp = await apiClient.post('/api/media/upload', {
+          title: trackTitle,
+          mediaType: 'audio',
+          mimeType: file.type || 'audio/mpeg',
+          fileSize: file.size,
+          originalFilename: file.name,
+          duration: storedDuration,
+          previewStart: Number(uploadData?.previewStart) || 0,
+          previewDuration: uploadData?.previewDuration == null
+            ? 30
+            : Math.max(0, Number(uploadData.previewDuration) || 0),
+          tiers: uploadTiers,
+          tags: (uploadData?.tags as string[]) || [],
+          data: base64Data,
+        });
+
+        setUploadProgress({ stage: 'analyzing', progress: 60, audioAnalysis: null, error: null });
+        const mediaId =
+          mediaResp.data?.mediaDTU?.id || mediaResp.data?.id || mediaResp.data?.media?.id;
 
         setUploadProgress({
           stage: 'processing',
@@ -727,7 +732,7 @@ export function MusicWorkspace() {
             onsetDensity: 4.2,
             waveformPeaks: realWaveformPeaks,
             chromaprintHash: mediaId || 'abc123',
-            duration: realDuration,
+            duration: storedDuration,
             sampleRate: realSampleRate,
             bitDepth: 24,
             channels: realChannels,
@@ -746,7 +751,7 @@ export function MusicWorkspace() {
           coverArtUrl: null,
           audioUrl: mediaId ? `/api/media/${mediaId}/stream` : '',
           previewUrl: null,
-          duration: realDuration,
+          duration: storedDuration,
           trackNumber: null,
           genre: (uploadData?.genre as string) || 'electronic',
           subGenre: (uploadData?.subGenre as string) || null,
@@ -762,32 +767,7 @@ export function MusicWorkspace() {
           spectralCentroid: 2200,
           onsetDensity: 4.2,
           waveformPeaks: realWaveformPeaks,
-          tiers: (uploadData?.tiers as MusicTrack['tiers']) || [
-            {
-              tier: 'listen',
-              enabled: true,
-              price: 0,
-              currency: 'USD',
-              maxLicenses: null,
-              licensesIssued: 0,
-            },
-            {
-              tier: 'create',
-              enabled: true,
-              price: 9.99,
-              currency: 'USD',
-              maxLicenses: null,
-              licensesIssued: 0,
-            },
-            {
-              tier: 'commercial',
-              enabled: true,
-              price: 99.99,
-              currency: 'USD',
-              maxLicenses: null,
-              licensesIssued: 0,
-            },
-          ],
+          tiers: uploadTiers,
           playCount: 0,
           purchaseCount: 0,
           remixCount: 0,
@@ -888,9 +868,6 @@ export function MusicWorkspace() {
             <VisionAnalyzeButton
               domain="music"
               prompt="Analyze this image related to music (album cover, concert photo, instrument, etc.). Describe what you see and suggest relevant genre tags, mood, and metadata for music cataloging."
-              onResult={(res) => {
-                handleCreatePlaylist(res);
-              }}
             />
           </div>
         </div>

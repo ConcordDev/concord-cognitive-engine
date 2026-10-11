@@ -11,6 +11,19 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useSocket } from '@/hooks/useSocket';
+import { anonEncryptionNotice, claimEndToEnd } from '@/lib/anon/encryption-copy';
+import {
+  buildAnonSendPayload,
+  buildIdentityParams,
+  isAnonClientE2EFlagOn,
+  loadOrCreateClientKey,
+  openSealed,
+  createClientKeyPair,
+  writeStoredClientKey,
+  sealEnvelopes,
+  safetyNumberGroups,
+  type ClientKeyMaterial,
+} from '@/lib/anon/client-e2e';
 
 // ── Wire shapes ──
 interface Identity {
@@ -18,6 +31,7 @@ interface Identity {
   alias: string;
   publicKey: string;
   fingerprint: string;
+  keyCustody?: 'client' | 'server';
   createdAt: number;
   rotatedAt: number | null;
   verifiedPeerCount: number;
@@ -26,18 +40,26 @@ interface Peer {
   anonId: string;
   alias: string;
   fingerprint: string;
+  publicKey?: string;
+  keyCustody?: 'client' | 'server';
   verified: boolean;
 }
 interface ConversationSummary {
   conversationId: string;
   kind: 'direct' | 'group';
   title: string | null;
-  members: { anonId: string; alias: string }[];
+  members: MemberRef[];
   memberCount: number;
   disappearDefaultSec: number;
   messageCount: number;
   lastActivityAt: number;
   lastSenderAnonId: string | null;
+}
+interface MemberRef {
+  anonId: string;
+  alias: string;
+  publicKey?: string;
+  keyCustody?: 'client' | 'server';
 }
 interface DecryptedMessage {
   id: string;
@@ -49,12 +71,15 @@ interface DecryptedMessage {
   decryptError: string | null;
   sentAt: number;
   expiresAt: number | null;
+  envelope?: { ciphertext: string; iv: string; tag: string } | null;
+  senderPublicKey?: string;
+  clientDecrypt?: boolean;
 }
 interface ConversationView {
   conversationId: string;
   kind: 'direct' | 'group';
   title: string | null;
-  members: { anonId: string; alias: string }[];
+  members: MemberRef[];
   disappearDefaultSec: number;
   messages: DecryptedMessage[];
   messageCount: number;
@@ -92,6 +117,12 @@ export function AnonMessenger() {
   const [rotating, setRotating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // True only when this browser holds the private key the server has the
+  // matching public key for. Server-held identities stay false so existing
+  // conversations keep using the plaintext send path.
+  const [clientHeld, setClientHeld] = useState(false);
+  const [keyMismatch, setKeyMismatch] = useState(false);
+  const localKeyRef = useRef<ClientKeyMaterial | null>(null);
 
   // Composer flags
   const [sealedSender, setSealedSender] = useState(false);
@@ -117,8 +148,27 @@ export function AnonMessenger() {
 
   // ── Loaders ──
   const loadIdentity = useCallback(async () => {
-    const r = await lensRun('anon', 'identity', {});
-    if (r.data?.ok) setIdentity(r.data.result as Identity);
+    const flagOn = isAnonClientE2EFlagOn();
+    let key: ClientKeyMaterial | null = null;
+    if (flagOn) {
+      try {
+        key = await loadOrCreateClientKey();
+        localKeyRef.current = key;
+      } catch {
+        // This browser cannot mint an X25519 key. Stay on the server-held
+        // path instead of failing the whole messenger.
+        key = null;
+        localKeyRef.current = null;
+      }
+    }
+    const r = await lensRun('anon', 'identity', buildIdentityParams(flagOn && !!key, key));
+    if (r.data?.ok) {
+      const ident = r.data.result as Identity;
+      setIdentity(ident);
+      const match = !!key && key.publicKeySpkiB64 === ident.publicKey;
+      setClientHeld(flagOn && ident.keyCustody === 'client' && match);
+      setKeyMismatch(flagOn && ident.keyCustody === 'client' && !match);
+    }
   }, []);
 
   const loadDirectory = useCallback(async () => {
@@ -131,15 +181,30 @@ export function AnonMessenger() {
     if (r.data?.ok) setConversations((r.data.result as any).conversations || []);
   }, []);
 
+  const decryptView = useCallback(async (view: ConversationView): Promise<ConversationView> => {
+    const key = localKeyRef.current;
+    if (!key) return view;
+    const messages = await Promise.all(view.messages.map(async (m) => {
+      if (m.content || !m.envelope || !m.senderPublicKey) return m;
+      try {
+        const content = await openSealed(key.privateKeyPkcs8B64, m.senderPublicKey, m.envelope);
+        return { ...m, content, decryptError: null };
+      } catch {
+        return { ...m, decryptError: 'could not decrypt' };
+      }
+    }));
+    return { ...view, messages };
+  }, []);
+
   const openConversation = useCallback(async (cid: string) => {
     setActiveId(cid);
     const r = await lensRun('anon', 'readConversation', { conversationId: cid });
     if (r.data?.ok) {
-      setActiveView(r.data.result as ConversationView);
+      setActiveView(await decryptView(r.data.result as ConversationView));
     } else {
       setErr(r.data?.error || 'Failed to open conversation');
     }
-  }, []);
+  }, [decryptView]);
 
   // Initial load.
   useEffect(() => {
@@ -177,7 +242,17 @@ export function AnonMessenger() {
   const rotateIdentity = async () => {
     setRotating(true);
     setErr(null);
-    const r = await lensRun('anon', 'rotateIdentity', {});
+    // Server-held identities keep the historical server rotation so an
+    // existing conversation's key is not swapped out from under it unless
+    // this browser already holds (or lost) a client key.
+    let params: Record<string, unknown> = {};
+    if (isAnonClientE2EFlagOn() && (clientHeld || keyMismatch)) {
+      const fresh = await createClientKeyPair();
+      writeStoredClientKey(fresh);
+      localKeyRef.current = fresh;
+      params = { publicKey: fresh.publicKeySpkiB64 };
+    }
+    const r = await lensRun('anon', 'rotateIdentity', params);
     if (r.data?.ok) {
       await loadIdentity();
       await loadConversations();
@@ -189,23 +264,49 @@ export function AnonMessenger() {
 
   const sendMessage = async () => {
     if (!draft.trim() || !activeId) return;
+    if (keyMismatch) {
+      setErr('This browser does not hold the private key for this pseudonym.');
+      return;
+    }
     setSending(true);
     setErr(null);
-    const params: Record<string, unknown> = {
-      conversationId: activeId,
-      content: draft.trim(),
-      sealedSender,
-    };
-    if (ephemeralOverride != null) params.ephemeralSec = ephemeralOverride;
-    const r = await lensRun('anon', 'sendMessage', params);
-    if (r.data?.ok) {
-      setDraft('');
-      await openConversation(activeId);
-      await loadConversations();
-    } else {
-      setErr(r.data?.error || 'Send failed');
+    const text = draft.trim();
+    try {
+      let envelopes: Record<string, { ciphertext: string; iv: string; tag: string }> | null = null;
+      if (clientHeld) {
+        const key = localKeyRef.current;
+        const members = activeView?.members || [];
+        if (!key || members.some((m) => !m.publicKey)) {
+          setErr('Missing device key or peer public key.');
+          return;
+        }
+        envelopes = await sealEnvelopes(
+          key.privateKeyPkcs8B64,
+          members.map((m) => ({ anonId: m.anonId, publicKey: m.publicKey as string })),
+          text,
+        );
+      }
+      const params = buildAnonSendPayload({
+        clientHeld,
+        conversationId: activeId,
+        draft: text,
+        sealedSender,
+        ephemeralSec: ephemeralOverride,
+        envelopes,
+      });
+      const r = await lensRun('anon', 'sendMessage', params);
+      if (r.data?.ok) {
+        setDraft('');
+        await openConversation(activeId);
+        await loadConversations();
+      } else {
+        setErr(r.data?.error || 'Send failed');
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Send failed');
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const createConversation = async () => {
@@ -255,12 +356,22 @@ export function AnonMessenger() {
   };
 
   const openSafety = async (peerAnonId: string) => {
+    const peer = peers.find((p) => p.anonId === peerAnonId);
     const r = await lensRun('anon', 'safetyNumber', { peerAnonId });
-    if (r.data?.ok) {
-      setSafety(r.data.result as any);
-    } else {
+    if (!r.data?.ok && !(clientHeld && identity?.publicKey && peer?.publicKey)) {
       setErr(r.data?.error || 'Could not compute safety number');
+      return;
     }
+    let groups: string[] = r.data?.ok ? (r.data.result as any).safetyNumber : [];
+    if (clientHeld && identity?.publicKey && peer?.publicKey) {
+      groups = await safetyNumberGroups(identity.publicKey, peer.publicKey);
+    }
+    setSafety({
+      peerAnonId,
+      peerAlias: peer?.alias || (r.data?.ok ? (r.data.result as any).peerAlias : peerAnonId),
+      safetyNumber: groups,
+      verified: r.data?.ok ? !!(r.data.result as any).verified : false,
+    });
   };
 
   const verifyPeer = async (peerAnonId: string, verified: boolean) => {
@@ -277,8 +388,23 @@ export function AnonMessenger() {
   const peerName = (anonId: string) =>
     peers.find((p) => p.anonId === anonId)?.alias || anonId.slice(0, 12);
 
+  const e2eClaim = claimEndToEnd({
+    flagOn: isAnonClientE2EFlagOn(),
+    myKeyCustody: clientHeld ? 'client' : 'server',
+    members: activeView?.members || [],
+  });
+  const notice = anonEncryptionNotice(e2eClaim);
+  const safetyPeer = safety ? peers.find((p) => p.anonId === safety.peerAnonId) : undefined;
+  const safetyDeviceHeld = clientHeld && safetyPeer?.keyCustody === 'client';
+
   return (
     <div className="space-y-4">
+      {keyMismatch && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          This browser does not hold the private key for this pseudonym. Rotate to mint a new device key. Older messages stay unreadable.
+        </p>
+      )}
+
       {err && (
         <div className="flex items-center justify-between rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
           <span>{err}</span>
@@ -414,10 +540,10 @@ export function AnonMessenger() {
         {/* Active conversation */}
         <div className="lg:col-span-2">
           {!activeView ? (
-            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 text-gray-400">
+            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 px-6 text-center text-gray-400">
               <Lock className="h-8 w-8" />
               <p className="text-sm">Select or start a conversation</p>
-              <p className="text-xs">Messages are X25519 + AES-256-GCM end-to-end encrypted</p>
+              <p className="max-w-md text-xs">{notice.body}</p>
             </div>
           ) : (
             <div className="flex h-full min-h-[24rem] flex-col rounded-xl border border-zinc-800 bg-zinc-950/60">
@@ -435,9 +561,15 @@ export function AnonMessenger() {
                       .map((m) => m.alias)
                       .join(', ')}
                 </span>
-                <span className="flex items-center gap-1 rounded bg-neon-green/10 px-1.5 py-0.5 text-[10px] text-neon-green">
-                  <Lock className="h-2.5 w-2.5" /> E2E
-                </span>
+                {notice.badge ? (
+                  <span title={notice.body} className="flex items-center gap-1 rounded bg-neon-green/10 px-1.5 py-0.5 text-[10px] text-neon-green">
+                    <Lock className="h-2.5 w-2.5" /> {notice.badge}
+                  </span>
+                ) : (
+                  <span title={notice.body} className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200/90">
+                    <Lock className="h-2.5 w-2.5" /> Server-readable
+                  </span>
+                )}
                 <div className="ml-auto flex items-center gap-2">
                   {/* Disappearing-message default */}
                   <div className="flex items-center gap-1">
@@ -471,9 +603,10 @@ export function AnonMessenger() {
               <div className="flex-1 space-y-2 overflow-y-auto p-4">
                 {activeView.messages.length === 0 && (
                   <p className="py-8 text-center text-xs text-gray-400">
-                    No messages yet — say something encrypted.
+                    No messages yet.
                   </p>
                 )}
+                <p className="px-1 pb-2 text-[11px] text-zinc-500">{notice.body}</p>
                 {activeView.messages.map((m) => (
                   <motion.div
                     key={m.id}
@@ -508,7 +641,7 @@ export function AnonMessenger() {
                       </p>
                       <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(m.sentAt).toLocaleTimeString()}</span>
-                        <Lock className="h-2.5 w-2.5 text-neon-green" />
+                        <span title={notice.body} className="inline-flex"><Lock className="h-2.5 w-2.5 text-neon-green" aria-label={notice.body} /></span>
                         {m.expiresAt && (
                           <span className="flex items-center gap-0.5 text-neon-pink">
                             <Timer className="h-2.5 w-2.5" /> {relTime(m.expiresAt)}
@@ -562,7 +695,7 @@ export function AnonMessenger() {
                         sendMessage();
                       }
                     }}
-                    placeholder="Encrypted message…"
+                    placeholder="Message…"
                     rows={2}
                     className="input-lattice flex-1 resize-none text-sm"
                   />
@@ -710,8 +843,9 @@ export function AnonMessenger() {
                 <span className="font-mono text-gray-400">{safety.peerAlias}</span>
               </h3>
               <p className="text-xs text-gray-400">
-                Compare these 12 groups with your peer out-of-band. A match proves no
-                man-in-the-middle on the X25519 key exchange.
+                {safetyDeviceHeld
+                  ? 'Compare these 12 groups with your peer on another channel. They are computed in this browser from the public keys on your devices. Concord does not hold those private keys.'
+                  : 'These groups are derived from public keys Concord stores. Concord holds the private keys for server-managed identities, so a match does not mean Concord cannot read the messages.'}
               </p>
               <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
                 {safety.safetyNumber.map((g, i) => (

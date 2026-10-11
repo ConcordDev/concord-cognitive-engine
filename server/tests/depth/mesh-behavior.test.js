@@ -101,11 +101,10 @@ test("mesh.sendMessage requires a body", async () => {
   assert.ok(r.result.error.includes("body"));
 });
 
-test("mesh.sendMessage to broadcast is recorded immediately (not queued)", async () => {
+test("mesh.sendMessage to broadcast is recorded immediately (not queued, not transmitted)", async () => {
   const ctx = await depthCtx("mesh:bcast");
   const r = await lensRun("mesh", "sendMessage",
     { params: { to: "broadcast", body: "all-points" } }, ctx);
-  // Chat is a per-user mesh log. A reachable destination is recorded, not transmitted.
   assert.equal(r.result.message.state, "recorded");
   assert.equal(r.result.message.transmitted, false);
   assert.equal(r.result.message.kind, "broadcast");

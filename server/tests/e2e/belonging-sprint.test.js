@@ -158,7 +158,8 @@ describe("Phase BA-BE — belonging sprint end-to-end", () => {
     const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
     const photo = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: tinyPng, caption: "Decorated my cottage." });
     assert.equal(photo.ok, true);
-    sharePhoto(db, photo.id);
+    const shared = sharePhoto(db, photo.id);
+    assert.equal(shared.ok, true, shared.error);
     const feed = listPublicPhotosInWorld(db, "tunya");
     assert.equal(feed.length, 1);
   });

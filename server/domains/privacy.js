@@ -74,6 +74,30 @@ const now = () => Date.now();
 const rid = (p) => `${p}_${now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const clean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
 
+/**
+ * The privacy slice of a portable account export. Reads only this user's
+ * buckets — does not create empty ones — so a download for A never picks
+ * up B's DSARs, sharing toggles, or access log.
+ */
+export function privacyExportForUser(uid) {
+  if (!uid) return null;
+  const s = privacyState();
+  const dsars = [...(s.dsars.get(uid)?.values() || [])];
+  const lensSharing = [...(s.lensSharing.get(uid)?.entries() || [])]
+    .map(([lensId, v]) => ({ lensId, ...v }));
+  const accessLog = s.accessLog.get(uid) || [];
+  const retention = [...(s.retention.get(uid)?.entries() || [])]
+    .map(([category, v]) => ({ category, ...v }));
+  const flows = [...(s.flows.get(uid)?.values() || [])];
+  const cookieConfig = s.cookieConfig.get(uid) || null;
+  return {
+    spec: "concord-privacy-export/v1",
+    userId: uid,
+    generatedAt: now(),
+    sections: { dsars, lensSharing, accessLog, retention, flows, cookieConfig },
+  };
+}
+
 // Bound on the per-user access-log array. O(1) unshift + length-clamp on
 // every append; this is the "capped ring buffer" — never an unbounded
 // array, never a synchronous DB write on this hot path.
@@ -322,21 +346,13 @@ export default function registerPrivacyActions(registerLensAction) {
   registerLensAction("privacy", "dataExport", (ctx, _artifact, _params) => {
     try {
       const uid = uidOf(ctx);
-      const s = privacyState();
-      const dsars = [...userMap(s.dsars, uid).values()];
-      const lensSharing = [...userMap(s.lensSharing, uid).entries()]
-        .map(([lensId, v]) => ({ lensId, ...v }));
-      const accessLog = s.accessLog.get(uid) || [];
-      const retention = [...userMap(s.retention, uid).entries()]
-        .map(([category, v]) => ({ category, ...v }));
-      const flows = [...userMap(s.flows, uid).values()];
-      const cookieConfig = s.cookieConfig.get(uid) || null;
-      const bundle = {
-        spec: "concord-privacy-export/v1",
-        userId: uid,
-        generatedAt: now(),
-        sections: { dsars, lensSharing, accessLog, retention, flows, cookieConfig },
-      };
+      const bundle = privacyExportForUser(uid);
+      const sections = bundle?.sections || {};
+      const dsars = sections.dsars || [];
+      const lensSharing = sections.lensSharing || [];
+      const accessLog = sections.accessLog || [];
+      const retention = sections.retention || [];
+      const flows = sections.flows || [];
       const counts = {
         dsars: dsars.length,
         lensSharing: lensSharing.length,

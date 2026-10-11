@@ -14,7 +14,8 @@
 // All reads hit the real emergent-identity tables (emergent_identity,
 // emergent_observations, emergent_communications, emergent_activity_feed,
 // emergent_tasks). No synthesized / mock data. Per-user saved searches
-// persist in globalThis._concordSTATE.
+// live on STATE.genesisSavedSearches (in LENS_STATE_KEYS, capped at 30)
+// so they survive a restart.
 //
 // The pure compute functions are also exported by name so the
 // /api/emergents REST router (server/routes/emergent-visibility.js — the

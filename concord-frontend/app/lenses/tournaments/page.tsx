@@ -16,6 +16,7 @@ import { TournamentListPanel } from '@/components/tournaments/TournamentListPane
 import { TournamentDetailPanel } from '@/components/tournaments/TournamentDetailPanel';
 import { TournamentCreatePanel } from '@/components/tournaments/TournamentCreatePanel';
 import { EsportsFeedPanel } from '@/components/tournaments/EsportsFeedPanel';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { useTournamentDesk, type TourneyView } from '@/components/tournaments/useTournamentDesk';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -30,9 +31,10 @@ export default function TournamentsPage() {
   const desk = useTournamentDesk();
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
+  const navViews = omitCommunityRedditViews(VIEWS, ['esports']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `tab-${v.id}`,
       keys: v.keys,
       description: v.label,
@@ -56,7 +58,7 @@ export default function TournamentsPage() {
         crumb="Tournaments"
         title={`${current.title}${desk.active === 'list' && who ? `, ${who}` : ''}`}
         subtitle="Single and double elimination brackets, entrants, seeding, standings and live results."
-        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
+        tabs={navViews.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={activeTab}
         onTab={(id) => (id === 'list' ? desk.goList() : desk.setActive(id as TourneyView))}
         tabsLabel="Tournament views"

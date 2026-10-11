@@ -161,7 +161,7 @@ describe("platform — env + domain CRUD", () => {
     assert.match(String(bad.result.error), /not found/i);
   });
 
-  it("domain-attach: rejects a malformed host then verifies a valid one", async () => {
+  it("domain-attach: rejects a malformed host; verify needs a matching TXT and does not issue SSL", async () => {
     const bad = await lensRun("platform", "domain-attach", { params: { host: "not a host" } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.match(String(bad.result.error), /valid domain host/i);
@@ -172,10 +172,16 @@ describe("platform — env + domain CRUD", () => {
     assert.equal(ok.result.domain.verified, false);
     assert.equal(ok.result.domain.sslStatus, "not_managed");
     const id = ok.result.domain.id;
-    // Verification is a real DNS TXT lookup. example.com has no Concord record.
-    const verified = await lensRun("platform", "domain-verify", { params: { id } }, ctx);
-    assert.equal(verified.result.ok, false);
-    assert.match(String(verified.result.error), /DNS lookup|TXT record/i);
+    const txt = ok.result.domain.dnsRecords.find((r) => r.type === "TXT");
+    const missing = await lensRun("platform", "domain-verify", { params: { id } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(String(missing.result.error), /DNS lookup/i);
+    const verified = await lensRun("platform", "domain-verify", { params: { id } }, {
+      ...ctx,
+      dnsResolveTxt: async () => [[txt.value]],
+    });
+    assert.equal(verified.result.domain.verified, true);
+    assert.equal(verified.result.domain.sslStatus, "not_managed");
   });
 });
 
@@ -203,14 +209,14 @@ describe("platform — alerting + usage + audit", () => {
     assert.match(String(r.result.error), /metric must be one of/i);
   });
 
-  it("usage-summary: derives quota line items including build minutes from deploys", async () => {
+  it("usage-summary: derives build minutes from caller-reported build seconds", async () => {
     await lensRun("platform", "deploy-create", { params: { service: "billable", ref: "main", buildSeconds: 120 } }, ctx);
     const r = await lensRun("platform", "usage-summary", { params: { plan: "pro" } }, ctx);
     assert.equal(r.ok, true);
     assert.equal(r.result.plan, "pro");
     assert.equal(r.result.basePlanCost, 20);
-    // Build minutes come from the caller's reported buildSeconds, not a simulated build.
-    assert.ok(r.result.lineItems.some((l) => l.label === "Build minutes" && l.used === 2));
+    const minutes = r.result.lineItems.find((l) => l.label === "Build minutes");
+    assert.equal(minutes.used, 2);
     assert.ok(r.result.counts.deployments >= 1);
   });
 

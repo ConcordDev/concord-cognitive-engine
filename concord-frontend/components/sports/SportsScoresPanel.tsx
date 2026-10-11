@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -92,7 +93,7 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ homeTeam: '', awayTeam: '', league: 'nba', date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ homeTeam: '', awayTeam: '', league: 'nba', date: calendarDateKey() });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -121,7 +122,7 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
       homeTeam: form.homeTeam.trim(), awayTeam: form.awayTeam.trim(), league: form.league, date: form.date,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ homeTeam: '', awayTeam: '', league: 'nba', date: new Date().toISOString().slice(0, 10) });
+    setForm({ homeTeam: '', awayTeam: '', league: 'nba', date: calendarDateKey() });
     setShowAdd(false); setError(null);
     await refresh(); onChange();
   };

@@ -5,6 +5,8 @@
 // rows). A twin is a named mirror of some source entity (a DTU/building/sensor
 // source) holding a mutable state snapshot. `twin-sync` computes drift between
 // the twin's recorded state and a freshly-supplied source snapshot.
+// STATE.digitalTwins is in LENS_STATE_KEYS (userId → Map of twins, capped
+// at 500 per user) so twins survive a restart.
 //
 // Handlers are `(ctx, artifact, params)`; they read `artifact.data` + `params`,
 // scope per-user via `ctx?.actor?.userId` (fallback "anon"), and return
@@ -14,10 +16,12 @@
 
 export default function registerDigitalTwinActions(registerLensAction) {
   // ── helpers ──────────────────────────────────────────────────────────────
+  const TWIN_CAP = 500;
+
   function twinStore() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    STATE.digitalTwins ??= new Map();
+    if (!(STATE.digitalTwins instanceof Map)) STATE.digitalTwins = new Map();
     return STATE.digitalTwins;
   }
   function userTwins(userId) {
@@ -63,6 +67,7 @@ export default function registerDigitalTwinActions(registerLensAction) {
     const sourceId = dtclean(params.sourceId ?? artifact?.data?.sourceId, 200);
     if (!name) return { ok: false, error: "name required" };
     if (!sourceId) return { ok: false, error: "sourceId required" };
+    if (map.size >= TWIN_CAP) return { ok: false, error: "twin_cap" };
     const initState = isObj(params.state) ? params.state
       : isObj(artifact?.data?.state) ? artifact.data.state : {};
     const twin = {

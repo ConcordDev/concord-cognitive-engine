@@ -36,19 +36,11 @@ test.describe('DTU quick-create submit stays in the viewport', () => {
       await page.goto('/lenses/dtus', { waitUntil: 'domcontentloaded' });
       await expect(page).not.toHaveURL(/\/login/);
 
-      const open = page.getByRole('button', { name: 'New DTU' }).first();
-      await expect(open).toBeVisible({ timeout: 60_000 });
-      if (viewport.width < 700) {
-        // A pre-hydration click is a no-op, and on a phone a first-run error
-        // card can cover the launcher. Call the button's own handler once it
-        // is wired. The assertions below are about the dialog, not that card.
-        await expect(async () => {
-          await open.evaluate((el: HTMLElement) => el.click());
-          await expect(page.getByRole('dialog', { name: 'Create New DTU' })).toBeVisible({ timeout: 1000 });
-        }).toPass({ timeout: 20_000 });
-      } else {
-        await open.click();
-      }
+      // New DTU is a visible button. n still opens the same dialog.
+      await expect(async () => {
+        await page.keyboard.press('n');
+        await expect(page.getByRole('dialog', { name: 'Create New DTU' })).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: 20_000 });
 
       const dialog = page.getByRole('dialog', { name: 'Create New DTU' });
       await expect(dialog).toBeVisible();

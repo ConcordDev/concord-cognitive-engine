@@ -24,7 +24,7 @@ interface Subforum { id: string; name: string; icon: string }
 interface Topic {
   id: string; categoryId: string | null; subforumId: string | null; title: string;
   body: string; format?: string; images?: string[]; tags: string[];
-  author: string; pinned: boolean; locked: boolean; score: number; replyCount?: number;
+  author: string; authorId?: string; pinned: boolean; locked: boolean; score: number; replyCount?: number;
   awards?: { id: string; icon: string; name: string }[];
 }
 
@@ -38,11 +38,13 @@ export function requestForumCompose() {
 }
 
 export function FmTopicsPanel({
-  onChange, initialTopicId, onTopicConsumed,
+  onChange, initialTopicId, onTopicConsumed, canModerate = false, viewerId = null,
 }: {
   onChange: () => void;
   initialTopicId?: string | null;
   onTopicConsumed?: () => void;
+  canModerate?: boolean;
+  viewerId?: string | null;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subforums, setSubforums] = useState<Subforum[]>([]);
@@ -298,18 +300,24 @@ export function FmTopicsPanel({
                 className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-amber-300">
                 <Award className="w-3 h-3" /> Award
               </button>
-              <button type="button" onClick={togglePin} className="text-[10px] text-zinc-400 hover:text-orange-300">
-                {openTopic.pinned ? 'Unpin' : 'Pin'}
-              </button>
-              <button type="button" onClick={toggleLock} className="text-[10px] text-zinc-400 hover:text-orange-300">
-                {openTopic.locked ? 'Unlock' : 'Lock'}
-              </button>
+              {canModerate && (
+                <>
+                  <button type="button" onClick={togglePin} className="text-[10px] text-zinc-400 hover:text-orange-300">
+                    {openTopic.pinned ? 'Unpin' : 'Pin'}
+                  </button>
+                  <button type="button" onClick={toggleLock} className="text-[10px] text-zinc-400 hover:text-orange-300">
+                    {openTopic.locked ? 'Unlock' : 'Lock'}
+                  </button>
+                </>
+              )}
               <button type="button" onClick={flagTopic} className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-rose-300">
                 <Flag className="w-3 h-3" /> Flag
               </button>
-              <button type="button" onClick={delTopic} className="text-zinc-600 hover:text-rose-400" aria-label="Delete topic">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {viewerId && openTopic.authorId === viewerId && (
+                <button type="button" onClick={delTopic} className="text-zinc-600 hover:text-rose-400" aria-label="Delete topic">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -371,12 +379,7 @@ export function FmTopicsPanel({
           <button type="button" onClick={() => { setComposeOpen(false); setError(null); }}
             className="text-[11px] text-zinc-400 hover:text-zinc-300">Cancel</button>
         </section>
-      ) : (
-        <button type="button" onClick={() => setComposeOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-orange-600 hover:bg-orange-500 text-white rounded-lg">
-          <Plus className="w-4 h-4" /> Start a discussion
-        </button>
-      )}
+      ) : null}
 
       <div className="flex items-center gap-2 flex-wrap">
         <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
@@ -400,7 +403,7 @@ export function FmTopicsPanel({
       </div>
 
       {topics.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No topics yet. Start a discussion above.</p>
+        <p className="font-vault text-lg text-zinc-300 py-8 text-center">No posts on the board</p>
       ) : (
         <ul className="space-y-1.5">
           {topics.map((t) => (

@@ -788,7 +788,7 @@ RULES:
 Your task is to answer the user's question using ONLY the numbered sources provided below. Follow these rules without deviation:
 
 1. EVERY factual claim must end with a citation marker like [1] or [2, 3]. Bare claims are forbidden.
-2. If the sources are insufficient, say so explicitly: "The sources do not address X." Do NOT invent facts to fill gaps.
+2. If the sources are insufficient, say so explicitly: "The sources do not address X." Do NOT invent facts to fill gaps. After that sentence, stop. Do not supply the missing fact from memory.
 3. Lead with the answer in 1-3 sentences. Then expand into 3-6 bulleted sub-points, each cited.
 4. Quote sparingly — paraphrase the source's substance, then cite.
 5. If sources conflict, name the conflict explicitly and cite both sides.

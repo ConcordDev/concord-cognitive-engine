@@ -7,6 +7,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { EmptyState, ErrorState } from '@/components/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 interface TrainingLog {
   name: string;
@@ -41,7 +42,7 @@ export function SportsTrainingPanel() {
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
-    const date = form.date || new Date().toISOString().slice(0, 10);
+    const date = form.date || calendarDateKey();
     await create({
       title: form.name,
       data: { ...form, date },

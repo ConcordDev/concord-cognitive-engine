@@ -13,6 +13,7 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SelfFeed } from '@/components/self/SelfFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { LogMetricForm } from '@/components/self/LogMetricForm';
 import { OverviewDashboard } from '@/components/self/OverviewDashboard';
 import { TrendPanel } from '@/components/self/TrendPanel';
@@ -129,10 +130,12 @@ export default function UnifiedSelfLensPage() {
             </motion.section>
           </AnimatePresence>
 
-        <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-4">
-          <h2 className="text-sm font-semibold text-white">Self-improvement discussion (external reference)</h2>
-          <div className="mt-3"><SelfFeed /></div>
-        </section>
+        <CommunityRedditSlot>
+          <section className="mt-8 rounded-2xl border border-white/10 bg-[#111] p-4">
+            <h2 className="text-sm font-semibold text-white">Self-improvement discussion (external reference)</h2>
+            <div className="mt-3"><SelfFeed /></div>
+          </section>
+        </CommunityRedditSlot>
       </NorthStarFrame>
     </LensShell>
   );

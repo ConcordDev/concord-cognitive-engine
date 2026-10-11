@@ -37,7 +37,7 @@ export function BrainPoolStatus() {
             compact
             apiSource="concord-brains"
             title={`Brain pool snapshot — ${upCount}/${entries.length} up`}
-            content={entries.map(([k, v]) => `${k} (${v.model || '?'}): ${v.ok ? 'up' : 'down'}${v.latencyMs != null ? ` · ${v.latencyMs}ms` : ''}${v.queueDepth != null ? ` · queue ${v.queueDepth}` : ''}${v.tokens24h != null ? ` · ${v.tokens24h.toLocaleString()} tok/24h` : ''}`).join('\n')}
+            content={entries.map(([k, v]) => `${k}${v.model ? ` (${v.model})` : ''}: ${v.ok ? 'up' : 'down'}${v.latencyMs != null ? ` · ${v.latencyMs}ms` : ''}${v.queueDepth != null ? ` · queue ${v.queueDepth}` : ''}${v.tokens24h != null ? ` · ${v.tokens24h.toLocaleString()} tok/24h` : ''}`).join('\n')}
             extraTags={['cognition', 'brains', 'concord']}
             rawData={status.data}
           />

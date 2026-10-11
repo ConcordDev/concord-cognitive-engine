@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 
 export function useMetacognitionDesk() {
   const queryClient = useQueryClient();
-  const bridge = useLensBridge('metacognition', 'snapshot');
   const [latestIntrospection, setLatestIntrospection] = useState<Record<string, unknown> | null>(null);
 
   const statusQ = useQuery({
@@ -135,16 +133,6 @@ export function useMetacognitionDesk() {
     const raw = introData.recentPatterns;
     return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
   }, [introData]);
-
-  useEffect(() => {
-    if (Object.keys(statusInfo).length > 0) {
-      bridge.sync(statusInfo as Record<string, unknown>, 'Metacognition Status');
-    } else if (Object.keys(cal).length > 0) {
-      bridge.sync(cal as Record<string, unknown>, 'Metacognition Calibration');
-    } else if (Object.keys(introData).length > 0) {
-      bridge.sync(introData as Record<string, unknown>, 'Metacognition Introspection');
-    }
-  }, [statusInfo, cal, introData, bridge]);
 
   const knowledgeDomains = useMemo(() => {
     return assessmentsList.map((a) => ({

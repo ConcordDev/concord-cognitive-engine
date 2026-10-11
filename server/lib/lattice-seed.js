@@ -20,6 +20,7 @@
 
 import { fetchPublicUrl } from "./public-fetch.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
+import { normalizeTagList } from "./dtu-tags.js";
 
 export const TRUST_LEVELS = Object.freeze(["experimental", "trusted"]);
 export const LAYERS = Object.freeze(["domain", "HLM", "HLR", "meta"]);
@@ -78,13 +79,16 @@ export function excerptFromHtml(raw, cap = EXCERPT_CHAR_CAP) {
 }
 
 function parseTags(raw) {
-  if (Array.isArray(raw)) return raw.map((t) => String(t).toLowerCase()).filter(Boolean).slice(0, 12);
-  try {
-    const parsed = JSON.parse(raw || "[]");
-    return Array.isArray(parsed) ? parsed.map((t) => String(t).toLowerCase()).filter(Boolean).slice(0, 12) : [];
-  } catch {
-    return [];
+  let list = raw;
+  if (!Array.isArray(list)) {
+    try {
+      const parsed = JSON.parse(raw || "[]");
+      list = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      list = [];
+    }
   }
+  return normalizeTagList(list, (t) => String(t).toLowerCase()).filter(Boolean).slice(0, 12);
 }
 
 function parseJsonFence(raw) {

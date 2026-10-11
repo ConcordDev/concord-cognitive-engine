@@ -136,7 +136,9 @@ describe("lattice overlap gate", () => {
       serverSrc,
       /inLatticeReality\(\{ type:"birth", domain:"lattice", name:"birth_protocol", input:proposal, ctx \}\)/,
     );
-    for (const effect of ["multimodal.vision_analyze", "multimodal.image_generate", "tools.web_search"]) {
+    // multimodal.image_generate no longer goes through governedCall on main
+    // (it calls the art pipeline directly), so only the two remaining sites.
+    for (const effect of ["multimodal.vision_analyze", "tools.web_search"]) {
       assert.match(serverSrc, new RegExp(`governedCall\\(ctx, "${effect}"[\\s\\S]*?\\}, input\\)`));
     }
   });
