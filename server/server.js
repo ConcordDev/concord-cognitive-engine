@@ -89229,16 +89229,32 @@ function classroomSubmitterMayAttach(dtu, userId) {
   return !privateDtuHiddenFrom(dtu, userId);
 }
 
+// Public label for a teacher. lookupUserIdentity prefers display_name, then
+// the @handle, and never invents one from the raw id. A stored name that is
+// the id itself is not a public label — fall through to the handle, or blank.
+function classroomPublicTeacherName(ident, userId) {
+  const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+  const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+  if (display && display !== userId) return display;
+  if (handle && handle !== userId) return handle;
+  return null;
+}
+
 function classroomWithTeacherNames(database, rows) {
   const names = new Map();
   for (const row of rows) {
     const id = row?.teacher_user_id;
     if (!id || names.has(id)) continue;
-    const ident = lookupUserIdentity(database, id);
-    names.set(id, ident?.displayName || null);
+    names.set(id, classroomPublicTeacherName(lookupUserIdentity(database, id), id));
   }
+  // Studying rows are visible to every enrolled student. Cohort ids are
+  // sequential, so returning teacher_user_id lets a student harvest other
+  // users' internal ids. The teacher's own teaching query never selects it.
   return rows.map((row) => ({
-    ...row,
+    id: row.id,
+    name: row.name,
+    rubric_dtu_id: row.rubric_dtu_id,
+    enroled_at: row.enroled_at,
     teacher_display_name: names.get(row.teacher_user_id) || null,
   }));
 }
@@ -89353,7 +89369,7 @@ register("classroom", "list_cohorts", (ctx, _input = {}) => {
     `).all(userId));
     return { ok: true, teaching, studying };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Active cohorts where the user teaches or studies. Studying rows include teacher_display_name when the users table has one." });
+}, { note: "Active cohorts where the user teaches or studies. Studying rows name the teacher (display name or handle) and omit the internal user id." });
 
 register("classroom", "archive_cohort", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };

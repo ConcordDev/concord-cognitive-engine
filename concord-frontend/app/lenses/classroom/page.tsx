@@ -29,7 +29,6 @@ interface Cohort {
   rubric_dtu_id: string | null;
   created_at: number;
   enrolled?: number;
-  teacher_user_id?: string;
   teacher_display_name?: string | null;
   enroled_at?: number;
 }
@@ -39,12 +38,23 @@ type CohortCard = 'create' | 'enrol' | 'submit' | 'list';
 function teacherLabel(c: Cohort): string {
   const named = c.teacher_display_name?.trim();
   if (named) return named;
-  if (c.teacher_user_id) return `teacher ${c.teacher_user_id.slice(0, 8)}`;
-  return '';
+  return 'Teacher';
 }
 
+const CLASSROOM_REFUSALS: Record<string, string> = {
+  cohort_not_found: 'That cohort does not exist.',
+  cohort_inactive: 'That cohort is no longer open.',
+  not_teacher: 'Only the teacher can do that.',
+  not_enroled: 'You are not enrolled in that cohort.',
+  dtu_not_readable: 'You cannot attach that DTU.',
+  own_submission: 'You cannot review your own submission.',
+  submission_not_found: 'That submission was not found.',
+  not_in_cohort: 'You are not in that cohort.',
+};
+
 function refusalText(r: { error?: string; reason?: string } | null): string {
-  return `Failed: ${r?.error || r?.reason || 'request failed'}`;
+  const code = r?.error || r?.reason || 'request failed';
+  return `Failed: ${CLASSROOM_REFUSALS[code] || code}`;
 }
 
 async function macro(domain: string, name: string, input: Record<string, unknown> = {}) {
