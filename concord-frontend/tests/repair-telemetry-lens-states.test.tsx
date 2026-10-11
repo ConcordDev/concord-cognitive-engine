@@ -40,7 +40,16 @@ vi.mock('@/components/common/EmptyState', () => ({
 // headless test doesn't mount — same mock pattern as mesh-lens-states.test.tsx.
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+// This file exercises the telemetry state machine, so the viewer is an
+// operator (requireOperatorRole). A member never reaches these reads —
+// that gate is pinned in repair-telemetry-admin-gate.test.tsx.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1', username: 'tester', email: 'tester@test.local', role: 'admin' },
+    isLoading: false,
+    isAuthenticated: true,
+  }),
+}));
 
 // Import AFTER mocks are registered.
 import RepairTelemetryPage from '@/app/lenses/repair-telemetry/page';
