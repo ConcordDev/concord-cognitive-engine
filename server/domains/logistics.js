@@ -754,11 +754,6 @@ export default function registerLogisticsActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
-  function hashLog(s) {
-    let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-    return h;
-  }
-
   // ── Shipments CRUD ────────────────────────────────────────────
 
   registerLensAction("logistics", "shipments-create", (ctx, _a, params = {}) => {
@@ -852,6 +847,8 @@ export default function registerLogisticsActions(registerLensAction) {
       scac: String(params.scac || "").toUpperCase(),
       modes: Array.isArray(params.modes) ? params.modes : ["parcel"],
       accountNumber: String(params.accountNumber || ""),
+      // Per-carrier secrets are not kept. Live rates use the same server
+      // env keys as shipment-track (SHIPENGINE_API_KEY / EASYPOST_API_KEY).
       apiKey: params.apiKey ? "[redacted]" : null,
       active: true,
       createdAt: new Date().toISOString(),
@@ -873,39 +870,254 @@ export default function registerLogisticsActions(registerLensAction) {
     return { ok: true, result: { id, deleted: true } };
   });
 
-  // ── Rate quoting (multi-carrier compare, deterministic) ───────
+  // ── Rate quoting ──────────────────────────────────────────────
+  // Live dollars come only from ShipEngine or EasyPost, the same env keys
+  // shipment-track already uses. With no key, either say so or return a
+  // straight-line distance from the route-optimize geocoder, labeled as an
+  // estimate. Never a hash of the address.
 
-  registerLensAction("logistics", "rates-quote", (ctx, _a, params = {}) => {
-  try {
-    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = logActor(ctx);
-    const origin = String(params.origin || "").trim();
-    const destination = String(params.destination || "").trim();
-    const weightLbs = Math.max(0.1, Number(params.weightLbs) || 1);
-    const mode = ["parcel", "ltl", "ftl"].includes(params.mode) ? params.mode : "parcel";
-    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
-    const carriers = ensureLogBucket(s, "carriers", userId);
-    if (carriers.length === 0) return { ok: false, error: "no carriers configured (use carriers-add first)" };
-    const baseDist = Math.abs(hashLog(origin + destination)) % 2500 + 50;
-    const quotes = carriers.filter(c => c.modes.includes(mode)).map(c => {
-      const carrierFactor = ((Math.abs(hashLog(c.code)) % 30) + 85) / 100;
-      const rateBase = mode === "parcel" ? (weightLbs * 0.85 + 8) : mode === "ltl" ? (weightLbs * 0.18 + 80) : 1.85 * baseDist;
-      const rate = Math.round(rateBase * carrierFactor * 100) / 100;
-      const transitDays = mode === "parcel" ? 1 + Math.floor(baseDist / 800) : mode === "ltl" ? 2 + Math.floor(baseDist / 500) : 1 + Math.floor(baseDist / 600);
-      return {
-        carrierId: c.id, carrierName: c.name, carrierCode: c.code,
-        rateUsd: rate,
-        transitDays,
-        serviceLevel: mode === "parcel" ? (transitDays <= 1 ? "next_day" : transitDays <= 2 ? "2_day" : "ground") : "standard",
-        guaranteed: transitDays <= 2,
+  // User-stored codes (SCAC or a short name) vs the codes the brokers return.
+  // Exact after normalization, plus a few aliases. "ups" must not match "usps".
+  function normCarrierCode(code) {
+    return String(code || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+  const CARRIER_CODE_GROUPS = [
+    ["ups"],
+    ["fedex", "fdx", "fxfe", "fdeg"],
+    ["usps", "stampscom", "endicia"],
+    ["dhl", "dhlexpress", "dhlglobalmail"],
+  ];
+  function carriersMatch(userCode, apiCode) {
+    const a = normCarrierCode(userCode);
+    const b = normCarrierCode(apiCode);
+    if (!a || !b) return false;
+    if (a === b) return true;
+    return CARRIER_CODE_GROUPS.some((g) => g.includes(a) && g.includes(b));
+  }
+
+  function parseLaneAddress(raw) {
+    const line1 = String(raw || "").trim();
+    const zipMatch = line1.match(/\b(\d{5})(?:-\d{4})?\s*$/);
+    const postal = zipMatch ? zipMatch[1] : "";
+    let rest = postal ? line1.slice(0, zipMatch.index).trim().replace(/,\s*$/, "") : line1;
+    let state = "";
+    const commaState = rest.match(/^(.*),\s*([A-Za-z]{2})$/);
+    const spaceState = rest.match(/^(.*)\s+([A-Za-z]{2})$/);
+    if (commaState) { rest = commaState[1].trim(); state = commaState[2].toUpperCase(); }
+    else if (spaceState) { rest = spaceState[1].trim(); state = spaceState[2].toUpperCase(); }
+    const city = rest.split(",").map((part) => part.trim()).filter(Boolean).pop() || rest;
+    return { line1, city, state, postal, country: "US" };
+  }
+
+  function brokerAddress(lane, name) {
+    const addr = {
+      name,
+      address_line1: lane.line1 || lane.city || "Unknown",
+      city_locality: lane.city || lane.line1,
+      country_code: lane.country || "US",
+    };
+    if (lane.state) addr.state_province = lane.state;
+    if (lane.postal) addr.postal_code = lane.postal;
+    return addr;
+  }
+
+  function ratesNotConfigured(message) {
+    return {
+      ok: false,
+      error: "carrier_rates_not_configured",
+      message: message || "Live carrier rates require SHIPENGINE_API_KEY or EASYPOST_API_KEY. Concord does not fabricate shipping quotes.",
+    };
+  }
+
+  function mapBrokerRate(rate, source) {
+    const amount = source === "easypost" ? Number(rate.rate) : Number(rate?.shipping_amount?.amount);
+    const daysRaw = rate.delivery_days;
+    const transitDays = daysRaw == null || daysRaw === "" ? null : Number(daysRaw);
+    return {
+      apiCode: source === "easypost" ? rate.carrier : rate.carrier_code,
+      serviceLevel: String((source === "easypost" ? rate.service : (rate.service_code || rate.service_type)) || "standard"),
+      rateUsd: amount,
+      transitDays: Number.isFinite(transitDays) ? transitDays : null,
+      // Only the broker's own flag. A short transit time is not a guarantee.
+      guaranteed: source === "easypost" ? rate.delivery_date_guaranteed === true : rate.guaranteed_service === true,
+    };
+  }
+
+  async function fetchShipEngineRates(apiKey, params) {
+    const r = await fetch("https://api.shipengine.com/v1/rates", {
+      method: "POST",
+      headers: { "API-Key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shipment: {
+          validate_address: "no_validation",
+          ship_from: brokerAddress(parseLaneAddress(params.origin), "Shipper"),
+          ship_to: brokerAddress(parseLaneAddress(params.destination), "Recipient"),
+          packages: [{ weight: { value: params.weightLbs, unit: "pound" } }],
+        },
+      }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const detail = data?.errors?.[0]?.message || data?.message || "";
+      throw new Error(`shipengine ${r.status}${detail ? `: ${detail}` : ""}`);
+    }
+    const rates = Array.isArray(data?.rate_response?.rates) ? data.rate_response.rates : [];
+    return rates.map((rate) => mapBrokerRate(rate, "shipengine")).filter((q) => Number.isFinite(q.rateUsd) && q.rateUsd >= 0);
+  }
+
+  async function fetchEasyPostRates(apiKey, params) {
+    const from = parseLaneAddress(params.origin);
+    const to = parseLaneAddress(params.destination);
+    const addr = (lane, name) => {
+      const row = {
+        name,
+        street1: lane.line1 || lane.city || "Unknown",
+        country: lane.country || "US",
       };
-    }).sort((a, b) => a.rateUsd - b.rateUsd);
+      if (lane.city) row.city = lane.city;
+      if (lane.state) row.state = lane.state;
+      if (lane.postal) row.zip = lane.postal;
+      return row;
+    };
+    const r = await fetch("https://api.easypost.com/v2/shipments", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        shipment: {
+          from_address: addr(from, "Shipper"),
+          to_address: addr(to, "Recipient"),
+          // EasyPost parcel weight is ounces.
+          parcel: { weight: params.weightLbs * 16 },
+        },
+      }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const detail = data?.error?.message || data?.message || "";
+      throw new Error(`easypost ${r.status}${detail ? `: ${detail}` : ""}`);
+    }
+    const rates = Array.isArray(data?.rates) ? data.rates : [];
+    return rates.map((rate) => mapBrokerRate(rate, "easypost")).filter((q) => Number.isFinite(q.rateUsd) && q.rateUsd >= 0);
+  }
+
+  function attachCarrierQuotes(apiRates, carriers, source) {
+    const quotes = [];
+    for (const rate of apiRates) {
+      const carrier = carriers.find((c) => carriersMatch(c.code, rate.apiCode));
+      if (!carrier) continue;
+      quotes.push({
+        carrierId: carrier.id,
+        carrierName: carrier.name,
+        carrierCode: carrier.code,
+        rateUsd: Math.round(rate.rateUsd * 100) / 100,
+        transitDays: rate.transitDays,
+        serviceLevel: rate.serviceLevel,
+        guaranteed: rate.guaranteed === true,
+        estimate: false,
+        source,
+      });
+    }
+    quotes.sort((a, b) => a.rateUsd - b.rateUsd);
+    return quotes;
+  }
+
+  // Same Nominatim lookup route-optimize uses. Miles are straight-line
+  // between the two geocoded points, not a driving route and not a price.
+  async function geocodeAddress(addr) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`;
+    const r = await fetch(url, { headers: { "User-Agent": "Concord-OS/1.0 (logistics-rates-quote)" } });
+    if (!r.ok) throw new Error(`nominatim ${r.status}`);
+    const data = await r.json();
+    const lat = Number(data?.[0]?.lat);
+    const lng = Number(data?.[0]?.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error(`address not found: ${addr}`);
+    return { lat, lng };
+  }
+
+  async function geocodeEstimate(origin, destination, carriers, meta) {
+    const from = await geocodeAddress(origin);
+    const to = await geocodeAddress(destination);
+    const distanceMi = Math.round(haversineMi(from.lat, from.lng, to.lat, to.lng) * 100) / 100;
     return {
       ok: true,
-      result: { quotes, origin, destination, weightLbs, mode, distanceMi: baseDist },
+      result: {
+        estimate: true,
+        guaranteed: false,
+        label: "not a carrier quote",
+        distanceKind: "geodesic",
+        source: "geocode_estimate",
+        distanceMi,
+        origin,
+        destination,
+        weightLbs: meta.weightLbs,
+        mode: meta.mode,
+        quotes: carriers.map((c) => ({
+          carrierId: c.id,
+          carrierName: c.name,
+          carrierCode: c.code,
+          rateUsd: null,
+          transitDays: null,
+          serviceLevel: null,
+          guaranteed: false,
+          estimate: true,
+          label: "not a carrier quote",
+        })),
+      },
     };
+  }
+
+  registerLensAction("logistics", "rates-quote", async (ctx, _a, params = {}) => {
+    try {
+      const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = logActor(ctx);
+      const origin = String(params.origin || "").trim();
+      const destination = String(params.destination || "").trim();
+      const weightLbs = Math.max(0.1, Number(params.weightLbs) || 1);
+      const mode = ["parcel", "ltl", "ftl"].includes(params.mode) ? params.mode : "parcel";
+      if (!origin || !destination) return { ok: false, error: "origin and destination required" };
+      // This user's carriers only. Another account's rows are a different bucket.
+      const mine = ensureLogBucket(s, "carriers", userId);
+      if (mine.length === 0) return { ok: false, error: "no carriers configured (use carriers-add first)" };
+      const carriers = mine.filter((c) => Array.isArray(c.modes) && c.modes.includes(mode));
+      if (carriers.length === 0) return { ok: false, error: "no carriers configured for this mode" };
+
+      const shipKey = process.env.SHIPENGINE_API_KEY;
+      const easyKey = process.env.EASYPOST_API_KEY;
+      if (!shipKey && !easyKey) {
+        try {
+          return await geocodeEstimate(origin, destination, carriers, { weightLbs, mode });
+        } catch (_geoErr) {
+          return ratesNotConfigured();
+        }
+      }
+
+      try {
+        const source = shipKey ? "shipengine" : "easypost";
+        const apiRates = shipKey
+          ? await fetchShipEngineRates(shipKey, { origin, destination, weightLbs })
+          : await fetchEasyPostRates(easyKey, { origin, destination, weightLbs });
+        const quotes = attachCarrierQuotes(apiRates, carriers, source);
+        const result = {
+          quotes,
+          origin,
+          destination,
+          weightLbs,
+          mode,
+          estimate: false,
+          source,
+        };
+        if (quotes.length === 0) result.note = "The carrier API returned no rates for the carriers on this account.";
+        return { ok: true, result };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.startsWith("shipengine") || msg.startsWith("easypost")) return { ok: false, error: msg };
+        return { ok: false, error: `carrier rates unreachable: ${msg}` };
+      }
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  });
 
   // ── Pickup scheduling ─────────────────────────────────────────
 

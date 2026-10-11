@@ -1,5 +1,6 @@
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import registerLogisticsActions from "../domains/logistics.js";
 
 const ACTIONS = new Map();
@@ -164,29 +165,222 @@ describe("logistics.carriers-*", () => {
   });
 });
 
-describe("logistics.rates-quote (multi-carrier compare)", () => {
-  it("requires at least one carrier", () => {
-    const r = call("rates-quote", ctxA, { origin: "A", destination: "B", mode: "parcel" });
-    assert.equal(r.ok, false);
+function assertNoGuaranteedTrue(value, path = "$") {
+  if (Array.isArray(value)) {
+    value.forEach((entry, i) => assertNoGuaranteedTrue(entry, `${path}[${i}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const [key, entry] of Object.entries(value)) {
+      if (key === "guaranteed") assert.notEqual(entry, true, `${path}.${key} must not be guaranteed`);
+      else assertNoGuaranteedTrue(entry, `${path}.${key}`);
+    }
+  }
+}
+
+describe("logistics.rates-quote (carrier API or honest estimate)", () => {
+  let prevFetch;
+  let prevShip;
+  let prevEasy;
+  beforeEach(() => {
+    prevFetch = globalThis.fetch;
+    prevShip = process.env.SHIPENGINE_API_KEY;
+    prevEasy = process.env.EASYPOST_API_KEY;
+    delete process.env.SHIPENGINE_API_KEY;
+    delete process.env.EASYPOST_API_KEY;
   });
-  it("returns ranked quotes when carriers configured", () => {
+  afterEach(() => {
+    globalThis.fetch = prevFetch;
+    if (prevShip == null) delete process.env.SHIPENGINE_API_KEY;
+    else process.env.SHIPENGINE_API_KEY = prevShip;
+    if (prevEasy == null) delete process.env.EASYPOST_API_KEY;
+    else process.env.EASYPOST_API_KEY = prevEasy;
+  });
+
+  it("requires at least one carrier", async () => {
+    const r = await call("rates-quote", ctxA, { origin: "A", destination: "B", mode: "parcel" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no carriers configured/);
+  });
+
+  it("with no carrier key and no geocoder, returns carrier_rates_not_configured", async () => {
+    globalThis.fetch = async () => { throw new Error("geocoder down"); };
+    call("carriers-add", ctxA, { name: "FedEx", code: "FDX", modes: ["parcel"] });
+    const r = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", weightLbs: 5, mode: "parcel" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "carrier_rates_not_configured");
+    assert.match(r.message, /SHIPENGINE_API_KEY|EASYPOST_API_KEY/);
+    assert.equal(r.result, undefined);
+    assertNoGuaranteedTrue(r);
+  });
+
+  it("Albany NY to Albany NY never returns a distance over 50 mi", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(String(url), /nominatim\.openstreetmap\.org/);
+      return { ok: true, json: async () => [{ lat: "42.652579", lon: "-73.756232" }] };
+    };
+    call("carriers-add", ctxA, { name: "UPS", code: "UPS", modes: ["parcel"] });
+    const r = await call("rates-quote", ctxA, { origin: "Albany NY", destination: "Albany NY", weightLbs: 5, mode: "parcel" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.estimate, true);
+    assert.equal(r.result.guaranteed, false);
+    assert.equal(r.result.label, "not a carrier quote");
+    assert.equal(r.result.source, "geocode_estimate");
+    assert.equal(typeof r.result.distanceMi, "number");
+    assert.ok(r.result.distanceMi <= 50, `same-city distance was ${r.result.distanceMi} mi`);
+    assert.equal(r.result.quotes.length, 1);
+    assert.equal(r.result.quotes[0].rateUsd, null);
+    assert.equal(r.result.quotes[0].guaranteed, false);
+    assert.equal(r.result.quotes[0].label, "not a carrier quote");
+    assertNoGuaranteedTrue(r);
+  });
+
+  it("ShipEngine rates are ranked and guaranteed only when the API says so", async () => {
+    process.env.SHIPENGINE_API_KEY = "test-key";
+    globalThis.fetch = async (url, init) => {
+      assert.equal(String(url), "https://api.shipengine.com/v1/rates");
+      assert.equal(init.method, "POST");
+      assert.equal(init.headers["API-Key"], "test-key");
+      const body = JSON.parse(init.body);
+      assert.equal(body.shipment.packages[0].weight.value, 5);
+      assert.equal(body.shipment.packages[0].weight.unit, "pound");
+      assert.equal(body.shipment.ship_from.city_locality, "Austin");
+      assert.equal(body.shipment.ship_from.state_province, "TX");
+      assert.equal(body.shipment.ship_to.city_locality, "Boston");
+      return {
+        ok: true,
+        json: async () => ({
+          rate_response: {
+            rates: [
+              // 1-day transit used to be marked guaranteed from the hash path.
+              { carrier_code: "ups", service_code: "ups_ground", shipping_amount: { amount: 14.5, currency: "usd" }, delivery_days: 1, guaranteed_service: false },
+              // A long transit the API itself marks guaranteed must stay guaranteed.
+              { carrier_code: "fedex", service_code: "fedex_2day", shipping_amount: { amount: 22, currency: "usd" }, delivery_days: 5, guaranteed_service: true },
+              { carrier_code: "usps", service_code: "usps_priority", shipping_amount: { amount: 9.1, currency: "usd" }, delivery_days: 3, guaranteed_service: false },
+            ],
+          },
+        }),
+      };
+    };
     call("carriers-add", ctxA, { name: "FedEx", code: "FDX", modes: ["parcel"] });
     call("carriers-add", ctxA, { name: "UPS", code: "UPS", modes: ["parcel"] });
     call("carriers-add", ctxA, { name: "USPS", code: "USPS", modes: ["parcel"] });
-    const r = call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", weightLbs: 5, mode: "parcel" });
+    const r = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", weightLbs: 5, mode: "parcel" });
     assert.equal(r.ok, true);
+    assert.equal(r.result.estimate, false);
+    assert.equal(r.result.source, "shipengine");
+    assert.equal(r.result.distanceMi, undefined);
     assert.equal(r.result.quotes.length, 3);
-    // Verify sorted ascending by rate
     for (let i = 1; i < r.result.quotes.length; i++) {
       assert.ok(r.result.quotes[i].rateUsd >= r.result.quotes[i - 1].rateUsd);
     }
+    const ups = r.result.quotes.find((q) => q.carrierCode === "UPS");
+    const fedex = r.result.quotes.find((q) => q.carrierCode === "FDX");
+    assert.equal(ups.rateUsd, 14.5);
+    assert.equal(ups.guaranteed, false);
+    assert.equal(ups.transitDays, 1);
+    assert.equal(fedex.guaranteed, true);
+    assert.equal(fedex.transitDays, 5);
+    assert.equal(fedex.source, "shipengine");
   });
-  it("filters carriers by mode capability", () => {
+
+  it("EasyPost rates keep delivery_date_guaranteed and ignore a short transit", async () => {
+    process.env.EASYPOST_API_KEY = "ez-test";
+    globalThis.fetch = async (url, init) => {
+      assert.equal(String(url), "https://api.easypost.com/v2/shipments");
+      assert.equal(init.method, "POST");
+      assert.match(init.headers.Authorization, /^Basic /);
+      const body = JSON.parse(init.body);
+      assert.equal(body.shipment.parcel.weight, 80); // 5 lb in ounces
+      return {
+        ok: true,
+        json: async () => ({
+          rates: [
+            { carrier: "UPS", service: "Ground", rate: "11.25", delivery_days: 1, delivery_date_guaranteed: false },
+          ],
+        }),
+      };
+    };
+    call("carriers-add", ctxA, { name: "UPS", code: "UPS", modes: ["parcel"] });
+    const r = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", weightLbs: 5, mode: "parcel" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "easypost");
+    assert.equal(r.result.quotes.length, 1);
+    assert.equal(r.result.quotes[0].rateUsd, 11.25);
+    assert.equal(r.result.quotes[0].guaranteed, false);
+    assert.equal(r.result.quotes[0].serviceLevel, "Ground");
+  });
+
+  it("filters carriers by mode capability", async () => {
+    process.env.SHIPENGINE_API_KEY = "test-key";
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        rate_response: {
+          rates: [
+            { carrier_code: "fedex", service_code: "fedex_ground", shipping_amount: { amount: 11 }, delivery_days: 3, guaranteed_service: false },
+            { carrier_code: "ocean", service_code: "fcl", shipping_amount: { amount: 400 }, delivery_days: 20, guaranteed_service: true },
+          ],
+        },
+      }),
+    });
     call("carriers-add", ctxA, { name: "FedEx", code: "FDX", modes: ["parcel"] });
     call("carriers-add", ctxA, { name: "OceanCo", code: "OCN", modes: ["ocean"] });
-    const r = call("rates-quote", ctxA, { origin: "A", destination: "B", mode: "parcel" });
+    const r = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
+    assert.equal(r.ok, true);
     assert.equal(r.result.quotes.length, 1);
     assert.equal(r.result.quotes[0].carrierCode, "FDX");
+    assert.equal(r.result.quotes[0].guaranteed, false);
+    assert.equal(JSON.stringify(r).includes("OCN"), false);
+  });
+
+  it("acct2 rates-quote cannot use acct1 carriers", async () => {
+    process.env.SHIPENGINE_API_KEY = "test-key";
+    let fetched = 0;
+    globalThis.fetch = async () => {
+      fetched += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          rate_response: {
+            rates: [
+              { carrier_code: "ups", service_code: "ups_ground", shipping_amount: { amount: 10 }, delivery_days: 4, guaranteed_service: false },
+              { carrier_code: "fedex", service_code: "fedex_ground", shipping_amount: { amount: 18 }, delivery_days: 2, guaranteed_service: true },
+            ],
+          },
+        }),
+      };
+    };
+    const acct1 = call("carriers-add", ctxA, { name: "UPS", code: "UPS", modes: ["parcel"] });
+    const lonely = await call("rates-quote", ctxB, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
+    assert.equal(lonely.ok, false);
+    assert.match(lonely.error, /no carriers configured/);
+    assert.equal(fetched, 0);
+    assert.equal(JSON.stringify(lonely).includes(acct1.result.carrier.id), false);
+
+    call("carriers-add", ctxB, { name: "FedEx", code: "FDX", modes: ["parcel"] });
+    const rB = await call("rates-quote", ctxB, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
+    assert.equal(rB.ok, true);
+    assert.equal(rB.result.quotes.length, 1);
+    assert.equal(rB.result.quotes[0].carrierCode, "FDX");
+    assert.equal(rB.result.quotes[0].carrierId === acct1.result.carrier.id, false);
+    assert.equal(rB.result.quotes.some((q) => q.carrierCode === "UPS"), false);
+
+    const rA = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
+    assert.equal(rA.result.quotes.length, 1);
+    assert.equal(rA.result.quotes[0].carrierCode, "UPS");
+    assert.equal(rA.result.quotes[0].carrierId, acct1.result.carrier.id);
+  });
+
+  it("rates-quote source does not hash a price", () => {
+    const src = readFileSync(new URL("../domains/logistics.js", import.meta.url), "utf8");
+    assert.equal(src.includes("function hashLog"), false);
+    const start = src.indexOf('registerLensAction("logistics", "rates-quote"');
+    const end = src.indexOf('registerLensAction("logistics", "pickups-list"');
+    assert.ok(start > 0 && end > start);
+    const body = src.slice(start, end);
+    assert.equal(body.includes("hashLog"), false);
+    assert.equal(body.includes("% 2500"), false);
   });
 });
 
