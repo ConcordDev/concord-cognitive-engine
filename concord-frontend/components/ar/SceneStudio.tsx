@@ -518,9 +518,14 @@ export function SceneStudio() {
   };
 
   const deleteScene = async (id: string) => {
-    await lensRun('ar', 'sceneDelete', { sceneId: id });
+    const r = await lensRun('ar', 'sceneDelete', { sceneId: id, id });
+    if (!r.data?.ok) {
+      flash(r.data?.error || 'Could not delete that scene.');
+      return;
+    }
     if (scene?.id === id) setScene(null);
-    loadScenes();
+    await loadScenes();
+    flash('Scene deleted.');
   };
 
   const runValidate = async () => {
@@ -643,6 +648,7 @@ export function SceneStudio() {
                 </button>
                 <button onClick={() => deleteScene(s.id)} className={ds.btnGhost} aria-label="Delete scene">
                   <Trash2 className="w-4 h-4 text-red-400" />
+                  <span>Delete scene</span>
                 </button>
               </div>
             ))}
@@ -670,6 +676,11 @@ export function SceneStudio() {
         </div>
         <div className="flex items-center gap-2">
           {busy && <span className="text-xs text-neon-purple animate-pulse">working…</span>}
+          {scene.id ? (
+            <button onClick={() => deleteScene(scene.id)} className={ds.btnGhost} disabled={busy} aria-label="Delete scene">
+              <Trash2 className="w-4 h-4 text-red-400" /> Delete scene
+            </button>
+          ) : null}
           <button onClick={saveScene} className={ds.btnPrimary} disabled={busy}><Save className="w-4 h-4" /> Save</button>
         </div>
       </div>

@@ -779,7 +779,8 @@ export default function registerArtActions(registerLensAction) {
   // ── Artworks ────────────────────────────────────────────────────────
   registerLensAction("art", "artwork-create", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const title = atClean(params.title, 120) || "Untitled";
+    const title = atClean(params.title, 120);
+    if (!title) return { ok: false, error: "Name this canvas before creating it." };
     const artwork = {
       id: atId("art"), title,
       width: Math.round(atClamp(params.width, 64, 4096, 1280)),

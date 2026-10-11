@@ -15,6 +15,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRepairTelemetry } from '@/components/repair-telemetry/useRepairTelemetry';
+import { canViewRepairTelemetry, REPAIR_OPERATOR_ROLES } from '@/components/repair-telemetry/repair-access';
 import { StatsStrip } from '@/components/repair-telemetry/StatsStrip';
 import { EscalationInboxPanel } from '@/components/repair-telemetry/EscalationInboxPanel';
 import { PatternsPanel } from '@/components/repair-telemetry/PatternsPanel';
@@ -31,13 +32,20 @@ const TABS: { id: RepairView; label: string; keys: string; title: string; icon: 
 ];
 
 export default function RepairTelemetryPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  // Wait for /api/auth/me. A session that is still resolving is not an
+  // operator, so health_log / escalations / memory stay off until the role
+  // matches requireOperatorRole (admin, owner, sovereign, founder). A member
+  // used to fire all three on mount; the server answers HTTP 400
+  // admin_only, which is not a 403, so the page painted a generic load
+  // failure instead of the access gate.
+  const canView = !authLoading && canViewRepairTelemetry(user);
   const {
     log, escalations, mem, forbidden, state, refreshing, lastRefresh,
     errorBanner, setErrorBanner, pendingEscalationId, autoRefresh, setAutoRefresh,
     refresh, resolve,
-  } = useRepairTelemetry();
+  } = useRepairTelemetry(canView);
 
-  const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<RepairView>('overview');
   const [filter, setFilter] = useState<FilterTab>('all');
@@ -101,10 +109,18 @@ export default function RepairTelemetryPage() {
     return c;
   }, [log]);
 
-  if (forbidden) {
+  if (authLoading) {
     return (
       <LensShell lensId="repair-telemetry" asMain={false}>
-        <AdminRequiredState roles={['admin', 'operator']} />
+        <p role="status" className="px-4 py-6 text-sm text-zinc-400">Checking access…</p>
+      </LensShell>
+    );
+  }
+
+  if (!canView || forbidden) {
+    return (
+      <LensShell lensId="repair-telemetry" asMain={false}>
+        <AdminRequiredState roles={[...REPAIR_OPERATOR_ROLES]} />
       </LensShell>
     );
   }

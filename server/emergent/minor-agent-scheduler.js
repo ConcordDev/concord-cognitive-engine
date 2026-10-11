@@ -4,6 +4,7 @@
 // Scheduler failures are isolated — one agent failing doesn't stop others.
 
 import { EmergentMinorAgent } from "./minor-agent.js";
+import { trackFeedJob } from "./feed.js";
 
 export class MinorAgentScheduler {
   /**
@@ -20,6 +21,7 @@ export class MinorAgentScheduler {
     this.tickIntervalMs = Number(process.env.CONCORD_MINOR_AGENT_TICK_MS) || (tickIntervalMs ?? 60000);
     this.agents = new Map(); // emergentId → EmergentMinorAgent
     this._timer = null;
+    this._stopped = false;
     // Bumped 5 → 32 for 32GB / RTX PRO 4500 deployments. The previous
     // 5-concurrent default left agents queueing behind each other even
     // though the GPU and CPU cores were idle. Override via env if you
@@ -72,11 +74,20 @@ export class MinorAgentScheduler {
   /** Start the periodic tick loop. Timer is unreferenced to allow process exit in tests. */
   start() {
     if (this._timer) return;
-    this._timer = setInterval(() => this.tickAll(), this.tickIntervalMs);
+    this._stopped = false;
+    this._timer = setInterval(() => {
+      if (this._stopped) return;
+      // trackFeedJob lets shutdown wait for this tick's emitFeedEvent
+      // before the database handle is closed.
+      trackFeedJob(this.tickAll()).catch((err) =>
+        console.error("[scheduler] tickAll threw:", err?.message)
+      );
+    }, this.tickIntervalMs);
     this._timer.unref?.();
   }
 
   stop() {
+    this._stopped = true;
     if (this._timer) { clearInterval(this._timer); this._timer = null; }
   }
 

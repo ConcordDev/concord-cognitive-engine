@@ -89,6 +89,21 @@ export function unityAssetIsGzipped(filename: string): boolean {
   return filename.toLowerCase().endsWith('.unityweb');
 }
 
+const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
+
+/** True when `body` is a Git LFS pointer, not the exported player bytes. */
+export function unityPayloadIsLfsPointer(body: Uint8Array): boolean {
+  const n = Math.min(body.length, LFS_POINTER_PREFIX.length);
+  let head = '';
+  for (let i = 0; i < n; i++) head += String.fromCharCode(body[i]);
+  return head === LFS_POINTER_PREFIX;
+}
+
+/** Gzip magic. Real `*.unityweb` exports are gzip; an LFS pointer is not. */
+export function unityPayloadIsGzip(body: Uint8Array): boolean {
+  return body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b;
+}
+
 /** Reject path traversal. Relative POSIX path inside the player root, or null. */
 export function safeUnityRelativePath(rel: string): string | null {
   const cleaned = rel.replace(/\\/g, '/').replace(/^\/+/, '');

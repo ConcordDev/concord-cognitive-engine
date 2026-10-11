@@ -60,6 +60,7 @@ interface TrendingTopic {
 interface SuggestedUser {
   userId: string;
   displayName: string;
+  username?: string | null;
   bio: string;
   followerCount: number;
   citationCount: number;
@@ -250,6 +251,7 @@ function SuggestedUserCard({
 }) {
   const [followed, setFollowed] = useState(false);
   const gradient = pickGradient(user.userId);
+  const name = user.displayName && user.displayName !== user.userId ? user.displayName : 'Member';
 
   return (
     <motion.div
@@ -266,7 +268,7 @@ function SuggestedUserCard({
             gradient
           )}
         >
-          {user.displayName.charAt(0).toUpperCase()}
+          {name.charAt(0).toUpperCase()}
         </button>
 
         <div className="flex-1 min-w-0">
@@ -275,7 +277,7 @@ function SuggestedUserCard({
               onClick={() => onNavigate?.(user.userId)}
               className="text-white font-medium hover:text-neon-cyan transition-colors truncate"
             >
-              {user.displayName}
+              {name}
             </button>
             <button
               onClick={() => setFollowed((prev) => !prev)}
@@ -297,7 +299,9 @@ function SuggestedUserCard({
             </button>
           </div>
 
-          <p className="text-xs text-gray-400 mt-0.5">@{user.userId}</p>
+          {user.username && user.username !== user.userId ? (
+            <p className="text-xs text-gray-400 mt-0.5">@{user.username}</p>
+          ) : null}
 
           {user.bio && <p className="text-sm text-gray-400 mt-1.5 line-clamp-2">{user.bio}</p>}
 

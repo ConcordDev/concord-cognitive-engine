@@ -37,6 +37,8 @@ import { CreativeDashboardStrip } from '@/components/creative/CreativeDashboardS
 import { CreativeBoardsSection } from '@/components/creative/CreativeBoardsSection';
 import { ProductionSuite } from '@/components/creative/ProductionSuite';
 import { RedditCreative } from '@/components/creative/RedditCreative';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -71,9 +73,10 @@ export default function CreativeLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<CreativeView>('studio');
+  const navViews = omitCommunityRedditViews(VIEWS, ['community']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -120,7 +123,7 @@ export default function CreativeLensPage() {
             )}
           </>
         )}
-        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        tabs={navViews.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as CreativeView)}
         tabsLabel="Creative views"
@@ -200,9 +203,11 @@ export default function CreativeLensPage() {
           )}
 
           {view === 'community' && (
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <RedditCreative />
-            </section>
+            <CommunityRedditSlot>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <RedditCreative />
+              </section>
+            </CommunityRedditSlot>
           )}
         </div>
       </NorthStarFrame>

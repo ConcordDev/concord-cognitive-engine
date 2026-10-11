@@ -8,7 +8,7 @@
 // Exact for the mesh (a polyhedron); the mesh's chordal deviation from the
 // B-rep is the error. Works with holes and several loops (wheel wells).
 
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 
 /** Triangles [[a, b, c], ...] of a binary STL buffer (vertices only; normals recomputed from the winding). */
 export function readBinaryStl(buf) {
@@ -24,8 +24,35 @@ export function readBinaryStl(buf) {
   return tris;
 }
 
-export function readStlFile(path) {
-  return readBinaryStl(fs.readFileSync(path));
+// The design engine's solvers are synchronous. The kernel reads the STL off
+// the event loop (readStlFile) and parks the triangles here before it
+// publishes the body result, so the aero solver never blocks on the disk.
+const TRI_CACHE = new Map();
+const TRI_ERR = new Map();
+
+/** Triangles already read for this STL, or the error from the async read. */
+export function cachedStlTriangles(stl) {
+  if (stl?.sha256 && TRI_CACHE.has(stl.sha256)) return TRI_CACHE.get(stl.sha256);
+  if (stl?.path && TRI_CACHE.has(stl.path)) return TRI_CACHE.get(stl.path);
+  const err = (stl?.sha256 && TRI_ERR.get(stl.sha256)) || (stl?.path && TRI_ERR.get(stl.path));
+  if (err) throw err;
+  throw new Error("STL triangles are not loaded (the CAD kernel reads the mesh asynchronously before the solver reruns)");
+}
+
+/** Read a binary STL without blocking the event loop. Remembers triangles under sha256 and path. */
+export async function readStlFile(filePath, { sha256 } = {}) {
+  if (sha256 && TRI_CACHE.has(sha256)) return TRI_CACHE.get(sha256);
+  if (filePath && TRI_CACHE.has(filePath)) return TRI_CACHE.get(filePath);
+  const keys = [sha256, filePath].filter(Boolean);
+  try {
+    const tris = readBinaryStl(await fsp.readFile(filePath));
+    for (const k of keys) { TRI_CACHE.set(k, tris); TRI_ERR.delete(k); }
+    return tris;
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    for (const k of keys) TRI_ERR.set(k, err);
+    throw err;
+  }
 }
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];

@@ -44,7 +44,13 @@ vi.mock('@/components/lens/DepthBadge', () => ({
 // that this focused state-machine test doesn't mount — stub it like every
 // other *-lens-states test does (see tests/retail-lens-states.test.tsx).
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester' } }) }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { username: 'tester', role: 'admin' },
+    isLoading: false,
+    isAuthenticated: true,
+  }),
+}));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 // The overview view's Simulation-overview + Federation-mesh cards go through

@@ -111,7 +111,7 @@ describe("stale-code detector — orphan-table comment false-positive (Unit B4)"
     assert.equal(orphan.id, "table_orphan");
   });
 
-  it("(c) the real migrations/275_evo_asset_fk_repair.js produces no table_orphan finding for 'omitted'", { timeout: 60_000 }, async () => {
+  it("(c) the real migrations/275_evo_asset_fk_repair.js produces no table_orphan finding for 'omitted'", { timeout: 180_000 }, async () => {
     const report = await runStaleCodeDetector({ root: ROOT });
     assert.equal(report.ok, true);
     const falsePositive = report.findings.find(

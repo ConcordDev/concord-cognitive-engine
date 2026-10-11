@@ -248,6 +248,7 @@ export const ENDPOINT_INVENTORY: EndpointEntry[] = [
   { method: 'GET', path: '/api/srs/due', usedBy: ['srs'], helperKey: 'srs.due' },
   { method: 'POST', path: '/api/srs/:id/add', usedBy: ['srs'], helperKey: 'srs.add' },
   { method: 'POST', path: '/api/srs/:id/review', usedBy: ['srs'], helperKey: 'srs.review' },
+  { method: 'DELETE', path: '/api/srs/:id', usedBy: ['srs'], helperKey: 'srs.remove' },
 
   // Commonsense
   { method: 'GET', path: '/api/commonsense/facts', usedBy: ['commonsense'], helperKey: 'commonsense.facts' },

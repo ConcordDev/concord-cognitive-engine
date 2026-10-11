@@ -37,7 +37,7 @@ import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
-import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.js";
+import { persistRepairEntry, loadRepairEntry, forgetRepairEntry } from "../lib/repair-memory-store.js";
 
 // Maintenance A — durable Repair Memory. When a db is configured, learned
 // patterns mirror to mig-030 repair_knowledge so the cortex's learning survives
@@ -161,7 +161,9 @@ const GUARDIAN_INTERVALS = Object.freeze({
 // ── Repair Memory ───────────────────────────────────────────────────────────
 // Persistent pattern → fix registry. The system gets smarter over time.
 
-const _repairMemory = new LruMap();
+/** Distinct learned error strings. Oldest is evicted past this ceiling. */
+export const REPAIR_MEMORY_CAP = 1024;
+const _repairMemory = new LruMap(REPAIR_MEMORY_CAP);
 
 function _ensureRepairMemory() {
   try {
@@ -190,6 +192,12 @@ function _syncRepairMemoryToSTATE() {
       for (const [k, v] of _repairMemory) {
         S.repairMemory.set(k, v);
       }
+      // Mirror the live map. Evicted patterns must not linger on STATE.
+      if (S.repairMemory.size > _repairMemory.size) {
+        for (const k of [...S.repairMemory.keys()]) {
+          if (!_repairMemory.has(k)) S.repairMemory.delete(k);
+        }
+      }
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -199,11 +207,15 @@ export function addToRepairMemory(errorPattern, fix) {
     _ensureRepairMemory();
     const key = hashPattern(errorPattern);
     const existing = _repairMemory.get(key);
+    let evictedKey = null;
     if (existing) {
       existing.occurrences++;
       existing.lastSeen = nowISO();
       existing.successRate = existing.successes / existing.occurrences;
     } else {
+      if (_repairMemory.size >= REPAIR_MEMORY_CAP) {
+        evictedKey = _repairMemory.keys().next().value ?? null;
+      }
       // Check if error matches known security vulnerability (CVE tagging)
       let securityRelated = false;
       let cveId = null;
@@ -235,7 +247,11 @@ export function addToRepairMemory(errorPattern, fix) {
       });
     }
     _syncRepairMemoryToSTATE();
-    if (_persistDb) persistRepairEntry(_persistDb, key, _repairMemory.get(key));
+    if (_persistDb) {
+      const live = _repairMemory.get(key);
+      if (live) persistRepairEntry(_persistDb, key, live);
+      if (evictedKey) forgetRepairEntry(_persistDb, evictedKey);
+    }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
 
@@ -328,10 +344,16 @@ const _errorAccumulator = new Map();
  * Silent error sensor. Replaces empty catch blocks.
  * Does NOT throw or disrupt flow. Just observes.
  * The cortex sees everything now.
+ *
+ * opts.learn === false records the accumulator entry and skips repair
+ * memory, repair_knowledge, and security_threat_in_error. Anonymous
+ * frontend reports pass that flag. A "frontend:*" context never learns.
  */
-export function observe(error, context = "unknown") {
+export function observe(error, context = "unknown", opts) {
   try {
     const key = hashPattern(`${context}:${error?.message || error}`);
+    const ctxName = typeof context === "string" ? context : String(context?.module || "");
+    const learn = !(opts && opts.learn === false) && !ctxName.startsWith("frontend:");
 
     const existing = _errorAccumulator.get(key);
     if (existing) {
@@ -370,7 +392,10 @@ export function observe(error, context = "unknown") {
       if (oldestKey) _errorAccumulator.delete(oldestKey);
     }
 
-    // First occurrence — check if repair cortex knows a fix
+    if (!learn) return;
+
+    // First occurrence — check if repair cortex knows a fix.
+    // Skipped for anonymous frontend reports (learn: false / frontend:*).
     const diagnosis = matchErrorPattern(String(error?.message || error));
     if (diagnosis) {
       addToRepairMemory(String(error?.message || error), diagnosis.fixes?.[0]);
@@ -2695,7 +2720,12 @@ async function _tryHLRDiagnosis(errorMessage) {
 // Runs continuously while the system is live. Runtime self-repair.
 
 const _guardianTimers = new Map();
+const _guardianStartTimers = new Set();
 const _guardianStatuses = new LruMap();
+let _guardianDelayTimer = null;
+// Set synchronously on the first startGuardian() so a second call — including
+// one that arrives while the startup delay is still pending — is a no-op.
+let _guardianStarted = false;
 
 const GUARDIAN_MONITORS = {
   process_health: {
@@ -3480,11 +3510,19 @@ const GUARDIAN_MONITORS = {
 
 /**
  * Start all guardian monitors.
+ * Idempotent: a second call while a start is pending or monitors are running
+ * is a no-op (no second delay, no second interval set, no second audit row).
  */
 export function startGuardian() {
+  if (_guardianStarted) {
+    return { ok: true, status: "already_running", monitors: Object.keys(GUARDIAN_MONITORS) };
+  }
+  _guardianStarted = true;
   try {
     // Delay guardian activation to match repair loop startup delay
-    const delayTimer = setTimeout(() => {
+    _guardianDelayTimer = setTimeout(() => {
+      _guardianDelayTimer = null;
+      if (!_guardianStarted) return;
       let stagger = 0;
       const STAGGER_GAP = 5000; // 5 seconds between each monitor start
 
@@ -3495,6 +3533,9 @@ export function startGuardian() {
         const monitorDelay = stagger;
 
         const startTimer = setTimeout(() => {
+          _guardianStartTimers.delete(startTimer);
+          if (!_guardianStarted) return;
+          if (_guardianTimers.has(name)) return;
           const timer = setInterval(async () => {
             // Skip if memory ceiling monitor has paused background tasks
             if (globalThis.__memoryPaused?.()) return;
@@ -3516,11 +3557,12 @@ export function startGuardian() {
           _guardianTimers.set(name, timer);
         }, monitorDelay);
         if (startTimer.unref) startTimer.unref();
+        _guardianStartTimers.add(startTimer);
       }
 
       logger.info('emergent:repair-cortex', 'Guardian monitors activating with staggered delays', { monitors: Object.keys(GUARDIAN_MONITORS).length, totalStaggerMs: stagger });
     }, REPAIR_STARTUP_DELAY);
-    if (delayTimer.unref) delayTimer.unref();
+    if (_guardianDelayTimer.unref) _guardianDelayTimer.unref();
 
     logRepairDTU(REPAIR_PHASES.POST_BUILD, "guardian_started", {
       monitors: Object.keys(GUARDIAN_MONITORS),
@@ -3528,6 +3570,11 @@ export function startGuardian() {
 
     return { ok: true, monitors: Object.keys(GUARDIAN_MONITORS) };
   } catch (e) {
+    _guardianStarted = false;
+    if (_guardianDelayTimer) {
+      clearTimeout(_guardianDelayTimer);
+      _guardianDelayTimer = null;
+    }
     return { ok: false, error: String(e?.message || e) };
   }
 }
@@ -3537,6 +3584,13 @@ export function startGuardian() {
  */
 export function stopGuardian() {
   try {
+    _guardianStarted = false;
+    if (_guardianDelayTimer) {
+      clearTimeout(_guardianDelayTimer);
+      _guardianDelayTimer = null;
+    }
+    for (const timer of _guardianStartTimers) clearTimeout(timer);
+    _guardianStartTimers.clear();
     for (const [name, timer] of _guardianTimers) {
       clearInterval(timer);
     }
@@ -4692,8 +4746,14 @@ class ErrorContext {
     };
     this.errors.push(entry);
     if (this.errors.length > this.maxBuffer) this.errors.shift();
-    // Also feed into the existing error accumulator
-    observe(error, context.module);
+    // Also feed into the existing error accumulator.
+    // learn: false (anonymous frontend reports) stays in this buffer and
+    // the accumulator, and does not teach repair memory.
+    const moduleName = context.module || "unknown";
+    const learn = context.learn !== false
+      && context.trigger !== "frontend_render"
+      && !String(moduleName).startsWith("frontend:");
+    observe(error, moduleName, { learn });
     return entry;
   }
 
@@ -5043,6 +5103,13 @@ export async function processRepairQueue() {
   let fixed = 0, escalated = 0;
 
   for (const errorEntry of batch) {
+    // Anonymous frontend reports are an observe() signal only. They must
+    // not grow RUNTIME_PATCHES / _repairCaches, spend a repair-brain call,
+    // or become a persisted repair_escalation DTU.
+    const moduleName = String(errorEntry?.context?.module || "");
+    if (errorEntry?.context?.trigger === "frontend_render" || moduleName.startsWith("frontend:")) {
+      continue;
+    }
     let repaired = false;
     for (const strategy of REPAIR_STRATEGIES) {
       if (strategy.match && !strategy.match(errorEntry)) continue;

@@ -14,13 +14,14 @@ import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import type { DTU } from '@/lib/api/generated-types';
+import { dtuOriginLabel } from '@/lib/dtu/origin';
 import { cn } from '@/lib/utils';
 
 /**
  * Study (SRS) per docs/lens-northstar/12: one card at a time from DTUs the
- * user saved. Space reveals, 1-4 rate (srs.review), "+ Add to review" picks a
- * DTU (srs.add). The Anki-style deck engine and the GitHub repos are views
- * under More.
+ * user saved. Space reveals, 1-4 rate (srs.review), "+ Add to review" picks
+ * one of the viewer's own DTUs (scope=mine). Remove drops it from the queue.
+ * The Anki-style deck engine and the GitHub repos are views under More.
  */
 
 // --- Types (mirrors server.js's ephemeral DTU-review SRS.cards shape) ---
@@ -115,6 +116,21 @@ export default function SRSLensPage() {
       else flash(data.error || 'Review did not save.');
     },
     onError: (err) => flash(err instanceof Error ? err.message : 'Review did not save.'),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (dtuId: string) => apiHelpers.srs.remove(dtuId).then((r) => r.data as { ok: boolean; error?: string }),
+    onSuccess: (data) => {
+      if (data.ok) {
+        setRevealed(false);
+        setReviewIndex(0);
+        flash('Removed from review.');
+        queryClient.invalidateQueries({ queryKey: ['srs-due'] });
+      } else {
+        flash(data.error || 'Could not remove that card.');
+      }
+    },
+    onError: (err) => flash(err instanceof Error ? err.message : 'Could not remove that card.'),
   });
 
   const handleReview = useCallback((quality: number) => {
@@ -214,8 +230,8 @@ export default function SRSLensPage() {
               >
                 <h2 className="font-vault text-[1.9rem] leading-snug text-zinc-100">{current.dtu.title}</h2>
                 <p className="mt-3 text-[13px] text-zinc-500">
-                  From {current.dtu.domain ? `your ${current.dtu.domain} notes` : 'a note you saved'}
-                  {!revealed && ' · Space to reveal'}
+                  <span>{dtuOriginLabel(current.dtu, user?.id)}</span>
+                  {!revealed && <span> · Space to reveal</span>}
                 </p>
 
                 {revealed ? (
@@ -258,6 +274,16 @@ export default function SRSLensPage() {
                     Reveal
                   </button>
                 )}
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => removeMutation.mutate(current.dtu.id)}
+                    disabled={removeMutation.isPending}
+                    className="text-[13px] text-zinc-500 underline-offset-2 hover:text-zinc-200 hover:underline disabled:opacity-50"
+                  >
+                    Remove from review
+                  </button>
+                </div>
               </motion.article>
             )}
           </div>
@@ -278,6 +304,7 @@ export default function SRSLensPage() {
       {pickerOpen && (
         <DTUPickerModal
           lens="srs"
+          scope="mine"
           title="Add to review"
           onClose={() => setPickerOpen(false)}
           onSelect={handlePickDtu}

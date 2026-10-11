@@ -70,6 +70,7 @@ function isBlockedUrl(url) {
 // ── Delay Helper ────────────────────────────────────────────────────────────
 
 function delay(ms) {
+  if (!ms) return Promise.resolve();
   return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
@@ -82,7 +83,174 @@ function delay(ms) {
  * @param {string[]} queries - Search queries (max 3)
  * @returns {Promise<Array>} Web results with content
  */
+// ── Query shaping + relevance ───────────────────────────────────────────────
+//
+// Root cause (measured 2026-10-11 against the live APIs):
+//
+//   * api.duckduckgo.com is an instant-answer lookup, not a web search.
+//     Abstract/Answer stay empty for natural questions ("What is the capital
+//     of France?") and even for "capital of France". They fill for entity
+//     names ("France", "Eiffel Tower").
+//   * Wikipedia list=search is CirrusSearch. Every token is ANDed, so a
+//     unique prefix ("EM18610 …") returns totalhits 0. `?` is a one-character
+//     wildcard. Question words and "Answer in one sentence" promote the
+//     articles "Question" and "Capital punishment" (the word "sentence" hits
+//     death-penalty copy). "capital of France" itself still ranks "Capital
+//     punishment in France" above Paris; the old code kept only the first
+//     two hits, so the relevant page never got fetched.
+//
+// Shaping runs inside webSearchForChat so expert mode AND the chat callers
+// (utility-brain queries, the raw-message fallback, and the socket path)
+// share one behavior. Already-short keyword queries are left alone.
+// A hit that does not survive the relevance check is dropped. Nothing is
+// invented in its place.
+
+const SEARCH_STOP = new Set(
+  `a an the of in on for and or to from with by at as into over
+   is are was were be been being
+   what who where when why how which
+   do does did can could would should
+   this that these those it its their his her
+   please tell me you your
+   about than then also not`.split(/\s+/).filter(Boolean),
+);
+
+const LEADING_FRAME = /^(?:(?:please|can you|could you|would you|tell me|do you know)\s+)*(?:what(?:'s| is| are| was| were)|who(?:'s| is| are| was| were)|where(?:'s| is| are| was| were)|when(?:'s| is| are| was| were)|why(?:'s| is| are| was| were| did| does)|how(?:'s| is| are| many| much| long| do| does| did)|which(?: is| are| was| were)?|is|are|was|were|did|does|do)\s+/i;
+const LEADING_ARTICLE = /^(?:the|a|an)\s+/i;
+const LEADING_ID = /^(?:[A-Za-z]{1,8}\d{3,}(?:\s+|$))+/;
+
+function tokenize(text) {
+  return String(text || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[#a-z0-9]+;/gi, " ")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function stemToken(w) {
+  if (w.length > 4 && w.endsWith("ies")) return `${w.slice(0, -3)}y`;
+  if (w.length > 4 && w.endsWith("s") && !w.endsWith("ss")) return w.slice(0, -1);
+  return w;
+}
+
+function contentWords(text) {
+  const out = [];
+  for (const raw of tokenize(text)) {
+    const w = stemToken(raw);
+    if (!w || SEARCH_STOP.has(w) || w.length < 2) continue;
+    if (w.length < 3 && !/^[a-z]{2}$/.test(w)) continue;
+    out.push(w);
+  }
+  return out;
+}
+
+function queryTerms(query) {
+  const seen = new Set();
+  const terms = [];
+  for (const w of contentWords(query)) {
+    if (seen.has(w)) continue;
+    seen.add(w);
+    terms.push(w);
+  }
+  return terms;
+}
+
+function stripInstructionTail(s) {
+  s = s.replace(/([?!])(?=\S)/g, "$1 ");
+  const parts = s.split(/(?<=[.?!])\s+/);
+  if (parts.length > 1) {
+    const kept = [];
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (i > 0 && /^(?:please\s+)?(?:answer|respond|reply|explain|summarize|summarise|keep|be)\b/i.test(part)) break;
+      if (i > 0 && /^in\s+(?:one|a|1)\s+sentence\b/i.test(part)) break;
+      kept.push(part);
+    }
+    s = kept.join(" ").trim();
+  }
+  s = s.replace(/\s+(?:please\s+)?(?:answer|respond|reply)\s+in\s+(?:one|a|1)\s+sentence\b[\s\S]*$/i, "");
+  s = s.replace(/\s+(?:in\s+(?:one|a|1)\s+sentence|briefly|in\s+\d+\s+words|keep it (?:short|brief)|be (?:brief|concise))\s*[.?!]*\s*$/i, "");
+  return s.trim();
+}
+
+/**
+ * Turn a user question into a search string.
+ * Keyword queries ("Eiffel Tower", "France capital city") pass through.
+ * Returns "" when nothing searchable remains — callers must return no sources.
+ */
+export function shapeSearchQuery(raw) {
+  let s = String(raw || "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim();
+  if (!s) return "";
+  s = stripInstructionTail(s);
+  s = s.replace(LEADING_ID, "").trim();
+  for (let i = 0; i < 4; i++) {
+    const next = s.replace(LEADING_FRAME, "").replace(LEADING_ARTICLE, "").trim();
+    if (next === s) break;
+    s = next;
+  }
+  s = s.replace(/[?*~!]+/g, " ").replace(/[.]+$/g, "").replace(/\s+/g, " ").trim();
+  if (!/[a-z0-9]/i.test(s)) return "";
+  return s;
+}
+
+function hasCompoundClash(terms, title) {
+  const titleWords = contentWords(title);
+  if (titleWords.length < 2 || terms.length === 0) return false;
+  const q = new Set(terms);
+  // "Capital punishment…" is a different concept that merely shares the
+  // first query word. "Boiling point" is not: the next word is also a query term.
+  return q.has(titleWords[0]) && !q.has(titleWords[1]);
+}
+
+function hasOrderedTightMatch(terms, text) {
+  if (terms.length < 2) return false;
+  const words = contentWords(text);
+  for (let i = 0; i < words.length; i++) {
+    if (words[i] !== terms[0]) continue;
+    let qi = 1;
+    for (let j = i + 1; j < words.length && qi < terms.length; j++) {
+      if (words[j] === terms[qi]) qi++;
+      else break;
+    }
+    if (qi === terms.length) return true;
+  }
+  return false;
+}
+
+/**
+ * True when a hit is about the shaped query.
+ * Drops "Capital punishment" for a capital-of-France question.
+ * Keeps a keyword hit whose title is the thing that was asked about.
+ */
+export function isWebSourceRelevant(query, title, snippet) {
+  const shaped = shapeSearchQuery(query);
+  const terms = queryTerms(shaped);
+  if (!terms.length) return false;
+  const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
+  const matched = terms.filter((t) => blob.has(t));
+  if (matched.length === 0) return false;
+  if (hasCompoundClash(terms, title) && !hasOrderedTightMatch(terms, `${title || ""} ${snippet || ""}`)) {
+    return false;
+  }
+  // "X of Y" must mention both sides. Otherwise "capital" alone cites
+  // Capital punishment, and a unique head noun never has to appear.
+  if (terms.length >= 2 && /\bof\b/i.test(shaped) && matched.length !== terms.length) return false;
+  if (terms.length >= 2 && !blob.has(terms[terms.length - 1])) return false;
+  return true;
+}
+
+function keepRelevant(query, rows) {
+  return (rows || []).filter((r) => isWebSourceRelevant(query, r.title, r.snippet || r.content || ""));
+}
+
+// Courtesy pause between Wikipedia article fetches. Skipped under the test
+// runner so a mocked search does not sit on a 2s timer; production still waits.
+const WIKI_COURTESY_DELAY_MS = String(process.env.NODE_ENV).toLowerCase() === "test" ? 0 : 2000;
+
 // ── DuckDuckGo Instant Answer (free, no key) ────────────────────────────────
+// Not a web search. Returns a summary only when the query names an entity
+// the instant-answer index already has. Natural-language questions come back empty.
 
 async function duckduckgoInstant(query) {
   try {
@@ -139,21 +307,29 @@ async function braveSearch(query) {
 export async function webSearchForChat(queries) {
   const allResults = [];
 
-  for (const query of (queries || []).slice(0, 3)) {
-    // 1. Try DuckDuckGo instant answer first (fast, free, broad)
+  for (const raw of (queries || []).slice(0, 3)) {
+    const query = shapeSearchQuery(raw);
+    if (!query) continue;
+
+    // 1. DuckDuckGo instant answer. Empty for natural questions; useful once
+    //    the query has been reduced to an entity name.
     const ddgResult = await duckduckgoInstant(query);
-    if (ddgResult) allResults.push(ddgResult);
+    if (ddgResult && isWebSourceRelevant(query, ddgResult.title, ddgResult.snippet || ddgResult.content)) {
+      allResults.push(ddgResult);
+    }
 
     // 2. Try Brave Search if API key is configured
     if (process.env.BRAVE_API_KEY) {
-      const braveResults = await braveSearch(query);
+      const braveResults = keepRelevant(query, await braveSearch(query));
       allResults.push(...braveResults);
       if (allResults.length >= 5) break; // enough results
     }
 
     try {
-      // 3. Wikipedia as supplementary source (especially good for factual/encyclopedic)
-      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3`;
+      // 3. Wikipedia. Pull a wider candidate set than we will cite, drop
+      //    title clashes (Capital punishment) using the search snippet, and
+      //    only then pay the courtesy delay + extract fetch for survivors.
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=8`;
       const searchRes = await fetch(searchUrl, {
         headers: { "User-Agent": CHAT_USER_AGENT },
         signal: AbortSignal.timeout(8000),
@@ -161,9 +337,12 @@ export async function webSearchForChat(queries) {
 
       if (!searchRes.ok) continue;
       const searchData = await searchRes.json();
+      const candidates = (searchData.query?.search || [])
+        .filter((result) => isWebSourceRelevant(query, result.title, result.snippet || ""))
+        .slice(0, 2);
 
-      for (const result of (searchData.query?.search || []).slice(0, 2)) {
-        await delay(2000); // courteous delay
+      for (const result of candidates) {
+        await delay(WIKI_COURTESY_DELAY_MS);
 
         const articleUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(result.title)}`;
         const allowed = await checkRobotsTxt(articleUrl);
@@ -185,6 +364,8 @@ export async function webSearchForChat(queries) {
           allResults.push({
             title: result.title,
             url: articleUrl,
+            // Search blurb only — often the first sentence, and not the fact.
+            // content is the plain-text lead. Expert Mode cites content.
             snippet: (result.snippet || "").replace(/<[^>]+>/g, "").slice(0, 300),
             content: page.extract.slice(0, 2000),
             source: "en.wikipedia.org",
@@ -206,7 +387,7 @@ export async function webSearchForChat(queries) {
           if (hnRes.ok) {
             const hnData = await hnRes.json();
             for (const hit of (hnData.hits || []).slice(0, 2)) {
-              allResults.push({
+              const row = {
                 title: hit.title || "HN discussion",
                 url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
                 snippet: `${hit.title} (${hit.points || 0} points, ${hit.num_comments || 0} comments)`,
@@ -214,7 +395,8 @@ export async function webSearchForChat(queries) {
                 source: hit.url ? new URL(hit.url).hostname : "news.ycombinator.com",
                 query,
                 fetchedAt: new Date().toISOString(),
-              });
+              };
+              if (isWebSourceRelevant(query, row.title, row.snippet)) allResults.push(row);
             }
           }
         } catch (_e) { logger.debug('emergent:conscious-web-search', 'HN is supplementary — silent fail', { error: _e?.message }); }

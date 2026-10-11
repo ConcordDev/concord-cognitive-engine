@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Download, FileJson, FileSpreadsheet, ChevronDown } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadFile } from '@/lib/utils';
+import { buildConkayExport, conkayExportCsv, getConkayCurrentModel, type ConkayExportModel } from '@/lib/conkay/model-export';
 
 export const EMPTY_EXPORT_NOTICE =
   'Nothing to export yet. This menu exports saved lens items, and there are none here. Records kept in this lens\u2019s own panels aren\u2019t included in this export yet, so nothing was downloaded.';
+
+export const CONKAY_EMPTY_EXPORT_NOTICE =
+  'Nothing to export yet. Save a model or open a study first — nothing was downloaded.';
 
 interface ExportMenuProps {
   domain: string;
@@ -44,11 +48,46 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  const exportConkay = async (format: 'json' | 'csv') => {
+    let lensItems: unknown[] = [];
+    let lensItemsError: string | null = null;
+    try {
+      const response = await apiHelpers.lens.list(domain, { limit: 1000 });
+      lensItems = Array.isArray(response.data?.items) ? response.data.items : [];
+    } catch (err) {
+      lensItemsError = err instanceof Error ? err.message : 'Could not list lens items.';
+    }
+    const listed = await lensRun<{ parts: ConkayExportModel[] }>('engineering', 'listParts', {});
+    if (listed.data?.ok === false || !listed.data?.result) {
+      setNotice(listed.data?.error || 'Could not load saved models — nothing was downloaded.');
+      return false;
+    }
+    const parts = Array.isArray(listed.data.result.parts) ? listed.data.result.parts : [];
+    const current = getConkayCurrentModel();
+    if (parts.length === 0 && !current && lensItems.length === 0) {
+      setNotice(lensItemsError ? 'Export failed — nothing was downloaded.' : CONKAY_EMPTY_EXPORT_NOTICE);
+      return false;
+    }
+    const doc = buildConkayExport({ parts, current, lensItems, lensItemsError });
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (format === 'json') {
+      downloadFile(JSON.stringify(doc, null, 2), `conkay-models-${stamp}.json`, 'application/json');
+    } else {
+      downloadFile(conkayExportCsv(doc), `conkay-models-${stamp}.csv`, 'text/csv');
+    }
+    return true;
+  };
+
   const exportAs = async (format: 'json' | 'csv') => {
     setExporting(format);
     setNotice(null);
     let keepOpen = false;
     try {
+      if (domain === 'conkay') {
+        const downloaded = await exportConkay(format);
+        if (!downloaded) keepOpen = true;
+        return;
+      }
       const response = await apiHelpers.lens.list(domain, { limit: 1000 });
       const items = response.data?.items || [];
       if (items.length === 0) {
@@ -87,10 +126,15 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     }
   };
 
-  const options = [
-    { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Full DTU bundle' },
-    { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'Tabular data' },
-  ];
+  const options = domain === 'conkay'
+    ? [
+        { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Saved models and the current study' },
+        { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'One row per model' },
+      ]
+    : [
+        { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Full DTU bundle' },
+        { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'Tabular data' },
+      ];
 
   return (
     <div className="relative" ref={menuRef}>

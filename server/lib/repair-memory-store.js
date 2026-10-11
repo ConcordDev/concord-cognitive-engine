@@ -42,6 +42,15 @@ export function persistRepairEntry(db, key, entry) {
   } catch { return false; }
 }
 
+/** Drop one learned row. Used when the in-memory cap evicts that key. */
+export function forgetRepairEntry(db, key) {
+  if (!db || !key || !tableExists(db, "repair_knowledge")) return false;
+  try {
+    db.prepare(`DELETE FROM repair_knowledge WHERE id = ?`).run(key);
+    return true;
+  } catch { return false; }
+}
+
 /**
  * Load a persisted pattern back into the in-memory entry shape (or null).
  * Used by lookupRepairMemory when the in-memory cache is cold after a restart.

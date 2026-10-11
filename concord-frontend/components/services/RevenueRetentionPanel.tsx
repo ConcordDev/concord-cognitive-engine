@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Briefcase, Loader2, Plus, Trash2, DollarSign, Users } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Appt { provider: string; date: string; price: string; status: 'completed' | 'paid' | 'scheduled' | 'cancelled' }
@@ -37,8 +38,7 @@ async function callSvc<T>(action: string, input: Record<string, unknown>): Promi
   } catch { return null; }
 }
 
-const today = new Date();
-const dayOffset = (n: number) => new Date(today.getTime() - n * 86400000).toISOString().slice(0, 10);
+const dayOffset = (n: number) => shiftDateKey(calendarDateKey(), -n);
 
 export function RevenueRetentionPanel() {
   const [appts, setAppts] = useState<Appt[]>([{ provider: '', date: dayOffset(0), price: '', status: 'completed' }]);

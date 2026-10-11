@@ -41,7 +41,8 @@
         "role": "bogus_role"
       },
       "expect": {
-        "ok": true
+        "ok": false,
+        "error": "crisis_not_found"
       }
     },
     {
@@ -51,9 +52,10 @@
         "role": "incident_commander"
       },
       "expect": {
-        "ok": true
+        "ok": false,
+        "error": "crisis_not_found"
       }
     }
   ],
-  "_note": "Assigns a responder to a crisis with a command role; an unrecognized role is coerced to 'responder'; declaring a second incident_commander demotes the prior one to operations_chief. Logs the assignment onto the timeline. Missing crisisId/responder \u2192 missing_crisis_or_responder."
+  "_note": "Assigns a responder to a real world_crises row with a command role. An unrecognized role is coerced to 'responder' once the row exists; a second incident_commander demotes the prior one to operations_chief. An id with no world_crises row is crisis_not_found. The returned entry carries assignedByName and assignedByIsMe, never the raw user id. Missing crisisId/responder is missing_crisis_or_responder."
 }

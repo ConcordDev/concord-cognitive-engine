@@ -29,6 +29,35 @@ describe("math.symbolicCompute (CAS)", () => {
     assert.ok(r.result.output && r.result.output.length < "2 + 3*x*0 + x".length);
   });
 
+  it("collects like terms (2x + 3x - 0 → 5 * x)", () => {
+    const r = call("symbolicCompute", ctxA, { operation: "simplify", expression: "2x + 3x - 0" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.output, "5 * x");
+  });
+
+  it("collects like terms across products, powers, and cancellation", () => {
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "x + x" }).result.output, "2 * x");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "2*x^2 + 3*x^2" }).result.output, "5 * x ^ 2");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "x - x" }).result.output, "0");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "2*x + 3*y" }).result.output, "2 * x + 3 * y");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "sin(x) + sin(x)" }).result.output, "2 * sin(x)");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "2*x*y + 3*y*x" }).result.output, "5 * x * y");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "2*x - 3*x" }).result.output, "-x");
+    assert.equal(call("symbolicCompute", ctxA, { operation: "simplify", expression: "5*x - 2*x" }).result.output, "3 * x");
+  });
+
+  it("still differentiates sin(x)*x and x^2 after like-term collection", () => {
+    const product = call("symbolicCompute", ctxA, { operation: "derivative", expression: "sin(x)*x" });
+    assert.equal(product.ok, true);
+    assert.equal(product.result.derivative, "cos(x) * x + sin(x)");
+    const power = call("symbolicCompute", ctxA, { operation: "derivative", expression: "x^2" });
+    assert.equal(power.result.derivative, "2 * x");
+    const cube = call("symbolicCompute", ctxA, { operation: "derivative", expression: "x^3" });
+    assert.equal(cube.result.derivative, "3 * x ^ 2");
+    const cos = call("symbolicCompute", ctxA, { operation: "derivative", expression: "cos(x)" });
+    assert.equal(cos.result.derivative, "-sin(x)");
+  });
+
   it("differentiates x^3 → 3*x^2", () => {
     const r = call("symbolicCompute", ctxA, { operation: "derivative", expression: "x^3", variable: "x" });
     assert.equal(r.ok, true);
@@ -111,6 +140,13 @@ describe("math.naturalQuery (NL parsing)", () => {
     const r = call("naturalQuery", ctxA, { query: "solve x^2 - 4 = 0" });
     assert.equal(r.ok, true);
     assert.equal(r.result.kind, "solve");
+  });
+
+  it("simplifies '2x + 3x - 0' by collecting like terms", () => {
+    const r = call("naturalQuery", ctxA, { query: "simplify 2x + 3x - 0" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "simplify");
+    assert.equal(r.result.answer, "5 * x");
   });
 
   it("parses 'factor 360'", () => {

@@ -39,9 +39,10 @@
         "note": "Shelter opened"
       },
       "expect": {
-        "ok": true
+        "ok": false,
+        "error": "crisis_not_found"
       }
     }
   ],
-  "_note": "Appends a status-log entry to a crisis timeline (in-memory store, persisted via debounced state save). Missing crisisId or note \u2192 missing_crisis_or_note. The appended entry is immediately readable via crisis.timeline."
+  "_note": "Appends a status-log entry to a real world crisis timeline. Any signed-in player may log on a row that exists. An id with no world_crises row is crisis_not_found. The returned entry carries byName and byIsMe, never the raw user id. Missing crisisId or note is missing_crisis_or_note."
 }
