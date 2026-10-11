@@ -3,11 +3,13 @@
 // Parametric body. Vertices stay in the vehicle frame (x rearward, y right,
 // z up). The viewer converts to three.js Y-up.
 //
-// The skin is a set of B-spline patches (monotone cubic through the package
-// stations) bounded by character curves: hood centre, fender/shoulder, belt,
-// rocker, roof rail, kamm edge. Glass is its own patch on those curves, offset
-// a few millimetres outboard. Wheel arches are circular cuts with a lip, not
-// a recess in the section. Tessellation is adaptive and capped.
+// The skin is one closed half-body loft, mirrored and seam-welded on y = 0.
+// Nose, bumper, fenders, hood, roof and floor share one vertex grid. Wheel
+// arches, the cooling opening and the glass are holes in that grid, so the
+// trim and the glass use the same boundary vertices. Glass is offset 4 mm
+// along the smoothed normal. opencascade.js can boot in this environment, but
+// a lofted B-rep with arch and glass booleans is not what the viewer sections;
+// pythonocc-core is not installable from pip here. The loft is the solid.
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -53,14 +55,41 @@ function pchip(keys, x) {
     + (-2 * t3 + 3 * t2) * keys[i + 1].v + (t3 - t2) * h[i] * mi[i + 1];
 }
 
-function uniqKeys(pairs) {
+function mergeMax(pairs) {
   const s = pairs.filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1])).sort((a, b) => a[0] - b[0]);
   const out = [];
   for (const [x, v] of s) {
     if (!out.length || x - out[out.length - 1].x > 1e-3) out.push({ x, v });
-    else out[out.length - 1].v = v;
+    else out[out.length - 1].v = Math.max(out[out.length - 1].v, v);
   }
   return out.length ? out : [{ x: 0, v: 0 }];
+}
+
+/** Lift a curve up to floorFn(x) without a cliff. Neighbours rise at most maxSlope. */
+function raiseCurve(pairs, floorFn, maxSlope) {
+  const keys = mergeMax(pairs);
+  const x0 = keys[0].x;
+  const x1 = keys[keys.length - 1].x;
+  const xs = [x0];
+  for (let x = x0 + 0.02; x < x1 - 1e-4; x += 0.02) xs.push(x);
+  xs.push(x1);
+  for (const k of keys) xs.push(k.x);
+  xs.sort((a, b) => a - b);
+  const uniq = [];
+  for (const x of xs) if (!uniq.length || x - uniq[uniq.length - 1] > 5e-4) uniq.push(x);
+  const ys = uniq.map((x) => {
+    const floor = floorFn(x);
+    return Math.max(pchip(keys, x), Number.isFinite(floor) ? floor : -Infinity);
+  });
+  for (let i = 1; i < ys.length; i++) {
+    const dx = uniq[i] - uniq[i - 1];
+    ys[i] = Math.max(ys[i], ys[i - 1] - maxSlope * dx);
+  }
+  for (let i = ys.length - 2; i >= 0; i--) {
+    const dx = uniq[i + 1] - uniq[i];
+    ys[i] = Math.max(ys[i], ys[i + 1] - maxSlope * dx);
+  }
+  return uniq.map((x, i) => ({ x, v: ys[i] }));
 }
 
 const keyCache = new WeakMap();
@@ -110,45 +139,61 @@ function keysOf(spec) {
   const kammX = tail - Math.min(0.16, (tail - rx) * 0.25);
   const kY = hw * Math.sqrt(clamp(S.kammRatio, 0.25, 0.75));
   const hoodAxle = Math.min(archTop - 0.035, S.cowlZ - 0.06);
-  hit = {
-    kammX,
-    archTop,
-    crown: uniqKeys([
-      [nose, S.noseTipZ],
-      [lerp(nose, ax, 0.35), S.noseTipZ + 0.06],
-      [ax, hoodAxle],
-      [lerp(ax, S.cowlX, 0.55), lerp(hoodAxle, S.cowlZ, 0.65)],
-      [S.cowlX, S.cowlZ],
-      [S.headerX, S.roofZ],
-      [Math.min(S.roofHoldX, rx), S.roofZ],
-      [rx, S.roofZ - 0.01],
-      [lerp(rx, kammX, 0.55), lerp(S.roofZ, S.kammZ, 0.62)],
-      [kammX, S.kammZ],
-      [tail, S.kammZ - 0.015],
-    ]),
-    shy: uniqKeys([
-      [nose, hw * 0.2],
-      [lerp(nose, ax, 0.45), hw * 0.62],
-      [ax - R * 0.2, hw * 0.98],
-      [ax, hw],
-      [S.cowlX, hw * 0.995],
-      [S.bPillarX, hw * 0.99],
-      [rx, hw * 0.985],
-      [kammX, kY],
-      [tail, kY * 0.94],
-    ]),
-    shz: uniqKeys([
-      [nose, S.noseTipZ + 0.045],
-      [ax - R, archTop + 0.008],
-      [ax, archTop + 0.014],
-      [ax + R, archTop + 0.01],
-      [S.cowlX, S.beltZ],
-      [S.headerX, S.beltZ],
-      [rx, S.beltZ - 0.01],
-      [kammX, S.kammZ * 0.78],
-      [tail, S.kammZ * 0.62],
-    ]),
+  const bands = (Array.isArray(S.clearance) ? S.clearance : []).filter((b) => Number.isFinite(b.x0) && Number.isFinite(b.x1) && Number.isFinite(b.z));
+  const inBand = (x) => bands.filter((b) => x >= b.x0 && x <= b.x1);
+  const crownFloor = (x) => {
+    let z = -Infinity;
+    for (const b of inBand(x)) z = Math.max(z, b.z + 0.03);
+    return z;
   };
+  // Fender is full width ahead of the arch so the opening is cut into skin, not a gap.
+  const archFront = ax - R;
+  const crown = raiseCurve([
+    [nose, S.noseTipZ],
+    [lerp(nose, ax, 0.35), S.noseTipZ + 0.06],
+    [ax, hoodAxle],
+    [lerp(ax, S.cowlX, 0.55), lerp(hoodAxle, S.cowlZ, 0.65)],
+    [S.cowlX, S.cowlZ],
+    [S.headerX, S.roofZ],
+    [Math.min(S.roofHoldX, rx), S.roofZ],
+    [rx, S.roofZ - 0.01],
+    [lerp(rx, kammX, 0.55), lerp(S.roofZ, S.kammZ, 0.62)],
+    [kammX, S.kammZ],
+    [tail, S.kammZ - 0.015],
+  ], crownFloor, 1.55);
+  const shy = raiseCurve([
+    [nose, hw * 0.22],
+    [lerp(nose, archFront, 0.45), hw * 0.55],
+    [archFront - 0.04, hw * 0.97],
+    [ax, hw],
+    [ax + R + 0.02, hw * 0.995],
+    [S.cowlX, hw * 0.995],
+    [S.bPillarX, hw * 0.99],
+    [rx, hw * 0.985],
+    [kammX, kY],
+    [tail, kY * 0.94],
+  ], (x) => {
+    let y = -Infinity;
+    for (const b of inBand(x)) if (Number.isFinite(b.y)) y = Math.max(y, b.y + 0.06);
+    return y;
+  }, 2.4);
+  const shz = raiseCurve([
+    [nose, S.noseTipZ + 0.045],
+    [archFront, archTop + 0.012],
+    [ax, archTop + 0.016],
+    [ax + R, archTop + 0.012],
+    [S.cowlX, S.beltZ],
+    [S.headerX, S.beltZ],
+    [rx, S.beltZ - 0.01],
+    [kammX, S.kammZ * 0.78],
+    [tail, S.kammZ * 0.62],
+  ], (x) => {
+    const cap = pchip(crown, x) - 0.03;
+    let z = -Infinity;
+    for (const b of inBand(x)) z = Math.max(z, b.z + 0.012);
+    return Number.isFinite(z) ? Math.min(z, cap) : -Infinity;
+  }, 1.55);
+  hit = { kammX, archTop, crown, shy, shz };
   keyCache.set(spec, hit);
   return hit;
 }
@@ -215,6 +260,29 @@ export function boxInsideEnvelope(spec, placement, half, tol = 0.05) {
   if (crowns.some((crown) => z + hz > crown + tol)) return false;
   const widthOk = (zz) => Math.abs(y) + hy <= sectionHalfWidth(S, x, clamp(zz, S.floorZ, crownAtCenter)) + tol;
   return widthOk(z) && widthOk(Math.min(z + hz, crownAtCenter));
+}
+
+/** Box test, or a skin-following centreline when the part carries a spine. */
+export function partInsideEnvelope(spec, part, tol = 0.05) {
+  if (!part) return false;
+  if (Array.isArray(part.spine) && part.spine.length) {
+    const S = resolveSpec(spec);
+    const hy = part.section?.[0] ?? 0.015;
+    const hz = part.section?.[1] ?? 0.015;
+    for (const pt of part.spine) {
+      const x = pt[0];
+      const y = pt[1];
+      const z = pt[2];
+      if (x < S.noseX - tol || x > S.tailX + tol) return false;
+      const p = prof(S, x);
+      if (z + hz > p.crownZ + tol) return false;
+      if (z - hz < S.floorZ - 0.08) return false;
+      const zz = clamp(z, S.floorZ, p.crownZ);
+      if (Math.abs(y) + hy > sectionHalfWidth(S, x, zz) + tol) return false;
+    }
+    return true;
+  }
+  return boxInsideEnvelope(spec, part.placement, part.half, tol);
 }
 
 export function pointInsideEnvelope(spec, x, y, z, tol = 0.04) {
@@ -313,86 +381,6 @@ function concat(dst, src) {
   for (const i of src.indices) dst.indices.push(base + i);
 }
 
-function samplesBetween(a, b, n, includeEnd) {
-  if (!(b > a + 1e-4) || n < 1) return [];
-  const out = [];
-  const m = includeEnd ? n : n;
-  for (let i = 0; i < m; i++) out.push(a + (b - a) * (i / m));
-  return out;
-}
-
-function sideXs(spec) {
-  const R = spec.tyreRadius + spec.archGap;
-  const q = spec.quality === "mobile" ? 0.5 : 1;
-  const n = (v) => Math.max(4, Math.round(v * q));
-  const bits = [
-    [spec.noseX, spec.frontAxleX - R - 0.04, n(16)],
-    [spec.frontAxleX - R - 0.04, spec.frontAxleX + R + 0.04, n(36)],
-    [spec.frontAxleX + R + 0.04, spec.cowlX, n(12)],
-    [spec.cowlX, spec.headerX, n(14)],
-    [spec.headerX, spec.bPillarX, n(16)],
-    [spec.bPillarX, spec.rearAxleX - R - 0.04, n(14)],
-    [spec.rearAxleX - R - 0.04, spec.rearAxleX + R + 0.04, n(36)],
-    [spec.rearAxleX + R + 0.04, spec.tailX, n(14)],
-  ];
-  const xs = new Set([spec.noseX, spec.tailX, spec.frontAxleX, spec.rearAxleX, spec.cowlX, spec.headerX, spec.bPillarX, spec.cPillarX]);
-  for (const [a, b, n] of bits) for (const x of samplesBetween(Math.min(a, b), Math.max(a, b), n, false)) xs.add(x);
-  return [...xs].filter((x) => x >= spec.noseX - 1e-6 && x <= spec.tailX + 1e-6).sort((a, b) => a - b);
-}
-
-function sidePoint(spec, x, v, side) {
-  const rocker = underPoint(spec, x, 1, side);
-  const p = prof(spec, x);
-  // Vertical side: the plan width arrives low, then a small tumblehome.
-  // A shallow groove at the belt breaks the highlight into a character line.
-  const w = v ** 0.28;
-  const tumble = Math.sin(v * Math.PI) * 0.008 * p.shoulderY;
-  const beltT = clamp((p.beltZ - rocker.z) / (p.shoulderZ - rocker.z || 1), 0.2, 0.92);
-  const groove = Math.exp(-((v - beltT) ** 2) / 0.0009) * 0.0045;
-  return {
-    x,
-    y: side * (Math.abs(lerp(rocker.y, side * p.shoulderY, w)) - groove) + side * tumble,
-    z: lerp(rocker.z, p.shoulderZ, v),
-  };
-}
-
-function underPoint(spec, x, v, side) {
-  const p = prof(spec, x);
-  const y = side * p.rockerY * v;
-  const z = p.floorZ + 0.012 * (1 - v) + 0.008 * v;
-  const noseT = clamp((spec.frontAxleX - x) / Math.max(1e-3, spec.frontAxleX - spec.noseX), 0, 1);
-  const tailT = clamp((x - spec.rearAxleX) / Math.max(1e-3, spec.tailX - spec.rearAxleX), 0, 1);
-  return { x, y, z: z + 0.035 * noseT * noseT + 0.03 * tailT * tailT };
-}
-
-function hoodPoint(spec, u, t) {
-  if (u >= 0.999) return cowlCurve(spec, t);
-  const x = lerp(spec.noseX, spec.cowlX, u);
-  const p = prof(spec, x);
-  const edge = cowlCurve(spec, t);
-  const a = Math.abs(t);
-  // Flat crown, late turn-down, so the fender edge reads as a line.
-  const y = Math.sign(t || 1) * p.shoulderY * (a ** 0.85);
-  const z = lerp(p.crownZ, p.shoulderZ, a ** 2.4);
-  const w = u ** 2;
-  return { x: lerp(x, edge.x, w), y: lerp(y, edge.y, w), z: lerp(z, edge.z, w) };
-}
-
-function roofPoint(spec, u, t) {
-  if (u <= 0.001) return headerCurve(spec, t);
-  const k = keysOf(spec);
-  const x = lerp(spec.headerX, k.kammX, u);
-  const p = prof(spec, x);
-  const edge = headerCurve(spec, t);
-  const a = Math.abs(t);
-  const y = Math.sign(t || 1) * p.railY * (a ** 0.72);
-  const z = lerp(p.crownZ, p.railZ, a ** 2.6);
-  const w = (1 - u) ** 2;
-  return { x: lerp(x, edge.x, w), y: lerp(y, edge.y, w), z: lerp(z, edge.z, w) };
-}
-
-// --- arch clip ----------------------------------------------------------------
-
 function lerpP(a, b, t) {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
 }
@@ -476,237 +464,492 @@ function emitPoly(mesh, poly, kind) {
   }
 }
 
-function addSide(mesh, spec, side) {
-  const xs = sideXs(spec);
-  const nv = 16;
-  const R = spec.tyreRadius + spec.archGap;
-  const pts = xs.map((x) => Array.from({ length: nv + 1 }, (_, j) => sidePoint(spec, x, j / nv, side)));
-  const ids = pts.map((row, i) => row.map((p, j) => {
-    const i1 = Math.min(xs.length - 1, i + 1);
-    const i0 = Math.max(0, i - 1);
-    const j1 = Math.min(nv, j + 1);
-    const j0 = Math.max(0, j - 1);
-    let n = cross(sub(pts[i1][j], pts[i0][j]), sub(row[j1], row[j0]));
-    if (!outwardish(p, n, "side")) n = { x: -n.x, y: -n.y, z: -n.z };
-    return mesh.add(p, n);
-  }));
-  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < nv; j++) {
-    const quad = [pts[i][j], pts[i + 1][j], pts[i + 1][j + 1], pts[i][j + 1]];
-    const axle = [spec.frontAxleX, spec.rearAxleX].find((ax) => quad.some((p) => Math.hypot(p.x - ax, p.z - spec.tyreCenterZ) < R - 1e-4));
-    const a = ids[i][j];
-    const b = ids[i + 1][j];
-    const c = ids[i + 1][j + 1];
-    const d = ids[i][j + 1];
-    if (!axle) {
-      const n = faceN(quad[0], quad[1], quad[2]);
-      if (!outwardish(quad[0], n, "side")) { mesh.tri(a, d, c); mesh.tri(a, c, b); }
-      else { mesh.tri(a, b, c); mesh.tri(a, c, d); }
-    } else {
-      emitPoly(mesh, clipOutsideCircle(quad, axle, spec.tyreCenterZ, R), "side");
-    }
-  }
-}
 
-function patchClipped(nu, nv, sample, kind, spec) {
-  const mesh = new Mesh();
-  const pts = [];
+function sideXs(spec) {
   const R = spec.tyreRadius + spec.archGap;
-  for (let i = 0; i <= nu; i++) {
-    pts[i] = [];
-    for (let j = 0; j <= nv; j++) pts[i][j] = sample(i / nu, j / nv);
+  const q = spec.quality === "mobile" ? 0.42 : 1;
+  const n = (v) => Math.max(3, Math.round(v * q));
+  const xs = new Set();
+  const add = (x) => {
+    if (x >= spec.noseX - 1e-4 && x <= spec.tailX + 1e-4) xs.add(Math.round(clamp(x, spec.noseX, spec.tailX) * 1e4) / 1e4);
+  };
+  for (const x of [spec.noseX, spec.tailX, spec.frontAxleX, spec.rearAxleX, spec.cowlX, spec.headerX, spec.bPillarX, spec.cPillarX]) add(x);
+  const spans = [
+    [spec.noseX, spec.frontAxleX - R, n(36)],
+    [spec.frontAxleX - R, spec.frontAxleX + R, n(56)],
+    [spec.frontAxleX + R, spec.cowlX, n(18)],
+    [spec.cowlX, spec.headerX, n(28)],
+    [spec.headerX, spec.bPillarX, n(24)],
+    [spec.bPillarX, spec.cPillarX || spec.rearAxleX, n(20)],
+    [spec.cPillarX || spec.rearAxleX, spec.rearAxleX - R, n(18)],
+    [spec.rearAxleX - R, spec.rearAxleX + R, n(48)],
+    [spec.rearAxleX + R, spec.tailX, n(26)],
+  ];
+  for (const [a, b, count] of spans) {
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    for (let i = 0; i <= count; i++) add(lo + (hi - lo) * (i / Math.max(1, count)));
   }
-  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
-    let poly = [pts[i][j], pts[i + 1][j], pts[i + 1][j + 1], pts[i][j + 1]];
-    for (const axle of [spec.frontAxleX, spec.rearAxleX]) {
-      if (poly.length < 3) break;
-      if (!poly.some((p) => Math.hypot(p.x - axle, p.z - spec.tyreCenterZ) < R - 1e-4)) continue;
-      poly = clipOutsideCircle(poly, axle, spec.tyreCenterZ, R);
-    }
-    emitPoly(mesh, poly, kind);
-  }
-  return mesh;
-}
-
-function addArchLips(mesh, spec) {
-  const well = new Mesh();
-  const R = spec.tyreRadius + spec.archGap;
-  const cz = spec.tyreCenterZ;
-  const a0 = Math.PI + 0.55;
-  const a1 = -0.35;
-  const segs = 56;
   for (const axle of [spec.frontAxleX, spec.rearAxleX]) {
-    for (const side of [1, -1]) {
-      const rings = [[], [], []];
-      for (let i = 0; i <= segs; i++) {
-        const ang = a0 + (a1 - a0) * (i / segs);
-        const x = axle + R * Math.cos(ang);
-        const z = cz + R * Math.sin(ang);
-        const p = prof(spec, x);
-        const outer = side * Math.min(p.shoulderY, Math.max(p.rockerY + 0.02, sectionHalfWidth(spec, x, z)));
-        const y0 = outer;
-        const y1 = outer - side * 0.016;
-        const y2 = outer - side * 0.07;
-        rings[0].push({ x, y: y0, z });
-        rings[1].push({ x: x + (axle - x) * 0.015, y: y1, z: z + (cz - z) * 0.02 });
-        rings[2].push({ x: x + (axle - x) * 0.1, y: y2, z: Math.max(spec.floorZ + 0.02, z + (cz - z) * 0.16) });
-      }
-      for (let i = 0; i < segs; i++) {
-        emitPoly(mesh, [rings[0][i], rings[0][i + 1], rings[1][i + 1], rings[1][i]], "side");
-        emitPoly(well, [rings[1][i], rings[1][i + 1], rings[2][i + 1], rings[2][i]], "side");
-      }
+    for (let k = 0; k <= 28; k++) {
+      const ang = ((18 + 144 * (k / 28)) * Math.PI) / 180;
+      add(axle + R * Math.cos(ang));
     }
   }
-  return well;
-}
-
-function fasciaPoint(spec, t, v) {
-  const hood = hoodPoint(spec, 0, t);
-  const p = prof(spec, spec.noseX);
-  const a = Math.abs(t);
-  const low = { x: spec.noseX + 0.09 * a ** 1.25, y: Math.sign(t || 1) * p.rockerY * a, z: p.floorZ + 0.025 };
-  return lerpP(low, hood, v);
-}
-
-function inGrille(spec, y, z) {
-  const gy = spec.grilleHalfY || spec.halfWidth * 0.28;
-  const gz = spec.grilleHalfZ || 0.05;
-  const cz = spec.grilleZ || (spec.floorZ + 0.16);
-  return (y / gy) ** 2 + ((z - cz) / gz) ** 2 < 1;
-}
-
-function grilleHit(a, b, spec) {
-  // sample the segment for ellipse crossings
-  let prev = inGrille(spec, a.y, a.z);
-  const ts = [];
-  const steps = 12;
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const p = lerpP(a, b, t);
-    const now = inGrille(spec, p.y, p.z);
-    if (now !== prev) ts.push((i - 0.5) / steps);
-    prev = now;
-  }
-  return ts;
-}
-
-function clipOutsideGrille(poly, spec) {
-  const inside = (p) => inGrille(spec, p.y, p.z);
-  if (!poly.some(inside)) return poly;
-  if (poly.every(inside)) return [];
+  const raw = [...xs].sort((a, b) => a - b);
   const out = [];
-  const n = poly.length;
-  for (let i = 0; i < n; i++) {
-    const a = poly[i];
-    const b = poly[(i + 1) % n];
-    const ai = inside(a);
-    const bi = inside(b);
-    if (!ai && !bi) out.push(b);
-    else if (ai !== bi) {
-      const ts = grilleHit(a, b, spec);
-      const t = ts.length ? ts[0] : 0.5;
-      out.push(lerpP(a, b, clamp(t, 0, 1)));
-      if (!bi) out.push(b);
-    }
-  }
+  for (const x of raw) if (!out.length || x - out[out.length - 1] > 1.2e-3) out.push(x);
   return out;
 }
 
-function addFascia(mesh, spec) {
-  const nu = 28;
-  const nv = 16;
-  const pts = [];
-  for (let i = 0; i <= nu; i++) {
-    pts[i] = [];
-    const t = -1 + 2 * (i / nu);
-    for (let j = 0; j <= nv; j++) pts[i][j] = fasciaPoint(spec, t, j / nv);
+function sectionKnots(spec, x) {
+  const p = prof(spec, x);
+  const noseT = clamp((spec.frontAxleX - x) / Math.max(1e-3, spec.frontAxleX - spec.noseX), 0, 1);
+  const tailT = clamp((x - spec.rearAxleX) / Math.max(1e-3, spec.tailX - spec.rearAxleX), 0, 1);
+  const kick = 0.038 * noseT * noseT + 0.028 * tailT * tailT;
+  const floorZ = p.floorZ + 0.012 + kick;
+  const beltZ = Math.min(p.beltZ, p.shoulderZ - 0.006);
+  return [
+    [0, p.crownZ],
+    [p.shoulderY * 0.58, p.crownZ - 0.004],
+    [p.shoulderY * 0.9, lerp(p.crownZ, p.shoulderZ, 0.42)],
+    [p.shoulderY, p.shoulderZ],
+    [p.shoulderY * 0.99, beltZ],
+    [lerp(p.shoulderY * 0.99, p.rockerY, 0.5), lerp(beltZ, p.rockerZ, 0.5)],
+    [p.rockerY, p.rockerZ],
+    [p.rockerY * 0.8, floorZ + 0.016],
+    [0, floorZ],
+  ];
+}
+
+function halfSection(spec, x, s) {
+  const knots = sectionKnots(spec, x);
+  const seg = [];
+  let total = 0;
+  for (let i = 0; i < knots.length - 1; i++) {
+    const len = Math.hypot(knots[i + 1][0] - knots[i][0], knots[i + 1][1] - knots[i][1]) || 1e-6;
+    seg.push(len);
+    total += len;
   }
-  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
-    const quad = [pts[i][j], pts[i + 1][j], pts[i + 1][j + 1], pts[i][j + 1]];
-    emitPoly(mesh, clipOutsideGrille(quad, spec), "front");
+  let remain = clamp(s, 0, 1) * total;
+  let i = 0;
+  while (i < seg.length - 1 && remain > seg[i]) { remain -= seg[i]; i++; }
+  const t = seg[i] > 1e-8 ? remain / seg[i] : 0;
+  const sm = t * t * (3 - 2 * t);
+  const a = knots[i];
+  const b = knots[i + 1];
+  return { x, y: lerp(a[0], b[0], sm), z: lerp(a[1], b[1], sm), s: clamp(s, 0, 1) };
+}
+
+function v3(mesh, i) {
+  return { x: mesh.positions[i * 3], y: mesh.positions[i * 3 + 1], z: mesh.positions[i * 3 + 2] };
+}
+function n3(mesh, i) {
+  return norm({ x: mesh.normals[i * 3], y: mesh.normals[i * 3 + 1], z: mesh.normals[i * 3 + 2] });
+}
+
+function makeBuilder() {
+  const mesh = new Mesh();
+  const map = new Map();
+  function addPoint(p) {
+    const k = `${Math.round(p.x * 1e5)}|${Math.round(p.y * 1e5)}|${Math.round(p.z * 1e5)}`;
+    const hit = map.get(k);
+    if (hit != null) return hit;
+    const id = mesh.positions.length / 3;
+    mesh.positions.push(p.x, p.y, p.z);
+    mesh.normals.push(0, 0, 1);
+    map.set(k, id);
+    return id;
+  }
+  return { mesh, addPoint };
+}
+
+function triOut(mesh, ia, ib, ic, spec) {
+  if (ia === ib || ib === ic || ia === ic) return;
+  const pa = v3(mesh, ia);
+  const pb = v3(mesh, ib);
+  const pc = v3(mesh, ic);
+  const n = faceN(pa, pb, pc);
+  if (Math.hypot(n.x, n.y, n.z) < 1e-12) return;
+  const mid = { x: (pa.x + pb.x + pc.x) / 3, y: (pa.y + pb.y + pc.y) / 3, z: (pa.z + pb.z + pc.z) / 3 };
+  const c = { x: (spec.noseX + spec.tailX) / 2, y: 0, z: spec.floorZ + (spec.roofZ - spec.floorZ) * 0.38 };
+  if (dot(n, sub(mid, c)) < 0) mesh.tri(ia, ic, ib);
+  else mesh.tri(ia, ib, ic);
+}
+
+function smoothNormals(mesh, spec) {
+  const n = mesh.positions.length / 3;
+  const acc = new Float64Array(n * 3);
+  const idx = mesh.indices;
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t];
+    const b = idx[t + 1];
+    const c = idx[t + 2];
+    const fn = faceN(v3(mesh, a), v3(mesh, b), v3(mesh, c));
+    acc[a * 3] += fn.x; acc[a * 3 + 1] += fn.y; acc[a * 3 + 2] += fn.z;
+    acc[b * 3] += fn.x; acc[b * 3 + 1] += fn.y; acc[b * 3 + 2] += fn.z;
+    acc[c * 3] += fn.x; acc[c * 3 + 1] += fn.y; acc[c * 3 + 2] += fn.z;
+  }
+  const center = { x: (spec.noseX + spec.tailX) / 2, y: 0, z: spec.floorZ + (spec.roofZ - spec.floorZ) * 0.38 };
+  for (let i = 0; i < n; i++) {
+    let nx = acc[i * 3];
+    let ny = acc[i * 3 + 1];
+    let nz = acc[i * 3 + 2];
+    const p = v3(mesh, i);
+    if (Math.abs(p.y) < 1e-4) ny = 0;
+    let L = Math.hypot(nx, ny, nz);
+    if (L < 1e-10) {
+      const away = sub(p, center);
+      L = Math.hypot(away.x, away.y, away.z) || 1;
+      nx = away.x / L; ny = Math.abs(p.y) < 1e-4 ? 0 : away.y / L; nz = away.z / L;
+      L = 1;
+    }
+    mesh.normals[i * 3] = nx / L;
+    mesh.normals[i * 3 + 1] = ny / L;
+    mesh.normals[i * 3 + 2] = nz / L;
   }
 }
 
-function glassPatch(nu, nv, sample) {
-  const mesh = patch(nu, nv, (u, v) => {
-    const p = sample(u, v);
-    const du = 1 / Math.max(8, nu);
-    const dv = 1 / Math.max(8, nv);
-    const pu = sub(sample(Math.min(1, u + du), v), sample(Math.max(0, u - du), v));
-    const pv = sub(sample(u, Math.min(1, v + dv)), sample(u, Math.max(0, v - dv)));
-    const n = norm(cross(pu, pv));
-    return { x: p.x + n.x * GLASS_OFFSET, y: p.y + n.y * GLASS_OFFSET, z: p.z + n.z * GLASS_OFFSET };
-  }, "up");
-  return mesh;
+function archYMin(spec) {
+  const track = spec.track || spec.halfWidth * 1.6;
+  const half = spec.tyreHalfWidth || 0.12;
+  return Math.max(0.5, track / 2 - half - 0.06);
 }
 
-function buildGlass(spec) {
-  const parts = [];
-  parts.push(glassPatch(36, 22, (u, v) => {
-    const t = -1 + 2 * u;
-    return lerpP(cowlCurve(spec, t), headerCurve(spec, t), v);
-  }));
-  const sideGlass = (sign, u0, u1) => {
-    const mesh = new Mesh();
-    const nu = 20;
-    const nv = 10;
-    const sample = (u, v) => {
-      const x = lerp(u0(v), u1, u);
-      const p = prof(spec, x);
-      const z = lerp(p.beltZ + 0.01, p.railZ - 0.012, v);
-      const y = sign * lerp(p.shoulderY * 0.992, p.railY * 1.01, v ** 0.9);
-      return { x, y, z };
-    };
-    concat(mesh, patch(nu, nv, (u, v) => {
-      const p = sample(u, v);
-      const nrm = norm(cross(
-        sub(sample(Math.min(1, u + 0.03), v), sample(Math.max(0, u - 0.03), v)),
-        sub(sample(u, Math.min(1, v + 0.05)), sample(u, Math.max(0, v - 0.05))),
-      ));
-      const n = nrm.y * sign < 0 ? { x: -nrm.x, y: -nrm.y, z: -nrm.z } : nrm;
-      return { x: p.x + n.x * GLASS_OFFSET, y: p.y + n.y * GLASS_OFFSET, z: p.z + n.z * GLASS_OFFSET };
-    }, "side"));
-    return mesh;
-  };
-  const frontU0 = (v) => lerp(spec.cowlX + 0.04, spec.headerX, v);
-  const bPost = spec.bPillarX - 0.045;
-  const bPost2 = spec.bPillarX + 0.045;
-  const cPost = (spec.cPillarX ?? spec.rearAxleX) - 0.02;
-  for (const sign of [1, -1]) {
-    parts.push(sideGlass(sign, frontU0, bPost));
-    parts.push(sideGlass(sign, () => bPost2, cPost));
+function pointInArch(p, spec) {
+  if (p.s > 0.88 || Math.abs(p.y) < archYMin(spec)) return false;
+  const R = spec.tyreRadius + spec.archGap;
+  for (const axle of [spec.frontAxleX, spec.rearAxleX]) {
+    if (Math.hypot(p.x - axle, p.z - spec.tyreCenterZ) < R - 1e-4) return true;
   }
+  return false;
+}
+
+function inGrilleOpening(spec, p) {
+  // A mouth on the front face, not a slot that runs aft along the hood.
+  if (p.x > spec.noseX + 0.28 || p.x < spec.noseX + 0.02 || p.z < spec.floorZ + 0.06) return false;
+  const pr = prof(spec, p.x);
+  const gy = Math.min(spec.grilleHalfY || pr.shoulderY * 0.45, Math.max(0.08, pr.shoulderY - 0.06));
+  const gz = spec.grilleHalfZ || 0.05;
+  const cz = spec.grilleZ || (spec.floorZ + 0.18);
+  if (!(gy > 0.06)) return false;
+  return (p.y / gy) ** 2 + ((p.z - cz) / gz) ** 2 < 1;
+}
+
+function glassKind(spec, p) {
+  const pr = prof(spec, p.x);
   const k = keysOf(spec);
-  parts.push(glassPatch(28, 14, (u, v) => {
-    const t = -1 + 2 * u;
-    const x = lerp(spec.roofHoldX + 0.02, k.kammX - 0.02, v);
-    const p = prof(spec, x);
-    const a = Math.abs(t) * 0.72;
-    return { x, y: Math.sign(t || 1) * p.railY * a, z: lerp(p.crownZ - 0.01, lerp(p.crownZ, p.railZ, 0.85), a) };
-  }));
+  if (p.x > spec.cowlX && p.x < spec.headerX && p.s < 0.42 && p.z > Math.min(pr.beltZ, pr.shoulderZ) - 0.03) return "ws";
+  const onSide = Math.abs(p.y) > pr.railY * 0.5 && p.z > pr.beltZ + 0.004 && p.z < pr.shoulderZ + 0.02;
+  if (onSide && p.x > spec.headerX && p.x < spec.bPillarX - 0.03) return "side";
+  if (onSide && p.x > spec.bPillarX + 0.03 && p.x < (spec.cPillarX || spec.rearAxleX) - 0.02) return "side";
+  if (p.x > spec.roofHoldX + 0.05 && p.x < k.kammX - 0.04 && p.s < 0.3 && p.z > pr.crownZ - 0.1) return "back";
+  return "";
+}
+
+/** Split a quad on a predicate. Shared edges reuse one cut vertex (cuts map). */
+function splitQuad(pts, ids, insideFn, cuts) {
+  const n = pts.length;
+  const flags = pts.map((p) => insideFn(p));
+  const tagged = (p, i) => ({ x: p.x, y: p.y, z: p.z, s: p.s || 0, id: ids[i], inside: flags[i], boundary: false });
+  if (flags.every(Boolean)) return { inn: [pts.map(tagged)], out: [] };
+  if (flags.every((f) => !f)) return { inn: [], out: [pts.map(tagged)] };
+  const loop = [];
+  for (let i = 0; i < n; i++) {
+    loop.push(tagged(pts[i], i));
+    const j = (i + 1) % n;
+    if (flags[i] === flags[j]) continue;
+    const key = ids[i] < ids[j] ? `${ids[i]}|${ids[j]}` : `${ids[j]}|${ids[i]}`;
+    let cut = cuts.get(key);
+    if (!cut) {
+      let lo = 0;
+      let hi = 1;
+      for (let k = 0; k < 16; k++) {
+        const mid = (lo + hi) / 2;
+        const p = lerpP(pts[i], pts[j], mid);
+        p.s = lerp(pts[i].s || 0, pts[j].s || 0, mid);
+        if (insideFn(p) === flags[i]) lo = mid;
+        else hi = mid;
+      }
+      const t = (lo + hi) / 2;
+      const p = lerpP(pts[i], pts[j], t);
+      p.s = lerp(pts[i].s || 0, pts[j].s || 0, t);
+      p.x = Math.round(p.x * 1e5) / 1e5;
+      p.y = Math.round(p.y * 1e5) / 1e5;
+      p.z = Math.round(p.z * 1e5) / 1e5;
+      cut = p;
+      cuts.set(key, cut);
+    }
+    loop.push({ x: cut.x, y: cut.y, z: cut.z, s: cut.s, id: cut.id ?? null, inside: false, boundary: true });
+  }
+  const take = (wantIn) => {
+    const keep = (p) => (wantIn ? (p.inside || p.boundary) : (!p.inside || p.boundary));
+    if (loop.every(keep)) return [loop];
+    const start = loop.findIndex((p) => !keep(p));
+    const polys = [];
+    let cur = [];
+    for (let k = 1; k <= loop.length; k++) {
+      const p = loop[(start + k) % loop.length];
+      if (keep(p)) cur.push(p);
+      else if (cur.length) {
+        if (cur.length >= 3) polys.push(cur);
+        cur = [];
+      }
+    }
+    if (cur.length >= 3) polys.push(cur);
+    return polys;
+  };
+  return { inn: take(true), out: take(false) };
+}
+
+function fanIds(bld, poly, spec, sink) {
+  const ids = poly.map((p) => {
+    if (p.id != null) return p.id;
+    p.id = bld.addPoint(p);
+    return p.id;
+  });
+  for (let i = 1; i < ids.length - 1; i++) {
+    if (sink) sink.push([ids[0], ids[i], ids[i + 1]]);
+    else triOut(bld.mesh, ids[0], ids[i], ids[i + 1], spec);
+  }
+}
+
+function centroidOf(pts) {
+  const c = pts.reduce((s, p) => ({ x: s.x + p.x, y: s.y + p.y, z: s.z + p.z, s: s.s + (p.s || 0) }), { x: 0, y: 0, z: 0, s: 0 });
+  const n = pts.length || 1;
+  return { x: c.x / n, y: c.y / n, z: c.z / n, s: c.s / n };
+}
+
+function addCap(bld, right, left, i, spec) {
+  const ns = right[i].length - 1;
+  const loop = [];
+  for (let j = 0; j <= ns; j++) loop.push(right[i][j]);
+  for (let j = ns - 1; j >= 1; j--) loop.push(left[i][j]);
+  const acc = { x: 0, y: 0, z: 0 };
+  for (const id of loop) {
+    const p = v3(bld.mesh, id);
+    acc.x += p.x; acc.y += p.y; acc.z += p.z;
+  }
+  const n = loop.length || 1;
+  const c = bld.addPoint({ x: acc.x / n, y: acc.y / n, z: acc.z / n });
+  for (let k = 0; k < loop.length; k++) triOut(bld.mesh, c, loop[k], loop[(k + 1) % loop.length], spec);
+}
+
+function boundaryOnce(indices) {
+  const map = new Map();
+  const key = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  for (let t = 0; t < indices.length; t += 3) {
+    const tri = [indices[t], indices[t + 1], indices[t + 2]];
+    for (let k = 0; k < 3; k++) {
+      const a = tri[k];
+      const b = tri[(k + 1) % 3];
+      const id = key(a, b);
+      map.set(id, (map.get(id) || 0) + 1);
+    }
+  }
+  const once = [];
+  for (const [id, n] of map) {
+    if (n !== 1) continue;
+    const [a, b] = id.split("|").map(Number);
+    once.push([a, b]);
+  }
+  return once;
+}
+
+function insetArch(p, spec, dist, yIn) {
+  const R = spec.tyreRadius + spec.archGap;
+  let axle = spec.frontAxleX;
+  let best = Infinity;
+  for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
+    const err = Math.abs(Math.hypot(p.x - ax, p.z - spec.tyreCenterZ) - R);
+    if (err < best) { best = err; axle = ax; }
+  }
+  const dx = p.x - axle;
+  const dz = p.z - spec.tyreCenterZ;
+  const L = Math.hypot(dx, dz) || 1;
+  const side = Math.sign(p.y) || 1;
+  return { x: p.x - (dx / L) * dist, y: p.y - side * yIn, z: p.z - (dz / L) * dist };
+}
+
+function addArchLips(bld, spec) {
+  const mesh = bld.mesh;
+  const R = spec.tyreRadius + spec.archGap;
+  const edges = boundaryOnce(mesh.indices).filter(([a, b]) => {
+    const pa = v3(mesh, a);
+    const pb = v3(mesh, b);
+    if (Math.abs(pa.y) < archYMin(spec) * 0.85 || Math.abs(pb.y) < archYMin(spec) * 0.85) return false;
+    for (const axle of [spec.frontAxleX, spec.rearAxleX]) {
+      const da = Math.abs(Math.hypot(pa.x - axle, pa.z - spec.tyreCenterZ) - R);
+      const db = Math.abs(Math.hypot(pb.x - axle, pb.z - spec.tyreCenterZ) - R);
+      if (da < 0.012 && db < 0.012) return true;
+    }
+    return false;
+  });
+  const wellB = makeBuilder();
+  for (const [a, b] of edges) {
+    const pa = v3(mesh, a);
+    const pb = v3(mesh, b);
+    const ia = bld.addPoint(insetArch(pa, spec, 0.014, 0.012));
+    const ib = bld.addPoint(insetArch(pb, spec, 0.014, 0.012));
+    triOut(mesh, a, b, ib, spec);
+    triOut(mesh, a, ib, ia, spec);
+    const wa = wellB.addPoint(insetArch(pa, spec, 0.014, 0.012));
+    const wb = wellB.addPoint(insetArch(pb, spec, 0.014, 0.012));
+    const da = wellB.addPoint(insetArch(pa, spec, 0.055, 0.045));
+    const db = wellB.addPoint(insetArch(pb, spec, 0.055, 0.045));
+    triOut(wellB.mesh, wa, wb, db, spec);
+    triOut(wellB.mesh, wa, db, da, spec);
+  }
+  smoothNormals(wellB.mesh, spec);
+  return wellB.mesh;
+}
+
+function glassFrom(body, tris, spec) {
   const glass = new Mesh();
-  for (const m of parts) concat(glass, m);
+  const used = new Set(body.indices);
+  const map = new Map();
+  const order = [];
+  const seen = new Set();
+  const take = (id) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    if (used.has(id)) order.unshift(id);
+    else order.push(id);
+  };
+  for (const t of tris) for (const id of t) if (used.has(id)) take(id);
+  for (const t of tris) for (const id of t) take(id);
+  const gv = (id) => {
+    const hit = map.get(id);
+    if (hit != null) return hit;
+    const p = v3(body, id);
+    const nrm = n3(body, id);
+    const gid = glass.add(
+      { x: p.x + nrm.x * GLASS_OFFSET, y: p.y + nrm.y * GLASS_OFFSET, z: p.z + nrm.z * GLASS_OFFSET },
+      nrm,
+    );
+    map.set(id, gid);
+    return gid;
+  };
+  for (const id of order) gv(id);
+  for (const t of tris) triOut(glass, gv(t[0]), gv(t[1]), gv(t[2]), spec);
   return glass;
 }
 
+function buildShell(spec) {
+  const xs = sideXs(spec);
+  const q = spec.quality === "mobile" ? 0.45 : 1;
+  const ns = Math.max(28, Math.round(84 * q));
+  const bld = makeBuilder();
+  const right = [];
+  const left = [];
+  const ptsR = [];
+  const ptsL = [];
+  for (let i = 0; i < xs.length; i++) {
+    right[i] = [];
+    left[i] = [];
+    ptsR[i] = [];
+    ptsL[i] = [];
+    for (let j = 0; j <= ns; j++) {
+      const p = halfSection(spec, xs[i], j / ns);
+      ptsR[i][j] = p;
+      right[i][j] = bld.addPoint(p);
+      if (j === 0 || j === ns) {
+        ptsL[i][j] = p;
+        left[i][j] = right[i][j];
+      } else {
+        const m = { x: p.x, y: -p.y, z: p.z, s: p.s };
+        ptsL[i][j] = m;
+        left[i][j] = bld.addPoint(m);
+      }
+    }
+  }
+  const glassTris = [];
+  const grillePts = [];
+  const cuts = new Map();
+  const emitPoly = (poly, sink) => fanIds(bld, poly, spec, sink);
+  const emit = (ids, points) => {
+    for (let i = 0; i < xs.length - 1; i++) {
+      for (let j = 0; j < ns; j++) {
+        const quadP = [points[i][j], points[i + 1][j], points[i + 1][j + 1], points[i][j + 1]];
+        const quadI = [ids[i][j], ids[i + 1][j], ids[i + 1][j + 1], ids[i][j + 1]];
+        const arch = splitQuad(quadP, quadI, (p) => pointInArch(p, spec), cuts);
+        if (arch.inn.length) {
+          for (const poly of arch.out) emitPoly(poly, null);
+          continue;
+        }
+        const grille = splitQuad(quadP, quadI, (p) => inGrilleOpening(spec, p), cuts);
+        if (grille.inn.length) {
+          for (const poly of grille.inn) for (const p of poly) grillePts.push(p);
+          for (const poly of grille.out) emitPoly(poly, null);
+          continue;
+        }
+        const glass = splitQuad(quadP, quadI, (p) => glassKind(spec, p) !== "", cuts);
+        if (glass.inn.length) {
+          for (const poly of glass.inn) emitPoly(poly, glassTris);
+          for (const poly of glass.out) emitPoly(poly, null);
+          continue;
+        }
+        triOut(bld.mesh, quadI[0], quadI[1], quadI[2], spec);
+        triOut(bld.mesh, quadI[0], quadI[2], quadI[3], spec);
+      }
+    }
+  };
+  emit(right, ptsR);
+  emit(left, ptsL);
+  addCap(bld, right, left, 0, spec);
+  addCap(bld, right, left, xs.length - 1, spec);
+  const archWell = addArchLips(bld, spec);
+  smoothNormals(bld.mesh, spec);
+  const glass = glassFrom(bld.mesh, glassTris, spec);
+  spec.grillePts = grillePts;
+  let gx = 0;
+  for (const p of grillePts) gx += p.x;
+  spec.grilleCutX = grillePts.length ? gx / grillePts.length + 0.012 : spec.noseX + 0.08;
+  return { mesh: bld.mesh, archWell, glass, stations: xs.length, section: ns };
+}
+
 function grilleMeshWorld(spec) {
-  const gy = spec.grilleHalfY || spec.halfWidth * 0.3;
-  const gz = spec.grilleHalfZ || 0.05;
-  const cz = spec.grilleZ || spec.floorZ + 0.16;
-  const slats = 4;
   const mesh = new Mesh();
+  const pts = spec.grillePts || [];
+  if (pts.length < 8) return mesh;
+  const zs = pts.map((p) => p.z).sort((a, b) => a - b);
+  const z0 = zs[Math.floor(zs.length * 0.12)];
+  const z1 = zs[Math.floor(zs.length * 0.88)];
+  const slats = 5;
+  const span = Math.max(0.02, z1 - z0);
+  const xAt = (y, z) => {
+    let best = null;
+    let bd = Infinity;
+    for (const p of pts) {
+      const d = (p.y - y) ** 2 + (p.z - z) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    return (best ? best.x : spec.noseX + 0.08) + 0.012;
+  };
   for (let i = 0; i < slats; i++) {
-    const z = cz - gz + (2 * gz) * ((i + 0.5) / slats);
-    const th = (gz * 2) / slats * 0.28;
-    const y0 = -gy * 0.92;
-    const y1 = gy * 0.92;
-    const x0 = spec.noseX + 0.045;
-    const x1 = x0 + 0.012;
-    const corners = [
-      { x: x0, y: y0, z: z - th }, { x: x1, y: y0, z: z - th }, { x: x1, y: y1, z: z - th }, { x: x0, y: y1, z: z - th },
-      { x: x0, y: y0, z: z + th }, { x: x1, y: y0, z: z + th }, { x: x1, y: y1, z: z + th }, { x: x0, y: y1, z: z + th },
-    ];
-    const faces = [[0, 1, 2, 3], [4, 7, 6, 5], [0, 4, 5, 1], [3, 2, 6, 7], [0, 3, 7, 4], [1, 5, 6, 2]];
-    for (const f of faces) emitPoly(mesh, f.map((k) => corners[k]), "front");
+    const z = lerp(z0, z1, (i + 0.5) / slats);
+    const band = pts.filter((p) => Math.abs(p.z - z) < span / slats);
+    if (band.length < 2) continue;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const p of band) { y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    const inset = (y1 - y0) * 0.06;
+    y0 += inset;
+    y1 -= inset;
+    const th = span / slats * 0.22;
+    const n = 6;
+    for (let k = 0; k < n; k++) {
+      const ya = lerp(y0, y1, k / n);
+      const yb = lerp(y0, y1, (k + 1) / n);
+      const xa = xAt(ya, z);
+      const xb = xAt(yb, z);
+      const corners = [
+        { x: xa, y: ya, z: z - th }, { x: xb, y: yb, z: z - th }, { x: xb + 0.008, y: yb, z: z - th }, { x: xa + 0.008, y: ya, z: z - th },
+        { x: xa, y: ya, z: z + th }, { x: xb, y: yb, z: z + th }, { x: xb + 0.008, y: yb, z: z + th }, { x: xa + 0.008, y: ya, z: z + th },
+      ];
+      const faces = [[0, 1, 2, 3], [4, 7, 6, 5], [0, 4, 5, 1], [3, 2, 6, 7], [0, 3, 7, 4], [1, 5, 6, 2]];
+      for (const f of faces) emitPoly(mesh, f.map((t) => corners[t]), "front");
+    }
   }
   return mesh;
 }
@@ -780,49 +1023,6 @@ function localise(mesh) {
     half: [hx || 0.01, hy || 0.01, hz || 0.01],
     mesh: { positions: pos.map(round5), normals: mesh.normals.map(round5), indices: mesh.indices },
   };
-}
-
-function pillarStrip(spec, xAt, halfW, sign) {
-  return patch(8, 3, (u, v) => {
-    const x = xAt + (u - 0.5) * 2 * halfW;
-    const p = prof(spec, x);
-    return { x, y: sign * lerp(p.shoulderY * 0.998, p.railY, v), z: lerp(p.beltZ, p.railZ, v) };
-  }, "side");
-}
-
-function buildBody(spec) {
-  const mesh = new Mesh();
-  const xs = sideXs(spec);
-  concat(mesh, patch(Math.max(8, Math.round(xs.length / 6)), 8, (u, v) => underPoint(spec, lerp(spec.noseX, spec.tailX, u), v, 1), "down"));
-  concat(mesh, patch(Math.max(8, Math.round(xs.length / 6)), 8, (u, v) => underPoint(spec, lerp(spec.noseX, spec.tailX, u), v, -1), "down"));
-  addSide(mesh, spec, 1);
-  addSide(mesh, spec, -1);
-  concat(mesh, patchClipped(48, 18, (u, v) => hoodPoint(spec, u, -1 + 2 * v), "up", spec));
-  concat(mesh, patch(40, 16, (u, v) => roofPoint(spec, u, -1 + 2 * v), "up"));
-  addFascia(mesh, spec);
-  const archWell = addArchLips(mesh, spec);
-  for (const sign of [1, -1]) {
-    concat(mesh, patch(12, 3, (u, v) => {
-      const base = lerpP(cowlCurve(spec, sign * 0.92), headerCurve(spec, sign * 0.92), v);
-      const p = prof(spec, base.x);
-      const y = sign * lerp(p.shoulderY, p.railY, v);
-      return { x: base.x + (u - 0.15) * 0.045, y, z: base.z };
-    }, "side"));
-    concat(mesh, pillarStrip(spec, spec.bPillarX, 0.04, sign));
-    concat(mesh, pillarStrip(spec, spec.cPillarX ?? spec.rearAxleX, 0.045, sign));
-  }
-  // Kamm face.
-  const k = keysOf(spec);
-  concat(mesh, patch(12, 10, (u, v) => {
-    const t = -1 + 2 * u;
-    const p = prof(spec, k.kammX);
-    const a = Math.abs(t);
-    const y = Math.sign(t || 1) * p.shoulderY * a * 0.92;
-    const z = lerp(spec.floorZ + 0.08, p.crownZ, v);
-    const x = lerp(k.kammX, spec.tailX, 0.15 + 0.85 * (a ** 1.3) * (1 - v * 0.3));
-    return { x, y, z };
-  }, "rear"));
-  return { mesh, archWell };
 }
 
 function detailList(spec) {
@@ -919,10 +1119,11 @@ export function sectionPoint(spec, x, ang) {
 export function loftBody(specInput, opts = {}) {
   const spec = resolveSpec(specInput);
   spec.quality = opts.quality === "mobile" ? "mobile" : "full";
-  const built = buildBody(spec);
+  const built = buildShell(spec);
   const body = built.mesh;
-  const glass = buildGlass(spec);
+  const glass = built.glass;
   const details = detailList(spec);
+  delete spec.grillePts;
   const tris = body.triangles;
   if (tris > SURFACE_CAP.triangles) {
     // Should not happen at these densities. Kept so a future density bump fails closed.
@@ -936,7 +1137,6 @@ export function loftBody(specInput, opts = {}) {
       max[k] = Math.max(max[k], body.positions[i + k]);
     }
   }
-  const xs = sideXs(spec);
   const R = spec.tyreRadius + spec.archGap;
   return {
     positions: body.positions.map(round5),
@@ -947,7 +1147,7 @@ export function loftBody(specInput, opts = {}) {
     details,
     bounds: { min: min.map(round5), max: max.map(round5) },
     stations: bodyStations(spec),
-    capped: { stations: xs.length, section: 28, triangles: tris, limit: SURFACE_CAP.triangles },
+    capped: { stations: built.stations, section: built.section, triangles: tris, limit: SURFACE_CAP.triangles },
     arches: [spec.frontAxleX, spec.rearAxleX].map((axle) => ({
       x: Math.round(axle * 1e4) / 1e4,
       z: Math.round(spec.tyreCenterZ * 1e4) / 1e4,

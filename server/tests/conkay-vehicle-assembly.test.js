@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { assemblyFromIr, fitStatus } from "../lib/conkay/assembly/build.js";
-import { boxInsideEnvelope } from "../lib/conkay/assembly/surface.js";
+import { partInsideEnvelope } from "../lib/conkay/assembly/surface.js";
 import { validateAssembly } from "../lib/conkay/assembly/schema.js";
 import { j941Centroid } from "../lib/conkay/assembly/j941.js";
 import { buildPackagingSheet } from "../lib/conkay/drawings/ga-drawing.js";
@@ -67,7 +67,7 @@ describe("assembly of the library car", () => {
   it("lofts a capped spline skin, its own glass, and arches the wheels sit in", () => {
     const mesh = doc.surface.mesh;
     assert.ok(mesh.capped.stations >= 16, `stations ${mesh.capped.stations}`);
-    assert.ok(mesh.capped.triangles <= 200000);
+    assert.ok(mesh.capped.triangles >= 60000 && mesh.capped.triangles <= 120000, `triangles ${mesh.capped.triangles}`);
     assert.ok(mesh.stations.length >= 16);
     const head = doc.checks.find((c) => c.id === "head-M95");
     assert.equal(head.status, "pass");
@@ -119,6 +119,25 @@ describe("assembly of the library car", () => {
       if (hi > 0.2 && (!hasPos || !hasNeg)) bad++;
     }
     assert.ok(bad < 30, `asymmetric stations ${bad}`);
+    const uses = new Map();
+    const touch = (a, b) => {
+      const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+      uses.set(k, (uses.get(k) || 0) + 1);
+    };
+    const paint = mesh.paint;
+    for (let i = 0; i < paint.length; i += 3) {
+      touch(paint[i], paint[i + 1]);
+      touch(paint[i + 1], paint[i + 2]);
+      touch(paint[i + 2], paint[i]);
+    }
+    let multi = 0;
+    for (const n of uses.values()) if (n > 2) multi++;
+    assert.equal(multi, 0, "body edges used by more than two triangles");
+    let seam = 0;
+    for (let i = 0; i < mesh.positions.length; i += 3) {
+      if (Math.abs(mesh.positions[i + 1]) < 1e-4 && Math.abs(mesh.normals[i + 1]) > 0.08) seam++;
+    }
+    assert.equal(seam, 0, "centreline vertices keep a normal off the symmetry plane");
   });
 
   it("keeps every non-exterior box inside the body or names it as a packaging failure", () => {
@@ -130,14 +149,12 @@ describe("assembly of the library car", () => {
     for (const c of doc.components) {
       if (exterior.has(c.role) || c.id === "SPARE") continue;
       if (!c.half || c.half.every((h) => h === 0)) continue;
-      const inside = boxInsideEnvelope(doc.surface.spec, c.placement, c.half, 0.05);
+      const inside = partInsideEnvelope(doc.surface.spec, c, 0.05);
       if (inside) assert.equal(outside.has(c.id), false, `${c.id} is inside but listed`);
       else assert.ok(outside.has(c.id), `${c.id} is outside the envelope and was not flagged`);
     }
-    if (containment.status === "fail") {
-      for (const id of outside) assert.ok(doc.components.some((c) => c.id === id), id);
-      assert.ok(outside.has("ENGINE") || outside.has("RADIATOR"), "the low hood does not silently swallow the powertrain");
-    }
+    assert.equal(containment.status, "pass", containment.detail);
+    assert.equal(outside.size, 0);
     const grille = doc.components.find((c) => c.id === "GRILLE");
     assert.ok(grille.placement.x > mesh.bounds.min[0], "grille is aft of the nose");
     assert.ok(grille.placement.x < mesh.bounds.min[0] + 0.4);

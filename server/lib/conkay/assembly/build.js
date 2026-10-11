@@ -9,7 +9,7 @@ import { getComponent } from "../components/index.js";
 import { packageScene } from "../packaging/checks.js";
 import { obb, aabb, separation } from "../packaging/geometry.js";
 import { j941Envelope, J941_SOURCE } from "./j941.js";
-import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, resolveSpec } from "./surface.js";
+import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, partInsideEnvelope, sectionHalfWidth, resolveSpec } from "./surface.js";
 import { ASSEMBLY_SCHEMA, COORDINATE_SYSTEM, validateAssembly } from "./schema.js";
 
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -26,7 +26,7 @@ function envelope(label) {
   return { kind: "envelope", label };
 }
 
-function part({ id, name, group, role, placement, half, geometry, parameters, relationships, explode, instanceOf, mesh }) {
+function part({ id, name, group, role, placement, half, geometry, parameters, relationships, explode, instanceOf, mesh, spine, section }) {
   return {
     id, name, group, role,
     placement: { x: r4(placement.x), y: r4(placement.y), z: r4(placement.z), pitchDeg: placement.pitchDeg || 0, yawDeg: placement.yawDeg || 0 },
@@ -35,6 +35,7 @@ function part({ id, name, group, role, placement, half, geometry, parameters, re
     explode: explode || { axis: "z", sign: 1, rank: 1 },
     ...(instanceOf ? { instanceOf } : {}),
     ...(mesh ? { mesh } : {}),
+    ...(spine ? { spine, section } : {}),
   };
 }
 
@@ -97,6 +98,13 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   const cPillarX = rearDoor ? Math.max(...rearDoor.outline.map((p) => p[0])) : scene.sgRPRear.x + 0.35;
   const rad = pkg.components?.find((c) => c.node === "RADIATOR");
   const radP = rad && centers[rad.node];
+  const eng = pkg.components?.find((c) => c.node === "ENGINE");
+  const engP = eng && centers[eng.node];
+  const clearance = [];
+  for (const [comp, p] of [[rad, radP], [eng, engP]]) {
+    if (!comp?.half || !p) continue;
+    clearance.push({ x0: p.x - comp.half[0], x1: p.x + comp.half[0], z: p.z + comp.half[2], y: comp.half[1] });
+  }
   const driverHead = driver?.landmarks?.headTop;
   const rearHead = rearM?.landmarks?.headTop;
 
@@ -115,6 +123,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     grilleHalfY: rad ? Math.min(rad.half[1], halfWidth * 0.62) : halfWidth * 0.32,
     grilleHalfZ: 0.055,
     grilleZ: Math.max(floorClear + 0.12, (radP?.z ?? 0.32) - (rad?.half?.[2] || 0.2) * 0.45),
+    clearance,
+    cowlZ: engP ? Math.max(beltZ - 0.12, engP.z + eng.half[2] - 0.025) : undefined,
   });
   const loft = loftBody(spec);
   const cowlX = spec.cowlX;
@@ -129,7 +139,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     id: "BODY_SHELL", name: "Body loft", group: "exterior", role: "body",
     placement: { x: (noseX + tailX) / 2, y: 0, z: (spec.floorZ + roofZ) / 2 },
     half: [(tailX - noseX) / 2, halfWidth, (roofZ - spec.floorZ) / 2],
-    geometry: { ...envelope("parametric loft tessellated from the solved stations. A viewing surface, not a kernel solid and not a manufactured skin. When cad.body has run, the loft's overall size is that solid's bounding box; the meshes are still not the same."), representation: "loft", mesh: "surface" },
+    geometry: { ...envelope("one closed loft of the solved stations, mirrored and seam-welded on the centreline. Arches, the cooling mouth and the glass are openings in that skin. Not an OpenCascade solid and not a manufactured skin. When cad.body has run, the loft's overall size is that solid's bounding box; the meshes are still not the same."), representation: "loft", mesh: "surface" },
     parameters: [
       param("wheelbase", "Wheelbase", rearAxleX - frontAxleX, "m", prov("calculated", "rearAxleX − frontAxleX")),
       param("overallLength", "Overall length", tailX - noseX, "m", heightProvenance.state === "calculated" && measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "nose and tail stations")),
@@ -144,7 +154,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       { kind: "constrained-by", target: "SEAT_1", note: "roof and beltline clear the driver H-point and the M95 head" },
       { kind: "aligned-to", target: "TIRE_FL", note: "fender flares sit over the tyre centreline" },
     ],
-    explode: { axis: "z", sign: 1, rank: 3 },
+    explode: { axis: "z", sign: 1, rank: 0 },
   }));
 
   // Glass is a material group of the same loft, listed so it can be selected.
@@ -163,7 +173,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       { kind: "mounted-to", target: "BODY_SHELL", note: "same loft; glass is the greenhouse region" },
       { kind: "constrained-by", target: "EYELLIPSE_DRIVER", note: "windshield starts at the cowl ahead of the eyellipse" },
     ],
-    explode: { axis: "z", sign: 1, rank: 4 },
+    explode: { axis: "z", sign: 1, rank: 1 },
   }));
 
   // Wheels, one mesh instanced.
@@ -201,14 +211,14 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     placement: { x: frontAxleX, y: 0, z: tyreR }, half: [0.01, track / 2, 0.01],
     geometry: envelope("construction axis, not a part"),
     parameters: [param("x", "Front axle x", frontAxleX, "m", prov("sourced", "design vehicle.frontAxleX"))],
-    relationships: [], explode: { axis: "z", sign: 1, rank: 0 },
+    relationships: [], explode: { axis: "z", sign: -1, rank: 2 },
   }));
   components.push(part({
     id: "AXLE_REAR", name: "Rear axle line", group: "wheels", role: "axle",
     placement: { x: rearAxleX, y: 0, z: tyreR }, half: [0.01, track / 2, 0.01],
     geometry: envelope("construction axis, not a part"),
     parameters: [param("x", "Rear axle x", rearAxleX, "m", prov("sourced", "design vehicle.rearAxleX"))],
-    relationships: [], explode: { axis: "z", sign: 1, rank: 0 },
+    relationships: [], explode: { axis: "z", sign: -1, rank: 2 },
   }));
 
   // Powertrain envelopes from the layout boxes.
@@ -227,7 +237,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       relationships: c.node === "RADIATOR"
         ? [{ kind: "constrained-by", target: "ENGINE", note: "ahead of the engine by the fan gap; face area is the library core, not resized to a heat-rejection model" }]
         : [{ kind: "mounted-to", target: "BODY_SHELL", note: c.placement || "layout placement" }],
-      explode: { axis: "x", sign: -1, rank: c.node === "FUEL_CELL" ? 2 : 1 },
+      explode: { axis: "x", sign: -1, rank: 2 },
     }));
   }
 
@@ -249,7 +259,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
           param("torsoDeg", "A40 torso angle", o.seat.startsWith("SEAT_3") || o.seat.startsWith("SEAT_4") ? dc.rearTorsoDeg : dc.torsoDeg, "deg", prov("assumed", "layout design choice, inside the J1100 Class A range 5–40 deg")),
         ],
         relationships: [{ kind: "mounted-to", target: o.seat, note: "H-point on the seat" }],
-        explode: { axis: "z", sign: 1, rank: 2 },
+        explode: { axis: "z", sign: 1, rank: 3 },
       }));
     }
   }
@@ -267,7 +277,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
         param("h30", front ? "H30" : "H31", front ? dc.h30 : dc.rearH31, "m", prov("assumed", "layout design choice", front ? "J1100 H30, Class A 127–405 mm" : "J1100 H31")),
       ],
       relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "cushion on the cabin floor (floorZ); rail travel is the layout seat-track design choice" }],
-      explode: { axis: "z", sign: 1, rank: 2 },
+      explode: { axis: "z", sign: 1, rank: 3 },
     }));
   }
 
@@ -285,7 +295,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       param("tilt", "Column tilt", dc.steeringWheelTiltDeg, "deg", prov("assumed", "wheel plane from vertical, top toward the driver")),
     ],
     relationships: [{ kind: "constrained-by", target: "OCC_SEAT_1_M95", note: "placed from the driver H-point by L6 and H17" }],
-    explode: { axis: "x", sign: -1, rank: 2 },
+    explode: { axis: "x", sign: -1, rank: 3 },
   }));
   const columnLen = Math.hypot(sw.x - (pkg.firewallX || sw.x - 0.4), sw.z - (dc.floorZ + 0.35));
   components.push(part({
@@ -298,7 +308,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       { kind: "mounted-to", target: "STEERING_WHEEL", note: "upper end at the wheel centre" },
       { kind: "constrained-by", target: "OCC_SEAT_1_F5", note: "J1100 locates the wheel; SAE J287 hand reach is not licensed and is not claimed" },
     ],
-    explode: { axis: "x", sign: -1, rank: 2 },
+    explode: { axis: "x", sign: -1, rank: 3 },
   }));
 
   // Pedals. Pad size is an allowance: no pedal is in the library.
@@ -312,7 +322,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       param("footAngle", "Foot angle", dc.footAngleDeg, "deg", prov("assumed", "layout design choice")),
     ],
     relationships: [{ kind: "constrained-by", target: "OCC_SEAT_1_F5", note }],
-    explode: { axis: "x", sign: -1, rank: 1 },
+    explode: { axis: "x", sign: -1, rank: 3 },
   });
   components.push(pedal("PEDAL_ACCEL", "Accelerator", -dc.frontSeatY + 0.06, "on the AHP / BOF line"));
   components.push(pedal("PEDAL_BRAKE", "Brake", -dc.frontSeatY - 0.02, "inboard of the accelerator; lateral offset is an allowance"));
@@ -329,7 +339,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     geometry: envelope(gear ? "placed on the tub's gear-lever opening (a design choice; the TKX shifter dimension is not sourced)" : "no tub opening; placed ahead of the driver H-point on the tunnel centreline (assumed)"),
     parameters: [param("x", "Selector x", gx, "m", gear ? prov("assumed", "OPENING_CHOICES.gearLeverOpening") : prov("assumed", "150 mm ahead of the front SgRP"))],
     relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "through the tunnel top" }],
-    explode: { axis: "z", sign: 1, rank: 2 },
+    explode: { axis: "z", sign: 1, rank: 3 },
   }));
 
   // Eyellipse.
@@ -368,7 +378,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
           param("H11", "Entrance height above SgRP", z1 - (d.id.includes("front") ? scene.sgRPFront.z : scene.sgRPRear.z), "m", prov("calculated", "J1100 H11 is SgRP to the upper trimmed opening; compared here with the aperture top, which is structure not trim")),
         ],
         relationships: [{ kind: "constrained-by", target: d.id.includes("front") ? "SEAT_1" : "SEAT_3", note: "hinge line is the forward edge of the aperture" }],
-        explode: { axis: "y", sign: d.side === "L" ? -1 : 1, rank: 3 },
+        explode: { axis: "y", sign: d.side === "L" ? -1 : 1, rank: 1 },
         mesh: { outline: d.outline, side: d.side },
       }));
     }
@@ -385,19 +395,21 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     geometry: envelope("geometric box behind the rear seat back. Not an SAE J1100 luggage-block volume."),
     parameters: [param("volume", "Volume", trunkVol * 1000, "L", prov("calculated", "length behind the rear back × 1.4 × half-width × height under the fastback"))],
     relationships: [{ kind: "clears", target: "SEAT_3", note: "starts behind the rear seat back" }],
-    explode: { axis: "x", sign: 1, rank: 2 },
+    explode: { axis: "x", sign: 1, rank: 3 },
   }));
   const firewall = pkg.firewallX || cowlX;
-  const frunkLen = Math.max(0, firewall - 0.05 - (noseX + 0.25));
-  const frunkVol = frunkLen * halfWidth * 0.35;
+  const radFront = radP ? radP.x - rad.half[0] : firewall;
+  const engFront = engP ? engP.x - eng.half[0] : firewall;
+  const frunk = fitFrunk(spec, noseX, Math.min(firewall, radFront, engFront), spec.floorZ);
+  const frunkVol = 8 * frunk.half[0] * frunk.half[1] * frunk.half[2];
   components.push(part({
     id: "FRUNK", name: "Frunk volume", group: "storage", role: "volume",
-    placement: { x: noseX + 0.25 + frunkLen / 2, y: 0, z: dc.floorZ + 0.2 },
-    half: [Math.max(frunkLen, 0.01) / 2, halfWidth * 0.5, 0.12],
-    geometry: envelope("space ahead of the firewall and behind the nose structure. Zero when the powertrain fills it."),
-    parameters: [param("volume", "Volume", Math.max(0, frunkVol) * 1000, "L", prov("calculated", "firewall − nose structure"))],
+    placement: frunk.placement,
+    half: frunk.half,
+    geometry: envelope("box shrunk to the loft ahead of the radiator and the engine. Not an SAE J1100 luggage-block volume. Zero-ish when the powertrain fills the nose."),
+    parameters: [param("volume", "Volume", Math.max(0, frunkVol) * 1000, "L", prov("calculated", "largest box ahead of the powertrain that boxInsideEnvelope accepts"))],
     relationships: [{ kind: "clears", target: "ENGINE", note: "does not include the engine bay" }],
-    explode: { axis: "x", sign: -1, rank: 2 },
+    explode: { axis: "x", sign: -1, rank: 3 },
   }));
   components.push(part({
     id: "SPARE", name: "Spare tire", group: "storage", role: "spare",
@@ -411,8 +423,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
 
   for (const d of loft.details) {
     const explode = d.role === "mirror" || d.role === "handle"
-      ? { axis: "y", sign: d.placement.y < 0 ? -1 : 1, rank: 4 }
-      : { axis: "x", sign: d.id.startsWith("TAIL") ? 1 : -1, rank: 4 };
+      ? { axis: "y", sign: d.placement.y < 0 ? -1 : 1, rank: 1 }
+      : { axis: "z", sign: 1, rank: 0 };
     components.push(part({
       id: d.id, name: d.name, group: "exterior", role: d.role,
       placement: d.placement, half: d.half,
@@ -436,14 +448,29 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     const box = n.props?.tubBox;
     if (!box?.center || !box?.half) continue;
     if (tubCount++ > 40) break;
+    const place = { x: box.center[0], y: box.center[1], z: box.center[2] };
+    const fitted = boxInsideEnvelope(spec, place, box.half, 0.05) ? null : conformMember(spec, box);
+    if (fitted) {
+      const tube = tubeFromSpine(fitted.spine, fitted.section);
+      components.push(part({
+        id: n.id, name: n.name || n.id, group: "chassis", role: "frame",
+        placement: tube.placement, half: tube.half,
+        geometry: envelope("member centreline pulled onto the inner loft so the section stays inside the skin. The frame solver still uses the original centreline; this curve is the one that fits the body."),
+        parameters: [param("section", "Section", n.geometry?.shape || "box", "1", prov("assumed", "tub design choice"))],
+        relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "follows the loft; the skin is not structural" }],
+        explode: { axis: "z", sign: -1, rank: 2 },
+        mesh: tube.mesh, spine: fitted.spine, section: fitted.section,
+      }));
+      continue;
+    }
     components.push(part({
       id: n.id, name: n.name || n.id, group: "chassis", role: "frame",
-      placement: { x: box.center[0], y: box.center[1], z: box.center[2] },
+      placement: place,
       half: box.half,
       geometry: envelope("tub member box from the structural layout. The frame solver uses the same centreline model."),
       parameters: [param("section", "Section", n.geometry?.shape || "box", "1", prov("assumed", "tub design choice"))],
       relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "inside the loft; the skin is not structural" }],
-      explode: { axis: "z", sign: -1, rank: 1 },
+      explode: { axis: "z", sign: -1, rank: 2 },
     }));
   }
 
@@ -596,7 +623,7 @@ function fitChecks(ctx) {
   for (const c of ctx.components) {
     if (EXTERIOR.has(c.role) || c.id === "SPARE") continue;
     if (!c.half || c.half.every((h) => h === 0)) continue;
-    if (!boxInsideEnvelope(ctx.spec, c.placement, c.half, 0.05)) outside.push(c.id);
+    if (!partInsideEnvelope(ctx.spec, c, 0.05)) outside.push(c.id);
   }
   if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
   else if (outside.length) add("containment", "fail",
@@ -630,6 +657,145 @@ export function fitText(checks) {
   const status = fitStatus(checks);
   const bits = (checks || []).map((c) => `${c.id} ${c.status}`);
   return `Packaging fit: ${status}. ${bits.join("; ")}.`;
+}
+
+function fitFrunk(spec, noseX, limitX, floorZ) {
+  let x0 = noseX + 0.12;
+  let x1 = Math.max(x0 + 0.06, Math.min(limitX - 0.02, noseX + 0.9));
+  let z1 = floorZ + 0.34;
+  let yHalf = Math.min((spec.halfWidth || 0.9) * 0.42, 0.4);
+  for (let i = 0; i < 48; i++) {
+    const z0 = floorZ + 0.02;
+    const placement = { x: (x0 + x1) / 2, y: 0, z: (z0 + z1) / 2 };
+    const half = [(x1 - x0) / 2, yHalf, (z1 - z0) / 2];
+    if (half[0] > 0.025 && half[1] > 0.02 && half[2] > 0.015 && boxInsideEnvelope(spec, placement, half, 0.05)) {
+      return { placement, half };
+    }
+    z1 -= 0.01;
+    yHalf *= 0.92;
+    if (z1 < z0 + 0.05) {
+      x1 = x0 + Math.max(0.06, (x1 - x0) * 0.86);
+      z1 = floorZ + 0.18;
+    }
+  }
+  const x = noseX + 0.2;
+  const z = floorZ + 0.05;
+  const y = Math.max(0.03, Math.min(0.08, sectionHalfWidth(spec, x, z) - 0.04));
+  return { placement: { x, y: 0, z }, half: [0.04, y, 0.025] };
+}
+
+function memberFrame(box) {
+  if (Number.isFinite(box.yawDeg) || Number.isFinite(box.pitchDeg)) {
+    const yaw = ((box.yawDeg || 0) * Math.PI) / 180;
+    const pitch = ((box.pitchDeg || 0) * Math.PI) / 180;
+    const cp = Math.cos(pitch);
+    return {
+      ax: cp * Math.cos(yaw), ay: cp * Math.sin(yaw), az: -Math.sin(pitch), len: box.half[0],
+      hy: Math.min(0.016, box.half[1] || 0.016), hz: Math.min(0.016, box.half[2] || 0.016),
+    };
+  }
+  const ranked = [
+    { len: box.half[0], ax: 1, ay: 0, az: 0 },
+    { len: box.half[1], ax: 0, ay: 1, az: 0 },
+    { len: box.half[2], ax: 0, ay: 0, az: 1 },
+  ].sort((a, b) => b.len - a.len);
+  const small = [...box.half].sort((a, b) => a - b);
+  return { ...ranked[0], hy: Math.min(0.016, small[0] || 0.016), hz: Math.min(0.016, small[1] || 0.016) };
+}
+
+/** Pull a member that misses the loft onto a centreline the section can contain. */
+function conformMember(spec, box) {
+  const frame = memberFrame(box);
+  const c = box.center;
+  const steps = 14;
+  const spine = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = -1 + (2 * i) / steps;
+    let x = c[0] + frame.ax * frame.len * t;
+    let y = c[1] + frame.ay * frame.len * t;
+    let z = c[2] + frame.az * frame.len * t;
+    x = Math.max(spec.noseX + 0.02, Math.min(spec.tailX - 0.02, x));
+    let crown = crownAt(spec, x);
+    z = Math.max(spec.floorZ + 0.03, Math.min(crown - 0.02, z));
+    let hw = sectionHalfWidth(spec, x, z);
+    let guard = 0;
+    while (Math.abs(y) + frame.hy > hw - 0.005 && z > spec.floorZ + 0.05 && guard++ < 40) {
+      z -= 0.012;
+      crown = crownAt(spec, x);
+      z = Math.min(z, crown - 0.02);
+      hw = sectionHalfWidth(spec, x, z);
+    }
+    const lim = Math.max(0.02, hw - frame.hy - 0.008);
+    y = Math.max(-lim, Math.min(lim, y));
+    spine.push([r4(x), r4(y), r4(z)]);
+  }
+  const section = [Math.min(frame.hy, 0.016), Math.min(frame.hz, 0.016)];
+  if (!partInsideEnvelope(spec, { spine, section }, 0.05)) return null;
+  return { spine, section };
+}
+
+function tubeFromSpine(spine, section, origin) {
+  const hy = section[0];
+  const hz = section[1];
+  const o = origin || spine.reduce((s, p) => ({ x: s.x + p[0], y: s.y + p[1], z: s.z + p[2] }), { x: 0, y: 0, z: 0 });
+  if (!origin) {
+    o.x /= spine.length;
+    o.y /= spine.length;
+    o.z /= spine.length;
+  } else {
+    o.x = origin.x;
+    o.y = origin.y;
+    o.z = origin.z;
+  }
+  const positions = [];
+  const indices = [];
+  const push = (x, y, z) => {
+    positions.push(x, y, z);
+    return positions.length / 3 - 1;
+  };
+  for (let i = 0; i < spine.length - 1; i++) {
+    const a = spine[i];
+    const b = spine[i + 1];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const dz = b[2] - a[2];
+    const L = Math.hypot(dx, dy, dz) || 1;
+    const wx = dx / L;
+    const wy = dy / L;
+    const wz = dz / L;
+    let sx = -wy;
+    let sy = wx;
+    let sz = 0;
+    if (Math.abs(wz) > 0.9) { sx = 0; sy = -wz; sz = wy; }
+    const sl = Math.hypot(sx, sy, sz) || 1;
+    sx /= sl; sy /= sl; sz /= sl;
+    const ux = wy * sz - wz * sy;
+    const uy = wz * sx - wx * sz;
+    const uz = wx * sy - wy * sx;
+    const corners = (p) => [-1, 1].flatMap((syi) => [-1, 1].map((szi) => push(
+      p[0] + syi * hy * sx + szi * hz * ux - o.x,
+      p[1] + syi * hy * sy + szi * hz * uy - o.y,
+      p[2] + syi * hy * sz + szi * hz * uz - o.z,
+    )));
+    const ca = corners(a);
+    const cb = corners(b);
+    const faces = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]];
+    for (const f of faces) {
+      const q = f.map((k) => (k < 4 ? ca[k] : cb[k - 4]));
+      indices.push(q[0], q[1], q[2], q[0], q[2], q[3]);
+    }
+  }
+  let hx = 0, hyb = 0, hzB = 0;
+  for (let i = 0; i < positions.length; i += 3) {
+    hx = Math.max(hx, Math.abs(positions[i]));
+    hyb = Math.max(hyb, Math.abs(positions[i + 1]));
+    hzB = Math.max(hzB, Math.abs(positions[i + 2]));
+  }
+  return {
+    placement: { x: o.x, y: o.y, z: o.z },
+    half: [hx || 0.01, hyb || 0.01, hzB || 0.01],
+    mesh: { positions: positions.map(r4), indices },
+  };
 }
 
 /** Drop generated triangles. The spec is enough to rebuild the meshes. */
@@ -676,7 +842,9 @@ export function hydrateAssembly(doc) {
     wheel,
     components: (doc.components || []).map((c) => {
       const d = byId.get(c.id);
-      return d ? { ...c, mesh: d.mesh } : c;
+      if (d) return { ...c, mesh: d.mesh };
+      if (c.spine?.length) return { ...c, mesh: tubeFromSpine(c.spine, c.section || [0.015, 0.015], c.placement).mesh };
+      return c;
     }),
   };
 }

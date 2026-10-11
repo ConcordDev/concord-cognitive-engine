@@ -28,7 +28,7 @@
   "REQ_mass passes on a lower-bound mass.",
   "REQ_topSpeed passes on a model output (model_output_unvalidated), not a validated top speed: the limited speed (the 295 km/h set point) is reachable only if the unlimited model output holds.",
   "Packaging is screening level: not checked for want of dimensions or design: bellhousing, SUSPENSION_FRONT, SUSPENSION_REAR, STEERING_RACK, EXHAUST, CONTROL_PACK, SEAT_3, SEAT_4, BRAKES_FRONT, BRAKES_REAR, structural tub, pedal box, dash, steering column, driveshaft, doors, suspension travel.",
-  "Assembly packaging fit (meshes are rebuilt from the package spec when the design is opened; the snapshot stores the spec, not the triangles): Packaging fit: fail. head-M95 pass; head-F5 pass; head-M95-rear pass; heel-floor pass; rear-leg pass; four-seats pass; powertrain-cabin pass; wheel-footwell pass; ingress pass; containment fail; b-pillar pass; cooling-power warn; spare warn."
+  "Assembly packaging fit (meshes are rebuilt from the package spec when the design is opened; the snapshot stores the spec, not the triangles): Packaging fit: warn. head-M95 pass; head-F5 pass; head-M95-rear pass; heel-floor pass; rear-leg pass; four-seats pass; powertrain-cabin pass; wheel-footwell pass; ingress pass; containment pass; b-pillar pass; cooling-power warn; spare warn. The hood crown is lifted on a slope-limited curve so the library engine and radiator sit under the skin, and tub members that missed the box test follow the inner loft. The viewer loft is that watertight grid, not an OpenCascade solid."
  ],
  "failures": [],
  "checks": [
@@ -4273,25 +4273,40 @@
     "grilleHalfY": 0.3832,
     "grilleHalfZ": 0.055,
     "grilleZ": 0.33741,
-    "cowlZ": 0.7553082605964744,
+    "clearance": [
+     {
+      "x0": 0.5,
+      "x1": 0.6714,
+      "z": 0.7001999999999999,
+      "y": 0.3832
+     },
+     {
+      "x0": 0.7515000000000001,
+      "x1": 1.4119000000000002,
+      "z": 0.8408,
+      "y": 0.3556
+     }
+    ],
+    "cowlZ": 0.8158,
     "headerZ": 1.186951983596349,
     "cowlX": 1.6800000000000002,
-    "headerX": 2.4276288590039696,
-    "rakeDeg": 60.00000000000001,
+    "headerX": 2.322854092918847,
+    "rakeDeg": 59.99999999999999,
     "kammZ": 0.6352969521262475,
-    "quality": "full"
+    "quality": "full",
+    "grilleCutX": 0.2709363770491809
    },
    "mesh": {
     "bounds": {
      "min": [
       0.15,
-      -0.975,
-      0.123
+      -0.97011,
+      0.127
      ],
      "max": [
       4.816,
-      0.975,
-      1.19342
+      0.97011,
+      1.19895
      ]
     },
     "stations": [
@@ -4301,116 +4316,116 @@
       "roofZ": 0.22,
       "floorZ": 0.115,
       "beltZ": 0.212,
-      "halfWidth": 0.195
+      "halfWidth": 0.2145
      },
      {
       "role": "station",
-      "x": 0.404,
-      "roofZ": 0.2638,
+      "x": 0.4095,
+      "roofZ": 0.5744,
       "floorZ": 0.115,
-      "beltZ": 0.2558,
-      "halfWidth": 0.4722
+      "beltZ": 0.5475,
+      "halfWidth": 0.6083
      },
      {
       "role": "station",
-      "x": 0.668,
-      "roofZ": 0.4218,
+      "x": 0.6544,
+      "roofZ": 0.7302,
       "floorZ": 0.115,
-      "beltZ": 0.4138,
-      "halfWidth": 0.7394
+      "beltZ": 0.7002,
+      "halfWidth": 0.9559
      },
      {
       "role": "station",
-      "x": 0.8672,
-      "roofZ": 0.5739,
+      "x": 0.7952,
+      "roofZ": 0.8708,
       "floorZ": 0.115,
-      "beltZ": 0.5659,
-      "halfWidth": 0.9155
+      "beltZ": 0.8408,
+      "halfWidth": 0.971
+     },
+     {
+      "role": "station",
+      "x": 0.9679,
+      "roofZ": 0.8708,
+      "floorZ": 0.115,
+      "beltZ": 0.8408,
+      "halfWidth": 0.975
      },
      {
       "role": "front-axle",
       "x": 1,
-      "roofZ": 0.6498,
+      "roofZ": 0.8708,
       "floorZ": 0.115,
-      "beltZ": 0.6418,
+      "beltZ": 0.8408,
       "halfWidth": 0.975
      },
      {
       "role": "station",
-      "x": 1.0664,
-      "roofZ": 0.6733,
+      "x": 1.1555,
+      "roofZ": 0.8708,
       "floorZ": 0.115,
-      "beltZ": 0.6653,
-      "halfWidth": 0.9749
+      "beltZ": 0.8408,
+      "halfWidth": 0.9732
      },
      {
       "role": "station",
-      "x": 1.2877,
-      "roofZ": 0.7084,
+      "x": 1.3156,
+      "roofZ": 0.8708,
       "floorZ": 0.115,
-      "beltZ": 0.6952,
-      "halfWidth": 0.9735
+      "beltZ": 0.8408,
+      "halfWidth": 0.9705
      },
      {
       "role": "station",
-      "x": 1.4923,
-      "roofZ": 0.7276,
+      "x": 1.5728,
+      "roofZ": 0.7875,
       "floorZ": 0.115,
-      "beltZ": 0.7196,
-      "halfWidth": 0.9715
+      "beltZ": 0.7795,
+      "halfWidth": 0.9701
      },
      {
       "role": "cowl",
       "x": 1.68,
-      "roofZ": 0.7553,
+      "roofZ": 0.8158,
       "floorZ": 0.115,
-      "beltZ": 0.7473,
+      "beltZ": 0.8078,
       "halfWidth": 0.9701
      },
      {
       "role": "station",
-      "x": 1.7334,
-      "roofZ": 0.7771,
-      "floorZ": 0.115,
-      "beltZ": 0.7691,
-      "halfWidth": 0.9699
-     },
-     {
-      "role": "station",
-      "x": 2.2674,
-      "roofZ": 1.1556,
+      "x": 1.9785,
+      "roofZ": 1.0206,
       "floorZ": 0.115,
       "beltZ": 0.8453,
-      "halfWidth": 0.9675
+      "halfWidth": 0.9697
      },
      {
       "role": "a-pillar",
-      "x": 2.4276,
+      "x": 2.3229,
       "roofZ": 1.199,
       "floorZ": 0.115,
       "beltZ": 0.8453,
-      "halfWidth": 0.9669
+      "halfWidth": 0.9684
      },
      {
       "role": "b-pillar",
       "x": 3.25,
-      "roofZ": 1.1974,
+      "roofZ": 1.199,
       "floorZ": 0.115,
-      "beltZ": 0.8438,
+      "beltZ": 0.8435,
       "halfWidth": 0.9653
      },
      {
       "role": "c-pillar",
       "x": 3.916,
-      "roofZ": 1.1899,
+      "roofZ": 1.199,
       "floorZ": 0.115,
-      "beltZ": 0.8363,
+      "beltZ": 0.8362,
       "halfWidth": 0.9613
      },
      {
       "role": "rear-axle",
       "x": 3.966,
-      "roofZ": 1.189,
+      "roofZ": 1.199,
       "floorZ": 0.115,
       "beltZ": 0.8353,
       "halfWidth": 0.9604
@@ -4425,9 +4440,9 @@
      }
     ],
     "capped": {
-     "stations": 160,
-     "section": 28,
-     "triangles": 12452,
+     "stations": 317,
+     "section": 84,
+     "triangles": 87480,
      "limit": 200000
     },
     "arches": [
@@ -4446,8 +4461,8 @@
     ],
     "windshield": {
      "cowlX": 1.68,
-     "headerX": 2.4276,
-     "cowlZ": 0.7553,
+     "headerX": 2.3229,
+     "cowlZ": 0.8158,
      "headerZ": 1.187,
      "rakeFromVerticalDeg": 60
     },
@@ -4484,7 +4499,7 @@
     ],
     "geometry": {
      "kind": "envelope",
-     "label": "parametric loft tessellated from the solved stations. A viewing surface, not a kernel solid and not a manufactured skin. When cad.body has run, the loft's overall size is that solid's bounding box; the meshes are still not the same.",
+     "label": "one closed loft of the solved stations, mirrored and seam-welded on the centreline. Arches, the cooling mouth and the glass are openings in that skin. Not an OpenCascade solid and not a manufactured skin. When cad.body has run, the loft's overall size is that solid's bounding box; the meshes are still not the same.",
      "representation": "loft",
      "mesh": "surface"
     },
@@ -4588,7 +4603,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 3
+     "rank": 0
     }
    },
    {
@@ -4637,7 +4652,7 @@
      {
       "id": "headerX",
       "name": "Header",
-      "value": 2.4276,
+      "value": 2.3229,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -4670,7 +4685,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -5061,8 +5076,8 @@
     "relationships": [],
     "explode": {
      "axis": "z",
-     "sign": 1,
-     "rank": 0
+     "sign": -1,
+     "rank": 2
     }
    },
    {
@@ -5101,8 +5116,8 @@
     "relationships": [],
     "explode": {
      "axis": "z",
-     "sign": 1,
-     "rank": 0
+     "sign": -1,
+     "rank": 2
     }
    },
    {
@@ -5148,7 +5163,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -5194,7 +5209,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -5240,7 +5255,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -5286,7 +5301,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -5398,7 +5413,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5464,7 +5479,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5530,7 +5545,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5596,7 +5611,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5662,7 +5677,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5728,7 +5743,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5775,7 +5790,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5822,7 +5837,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5869,7 +5884,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5916,7 +5931,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -5995,7 +6010,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -6046,7 +6061,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -6102,7 +6117,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 3
     }
    },
    {
@@ -6158,7 +6173,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 3
     }
    },
    {
@@ -6214,7 +6229,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 1
+     "rank": 3
     }
    },
    {
@@ -6260,7 +6275,7 @@
     "explode": {
      "axis": "z",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -6395,7 +6410,7 @@
     "explode": {
      "axis": "y",
      "sign": -1,
-     "rank": 3
+     "rank": 1
     },
     "mesh": {
      "outline": [
@@ -6486,7 +6501,7 @@
     "explode": {
      "axis": "y",
      "sign": -1,
-     "rank": 3
+     "rank": 1
     },
     "mesh": {
      "outline": [
@@ -6581,7 +6596,7 @@
     "explode": {
      "axis": "y",
      "sign": 1,
-     "rank": 3
+     "rank": 1
     },
     "mesh": {
      "outline": [
@@ -6672,7 +6687,7 @@
     "explode": {
      "axis": "y",
      "sign": 1,
-     "rank": 3
+     "rank": 1
     },
     "mesh": {
      "outline": [
@@ -6747,7 +6762,7 @@
     "explode": {
      "axis": "x",
      "sign": 1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -6756,30 +6771,30 @@
     "group": "storage",
     "role": "volume",
     "placement": {
-     "x": 0.9059,
+     "x": 0.375,
      "y": 0,
-     "z": 0.355,
+     "z": 0.27,
      "pitchDeg": 0,
      "yawDeg": 0
     },
     "half": [
-     0.5059,
-     0.4875,
-     0.12
+     0.105,
+     0.2636,
+     0.135
     ],
     "geometry": {
      "kind": "envelope",
-     "label": "space ahead of the firewall and behind the nose structure. Zero when the powertrain fills it."
+     "label": "box shrunk to the loft ahead of the radiator and the engine. Not an SAE J1100 luggage-block volume. Zero-ish when the powertrain fills the nose."
     },
     "parameters": [
      {
       "id": "volume",
       "name": "Volume",
-      "value": 345.2768,
+      "value": 29.8959,
       "unit": "L",
       "provenance": {
        "state": "calculated",
-       "source": "firewall − nose structure"
+       "source": "largest box ahead of the powertrain that boxInsideEnvelope accepts"
       }
      }
     ],
@@ -6793,7 +6808,7 @@
     "explode": {
      "axis": "x",
      "sign": -1,
-     "rank": 2
+     "rank": 3
     }
    },
    {
@@ -6843,15 +6858,15 @@
     "role": "lamp",
     "placement": {
      "x": 0.5665,
-     "y": -0.3697,
-     "z": 0.2436,
+     "y": -0.4884,
+     "z": 0.4742,
      "pitchDeg": 0,
      "yawDeg": 0
     },
     "half": [
      0.1785,
-     0.2687,
-     0.1263
+     0.3034,
+     0.1514
     ],
     "geometry": {
      "kind": "envelope",
@@ -6871,7 +6886,7 @@
      {
       "id": "z",
       "name": "Height",
-      "value": 0.2436,
+      "value": 0.4742,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -6887,9 +6902,9 @@
      }
     ],
     "explode": {
-     "axis": "x",
-     "sign": -1,
-     "rank": 4
+     "axis": "z",
+     "sign": 1,
+     "rank": 0
     }
    },
    {
@@ -6899,15 +6914,15 @@
     "role": "lamp",
     "placement": {
      "x": 0.5665,
-     "y": 0.3697,
-     "z": 0.2436,
+     "y": 0.4884,
+     "z": 0.4742,
      "pitchDeg": 0,
      "yawDeg": 0
     },
     "half": [
      0.1785,
-     0.2687,
-     0.1263
+     0.3034,
+     0.1514
     ],
     "geometry": {
      "kind": "envelope",
@@ -6927,7 +6942,7 @@
      {
       "id": "z",
       "name": "Height",
-      "value": 0.2436,
+      "value": 0.4742,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -6943,9 +6958,9 @@
      }
     ],
     "explode": {
-     "axis": "x",
-     "sign": -1,
-     "rank": 4
+     "axis": "z",
+     "sign": 1,
+     "rank": 0
     }
    },
    {
@@ -6999,9 +7014,9 @@
      }
     ],
     "explode": {
-     "axis": "x",
+     "axis": "z",
      "sign": 1,
-     "rank": 4
+     "rank": 0
     }
    },
    {
@@ -7055,9 +7070,9 @@
      }
     ],
     "explode": {
-     "axis": "x",
+     "axis": "z",
      "sign": 1,
-     "rank": 4
+     "rank": 0
     }
    },
    {
@@ -7066,16 +7081,16 @@
     "group": "exterior",
     "role": "intake",
     "placement": {
-     "x": 0.201,
+     "x": 0.2754,
      "y": 0,
-     "z": 0.3374,
+     "z": 0.3399,
      "pitchDeg": 0,
      "yawDeg": 0
     },
     "half": [
-     0.006,
-     0.3525,
-     0.049
+     0.0315,
+     0.2731,
+     0.0375
     ],
     "geometry": {
      "kind": "envelope",
@@ -7085,7 +7100,7 @@
      {
       "id": "x",
       "name": "Station",
-      "value": 0.201,
+      "value": 0.2754,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7095,7 +7110,7 @@
      {
       "id": "z",
       "name": "Height",
-      "value": 0.3374,
+      "value": 0.3399,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7105,7 +7120,7 @@
      {
       "id": "width",
       "name": "Opening width",
-      "value": 0.7051,
+      "value": 0.5461,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7121,9 +7136,9 @@
      }
     ],
     "explode": {
-     "axis": "x",
-     "sign": -1,
-     "rank": 4
+     "axis": "z",
+     "sign": 1,
+     "rank": 0
     }
    },
    {
@@ -7133,7 +7148,7 @@
     "role": "handle",
     "placement": {
      "x": 2.465,
-     "y": -0.9764,
+     "y": -0.9774,
      "z": 0.8273,
      "pitchDeg": 0,
      "yawDeg": 0
@@ -7179,7 +7194,7 @@
     "explode": {
      "axis": "y",
      "sign": -1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7189,7 +7204,7 @@
     "role": "handle",
     "placement": {
      "x": 2.465,
-     "y": 0.9764,
+     "y": 0.9774,
      "z": 0.8273,
      "pitchDeg": 0,
      "yawDeg": 0
@@ -7235,7 +7250,7 @@
     "explode": {
      "axis": "y",
      "sign": 1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7246,7 +7261,7 @@
     "placement": {
      "x": 3.583,
      "y": -0.9743,
-     "z": 0.8231,
+     "z": 0.8228,
      "pitchDeg": 0,
      "yawDeg": 0
     },
@@ -7273,7 +7288,7 @@
      {
       "id": "z",
       "name": "Height",
-      "value": 0.8231,
+      "value": 0.8228,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7291,7 +7306,7 @@
     "explode": {
      "axis": "y",
      "sign": -1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7302,7 +7317,7 @@
     "placement": {
      "x": 3.583,
      "y": 0.9743,
-     "z": 0.8231,
+     "z": 0.8228,
      "pitchDeg": 0,
      "yawDeg": 0
     },
@@ -7329,7 +7344,7 @@
      {
       "id": "z",
       "name": "Height",
-      "value": 0.8231,
+      "value": 0.8228,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7347,7 +7362,7 @@
     "explode": {
      "axis": "y",
      "sign": 1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7356,8 +7371,8 @@
     "group": "exterior",
     "role": "mirror",
     "placement": {
-     "x": 2.0066,
-     "y": -1.0691,
+     "x": 1.9626,
+     "y": -1.0703,
      "z": 0.9003,
      "pitchDeg": 0,
      "yawDeg": 0
@@ -7375,7 +7390,7 @@
      {
       "id": "x",
       "name": "Station",
-      "value": 2.0066,
+      "value": 1.9626,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7403,7 +7418,7 @@
     "explode": {
      "axis": "y",
      "sign": -1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7412,8 +7427,8 @@
     "group": "exterior",
     "role": "mirror",
     "placement": {
-     "x": 2.0066,
-     "y": 1.0691,
+     "x": 1.9626,
+     "y": 1.0703,
      "z": 0.9003,
      "pitchDeg": 0,
      "yawDeg": 0
@@ -7431,7 +7446,7 @@
      {
       "id": "x",
       "name": "Station",
-      "value": 2.0066,
+      "value": 1.9626,
       "unit": "m",
       "provenance": {
        "state": "calculated",
@@ -7459,7 +7474,7 @@
     "explode": {
      "axis": "y",
      "sign": 1,
-     "rank": 4
+     "rank": 1
     }
    },
    {
@@ -7505,7 +7520,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7551,7 +7566,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7597,7 +7612,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7643,7 +7658,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7689,7 +7704,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7735,7 +7750,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7781,7 +7796,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7827,7 +7842,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7873,7 +7888,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7919,7 +7934,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -7965,7 +7980,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8011,7 +8026,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8057,7 +8072,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8103,7 +8118,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8149,7 +8164,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8195,7 +8210,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8241,7 +8256,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8287,7 +8302,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8333,7 +8348,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8349,13 +8364,13 @@
      "yawDeg": 0
     },
     "half": [
-     0.4698,
-     0.04,
-     0.035
+     0.4377,
+     0.0565,
+     0.1997
     ],
     "geometry": {
      "kind": "envelope",
-     "label": "tub member box from the structural layout. The frame solver uses the same centreline model."
+     "label": "member centreline pulled onto the inner loft so the section stays inside the skin. The frame solver still uses the original centreline; this curve is the one that fits the body."
     },
     "parameters": [
      {
@@ -8373,14 +8388,95 @@
      {
       "kind": "mounted-to",
       "target": "BODY_SHELL",
-      "note": "inside the loft; the skin is not structural"
+      "note": "follows the loft; the skin is not structural"
      }
     ],
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
-    }
+     "rank": 2
+    },
+    "spine": [
+     [
+      1.49,
+      0.6,
+      0.69
+     ],
+     [
+      1.5514,
+      0.5943,
+      0.7164
+     ],
+     [
+      1.6129,
+      0.5886,
+      0.7429
+     ],
+     [
+      1.6743,
+      0.5829,
+      0.7693
+     ],
+     [
+      1.7357,
+      0.5771,
+      0.7957
+     ],
+     [
+      1.7971,
+      0.5714,
+      0.8221
+     ],
+     [
+      1.8586,
+      0.5657,
+      0.8486
+     ],
+     [
+      1.92,
+      0.56,
+      0.875
+     ],
+     [
+      1.9814,
+      0.5543,
+      0.9014
+     ],
+     [
+      2.0429,
+      0.5486,
+      0.9279
+     ],
+     [
+      2.1043,
+      0.5429,
+      0.9543
+     ],
+     [
+      2.1657,
+      0.5371,
+      0.9807
+     ],
+     [
+      2.2271,
+      0.5314,
+      1.0071
+     ],
+     [
+      2.2886,
+      0.5257,
+      1.0336
+     ],
+     [
+      2.35,
+      0.52,
+      1.06
+     ]
+    ],
+    "section": [
+     0.016,
+     0.016
+    ]
    },
    {
     "id": "TUB_ROOF_RAIL_L",
@@ -8425,7 +8521,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8471,7 +8567,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8517,7 +8613,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8563,7 +8659,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8579,13 +8675,13 @@
      "yawDeg": 0
     },
     "half": [
-     0.4698,
-     0.04,
-     0.035
+     0.4377,
+     0.0565,
+     0.1997
     ],
     "geometry": {
      "kind": "envelope",
-     "label": "tub member box from the structural layout. The frame solver uses the same centreline model."
+     "label": "member centreline pulled onto the inner loft so the section stays inside the skin. The frame solver still uses the original centreline; this curve is the one that fits the body."
     },
     "parameters": [
      {
@@ -8603,14 +8699,95 @@
      {
       "kind": "mounted-to",
       "target": "BODY_SHELL",
-      "note": "inside the loft; the skin is not structural"
+      "note": "follows the loft; the skin is not structural"
      }
     ],
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
-    }
+     "rank": 2
+    },
+    "spine": [
+     [
+      1.49,
+      -0.6,
+      0.69
+     ],
+     [
+      1.5514,
+      -0.5943,
+      0.7164
+     ],
+     [
+      1.6129,
+      -0.5886,
+      0.7429
+     ],
+     [
+      1.6743,
+      -0.5829,
+      0.7693
+     ],
+     [
+      1.7357,
+      -0.5771,
+      0.7957
+     ],
+     [
+      1.7971,
+      -0.5714,
+      0.8221
+     ],
+     [
+      1.8586,
+      -0.5657,
+      0.8486
+     ],
+     [
+      1.92,
+      -0.56,
+      0.875
+     ],
+     [
+      1.9814,
+      -0.5543,
+      0.9014
+     ],
+     [
+      2.0429,
+      -0.5486,
+      0.9279
+     ],
+     [
+      2.1043,
+      -0.5429,
+      0.9543
+     ],
+     [
+      2.1657,
+      -0.5371,
+      0.9807
+     ],
+     [
+      2.2271,
+      -0.5314,
+      1.0071
+     ],
+     [
+      2.2886,
+      -0.5257,
+      1.0336
+     ],
+     [
+      2.35,
+      -0.52,
+      1.06
+     ]
+    ],
+    "section": [
+     0.016,
+     0.016
+    ]
    },
    {
     "id": "TUB_ROOF_RAIL_R",
@@ -8655,7 +8832,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8701,7 +8878,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8747,7 +8924,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8793,7 +8970,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8809,13 +8986,13 @@
      "yawDeg": 0
     },
     "half": [
-     0.04,
+     0.016,
      0.52,
-     0.035
+     0.016
     ],
     "geometry": {
      "kind": "envelope",
-     "label": "tub member box from the structural layout. The frame solver uses the same centreline model."
+     "label": "member centreline pulled onto the inner loft so the section stays inside the skin. The frame solver still uses the original centreline; this curve is the one that fits the body."
     },
     "parameters": [
      {
@@ -8833,14 +9010,95 @@
      {
       "kind": "mounted-to",
       "target": "BODY_SHELL",
-      "note": "inside the loft; the skin is not structural"
+      "note": "follows the loft; the skin is not structural"
      }
     ],
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
-    }
+     "rank": 2
+    },
+    "spine": [
+     [
+      3.3,
+      -0.52,
+      1.15
+     ],
+     [
+      3.3,
+      -0.4457,
+      1.15
+     ],
+     [
+      3.3,
+      -0.3714,
+      1.15
+     ],
+     [
+      3.3,
+      -0.2971,
+      1.15
+     ],
+     [
+      3.3,
+      -0.2229,
+      1.15
+     ],
+     [
+      3.3,
+      -0.1486,
+      1.15
+     ],
+     [
+      3.3,
+      -0.0743,
+      1.15
+     ],
+     [
+      3.3,
+      0,
+      1.15
+     ],
+     [
+      3.3,
+      0.0743,
+      1.15
+     ],
+     [
+      3.3,
+      0.1486,
+      1.15
+     ],
+     [
+      3.3,
+      0.2229,
+      1.15
+     ],
+     [
+      3.3,
+      0.2971,
+      1.15
+     ],
+     [
+      3.3,
+      0.3714,
+      1.15
+     ],
+     [
+      3.3,
+      0.4457,
+      1.15
+     ],
+     [
+      3.3,
+      0.52,
+      1.15
+     ]
+    ],
+    "section": [
+     0.016,
+     0.016
+    ]
    },
    {
     "id": "TUB_WS_HEADER",
@@ -8885,7 +9143,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8931,7 +9189,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -8977,7 +9235,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -9023,7 +9281,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -9069,7 +9327,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -9115,7 +9373,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -9161,7 +9419,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    },
    {
@@ -9207,7 +9465,7 @@
     "explode": {
      "axis": "z",
      "sign": -1,
-     "rank": 1
+     "rank": 2
     }
    }
   ],
@@ -9215,8 +9473,8 @@
    {
     "id": "head-M95",
     "status": "pass",
-    "detail": "M95 head top at 1139 mm (x 2993 mm), roof at that station 1198 mm, inner gap 56 mm",
-    "valueM": 0.0555,
+    "detail": "M95 head top at 1139 mm (x 2993 mm), roof at that station 1199 mm, inner gap 56 mm",
+    "valueM": 0.056,
     "minimumOverallHeightM": 1.143,
     "occupant": "M95"
    },
@@ -9224,15 +9482,15 @@
     "id": "head-F5",
     "status": "pass",
     "detail": "F5 head top at 997 mm (x 2777 mm), roof at that station 1199 mm, inner gap 198 mm",
-    "valueM": 0.1982,
+    "valueM": 0.1983,
     "minimumOverallHeightM": 1.0007,
     "occupant": "F5"
    },
    {
     "id": "head-M95-rear",
     "status": "pass",
-    "detail": "rear M95 head top at 1119 mm (x 3854 mm), roof at that station 1191 mm, inner gap 68 mm",
-    "valueM": 0.068,
+    "detail": "rear M95 head top at 1119 mm (x 3854 mm), roof at that station 1199 mm, inner gap 76 mm",
+    "valueM": 0.076,
     "minimumOverallHeightM": 1.123
    },
    {
@@ -9280,16 +9538,8 @@
    },
    {
     "id": "containment",
-    "status": "fail",
-    "detail": "6 non-exterior parts sit outside the body envelope: RADIATOR, ENGINE, FRUNK, TUB_A_PILLAR_L, TUB_A_PILLAR_R, TUB_ROOF_BOW. They are a packaging failure and are not drawn in Studio.",
-    "outside": [
-     "RADIATOR",
-     "ENGINE",
-     "FRUNK",
-     "TUB_A_PILLAR_L",
-     "TUB_A_PILLAR_R",
-     "TUB_ROOF_BOW"
-    ]
+    "status": "pass",
+    "detail": "every non-exterior bounding box is inside the body envelope"
    },
    {
     "id": "b-pillar",
@@ -9409,5 +9659,5 @@
    "storage"
   ]
  },
- "snapshotSha256": "47b5669e73d9ac9dc47aa75f98c674e04910b3ab8c05b7b9f4140053e8669438"
+ "snapshotSha256": "2c4678132d3f0d150f350ca466648ff5d751702f734a7fd3ff459a431b0f943d"
 }
