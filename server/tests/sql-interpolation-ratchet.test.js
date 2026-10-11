@@ -120,6 +120,10 @@ const REVIEWED = {
   "economy/routes.js": 1,
   "economy/storage.js": 1,
   "economy/treasury-reconciliation.js": 1,
+  // economy/wallet-clarity.js (1) — loadAccountTestFlag's `fields` is the
+  // literal "role" plus the literal "is_test_account" only when PRAGMA
+  // table_info reports that column. The user id is bound with `?`.
+  "economy/wallet-clarity.js": 1,
   "economy/withdrawals.js": 1,
   "emergent/agent-drift-watch-cycle.js": 1,
   "emergent/environment-sensor.js": 2,
@@ -257,6 +261,12 @@ const REVIEWED = {
   "lib/skill-tree-engine.js": 1,
   "lib/skills/character-level.js": 1,
   "lib/social/reputation.js": 2,
+  // lib/strip-object-object-dtu-tags.js (7) — `table` is only the literals
+  // "dtu_store" and "dtus". `select` and `sets` are those tables' column
+  // names chosen from PRAGMA table_info, or the assignment fragments
+  // "tags = ?" / "tags_json = ?" / "data = ?". Row ids and rewritten JSON
+  // are bound with `?`.
+  "lib/strip-object-object-dtu-tags.js": 7,
   "lib/substrate-diffusion.js": 1,
   "lib/temperament-spread.js": 2,
   "lib/tools/sandbox-manager.js": 1,
@@ -271,6 +281,12 @@ const REVIEWED = {
   "lib/world-tenancy.js": 2,
   "lib/world-vehicles.js": 2,
   "routes/evo-asset.js": 3,
+  // routes/frontier-part2.js (2) — `where` is `title IN (${placeholders})`
+  // over SEEDED_SYSTEM_LISTING_TITLES (a frozen constant; placeholders are
+  // "?") AND an owner predicate of the literals owner_user_id / seller_id
+  // `= 'system'`, chosen from PRAGMA table_info. Title values and row ids
+  // are bound with `?`.
+  "routes/frontier-part2.js": 2,
   "routes/inference-debug.js": 1,
   "routes/messaging.js": 2,
   "routes/player-trade.js": 5,
