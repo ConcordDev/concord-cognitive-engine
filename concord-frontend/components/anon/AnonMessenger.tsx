@@ -641,7 +641,7 @@ export function AnonMessenger() {
                       </p>
                       <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(m.sentAt).toLocaleTimeString()}</span>
-                        <Lock className="h-2.5 w-2.5 text-neon-green" title={notice.body} aria-label={notice.body} />
+                        <span title={notice.body} className="inline-flex"><Lock className="h-2.5 w-2.5 text-neon-green" aria-label={notice.body} /></span>
                         {m.expiresAt && (
                           <span className="flex items-center gap-0.5 text-neon-pink">
                             <Timer className="h-2.5 w-2.5" /> {relTime(m.expiresAt)}

@@ -40,7 +40,7 @@ function b64ToBuf(b64: string): ArrayBuffer {
 }
 
 export async function createClientKeyPair(): Promise<ClientKeyMaterial> {
-  const pair = await crypto.subtle.generateKey({ name: "X25519" }, true, ["deriveBits"]);
+  const pair = (await crypto.subtle.generateKey({ name: "X25519" }, true, ["deriveBits"])) as CryptoKeyPair;
   const publicKeySpkiB64 = bufToB64(new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey)));
   const privateKeyPkcs8B64 = bufToB64(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey)));
   return { publicKeySpkiB64, privateKeyPkcs8B64 };
