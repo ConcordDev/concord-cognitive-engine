@@ -129,7 +129,7 @@ export default function registerChatRoutes(app, {
       // Non-blocking rolling window compression (after response is ready)
       const _sess = sessionId ? STATE.sessions?.get(sessionId) : null;
       if (_sess && needsWindowCompression(_sess)) {
-        compressRollingWindow(STATE, sessionId, {}).catch(err =>
+        compressRollingWindow(STATE, sessionId, { userId: ctx?.actor?.userId || null }).catch(err =>
           logger?.debug?.('[chat] window compression failed', { err: err?.message })
         );
       }

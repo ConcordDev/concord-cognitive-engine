@@ -9,6 +9,7 @@
 
 import { asyncHandler } from "../lib/async-handler.js";
 import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
+import { dtuMutationDenial, resolveAuthMode } from "../lib/dtu-ownership.js";
 
 export default function registerHelpersExtendedRoutes(app, {
   db,
@@ -583,13 +584,10 @@ export default function registerHelpersExtendedRoutes(app, {
   // Security audit 2026-07-30: this route had zero per-item ownership check
   // — any authenticated user could pass ANY other user's DTU ids and
   // bulk-delete, bulk-retag, or bulk-promote them, up to 100 at a time.
-  // "delete" is the same destructive action dtu.delete (server.js) gates on
-  // ownership; reuse that exact field convention (ownerId/createdBy/
-  // createdByUser/authorId/source, admin-role bypass, permissive only for
-  // genuinely unowned legacy DTUs). "promote" is additionally an editorial
-  // trust-tier action (see the atlas/tiers/promote fix just above) so it's
-  // admin-only regardless of ownership, and no longer accepts a
-  // client-supplied tier override — it always sets "verified".
+  // Tag and delete use the same ownerless/system gate as dtu.update /
+  // dtu.delete: a member cannot rewrite a DTU that has no real user owner.
+  // "promote" stays an editorial trust-tier action (admin-only regardless
+  // of ownership) and always sets "verified".
   app.post("/api/dtus/bulk", requireAuth(), asyncHandler(async (req, res) => {
     const { action, ids, data } = req.body;
     if (!ids?.length) return res.status(400).json({ ok: false, error: "ids required" });
@@ -601,19 +599,23 @@ export default function registerHelpersExtendedRoutes(app, {
       const dtu = STATE.dtus?.get(id);
       if (!dtu) { results.push({ id, ok: false, error: "not_found" }); continue; }
 
-      const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId || dtu.authorId === userId || dtu.source === userId || dtu.author === userId);
-      const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId || dtu.author;
-
       if (action === "promote") {
         if (!isAdmin) { results.push({ id, ok: false, error: "unauthorized: promote requires an admin role" }); continue; }
         dtu.tier = "verified";
-      } else if (hasOwner && !isOwner && !isAdmin) {
-        results.push({ id, ok: false, error: "unauthorized: you can only modify your own DTUs" });
-        continue;
-      } else if (action === "tag") {
-        dtu.tags = [...new Set([...(dtu.tags || []), ...(data?.tags || [])])];
-      } else if (action === "delete") {
-        STATE.dtus.delete(id);
+      } else {
+        const denial = dtuMutationDenial(dtu, { actor: { userId, id: userId, role } }, {
+          authMode: resolveAuthMode(),
+          verb: action === "delete" ? "delete" : "update",
+        });
+        if (denial) {
+          results.push({ id, ok: false, error: denial.error });
+          continue;
+        }
+        if (action === "tag") {
+          dtu.tags = [...new Set([...(dtu.tags || []), ...(data?.tags || [])])];
+        } else if (action === "delete") {
+          STATE.dtus.delete(id);
+        }
       }
       dtu.updatedAt = new Date().toISOString();
       results.push({ id, ok: true });
@@ -622,26 +624,9 @@ export default function registerHelpersExtendedRoutes(app, {
     res.json({ ok: true, results, processed: results.length });
   }));
 
-  app.get("/api/dtus/recent", asyncHandler(async (req, res) => {
-    const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const all = dtusArray()
-      .filter(d => ctxMayReadDtu(req, d))
-      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    res.json({ ok: true, dtus: all.slice(0, limit).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain, createdAt: d.createdAt })) });
-  }));
-
-  app.get("/api/dtus/search", asyncHandler(async (req, res) => {
-    const q = (req.query.q || "").toLowerCase();
-    if (!q) return res.json({ ok: true, results: [], total: 0 });
-    const results = dtusArray().filter(d =>
-      ctxMayReadDtu(req, d) && (
-        (d.title || "").toLowerCase().includes(q) ||
-        (d.human?.summary || "").toLowerCase().includes(q) ||
-        (d.tags || []).some(t => t.toLowerCase().includes(q))
-      )
-    ).slice(0, 50).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain }));
-    res.json({ ok: true, results, total: results.length });
-  }));
+  // GET /api/dtus/recent and GET /api/dtus/search are registered in
+  // routes/dtus.js, ahead of /api/dtus/:id. This module mounts later
+  // (server.js), so a copy here never ran in production.
 
   app.get("/api/dtus/:id/children", asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
