@@ -63,6 +63,12 @@ const SCAN_DIRS = [
 // ---------------------------------------------------------------------------
 export const ALLOWLIST = [
   {
+    file: "concord-frontend/lib/conkay/demo-api.ts",
+    snippet: "const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));",
+    reason:
+      "server-requested retry backoff, not animation: after a real 503 the public demo waits the Retry-After the server sent (clamped 0-5 s) before retrying, at most 4 attempts; the only UI it drives is a 'warming up / busy, retrying (n of 4)' notice set from that real 503 response, cleared when the real result or failure arrives — no progress is animated on this clock.",
+  },
+  {
     file: "concord-frontend/components/conkay/useConKayVoice.ts",
     snippet: "startListening(); }, 350",
     reason:

@@ -5,6 +5,7 @@ import { useCallback, useRef } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { registerConcordDsl } from '@/lib/dsl/concord-dsl-lang';
+import { createInlineCompletionsProvider } from '@/components/code/inlineCompletionsProvider';
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -143,43 +144,11 @@ export default function MonacoWrapper({
     }
     if (inlineCompletion) {
       const lang = resolveLanguage(language);
-      type MonacoModel = ReturnType<editor.IStandaloneCodeEditor['getModel']>;
-      type MonacoPosition = { lineNumber: number; column: number };
-      monaco.languages.registerInlineCompletionsProvider(lang, {
-        async provideInlineCompletions(model: NonNullable<MonacoModel>, position: MonacoPosition) {
-          const lineCount = model.getLineCount();
-          const textBeforeCursor = model.getValueInRange({
-            startLineNumber: Math.max(1, position.lineNumber - 40),
-            startColumn: 1,
-            endLineNumber: position.lineNumber,
-            endColumn: position.column,
-          });
-          const textAfterCursor = model.getValueInRange({
-            startLineNumber: position.lineNumber,
-            startColumn: position.column,
-            endLineNumber: Math.min(lineCount, position.lineNumber + 20),
-            endColumn: model.getLineMaxColumn(Math.min(lineCount, position.lineNumber + 20)),
-          });
-          try {
-            const completion = await inlineCompletion({ textBeforeCursor, textAfterCursor, language: lang });
-            if (!completion) return { items: [] };
-            return {
-              items: [{
-                insertText: completion,
-                range: {
-                  startLineNumber: position.lineNumber,
-                  startColumn: position.column,
-                  endLineNumber: position.lineNumber,
-                  endColumn: position.column,
-                },
-              }],
-            };
-          } catch {
-            return { items: [] };
-          }
-        },
-        freeInlineCompletions() { /* noop */ },
-      });
+      const provider = createInlineCompletionsProvider(lang, inlineCompletion);
+      monaco.languages.registerInlineCompletionsProvider(
+        lang,
+        provider as Parameters<typeof monaco.languages.registerInlineCompletionsProvider>[1],
+      );
     }
 
     // ── Phase 1: real semantic providers (hover / completions / signature) ──

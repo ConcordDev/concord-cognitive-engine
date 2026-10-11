@@ -86,15 +86,20 @@ export function recordOperation(db, entry, dedupWindowMs = DEFAULT_DEDUP_WINDOW_
   const meta = entry.meta ? JSON.stringify(entry.meta) : "{}";
   const detailsHash = crypto.createHash("sha256").update(details).digest("hex").slice(0, 16);
 
-  // Try to coalesce with a recent row (same subsystem+action+hash within window)
+  // Try to coalesce with a recent row (same subsystem+action+hash within window).
+  // The column default is SQLite datetime('now') → 'YYYY-MM-DD HH:MM:SS'.
+  // An ISO cutoff ('YYYY-MM-DDTHH:MM:SS.sssZ') never matches it: at index 10,
+  // space (0x20) < 'T' (0x54), so a same-day SQLite timestamp sorts before
+  // every ISO timestamp that day and the dedupe SELECT misses. Normalize
+  // both sides to 'YYYY-MM-DD HH:MM:SS' (UTC, second precision) here.
   try {
-    const cutoff = new Date(Date.now() - dedupWindowMs).toISOString();
-    const recent = db.prepare(`
-      SELECT id, details FROM dtu_operations_log
-      WHERE subsystem = ? AND action = ? AND ts >= ?
-        AND archived = 0
-      ORDER BY ts DESC LIMIT 1
-    `).get(entry.subsystem, entry.action, cutoff);
+    const cutoff = new Date(Date.now() - dedupWindowMs).toISOString().slice(0, 19).replace("T", " ");
+    const recent = db.prepare(
+      "SELECT id, details FROM dtu_operations_log"
+      + " WHERE subsystem = ? AND action = ? AND archived = 0"
+      + " AND substr(replace(ts, 'T', ' '), 1, 19) >= ?"
+      + " ORDER BY substr(replace(ts, 'T', ' '), 1, 19) DESC LIMIT 1"
+    ).get(entry.subsystem, entry.action, cutoff);
 
     if (recent && recent.details.includes(detailsHash)) {
       // Coalesce: bump the count in details

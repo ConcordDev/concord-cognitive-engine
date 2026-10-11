@@ -16,9 +16,13 @@
 //     everywhere and password rotation are served by the /api/auth routes)
 //   - snapshot capture / list / apply / restore
 //
-// Persistence: per-process Maps hung off globalThis._concordSTATE keyed by
-// userId, so a user's preferences survive across requests within the
-// process. No DB migration is added. Every value returned is real (user
+// Persistence: per-user Maps on globalThis._concordSTATE._settings, which
+// is in LENS_STATE_KEYS. The process snapshot round-trips preferences,
+// keybindings, settings snapshots, the device label of the current
+// request (user-agent and IP, not a session token), and the security
+// record (2FA flag, last-password-change timestamp, recovery-code count).
+// Passwords, password hashes, recovery codes, and API keys are not stored
+// here. No new table and no migration. Every value returned is real (user
 // input or deterministic computation) — no seed/mock/demo data.
 
 import crypto from "node:crypto";
@@ -96,18 +100,18 @@ const DEFAULT_KEYBINDINGS = [
 
 function store() {
   const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
-  if (!STATE._settings) {
-    STATE._settings = {
-      prefs: new Map(),       // userId -> { key: value }
-      keybinds: new Map(),    // userId -> { id: keys }
-      snapshots: new Map(),   // userId -> [ snapshot ]
-      sessions: new Map(),    // userId -> [ session ]
-        security: new Map(),    // userId -> { twoFactorEnabled, lastPasswordChange }
-    };
+  // Hydration replaces this object with rehydrated Maps. Only a missing
+  // or non-object value is created fresh; a present Map field is kept.
+  if (!STATE._settings || typeof STATE._settings !== "object" || Array.isArray(STATE._settings) || STATE._settings instanceof Map) {
+    STATE._settings = {};
   }
-  // Keep STATE.userPrefs (read by legacy `applied` callers) aliased to the
-  // same backing map so old + new consumers see one truth.
-  return STATE._settings;
+  const s = STATE._settings;
+  if (!(s.prefs instanceof Map)) s.prefs = new Map();             // userId -> { key: value }
+  if (!(s.keybinds instanceof Map)) s.keybinds = new Map();       // userId -> { id: keys }
+  if (!(s.snapshots instanceof Map)) s.snapshots = new Map();     // userId -> [ snapshot ] (capped at 25)
+  if (!(s.sessions instanceof Map)) s.sessions = new Map();       // userId -> [ device label ]
+  if (!(s.security instanceof Map)) s.security = new Map();       // userId -> { twoFactorEnabled, lastPasswordChange, recoveryCodesIssued }
+  return s;
 }
 
 function uid(prefix) {
@@ -130,6 +134,26 @@ function resolvePrefs(userId) {
       : def.default;
   }
   return out;
+}
+
+/**
+ * Portable settings for an account export. Preferences are the resolved
+ * values (stored over defaults). Keybindings and the 2FA flag are included
+ * only when this user has a record — nothing is invented, and no secret
+ * (password hash, recovery code) is copied.
+ */
+export function settingsExportForUser(userId) {
+  if (!userId) return null;
+  const s = store();
+  const sec = s.security.get(userId);
+  const binds = s.keybinds.get(userId);
+  return {
+    preferences: resolvePrefs(userId),
+    keybindings: binds ? { ...binds } : null,
+    security: sec
+      ? { twoFactorEnabled: !!sec.twoFactorEnabled, lastPasswordChange: sec.lastPasswordChange || null }
+      : null,
+  };
 }
 
 // Validate a single (key, value) against the schema. Returns the coerced

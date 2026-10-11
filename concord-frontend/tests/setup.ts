@@ -9,6 +9,28 @@ import { vi, beforeEach } from 'vitest';
 // failures (a genuinely-broken assertion still fails, just later).
 configure({ asyncUtilTimeout: 5000 });
 
+// next/font/google is resolved by the Next.js compiler at build time; under
+// vitest (jsdom or node) the real module cannot load, so any component that
+// declares a font at module scope (e.g. components/splash/fonts.ts) threw on
+// import. Each loader returns what Next returns at runtime: a className, a
+// style with the family, and the CSS variable when one is asked for. The
+// faces are listed explicitly (every face the app declares today): a new face
+// fails loudly here instead of being silently stubbed.
+vi.mock('next/font/google', () => {
+  const face = (family: string) => (opts: { variable?: string } = {}) => ({
+    className: `font-${family.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    style: { fontFamily: `'${family}'` },
+    ...(opts.variable ? { variable: opts.variable } : {}),
+  });
+  return {
+    DM_Sans: face('DM Sans'),
+    JetBrains_Mono: face('JetBrains Mono'),
+    Source_Serif_4: face('Source Serif 4'),
+    Instrument_Serif: face('Instrument Serif'),
+    Montserrat: face('Montserrat'),
+  };
+});
+
 // This whole DOM-mock block only applies under the jsdom environment. A
 // handful of pure-logic test files (no rendering, no DOM) opt into
 // `// @vitest-environment node` — e.g. tests/obsidian-vault-export.test.ts,

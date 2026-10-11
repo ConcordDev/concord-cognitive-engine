@@ -510,11 +510,19 @@ export default function registerMessageActions(registerLensAction) {
   try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
-    // The 'mentions' bucket key is the username (extracted from @mention) — fall back to userId here.
-    const handle = String(params.handle || ctx?.actor?.handle || userId);
+    // The 'mentions' bucket key is the @handle text a sender typed, so it holds
+    // message bodies (including private-channel and DM bodies) addressed to that
+    // handle. A caller may read only the buckets for their own identities;
+    // naming anyone else's handle is refused, never served.
+    const own = [ctx?.actor?.handle, ctx?.actor?.username, userId].filter(Boolean).map(String);
+    const asked = params.handle != null && params.handle !== "" ? String(params.handle) : null;
+    if (asked && !own.includes(asked)) return { ok: false, error: "forbidden", reason: "activity-feed reads only your own mentions" };
     const limit = Math.max(1, Math.min(200, Number(params.limit) || 50));
-    const list = listB(s.mentions, handle).slice(-limit).reverse();
-    return { ok: true, result: { mentions: list, handle } };
+    // No handle named: every bucket of the caller's own identities, oldest → newest, then newest first.
+    const handles = asked ? [asked] : [...new Set(own)];
+    const merged = handles.flatMap((h) => (s.mentions.get(h) || [])).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+    const list = merged.slice(-limit).reverse();
+    return { ok: true, result: { mentions: list, handle: asked || own[0] } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 

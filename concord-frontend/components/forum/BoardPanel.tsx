@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
+import { loadBoardTags } from '@/lib/dtu/list-pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowBigUp,
@@ -48,6 +49,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { showToast } from '@/components/common/Toasts';
 import { ReportButton } from '@/components/common/ReportButton';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -321,7 +323,10 @@ export function BoardPanel() {
 
   // API queries for supplementary real-data integration
   useQuery({ queryKey: ['forum-posts-api', selectedCommunity, sortMode], queryFn: () => apiHelpers.dtus.paginated({ tags: selectedCommunity !== 'all' ? selectedCommunity : undefined, pageSize: 50 }).then(r => r.data) });
-  useQuery({ queryKey: ['communities-api'], queryFn: () => apiHelpers.dtus.list().then(r => { const tags = new Set<string>(); (r.data?.dtus || []).forEach((d: Record<string, unknown>) => ((d.tags as string[]) || []).forEach(t => tags.add(t))); return { tags: Array.from(tags) }; }) });
+  const { data: boardTags = [] } = useQuery({
+    queryKey: ['board-dtu-tags'],
+    queryFn: () => loadBoardTags((params) => apiHelpers.dtus.list(params).then((r) => r.data)),
+  });
 
   // ----- Filtered & sorted posts -----
   const displayPosts = useMemo(() => {
@@ -404,7 +409,13 @@ export function BoardPanel() {
       pinned: false, locked: false, removed: false, awards: [], saved: false, comments: [], views: 1,
     };
     setPosts(prev => [newPost, ...prev]);
-    createForumPost({ title: newPost.title, data: newPost as unknown as Record<string, unknown>, meta: { status: 'active', tags: newPost.tags } });
+    // 'open' is a real forum status. 'active' is not, so the row used to
+    // appear locally and disappear on refresh (HTTP 200 validation_failed).
+    createForumPost({ title: newPost.title, data: newPost as unknown as Record<string, unknown>, meta: { status: 'open', tags: newPost.tags } })
+      .catch((err) => {
+        setPosts(prev => prev.filter(p => p.id !== newPost.id));
+        showToast('error', err instanceof Error ? err.message : 'Failed to create post');
+      });
     setShowCreatePost(false);
     setNewPostTitle(''); setNewPostContent(''); setNewPostCommunity(''); setNewPostTags(''); setNewPostFlair(null);
   }, [newPostTitle, newPostContent, newPostCommunity, newPostTags, newPostFlair, createForumPost]);
@@ -414,7 +425,11 @@ export function BoardPanel() {
     const slug = newCommName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const newComm: Community = { id: slug, name: newCommName, description: newCommDesc, memberCount: 1, icon: '\uD83D\uDCAC', banner: 'from-neon-cyan to-neon-purple', joined: true, rules: ['Be respectful', 'Stay on topic'], createdAt: new Date().toISOString(), moderators: [DEFAULT_AUTHOR.username] };
     setCommunities(prev => [...prev, newComm]);
-    createForumCommunity({ title: newComm.name, data: newComm as unknown as Record<string, unknown>, meta: { status: 'active' } });
+    createForumCommunity({ title: newComm.name, data: newComm as unknown as Record<string, unknown>, meta: { status: 'open' } })
+      .catch((err) => {
+        setCommunities(prev => prev.filter(c => c.id !== newComm.id));
+        showToast('error', err instanceof Error ? err.message : 'Failed to create community');
+      });
     setShowCreateCommunity(false);
     setNewCommName(''); setNewCommDesc('');
   }, [newCommName, newCommDesc, createForumCommunity]);
@@ -807,6 +822,24 @@ export function BoardPanel() {
             ))}
           </div>
         </div>
+
+        {boardTags.length > 0 && (
+          <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 panel">
+            <h3 className="font-bold text-white mb-2 text-sm flex items-center gap-2"><Hash className="w-4 h-4" />Tags</h3>
+            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+              {boardTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => { setSearchQuery(tag); if (viewMode !== 'feed') backToFeed(); }}
+                  className="px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded-full text-[10px] text-orange-300 font-medium"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Lattice Rules */}
         <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 panel">

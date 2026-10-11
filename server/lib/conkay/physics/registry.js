@@ -10,9 +10,16 @@
 // the one envelope every result uses, which is the receipt:
 //
 //   { runId, status: PASS|FAIL|WARN|NOT_COMPUTED|ERROR, solver, target,
-//     inputs, outputs, margins, warnings, assumptions, covers, provenance, runtimeMs }
+//     inputs, outputs, margins, failures, warnings, assumptions, covers, provenance, runtimeMs }
+//
+// A FAIL comes from a margin over 1, or from a named failure (a gate, such
+// as an acceptance check, whose reasons are not a demand/capacity ratio).
 //
 // No solver estimates a value it was not given the inputs for.
+//
+// Optional declarations (north-star loop, spec section 8 rule 4): regime,
+// units { inputs, outputs }, tolerance and screening (true = screening-level
+// result, not a design check). They ride in every envelope's solver block.
 
 import crypto from "node:crypto";
 
@@ -32,7 +39,19 @@ export function getSolver(id) {
 }
 
 export function listSolvers() {
-  return [...SOLVERS.values()].map(({ id, version, domain, domains, fidelity, method, reference }) => ({ id, version, domain, domains: domains || [domain], fidelity, method, reference: reference || null }));
+  return [...SOLVERS.values()].map(({ id, version, domain, domains, fidelity, method, reference, regime, units, tolerance, screening }) => ({
+    id, version, domain, domains: domains || [domain], fidelity, method, reference: reference || null,
+    ...declared({ regime, units, tolerance, screening }),
+  }));
+}
+
+function declared({ regime, units, tolerance, screening }) {
+  return {
+    ...(regime != null ? { regime } : {}),
+    ...(units != null ? { units } : {}),
+    ...(tolerance != null ? { tolerance } : {}),
+    ...(screening != null ? { screening: Boolean(screening) } : {}),
+  };
 }
 
 export function runId(solverId, target) {
@@ -49,7 +68,7 @@ function canonical(v) {
 export function envelope(solver, target, raw, { runtimeMs, revision }) {
   const base = {
     runId: runId(solver.id, target),
-    solver: { id: solver.id, version: solver.version, domain: solver.domain, domains: solver.domains || [solver.domain], fidelity: `L${solver.fidelity}`, method: solver.method, reference: solver.reference || null },
+    solver: { id: solver.id, version: solver.version, domain: solver.domain, domains: solver.domains || [solver.domain], fidelity: `L${solver.fidelity}`, method: solver.method, reference: solver.reference || null, ...declared(solver) },
     target,
     runtimeMs,
   };
@@ -63,8 +82,11 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     marginPct: (m.capacity / m.demand - 1) * 100,
   }));
   const warnings = raw.warnings || [];
+  // Pass/fail checks that are not a demand/capacity ratio (an interference,
+  // a CG outside the support polygon) are reported as failures.
+  const failures = raw.failures || [];
   let status = "PASS";
-  if (margins.some((m) => !(m.utilization <= 1))) status = "FAIL";
+  if (failures.length || margins.some((m) => !(m.utilization <= 1))) status = "FAIL";
   else if (warnings.length) status = "WARN";
   return {
     ...base,
@@ -72,6 +94,7 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     inputs,
     outputs: raw.outputs || {},
     margins,
+    ...(failures.length ? { failures } : {}),
     warnings,
     assumptions: raw.assumptions || [],
     covers: raw.covers || [target],

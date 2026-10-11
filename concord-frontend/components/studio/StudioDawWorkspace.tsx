@@ -781,29 +781,39 @@ export function StudioDawWorkspace() {
     showToast('success', `Reopened "${loaded.title || item.title || 'project'}"`);
   }, []);
 
-  const handleCreateProject = useCallback(() => {
+  const handleCreateProject = useCallback(async () => {
     const proj = createDefaultProject(
       newTitle || 'Untitled Project',
       parseInt(newBpm, 10) || 120,
       newKey,
       newGenre || null
     );
-    setProject(proj);
-    setShowNewProject(false);
-    setNewTitle('');
-    transportRef.current?.updateConfig({ bpm: proj.bpm, timeSignature: proj.timeSignature });
-    emitSessionDTU(proj, 'Project created');
-    createLensItem({
-      title: proj.title,
-      data: proj as unknown as Record<string, unknown>,
-      meta: {
-        status: 'active',
-        tags: [proj.key, `${proj.bpm}bpm`, proj.genre].filter(Boolean) as string[],
-      },
-    }).catch((err) => {
+    // Persist first. 'draft' is a real studio status; 'active' is not, so the
+    // create used to come back validation_failed while the workspace already
+    // showed a project that vanished on refresh.
+    try {
+      const created = await createLensItem({
+        title: proj.title,
+        data: proj as unknown as Record<string, unknown>,
+        meta: {
+          status: 'draft',
+          tags: [proj.key, `${proj.bpm}bpm`, proj.genre].filter(Boolean) as string[],
+        },
+      }) as { ok?: boolean; error?: string; artifact?: { id?: string } };
+      if (created?.ok === false) {
+        showToast('error', `Failed: ${String(created.error || 'validation failed').replace(/_/g, ' ')}`);
+        return;
+      }
+      const saved = created?.artifact?.id ? { ...proj, id: created.artifact.id } : proj;
+      setProject(saved);
+      setShowNewProject(false);
+      setNewTitle('');
+      transportRef.current?.updateConfig({ bpm: saved.bpm, timeSignature: saved.timeSignature });
+      emitSessionDTU(saved, 'Project created');
+    } catch (err) {
       console.error('Failed to persist project:', err instanceof Error ? err.message : err);
       showToast('error', 'Failed to create project');
-    });
+    }
   }, [newTitle, newBpm, newKey, newGenre, createLensItem]);
 
   // ---- Transport controls ----
@@ -1047,7 +1057,7 @@ export function StudioDawWorkspace() {
         data: base64Data,
       });
 
-      if (response.data?.ok || response.status === 200 || response.status === 201) {
+      if (response.data?.ok) {
         setSaveStatus('success');
         const mediaDtuId = (response.data as { mediaDTU?: { id?: string } } | null)?.mediaDTU?.id || null;
         // Also create a lens item for the track list. Cross-link the
@@ -1068,7 +1078,7 @@ export function StudioDawWorkspace() {
               streamUrl: mediaDtuId ? `/api/media/${mediaDtuId}/stream` : null,
               createdAt: new Date().toISOString(),
             },
-            meta: { tags: ['studio', 'recording'], status: 'active' },
+            meta: { tags: ['studio', 'recording'], status: 'recording' },
           });
           // Mirror into the music lens too so "My Tracks" surfaces it.
           try {
@@ -1084,7 +1094,7 @@ export function StudioDawWorkspace() {
                 mediaDtuId,
                 streamUrl: mediaDtuId ? `/api/media/${mediaDtuId}/stream` : null,
               },
-              meta: { tags: ['studio', project.key, `${project.bpm}bpm`], status: 'active' },
+              meta: { tags: ['studio', project.key, `${project.bpm}bpm`], status: 'recording' },
             });
           } catch (mirrorErr) {
             console.warn('[Studio] Mirror to music lens failed:', mirrorErr);

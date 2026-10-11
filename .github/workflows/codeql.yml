@@ -8,6 +8,14 @@ on:
   schedule:
     - cron: '0 6 * * 1' # Weekly Monday 6am UTC
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze
@@ -48,7 +56,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.37.3
+        uses: github/codeql-action/init@v4.38.2
         with:
           languages: ${{ matrix.language }}
           # build-mode: none works for interpreted languages including
@@ -204,6 +212,6 @@ jobs:
       # OOM pattern that hit ci.yml + lighthouse.yml.
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.37.3
+        uses: github/codeql-action/analyze@v4.38.2
         with:
           category: '/language:${{ matrix.language }}'

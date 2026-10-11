@@ -52,6 +52,10 @@ describe('whiteboard board handoff', () => {
     fireEvent.click(draft());
     await waitFor(() => expect(screen.getByText(/Drafted in Thread as th_1, citing dtu_w1\. Not posted\./)).toBeTruthy());
 
+    const createCall = lensRunMock.mock.calls.find((c) => c[0] === 'dtu' && c[1] === 'create');
+    const createdInput = createCall?.[2] as { skipAutoTag?: boolean; meta?: { skipAutoTag?: boolean } };
+    expect(createdInput.skipAutoTag).toBe(true);
+    expect(createdInput.meta?.skipAutoTag).toBe(true);
     const draftCall = lensRunMock.mock.calls.find((c) => c[0] === 'thread' && c[1] === 'thread-draft');
     expect((draftCall?.[2] as Record<string, unknown>).citedDtuId).toBe('dtu_w1');
     expect(String((draftCall?.[2] as Record<string, unknown>).content)).toContain('Proof Board');

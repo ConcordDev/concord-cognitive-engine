@@ -25,6 +25,10 @@ const UNITS = {
   "m/s": ["velocity", 1], "km/h": ["velocity", 1 / 3.6], mph: ["velocity", 0.44704],
   // power → W (hp is mechanical horsepower, 550 ft·lbf/s)
   W: ["power", 1], kW: ["power", 1e3], MW: ["power", 1e6], hp: ["power", 745.6998715822702],
+  // time → s, energy → J, torque → N·m (written "Nm")
+  s: ["time", 1], min: ["time", 60], h: ["time", 3600],
+  J: ["energy", 1], kJ: ["energy", 1e3], Wh: ["energy", 3600], kWh: ["energy", 3.6e6],
+  Nm: ["torque", 1],
   // money
   USD: ["money", 1], "USD/kg": ["price_per_mass", 1],
   // dimensionless
@@ -34,6 +38,7 @@ const UNITS = {
 export const SI_UNIT = {
   length: "m", mass: "kg", force: "N", pressure: "Pa", density: "kg/m3",
   area: "m2", volume: "m3", velocity: "m/s", power: "W", money: "USD", price_per_mass: "USD/kg", ratio: "1",
+  time: "s", energy: "J", torque: "Nm",
 };
 
 export function knownUnit(unit) {

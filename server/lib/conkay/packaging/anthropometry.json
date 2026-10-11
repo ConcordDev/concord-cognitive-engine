@@ -1,0 +1,285 @@
+{
+  "version": "1.0.0",
+  "note": "Occupant and packaging reference data for the ConKay packaging checks. Every number cites its source; target thresholds are sourced or labelled estimated with a method.",
+  "anthropometry": {
+    "dataset": "ANSUR II (2012 Anthropometric Survey of U.S. Army Personnel), working databases: 4,082 men, 1,986 women",
+    "source": {
+      "title": "Gordon, C.C. et al. (2014). 2012 Anthropometric Survey of U.S. Army Personnel: Methods and Summary Statistics. Technical Report NATICK/TR-15/007, U.S. Army Natick Soldier Research, Development and Engineering Center",
+      "url": "http://tools.openlab.psu.edu/publicData/ANSURII-TR15-007.pdf",
+      "retrieved": "2026-10-09"
+    },
+    "data": [
+      {
+        "title": "ANSUR II public data (Penn State OPEN Design Lab)",
+        "url": "https://www.openlab.psu.edu/ansur2/",
+        "retrieved": "2026-10-09"
+      },
+      {
+        "title": "ANSUR_II_MALE_Public.csv",
+        "url": "http://tools.openlab.psu.edu/publicData/ANSUR_II_MALE_Public.csv",
+        "retrieved": "2026-10-09"
+      },
+      {
+        "title": "ANSUR_II_FEMALE_Public.csv",
+        "url": "http://tools.openlab.psu.edu/publicData/ANSUR_II_FEMALE_Public.csv",
+        "retrieved": "2026-10-09"
+      }
+    ],
+    "method": "Percentiles are the report's summary-statistics tables (cm, converted to mm). The base dimensions were cross-checked against the empirical percentiles of the public working-database CSVs (all within 1 mm). Thigh link, calf link, acromial height sitting and suprasternale height sitting are the report's derived dimensions (D-series tables).",
+    "caveats": [
+      "Soldiers, not the general driving population.",
+      "Each dimension's percentile is taken separately: no real person is 5th or 95th in every dimension at once.",
+      "Measured barefoot and in minimal clothing; no shoe or clothing allowance is added."
+    ],
+    "units": "mm",
+    "dimensions": {
+      "stature": {
+        "ansur": "(75) STATURE",
+        "reportPage": 193,
+        "definition": "The vertical distance from a standing surface to the top of the head is measured with an anthropometer. The participant stands erect with the head in the Frankfurt plane. The heels are together with the weight distributed equally on both feet. The shoulders and upper extremities are relaxed. The measurement is taken at the maximum point of quiet respiration.",
+        "mm": {
+          "F5": 1525.0,
+          "F50": 1626.0,
+          "F95": 1740.0,
+          "M5": 1648.0,
+          "M50": 1755.0,
+          "M95": 1870.0
+        }
+      },
+      "sittingHeight": {
+        "ansur": "(71) SITTING HEIGHT",
+        "reportPage": 185,
+        "definition": "The vertical distance between a sitting surface and the top of the head is measured with an anthropometer. The participant sits erect with the head in the Frankfurt plane. The shoulders and upper arms are relaxed, and the forearms and hands are extended forward horizontally with the palms facing each other. The thighs are parallel, and the knees are flexed 90° with the feet in line with the thighs. The measurement is",
+        "mm": {
+          "F5": 803.0,
+          "F50": 857.0,
+          "F95": 912.0,
+          "M5": 860.0,
+          "M50": 918.0,
+          "M95": 977.0
+        }
+      },
+      "buttockKneeLength": {
+        "ansur": "(19) BUTTOCK-KNEE LENGTH",
+        "reportPage": 81,
+        "definition": "The horizontal distance between a buttock plate placed at the most posterior point on either buttock and the knee point, anterior landmark, is measured with an anthropometer. The participant sits erect. The thighs are parallel and the knees flexed 90° with the feet in line with the thighs.",
+        "mm": {
+          "F5": 541.0,
+          "F50": 589.0,
+          "F95": 646.0,
+          "M5": 569.0,
+          "M50": 617.0,
+          "M95": 669.0
+        }
+      },
+      "buttockPoplitealLength": {
+        "ansur": "(20) BUTTOCK-POPLITEAL LENGTH",
+        "reportPage": 83,
+        "definition": "The horizontal distance between a buttock plate placed at the most posterior point on either buttock and the back of the right knee (the popliteal fossa at the dorsal juncture of the calf and thigh) is measured with an anthropometer. The participant sits erect. The thighs are parallel and the knees flexed 90° with the feet in line with the thighs.",
+        "mm": {
+          "F5": 441.0,
+          "F50": 483.0,
+          "F95": 535.0,
+          "M5": 459.0,
+          "M50": 502.0,
+          "M95": 548.0
+        }
+      },
+      "kneeHeightSitting": {
+        "ansur": "(57) KNEE HEIGHT, SITTING",
+        "reportPage": 157,
+        "definition": "The vertical distance between a footrest surface and the suprapatella landmark is measured with an anthropometer. The participant sits with the thighs parallel, the knees flexed 90°, and the feet in line with the thighs.",
+        "mm": {
+          "F5": 469.0,
+          "F50": 510.0,
+          "F95": 557.0,
+          "M5": 509.0,
+          "M50": 553.0,
+          "M95": 602.0
+        }
+      },
+      "eyeHeightSitting": {
+        "ansur": "(34) EYE HEIGHT, SITTING",
+        "reportPage": 111,
+        "definition": "The vertical distance between a sitting surface and the ectocanthus landmark is measured with an anthropometer. The participant sits erect with the head in the Frankfurt plane. The shoulders and upper arms are relaxed, and the forearms and hands are extended forward horizontally with the palms facing each other. The thighs are parallel, and the knees are flexed 90° with the feet in line with the thighs. The measureme",
+        "mm": {
+          "F5": 698.0,
+          "F50": 748.0,
+          "F95": 799.0,
+          "M5": 750.0,
+          "M50": 804.0,
+          "M95": 860.0
+        }
+      },
+      "shoulderBreadthBideltoid": {
+        "ansur": "(11) BIDELTOID BREADTH",
+        "reportPage": 65,
+        "definition": "The maximum horizontal distance between the lateral margins of the upper arms on the deltoid muscles is measured with a beam caliper. The participant sits erect, looking straight ahead. The shoulders and upper arms are relaxed, and the forearms and hands are extended forward horizontally with the palms facing each other. The measurement is taken at the maximum point of quiet respiration.",
+        "mm": {
+          "F5": 406.0,
+          "F50": 450.0,
+          "F95": 499.0,
+          "M5": 459.0,
+          "M50": 509.0,
+          "M95": 567.0
+        }
+      },
+      "hipBreadthSitting": {
+        "ansur": "(51) HIP BREADTH, SITTING",
+        "reportPage": 145,
+        "definition": "The distance between the lateral points of the hips or thighs (whichever are broader) is measured with a beam caliper. The participant sits erect with the feet and knees together.",
+        "mm": {
+          "F5": 348.0,
+          "F50": 397.0,
+          "F95": 456.0,
+          "M5": 333.0,
+          "M50": 378.0,
+          "M95": 431.0
+        }
+      },
+      "footLength": {
+        "ansur": "(36) FOOT LENGTH",
+        "reportPage": 115,
+        "definition": "The maximum length of the right foot is measured with a Brannock Device®. The participant stands with the right foot on the device and the left foot on a board of equal height with the weight distributed equally on both feet. The heel of the right foot lightly touches the back of the device, and the medial side of the right foot is parallel with the long axis of the device. A block is placed against the tip of the lo",
+        "mm": {
+          "F5": 226.0,
+          "F50": 246.0,
+          "F95": 268.0,
+          "M5": 250.0,
+          "M50": 271.0,
+          "M95": 293.0
+        }
+      },
+      "thighClearance": {
+        "ansur": "(79) THIGH CLEARANCE",
+        "reportPage": 201,
+        "definition": "The vertical distance between a sitting surface and the thigh point, top landmark is measured with an anthropometer. The participant sits with the thighs parallel, knees flexed 90°, and the feet in line with the thighs.",
+        "mm": {
+          "F5": 145.0,
+          "F50": 167.0,
+          "F95": 191.0,
+          "M5": 157.0,
+          "M50": 180.0,
+          "M95": 207.0
+        }
+      },
+      "headLength": {
+        "ansur": "(47) HEAD LENGTH",
+        "reportPage": 137,
+        "definition": "The distance from the glabella landmark to the opisthocranion landmark is measured with a spreading caliper. For female participants with braids or cornrows, the measurement includes the styled hair.",
+        "mm": {
+          "F5": 178.0,
+          "F50": 190.0,
+          "F95": 202.0,
+          "M5": 188.0,
+          "M50": 200.0,
+          "M95": 211.0
+        }
+      },
+      "headBreadth": {
+        "ansur": "(45) HEAD BREADTH",
+        "reportPage": 133,
+        "definition": "The maximum horizontal breadth of the head above the plane of attachment of the ears is measured with a spreading caliper. For female participants with braids or cornrows, the measurement includes the styled hair.",
+        "mm": {
+          "F5": 140.0,
+          "F50": 147.0,
+          "F95": 156.0,
+          "M5": 146.0,
+          "M50": 154.0,
+          "M95": 163.0
+        }
+      },
+      "chestDepth": {
+        "ansur": "(25) CHEST DEPTH",
+        "reportPage": 93,
+        "definition": "The horizontal distance between the chest point anterior landmark and the back at the same level is measured with a beam caliper. The participant stands erect, looking straight ahead. The shoulders and upper extremities are relaxed. The measurement is taken at the maximum point of quiet respiration.",
+        "mm": {
+          "F5": 205.0,
+          "F50": 245.0,
+          "F95": 296.0,
+          "M5": 211.0,
+          "M50": 253.0,
+          "M95": 298.0
+        }
+      },
+      "lateralMalleolusHeight": {
+        "ansur": "(59) LATERAL MALLEOLUS HEIGHT",
+        "reportPage": 161,
+        "definition": "The vertical distance between a standing surface and the lateral malleolus landmark is measured with a modified height gauge. The participant stands erect with the heels together and the weight distributed equally on both feet.",
+        "mm": {
+          "F5": 54.0,
+          "F50": 63.0,
+          "F95": 71.0,
+          "M5": 64.0,
+          "M50": 73.0,
+          "M95": 83.0
+        }
+      },
+      "thighLink": {
+        "ansur": "(D29) THIGH LINK",
+        "reportPage": 289,
+        "definition": "The vertical distance between the trochanterion landmark and the lateral femoral epicondyle landmark is calculated as follows: TROCHANTERION HEIGHT minus LATERAL FEMORAL EPICONDYLE HEIGHT.",
+        "mm": {
+          "F5": 340.0,
+          "F50": 379.0,
+          "F95": 418.0,
+          "M5": 364.0,
+          "M50": 408.0,
+          "M95": 458.0
+        }
+      },
+      "calfLink": {
+        "ansur": "(D6) CALF LINK",
+        "reportPage": 243,
+        "definition": "The vertical distance between the lateral femoral epicondyle landmark and the lateral malleolus landmark is calculated as follows: LATERAL FEMORAL EPICONDYLE HEIGHT minus LATERAL MALLEOLUS HEIGHT.",
+        "mm": {
+          "F5": 361.0,
+          "F50": 402.0,
+          "F95": 446.0,
+          "M5": 379.0,
+          "M50": 418.0,
+          "M95": 460.0
+        }
+      },
+      "acromialHeightSitting": {
+        "ansur": "(D2) ACROMIAL HEIGHT, SITTING",
+        "reportPage": 235,
+        "definition": "The vertical distance between a sitting surface and the right acromion landmark is calculated as follows: SITTING HEIGHT minus (STATURE minus ACROMIAL HEIGHT).",
+        "mm": {
+          "F5": 515.0,
+          "F50": 564.0,
+          "F95": 609.0,
+          "M5": 552.0,
+          "M50": 603.0,
+          "M95": 653.0
+        }
+      },
+      "suprasternaleHeightSitting": {
+        "ansur": "(D26) SUPRASTERNALE HEIGHT, SITTING",
+        "reportPage": 283,
+        "definition": "The vertical distance between a sitting surface and the suprasternale landmark of a participant sitting erect is calculated as follows: SUPRASTERNALE HEIGHT minus (STATURE minus SITTING HEIGHT).",
+        "mm": {
+          "F5": 516.0,
+          "F50": 558.0,
+          "F95": 600.0,
+          "M5": 555.0,
+          "M50": 601.0,
+          "M95": 648.0
+        }
+      },
+      "footBreadthHorizontal": {
+        "ansur": "(35) FOOT BREADTH, HORIZONTAL",
+        "reportPage": 112,
+        "definition": "The maximum breadth of the right foot is measured with a Brannock Device®. The participant stands with the right foot on the device and the left foot on a board of equal height with the weight distributed equally on both feet. The heel of the right foot lightly touches the back of the device, and the medial side of the right foot is parallel with the long axis of the device. The vertical slide of the device is moved until it lightly touches the fifth metatarsophalangeal protrusion landmark.",
+        "mm": {
+          "F5": 85.0,
+          "F50": 93.0,
+          "F95": 101.0,
+          "M5": 94.0,
+          "M50": 102.0,
+          "M95": 111.0
+        }
+      }
+    }
+  }
+}

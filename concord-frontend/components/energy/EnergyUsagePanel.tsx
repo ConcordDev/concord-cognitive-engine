@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, Activity } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ErrorState } from '@/components/ui';
 
 interface DayPoint { date: string; kwh: number; cost: number }
@@ -23,7 +24,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [form, setForm] = useState({ kwh: '', date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ kwh: '', date: calendarDateKey() });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,7 +53,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
     if (!(Number(form.kwh) > 0)) { setError('Enter a kWh value greater than zero.'); return; }
     const r = await lensRun('energy', 'reading-log', { kwh: Number(form.kwh), date: form.date });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ kwh: '', date: new Date().toISOString().slice(0, 10) });
+    setForm({ kwh: '', date: calendarDateKey() });
     setError(null);
     await refresh();
   };

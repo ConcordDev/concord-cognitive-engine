@@ -67,6 +67,16 @@ describe("conkay_design lens actions", () => {
     assert.match(r.errors.join(" "), /unknown kind/);
   });
 
+  it("from-brief opens a saved road-vehicle design wired to the brief's targets", async () => {
+    const ctx = await depthCtx("conkay-brief");
+    const r = unwrap(await lensRun("conkay_design", "from-brief", { params: { brief: "a car that weighs 2,500 lb, does 180 mph, seats 4" } }, ctx));
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.result.architecture, "road-vehicle");
+    assert.match(r.result.designId, /^dsg_/);
+    const req = r.result.results.find((e) => e.runId === "requirement.check@REQ_mass");
+    assert.equal(req.status, "NOT_COMPUTED");
+  });
+
   it("lists the solver registry", async () => {
     const r = unwrap(await lensRun("conkay_design", "solvers", {}));
     assert.ok(r.result.solvers.some((s) => s.id === "beam.fea" && s.fidelity === 2));

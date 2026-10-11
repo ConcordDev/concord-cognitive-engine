@@ -62,28 +62,55 @@ function memberProps(m, L) {
   const Iy = m.Iy || m.momentIy || m.momentI || 1;
   const J = m.J || m.torsionJ || (Iy + Iz);
   const G = m.shearModulus || E / 2.6;
-  return { E, A, Iz, Iy, J, G, L };
+  // Optional shear areas (Timoshenko beam): shear along local y (bending about z) and along local z.
+  const Asy = m.shearAreaY > 0 ? m.shearAreaY : null;
+  const Asz = m.shearAreaZ > 0 ? m.shearAreaZ : null;
+  return { E, A, Iz, Iy, J, G, L, Asy, Asz };
 }
 
 // Rotation (rows = local x, y, z in global coordinates). Local y lies in the
 // plane containing global Z (the 2D-frame convention: in-plane bending is about
 // local z = global Z); members parallel to Z use global Y as the reference.
-function rotation(lx, ly, lz) {
+// Optional `yRef` (a member's `yRef`: a global vector, not parallel to the
+// member) sets local y explicitly: local y = yRef with its component along the
+// member removed. A 3D model with z up passes yRef = [0, 0, 1] so a horizontal
+// member's section height (local y) is vertical. Without it the planar
+// convention above applies (unchanged).
+function rotation(lx, ly, lz, yRef) {
   const x = [lx, ly, lz];
-  const ref = Math.abs(lz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
-  let y = [ref[1] * x[2] - ref[2] * x[1], ref[2] * x[0] - ref[0] * x[2], ref[0] * x[1] - ref[1] * x[0]];
-  const ny = Math.hypot(y[0], y[1], y[2]);
-  y = y.map((v) => v / ny);
+  let y;
+  if (yRef) {
+    const d = yRef[0] * x[0] + yRef[1] * x[1] + yRef[2] * x[2];
+    y = [yRef[0] - d * x[0], yRef[1] - d * x[1], yRef[2] - d * x[2]];
+    const n = Math.hypot(y[0], y[1], y[2]);
+    if (!(n > 1e-9)) throw new Error("member yRef is parallel to the member axis");
+    y = y.map((v) => v / n);
+  } else {
+    const ref = Math.abs(lz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
+    y = [ref[1] * x[2] - ref[2] * x[1], ref[2] * x[0] - ref[0] * x[2], ref[0] * x[1] - ref[1] * x[0]];
+    const ny = Math.hypot(y[0], y[1], y[2]);
+    y = y.map((v) => v / ny);
+  }
   const z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
   return [x, y, z];
 }
 
-function localStiffness({ E, A, Iz, Iy, J, G, L }) {
+// Bending terms with optional shear deformation (Timoshenko beam; Przemieniecki,
+// Theory of Matrix Structural Analysis, 1968, sec. 5.6): phi = 12 E I / (G As L^2);
+// without a shear area phi = 0 and the terms are the Euler-Bernoulli ones.
+function bendingTerms(E, I, G, As, L) {
+  const phi = As ? (12 * E * I) / (G * As * L * L) : 0;
+  const d = 1 + phi;
+  return { k12: (12 * E * I) / (d * L ** 3), k6: (6 * E * I) / (d * L ** 2), k4: ((4 + phi) * E * I) / (d * L), k2: ((2 - phi) * E * I) / (d * L) };
+}
+
+function localStiffness({ E, A, Iz, Iy, J, G, L, Asy = null, Asz = null }) {
   const k = Array.from({ length: 12 }, () => new Float64Array(12));
   const set = (r, c, v) => { k[r][c] = v; k[c][r] = v; };
   const a = (E * A) / L, t = (G * J) / L;
-  const z12 = 12 * E * Iz / L ** 3, z6 = 6 * E * Iz / L ** 2, z4 = 4 * E * Iz / L, z2 = 2 * E * Iz / L;
-  const y12 = 12 * E * Iy / L ** 3, y6 = 6 * E * Iy / L ** 2, y4 = 4 * E * Iy / L, y2 = 2 * E * Iy / L;
+  const bz = bendingTerms(E, Iz, G, Asy, L), by = bendingTerms(E, Iy, G, Asz, L);
+  const z12 = bz.k12, z6 = bz.k6, z4 = bz.k4, z2 = bz.k2;
+  const y12 = by.k12, y6 = by.k6, y4 = by.k4, y2 = by.k2;
   set(0, 0, a); set(0, 6, -a); set(6, 6, a);
   set(3, 3, t); set(3, 9, -t); set(9, 9, t);
   // bending in local x–y plane (v, θz) — uses Iz
@@ -110,9 +137,9 @@ function toLocal(R, ue) {
   return out;
 }
 
-function elementData(nodes, m) {
+export function elementData(nodes, m) {
   const { lx, ly, lz, L } = memberCosines(nodes, m);
-  const R = rotation(lx, ly, lz);
+  const R = rotation(lx, ly, lz, m.yRef);
   const props = memberProps(m, L);
   const kl = localStiffness(props);
   return { R, kl, props, iIdx: nodeIndex(nodes, m.nodeI), jIdx: nodeIndex(nodes, m.nodeJ) };

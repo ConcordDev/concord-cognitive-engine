@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { AviationKeepMenu } from './AviationKeepMenu';
 import type { AvLogEntry } from './aviationReport';
@@ -21,7 +22,7 @@ export function LogbookPanel() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ aircraftId: '', date: new Date().toISOString().slice(0, 10), from: '', to: '', totalHours: '', pic: '', night: '', instrument: '', dayLandings: '1', nightLandings: '0', conditions: 'VFR' as 'VFR' | 'MVFR' | 'IFR' | 'LIFR', remarks: '' });
+  const [form, setForm] = useState({ aircraftId: '', date: calendarDateKey(), from: '', to: '', totalHours: '', pic: '', night: '', instrument: '', dayLandings: '1', nightLandings: '0', conditions: 'VFR' as 'VFR' | 'MVFR' | 'IFR' | 'LIFR', remarks: '' });
   const [lastEntry, setLastEntry] = useState<AvLogEntry | null>(null);
 
   useEffect(() => { refresh(); }, []);

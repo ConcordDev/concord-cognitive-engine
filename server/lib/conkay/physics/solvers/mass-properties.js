@@ -14,6 +14,7 @@
 // CG's x and the axle positions (x increases toward the rear).
 
 import { registerSolver } from "../registry.js";
+import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 
 const G = 9.80665;
 
@@ -45,11 +46,11 @@ export const massCg = registerSolver({
         items.push({ id: child.id, m: o.mass.value, r: { x: o.cgX.value, y: o.cgY.value, z: o.cgZ.value }, own: { xx: o.Ixx.value, yy: o.Iyy.value, zz: o.Izz.value } });
         continue;
       }
-      if (!child.geometry) continue; // joints and other logical nodes have no body
+      if (LOGICAL_KINDS.has(child.kind)) continue; // joints and other logical nodes have no body
       const mEnv = ctx.result("mass.part", child.id);
       const m = mEnv?.outputs?.mass?.value;
       if (!Number.isFinite(m)) { missing.push(`${child.id} (no mass)`); continue; }
-      const pos = ctx.get(child.id, "position");
+      const pos = mEnv.outputs.centroid?.value || ctx.get(child.id, "position");
       if (!pos) { missing.push(`${child.id} (no position)`); continue; }
       const own = ownInertia(ctx.get(child.id, "geometry"), m);
       if (!own) pointMasses.push(child.id);

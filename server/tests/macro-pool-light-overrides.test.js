@@ -35,4 +35,11 @@ describe("macro-pool LIGHT_OVERRIDES", () => {
     assert.equal(isHeavy("hlr", "runHLR"), true);
     assert.equal(isHeavy("accounting", "trialBalance"), false);
   });
+
+  it("runs hypothesis status and lifecycle writes on the main thread", () => {
+    assert.equal(isHeavy("hypothesis", "metrics"), false);
+    assert.equal(isHeavy("hypothesis", "add_test"), false);
+    assert.equal(isHeavy("hypothesis", "add_evidence"), false);
+    assert.equal(isHeavy("hypothesis", "generate"), true);
+  });
 });

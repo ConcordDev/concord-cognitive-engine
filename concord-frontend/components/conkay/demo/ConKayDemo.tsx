@@ -29,6 +29,8 @@ import {
   DEMO_SIGNUP_HREF,
   depthSweepValues,
   fetchDemoMaterials,
+  retryNotice,
+  type DemoRetry,
   solveDemoBeam,
   sweepDemoBeam,
   type DemoSweep,
@@ -43,6 +45,8 @@ const BeamViewport = dynamic(() => import('@/components/conkay/workspace/BeamVie
   ),
 });
 
+type NoticeKey = 'materials' | 'solve' | 'sweep';
+
 export function ConKayDemo() {
   const router = useRouter();
   const [inputs, setInputs] = useState<StudyInputs>(NEW_STUDY);
@@ -55,16 +59,23 @@ export function ConKayDemo() {
   const [sweep, setSweep] = useState<DemoSweep | null>(null);
   const [sweeping, setSweeping] = useState(false);
   const [sweepError, setSweepError] = useState('');
+  // Set only while the server has answered 503 and a retry is pending. Keyed
+  // by request so one request finishing never clears another's notice.
+  const [notice, setNotice] = useState<{ key: NoticeKey; text: string } | null>(null);
+  const retryFor = useCallback((key: NoticeKey) => (r: DemoRetry) => setNotice({ key, text: retryNotice(r) }), []);
+  const clearNotice = useCallback((key: NoticeKey) => setNotice((n) => (n?.key === key ? null : n)), []);
 
   useEffect(() => {
     let live = true;
-    void fetchDemoMaterials().then((r) => {
+    const onRetry = retryFor('materials');
+    void fetchDemoMaterials((r) => { if (live) onRetry(r); }).then((r) => {
       if (!live) return;
+      clearNotice('materials');
       if (Array.isArray(r)) setMaterials(r);
       else setError(r.error);
     });
     return () => { live = false; };
-  }, []);
+  }, [retryFor, clearNotice]);
 
   const stale = Boolean(result) && !inputsMatchResult(inputs, result);
   const utilization = useMemo(
@@ -75,7 +86,8 @@ export function ConKayDemo() {
   const run = useCallback(async () => {
     setStatus('solving');
     setError('');
-    const r = await solveDemoBeam(inputs);
+    const r = await solveDemoBeam(inputs, retryFor('solve'));
+    clearNotice('solve');
     if ('error' in r) {
       setStatus('error');
       setError(r.error);
@@ -83,16 +95,17 @@ export function ConKayDemo() {
     }
     setResult(r);
     setStatus('idle');
-  }, [inputs]);
+  }, [inputs, retryFor, clearNotice]);
 
   const runSweep = useCallback(async () => {
     setSweeping(true);
     setSweepError('');
-    const r = await sweepDemoBeam(inputs, 'height', depthSweepValues(inputs.dims.height));
+    const r = await sweepDemoBeam(inputs, 'height', depthSweepValues(inputs.dims.height), retryFor('sweep'));
     setSweeping(false);
+    clearNotice('sweep');
     if ('error' in r) { setSweep(null); setSweepError(r.error); return; }
     setSweep(r);
-  }, [inputs]);
+  }, [inputs, retryFor, clearNotice]);
 
   const solving = status === 'solving';
 
@@ -147,6 +160,11 @@ export function ConKayDemo() {
               </label>
             </div>
           </div>
+          {notice && (
+            <p role="status" aria-live="polite" className="flex items-center gap-1.5 px-1 text-xs text-amber-200">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> {notice.text}
+            </p>
+          )}
           {error && <p role="alert" className="px-1 text-xs text-rose-300">{error}</p>}
           <StudyCards
             result={result}

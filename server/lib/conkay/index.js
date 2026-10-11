@@ -9,13 +9,38 @@ import { DesignGraph } from "./graph/design-graph.js";
 import { DesignEngine } from "./graph/engine.js";
 import { parseEdit } from "./compiler/edit-parser.js";
 import { coverage } from "./verification/coverage.js";
+import { buildRealizationPackage } from "./verification/realization.js";
+import { hasPendingKernels, settleKernels, KERNEL_PENDING } from "./cad/kernel-queue.js";
 import { listSolvers } from "./physics/registry.js";
 import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/requirements.js";
 import "./physics/solvers/structural-members.js";
+import "./physics/solvers/frame-structure.js";
+import "./physics/solvers/hardpoints.js";
+import "./physics/solvers/crush-paths.js";
+import "./physics/solvers/brake-thermal.js";
+import "./physics/solvers/coolant-loop.js";
+import "./physics/solvers/cooling-opening.js";
 import "./physics/solvers/vehicle.js";
 import "./physics/solvers/mass-properties.js";
+import "./physics/solvers/mass-budget.js";
+import "./physics/solvers/geometry-stability.js";
+import "./physics/solvers/tube-actuation.js";
+import "./physics/solvers/electrical.js";
+import "./physics/solvers/energy-balance.js";
+import "./physics/solvers/powertrain.js";
+import "./physics/solvers/package.js";
+import "./physics/solvers/cad-body.js";
+import "./physics/solvers/design-surface.js";
+import "./physics/solvers/tub-fit.js";
+import "./physics/solvers/aero-drag.js";
+import "./physics/solvers/aero-shape.js";
+import "./physics/solvers/ga-drawing.js";
+import "./physics/solvers/assembly-ga-drawing.js";
+import "./physics/solvers/packaging.js";
+import "./physics/solvers/vehicle-acceptance.js";
+import "./safety-case/solvers.js";
 
 export { listSolvers };
 
@@ -56,6 +81,28 @@ export class DesignSession {
     if (!p.ok) return { ok: false, error: p.error };
     const r = this.engine.applyEdits(p.ops, { source: "text", text });
     return r.ok ? { ...r, parsed: { ops: p.ops, notes: p.notes } } : r;
+  }
+
+  /**
+   * Run every external kernel the solvers are waiting for (asynchronously, off the request path), then rerun those
+   * solvers and their dependents; repeat until nothing is pending (a drawing waits for the body it projects).
+   * Returns { rounds, kernels, rerun }.
+   */
+  async settle({ maxRounds = 6 } = {}) {
+    let rounds = 0, kernels = 0;
+    const rerun = new Set();
+    while (hasPendingKernels() && rounds < maxRounds) {
+      kernels += await settleKernels();
+      rounds += 1;
+      const waiting = this.engine.results().filter((e) => e?.status === "NOT_COMPUTED" && typeof e.reason === "string" && e.reason.startsWith(KERNEL_PENDING)).map((e) => e.runId);
+      for (const id of this.engine.rerun(waiting)) rerun.add(id);
+    }
+    return { rounds, kernels, rerun: [...rerun], pending: hasPendingKernels() };
+  }
+
+  /** The Realization Package: { files: { path: text } }. */
+  realizationPackage() {
+    return buildRealizationPackage(this);
   }
 
   summary() {

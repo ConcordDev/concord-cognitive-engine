@@ -233,7 +233,12 @@ export default function SocialHubPage() {
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <main id="social-main" className="min-w-0 space-y-4">
-            {activeTab !== 'feed' && <QuickPostComposer currentUserId={currentUserId} />}
+            {activeTab !== 'feed' && (
+              <QuickPostComposer
+                currentUserId={currentUserId}
+                username={me?.user?.username || me?.user?.displayName || null}
+              />
+            )}
 
             {/* Tab content */}
             {activeTab === 'feed' && (

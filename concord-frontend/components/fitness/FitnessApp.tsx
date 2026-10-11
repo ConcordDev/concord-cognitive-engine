@@ -8,6 +8,8 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { RoutesPanel } from '@/components/fitness/RoutesPanel';
 import { FitnessStravaSection } from '@/components/fitness/FitnessStravaSection';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
@@ -770,7 +772,7 @@ export default function FitnessApp() {
       )}
       tabs={[
         { id: 'Training', label: 'Training', icon: Dumbbell, hint: 'Strava-style personal training log' },
-        ...MODE_TABS.map((t) => ({ id: t.id, label: t.id === 'HRZones' ? 'HR zones' : t.id === 'AIPlan' ? 'AI plan' : t.id, icon: t.icon })),
+        ...omitCommunityRedditViews(MODE_TABS, ['Feed']).map((t) => ({ id: t.id, label: t.id === 'HRZones' ? 'HR zones' : t.id === 'AIPlan' ? 'AI plan' : t.id, icon: t.icon })),
       ]}
       activeTab={surface === 'training' ? 'Training' : activeTab}
       onTab={(id) => {
@@ -825,7 +827,11 @@ export default function FitnessApp() {
       {activeTab === 'AIPlan' && <div className="p-4"><WorkoutPlanner /></div>}
       {activeTab === 'Finish' && <div className="p-4"><WorkoutFinishPanel /></div>}
       {activeTab === 'Routes' && <RoutesPanel className="mt-2" />}
-      {activeTab === 'Feed' && <div className="p-4"><FitnessFeed /></div>}
+      {activeTab === 'Feed' && (
+        <CommunityRedditSlot>
+          <div className="p-4"><FitnessFeed /></div>
+        </CommunityRedditSlot>
+      )}
 
       {/* ========== Client Progress Dashboard ========== */}
       {activeTab === 'Clients' && selectedClient && (() => {

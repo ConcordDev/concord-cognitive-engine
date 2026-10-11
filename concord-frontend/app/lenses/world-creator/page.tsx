@@ -24,6 +24,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { DraftGallery } from '@/components/world-creator/DraftGallery';
 import { DraftEditor } from '@/components/world-creator/DraftEditor';
 
@@ -40,11 +41,12 @@ export default function WorldCreatorPage() {
   const who = titleCaseDisplayName(user?.username);
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
   const [view, setView] = useState<CreatorView>('drafts');
+  const navViews = omitCommunityRedditViews(VIEWS, ['inspiration']);
 
   useLensCommand([
     { id: 'world-creator-back', keys: 'Escape', description: 'Back to drafts', category: 'navigation',
       action: () => { setEditingDraft(null); setView('drafts'); } },
-    ...VIEWS.map((v) => ({
+    ...navViews.map((v) => ({
       id: `world-creator-${v.id}`,
       keys: v.keys,
       description: `${v.label}: ${v.hint}`,
@@ -73,7 +75,7 @@ export default function WorldCreatorPage() {
             Back to world lens
           </Link>
         )}
-        tabs={editingDraft ? undefined : VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        tabs={editingDraft ? undefined : navViews.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as CreatorView)}
         tabsLabel="World creator views"
@@ -88,10 +90,12 @@ export default function WorldCreatorPage() {
           <DraftEditor draftId={editingDraft} onClose={() => setEditingDraft(null)} />
         ) : view === 'drafts' ? (
           <DraftGallery onOpen={setEditingDraft} />
-        ) : (
+        ) : isCommunityRedditEnabled() ? (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
             <WorldBuilderInspo />
           </section>
+        ) : (
+          <DraftGallery onOpen={setEditingDraft} />
         )}
       </NorthStarFrame>
     </LensShell>

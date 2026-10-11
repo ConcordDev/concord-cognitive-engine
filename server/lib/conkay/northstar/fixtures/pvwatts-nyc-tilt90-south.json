@@ -1,0 +1,77 @@
+{
+ "note": "Trimmed NREL/NLR PVWatts v8 API response (DEMO_KEY) retrieved 2026-10-09. Typical-meteorological-year model output: an ESTIMATE of plane-of-array irradiance, not a site measurement.",
+ "request": "https://developer.nlr.gov/api/pvwatts/v8.json?lat=40.71&lon=-74.01&system_capacity=0.1&azimuth=180&tilt=90&array_type=0&module_type=0&losses=14",
+ "retrieved": "2026-10-09",
+ "rawSha256": "e175363f8599293b720f01cff5691c3bbf15319f49beb3ac659431ed00b7a85b",
+ "version": "8.5.0",
+ "inputs": {
+  "lat": "40.71",
+  "lon": "-74.01",
+  "system_capacity": "0.1",
+  "azimuth": "180",
+  "tilt": "90",
+  "array_type": "0",
+  "module_type": "0",
+  "losses": "14"
+ },
+ "station_info": {
+  "lat": 40.72999954223633,
+  "lon": -74.0199966430664,
+  "elev": 0.0,
+  "tz": -5.0,
+  "location": "1244690",
+  "city": "",
+  "state": "None",
+  "country": "None",
+  "solar_resource_file": "1244690.csv",
+  "distance": 2391,
+  "weather_data_source": "NSRDB PSM V3 GOES tmy-2020 3.2.0"
+ },
+ "outputs": {
+  "solrad_monthly": [
+   3.564775868567285,
+   3.756838464344157,
+   3.382317300282323,
+   2.722586876806292,
+   2.258831402333756,
+   2.093309611433676,
+   2.300379518180008,
+   2.53873356537255,
+   3.270066362198248,
+   3.247706530164597,
+   3.041272548513492,
+   2.84483867694451
+  ],
+  "solrad_annual": 2.918471393761741,
+  "dc_monthly": [
+   9.983687394762912,
+   9.424682892954532,
+   9.065287805263766,
+   6.718086811430867,
+   5.44649402249663,
+   4.66930559772918,
+   5.281706945148787,
+   5.942370165729104,
+   7.856611574888801,
+   8.553527769217549,
+   7.991890615721924,
+   7.950129363935551
+  ],
+  "ac_monthly": [
+   9.498840531100731,
+   9.013463819230854,
+   8.576217176140052,
+   6.388736568079369,
+   5.155286299834917,
+   4.410175887949275,
+   4.996521092798632,
+   5.635889721794869,
+   7.489511612129978,
+   8.164627846799473,
+   7.635225817447384,
+   7.597497728500547
+  ],
+  "ac_annual": 84.56199410180588,
+  "capacity_factor": 9.65319567372215
+ }
+}

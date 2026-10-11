@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { Skeleton } from '@/components/ui';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
@@ -13,7 +14,7 @@ interface CashFlow {
   totalIn: number; totalOut: number; netCashFlow: number;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => calendarDateKey();
 
 export function CashFlowStatement() {
   const [cf, setCF] = useState<CashFlow | null>(null);

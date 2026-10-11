@@ -668,3 +668,34 @@ describe("message — workspace directory + profiles", () => {
     assert.equal(call("directory-list", ctxB, {}).result.count, 0);
   });
 });
+
+describe("message — activity-feed privacy", () => {
+  it("INVARIANT: a caller cannot read another handle's mentions", () => {
+    const ch = call("channels-create", ctxA, { name: "private-ops", isPrivate: true });
+    call("messages-send", ctxA, { channelId: ch.result.channel.id, body: "@user_b the vault code is in the doc" });
+    const stranger = { actor: { userId: "user_c", username: "carol" }, userId: "user_c" };
+    const r = call("activity-feed", stranger, { handle: "user_b" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "forbidden");
+    assert.equal(r.mentions, undefined);
+  });
+
+  it("the mentioned user reads their own feed (by default and by naming their own handle)", () => {
+    const ch = call("channels-create", ctxA, { name: "ops" });
+    call("messages-send", ctxA, { channelId: ch.result.channel.id, body: "ping @user_b" });
+    const d = call("activity-feed", ctxB);
+    assert.equal(d.ok, true);
+    assert.equal(d.result.handle, "user_b");
+    assert.ok(d.result.mentions.some((m) => m.body === "ping @user_b"));
+    assert.equal(call("activity-feed", ctxB, { handle: "user_b" }).ok, true);
+  });
+
+  it("a username is one of the caller's own handles", () => {
+    const ch = call("channels-create", ctxA, { name: "ops2" });
+    call("messages-send", ctxA, { channelId: ch.result.channel.id, body: "hi @carol" });
+    const carol = { actor: { userId: "user_c", username: "carol" }, userId: "user_c" };
+    const r = call("activity-feed", carol, { handle: "carol" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.mentions.some((m) => m.body === "hi @carol"));
+  });
+});

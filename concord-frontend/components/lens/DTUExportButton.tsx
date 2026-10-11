@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 
 interface DTUExportButtonProps {
   domain: string;
@@ -10,6 +11,8 @@ interface DTUExportButtonProps {
   tags?: string[];
   compact?: boolean;
   className?: string;
+  /** Loaded at click time. When set, this payload is what the file contains. */
+  prepare?: () => Promise<unknown>;
 }
 
 export function DTUExportButton({
@@ -19,17 +22,20 @@ export function DTUExportButton({
   tags,
   compact,
   className = '',
+  prepare,
 }: DTUExportButtonProps) {
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  const addToast = useUIStore((s) => s.addToast);
 
   const handleExport = async () => {
     if (exporting) return;
     setExporting(true);
     try {
+      const payload = prepare ? await prepare() : data;
       const response = await api.post(
         `/api/lens/${domain}/export-dtu`,
-        { data, title: title || `${domain} export`, tags: tags || [domain, 'export'] },
+        { data: payload, title: title || `${domain} export`, tags: tags || [domain, 'export'] },
         { responseType: 'blob' }
       );
 
@@ -47,7 +53,8 @@ export function DTUExportButton({
       setExported(true);
       setTimeout(() => setExported(false), 2000);
     } catch (e) {
-      console.error('DTU export failed:', e);
+      const message = e instanceof Error && e.message ? e.message : 'Export failed.';
+      addToast({ type: 'error', message });
     } finally {
       setExporting(false);
     }

@@ -1,10 +1,14 @@
 'use client';
 
 import { Network, RefreshCw, Zap } from 'lucide-react';
-import type { Organism } from './types';
-import { EmptyCard } from './bridge-helpers';
+import type { CatalogStatus, Organism } from './types';
+import { EmptyCard, UnavailableCard } from './bridge-helpers';
 
-export function OrganismsPanel({ organisms, onRefresh }: { organisms: Organism[]; onRefresh: () => void }) {
+export function OrganismsPanel({ organisms, status, onRefresh }: { organisms: Organism[]; status: CatalogStatus; onRefresh: () => void }) {
+  if (status === 'unavailable') {
+    return <UnavailableCard icon={<Network />} message="Organisms unavailable" hint="The organism catalog could not be loaded. This is not a count of zero organisms." />;
+  }
+  if (status !== 'ready') return null;
   if (organisms.length === 0) return <EmptyCard icon={<Network />} message="No organisms detected" hint="DTU swarms with 10+ members can be awakened as Knowledge Organisms." />;
 
   return (

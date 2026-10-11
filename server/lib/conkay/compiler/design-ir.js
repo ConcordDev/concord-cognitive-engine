@@ -18,14 +18,26 @@
 
 import { parseQuantity } from "./units.js";
 import { getMaterial } from "../materials/index.js";
+import { validateMassState } from "../verification/mass-state.js";
+import { CAD_BODY_OPTIONAL } from "../cad/body-params.js";
+import { nullDict, ownArray, ownValue } from "../../own-lookup.js";
 
 export const NODE_KINDS = new Set([
   "Part", "Assembly", "Volume", "Surface", "Beam", "Shell", "Solid", "Joint", "Constraint", "Load",
   "Field", "Material", "Fluid", "Circuit", "Actuator", "Sensor", "HeatSource", "HeatSink", "Boundary",
   "Interface", "Process",
   // Common specializations of Part.
-  "Bolt", "Plate",
+  "Bolt", "Plate", "Tire", "Seat",
+  // People and cargo: they have mass (gross mass, CG) but are not part of
+  // the product's own (kerb) mass or cost.
+  "Payload",
+  // Safety case (lib/conkay/safety-case): functions → trains → components → supports.
+  "SafetyCase", "SafetyFunction", "SafetyTrain", "SafetyComponent", "SupportItem",
 ]);
+
+// Kinds with no body of their own. Every other kind is physical: it needs
+// geometry before it has a mass, and an assembly can't be weighed without it.
+export const LOGICAL_KINDS = new Set(["Assembly", "Joint", "Constraint", "Load", "Field", "Material", "Boundary", "Interface", "Process"]);
 
 export const EDGE_TYPES = new Set([
   "BOLTED_TO", "WELDED_TO", "MATED_TO", "CONSTRAINS", "LOADS", "SUPPORTS", "CONDUCTS", "CONTAINS",
@@ -33,7 +45,9 @@ export const EDGE_TYPES = new Set([
 ]);
 
 // Geometry shapes and the length parameters each one needs.
-export const SHAPES = {
+// Null prototype so a caller-supplied shape of "constructor" is an
+// unknown shape, not Object.prototype.constructor (which is not iterable).
+export const SHAPES = nullDict({
   box: ["length", "width", "height"],
   plate: ["length", "width", "thickness"],
   cylinder: ["diameter", "length"],
@@ -42,7 +56,19 @@ export const SHAPES = {
   "i-beam": ["length", "height", "flangeWidth", "flangeThickness", "webThickness"],
   // A panel or laminate: mass from area × thickness (no AABB, no solid block).
   shell: ["area", "thickness"],
-};
+  // Rectangular hollow section (square/rect tube): outside width × height,
+  // uniform wall, sharp corners (corner radii not modelled).
+  "rect-tube": ["length", "width", "height", "wall"],
+  // A closed body skin approximated as an ellipsoid of the given overall
+  // length × width × height: area, mass and frontal area come from these.
+  "ellipsoid-shell": ["length", "width", "height", "thickness"],
+  // The CAD body (cad.body): a B-spline skin solved around the vehicle's
+  // packaging envelopes; area, volume, frontal area come from the kernel.
+  "cad-body": ["thickness", "skinOffset"],
+});
+
+// Optional shape parameters: lengths (with units) and plain numbers.
+export const SHAPE_OPTIONAL = nullDict({ "cad-body": CAD_BODY_OPTIONAL });
 
 // Shape parameters are lengths unless listed here.
 export const PARAM_DIM = { area: "area" };
@@ -54,8 +80,12 @@ const LOAD_KEYS = { shear: "force", tension: "force", pointLoad: "force", compre
 
 // Node props that carry a unit; converted to SI like geometry. Other props
 // are passed through as plain values.
-export const TYPED_PROPS = { maxPower: "power" };
-const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length" };
+// mass and unitCost are stated values (a datasheet, a catalogue, an
+// assumption) and must say where they come from: massSource /
+// unitCostSource are required alongside them.
+export const TYPED_PROPS = { maxPower: "power", mass: "mass", unitCost: "money" };
+const SOURCED_PROPS = { mass: "massSource", unitCost: "unitCostSource" };
+const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontAxleX: "length", rearAxleX: "length", tireRadius: "length" };
 
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 
@@ -106,6 +136,23 @@ export function compileDesignIR(ir) {
       else if (q.si <= 0) errors.push(`${where}.props.${k}: must be positive`);
       else node.props[k] = q.si;
     }
+    for (const [k, srcKey] of Object.entries(SOURCED_PROPS)) {
+      // A stated mass can say where it comes from with a massState instead.
+      if (k === "mass" && n.props?.massState != null) continue;
+      if (n.props?.[k] != null && !(typeof n.props?.[srcKey] === "string" && n.props[srcKey].trim())) {
+        errors.push(`${where}.props.${k}: a stated ${k} needs props.${srcKey} (datasheet, catalogue or assumption)`);
+      }
+    }
+    // massState: where a mass comes from (sourced / estimated / computed / placeholder),
+    // with the fields each state requires. A computed state belongs to a part
+    // whose mass comes from its geometry; a stated mass is never "computed".
+    if (n.props?.massState != null) {
+      const ms = n.props.massState;
+      const massKg = typeof node.props.mass === "number" ? node.props.mass : undefined;
+      for (const e of validateMassState(ms, { massKg })) errors.push(`${where}.props.massState: ${e}`);
+      if (ms?.state === "computed" && n.props?.mass != null) errors.push(`${where}.props.massState: a stated mass cannot be "computed"; give geometry and a material instead`);
+      if (ms && ms.state !== "placeholder" && ms.state !== "computed" && n.props?.mass == null) errors.push(`${where}.props.massState: a ${ms.state} mass needs props.mass`);
+    }
     if (node.props.vehicle && typeof node.props.vehicle === "object") {
       const veh = { ...node.props.vehicle };
       for (const [k, dim] of Object.entries(TYPED_VEHICLE_PROPS)) {
@@ -122,14 +169,31 @@ export function compileDesignIR(ir) {
     }
     if (n.geometry != null) {
       const shape = n.geometry.shape;
-      if (!SHAPES[shape]) errors.push(`${where}: unknown shape "${shape}"`);
+      const shapeKeys = ownArray(SHAPES, shape);
+      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}"`);
       else {
         const geometry = { shape };
-        for (const key of SHAPES[shape]) {
+        for (const key of shapeKeys) {
           const q = parseQuantity(n.geometry[key], paramDim(key));
           if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
           else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
           else geometry[key] = q.si;
+        }
+        const opt = ownValue(SHAPE_OPTIONAL, shape);
+        const optLengths = opt && Array.isArray(opt.lengths) ? opt.lengths : [];
+        for (const key of optLengths) {
+          if (n.geometry[key] == null) continue;
+          const q = parseQuantity(n.geometry[key], "length");
+          if (!q.ok) errors.push(`${where}.geometry.${key}: ${q.error}`);
+          else if (q.si <= 0) errors.push(`${where}.geometry.${key}: must be positive`);
+          else geometry[key] = q.si;
+        }
+        const optNumbers = opt && Array.isArray(opt.numbers) ? opt.numbers : [];
+        for (const key of optNumbers) {
+          if (n.geometry[key] == null) continue;
+          const v = Number(n.geometry[key]);
+          if (!Number.isFinite(v) || v <= 0) errors.push(`${where}.geometry.${key}: must be a positive number`);
+          else geometry[key] = v;
         }
         node.geometry = geometry;
       }

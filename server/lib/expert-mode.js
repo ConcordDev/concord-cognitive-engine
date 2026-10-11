@@ -33,6 +33,71 @@ import { TASK_PROMPTS } from "./prompt-registry.js";
 // System prompt centralized in prompt-registry.js. Edit there.
 const EXPERT_SYSTEM_PROMPT = TASK_PROMPTS.expertMode();
 
+// Per-source text handed to the brain. Wikipedia's search blurb is the first
+// sentence of the lead (~160 chars) and often omits the fact (the Eiffel
+// Tower's height sits ~980 chars into the lead). The plain-text extract is
+// what the answer must see. 2000 matches the extract already fetched by
+// webSearchForChat: 4 sources stay near ~2k tokens on the 9B pod brain.
+export const EXPERT_SOURCE_TEXT_CAP = 2000;
+
+const HONEST_NO_SOURCES =
+  "The sources do not address this question. No factual claim can be made from the retrieved sources.";
+
+function sourceTextForPrompt(source) {
+  const content = String(source?.content || "").trim();
+  const snippet = String(source?.snippet || "").trim();
+  return (content || snippet).slice(0, EXPERT_SOURCE_TEXT_CAP);
+}
+
+function sourceAttribution(source) {
+  if (source?.origin === "web" || source?.scope === "web") {
+    return `    — ${source.url || source.source_name || "web"}`;
+  }
+  let line = `    — by ${source?.creator_id || "unknown"}`;
+  if (source?.minted_by_provider && source.minted_by_provider !== "concord_default") {
+    line += ` (minted with ${source.minted_by_model || source.minted_by_provider})`;
+  }
+  return line;
+}
+
+function splitSentences(text) {
+  return String(text || "").split(/(?<=[.!?])\s+(?=[A-Z])/).map((s) => s.trim()).filter(Boolean);
+}
+
+function isHonestRefusal(sentence) {
+  return /sources do not (address|contain)|do not contain information to answer|no factual claim can be made/i.test(sentence);
+}
+
+function isCited(sentence) {
+  return /\[\s*(?:\d+|U)\b/.test(sentence);
+}
+
+/**
+ * A grounded model sometimes refuses and then states the fact anyway
+ * ("The sources do not address this. The capital of France is Paris.").
+ * Drop that uncited tail. If the same answer also cites a source, keep
+ * the cited claim and drop the refusal so the two don't contradict.
+ * Answers that never refuse are returned unchanged.
+ */
+export function reconcileGroundedAnswer(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return raw;
+  const sentences = splitSentences(raw);
+  if (sentences.length < 2) return raw;
+  const firstHonest = sentences.findIndex(isHonestRefusal);
+  if (firstHonest === -1) return raw;
+  const after = sentences.slice(firstHonest + 1);
+  const hasCitedAfter = after.some(isCited);
+  const hasUncitedFact = after.some((s) => !isHonestRefusal(s) && !isCited(s));
+  if (!hasCitedAfter && !hasUncitedFact) return raw;
+  if (hasCitedAfter && !hasUncitedFact) {
+    const kept = sentences.filter((s) => !isHonestRefusal(s));
+    return kept.join(" ").trim() || raw;
+  }
+  const kept = sentences.filter((s, i) => i < firstHonest || isHonestRefusal(s) || isCited(s));
+  return kept.join(" ").trim() || raw;
+}
+
 /**
  * Pull candidate DTUs from the global corpus for a given query.
  * Free-tier users automatically see DTUs minted by paid-tier users
@@ -125,13 +190,10 @@ export function gatherSourcesForQuery(db, opts = {}) {
  */
 export function composeExpertMessages(query, sources) {
   const sourceBlock = sources.length === 0
-    ? "(no sources retrieved; answer briefly and say so explicitly)"
+    ? "(no sources retrieved; say that the sources do not address the question, and do not supply an answer from memory)"
     : sources.map((s, i) =>
-        `[${i + 1}] ${s.title || s.id}\n${s.snippet || ""}\n` +
-        `    — by ${s.creator_id || "unknown"}` +
-        (s.minted_by_provider && s.minted_by_provider !== "concord_default"
-          ? ` (minted with ${s.minted_by_model || s.minted_by_provider})`
-          : "")
+        `[${i + 1}] ${s.title || s.id}\n${sourceTextForPrompt(s)}\n` +
+        sourceAttribution(s)
       ).join("\n\n");
 
   return [
@@ -158,7 +220,28 @@ export function composeExpertMessages(query, sources) {
  */
 export async function expertAnswer({ db, userId, query, opts = {} }) {
   if (!query) return { ok: false, error: "missing_query" };
-  const sources = gatherSourcesForQuery(db, { query, userId, limit: opts.maxSources || 8 });
+  const limit = Math.min(20, Math.max(1, Number(opts.maxSources) || 8));
+  const extras = (Array.isArray(opts.extraSources) ? opts.extraSources : []).slice(0, limit);
+  const dtuRoom = limit - extras.length;
+  const gathered = dtuRoom > 0
+    ? gatherSourcesForQuery(db, { query, userId, limit: dtuRoom })
+    : [];
+  const sources = [...gathered, ...extras];
+
+  // Nothing to ground on. A brain call here invents the fact after saying
+  // the sources don't have it. ask() opts into the fixed refusal; upload
+  // and corpus-only callers still want the brain (their text is in the query).
+  if (opts.refuseWhenNoSources && sources.length === 0) {
+    return {
+      ok: true,
+      answer: HONEST_NO_SOURCES,
+      sources: [],
+      provider: null,
+      model: null,
+      citationsRecorded: 0,
+    };
+  }
+
   const messages = composeExpertMessages(query, sources);
 
   const r = await brainChat({
@@ -173,14 +256,18 @@ export async function expertAnswer({ db, userId, query, opts = {} }) {
     return { ok: false, error: r.error || "brain_failed", sources };
   }
 
+  const answer = reconcileGroundedAnswer(r.text);
+
   // Best-effort: record a citation for each source the answer references
   // (we detect [N] markers). The royalty cascade pays the source's
-  // creator on the next purchase that ancestors them.
-  const refs = extractCitationIndices(r.text);
+  // creator on the next purchase that ancestors them. Web pages are not
+  // DTUs — citing web_<hash> would write a parent that does not exist.
+  const refs = extractCitationIndices(answer);
   let citationsRecorded = 0;
   for (const idx of refs) {
     const s = sources[idx - 1];
     if (!s || !s.id || s.creator_id === userId) continue; // never self-cite
+    if (s.origin === "web" || s.scope === "web") continue;
     try {
       // Lazy import — registerCitation lives in the royalty-cascade
       // module which has its own dependency chain.
@@ -198,16 +285,25 @@ export async function expertAnswer({ db, userId, query, opts = {} }) {
 
   return {
     ok: true,
-    answer: r.text,
-    sources: sources.map((s, i) => ({
-      idx: i + 1,
-      id: s.id,
-      title: s.title,
-      creatorId: s.creator_id,
-      scope: s.scope,
-      mintedByProvider: s.minted_by_provider,
-      mintedByModel: s.minted_by_model,
-    })),
+    answer,
+    sources: sources.map((s, i) => {
+      const row = {
+        idx: i + 1,
+        id: s.id,
+        title: s.title,
+        creatorId: s.creator_id ?? null,
+        scope: s.scope,
+        mintedByProvider: s.minted_by_provider ?? null,
+        mintedByModel: s.minted_by_model ?? null,
+      };
+      if (s.origin === "web" || s.scope === "web" || s.url) {
+        row.origin = s.origin || "web";
+        row.url = s.url || "";
+        row.sourceName = s.source_name || null;
+        row.snippet = s.snippet || "";
+      }
+      return row;
+    }),
     provider: r.provider,
     model: r.model,
     citationsRecorded,

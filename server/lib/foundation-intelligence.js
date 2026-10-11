@@ -144,6 +144,70 @@ const SOVEREIGN_PATTERNS = Object.freeze({
   },
 });
 
+// ── Public regulatory documents: Tier 1 (Dutch decision, 2026-10-09) ────────
+//
+// Sovereign-rule change made by Dutch (the only person who may change these
+// rules), 2026-10-09, relayed verbatim: "public NRC/IAEA documents and ConKay
+// screening analyses are ordinary public (Tier 1) data, NOT the Tier 3
+// sovereign vault".
+//
+// Deliberately narrow. The exemption lifts ONLY the `nuclear_facility`
+// keyword score, and ONLY when the caller passes structured provenance
+// (`signalData.publicSource`), never from free text. It does not apply if:
+//   - the input is a plain string (no structured provenance possible);
+//   - any `nuclear_facility` signal indicator matched (e.g. enrichment
+//     signature, radiation artifact, cooling-system harmonic) or an
+//     `energyLevel` is supplied — that is a sensed signal, not a document;
+//   - any OTHER sovereign category scores at or above the sensitivity
+//     threshold (military, naval, infrastructure vulnerability, ...);
+//   - the source kind / locator / host does not match the allow-list below.
+// Everything else the classifier protects is unchanged.
+
+const PUBLIC_REGULATORY_HOSTS = Object.freeze([
+  "nrc.gov", "ecfr.gov", "govinfo.gov", "federalregister.gov", "iaea.org",
+]);
+
+const PUBLIC_REGULATORY_SOURCES = Object.freeze({
+  // NRC ADAMS accession number, e.g. ML25086A073
+  "nrc-adams": { locator: /^ML\d{5}[A-Z]\d{3}$/, needsUrl: true },
+  // NUREG series, e.g. NUREG-0800, NUREG-0492, NUREG/CR-6928
+  "nureg": { locator: /^NUREG(\/(CR|BR|IA))?-\d{3,4}\b/, needsUrl: true },
+  // Code of Federal Regulations, e.g. "10 CFR 50 Appendix A, Criterion 17"
+  "cfr": { locator: /^\d{1,2} CFR \d+/, needsUrl: true },
+  // IAEA Safety Standards Series, e.g. "SSR-2/1 (Rev. 1)", "SSG-2 (Rev. 1)"
+  "iaea-safety-standard": { locator: /^(SF|GSR|SSR|GSG|SSG|NS-G|GS-G|RS-G|TS-G)-\d/, needsUrl: true },
+  // ConKay screening analysis: identified by its receipt hash, produced
+  // in-process (no URL)
+  "conkay-screening-analysis": { locator: /^[0-9a-f]{64}$/, needsUrl: false },
+});
+
+function hostAllowed(url) {
+  let host;
+  try { host = new URL(url).hostname.toLowerCase(); } catch { return false; }
+  return PUBLIC_REGULATORY_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
+/**
+ * Returns { kind, locator } when the Dutch 2026-10-09 public-regulatory
+ * exemption applies to this signal, otherwise null.
+ */
+export function publicRegulatoryExemption(signalData, perCategory, sensitivityThreshold) {
+  if (!signalData || typeof signalData !== "object") return null;
+  const src = signalData.publicSource;
+  if (!src || typeof src !== "object") return null;
+  const rule = PUBLIC_REGULATORY_SOURCES[src.kind];
+  if (!rule) return null;
+  if (typeof src.locator !== "string" || !rule.locator.test(src.locator)) return null;
+  if (rule.needsUrl && (typeof src.url !== "string" || !hostAllowed(src.url))) return null;
+  if (signalData.energyLevel !== undefined && signalData.energyLevel !== null) return null;
+  const nuclear = perCategory.nuclear_facility;
+  if (!nuclear || nuclear.indicatorMatches > 0) return null;
+  for (const [category, r] of Object.entries(perCategory)) {
+    if (category !== "nuclear_facility" && r.score >= sensitivityThreshold) return null;
+  }
+  return { kind: src.kind, locator: src.locator, decision: "Dutch 2026-10-09: public NRC/IAEA documents and ConKay screening analyses are Tier 1" };
+}
+
 // ── Research Sensitivity Patterns ───────────────────────────────────────────
 
 const RESEARCH_PATTERNS = Object.freeze({
@@ -248,10 +312,12 @@ export function classifySignal(signalData) {
   // Phase 1: Check sovereign patterns first (most restrictive)
   let maxSovereignScore = 0;
   let sovereignCategory = null;
+  const perCategory = {};
 
   for (const [category, pattern] of Object.entries(SOVEREIGN_PATTERNS)) {
     let score = 0;
     let matches = 0;
+    let indicatorMatches = 0;
 
     // Keyword matching (normalize underscores to spaces for comparison)
     for (const kw of pattern.keywords) {
@@ -268,6 +334,7 @@ export function classifySignal(signalData) {
         const indNormalized = indicator.toLowerCase().replace(/_/g, " ");
         if (textLower.includes(indNormalized)) {
           matches++;
+          indicatorMatches++;
           score += 0.25;
         }
       }
@@ -288,9 +355,25 @@ export function classifySignal(signalData) {
     }
 
     score = clamp(score, 0, 1);
+    perCategory[category] = { score, indicatorMatches };
     if (score > maxSovereignScore) {
       maxSovereignScore = score;
       sovereignCategory = category;
+    }
+  }
+
+  // Phase 1b: Dutch 2026-10-09 public-regulatory exemption (see
+  // publicRegulatoryExemption above). Lifts only the nuclear_facility score.
+  const publicExemption = publicRegulatoryExemption(signalData, perCategory, _intelState.classifierRules.sensitivityThreshold);
+  if (publicExemption) {
+    maxSovereignScore = 0;
+    sovereignCategory = null;
+    for (const [category, r] of Object.entries(perCategory)) {
+      if (category === "nuclear_facility") continue;
+      if (r.score > maxSovereignScore) {
+        maxSovereignScore = r.score;
+        sovereignCategory = category;
+      }
     }
   }
 
@@ -369,7 +452,9 @@ export function classifySignal(signalData) {
     _intelState.classifierStats.routedPublic++;
   }
 
-  return { tier, category, confidence, sovereignMatch, researchMatch, upgraded };
+  const result = { tier, category, confidence, sovereignMatch, researchMatch, upgraded };
+  if (publicExemption) result.publicRegulatoryExemption = publicExemption;
+  return result;
 }
 
 function detectPublicCategory(signalData, textLower) {
