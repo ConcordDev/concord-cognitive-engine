@@ -40940,7 +40940,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 // and the event_timeline domain.
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
-  app.use("/api", createFrontierRoutesPart2({ requireAuth }));
+  app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
   app.use("/api", createFrontierRoutesPart4({ requireAuth }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
