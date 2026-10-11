@@ -54,9 +54,12 @@ describe("council — meeting scheduling", () => {
     assert.equal(call("meeting-create", ctxA, { title: "X" }).ok, false);
   });
 
-  it("INVARIANT: meetings are scoped per-user", () => {
-    makeMeeting(ctxA);
-    assert.equal(call("meeting-list", ctxB).result.total, 0);
+  it("shared board — user B sees user A's meeting", () => {
+    const created = makeMeeting(ctxA);
+    const list = call("meeting-list", ctxB);
+    assert.equal(list.result.total, 1);
+    assert.equal(list.result.meetings[0].id, created.result.meeting.id);
+    assert.equal(list.result.meetings[0].authorId, "user_a");
   });
 
   it("updates and deletes a meeting", () => {
@@ -154,6 +157,20 @@ describe("council — quorum enforcement", () => {
     assert.equal(q.result.quorumMet, true);
     assert.equal(q.result.canTally, true);
   });
+
+  it("never reports quorum met when the threshold is 0, even if attendees exist", () => {
+    const m = makeMeeting(ctxA, { quorumThreshold: 0 }).result.meeting;
+    const a = call("attendee-add", ctxA, { meetingId: m.id, name: "One" }).result.attendee;
+    const absent = call("quorum-check", ctxA, { meetingId: m.id });
+    assert.equal(absent.result.present, 0);
+    assert.equal(absent.result.invited, 1);
+    assert.equal(absent.result.quorumMet, false);
+    call("attendee-check-in", ctxA, { meetingId: m.id, attendeeId: a.id, present: true });
+    const present = call("quorum-check", ctxB, { meetingId: m.id });
+    assert.equal(present.result.present, 1);
+    assert.equal(present.result.quorumMet, false);
+    assert.equal(present.result.canTally, false);
+  });
 });
 
 describe("council — document packet", () => {
@@ -209,9 +226,12 @@ describe("council — action-item tracking", () => {
     assert.equal(call("action-carry-forward", ctxA, { id: a.id }).ok, false);
   });
 
-  it("INVARIANT: action items are scoped per-user", () => {
-    call("action-create", ctxA, { description: "A-only task" });
-    assert.equal(call("action-list", ctxB).result.total, 0);
+  it("shared board — user B sees user A's action item", () => {
+    const created = call("action-create", ctxA, { description: "Shared task" });
+    const list = call("action-list", ctxB);
+    assert.equal(list.result.total, 1);
+    assert.equal(list.result.actions[0].id, created.result.action.id);
+    assert.equal(list.result.actions[0].authorId, "user_a");
   });
 
   it("deletes an action item", () => {
@@ -282,15 +302,128 @@ describe("council — decision archive + search", () => {
     assert.equal(call("decision-search", ctxA, { outcome: "all" }).result.total, 2);
   });
 
-  it("INVARIANT: decision archive is scoped per-user", () => {
-    call("decision-archive", ctxA, { title: "A-only resolution" });
-    assert.equal(call("decision-search", ctxB).result.total, 0);
+  it("shared board — user B sees user A's decision", () => {
+    const created = call("decision-archive", ctxA, { title: "Shared resolution" });
+    const list = call("decision-search", ctxB);
+    assert.equal(list.result.total, 1);
+    assert.equal(list.result.decisions[0].id, created.result.decision.id);
+    assert.equal(list.result.decisions[0].authorId, "user_a");
   });
 
   it("deletes an archived decision", () => {
     const d = call("decision-archive", ctxA, { title: "Temp resolution" }).result.decision;
     assert.equal(call("decision-delete", ctxA, { id: d.id }).ok, true);
     assert.equal(call("decision-search", ctxA).result.total, 0);
+  });
+});
+
+describe("council — shared proposals, votes, quorum, audit", () => {
+  it("A proposes, B sees and votes, quorum updates, audit shows A's name", () => {
+    const created = call("proposal-create", ctxA, {
+      title: "Adopt the shared charter",
+      description: "One council, real members.",
+      authorName: "Ada",
+    });
+    assert.equal(created.ok, true);
+    const id = created.result.proposal.id;
+    assert.equal(created.result.proposal.authorId, "user_a");
+    assert.equal(created.result.proposal.authorName, "Ada");
+    assert.equal(created.result.proposal.votesCast, 0);
+    assert.equal(created.result.proposal.eligible, 1);
+    assert.equal(created.result.proposal.quorumRequired, 1);
+    assert.equal(created.result.proposal.quorumMet, false);
+
+    const seen = call("proposal-list", ctxB);
+    assert.equal(seen.result.total, 1);
+    assert.equal(seen.result.proposals[0].id, id);
+    assert.equal(seen.result.proposals[0].authorId, "user_a");
+
+    const early = call("proposal-vote", ctxB, { id, choice: "support", authorName: "Bea" });
+    assert.equal(early.ok, false);
+    assert.equal(early.error, "not eligible");
+
+    const joined = call("member-join", ctxB, { authorName: "Bea" });
+    assert.equal(joined.ok, true);
+    assert.equal(joined.result.total, 2);
+
+    const afterJoin = call("proposal-list", ctxB).result.proposals[0];
+    assert.equal(afterJoin.eligible, 2);
+    assert.equal(afterJoin.quorumRequired, 2);
+    assert.equal(afterJoin.votesCast, 0);
+    assert.equal(afterJoin.quorumMet, false);
+
+    const voted = call("proposal-vote", ctxB, { id, choice: "support", authorName: "Bea" });
+    assert.equal(voted.ok, true);
+    assert.equal(voted.result.quorum.votesCast, 1);
+    assert.equal(voted.result.quorum.eligible, 2);
+    assert.equal(voted.result.quorum.quorumMet, false);
+    assert.equal(voted.result.quorum.tally.for, 1);
+
+    const again = call("proposal-vote", ctxB, { id, choice: "oppose", authorName: "Bea" });
+    assert.equal(again.ok, true);
+    assert.equal(again.result.quorum.votesCast, 1);
+    assert.equal(again.result.quorum.tally.for, 0);
+    assert.equal(again.result.quorum.tally.against, 1);
+    assert.equal(Object.keys(again.result.proposal.votes).length, 1);
+
+    const ada = call("proposal-vote", ctxA, { id, choice: "support", authorName: "Ada" });
+    assert.equal(ada.ok, true);
+    assert.equal(ada.result.quorum.votesCast, 2);
+    assert.equal(ada.result.quorum.required, 2);
+    assert.equal(ada.result.quorum.quorumMet, true);
+    assert.equal(ada.result.quorum.tally.for, 1);
+    assert.equal(ada.result.quorum.tally.against, 1);
+
+    const audit = call("audit-list", ctxB);
+    const actors = audit.result.entries.map((e) => e.actor);
+    assert.ok(actors.includes("Ada"));
+    assert.equal(actors.includes("Council Chair"), false);
+    const createdEntry = audit.result.entries.find((e) => e.action === "Created proposal");
+    assert.equal(createdEntry.actor, "Ada");
+    assert.equal(createdEntry.target, id);
+
+    assert.equal(call("proposal-delete", ctxB, { id }).ok, false);
+    assert.equal(call("proposal-delete", ctxA, { id }).ok, true);
+    assert.equal(call("proposal-list", ctxB).result.total, 0);
+  });
+
+  it("rejects the Council Chair label and records the account instead", () => {
+    const created = call("proposal-create", {
+      actor: { userId: "user_a", displayName: "Council Chair" },
+      userId: "user_a",
+    }, { title: "No ceremonial actor", authorName: "Council Chair" });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.proposal.authorName, "user_a");
+    const audit = call("audit-list", ctxA);
+    assert.equal(audit.result.entries[0].actor, "user_a");
+    assert.equal(audit.result.entries.some((e) => e.actor === "Council Chair"), false);
+  });
+
+  it("folds a legacy per-user meeting into the shared board without deleting the source", () => {
+    const legacy = [{
+      id: "mtg_legacy",
+      title: "Old board",
+      scheduledAt: "2026-01-01T00:00:00.000Z",
+      agenda: [],
+      attendees: [],
+      packet: [],
+    }];
+    globalThis._concordSTATE.councilLens = {
+      meetings: new Map([["user_a", legacy]]),
+      actions: new Map(),
+      decisions: new Map(),
+    };
+    const first = call("meeting-list", ctxB);
+    assert.equal(first.result.total, 1);
+    assert.equal(first.result.meetings[0].id, "mtg_legacy");
+    assert.equal(first.result.meetings[0].authorId, "user_a");
+    assert.equal(legacy.length, 1);
+    const second = call("meeting-list", ctxA);
+    assert.equal(second.result.total, 1);
+    assert.equal(call("meeting-delete", ctxA, { id: "mtg_legacy" }).ok, true);
+    assert.equal(call("meeting-list", ctxB).result.total, 0);
+    assert.equal(legacy.length, 1);
+    assert.equal(call("meeting-list", ctxA).result.total, 0);
   });
 });
 

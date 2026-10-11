@@ -72,6 +72,9 @@ const LENS_MACROS = [
   "action-list", "action-create", "action-update", "action-delete", "action-carry-forward",
   // DecisionArchive
   "ranked-choice-tabulate", "decision-archive", "decision-search", "decision-delete",
+  // Shared proposals / members / audit
+  "member-list", "member-join", "proposal-create", "proposal-list", "proposal-update",
+  "proposal-vote", "proposal-delete", "audit-append", "audit-list", "audit-update", "audit-delete", "budget-simulate",
 ];
 
 describe("council — registration (every lens-driven macro present)", () => {
@@ -423,7 +426,7 @@ describe("council.ranked-choice-tabulate — instant-runoff", () => {
 // MeetingsWorkspace — meeting / agenda / attendee / quorum / packet / action.
 // Round-trip through real per-user STATE.
 // ───────────────────────────────────────────────────────────────────────────
-describe("council meetings — round-trip + quorum gating + per-user isolation", () => {
+describe("council meetings — round-trip + quorum gating + shared board", () => {
   it("create → list → agenda → attendee → quorum gate → packet → delete", () => {
     const created = call("meeting-create", ctxA, { title: "Board", scheduledAt: "2026-07-01T10:00:00Z", quorumThreshold: 2 });
     assert.equal(created.ok, true);
@@ -485,10 +488,13 @@ describe("council meetings — round-trip + quorum gating + per-user isolation",
     assert.equal(call("attendee-rsvp", ctxA, { meetingId: id, attendeeId: at.id, rsvp: "yes" }).ok, true);
   });
 
-  it("per-user isolation — user B never sees user A's meeting", () => {
-    call("meeting-create", ctxA, { title: "A-only", scheduledAt: "2026-07-01T10:00:00Z" });
+  it("shared board — user B sees user A's meeting", () => {
+    const created = call("meeting-create", ctxA, { title: "Shared session", scheduledAt: "2026-07-01T10:00:00Z" });
     assert.equal(call("meeting-list", ctxA, {}).result.total, 1);
-    assert.equal(call("meeting-list", ctxB, {}).result.total, 0);
+    const seen = call("meeting-list", ctxB, {});
+    assert.equal(seen.result.total, 1);
+    assert.equal(seen.result.meetings[0].id, created.result.meeting.id);
+    assert.equal(seen.result.meetings[0].authorId, "user_a");
   });
 
   it("FAIL-CLOSED: poisoned quorumThreshold collapses to a finite, non-negative int", () => {
