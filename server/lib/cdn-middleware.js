@@ -12,6 +12,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { resolveFrontendUrl } from "./frontend-url.js";
 
 // ── Content type to cache policy mapping ───────────────────────────────
 
@@ -217,17 +218,13 @@ export function cdnCacheHeaders(defaultMaxAge = 86400) {
  * @returns {import('express').RequestHandler}
  */
 export function cdnCorsHeaders() {
-  // Allowed origins. In production we REQUIRE CONCORD_FRONTEND_URL to be set —
-  // a localhost default in prod becomes an unintended CORS allow-list entry
-  // and a quiet wrong-domain bug. Dev uses localhost only when NODE_ENV !== "production".
+  // Allowed origins. In production we REQUIRE a real frontend origin —
+  // a localhost default in prod becomes an unintended CORS allow-list entry.
+  // Dev uses localhost only when NODE_ENV !== "production". A placeholder
+  // host (yourdomain.com, example.*, localhost in production) is rejected
+  // by resolveFrontendUrl and replaced with the canonical origin.
   const isProd = process.env.NODE_ENV === "production";
-  // Accept the canonical frontend-URL env vars the rest of the app uses
-  // (FRONTEND_URL / NEXT_PUBLIC_FRONTEND_URL), not just CONCORD_FRONTEND_URL —
-  // requiring only the latter caused a spurious "cdn-middleware mount failed" in prod.
-  const frontendUrl = process.env.CONCORD_FRONTEND_URL
-    || process.env.FRONTEND_URL
-    || process.env.NEXT_PUBLIC_FRONTEND_URL
-    || (isProd ? null : "http://localhost:3000");
+  const frontendUrl = resolveFrontendUrl({ mode: "app" });
   if (isProd && !frontendUrl) {
     throw new Error("CONCORD_FRONTEND_URL / FRONTEND_URL must be set in production (cdn-middleware.cdnCorsHeaders)");
   }

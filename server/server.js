@@ -202,6 +202,7 @@ registerHeartbeat("fauna-spawner", {
 import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
 import { LruMap, LruSet } from "./lib/lru-map.js";
 import { serializeLensState, hydrateLensState, LENS_STATE_KEYS } from "./lib/lens-state-persistence.js";
+import { resolveFrontendUrl, setFrontendUrlLogger } from "./lib/frontend-url.js";
 registerHeartbeat("creature-flock-cycle", {
   frequency: 4,
   handler: runCreatureFlockCycle,
@@ -3688,6 +3689,11 @@ function structuredLog(level, event, data = {}) {
 // log through the same pipeline as the rest of the server. Until this
 // runs, the helper falls back to console.error — safe but louder.
 configureHttpErrorLogger(structuredLog);
+
+// INC-67: reject a template FRONTEND_URL before any signing link or redirect
+// is minted. Logs once when the configured host is a known placeholder.
+setFrontendUrlLogger(structuredLog);
+resolveFrontendUrl({ mode: "public" });
 
 // HTTP request logging middleware
 function requestLoggerMiddleware(req, res, next) {
@@ -82774,8 +82780,8 @@ app.post('/api/economic/tokens/purchase', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL || 'https://concord-os.org'}/billing?success=true`,
-      cancel_url: `${process.env.FRONTEND_URL || 'https://concord-os.org'}/billing?canceled=true`,
+      success_url: `${resolveFrontendUrl({ mode: "public" })}/billing?success=true`,
+      cancel_url: `${resolveFrontendUrl({ mode: "public" })}/billing?canceled=true`,
       metadata: {
         odId,
         packageId,
@@ -82830,8 +82836,8 @@ app.post('/api/economic/subscribe', asyncHandler(async (req, res) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${process.env.FRONTEND_URL || 'https://concord-os.org'}/billing?success=true`,
-      cancel_url: `${process.env.FRONTEND_URL || 'https://concord-os.org'}/billing?canceled=true`,
+      success_url: `${resolveFrontendUrl({ mode: "public" })}/billing?success=true`,
+      cancel_url: `${resolveFrontendUrl({ mode: "public" })}/billing?canceled=true`,
       metadata: { odId, tier, type: 'subscription' },
     });
 

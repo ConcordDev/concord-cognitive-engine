@@ -26,6 +26,7 @@ import {
 } from "../lib/oauth-providers.js";
 import logger from '../logger.js';
 import { ageFromDob, MIN_AGE } from "../lib/age-gate.js";
+import { resolveFrontendUrl } from "../lib/frontend-url.js";
 
 // In-memory store for OAuth state tokens (CSRF protection)
 // State tokens expire after 10 minutes
@@ -68,9 +69,10 @@ export default function registerOAuthRoutes(app, {
   // or worse, redirect production users to a dev box. Dev only falls back
   // when NODE_ENV !== "production".
   const _isProd = process.env.NODE_ENV === "production";
-  const FRONTEND_URL = process.env.FRONTEND_URL
-    || process.env.NEXT_PUBLIC_FRONTEND_URL
-    || (_isProd ? null : "http://localhost:3000");
+  // Placeholder hosts (yourdomain.com, example.*, localhost in production)
+  // resolve to the canonical origin inside resolveFrontendUrl. A completely
+  // unset URL in production still fails closed.
+  const FRONTEND_URL = resolveFrontendUrl({ mode: "app", logger: structuredLog });
   if (_isProd && !FRONTEND_URL) {
     throw new Error("FRONTEND_URL or NEXT_PUBLIC_FRONTEND_URL must be set in production (oauth routes)");
   }
