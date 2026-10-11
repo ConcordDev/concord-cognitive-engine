@@ -24,7 +24,7 @@ import {
   type BudgetSimulation,
 } from '@/lib/council/council-audit';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
-import { loadCouncilDtus } from '@/lib/dtu/list-pages';
+import { loadCouncilDtus, type CouncilDtu } from '@/lib/dtu/list-pages';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -218,13 +218,6 @@ interface Persona {
   id: string;
   name: string;
   style: string;
-}
-
-interface DTU {
-  id: string;
-  content: string;
-  meta?: { title?: string };
-  tags?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -544,7 +537,7 @@ export default function CouncilLensPage() {
   const runArtifact = useRunArtifact('council');
 
   const personas: Persona[] = personasData?.personas || [];
-  const dtus: DTU[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
+  const dtus: CouncilDtu[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
 
   // ----- Computed -----
   const selectedProposal = selectedProposalId
